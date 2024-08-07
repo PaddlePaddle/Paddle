@@ -25,7 +25,7 @@ paddle.enable_static()
 
 #  test the compatibility of new executor: run old
 #  and new executor twice and check the result.
-#  please override the _get_feeds() and build_prgram(), run_dygraph_once()
+#  please override the _get_feeds() and build_program(), run_dygraph_once()
 class TestCompatibility(unittest.TestCase):
     def setUp(self):
         self.place = (

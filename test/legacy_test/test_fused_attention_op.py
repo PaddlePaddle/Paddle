@@ -22,17 +22,15 @@ import paddle
 import paddle.incubate.nn.functional as incubate_f
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.base.framework import default_main_program
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.transformer import _convert_attention_mask
 
-default_main_program().random_seed = 42
+paddle.seed(42)
 
 
 class TestFusedAttentionOp(OpTest):
     def setUp(self):
-        self.with_new_comm()
         self.config()
         self.generate_input_data()
 
@@ -80,9 +78,6 @@ class TestFusedAttentionOp(OpTest):
         self.norm2 = LayerNorm(self.embed_dim)
         paddle.set_default_dtype(self.x_type)
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
-
-    def with_new_comm(self):
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
 
     def config(self):
         self.x_type = np.float32

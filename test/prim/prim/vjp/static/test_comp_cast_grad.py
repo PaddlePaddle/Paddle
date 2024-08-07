@@ -19,13 +19,15 @@ import numpy as np
 import parameterized as param
 
 import paddle
-from paddle.base import core, framework
+from paddle.base import core
 
 
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    return paddle.jit.to_static(
+        net, build_strategy=build_strategy, full_graph=True
+    )
 
 
 class PrimeNet(paddle.nn.Layer):
@@ -86,27 +88,6 @@ class TestCastGradComp(unittest.TestCase):
 
         return res
 
-    def test_cinn(self):
-        paddle.disable_static()
-        use_cinn = True
-        if isinstance(
-            framework._current_expected_place(), framework.core.CPUPlace
-        ):
-            # TODO(jiabin): CINN will crashed in this case open it when fixed
-            use_cinn = False
-
-        dy_res = self.train(use_prim=False, use_cinn=False)
-        comp_st_cinn_res = self.train(use_prim=True, use_cinn=use_cinn)
-
-        for i in range(len(dy_res)):
-            np.testing.assert_allclose(
-                comp_st_cinn_res[i].numpy(),
-                dy_res[i].numpy(),
-                rtol=1e-15,
-                atol=1e-15,
-            )
-        paddle.enable_static()
-
     def test_cast_grad_comp(self):
         core._set_prim_backward_enabled(True)
 
@@ -122,10 +103,14 @@ class TestCastGradComp(unittest.TestCase):
                 x_cotangent = paddle.static.gradients(y, x, v)
             exe = paddle.static.Executor()
             exe.run(sp)
+            if paddle.framework.in_pir_mode():
+                fetch_list = mp.blocks[0].ops[-1].result(0)
+            else:
+                fetch_list = mp.blocks[0].ops[-1].output('Out')[0]
             return exe.run(
                 program=mp,
                 feed={'primal': primal, 'cotangent': cotangent},
-                fetch_list=mp.blocks[0].ops[-1].output('Out')[0],
+                fetch_list=fetch_list,
             )[0]
 
         def desired(primal, cotangent):

@@ -31,11 +31,11 @@ class PyReader : public framework::FileReader {
  public:
   explicit PyReader(
       const std::shared_ptr<LoDTensorBlockingQueue>& queue,
-      const std::vector<framework::DDim>& dims,
+      const std::vector<phi::DDim>& dims,
       const std::vector<framework::proto::VarType::Type>& var_types,
       const std::vector<bool>& need_check_feed);
 
-  void ReadNext(paddle::framework::LoDTensorArray* out) override;
+  void ReadNext(phi::TensorArray* out) override;
 
   ~PyReader();
 

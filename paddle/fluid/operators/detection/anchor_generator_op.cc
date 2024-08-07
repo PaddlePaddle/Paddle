@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/detection/anchor_generator_op.h"
+#include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class AnchorGeneratorOp : public framework::OperatorWithKernel {
  public:
@@ -25,24 +24,24 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Input"),
         true,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Input) of AnchorGeneratorOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Anchors"),
         true,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Output(Anchors) of AnchorGeneratorOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Variances"),
         true,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Output(Variances) of AnchorGeneratorOp should not be null."));
 
     auto input_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(
         input_dims.size(),
         4,
-        platform::errors::InvalidArgument("The layout of input is NCHW."));
+        common::errors::InvalidArgument("The layout of input is NCHW."));
 
     auto anchor_sizes = ctx->Attrs().Get<std::vector<float>>("anchor_sizes");
     auto aspect_ratios = ctx->Attrs().Get<std::vector<float>>("aspect_ratios");
@@ -98,12 +97,12 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<float>& anchor_sizes) {
           PADDLE_ENFORCE_GT(anchor_sizes.size(),
                             0UL,
-                            platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "Size of anchor_sizes must be at least 1."));
           for (size_t i = 0; i < anchor_sizes.size(); ++i) {
             PADDLE_ENFORCE_GT(anchor_sizes[i],
                               0.0,
-                              platform::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "anchor_sizes[%d] must be positive.", i));
           }
         });
@@ -118,14 +117,14 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
                                 "(vector<float>) List of variances to be used "
                                 "in box regression deltas")
         .AddCustomChecker([](const std::vector<float>& variances) {
-          PADDLE_ENFORCE_EQ(variances.size(),
-                            4UL,
-                            platform::errors::InvalidArgument(
-                                "Must provide 4 variance only."));
+          PADDLE_ENFORCE_EQ(
+              variances.size(),
+              4UL,
+              common::errors::InvalidArgument("Must provide 4 variance only."));
           for (size_t i = 0; i < variances.size(); ++i) {
             PADDLE_ENFORCE_GT(variances[i],
                               0.0,
-                              platform::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "variance[%d] must be greater than 0.", i));
           }
         });
@@ -138,12 +137,12 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               stride.size(),
               2UL,
-              platform::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Must provide 2 stride for width and height only."));
           for (size_t i = 0; i < stride.size(); ++i) {
             PADDLE_ENFORCE_GT(stride[i],
                               0.0,
-                              platform::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "stride[%d] should be larger than 0.", i));
           }
         });
@@ -164,8 +163,7 @@ https://arxiv.org/abs/1506.01497.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
@@ -174,10 +172,3 @@ REGISTER_OPERATOR(
     ops::AnchorGeneratorOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(anchor_generator,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::AnchorGeneratorOpKernel,
-                          float,
-                          double) {}

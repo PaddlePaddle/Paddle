@@ -52,7 +52,7 @@ class VarDistributed:
             is_slice(bool|None): slice or not, slice_var=True/False and its block size > 8192 are the judgement standard.
             block_id(int|None): the number about the slice var.
             offset(int|None): if the slice var is sliced, offset is the numel before the var.
-            vtype(str|None): a tag, such as Optimizer/Param/RemoteProfetch.
+            vtype(str|None): a tag, such as Optimizer/Param/RemotePrefetch.
             endpoint(str|None): which parameter the slice var on, such as "127.0.0.1:1001"
         """
 
@@ -115,31 +115,14 @@ class VarDistributed:
         )
 
     def __str__(self):
-        origin_var_str = (
-            "{name} : base.{type}.shape{shape}.astype({dtype})".format(
-                name=self.origin.name,
-                type=self.origin.type,
-                shape=self.origin.shape,
-                dtype=self.origin.dtype,
-            )
-        )
+        origin_var_str = f"{self.origin.name} : base.{self.origin.type}.shape{self.origin.shape}.astype({self.origin.dtype})"
 
         slice_var_str = (
-            "{name} : base.{type}.shape{shape}.astype({dtype})"
-            ".slice({is_slice}).block({block_id}).offset({offset})".format(
-                name=self.slice.name,
-                type=self.slice.type,
-                shape=self.slice.shape,
-                dtype=self.slice.dtype,
-                is_slice=self.is_slice,
-                block_id=self.block_id,
-                offset=self.offset,
-            )
+            f"{self.slice.name} : base.{self.slice.type}.shape{self.slice.shape}.astype({self.slice.dtype})"
+            f".slice({self.is_slice}).block({self.block_id}).offset({self.offset})"
         )
 
-        return "var owned: {}, origin var: ( {} ), slice var: ( {} ), endpoint: {} ".format(
-            self.vtype, origin_var_str, slice_var_str, self.endpoint
-        )
+        return f"var owned: {self.vtype}, origin var: ( {origin_var_str} ), slice var: ( {slice_var_str} ), endpoint: {self.endpoint} "
 
 
 class VarsDistributed:
@@ -172,7 +155,7 @@ class VarsDistributed:
             is_slice(bool|None): slice or not, slice_var=True/False and its block size > 8192 are the judgement standard.
             block_id(int|None): the number about the slice var.
             offset(int|None): if the slice var is sliced, offset is the numel before the var.
-            vtype(str|None): a tag, such as Optimizer/Param/RemoteProfetch.
+            vtype(str|None): a tag, such as Optimizer/Param/RemotePrefetch.
             endpoint(str|None): which parameter the slice var on, such as "127.0.0.1:1001"
         Returns:
             None

@@ -39,7 +39,7 @@ class LoDRankTableOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     auto x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
@@ -75,7 +75,7 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasInput("X"),
         true,
-        platform::errors::NotFound("LoDRankTable must have input X."));
+        common::errors::NotFound("LoDRankTable must have input X."));
   }
 };
 

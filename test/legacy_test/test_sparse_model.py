@@ -22,9 +22,9 @@ from paddle.sparse import nn
 
 class TestGradientAdd(unittest.TestCase):
     def sparse(self, sp_x):
-        indentity = sp_x
+        identity = sp_x
         out = nn.functional.relu(sp_x)
-        values = out.values() + indentity.values()
+        values = out.values() + identity.values()
         out = paddle.sparse.sparse_coo_tensor(
             out.indices(),
             values,
@@ -34,9 +34,9 @@ class TestGradientAdd(unittest.TestCase):
         return out
 
     def dense(self, x):
-        indentity = x
+        identity = x
         out = paddle.nn.functional.relu(x)
-        out = out + indentity
+        out = out + identity
         return out
 
     def test(self):

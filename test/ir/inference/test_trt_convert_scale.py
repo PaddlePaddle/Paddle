@@ -17,13 +17,16 @@ from __future__ import annotations
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Generator
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class TrtConvertScaleTest(TrtLayerAutoScanTest):
@@ -81,14 +84,14 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
                 {},
             ]
 
-            dics_intput = [
+            dics_input = [
                 {
                     "X": ["scale_input"],
                     "ScaleTensor": ["ScaleTensor"],
                 },
                 {"X": ["scale_input"]},
             ]
-            dics_intputs = [
+            dics_inputs = [
                 {
                     "ScaleTensor": TensorConfig(
                         data_gen=partial(
@@ -104,7 +107,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
             ops_config = [
                 {
                     "op_type": "scale",
-                    "op_inputs": dics_intput[num_input],
+                    "op_inputs": dics_input[num_input],
                     "op_outputs": {"Out": ["scale_out"]},
                     "op_attrs": dics[0],
                 }
@@ -112,7 +115,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
             ops = self.generate_op_config(ops_config)
             program_config = ProgramConfig(
                 ops=ops,
-                weights=dics_intputs[num_input],
+                weights=dics_inputs[num_input],
                 inputs={
                     "scale_input": TensorConfig(
                         data_gen=partial(

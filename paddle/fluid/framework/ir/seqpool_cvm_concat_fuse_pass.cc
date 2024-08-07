@@ -18,9 +18,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 class Node;
@@ -197,9 +195,7 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(seqpool_cvm_concat_fuse_pass,
               paddle::framework::ir::SeqPoolCVMConcatFusePass);

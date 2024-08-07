@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -90,7 +91,7 @@ class TestSvdOp(OpTest):
 
 
 class TestSvdCheckGrad2(TestSvdOp):
-    # NOTE(xiongkun03): because we want to construct some full rank matrics,
+    # NOTE(xiongkun03): because we want to construct some full rank matrices,
     #                   so we can't specifize matrices which numel() > 100
 
     no_need_check_grad = True
@@ -297,7 +298,13 @@ class TestSvdAPI(unittest.TestCase):
     @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:

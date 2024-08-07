@@ -74,9 +74,7 @@ class TestMPAllreduceMatmulGradOverlapping(unittest.TestCase):
             check_losses,
             rtol=rtol or self.rtol,
             atol=atol or self.atol,
-            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses
-            ),
+            err_msg=f'pass {__class__} has wrong results!, \nu={ref_losses}\nv={check_losses}\ndiff={ref_losses - check_losses}',
         )
 
     def test_mp_allreduce_matmul_grad_overlapping(self):

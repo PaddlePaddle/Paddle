@@ -35,13 +35,12 @@ class NOP : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {}
+  void RunImpl(const Scope& scope, const phi::Place& place) const override {}
 };
 
 class SumOpMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "").AsDuplicable();
     AddOutput("Out", "");
     AddComment("");

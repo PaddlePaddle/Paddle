@@ -20,7 +20,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/include/core/ir_printer.h"
 
 REGISTER_FILE_SYMBOLS(kernel_dialect);
 
@@ -60,6 +60,24 @@ void PrintKernelType(pir::Type type, std::ostream &os) {
     os << "tensor_array<";
     tensor_array_type.dtype().Print(os);
     os << ">";
+  } else if (type.isa<AllocatedSparseCooTensorType>()) {
+    AllocatedSparseCooTensorType sparse_coo_tensor_type =
+        type.dyn_cast<AllocatedSparseCooTensorType>();
+
+    os << phi::AllocationTypeStr(sparse_coo_tensor_type.place().GetType())
+       << "_";
+    os << "sparse_coo_tensor_type<";
+    sparse_coo_tensor_type.dtype().Print(os);
+    os << ">";
+  } else if (type.isa<AllocatedSparseCsrTensorType>()) {
+    AllocatedSparseCsrTensorType sparse_csr_tensor_type =
+        type.dyn_cast<AllocatedSparseCsrTensorType>();
+
+    os << phi::AllocationTypeStr(sparse_csr_tensor_type.place().GetType())
+       << "_";
+    os << "sparse_csr_tensor_type<";
+    sparse_csr_tensor_type.dtype().Print(os);
+    os << ">";
   }
 }
 
@@ -78,6 +96,8 @@ KernelDialect::KernelDialect(pir::IrContext *context)
 void KernelDialect::initialize() {
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
                 paddle::dialect::AllocatedSelectedRowsType,
+                paddle::dialect::AllocatedSparseCooTensorType,
+                paddle::dialect::AllocatedSparseCsrTensorType,
                 paddle::dialect::AllocatedDenseTensorArrayType>();
   RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
   RegisterAttributes<paddle::dialect::KernelAttribute>();

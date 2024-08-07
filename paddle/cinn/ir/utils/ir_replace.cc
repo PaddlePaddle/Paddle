@@ -34,8 +34,10 @@ struct IrReplaceVarBroadcastMutator : ir::IRMutator<Expr*> {
 
   IrReplaceVarBroadcastMutator(ir::Expr from, Expr to)
       : from_(from), to_(to), from_repr_(GetStreamCnt(from)) {
-    CHECK(valid_nodetys.count(from->node_type()))
-        << "Not valid node type got " << from->node_type();
+    PADDLE_ENFORCE_EQ(valid_nodetys.count(from->node_type()),
+                      true,
+                      phi::errors::InvalidArgument("Not valid node type got %s",
+                                                   from->node_type()));
   }
   void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -50,7 +52,7 @@ struct IrReplaceVarBroadcastMutator : ir::IRMutator<Expr*> {
   void Visit(const ir::Broadcast* op, Expr* expr) override {
     if (op->node_type() == from_->node_type() &&
         from_repr_ == GetStreamCnt(*expr)) {
-      *expr = ir::ir_utils::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_, /* copy_buffer_node = */ false);
     }
   }
 
@@ -68,7 +70,7 @@ struct IrReplaceMutator : ir::IRMutator<Expr*> {
   void Visit(const Expr* op, Expr* expr) override {
     ir::IRMutator<>::Visit(expr, expr);
     if (from_repr_ == GetStreamCnt(*expr)) {
-      *expr = ir::ir_utils::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_, /* copy_buffer_node = */ false);
     }
   }
 
@@ -80,12 +82,18 @@ struct IrReplaceMutator : ir::IRMutator<Expr*> {
 }  // namespace
 
 void IrReplaceVarBroadcast(ir::Expr* expr, ir::Expr from, ir::Expr to) {
-  CHECK(expr);
+  PADDLE_ENFORCE_NE(
+      expr,
+      nullptr,
+      phi::errors::InvalidArgument("Input expr should not be nullptr"));
   IrReplaceVarBroadcastMutator(from, to)(expr);
 }
 
 void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to) {
-  CHECK(expr);
+  PADDLE_ENFORCE_NE(
+      expr,
+      nullptr,
+      phi::errors::InvalidArgument("Input expr should not be nullptr"));
   IrReplaceMutator(from, to)(expr);
 }
 

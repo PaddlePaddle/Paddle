@@ -15,7 +15,7 @@ limitations under the License. */
 
 #pragma once
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -36,6 +36,7 @@ PD_DECLARE_bool(enable_cudnn_frontend);
   __macro(cudnnCreateFilterDescriptor);    \
   __macro(cudnnDestroyFilterDescriptor);   \
   __macro(cudnnGetStream);                 \
+  __macro(cudnnGetErrorString);            \
   __macro(cudnnGetVersion);                \
   __macro(cudnnReorderFilterAndBias);      \
   __macro(cudnnSetFilterNdDescriptor);

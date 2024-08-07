@@ -41,7 +41,7 @@ class PyLayerOp : public framework::OperatorBase {
   static const char kBlocks[];
 
  protected:
-  void CreateInterpreter(const platform::Place &dev_place,
+  void CreateInterpreter(const phi::Place &dev_place,
                          const framework::BlockDesc &block,
                          framework::Scope *scope,
                          const std::vector<std::string> &skip_vars) const;

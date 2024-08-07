@@ -19,6 +19,7 @@ from functools import reduce
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
 
@@ -667,8 +668,8 @@ class Inserter:
         group = new_process_group(ranks)
         idx_offset = 0
 
-        # insert c_allgather op
-        op_type = 'c_allgather'
+        # insert all_gather op
+        op_type = 'all_gather'
         # to avoid name conflict with framework
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         insert_operation = (
@@ -690,16 +691,18 @@ class Inserter:
         allgather_op = insert_operation(
             idx + idx_offset,
             type=op_type,
-            inputs={'X': [tensor]},
-            outputs={'Out': [allgather_out]},
+            inputs={'x': [tensor]},
+            outputs={'out': [allgather_out]},
             attrs={
                 'ring_id': group.id,
-                'use_calc_stream': True,
                 'nranks': group.nranks,
                 'op_role': op_role,
             },
         )
         allgather_op._set_attr('op_namescope', "/auto_parallel/reshard")
+        allgather_op.dist_attr.execution_stream = (
+            AutoParallelStreamType.CALC_STREAM.value
+        )
         idx_offset += 1
 
         # insert split op
@@ -1113,7 +1116,7 @@ class Resharder:
         self._has_sent = {}
         self._has_recv = {}
         self._has_allgather = {}
-        # to avoid reshard repeatly
+        # to avoid reshard repeatedly
         self._has_resharded = {}
 
     @property
@@ -1874,9 +1877,9 @@ class Resharder:
         for rank_id in op_desc_seq:
             op_desc_list = op_desc_seq[rank_id]
             for op_desc in op_desc_list:
-                if isinstance(op_desc, AllGatherOpDesc):
-                    new_process_group(op_desc.group)
-                elif isinstance(op_desc, AllGatherConcatOpDesc):
+                if isinstance(
+                    op_desc, (AllGatherOpDesc, AllGatherConcatOpDesc)
+                ):
                     new_process_group(op_desc.group)
                 elif isinstance(op_desc, SendOpDesc):
                     new_process_group(
@@ -2188,12 +2191,12 @@ class Resharder:
                             self.dist_context,
                             out_var,
                             [-1] * len(out_var.shape),
-                            src_tensor_attr.process_mesh,
+                            dst_input_attr[0],  # process_mesh
                             chunk_id=src_tensor_attr.chunk_id,
                         )
                     naive_set_dist_op_attr_for_program_by_mesh(
                         op,
-                        src_tensor_attr.process_mesh,
+                        dst_input_attr[0],  # process_mesh
                         self.dist_context,
                         chunk_id=src_tensor_attr.chunk_id,
                     )
@@ -2457,9 +2460,7 @@ class Resharder:
 
         assert (
             op_input_attrs
-        ), "The input '{}' of op '{}' has no distributed attributes in subblock".format(
-            op.name, var_name
-        )
+        ), f"The input '{op.name}' of op '{var_name}' has no distributed attributes in subblock"
 
         return op_input_attrs
 
@@ -2705,9 +2706,11 @@ class Resharder:
                     idx + 2,
                     type='cast',
                     inputs={
-                        'X': [recv_cast_out]
-                        if reset_lod_out is None
-                        else [reset_lod_out]
+                        'X': (
+                            [recv_cast_out]
+                            if reset_lod_out is None
+                            else [reset_lod_out]
+                        )
                     },
                     outputs={'Out': [var]},
                     attrs={
@@ -3122,8 +3125,11 @@ class Resharder:
                     partition_tensor_list.pop(i)
                     if rank_id not in local_rank_comp_cost:
                         local_rank_comp_cost[rank_id] = []
+                    concat_desc["dtype"] = dtype
                     local_rank_comp_cost[rank_id].append(
-                        ConcatOpCost(op_desc=concat_desc, cluster=cluster)
+                        ConcatOpCost(
+                            op_desc=concat_desc, cluster=cluster, rank=rank_id
+                        )
                     )
                     self._concat_partitions_for_cost(
                         partition_tensor_list,
@@ -3202,7 +3208,7 @@ class Resharder:
                     group_ranks = op_desc.group
                     shape = op_desc.shape
                     allgather_desc = build_comm_desc(
-                        "c_allgather", group_ranks, dtype, shape
+                        "all_gather", group_ranks, dtype, shape
                     )
                     split_inputs_shape = []
                     for idx, dim in enumerate(shape):
@@ -3244,8 +3250,11 @@ class Resharder:
                         "inputs": [(dtype, split_inputs_shape)]
                     }
                     split_desc["attrs"] = {"num": len(group_ranks), "axis": 0}
+                    split_desc["dtype"] = dtype
                     local_rank_comp_cost[key].append(
-                        SplitOpCost(op_desc=split_desc, cluster=cluster)
+                        SplitOpCost(
+                            op_desc=split_desc, cluster=cluster, rank=key
+                        )
                     )
                 elif isinstance(op_desc, ConcatOpDesc):
                     partition_index_list = op_desc._partition_index_list
@@ -3284,8 +3293,11 @@ class Resharder:
                     slice_desc["inputs"] = {
                         "Input": [(dtype, to_slice_tensor_shape)]
                     }
+                    slice_desc["dtype"] = dtype
                     local_rank_comp_cost[key].append(
-                        SliceOpCost(op_desc=slice_desc, cluster=cluster)
+                        SliceOpCost(
+                            op_desc=slice_desc, cluster=cluster, rank=key
+                        )
                     )
 
         res = (comm_costs, local_rank_comp_cost)

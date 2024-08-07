@@ -33,8 +33,8 @@ void FullKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FullWithTensorKernel(const Context& dev_ctx,
-                          const DenseTensor& shape,
                           const DenseTensor& value,
+                          const IntArray& shape,
                           DataType dtype,
                           DenseTensor* out);
 

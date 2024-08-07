@@ -18,7 +18,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/sub_graph/sub_graph_checker.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 using namespace paddle::test;  // NOLINT
 
@@ -145,7 +145,7 @@ std::shared_ptr<::pir::Program> BuildDropOutPhiProgram() {
   return program;
 }
 
-TEST(sub_grah_checker, test_softmax) {
+TEST(sub_graph_checker, test_softmax) {
   auto basic_program = BuildBasicProgram();
   auto prim_program = BuildPrimProgram();
 
@@ -156,7 +156,7 @@ TEST(sub_grah_checker, test_softmax) {
   ASSERT_EQ(speed_data.size(), 2u);
 }
 
-TEST(sub_grah_checker, test_dropout) {
+TEST(sub_graph_checker, test_dropout) {
   auto basic_program = BuildDropOutPhiProgram();
   auto prim_program = BuildDropOutPrimProgram();
 

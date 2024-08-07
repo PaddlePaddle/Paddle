@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class RnnNativeOpConverter : public OpConverter {
  public:
@@ -36,7 +34,7 @@ class RnnNativeOpConverter : public OpConverter {
 
     PADDLE_ENFORCE_EQ(input->getDimensions().nbDims,
                       3,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "RNN(LSTM)'s input must be 3 dimensions, i.e. "
                           "[seq_len, batch, input_size],"
                           "but now is %d  dimensions.",
@@ -44,7 +42,7 @@ class RnnNativeOpConverter : public OpConverter {
 
     PADDLE_ENFORCE_EQ(prev_h->getDimensions().nbDims,
                       3,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "RNN(LSTM)'s PreState(Hidden) must be 3 dimensions, "
                           "i.e. [num_layers, batch, hidden_size],"
                           "but now is %d  dimensions.",
@@ -52,7 +50,7 @@ class RnnNativeOpConverter : public OpConverter {
 
     PADDLE_ENFORCE_EQ(prev_c->getDimensions().nbDims,
                       3,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "RNN(LSTM)'s PreState(Cell) must be 3 dimensions, "
                           "i.e. [num_layers, batch, hidden_size],"
                           "but now is %d  dimensions.",
@@ -303,7 +301,7 @@ class RnnNativeOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(finally_layer, "rnn", {output_name}, test_mode);
+    ReplenishLayerAndOutput(finally_layer, "rnn", {output_name}, test_mode);
     // free
     if (is_bidirec) {
       for (auto& weight_bias : weight_bias_vec) delete[] weight_bias;
@@ -312,8 +310,6 @@ class RnnNativeOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(rnn, RnnNativeOpConverter);

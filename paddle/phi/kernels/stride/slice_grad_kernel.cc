@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/slice_grad_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/fill_kernel.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/slice_kernel.h"
-#include "paddle/phi/kernels/strided_copy_kernel.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -31,11 +33,16 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                             const std::vector<int64_t>& infer_flags,
                             const std::vector<int64_t>& decrease_axis,
                             DenseTensor* input_grad) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
   PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
-                       phi::FillKernel<data_t, Context>(
-                           dev_ctx, *input_grad, 0, input_grad);
+                       phi::StridedTensorFill<data_t>(
+                           *input_grad, 0, input_grad);
                      }));
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
@@ -48,8 +55,7 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                               decrease_axis,
                               &tmp);
   PD_VISIT_ALL_TYPES(input.dtype(), "SliceGradStridedKernel", ([&] {
-                       phi::StridedCopyKernel<data_t, Context>(
-                           dev_ctx,
+                       phi::StridedTensorCopy<data_t>(
                            out_grad,
                            common::vectorize<int64_t>(tmp.dims()),
                            common::vectorize<int64_t>(tmp.strides()),
@@ -57,7 +63,8 @@ void SliceGradStridedKernel(const Context& dev_ctx,
                            &tmp);
                      }));
 }
-
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    slice_grad, STRIDED, phi::SliceGradStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(slice_grad,
+                                         STRIDED,
+                                         phi::SliceGradStridedKernel) {}

@@ -88,7 +88,7 @@ message ServerServiceParameter {
   optional string client_class = 2 [ default = "BrpcPsClient" ];
   optional string service_class = 3 [ default = "BrpcPsService" ];
   optional uint32 start_server_port = 4
-      [ default = 0 ]; // will find a avaliable port from it
+      [ default = 0 ]; // will find a available port from it
   optional uint32 server_thread_num = 5 [ default = 12 ];
 }
 
@@ -123,6 +123,7 @@ message TableParameter {
   // for patch model
   optional bool enable_revert = 13 [ default = false ];
   optional float shard_merge_rate = 14 [ default = 1.0 ];
+  optional bool use_gpu_graph = 15 [ default = false ];
 }
 
 message TableAccessorParameter {

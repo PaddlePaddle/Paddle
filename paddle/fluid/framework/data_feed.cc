@@ -26,13 +26,13 @@ limitations under the License. */
 #include <sys/stat.h>
 #endif
 #include "io/fs.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
-PHI_DECLARE_bool(enable_ins_parser_file);
-namespace paddle {
-namespace framework {
+COMMON_DECLARE_bool(enable_ins_parser_file);
+namespace paddle::framework {
 
 DLManager& global_dlmanager_pool() {
   static DLManager manager;
@@ -145,7 +145,11 @@ class BufferedLineFileReader {
 void RecordCandidateList::ReSize(size_t length) {
   mutex_.lock();
   capacity_ = length;
-  CHECK(capacity_ > 0);  // NOLINT
+  PADDLE_ENFORCE_EQ(
+      capacity_ > 0,
+      true,
+      common::errors::InvalidArgument(
+          "Capacity should be greater than 0, but received %d.", capacity_));
   candidate_list_.clear();
   candidate_list_.resize(capacity_);
   full_ = false;
@@ -172,7 +176,13 @@ void RecordCandidateList::AddAndGet(const Record& record,
     candidate_list_[cur_size_++] = record;
     full_ = (cur_size_ == capacity_);
   } else {
-    CHECK(cur_size_ == capacity_);
+    PADDLE_ENFORCE_EQ(
+        cur_size_ == capacity_,
+        true,
+        common::errors::InvalidArgument(
+            "Capacity should be equal to cur_size, but received %d and %d.",
+            capacity_,
+            cur_size_));
     index = fleet_ptr->LocalRandomEngine()() % total_size_;
     if (index < capacity_) {
       candidate_list_[index] = record;
@@ -208,21 +218,21 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
 }
 
 void DataFeed::SetBatchSize(int batch_size) {
-  PADDLE_ENFORCE_GT(batch_size,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "Batch size %d is illegal.", batch_size));
+  PADDLE_ENFORCE_GT(
+      batch_size,
+      0,
+      common::errors::InvalidArgument("Batch size %d is illegal.", batch_size));
   default_batch_size_ = batch_size;
 }
 
 bool DataFeed::PickOneFile(std::string* filename) {
   PADDLE_ENFORCE_NOT_NULL(
       mutex_for_pick_file_,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "You should call SetFileListMutex before PickOneFile"));
   PADDLE_ENFORCE_NOT_NULL(
       file_idx_,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "You should call SetFileListIndex before PickOneFile"));
   std::unique_lock<std::mutex> lock(*mutex_for_pick_file_);
   VLOG(4) << "filelist_ size: " << filelist_.size();
@@ -239,20 +249,20 @@ void DataFeed::CheckInit() {
   PADDLE_ENFORCE_EQ(
       finish_init_,
       true,
-      platform::errors::PreconditionNotMet("DataFeed initialization failed."));
+      common::errors::PreconditionNotMet("DataFeed initialization failed."));
 }
 
 void DataFeed::CheckSetFileList() {
   PADDLE_ENFORCE_EQ(
       finish_set_filelist_,
       true,
-      platform::errors::PreconditionNotMet("DataFeed set filelist failed."));
+      common::errors::PreconditionNotMet("DataFeed set filelist failed."));
 }
 
 void DataFeed::CheckStart() {
   PADDLE_ENFORCE_EQ(finish_start_,
                     true,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Datafeed has not started running yet."));
 }
 
@@ -264,7 +274,7 @@ void DataFeed::AssignFeedVar(const Scope& scope) {
 }
 
 void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
-  if (platform::is_cpu_place(this->place_)) {
+  if (phi::is_cpu_place(this->place_)) {
     memcpy(dst, src, size);
   } else {
 #ifdef PADDLE_WITH_CUDA
@@ -274,7 +284,7 @@ void DataFeed::CopyToFeedTensor(void* dst, const void* src, size_t size) {
 #elif defined(PADDLE_WITH_XPU_KP)
     xpu_memcpy(dst, src, size, XPUMemcpyKind::XPU_HOST_TO_DEVICE);
 #else
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Not supported GPU/ROCM, please compile with option WITH_GPU=ON or "
         "WITH_ROCM=ON."));
 #endif
@@ -286,7 +296,7 @@ void PrivateQueueDataFeed<T>::SetQueueSize(int queue_size) {
   PADDLE_ENFORCE_GT(
       queue_size,
       0,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Queue size %d is illegal in PrivateQueueDataFeed.", queue_size));
   queue_size_ = queue_size;
   queue_ = paddle::framework::MakeChannel<T>();
@@ -349,7 +359,22 @@ int PrivateQueueDataFeed<T>::Next() {
 template class PrivateQueueDataFeed<std::vector<MultiSlotType>>;
 
 template <typename T>
-InMemoryDataFeed<T>::InMemoryDataFeed() {
+InMemoryDataFeed<T>::InMemoryDataFeed()
+    : batch_float_feasigns_(),
+      batch_uint64_feasigns_(),
+      offset_(),
+      visit_(),
+      thread_id_(0),
+      thread_num_(0),
+      parse_ins_id_(false),
+      parse_uid_(false),
+      parse_content_(false),
+      parse_logkey_(false),
+      enable_pv_merge_(false),
+      input_pv_channel_(nullptr),
+      output_pv_channel_(nullptr),
+      consume_pv_channel_(nullptr),
+      batch_offsets_() {
   this->file_idx_ = nullptr;
   this->mutex_for_pick_file_ = nullptr;
   this->fp_ = nullptr;
@@ -391,8 +416,15 @@ int InMemoryDataFeed<T>::Next() {
 #ifdef _LINUX
   this->CheckStart();
   if (!enable_heterps_) {
-    CHECK(output_channel_ != nullptr);
-    CHECK(consume_channel_ != nullptr);
+    PADDLE_ENFORCE_EQ(output_channel_ != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "Output channnel should not be null, please check!"));
+    PADDLE_ENFORCE_EQ(
+        consume_channel_ != nullptr,
+        true,
+        common::errors::InvalidArgument(
+            "Consume channnel should not be null, please check!"));
     VLOG(3) << "output_channel_ size=" << output_channel_->Size()
             << ", consume_channel_ size=" << consume_channel_->Size()
             << ", thread_id=" << thread_id_;
@@ -440,7 +472,7 @@ int InMemoryDataFeed<T>::Next() {
     }
     VLOG(3) << "enable heter next: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size()
-            << " baych_size: " << this->batch_size_;
+            << " batch_size: " << this->batch_size_;
   }
   return this->batch_size_;
 #else
@@ -544,7 +576,10 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 #ifdef PADDLE_WITH_BOX_PS
     }
 #endif
-    CHECK(this->fp_ != nullptr);
+    PADDLE_ENFORCE_EQ(this->fp_ != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "This fp should not be null, please check!"));
     __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
     paddle::framework::ChannelWriter<T> writer(input_channel_);
     T instance;
@@ -572,15 +607,16 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
-#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
-    (defined PADDLE_WITH_PSLIB)
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
   int buf_len = 1024 * 1024 * 10;
   char* buf = reinterpret_cast<char*>(malloc(buf_len + 10));
   auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
 
+#ifdef PADDLE_WITH_PSLIB
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, slot_conf_);
+#endif
 
   std::string filename;
   while (this->PickOneFile(&filename)) {
@@ -589,6 +625,7 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
     platform::Timer timeline;
     timeline.Start();
     if (ps_gpu_ptr->UseAfsApi()) {
+#ifdef PADDLE_WITH_PSLIB
       auto afs_reader = ps_gpu_ptr->OpenReader(filename);
       int read_len = 0;
       char* cursor = buf;
@@ -604,6 +641,7 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
         }
         cursor = buf + remain;
       }
+#endif
     } else {
       VLOG(0) << "Should Call InitAfsApi First";
     }
@@ -630,9 +668,9 @@ void MultiSlotDataFeed::Init(
   PADDLE_ENFORCE_EQ(
       data_feed_desc.has_multi_slot_desc(),
       true,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotDataFeed."));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   // temporarily set queue size = batch size * 100
@@ -685,7 +723,10 @@ void MultiSlotDataFeed::ReadThread() {
   while (PickOneFile(&filename)) {
     int err_no = 0;
     fp_ = fs_open_read(filename, &err_no, pipe_command_, true);
-    CHECK(fp_ != nullptr);
+    PADDLE_ENFORCE_EQ(fp_ != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "Fp should not be null, please check!"));
     __fsetlocking(&*fp_, FSETLOCKING_BYCALLER);
     std::vector<MultiSlotType> instance;
     int ins_num = 0;
@@ -725,7 +766,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     ++instance_cout;
     const char* str = line.c_str();
     char* endptr = const_cast<char*>(str);
-    int len = line.length();
+    int len = static_cast<int>(line.length());
     for (size_t i = 0; i < all_slots_.size(); ++i) {
       auto num = strtol(endptr, &endptr, 10);
       if (num < 0) {
@@ -875,7 +916,7 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
            << " which is illegal.\n";
         ss << "\n";
 
-        PADDLE_THROW(platform::errors::InvalidArgument(ss.str()));
+        PADDLE_THROW(common::errors::InvalidArgument(ss.str()));
       }
 
       if (idx != -1) {
@@ -924,7 +965,7 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
       PADDLE_ENFORCE_NE(
           num,
           0,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
@@ -996,7 +1037,7 @@ void MultiSlotDataFeed::PutToFeedVec(
     const auto& offset = ins_vec[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
     VLOG(4) << "total_instance: " << total_instance;
-    // platform::CPUPlace()
+    // phi::CPUPlace()
     VLOG(4) << "this->place_: " << this->place_;
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec[i].GetFloatData();
@@ -1036,9 +1077,9 @@ void MultiSlotInMemoryDataFeed::Init(
   PADDLE_ENFORCE_EQ(
       data_feed_desc.has_multi_slot_desc(),
       true,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotInMemoryDataFeed."));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
@@ -1141,33 +1182,42 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
     char* endptr = const_cast<char*>(str);
     int pos = 0;
     if (parse_ins_id_) {
-      int num = strtol(&str[pos], &endptr, 10);
-      CHECK(num == 1);  // NOLINT
-      pos = endptr - str + 1;
+      int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
+      PADDLE_ENFORCE_EQ(num == 1,
+                        true,
+                        common::errors::InvalidArgument(
+                            "Num should be equal to 1, but received %d.", num));
+      pos = static_cast<int>(endptr - str + 1);
       size_t len = 0;
       while (str[pos + len] != ' ') {
         ++len;
       }
       instance->ins_id_ = std::string(str + pos, len);
-      pos += len + 1;
+      pos += static_cast<int>(len) + 1;
       VLOG(3) << "ins_id " << instance->ins_id_;
     }
     if (parse_content_) {
-      int num = strtol(&str[pos], &endptr, 10);
-      CHECK(num == 1);  // NOLINT
-      pos = endptr - str + 1;
+      int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
+      PADDLE_ENFORCE_EQ(num == 1,
+                        true,
+                        common::errors::InvalidArgument(
+                            "Num should be equal to 1, but received %d.", num));
+      pos = static_cast<int>(endptr - str + 1);
       size_t len = 0;
       while (str[pos + len] != ' ') {
         ++len;
       }
       instance->content_ = std::string(str + pos, len);
-      pos += len + 1;
+      pos += static_cast<int>(len) + 1;
       VLOG(3) << "content " << instance->content_;
     }
     if (parse_logkey_) {
-      int num = strtol(&str[pos], &endptr, 10);
-      CHECK(num == 1);  // NOLINT
-      pos = endptr - str + 1;
+      int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
+      PADDLE_ENFORCE_EQ(num == 1,
+                        true,
+                        common::errors::InvalidArgument(
+                            "Num should be equal to 1, but received %d.", num));
+      pos = static_cast<int>(endptr - str + 1);
       size_t len = 0;
       while (str[pos + len] != ' ') {
         ++len;
@@ -1183,7 +1233,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->search_id = search_id;
       instance->cmatch = cmatch;
       instance->rank = rank;
-      pos += len + 1;
+      pos += static_cast<int>(len) + 1;
     }
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
@@ -1191,7 +1241,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       PADDLE_ENFORCE_NE(
           num,
           0,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
@@ -1207,7 +1257,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
 #ifdef PADDLE_WITH_PSLIB
       if (parse_uid_ && all_slots_[i] == uid_slot_) {
         PADDLE_ENFORCE(num == 1 && all_slots_type_[i][0] == 'u',
-                       platform::errors::PreconditionNotMet(
+                       common::errors::PreconditionNotMet(
                            "The uid has to be uint64 and single.\n"
                            "please check this error line: %s",
                            str));
@@ -1278,7 +1328,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
       PADDLE_ENFORCE_NE(
           num,
           0,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
@@ -1404,7 +1454,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
         std::vector<size_t> tmp_offset;
         PADDLE_ENFORCE_EQ(slot_offset.size(),
                           2,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "In batch reader, the sparse tensor lod size "
                               "must be 2, but received %d.",
                               slot_offset.size()));
@@ -1504,7 +1554,7 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
         std::vector<size_t> tmp_offset;
         PADDLE_ENFORCE_EQ(slot_offset.size(),
                           2,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "In batch reader, the sparse tensor lod size "
                               "must be 2, but received %d.",
                               slot_offset.size()));
@@ -1561,7 +1611,7 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
       PADDLE_ENFORCE_EQ(
           total_dims,
           total_instance,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The actual data size of slot[%s] doesn't match its declaration. "
               "The actual data size of slot is %lld"
               ", and its declaration is %lld.",
@@ -1592,7 +1642,7 @@ int PrivateInstantDataFeed<T>::Next() {
   PADDLE_ENFORCE_EQ(
       true,
       ParseOneMiniBatch(),
-      platform::errors::InvalidArgument("Fail to parse mini-batch data."));
+      common::errors::InvalidArgument("Fail to parse mini-batch data."));
   PutToFeedVec();
   return ins_vec_[0].GetBatchSize();
 }
@@ -1606,9 +1656,9 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
   PADDLE_ENFORCE_EQ(
       data_feed_desc.has_multi_slot_desc(),
       true,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in PrivateInstantDataFeed."));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
@@ -1619,7 +1669,7 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
-    const auto& slot = multi_slot_desc.slots(i);
+    const auto& slot = multi_slot_desc.slots(i);  // NOLINT
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
     use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
@@ -1653,11 +1703,11 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   PADDLE_ENFORCE_NE(
       fd_,
       -1,
-      platform::errors::Unavailable(
+      common::errors::Unavailable(
           "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
           filename.c_str()));
 
-  struct stat sb;
+  struct stat sb = {};
   fstat(fd_, &sb);
   end_ = static_cast<size_t>(sb.st_size);
 
@@ -1666,7 +1716,7 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
   PADDLE_ENFORCE_NE(
       buffer_,
       MAP_FAILED,
-      platform::errors::Unavailable(
+      common::errors::Unavailable(
           "Memory map failed when create shared memory, error number is %s.",
           strerror(errno)));
 
@@ -1703,7 +1753,7 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
       PADDLE_ENFORCE_NE(
           num,
           0,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The number of ids can not be zero, you need padding "
               "it in data generator; or if there is something wrong with "
               "the data, please check if the data contains unresolvable "
@@ -1749,7 +1799,7 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
   }
 
   PADDLE_ENFORCE(batch_size_ == default_batch_size_ || offset_ == end_,
-                 platform::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "The batch size id not equal to default batch size, or "
                      "the offset is not equal to end index."
                      "The batch size is %d, default batcch size is %d, offset "
@@ -1792,8 +1842,16 @@ int PaddleBoxDataFeed::Next() {
   this->CheckStart();
   if (enable_pv_merge_ && phase == 1) {
     // join phase : output_pv_channel to consume_pv_channel
-    CHECK(output_pv_channel_ != nullptr);
-    CHECK(consume_pv_channel_ != nullptr);
+    PADDLE_ENFORCE_EQ(
+        output_pv_channel_ != nullptr,
+        true,
+        common::errors::InvalidArgument(
+            "Output pv channel should not be null, please check!"));
+    PADDLE_ENFORCE_EQ(
+        consume_pv_channel_ != nullptr,
+        true,
+        common::errors::InvalidArgument(
+            "Consume pv channel should not be null, please check!"));
     VLOG(3) << "output_pv_channel_ size=" << output_pv_channel_->Size()
             << ", consume_pv_channel_ size=" << consume_pv_channel_->Size()
             << ", thread_id=" << thread_id_;
@@ -1813,7 +1871,7 @@ int PaddleBoxDataFeed::Next() {
     this->batch_size_ = index;
     VLOG(3) << "pv_batch_size_=" << this->batch_size_
             << ", thread_id=" << thread_id_;
-    if (this->batch_size_ != 0) {
+    if (this->batch_size_ != 0) {  // NOLINT
       PutToFeedVec(pv_vec);
     } else {
       VLOG(3) << "finish reading, output_pv_channel_ size="
@@ -2024,9 +2082,9 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   finish_set_filelist_ = false;
   finish_start_ = false;
   PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
-                 platform::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Multi_slot_desc has not been set in data_feed_desc"));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
@@ -2113,7 +2171,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   finish_init_ = true;
   input_type_ = data_feed_desc.input_type();
   size_t pos = pipe_command_.find(".so");
-  if (pos != std::string::npos) {
+  if (pos != std::string::npos) {  // NOLINT
     pos = pipe_command_.rfind('|');
     if (pos == std::string::npos) {
       so_parser_name_ = pipe_command_;
@@ -2126,25 +2184,27 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   } else {
     so_parser_name_.clear();
   }
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  gpu_graph_data_generator_.SetConfig(data_feed_desc);
-#endif
+#if defined(PADDLE_WITH_HETERPS)
   if (gpu_graph_mode_) {
+    gpu_graph_data_generator_.SetConfig(data_feed_desc);
+  }
+#endif
+  if (gpu_graph_mode_) {  // NOLINT
     train_mode_ = true;
   } else {
     train_mode_ = data_feed_desc.graph_config().gpu_graph_training();
   }
 }
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::InitGraphResource() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocResource(thread_id_, feed_vec_);
 #endif
 }
 
 void SlotRecordInMemoryDataFeed::InitGraphTrainResource() {
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
   gpu_graph_data_generator_.AllocTrainResource(thread_id_);
 #endif
 }
@@ -2168,11 +2228,13 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib() {
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
-#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
-    (defined PADDLE_WITH_PSLIB)
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS)
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
-  CHECK(parser != nullptr);
+  PADDLE_ENFORCE_EQ(parser != nullptr,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Parser should not be null, please check!"));
   // get slotrecord object
   auto pull_record_func = [this](std::vector<SlotRecord>& record_vec,
                                  int max_fetch_num,
@@ -2206,6 +2268,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
     auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
     do {
       if (ps_gpu_ptr->UseAfsApi()) {
+#ifdef PADDLE_WITH_PSLIB
         auto afs_reader = ps_gpu_ptr->OpenReader(filename);
         is_ok = parser->ParseFileInstance(
             [this, afs_reader](char* buf, int len) {
@@ -2213,11 +2276,15 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
             },
             pull_record_func,
             lines);
+#endif
       } else {
         int err_no = 0;
         this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
 
-        CHECK(this->fp_ != nullptr);
+        PADDLE_ENFORCE_EQ(this->fp_ != nullptr,
+                          true,
+                          common::errors::InvalidArgument(
+                              "This fp should not be null, please check!"));
         __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
         is_ok = parser->ParseFileInstance(
             [this](char* buf, int len) {
@@ -2306,7 +2373,10 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine() {
     do {
       int err_no = 0;
       this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
-      CHECK(this->fp_ != nullptr);
+      PADDLE_ENFORCE_EQ(this->fp_ != nullptr,
+                        true,
+                        common::errors::InvalidArgument(
+                            "This fp should not be null, please check!"));
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
       lines = line_reader.read_file(this->fp_.get(), line_func, lines);
     } while (line_reader.is_error());
@@ -2355,7 +2425,10 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand() {
     do {
       int err_no = 0;
       this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
-      CHECK(this->fp_ != nullptr);
+      PADDLE_ENFORCE_EQ(this->fp_ != nullptr,
+                        true,
+                        common::errors::InvalidArgument(
+                            "This fp should not be null, please check!"));
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
 
       lines = line_reader.read_file(
@@ -2429,7 +2502,10 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
 
   if (parse_ins_id_) {
     int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
-    CHECK(num == 1);  // NOLINT
+    PADDLE_ENFORCE_EQ(num == 1,
+                      true,
+                      common::errors::InvalidArgument(
+                          "Num should be equal to 1, but received %d.", num));
     pos = static_cast<int>(endptr - str + 1);
     size_t len = 0;
     while (str[pos + len] != ' ') {
@@ -2440,7 +2516,10 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
   }
   if (parse_logkey_) {
     int num = static_cast<int>(strtol(&str[pos], &endptr, 10));
-    CHECK(num == 1);  // NOLINT
+    PADDLE_ENFORCE_EQ(num == 1,
+                      true,
+                      common::errors::InvalidArgument(
+                          "Num should be equal to 1, but received %d.", num));
     pos = static_cast<int>(endptr - str + 1);
     size_t len = 0;
     while (str[pos + len] != ' ') {
@@ -2514,10 +2593,10 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
 void SlotRecordInMemoryDataFeed::AssignFeedVar(const Scope& scope) {
   CheckInit();
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  if (scpoe_feed_vec_.count(&scope) > 0) {
+  if (scope_feed_vec_.count(&scope) > 0) {
     return;
   }
-  auto& feed_vec = scpoe_feed_vec_[&scope];
+  auto& feed_vec = scope_feed_vec_[&scope];
   feed_vec.resize(used_slots_info_.size());
   for (int i = 0; i < use_slot_size_; ++i) {
     feed_vec[i] =
@@ -2635,7 +2714,13 @@ void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
   }
   int float_slot_num =
       static_cast<int>(float_total_dims_without_inductives_.size());
-  CHECK(float_slot_num == float_use_slot_size_);
+  PADDLE_ENFORCE_EQ(
+      float_slot_num == float_use_slot_size_,
+      true,
+      common::errors::InvalidArgument("Float slot num should be equal to float "
+                                      "use slot size, but received %d and %d.",
+                                      float_slot_num,
+                                      float_use_slot_size_));
   std::vector<float> old_values;
   std::vector<uint32_t> old_offsets;
   old_values.swap(ins->slot_float_feasigns_.slot_values);
@@ -2681,7 +2766,13 @@ void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
     offset += dim;
   }
   slot_offsets[float_slot_num] = offset;
-  CHECK(float_total_dims_size_ == static_cast<size_t>(offset));
+  PADDLE_ENFORCE_EQ(
+      float_total_dims_size_ == static_cast<size_t>(offset),
+      true,
+      common::errors::InvalidArgument("Float total dims size should be equal "
+                                      "to offset, but received %d and %d.",
+                                      float_total_dims_size_,
+                                      static_cast<size_t>(offset)));
 }
 
 bool SlotRecordInMemoryDataFeed::Start() {
@@ -2700,7 +2791,10 @@ bool SlotRecordInMemoryDataFeed::Start() {
   }
   this->finish_start_ = true;
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  CHECK(paddle::platform::is_gpu_place(this->place_));
+  PADDLE_ENFORCE_EQ(phi::is_gpu_place(this->place_),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Data should be place on gpu, please check!"));
   for (int i = 0; i < pack_thread_num_ + 1; i++) {
     auto pack = BatchGpuPackMgr().get(this->GetPlace(), used_slots_info_);
     pack_vec_.push_back(pack);
@@ -2736,10 +2830,12 @@ bool SlotRecordInMemoryDataFeed::Start() {
     }));
   }
 #endif
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  gpu_graph_data_generator_.SetFeedVec(feed_vec_);
-  // adapt for dense feature
-  gpu_graph_data_generator_.SetFeedInfo(&used_slots_info_);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    gpu_graph_data_generator_.SetFeedVec(feed_vec_);
+    // adapt for dense feature
+    gpu_graph_data_generator_.SetFeedInfo(&used_slots_info_);
+  }
 #endif
   return true;
 }
@@ -2780,7 +2876,7 @@ int SlotRecordInMemoryDataFeed::Next() {
     this->batch_size_ = batch.second;
     VLOG(3) << "batch_size_=" << this->batch_size_
             << ", thread_id=" << thread_id_;
-    if (this->batch_size_ != 0) {
+    if (this->batch_size_ != 0) {  // NOLINT
       PutToFeedVec(&records_[batch.first], this->batch_size_);
     } else {
       VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
@@ -2789,7 +2885,7 @@ int SlotRecordInMemoryDataFeed::Next() {
 #endif
   } else {
     VLOG(3) << "datafeed in gpu graph mode";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
     this->batch_size_ = gpu_graph_data_generator_.GenerateBatch();
 #endif
   }
@@ -2800,28 +2896,34 @@ int SlotRecordInMemoryDataFeed::Next() {
 #endif
 }
 
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 void SlotRecordInMemoryDataFeed::DoWalkandSage() {
-  gpu_graph_data_generator_.DoWalkandSage();
+  if (gpu_graph_mode_) {
+    gpu_graph_data_generator_.DoWalkandSage();
+  }
 }
 #endif
 
 void SlotRecordInMemoryDataFeed::DumpWalkPath(std::string dump_path,
                                               size_t dump_rate) {
   VLOG(3) << "INTO SlotRecordInMemoryDataFeed::DumpWalkPath";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  std::string path =
-      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
-  gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    std::string path =
+        string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+    gpu_graph_data_generator_.DumpWalkPath(path, dump_rate);
+  }
 #endif
 }
 
 void SlotRecordInMemoryDataFeed::DumpSampleNeighbors(std::string dump_path) {
   VLOG(1) << "INTO SlotRecordInMemoryDataFeed::DumpSampleNeighbors";
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-  std::string path =
-      string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
-  gpu_graph_data_generator_.DumpSampleNeighbors(path);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+  if (gpu_graph_mode_) {
+    std::string path =
+        string::format_string("%s/part-%03d", dump_path.c_str(), thread_id_);
+    gpu_graph_data_generator_.DumpSampleNeighbors(path);
+  }
 #endif
 }
 
@@ -2867,10 +2969,10 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
                         slot_total_num * sizeof(size_t),
                         cudaMemcpyDeviceToHost));
   auto* dev_ctx = static_cast<phi::GPUContext*>(
-      platform::DeviceContextPool::Instance().Get(this->place_));
+      phi::DeviceContextPool::Instance().Get(this->place_));
   for (int j = 0; j < use_slot_size_; ++j) {
-    if (scpoe_feed_vec_.size() > 0) {
-      if (scpoe_feed_vec_.begin()->second[j] == nullptr) {
+    if (scope_feed_vec_.size() > 0) {
+      if (scope_feed_vec_.begin()->second[j] == nullptr) {
         h_tensor_ptrs[j] = nullptr;
         continue;
       }
@@ -2884,8 +2986,11 @@ void SlotRecordInMemoryDataFeed::BuildSlotBatchGPU(const int ins_num,
     size_t* off_start_ptr = &offsets[j * offset_cols_size];
 
     int total_instance = static_cast<int>(off_start_ptr[offset_cols_size - 1]);
-    CHECK(total_instance >= 0)
-        << "slot idx:" << j << ", total instance:" << total_instance;
+    PADDLE_ENFORCE_EQ(
+        total_instance >= 0,
+        true,
+        common::errors::InvalidArgument(
+            "Slot idx:%d, total instance:%d.", j, total_instance));
     auto& info = used_slots_info_[j];
 
     // fill slot value with default value 0
@@ -2952,11 +3057,15 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
 
   auto* feed_vec = &feed_vec_;
   if (scope) {
-    CHECK(scpoe_feed_vec_.count(scope) > 0) << "scope not found.";
-    feed_vec = &scpoe_feed_vec_[scope];
+    PADDLE_ENFORCE_EQ(scope_feed_vec_.count(scope) > 0,
+                      true,
+                      common::errors::InvalidArgument("Scope not found."));
+    feed_vec = &scope_feed_vec_[scope];
   }
 
-  CHECK(feed_vec != nullptr) << "feed_vec nullptr.";
+  PADDLE_ENFORCE_EQ(feed_vec != nullptr,
+                    true,
+                    common::errors::InvalidArgument("Feed_vec nullptr."));
 
   for (int j = 0; j < use_slot_size_; ++j) {
     auto& feed = (*feed_vec)[j];
@@ -3004,7 +3113,7 @@ void SlotRecordInMemoryDataFeed::PackToScope(MiniBatchGpuPack* pack,
       lod.resize(1);
       lod[0].resize(offset_cols_size);
       phi::MixVector<size_t> mixv_lod(&lod[0]);
-      memcpy(mixv_lod.MutableData(platform::CPUPlace()),
+      memcpy(mixv_lod.MutableData(phi::CPUPlace()),
              off_start_ptr,
              offset_cols_size * sizeof(size_t));
     }
@@ -3034,7 +3143,7 @@ MiniBatchGpuPack* SlotRecordInMemoryDataFeed::get_pack(
   }
 }
 
-MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
+MiniBatchGpuPack::MiniBatchGpuPack(const phi::Place& place,
                                    const std::vector<UsedSlotInfo>& infos,
                                    phi::StreamId stream_id) {
   place_ = place;
@@ -3071,7 +3180,7 @@ MiniBatchGpuPack::MiniBatchGpuPack(const paddle::platform::Place& place,
 
 MiniBatchGpuPack::~MiniBatchGpuPack() {}
 
-void MiniBatchGpuPack::reset(const paddle::platform::Place& place) {
+void MiniBatchGpuPack::reset(const phi::Place& place) {
   place_ = place;
   stream_holder_.reset(new phi::CUDAStream(place));
   stream_ = stream_holder_->raw_stream();
@@ -3135,10 +3244,14 @@ void MiniBatchGpuPack::pack_all_data(const SlotRecord* ins_vec, int num) {
            sizeof(int) * float_cols);
   }
 
-  CHECK(uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()))
-      << "uint64 value length error";
-  CHECK(float_total_num == static_cast<int>(buf_.h_float_lens.back()))
-      << "float value length error";
+  PADDLE_ENFORCE_EQ(
+      uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()),
+      true,
+      common::errors::InvalidArgument("Uint64 value length error."));
+  PADDLE_ENFORCE_EQ(
+      float_total_num == static_cast<int>(buf_.h_float_lens.back()),
+      true,
+      common::errors::InvalidArgument("Float value length error."));
 }
 void MiniBatchGpuPack::pack_uint64_data(const SlotRecord* ins_vec, int num) {
   int uint64_total_num = 0;
@@ -3177,8 +3290,10 @@ void MiniBatchGpuPack::pack_uint64_data(const SlotRecord* ins_vec, int num) {
            uint64_feasigns.slot_offsets.data(),
            sizeof(int) * uint64_cols);
   }
-  CHECK(uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()))
-      << "uint64 value length error";
+  PADDLE_ENFORCE_EQ(
+      uint64_total_num == static_cast<int>(buf_.h_uint64_lens.back()),
+      true,
+      common::errors::InvalidArgument("Uint64 value length error."));
 }
 void MiniBatchGpuPack::pack_float_data(const SlotRecord* ins_vec, int num) {
   int float_total_num = 0;
@@ -3216,14 +3331,20 @@ void MiniBatchGpuPack::pack_float_data(const SlotRecord* ins_vec, int num) {
            float_feasigns.slot_offsets.data(),
            sizeof(int) * float_cols);
   }
-  CHECK(float_total_num == static_cast<int>(buf_.h_float_lens.back()))
-      << "float value length error";
+  PADDLE_ENFORCE_EQ(
+      float_total_num == static_cast<int>(buf_.h_float_lens.back()),
+      true,
+      common::errors::InvalidArgument("Float value length error."));
 }
 
 void MiniBatchGpuPack::pack_instance(const SlotRecord* ins_vec, int num) {
   ins_num_ = num;
   batch_ins_ = ins_vec;
-  CHECK(used_uint64_num_ > 0 || used_float_num_ > 0);
+  PADDLE_ENFORCE_EQ(
+      used_uint64_num_ > 0 || used_float_num_ > 0,
+      true,
+      common::errors::InvalidArgument(
+          "Used uint64 num or used float num should be greater than 0."));
   // uint64 and float
   if (used_uint64_num_ > 0 && used_float_num_ > 0) {
     pack_all_data(ins_vec, num);
@@ -3248,5 +3369,4 @@ void MiniBatchGpuPack::transfer_to_gpu() {
 }
 #endif
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -13,23 +13,24 @@
 # limitations under the License.
 
 # generator interfaces
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from vjp_interface_black_list import vjp_interface_black_list
 
-OP_INFER_SHAPE_TEMPLATE = """
-void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
-  auto fn = PD_INFER_META(phi::{infer_meta_func});
-  fn(infer_meta);
-}}
-"""
+if TYPE_CHECKING:
+    from op_gen import OpInfoParser
+
 CHECK_INPUT_TEMPLATE = """
     PADDLE_ENFORCE_EQ(
       inputs_.size(),
       {inputs_size},
-      platform::errors::InvalidArgument("{op_name} op's inputs size should be {inputs_size}, but now is %d.", inputs_.size()));
+      common::errors::InvalidArgument("{op_name} op's inputs size should be {inputs_size}, but now is %d.", inputs_.size()));
     PADDLE_ENFORCE_EQ(
       outputs.size(),
       {outputs_size},
-      platform::errors::InvalidArgument("{op_name} op's outputs size should be {outputs_size}, but now is %d.", outputs.size()));
+      common::errors::InvalidArgument("{op_name} op's outputs size should be {outputs_size}, but now is %d.", outputs.size()));
 """
 
 OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """
@@ -112,11 +113,11 @@ input_types_map = {
 
 
 def gen_op_vjp_str(
-    op_class_name,
-    op_grad_name,
-    op_phi_name,
-    op_info,
-    op_grad_info,
+    op_class_name: str,
+    op_grad_name: str,
+    op_phi_name: str,
+    op_info: OpInfoParser,
+    op_grad_info: OpInfoParser,
 ):
     bw_input_list = op_grad_info.input_name_list
     fwd_input_and_mutable_attr_name_list = (
@@ -246,7 +247,14 @@ def gen_op_vjp_str(
             )
             build_attr_str += op_attribute_list[idx] + ", "
     build_args_str += build_attr_str
-    op_phi_name_format = op_info.op_yaml_item['name']
+    if op_info.is_sparse_op:
+        if op_info.op_phi_name[0].endswith('_'):
+            op_phi_name_suffix = 'sp_'
+        else:
+            op_phi_name_suffix = '_sp'
+    else:
+        op_phi_name_suffix = ''
+    op_phi_name_format = op_info.op_yaml_item['name'] + op_phi_name_suffix
     call_vjp_code = OP_VJP_CALL_VJP_TEMPLATE.format(
         op_phi_name=op_phi_name_format,
         inputs_list=build_args_str,
@@ -258,7 +266,6 @@ def gen_op_vjp_str(
         outputs_size=len(op_info.output_name_list),
         out_grads_size=grad_idx + 1,
     )
-
     str = OP_VJP_DEFINE_TEMPLATE.format(
         check_param=check_param,
         op_class_name=op_class_name,
@@ -272,37 +279,8 @@ def gen_op_vjp_str(
     return str
 
 
-def gen_op_infer_meta_str(op_info, op_class_name, op_info_items):
-    op_infer_meta_str = ""
-    if op_info.infer_meta_func:
-        op_infer_meta_str = OP_INFER_SHAPE_TEMPLATE.format(
-            op_name=op_class_name,
-            infer_meta_func=op_info.infer_meta_func,
-        )
-    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
-        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
-            op_infer_meta_str = OP_INFER_SHAPE_TEMPLATE.format(
-                op_name=op_class_name,
-                infer_meta_func=op_info_items[
-                    op_info.invoke_map['func']
-                ].infer_meta_func,
-            )
-    return op_infer_meta_str
-
-
-def gen_exclusive_interface_str(op_info, op_info_items):
+def gen_exclusive_interface_str(op_info: OpInfoParser, op_info_items):
     exclusive_interface_str = ""
-    if op_info.infer_meta_func:
-        exclusive_interface_str += (
-            "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
-            "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes );"
-        )
-    elif op_info.invoke_map and op_info.invoke_map['func'] in op_info_items:
-        if op_info_items[op_info.invoke_map['func']].infer_meta_func:
-            exclusive_interface_str += (
-                "  static void InferMeta( phi::InferMetaContext *infer_meta );\n"
-                "  static std::vector<pir::Type> InferMeta( const std::vector<pir::Value>& input_values, const pir::AttributeMap& attributes );"
-            )
     if op_info.op_phi_name[0] not in vjp_interface_black_list:
         exclusive_interface_str += "\n  static std::vector<std::vector<pir::Value>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::Value>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
     return exclusive_interface_str

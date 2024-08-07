@@ -28,7 +28,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-using phi::GroupNormNHWCParams;
+using phi::GroupNormNDHWCParams;
 class SkipGroupnormActPluginDynamic : public DynamicPluginTensorRT {
  public:
   SkipGroupnormActPluginDynamic(const float* scale,
@@ -139,7 +139,7 @@ class SkipGroupnormActPluginDynamic : public DynamicPluginTensorRT {
                        const nvinfer1::DynamicPluginTensorDesc* out,
                        int nbOutputs) TRT_NOEXCEPT override {
     // sizeof(float2) * maxBatchSize * maxNumberOfGroup. float2
-    // contians two buffers for sum and squared sum;
+    // contains two buffers for sum and squared sum;
     ws_ = sizeof(float) * 2 * in[0].max.d[0] * groups_;
   }
 
@@ -169,7 +169,7 @@ class SkipGroupnormActPluginDynamic : public DynamicPluginTensorRT {
   std::vector<float> bias_;
   std::shared_ptr<void> scale_gpu_;
   std::shared_ptr<void> bias_gpu_;
-  GroupNormNHWCParams<__half> params_;
+  GroupNormNDHWCParams<__half> params_;
   int groups_;
   float eps_;
   bool with_fp16_;

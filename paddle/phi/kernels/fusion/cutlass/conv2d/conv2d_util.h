@@ -17,31 +17,27 @@
 #include <vector>
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_decl.h"
 
-#include "glog/logging.h"
-
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/device/gemm.h"
 
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/enforce.h"
-
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
-#define CUTLASS_CHECK(status)                                                \
-  if (status != cutlass::Status::kSuccess) {                                 \
-    VLOG(3)                                                                  \
-        << "Cutlass can not deal with this problem size, skip this kernel!"; \
-    return status;                                                           \
+#define CUTLASS_CHECK(status)                                               \
+  if (status != cutlass::Status::kSuccess) {                                \
+    std::cout                                                               \
+        << "Cutlass can not deal with this problem size, skip this kernel!" \
+        << std::endl;                                                       \
+    return status;                                                          \
   }
 
 typedef enum {
   CONV2D_BIAS,
   CONV2D_BIAS_RELU,
   CONV2D_BIAS_ADD_RELU,
+  CONV2D_BIAS_ADD,
   CONV2D_BIAS_SILU,
   CONV2D_BIAS_LEAKY_RELU,
   CONV2D_BIAS_SIGMOID,

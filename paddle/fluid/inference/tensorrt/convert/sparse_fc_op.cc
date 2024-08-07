@@ -83,8 +83,8 @@ class SparseFcOpConverter : public OpConverter {
     } else if (activation_type == "gelu") {
       act = plugin::SpmmPluginDynamic::Activation::kGelu;
     } else if (activation_type != "") {
-      PADDLE_THROW(paddle::platform::errors::Fatal("unknown activation_type %s",
-                                                   activation_type.c_str()));
+      PADDLE_THROW(common::errors::Fatal("unknown activation_type %s",
+                                         activation_type.c_str()));
     }
     return new plugin::SpmmPluginDynamic("CustomSpmmPluginDynamic",
                                          type,
@@ -115,8 +115,8 @@ class SparseFcOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
     PADDLE_ENFORCE_NOT_NULL(
         Y_v,
-        platform::errors::NotFound(
-            "Can not find %s presistale var of sparse_fc in scope.", w_name));
+        common::errors::NotFound(
+            "Can not find %s presistable var of sparse_fc in scope.", w_name));
     auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
@@ -152,13 +152,13 @@ class SparseFcOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         Y_t->dims().size(),
         2UL,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The sparse_fc's weight should be a matrix with 2 dims, but "
             "it's %d-dimensional.",
             Y_t->dims().size()));  // a matrix
     int m = Y_t->dims()[0];
     int n = Y_t->dims()[1];
-    auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
+    auto transpose_weight = [](const float* src, float* dst, int m, int n) {
       for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
           dst[j * m + i] = src[i * n + j];
@@ -187,7 +187,7 @@ class SparseFcOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("out_threshold"),
               true,
-              platform::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "must have out threshold in fc layers in int8 mode"));
           float out_scale = 0;
           if (enable_int8) {
@@ -203,15 +203,15 @@ class SparseFcOpConverter : public OpConverter {
                                    Activation,
                                    *(fc_layer_int8->getOutput(0)),
                                    nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_int8,
-                                   "relu_after_ernie_fc_int8",
-                                   {output_name},
-                                   test_mode);
+          ReplenishLayerAndOutput(relu_layer_int8,
+                                  "relu_after_ernie_fc_int8",
+                                  {output_name},
+                                  test_mode);
         } else {
-          RreplenishLayerAndOutput(fc_layer_int8,
-                                   "ernie_fc_op_int8: Convolution",
-                                   {output_name},
-                                   test_mode);
+          ReplenishLayerAndOutput(fc_layer_int8,
+                                  "ernie_fc_op_int8: Convolution",
+                                  {output_name},
+                                  test_mode);
         }
       } else {
         // add fc layer
@@ -225,12 +225,12 @@ class SparseFcOpConverter : public OpConverter {
                                    Activation,
                                    *(fc_layer_float->getOutput(0)),
                                    nvinfer1::ActivationType::kRELU);
-          RreplenishLayerAndOutput(relu_layer_float,
-                                   "relu_after_ernie_fc_float",
-                                   {output_name},
-                                   test_mode);
+          ReplenishLayerAndOutput(relu_layer_float,
+                                  "relu_after_ernie_fc_float",
+                                  {output_name},
+                                  test_mode);
         } else {
-          RreplenishLayerAndOutput(
+          ReplenishLayerAndOutput(
               fc_layer_float, "ernie_fc_op_float", {output_name}, test_mode);
         }
       }
@@ -246,7 +246,7 @@ class SparseFcOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("out_threshold"),
               true,
-              platform::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "must have out threshold in sparse_fc layers in int8 mode"));
           out_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
         } else {
@@ -264,10 +264,10 @@ class SparseFcOpConverter : public OpConverter {
         auto* fc_after_reshape_int8 = reshape_after_fc(
             fc_layer_int8->getOutput(0), x_dim, x_num_col_dims);
 
-        RreplenishLayerAndOutput(fc_after_reshape_int8,
-                                 "sparse_fc_op_int8_reshape_after_fc: Shuffle",
-                                 {output_name},
-                                 test_mode);
+        ReplenishLayerAndOutput(fc_after_reshape_int8,
+                                "sparse_fc_op_int8_reshape_after_fc: Shuffle",
+                                {output_name},
+                                test_mode);
       } else {
         plugin::SpmmPluginDynamic* plugin = new_spmm_plugin(
             weight,
@@ -285,10 +285,10 @@ class SparseFcOpConverter : public OpConverter {
         auto* fc_after_reshape_float = reshape_after_fc(
             fc_layer_float->getOutput(0), x_dim, x_num_col_dims);
 
-        RreplenishLayerAndOutput(fc_after_reshape_float,
-                                 "shuffle_after_sparse_fc",
-                                 {output_name},
-                                 test_mode);
+        ReplenishLayerAndOutput(fc_after_reshape_float,
+                                "shuffle_after_sparse_fc",
+                                {output_name},
+                                test_mode);
       }
     };
 
@@ -301,7 +301,7 @@ class SparseFcOpConverter : public OpConverter {
       std::vector<float> weight_data_tmp;
       weight_data_tmp.reserve(Y_t->numel());
       memcpy(weight_data_tmp.data(), weight_data, Y_t->numel() * sizeof(float));
-      tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
+      transpose_weight(weight_data_tmp.data(), weight_data, m, n);
       weight_w = n;
       weight_h = m;
     } else {
@@ -340,7 +340,7 @@ class SparseFcOpConverter : public OpConverter {
       PADDLE_ENFORCE_GT(
           x_dim.nbDims,
           x_num_col_dims,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Params and input dims mismatch. Paddle-TRT FC "
               "converter expects x_dim.nbDims > x_num_col_dims, but "
               "x_dim.nbDims : %d, x_num_col_dims : %d.",

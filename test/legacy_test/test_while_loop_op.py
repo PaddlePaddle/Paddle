@@ -684,7 +684,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
             self.assertRaises(TypeError, type_error_cond_returns_not_variable)
 
-            # The type of `cond` returns in Op(while_loop) must be a bollean variable
+            # The type of `cond` returns in Op(while_loop) must be a boolean variable
             def type_error_cond_returns_not_boolean():
                 out = paddle.static.nn.while_loop(
                     cond_returns_not_bool_tensor, body, [data_1d]

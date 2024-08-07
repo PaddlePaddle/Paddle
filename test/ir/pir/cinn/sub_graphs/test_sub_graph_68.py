@@ -15,11 +15,9 @@
 # repo: PaddleDetection
 # model: configs^cascade_rcnn^cascade_rcnn_r50_fpn_1x_coco_single_dy2st_train
 # api:paddle.tensor.manipulation.reshape||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.manipulation.concat||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.manipulation.concat||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.linalg.transpose||api:paddle.tensor.manipulation.reshape||api:paddle.tensor.manipulation.concat
-import unittest
+from base import *  # noqa: F403
 
-import numpy as np
-
-import paddle
+from paddle.static import InputSpec
 
 
 class LayerCase(paddle.nn.Layer):
@@ -28,21 +26,36 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [1, 3, 168, 256], dtype: paddle.float32, stop_gradient: False)
-        var_1,  # (shape: [1, 3, 84, 128], dtype: paddle.float32, stop_gradient: False)
-        var_2,  # (shape: [1, 3, 42, 64], dtype: paddle.float32, stop_gradient: False)
-        var_3,  # (shape: [1, 3, 21, 32], dtype: paddle.float32, stop_gradient: False)
-        var_4,  # (shape: [1, 3, 11, 16], dtype: paddle.float32, stop_gradient: False)
-        var_5,  # (shape: [1, 12, 168, 256], dtype: paddle.float32, stop_gradient: False)
-        var_6,  # (shape: [1, 12, 84, 128], dtype: paddle.float32, stop_gradient: False)
-        var_7,  # (shape: [1, 12, 42, 64], dtype: paddle.float32, stop_gradient: False)
-        var_8,  # (shape: [1, 12, 21, 32], dtype: paddle.float32, stop_gradient: False)
-        var_9,  # (shape: [1, 12, 11, 16], dtype: paddle.float32, stop_gradient: False)
-        var_10,  # (shape: [129024, 4], dtype: paddle.float32, stop_gradient: True)
-        var_11,  # (shape: [32256, 4], dtype: paddle.float32, stop_gradient: True)
-        var_12,  # (shape: [8064, 4], dtype: paddle.float32, stop_gradient: True)
-        var_13,  # (shape: [2016, 4], dtype: paddle.float32, stop_gradient: True)
-        var_14,  # (shape: [528, 4], dtype: paddle.float32, stop_gradient: True)
+        # (shape: [1, 3, 168, 256], dtype: paddle.float32, stop_gradient: False)
+        var_0,
+        # (shape: [1, 3, 84, 128], dtype: paddle.float32, stop_gradient: False)
+        var_1,
+        # (shape: [1, 3, 42, 64], dtype: paddle.float32, stop_gradient: False)
+        var_2,
+        # (shape: [1, 3, 21, 32], dtype: paddle.float32, stop_gradient: False)
+        var_3,
+        # (shape: [1, 3, 11, 16], dtype: paddle.float32, stop_gradient: False)
+        var_4,
+        # (shape: [1, 12, 168, 256], dtype: paddle.float32, stop_gradient: False)
+        var_5,
+        # (shape: [1, 12, 84, 128], dtype: paddle.float32, stop_gradient: False)
+        var_6,
+        # (shape: [1, 12, 42, 64], dtype: paddle.float32, stop_gradient: False)
+        var_7,
+        # (shape: [1, 12, 21, 32], dtype: paddle.float32, stop_gradient: False)
+        var_8,
+        # (shape: [1, 12, 11, 16], dtype: paddle.float32, stop_gradient: False)
+        var_9,
+        # (shape: [129024, 4], dtype: paddle.float32, stop_gradient: True)
+        var_10,
+        # (shape: [32256, 4], dtype: paddle.float32, stop_gradient: True)
+        var_11,
+        # (shape: [8064, 4], dtype: paddle.float32, stop_gradient: True)
+        var_12,
+        # (shape: [2016, 4], dtype: paddle.float32, stop_gradient: True)
+        var_13,
+        # (shape: [528, 4], dtype: paddle.float32, stop_gradient: True)
+        var_14,
     ):
         var_15 = paddle.tensor.manipulation.reshape(var_10, shape=(-1, 4))
         var_16 = paddle.tensor.manipulation.reshape(var_11, shape=(-1, 4))
@@ -81,8 +94,100 @@ class LayerCase(paddle.nn.Layer):
         return var_20, var_31, var_42
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+        ]
         self.inputs = (
             paddle.rand(shape=[1, 3, 168, 256], dtype=paddle.float32),
             paddle.rand(shape=[1, 3, 84, 128], dtype=paddle.float32),
@@ -100,33 +205,8 @@ class TestLayer(unittest.TestCase):
             paddle.rand(shape=[2016, 4], dtype=paddle.float32),
             paddle.rand(shape=[528, 4], dtype=paddle.float32),
         )
-        self.net = LayerCase()
-
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
-
-    # NOTE prim + cinn lead to error
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=False, with_cinn=False
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+        self.net = LayerCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

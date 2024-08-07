@@ -105,7 +105,7 @@ std::vector<ir::Tensor> TensorGroup::GetGenFuncTopoOrder(
 
   std::vector<ir::Tensor> ret;
 
-  // Using set instead of vector/stack in order to get fix alaphbeta order topo
+  // Using set instead of vector/stack in order to get fix alpha-beta order topo
   std::set<std::string> node_set;
   for (const auto& name_tensor : name_to_tensor_) {
     if (!in_degree.count(name_tensor.first)) {
@@ -213,46 +213,6 @@ absl::flat_hash_map<std::string, ir::Tensor> TensorGroup::AllocateBuffers() {
   }
 
   return name_to_tensor_;
-}
-
-void StageMapShareMemory(const poly::StageMap& stages) {
-  absl::flat_hash_map<std::string, ir::_Tensor_*> tensor_map;
-  for (auto& stage : stages) {
-    tensor_map[stage.second->tensor()->name] = stage.second->tensor();
-  }
-  for (auto& stage : stages) {
-    if (!stage.second->tensor()->buffer.defined() &&
-        !stage.second->meta.tensors_to_share_buffer_with.empty()) {
-      for (auto& str : stage.second->meta.tensors_to_share_buffer_with) {
-        if (tensor_map[str]->buffer.defined()) {
-          auto edited_shape = tensor_map[str]->buffer->shape;
-          stage.second->tensor()->Bind(tensor_map[str]->buffer);
-          tensor_map[str]->buffer->shape = edited_shape;
-          VLOG(3) << "Stage Tensor " << stage.second->tensor()->name
-                  << " bind buffer to " << tensor_map[str]->name << " , "
-                  << tensor_map[str]->buffer->name;
-        }
-      }
-    }
-  }
-}
-
-TensorGroup ConvertStageMapToTensorGroup(const poly::StageMap& stage_map) {
-  std::vector<ir::Tensor> stage_tensors;
-  std::set<ir::Tensor> reshape_tensors;
-  for (auto iter = stage_map.begin(); iter != stage_map.end(); ++iter) {
-    if (iter->second->has_expression()) {
-      const std::string& tensor_name = iter->first;
-      stage_tensors.push_back(ir::Tensor(iter->second->tensor()));
-      if (utils::Endswith(tensor_name, "_reshape")) {
-        reshape_tensors.insert(ir::Tensor(iter->second->tensor()));
-      }
-    }
-  }
-
-  ast_gen_ius::TensorGroup tensor_group(stage_tensors);
-  StageMapShareMemory(stage_map);
-  return tensor_group;
 }
 
 }  // namespace ast_gen_ius

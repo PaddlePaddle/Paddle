@@ -16,12 +16,12 @@
 #include <random>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
-#include "paddle/utils/flags.h"
 
 PD_DEFINE_int32(burning, 10, "Burning times.");
 PD_DEFINE_int32(repeat, 3000, "Repeat times.");
@@ -113,6 +113,7 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   BenchFunc<KernelTuple, Args...> benchmark;
   std::vector<std::pair<std::string, double>> infos;
   auto funcs = jit::GetAllCandidateFuncsWithTypes<KernelTuple, PlaceType>(attr);
+  infos.reserve(funcs.size());
   for (auto const& f : funcs) {
     infos.push_back(std::make_pair(f.first, benchmark(f.second, args...)));
   }
@@ -120,7 +121,7 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   // Test result from Get function
   auto tgt = jit::KernelFuncs<KernelTuple, PlaceType>::Cache().At(attr);
   if (!tgt) {
-    PADDLE_THROW(phi::errors::Fatal("Benchmark target can not be empty."));
+    PADDLE_THROW(common::errors::Fatal("Benchmark target can not be empty."));
   }
   infos.push_back(std::make_pair("Target", benchmark(tgt, args...)));
 
@@ -311,7 +312,7 @@ void BenchKernelSgd() {
     PADDLE_ENFORCE_LE(
         static_cast<size_t>(upper - lower),
         n - 1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The range of Sgd (upper - lower) should be equal to or lower "
             "than n-1 (Sgd size -1). But upper - lower is %d and n-1 is %d.",
             static_cast<size_t>(upper - lower),
@@ -319,7 +320,7 @@ void BenchKernelSgd() {
     PADDLE_ENFORCE_GT(
         n,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The Sgd size should be larger than 0. But the n is %d.", n));
     std::vector<int64_t> all, out;
     for (int i = 0; i < n; ++i) {

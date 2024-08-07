@@ -42,9 +42,9 @@ inline T xabs(const T x) {
   return x < static_cast<T>(0.0) ? -x : x;
 }
 
-template <typename T>
+template <typename T, typename ScaleT>
 void per_channel_scale(
-    T* scale, const T* input, size_t m, size_t n, float bound) {
+    ScaleT* scale, const T* input, size_t m, size_t n, float bound) {
   for (size_t i = 0; i < n; ++i) {
     float max = static_cast<float>(input[i]);
     for (size_t j = 0; j < m; ++j) {
@@ -52,12 +52,12 @@ void per_channel_scale(
                 ? static_cast<float>(xabs(input[j * n + i]))
                 : max;
     }
-    scale[i] = static_cast<T>(max / bound);
+    scale[i] = static_cast<ScaleT>(max / bound);
   }
 }
 
-template <typename T>
-void group_wise_scale(T* scale,
+template <typename T, typename ScaleT>
+void group_wise_scale(ScaleT* scale,
                       const T* input,
                       size_t m,
                       size_t n,
@@ -72,15 +72,15 @@ void group_wise_scale(T* scale,
                   : max;
       }
       scale[static_cast<int>(j / group_size) * n + i] =
-          static_cast<T>(max / bound);
+          static_cast<ScaleT>(max / bound);
     }
   }
 }
 
-template <typename T, int quant_bit = 8>
+template <typename T, int quant_bit = 8, typename ScaleT>
 void per_channel_quant(int8_t* output,
                        const T* input,
-                       const T* scale,
+                       const ScaleT* scale,
                        size_t num_rows,
                        size_t num_cols) {
   size_t bytes_per_out_col = num_cols * quant_bit / 8;
@@ -106,7 +106,12 @@ void per_channel_quant(int8_t* output,
                 static_cast<float>(current_weight_row[input_idx]);
             const float scaled_weight = round(weight_elt / col_scale);
             int int_weight = static_cast<int>(scaled_weight);
+#ifdef PADDLE_WITH_HIP
+            const int8_t clipped_weight =
+                std::max(-7, std::min(7, int_weight)) + 8;
+#else
             const int8_t clipped_weight = std::max(-7, std::min(7, int_weight));
+#endif
 
             // Kill the sign extension bits (hence 0x0F mask) then shift to
             // upper bits if packing the second int4 and or the bits into the
@@ -116,17 +121,17 @@ void per_channel_quant(int8_t* output,
         }
         current_quantized_weight_row[jj] = packed_int4s;
       } else {
-        phi::errors::Unimplemented("Unsupported quantization bits: %d",
-                                   quant_bit);
+        common::errors::Unimplemented("Unsupported quantization bits: %d",
+                                      quant_bit);
       }
     }
   }
 }
 
-template <typename T, int quant_bit = 8>
+template <typename T, int quant_bit = 8, typename ScaleT>
 void group_wise_quant(int8_t* output,
                       const T* input,
-                      const T* scale,
+                      const ScaleT* scale,
                       size_t num_rows,
                       size_t num_cols,
                       const int group_size) {
@@ -155,7 +160,12 @@ void group_wise_quant(int8_t* output,
                 static_cast<float>(current_weight_row[input_idx]);
             const float scaled_weight = round(weight_elt / col_scale);
             int int_weight = static_cast<int>(scaled_weight);
+#ifdef PADDLE_WITH_HIP
+            const int8_t clipped_weight =
+                std::max(-7, std::min(7, int_weight)) + 8;
+#else
             const int8_t clipped_weight = std::max(-7, std::min(7, int_weight));
+#endif
 
             // Kill the sign extension bits (hence 0x0F mask) then shift to
             // upper bits if packing the second int4 and or the bits into the
@@ -165,8 +175,8 @@ void group_wise_quant(int8_t* output,
         }
         current_quantized_weight_row[jj] = packed_int4s;
       } else {
-        phi::errors::Unimplemented("Unsupported quantization bits: %d",
-                                   quant_bit);
+        common::errors::Unimplemented("Unsupported quantization bits: %d",
+                                      quant_bit);
       }
     }
   }
@@ -188,11 +198,11 @@ void add_bias_and_interleave_inplace(int8_t* tensor_ptr, size_t num_elts) {
       int8_t transformed_second_elt = (tensor_ptr[ii] >> 4) + 8;
 
       if (!(transformed_first_elt >= 0 && transformed_first_elt <= 15)) {
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Illegal result for int4 transform (first elt)");
       }
       if (!(transformed_second_elt >= 0 && transformed_second_elt <= 15)) {
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Illegal result for int4 transform (second elt)");
       }
       // We don't need to mask in these ops since everything should be in the
@@ -357,8 +367,8 @@ void subbyte_transpose_impl(int8_t* transposed_quantized_tensor,
           }
         }
       } else {
-        phi::errors::Unimplemented("Unsupported quantization bits: %d",
-                                   quant_bit);
+        common::errors::Unimplemented("Unsupported quantization bits: %d",
+                                      quant_bit);
       }
 
       const size_t row_tile_start_trans = col_tile_start_byte * ELTS_PER_BYTE;

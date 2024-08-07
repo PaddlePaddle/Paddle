@@ -1,0 +1,69 @@
+type: "conv2d_transpose_bias"
+def {
+  inputs {
+    name: "Input"
+  }
+  inputs {
+    name: "Filter"
+  }
+  inputs {
+    name: "Bias"
+  }
+  outputs {
+    name: "Output"
+  }
+  attrs {
+    name: "output_padding"
+    type: INTS
+  }
+  attrs {
+    name: "output_size"
+    type: INTS
+  }
+  attrs {
+    name: "groups"
+    type: INT
+  }
+  attrs {
+    name: "dilations"
+    type: INTS
+  }
+  attrs {
+    name: "strides"
+    type: INTS
+  }
+  attrs {
+    name: "paddings"
+    type: INTS
+  }
+  attrs {
+    name: "padding_algorithm"
+    type: STRING
+  }
+  attrs {
+    name: "data_format"
+    type: STRING
+  }
+}
+extra {
+  attrs {
+    name: "force_fp32_output"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "fuse_relu"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "fuse_activation"
+    type: STRING
+  }
+  attrs {
+    name: "fuse_alpha"
+    type: FLOAT
+  }
+  attrs {
+    name: "fuse_beta"
+    type: FLOAT
+  }
+}

@@ -16,21 +16,28 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace phi {
 namespace sparse {
-
-template <typename T, typename Context>
-void MaskCooKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const SparseCooTensor& mask,
-                   SparseCooTensor* out);
 
 template <typename T, typename Context>
 void MaskHelperCooKernel(const Context& dev_ctx,
                          const SparseCooTensor& x,
                          const DenseTensor& mask_indices,
                          DenseTensor* out);
+
+template <typename T, typename Context>
+void MaskAsCooKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const SparseCooTensor& mask,
+                     SparseCooTensor* out);
+
+template <typename T, typename Context>
+void MaskAsCsrKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const SparseCsrTensor& mask,
+                     SparseCsrTensor* out);
 
 }  // namespace sparse
 }  // namespace phi

@@ -1,0 +1,10 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -39,6 +39,7 @@ option(BUILD_SHARED "build warp-rnnt shared library."  ON)
+ option(WITH_ROCM   "Compile PaddlePaddle with ROCM platform" OFF)
+
+ if(WITH_ROCM)
++    list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH})
+     add_definitions(-DWARPRNNT_WITH_HIP)
+     include(hip)
+ endif(WITH_ROCM)

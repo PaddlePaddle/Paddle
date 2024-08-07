@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -32,50 +33,81 @@ void WeightQuantizeKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       ((group_size == -1) || (group_size == 64) || (group_size == 128)),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently, group_size only support -1(per-channel), 64 or 128."));
 
   DenseTensor quanted_x;
   dev_ctx.template Alloc<int8_t>(out);
-  dev_ctx.template Alloc<T>(scale);
   size_t m = x.dims()[0];
   size_t n = x.dims()[1];
   quanted_x.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
   dev_ctx.template Alloc<int8_t>(&quanted_x);
   std::vector<int> weight_shape{static_cast<int>(x.dims()[0]),
                                 static_cast<int>(x.dims()[1])};
+#ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 86) || (arch == 75) || (arch == 70)),
+      ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
+       (arch == 89) || (arch == 90)),
       true,
-      phi::errors::InvalidArgument(
-          "Currently, arch only support 70, 75, 80, 86."));
-
+      common::errors::InvalidArgument(
+          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
+#endif
   if (algo == "llm.int8") {
+    dev_ctx.template Alloc<float>(scale);
     std::vector<int> axis = {1, 0};
     funcs::Transpose<Context, int8_t, 2> trans;
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
-                                 scale->data<T>(),
-                                 weight_shape);
+                                 scale->data<float>(),
+                                 weight_shape,
+                                 arch,
+                                 algo);
     trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
+    dev_ctx.template Alloc<T>(scale);
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
                                  scale->data<T>(),
-                                 weight_shape);
+                                 weight_shape,
+                                 arch,
+                                 algo);
+#ifdef PADDLE_WITH_HIP
+    std::vector<int> axis = {1, 0};
+    funcs::Transpose<Context, int8_t, 2> trans;
+    trans(dev_ctx, quanted_x, out, axis);
+#else
     weight_permute_gpu<Context>(dev_ctx,
                                 quanted_x.data<int8_t>(),
                                 out->data<int8_t>(),
                                 weight_shape,
-                                arch);
+                                arch,
+                                algo);
+#endif
   } else if (algo == "weight_only_int4") {
-    phi::errors::Unimplemented(
+#ifdef PADDLE_WITH_HIP
+    PADDLE_FATAL(
         "Weight quant gpu kernel currently don't support weight_only_int4 "
         "algo, please use cpu version.");
+#else
+    dev_ctx.template Alloc<T>(scale);
+    weight_quant_gpu<T, Context>(dev_ctx,
+                                 x.data<T>(),
+                                 quanted_x.data<int8_t>(),
+                                 scale->data<T>(),
+                                 weight_shape,
+                                 arch,
+                                 algo);
+    weight_permute_gpu<Context>(dev_ctx,
+                                quanted_x.data<int8_t>(),
+                                out->data<int8_t>(),
+                                weight_shape,
+                                arch,
+                                algo);
+#endif
   } else {
-    phi::errors::Unimplemented(
+    PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
         "'llm.int8'], but got[%s]",
         algo);

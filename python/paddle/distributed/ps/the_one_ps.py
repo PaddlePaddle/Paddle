@@ -80,32 +80,24 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
     if accessor_proto.accessor_class == "SparseAccessor":
         if fea_dim != embedding_dim + 2:
             raise ValueError(
-                "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".format(
-                    embedding_dim + 2, fea_dim
-                )
+                f"The fea_dim is wrong, it will be sparse_embedding_dim + 2: {embedding_dim + 2}, but got {fea_dim}"
             )
     else:
         if fea_dim != embedding_dim:
             raise ValueError(
-                "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".format(
-                    embedding_dim, fea_dim
-                )
+                f"The fea_dim is wrong, it will be sparse_embedding_dim: {embedding_dim}, but got {fea_dim}"
             )
 
     embedx_dim = accessor_proto.embedx_dim
     if accessor_proto.accessor_class == "SparseAccessor":
         if embedx_dim != embedding_dim - 1:
             raise ValueError(
-                "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".format(
-                    embedding_dim - 1, embedx_dim
-                )
+                f"The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {embedding_dim - 1}, but got {embedx_dim}"
             )
     else:
         if embedx_dim != embedding_dim - 3:
             raise ValueError(
-                "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".format(
-                    embedding_dim - 3, embedx_dim
-                )
+                f"The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {embedding_dim - 3}, but got {embedx_dim}"
             )
 
 
@@ -176,6 +168,8 @@ class Accessor:
             graph_sgd_param.feature_learning_rate = 0.05
 
         ctr_accessor_param = accessor_proto.ctr_accessor_param
+        if not ctr_accessor_param.HasField("zero_init"):
+            ctr_accessor_param.zero_init = True
         if accessor_proto.embedx_dim == 0:
             ctr_accessor_param.zero_init = False
         if not ctr_accessor_param.HasField("nonclk_coeff"):
@@ -594,8 +588,8 @@ class CommonAccessor(Accessor):
 
 
 class Tensor:
-    def __init__(self, tesnor_dcit):
-        self.tensor_dict = tesnor_dcit
+    def __init__(self, tensor_dict):
+        self.tensor_dict = tensor_dict
 
     def _set(self, tensor_proto):
         tensor_proto.main_program_id = self.tensor_dict.get(
@@ -772,6 +766,8 @@ class SparseTable(Table):
             warnings.warn(
                 "The accessor of sparse table is not set, use default value."
             )
+        if usr_table_proto.HasField("use_gpu_graph"):
+            table_proto.use_gpu_graph = usr_table_proto.use_gpu_graph
 
         table_proto.accessor.ParseFromString(
             usr_table_proto.accessor.SerializeToString()
@@ -1061,6 +1057,9 @@ class TheOnePSRuntime(RuntimeBase):
         self.context['use_ps_gpu'] = context['valid_strategy'].a_sync_configs[
             'use_ps_gpu'
         ]
+        self.context['use_gpu_graph'] = context[
+            'valid_strategy'
+        ].a_sync_configs['use_gpu_graph']
         self.context['is_sync'] = (
             True if self.context['ps_mode'] == DistributedMode.SYNC else False
         )
@@ -1160,14 +1159,26 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
-        if self.context['use_ps_gpu']:
-            main_program = self.context['loss'].block.program
-            if not main_program._fleet_opt:
-                main_program._fleet_opt = {}
-            main_program._fleet_opt["use_ps_gpu"] = True
-            gpus_env = os.getenv("FLAGS_selected_gpus")
-            gpus_env = [int(s) for s in gpus_env.split(",")]
-            main_program._fleet_opt["worker_places"] = gpus_env
+        main_programs = []
+        if (
+            isinstance(self.context['loss'], list)
+            and len(self.context['loss']) > 1
+        ):
+            for i in range(len(self.context['loss'])):
+                main_programs.append(self.context['loss'][i].block.program)
+        else:
+            main_programs.append(self.context['loss'].block.program)
+
+        for i in range(len(main_programs)):
+            if self.context['use_ps_gpu']:
+                if not main_programs[i]._fleet_opt:
+                    main_programs[i]._fleet_opt = {}
+                main_programs[i]._fleet_opt["use_ps_gpu"] = True
+                gpus_env = os.getenv("FLAGS_selected_gpus")
+                gpus_env = [int(s) for s in gpus_env.split(",")]
+                main_programs[i]._fleet_opt["worker_places"] = gpus_env
+            if self.context['use_gpu_graph']:
+                main_programs[i]._fleet_opt["use_gpu_graph"] = True
 
         def sync_strategy_envs():
             kwargs = {}
@@ -1268,7 +1279,7 @@ class TheOnePSRuntime(RuntimeBase):
                 )
             scopes = [paddle.static.global_scope()]
         if len(self.origin_main_programs) != len(scopes):
-            raise VauleError("len(programs) != len(scopes)")
+            raise ValueError("len(programs) != len(scopes)")
 
         self.scopes = scopes
         if not is_test:
@@ -1365,9 +1376,7 @@ class TheOnePSRuntime(RuntimeBase):
             for var_name in var_names:
                 if var_name not in distributed_varnames:
                     raise ValueError(
-                        "fleet.init server can only load sparse variables in {}".format(
-                            distributed_varnames
-                        )
+                        f"fleet.init server can only load sparse variables in {distributed_varnames}"
                     )
             load_varnames = var_names
 
@@ -1743,6 +1752,12 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._ps_inference_load_inference_model(path, mode)
+        fleet.util.barrier()
+
+    def _set_date(self, table_id, day_id):
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.set_date(table_id, day_id)
         fleet.util.barrier()
 
     def _shrink(self, threshold=None):

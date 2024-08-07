@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/api_custom_impl.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -29,16 +30,15 @@ limitations under the License. */
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
-#include "paddle/utils/flags.h"
+
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-PD_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_int32(low_precision_op_list);
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 ////////////////// Forward api impls //////////////////////
 
@@ -174,7 +174,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
                             std::vector<phi::distributed::TensorDistAttr>>(
                             spmd_info.first[0]),
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Arg must be a vector of TensorDistAttr"));
 
       auto current_process_mesh =
@@ -559,5 +559,4 @@ void embedding_grad_impl(const Tensor& x,
   }
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

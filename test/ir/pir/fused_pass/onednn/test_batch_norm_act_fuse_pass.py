@@ -22,10 +22,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv3dAddFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -47,7 +43,7 @@ class TestConv3dAddFusePass(PassTest):
                 bn_out = bn(x)
                 out = paddle.nn.functional.relu(bn_out)
                 out = paddle.assign(out)
-                self.pass_list = ['batch_norm_act_fuse_pass']
+                self.pass_attr_list = [{'batch_norm_act_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((3, 32, 28, 28)).astype("float32"),
                 }

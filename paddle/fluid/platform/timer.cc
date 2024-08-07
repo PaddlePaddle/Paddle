@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/timer.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 void Timer::Reset() {
   _start.tv_sec = 0;
@@ -59,5 +58,4 @@ int64_t Timer::Tickus() {
          (_now.tv_usec - _start.tv_usec);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

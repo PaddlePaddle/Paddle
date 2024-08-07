@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -256,7 +257,13 @@ class TestMatrixPowerOpFP32Minus(TestMatrixPowerOpFP32):
 class TestMatrixPowerAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -343,6 +350,8 @@ class TestMatrixPowerAPIError(unittest.TestCase):
         )
 
     def test_old_ir_errors(self):
+        if paddle.framework.use_pir_api():
+            return
         # When out is set, the data type must be the same as input.
         input = paddle.static.data(
             name="input_1", shape=[4, 4], dtype="float32"
@@ -353,7 +362,13 @@ class TestMatrixPowerAPIError(unittest.TestCase):
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
@@ -388,7 +403,7 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
         for place in self.places:
             with base.dygraph.guard(place):
                 input_np = np.ones([4, 4]).astype("float64")
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 try:
                     result = paddle.linalg.matrix_power(input, -2)
                 except RuntimeError as ex:

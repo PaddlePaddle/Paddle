@@ -128,11 +128,7 @@ class GeneratorMulHead:
 
 
 def inject_test_multiple_head(dim_x, dim_y, trans_x, trans_y, head_number):
-    test_name = (
-        'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_head_{}'.format(
-            dim_x, dim_y, trans_x, trans_y, head_number
-        )
-    )
+    test_name = f'TestMatMulOp_dimX_{dim_x}_dim_Y_{dim_y}_transX_{trans_x}_transY_{trans_y}_head_{head_number}'
     shape_x, shape_y = generate_compatible_shapes_mul_head(
         dim_x, dim_y, trans_x, trans_y
     )
@@ -260,11 +256,7 @@ class GeneratorMulHead2:
 
 
 def inject_test_multiple_head2(dim_x, dim_y, trans_x, trans_y, head_number):
-    test_name = (
-        'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_head2_{}'.format(
-            dim_x, dim_y, trans_x, trans_y, head_number
-        )
-    )
+    test_name = f'TestMatMulOp_dimX_{dim_x}_dim_Y_{dim_y}_transX_{trans_x}_transY_{trans_y}_head2_{head_number}'
     shape_x, shape_y = generate_compatible_shapes_mul_head2(
         dim_x, dim_y, trans_x, trans_y
     )

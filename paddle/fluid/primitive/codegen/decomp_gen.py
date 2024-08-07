@@ -156,7 +156,7 @@ def gen(
 
     Args:
         prim_path (pathlib.Path): The YAML file path of the primitive API.
-        fwd_path (pathlib.Path):  The YAML file path of the forwad API.
+        fwd_path (pathlib.Path):  The YAML file path of the forward API.
         rev_path (pathlib.Path): The YAML file path of the backward API.
         compat_path: (pathlib.Path): The YAML file path of the ops compat.
         fwd_pd_op_path (pathlib.Path): The YAML file path of the ir forward API.

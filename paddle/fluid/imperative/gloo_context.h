@@ -35,7 +35,7 @@ namespace imperative {
 class GLOOParallelContext : public ParallelContext {
  public:
   explicit GLOOParallelContext(const ParallelStrategy& strategy,
-                               const platform::Place& place)
+                               const phi::Place& place)
       : ParallelContext(strategy, place) {}
 
   ~GLOOParallelContext() override = default;
@@ -51,7 +51,7 @@ class GLOOParallelContext : public ParallelContext {
 
   void Broadcast(framework::Variable* src, int ring_id) override;
 
-  paddle::platform::DeviceContext* GetDeviceContext(int ring_id) override;
+  phi::DeviceContext* GetDeviceContext(int ring_id) override;
 
   void WaitCompute(int ring_id) override;
 

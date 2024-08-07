@@ -27,8 +27,16 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_triu_rule MODULES test_triu_rule)
   py_test_modules(test_flash_attention_rule MODULES test_flash_attention_rule)
   py_test_modules(test_tile_rule MODULES test_tile_rule)
+  py_test_modules(test_one_hot_rule MODULES test_one_hot_rule)
   py_test_modules(test_fused_linear_param_grad_add_rule MODULES
                   test_fused_linear_param_grad_add_rule)
+  py_test_modules(test_scatter_rule MODULES test_scatter_rule)
+  py_test_modules(test_gather_rule MODULES test_gather_rule)
+  py_test_modules(test_cumsum_rule MODULES test_cumsum_rule)
+  py_test_modules(test_argmax_rule MODULES test_argmax_rule)
+  py_test_modules(test_unbind_rule MODULES test_unbind_rule)
+  py_test_modules(test_stack_rule MODULES test_stack_rule)
+  py_test_modules(test_gather_nd_rule MODULES test_gather_nd_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

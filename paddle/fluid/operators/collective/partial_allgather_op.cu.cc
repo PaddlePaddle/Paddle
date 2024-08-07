@@ -15,12 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/partial_allgather_op.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+#include "paddle/phi/core/platform/collective_helper.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -36,8 +36,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int64_t numel = in->numel();
-    ncclDataType_t dtype =
-        platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
+    ncclDataType_t dtype = phi::ToNCCLDataType(in->dtype());
 
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");
@@ -56,7 +55,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -67,7 +66,7 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        common::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
@@ -87,22 +86,22 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         nranks,
         real_nranks,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "nranks: %s should equal to %s", nranks, real_nranks));
     PADDLE_ENFORCE_EQ(rank,
                       real_rank,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "rank: %s should equal to %s", rank, real_rank));
 
     PADDLE_ENFORCE_EQ(
         (numel % nranks),
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input numel (%d) must be divisible by nranks(%d)",
             numel,
             nranks));
 
-    framework::DDim dims = in->dims();
+    phi::DDim dims = in->dims();
     out->mutable_data<T>(dims, place);
 
     int64_t send_numel = numel / nranks;
@@ -128,16 +127,16 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
         const T* send_buff = in->data<T>() + offset;
         T* recv_buff = out->data<T>();
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclAllGather(send_buff,
-                                             recv_buff,
-                                             send_numel,
-                                             static_cast<ncclDataType_t>(dtype),
-                                             comm->comm(),
-                                             stream));
+            phi::dynload::ncclAllGather(send_buff,
+                                        recv_buff,
+                                        send_numel,
+                                        static_cast<ncclDataType_t>(dtype),
+                                        comm->comm(),
+                                        stream));
       }
     }
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }
@@ -147,7 +146,6 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(partial_allgather,
                           GPU,
@@ -155,10 +153,11 @@ PD_REGISTER_STRUCT_KERNEL(partial_allgather,
                           ops::PartialAllGatherOpCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
+                          phi::dtype::bfloat16,
 #endif
                           int,
                           int64_t,
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

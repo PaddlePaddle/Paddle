@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/retry_allocator.h"
+#include "paddle/phi/core/memory/allocation/retry_allocator.h"
 
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/best_fit_allocator.h"
-#include "paddle/fluid/memory/allocation/cpu_allocator.h"
+#include "paddle/phi/core/memory/allocation/best_fit_allocator.h"
+#include "paddle/phi/core/memory/allocation/cpu_allocator.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/memory/allocation/cuda_allocator.h"
+#include "paddle/phi/core/memory/allocation/cuda_allocator.h"
 #endif
 
 namespace paddle {
@@ -83,7 +83,7 @@ TEST(RetryAllocator, RetryAllocator) {
                                     addresses.end(),
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
-    allocator->Release(platform::CPUPlace());
+    allocator->Release(phi::CPUPlace());
   }
 }
 
@@ -93,7 +93,7 @@ class DummyAllocator : public Allocator {
 
  protected:
   phi::Allocation *AllocateImpl(size_t size) override {
-    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+    PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
         "Here is a test exception, always BadAlloc."));
   }
 
@@ -116,7 +116,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
-    platform::CUDAPlace p(0);
+    phi::GPUPlace p(0);
     RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), retry_ms);
     size_t allocate_size = (static_cast<size_t>(1) << 40);  // Very large number
     try {

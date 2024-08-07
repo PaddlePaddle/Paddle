@@ -48,8 +48,8 @@ PADDLE_MODULE_PREFIX = 'paddle.'
 
 ALREADY_D2S = '__already_d2s'
 
-# NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
-ORIGI_INFO = "Original information of source code for ast node."
+# NOTE(liym27): Please use `getattr(ast_node, ORIGIN_INFO)` instead of . operation to get the original information of ast node.
+ORIGIN_INFO = "Original information of source code for ast node."
 
 DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
 
@@ -204,7 +204,7 @@ def make_hashable(x, error_msg=None):
             return tuple(map(make_hashable, x.values()))
 
         error_msg = error_msg or "Requires a hashable object."
-        raise ValueError(error_msg + " But received type: %s" % type_name(x))
+        raise ValueError(f"{error_msg} But received type: {type_name(x)}")
 
     return x
 
@@ -218,7 +218,7 @@ AS_NOT_INNER_FUNC_LIST = {"paddle.nn.layer.container.Sequential"}
 def as_not_paddle_func(path):
     """
     Append API or class as ignored case for is_paddle_func, and they
-    will be retured False while calling is_paddle_func(func).
+    will be returned False while calling is_paddle_func(func).
     """
     global INNER_FUNC_WHITE_LIST
     AS_NOT_INNER_FUNC_LIST.add(path)
@@ -309,7 +309,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
 
     global DEL_TEMP_DIR
     if delete_on_exit and DEL_TEMP_DIR:
-        # Clear temporary files in TEMP_DIR while exitting Python process
+        # Clear temporary files in TEMP_DIR while exiting Python process
         atexit.register(remove_if_exit, dir_path=temp_dir)
         DEL_TEMP_DIR = False
 
@@ -327,8 +327,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         callable_func = getattr(module, func_name)
     else:
         raise ValueError(
-            'Function: %s doesn\'t exist in the Module transformed from AST.'
-            % func_name
+            f'Function: {func_name} doesn\'t exist in the Module transformed from AST.'
         )
     # After transform dygraph function into callable_func saved in tmp file,
     # it lost the global variables from imported statements or defined in source file.
@@ -380,9 +379,7 @@ def func_to_source_code(function, dedent=True):
         function = function.func
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
-            "The type of 'function' should be a function or method, but received {}.".format(
-                type(function).__name__
-            )
+            f"The type of 'function' should be a function or method, but received {type(function).__name__}."
         )
 
     source_code_list, _ = inspect.getsourcelines(function)
@@ -547,6 +544,12 @@ def cinn_is_enabled(build_strategy, backend):
     return False
 
 
+def cse_is_enabled():
+    return paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
+        "FLAGS_enable_cse_in_dy2st"
+    ]
+
+
 def prim_is_enabled():
     core.check_and_set_prim_all_enabled()
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
@@ -576,22 +579,22 @@ def is_builtin(func, name=None):
 @signature_safe_contextmanager
 def backend_guard(backend):
     core.check_and_set_prim_all_enabled()
-    orign_fwd = core._is_fwd_prim_enabled()
-    orign_bwd = core._is_bwd_prim_enabled()
+    origin_fwd = core._is_fwd_prim_enabled()
+    origin_bwd = core._is_bwd_prim_enabled()
 
     if backend == 'CINN':
         core._set_prim_all_enabled(True)
     try:
         yield
     finally:
-        core._set_prim_forward_enabled(orign_fwd)
-        core._set_prim_backward_enabled(orign_bwd)
+        core._set_prim_forward_enabled(origin_fwd)
+        core._set_prim_backward_enabled(origin_bwd)
 
 
 def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
     grad_var_names = {}
-    fn = (
-        lambda grad_var: grad_var.name
+    fn = lambda grad_var: (
+        grad_var.name
         if isinstance(grad_var, framework.Variable)
         else framework.EMPTY_VAR_NAME
     )

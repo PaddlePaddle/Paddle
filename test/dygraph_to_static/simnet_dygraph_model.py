@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -70,8 +70,8 @@ class FCLayer:
         """
         fc = FC(
             size=self.fc_dim,
-            param_attr=paddle.ParamAttr(name="%s.w" % self.name),
-            bias_attr=paddle.ParamAttr(name="%s.b" % self.name),
+            param_attr=paddle.ParamAttr(name=f"{self.name}.w"),
+            bias_attr=paddle.ParamAttr(name=f"{self.name}.b"),
             act=self.act,
         )
         return fc
@@ -298,15 +298,16 @@ class FC(paddle.nn.Layer):
 
     Examples:
         .. code-block:: python
-          from paddle.base.dygraph.base import to_variable
-          import paddle.base as base
-          from paddle.base.dygraph import FC
-          import numpy as np
-          data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-          with base.dygraph.guard():
-              fc = FC("fc", 64, num_flatten_dims=2)
-              data = to_variable(data)
-              conv = fc(data)
+
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> from paddle.base.dygraph import FC
+            >>> import numpy as np
+            >>> data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+            >>> with base.dygraph.guard():
+            ...     fc = FC("fc", 64, num_flatten_dims=2)
+            ...     data_tensor = paddle.to_tensor(data)
+            ...     conv = fc(data_tensor)
     """
 
     def __init__(

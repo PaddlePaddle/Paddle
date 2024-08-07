@@ -16,14 +16,12 @@
 
 #include "paddle/fluid/inference/analysis/argument.h"
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-
 namespace paddle {
 namespace inference {
 namespace analysis {
 
 void InferenceOpReplacePass::RunImpl(Argument* argument) {
-  if (FLAGS_enable_pir_in_executor) {
+  if (argument->use_pir()) {
     return;
   }
 

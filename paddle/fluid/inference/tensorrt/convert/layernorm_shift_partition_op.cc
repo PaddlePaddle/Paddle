@@ -49,16 +49,16 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
 
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Bias) of layer_norm should not be null."));
     PADDLE_ENFORCE_NOT_NULL(
         Scale_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Scale) of layer_norm should not be null."));
     PADDLE_ENFORCE_EQ(
         begin_norm_axis,
         2,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The begin_norm_axis of LayernormShiftPartition should be %d",
             begin_norm_axis));
 
@@ -72,8 +72,8 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     PADDLE_ENFORCE_EQ(bias_weight.get().count,
                       scale_weight.get().count,
-                      platform::errors::InvalidArgument(
-                          "The num between bias_weight and cale_weight should "
+                      common::errors::InvalidArgument(
+                          "The num between bias_weight and scale_weight should "
                           "be equal. (%d vs %d)",
                           bias_weight.get().count,
                           scale_weight.get().count));
@@ -91,12 +91,12 @@ class LayerNormShiftPartitionOpConverter : public OpConverter {
               with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "LayernormShiftPartition TRT Plugin should run in dynamic shape."));
     }
 
     auto output_name = op_desc.Output("Y").front();
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layernorm_layer, "layernorm_shift_partition", {output_name}, test_mode);
   }
 };

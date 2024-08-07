@@ -109,7 +109,7 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0])
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), False)
 
-        # test partial with propogation: mk[1, 0],kn[-1,-1] --> mk[1, 0],kn[0, -1] = nm[1, -1] partial[0]
+        # test partial with propagation: mk[1, 0],kn[-1,-1] --> mk[1, 0],kn[0, -1] = nm[1, -1] partial[0]
         self.x_dist_tensor_spec.set_dims_mapping([1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
 
@@ -303,7 +303,7 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.assertEqual(infered_input_dist_attrs[1]._is_partial(), False)
         self.assertEqual(infered_output_dist_attrs[0]._is_partial(), False)
 
-        # test on broadcast axes propogation
+        # test on broadcast axes propagation
         # abmn[1, 0, -1, -1] --> 1mk[-1, -1, -1], abkn[1, 0, -1, -1]
         self.out_dist_tensor_spec.shape = [512, 48, 64, 48]
         self.x_dist_tensor_spec.shape = [1, 64, 32]

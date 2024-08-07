@@ -14,14 +14,16 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
 
-#include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/common/errors.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/dialect/shape/utils/shape_or_data_expr.h"
-#include "paddle/utils/flags.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_string(cinn_convert_static_dim_to_dynamic_dim);
 
@@ -30,7 +32,7 @@ namespace cinn::dialect::ir {
 namespace {
 
 template <typename DoEachT>
-void ForEachRawStaticDimToDyanmicPair(const DoEachT& DoEach) {
+void ForEachRawStaticDimToDynamicPair(const DoEachT& DoEach) {
   const std::string& env_var = FLAGS_cinn_convert_static_dim_to_dynamic_dim;
   size_t start = 0;
   while (true) {
@@ -41,7 +43,7 @@ void ForEachRawStaticDimToDyanmicPair(const DoEachT& DoEach) {
   }
 }
 
-std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDyanmicPair(
+std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDynamicPair(
     const std::string& raw_pair) {
   size_t pos = raw_pair.find(":", 0);
   if (pos == std::string::npos) return std::nullopt;
@@ -66,10 +68,10 @@ std::optional<std::pair<int64_t, std::string>> ParseRawStaticDimToDyanmicPair(
   return std::pair{int64_t{constant}, symbol};
 }
 
-std::unordered_map<int64_t, std::string> GetStaticDimToDyanmicFromFlag() {
+std::unordered_map<int64_t, std::string> GetStaticDimToDynamicFromFlag() {
   std::unordered_map<int64_t, std::string> map;
-  ForEachRawStaticDimToDyanmicPair([&](const std::string& raw_pair) {
-    if (auto pair = ParseRawStaticDimToDyanmicPair(raw_pair)) {
+  ForEachRawStaticDimToDynamicPair([&](const std::string& raw_pair) {
+    if (auto pair = ParseRawStaticDimToDynamicPair(raw_pair)) {
       map.insert(pair.value());
     }
   });
@@ -81,7 +83,7 @@ using GlobalStaticDimToDynamicMapT =
 
 std::optional<GlobalStaticDimToDynamicMapT> CalcGlobalStaticDimToDynamicMap() {
   std::unordered_map<int64_t, std::string> map =
-      GetStaticDimToDyanmicFromFlag();
+      GetStaticDimToDynamicFromFlag();
   if (map.empty()) return std::nullopt;
   auto DividedByOther = [&](int64_t constant) {
     for (const auto& [other_constant, _] : map) {
@@ -148,11 +150,18 @@ struct StaticDimToDynamicConverter {
         &pir::ShapeAnalysisManager::Instance().Get(
             this->fusion_op->GetParentProgram());
     ForEachValue([&](pir::Value value) {
-      CHECK(shape_analysis->HasShapeOrDataForValue(value));
       const auto& origin_shape = GetOriginValueShape(value);
       const auto& target_shape = GetTargetValueShape(
           shape_analysis->GetShapeOrDataForValue(value).shape());
-      CHECK_EQ(origin_shape.size(), target_shape.size());
+      PADDLE_ENFORCE_EQ(
+          origin_shape.size(),
+          target_shape.size(),
+          ::common::errors::InvalidArgument(
+              "The size of origin shape and target shape is not equal,"
+              "where the size of origin shape:%d but the size of target "
+              "shape:%d.",
+              origin_shape.size(),
+              target_shape.size()));
       const auto& origin_type = value.type().dyn_cast<::pir::DenseTensorType>();
       pir::DenseTensorType target_type =
           pir::DenseTensorType::get(pir::IrContext::Instance(),
@@ -359,26 +368,8 @@ struct StaticDimToDynamicConverter {
       pir::Value value,
       int64_t constant,
       const std::string& symbol) {
-    if (shape_analysis->HasShapeOrDataForValue(value)) {
-      const auto& old = shape_analysis->GetShapeOrDataForValue(value).shape();
-      return ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
-    } else {
-      auto& dims = value.type().dyn_cast<::pir::DenseTensorType>().dims();
-      const auto& int_dims = ::common::vectorize<int>(dims);
-      std::vector<symbol::DimExpr> old{};
-      for (int dim : int_dims) {
-        old.emplace_back(static_cast<std::int64_t>(dim));
-      }
-      const auto& opt_exprs =
-          ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
-      if (opt_exprs.has_value()) {
-        return opt_exprs.value();
-      } else {
-        return symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(old)};
-      }
-    }
-    LOG(FATAL) << "Dead code";
+    const auto& old = shape_analysis->GetShapeOrDataForValue(value).shape();
+    return ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
   }
 
   template <typename ConverterT>
@@ -408,7 +399,10 @@ struct StaticDimToDynamicConverter {
   template <typename DoEachT>
   void ForEachConstantToSymbol(const DoEachT& DoEach) {
     const auto& map = *GetGlobalStaticDimToDynamicMap();
-    CHECK(map.has_value());
+    PADDLE_ENFORCE_EQ(
+        map.has_value(),
+        true,
+        phi::errors::InvalidArgument("map is empty, it should have value"));
     for (const auto& [constant, symbol] : map.value()) {
       DoEach(constant, symbol);
     }

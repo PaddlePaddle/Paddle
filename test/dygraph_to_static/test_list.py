@@ -48,7 +48,7 @@ def test_list_append_in_if(x):
     if x.numpy()[0] > 0:
         a.append(x)
     else:
-        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int64"))
+        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="float32"))
     # TODO(Aurelius84): Currently, run_program_op doesn't support output LoDTensorArray.
     return a[0]
 
@@ -128,7 +128,7 @@ def test_list_append_in_while_loop_with_stack(x, iter_num):
 def test_tensor_array_slice(x, iter_num):
     a = []
     for i in range(paddle.to_tensor(3)):
-        a.append(paddle.to_tensor(i))
+        a.append(paddle.to_tensor(float(i)))
     t = a[1:3]
     return a[2]
 
@@ -218,7 +218,7 @@ class TestListWithoutControlFlowConfig(Dy2StTestBase):
         self.init_dygraph_func()
 
     def init_data(self):
-        self.input = np.random.random(3).astype('int32')
+        self.input = np.random.random(3).astype('float32')
 
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
@@ -277,7 +277,7 @@ class TestListInIf(TestListWithoutControlFlow):
 
 class TestListInWhileLoop(TestListWithoutControlFlowConfig):
     def init_data(self):
-        self.input = np.random.random(3).astype('int32')
+        self.input = np.random.random(3).astype('float32')
         self.iter_num = 3
 
     def init_dygraph_func(self):
@@ -298,6 +298,7 @@ class TestListInWhileLoop(TestListWithoutControlFlowConfig):
             return self.result_to_numpy(res)
 
     @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.compare_transformed_static_result()
 
@@ -320,7 +321,7 @@ class TestListInForLoop(TestListInWhileLoop):
         ]
 
 
-class TestListInForLoopWithConcat(TestListInWhileLoopWithStack):
+class TestListInForLoopWithConcat(TestListInWhileLoop):
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
             test_list_append_in_for_loop_with_concat,
@@ -336,9 +337,6 @@ class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
 
     def init_data(self):
         self.input = np.random.random((3, 4)).astype('float32')
-
-    def test_transformed_static_result(self):
-        self.compare_transformed_static_result()
 
 
 class ListWithCondNet(paddle.nn.Layer):
@@ -366,6 +364,7 @@ class ListWithCondNet(paddle.nn.Layer):
 
 
 class TestListWithCondGradInferVarType(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
     def test_to_static(self):
         net = ListWithCondNet()
         x = paddle.to_tensor([2, 3, 4], dtype='float32')

@@ -14,12 +14,14 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestDygraphDataParallel(TestMultipleGpus):
+class TestDygraphDataParallel(TestMultipleAccelerators):
     def test_dygraph_dataparallel_bf16(self):
-        self.run_mnist_2gpu('dygraph_dataparallel_bf16.py')
+        self.run_mnist_2accelerators('dygraph_dataparallel_bf16.py')
 
 
 if __name__ == "__main__":

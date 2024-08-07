@@ -94,13 +94,8 @@ class ProgramDeps:
             if self._var_to_use_op[var_name] != []:
                 if op_idx not in self._var_to_use_op[var_name]:
                     raise ValueError(
-                        "op_idx: {} is not in self._var_to_use_op[{}], "
-                        "self._var_to_use_op[{}] is {}".format(
-                            op_idx,
-                            var_name,
-                            var_name,
-                            self._var_to_use_op[var_name],
-                        )
+                        f"op_idx: {op_idx} is not in self._var_to_use_op[{var_name}], "
+                        f"self._var_to_use_op[{var_name}] is {self._var_to_use_op[var_name]}"
                     )
                 self._var_to_use_op[var_name].remove(op_idx)
             # update _should_removed_var

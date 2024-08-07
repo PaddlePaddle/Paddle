@@ -45,7 +45,7 @@ class GapTestNet(paddle.nn.Layer):
 
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
-        # TODO(ming1753): skip window CI beacuse run_cmd(cmd) filed
+        # TODO(ming1753): skip window CI because run_cmd(cmd) filed
         if os.name != 'nt':
             cur_dir = os.path.dirname(os.path.abspath(__file__))
             # compile, install the custom op egg into site-packages under background

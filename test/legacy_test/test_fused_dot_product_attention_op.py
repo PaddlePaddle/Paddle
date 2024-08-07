@@ -23,7 +23,10 @@ from op_test import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle.incubate.nn.functional import fused_dot_product_attention
+from paddle.incubate.nn.functional import (
+    cudnn_flash_attention,
+    fused_dot_product_attention,
+)
 
 np.random.seed(2023)
 
@@ -52,7 +55,6 @@ class TestFusedAttentionOpFP16(OpTest):
         self.head_size = 64
 
     def _set_config(self):
-        self.has_attn_mask = False
         self.is_causal_masking = False
         self.dropout_prob = 0.0
         self.dtype = "float16"
@@ -63,7 +65,6 @@ class TestFusedAttentionOpFP16(OpTest):
         self._set_shape()
         self._set_config()
         # has_attn_mask and is_causal_masking can't be True at the same time
-        assert not (self.has_attn_mask and self.is_causal_masking)
         self.training = True
         self.scaling_factor = self.head_size**-0.5
         self.q_shape = (
@@ -104,62 +105,31 @@ class TestFusedAttentionOpFP16(OpTest):
         self.k = _random(self.kv_shape)
         self.v = _random(self.kv_shape)
 
-        self.attn_mask = np.ones(
-            shape=(self.batch_size, 1, self.q_seqlen, self.kv_seqlen),
-            dtype=np.int32,
-        )
-        self.q_actual_seqlen = np.full(
-            shape=(self.batch_size,), fill_value=self.q_seqlen, dtype=np.int32
-        )
-        self.kv_actual_seqlen = np.full(
-            shape=(self.batch_size,), fill_value=self.kv_seqlen, dtype=np.int32
-        )
-        self.attn_mask = np.ones(
-            shape=(self.batch_size, 1, self.q_seqlen, self.kv_seqlen),
-            dtype=np.int32,
-        )
-        if self.has_attn_mask:
-            self.q_actual_seqlen = np.random.randint(
-                low=20,
-                high=self.q_seqlen,
-                size=(self.batch_size,),
-                dtype=np.int32,
+        if self.is_causal_masking:
+            self.attn_mask = np.ones(
+                (1, 1, self.q_seqlen, self.kv_seqlen),
+                dtype=np.float16,
             )
-            self.kv_actual_seqlen = np.random.randint(
-                low=20,
-                high=self.kv_seqlen,
-                size=(self.batch_size,),
-                dtype=np.int32,
+            self.attn_mask = np.triu(self.attn_mask, k=1)
+            self.attn_mask = self.attn_mask * -1e4
+        else:
+            # create a mask with 50% of the elements set to -1e4, the rest to 0
+            self.attn_mask = np.random.choice(
+                [0, -1e4],
+                size=(1, 1, self.q_seqlen, self.kv_seqlen),
+                p=[0.5, 0.5],
             )
-            self.attn_mask = np.zeros(
-                shape=(self.batch_size, 1, self.q_seqlen, self.kv_seqlen),
-                dtype=np.int32,
-            )
-            for i in range(0, self.batch_size):
-                self.attn_mask[
-                    i,
-                    0,
-                    0 : self.q_actual_seqlen[i],
-                    0 : self.kv_actual_seqlen[i],
-                ] = 1
+        self.attn_mask = paddle.to_tensor(
+            self.attn_mask, stop_gradient=True, dtype=self.dtype
+        )
 
-        # need to set invalid position of dout to 0
-        dout_shape = (
-            self.batch_size,
-            self.q_seqlen,
-            self.num_heads,
-            self.head_size,
-        )
-        dout_mask = None
-        if self.has_attn_mask:
-            dout_mask = np.ones(shape=dout_shape, dtype=np.int32)
-            for i in range(0, self.batch_size):
-                dout_mask[i, self.q_actual_seqlen[i] :, :, :] = 0
-        self.dout = _random(dout_shape, dout_mask)
+        dout_shape = self.q_shape
+        self.dout = _random(dout_shape)
 
     def _get_reference_out(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))
         q_tensor = paddle.to_tensor(self.q, stop_gradient=False)
+        # print(q_tensor)
         k_tensor = paddle.to_tensor(self.k, stop_gradient=False)
         v_tensor = paddle.to_tensor(self.v, stop_gradient=False)
 
@@ -180,16 +150,11 @@ class TestFusedAttentionOpFP16(OpTest):
             transpose_y=True,
         )
 
-        if self.is_causal_masking:
-            self.attn_mask = np.tril(self.attn_mask, k=0)
-
-        if self.has_attn_mask or self.is_causal_masking:
-            attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=True)
-            attn_mask = (paddle.cast(attn_mask, self.dtype) - 1.0) * 1e4
-            attn_mask_out = qk_out + attn_mask
-            softmax_out = F.softmax(attn_mask_out)
+        if self.attn_mask is not None:
+            attn_mask_out = qk_out + self.attn_mask
         else:
-            softmax_out = F.softmax(qk_out)
+            attn_mask_out = qk_out
+        softmax_out = F.softmax(attn_mask_out)
 
         if self.dropout_prob:
             dropout_out = F.dropout(
@@ -212,19 +177,11 @@ class TestFusedAttentionOpFP16(OpTest):
             retain_graph=True,
         )
 
-        # need to set invalid position of output to 0
-        valid_mha_out = paddle.full_like(mha_out, 0)
-        for i in range(0, self.batch_size):
-            valid_mha_out[i, 0 : self.q_actual_seqlen[i], :, :] = mha_out[
-                i, 0 : self.q_actual_seqlen[i], :, :
-            ]
-
         return (
-            valid_mha_out,
+            mha_out,
             q_tensor.grad,
             k_tensor.grad,
             v_tensor.grad,
-            softmax_out,
         )
 
     def _get_fused_attn_out(self):
@@ -233,22 +190,17 @@ class TestFusedAttentionOpFP16(OpTest):
         k_tensor = paddle.to_tensor(self.k, stop_gradient=False)
         v_tensor = paddle.to_tensor(self.v, stop_gradient=False)
 
-        attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=True)
-
-        (
-            fmha_out,
-            softmax_out,
-        ) = fused_dot_product_attention(
+        attn_mask = self.attn_mask
+        if self.is_causal_masking:
+            attn_mask = None
+        fmha_out = fused_dot_product_attention(
             q_tensor,
             k_tensor,
             v_tensor,
             attn_mask,
-            self.scaling_factor,
             self.dropout_prob,
-            True,
             self.is_causal_masking,
-            None,
-            True,
+            training=True,
         )
 
         paddle.autograd.backward(
@@ -260,7 +212,42 @@ class TestFusedAttentionOpFP16(OpTest):
             q_tensor.grad,
             k_tensor.grad,
             v_tensor.grad,
-            softmax_out,
+        )
+
+    def _get_cudnn_flash_attn_out(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        q_tensor = paddle.to_tensor(self.q, stop_gradient=False)
+        k_tensor = paddle.to_tensor(self.k, stop_gradient=False)
+        v_tensor = paddle.to_tensor(self.v, stop_gradient=False)
+
+        bias = self.attn_mask
+        if self.is_causal_masking:
+            bias = None
+        if self.is_causal_masking:
+            attn_mask = None
+        fmha_out = cudnn_flash_attention(
+            q_tensor,
+            k_tensor,
+            v_tensor,
+            bias=bias,
+            cu_seqlen_q=None,
+            cu_seqlen_k=None,
+            scaling_factor=self.scaling_factor,
+            dropout_prob=self.dropout_prob,
+            training=True,
+            mask_type="causal" if self.is_causal_masking else None,
+            bias_type="post_scale_bias" if bias is not None else None,
+        )
+
+        paddle.autograd.backward(
+            [fmha_out], [paddle.to_tensor(self.dout)], retain_graph=True
+        )
+
+        return (
+            fmha_out,
+            q_tensor.grad,
+            k_tensor.grad,
+            v_tensor.grad,
         )
 
     def _compare_output(self):
@@ -277,14 +264,23 @@ class TestFusedAttentionOpFP16(OpTest):
         ]
 
         outputs_ref = self._get_reference_out()
-        outputs_fused = self._get_fused_attn_out()
+        outputs_fused_1 = self._get_fused_attn_out()
+        outputs_fused_2 = self._get_cudnn_flash_attn_out()
 
         for i in range(len(output_names)):
             ref_res = outputs_ref[i]
-            fused_res = outputs_fused[i]
+            fused_res_1 = outputs_fused_1[i]
+            fused_res_2 = outputs_fused_2[i]
             np.testing.assert_allclose(
                 _convert(ref_res.numpy()),
-                _convert(fused_res.numpy()),
+                _convert(fused_res_1.numpy()),
+                atol=self.atol,
+                rtol=self.rtol,
+                err_msg=f"Checking < {output_names[i]} > failed",
+            )
+            np.testing.assert_allclose(
+                _convert(ref_res.numpy()),
+                _convert(fused_res_2.numpy()),
                 atol=self.atol,
                 rtol=self.rtol,
                 err_msg=f"Checking < {output_names[i]} > failed",
@@ -295,76 +291,17 @@ class TestFusedAttentionOpFP16(OpTest):
 
 
 @unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedAttentionOpFP16WithPaddingMask(TestFusedAttentionOpFP16):
-    def _set_config(self):
-        self.has_attn_mask = True
-        self.is_causal_masking = False
-        self.dropout_prob = 0.0
-        self.dtype = "float16"
-        self.rtol = 5e-3
-        self.atol = 5e-3
-
-
-@unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedAttentionOpFP16WithCausalMask(TestFusedAttentionOpFP16):
-    def _set_config(self):
-        self.has_attn_mask = False
-        self.is_causal_masking = True
-        self.dropout_prob = 0.0
-        self.dtype = "float16"
-        self.rtol = 5e-3
-        self.atol = 5e-3
-
-
-@unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedAttentionOpBF16(TestFusedAttentionOpFP16):
-    def _set_config(self):
-        self.has_attn_mask = False
-        self.is_causal_masking = False
-        self.dropout_prob = 0.0
-        self.dtype = "bfloat16"
-        self.rtol = 5e-3
-        self.atol = 5e-3
-
-
-@unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedAttentionOpBF16WithPaddingMask(TestFusedAttentionOpFP16):
-    def _set_config(self):
-        self.has_attn_mask = True
-        self.is_causal_masking = False
-        self.dropout_prob = 0.0
-        self.dtype = "bfloat16"
-        self.rtol = 5e-3
-        self.atol = 5e-3
-
-
-@unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedAttentionOpBF16WithCausalMask(TestFusedAttentionOpFP16):
-    def _set_config(self):
-        self.has_attn_mask = False
-        self.is_causal_masking = True
-        self.dropout_prob = 0.0
-        self.dtype = "bfloat16"
-        self.rtol = 5e-3
-        self.atol = 5e-3
-
-
-@unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedAttentionOpBF16WithPaddingMaskCase2(
-    TestFusedAttentionOpBF16WithPaddingMask
-):
+class TestFusedAttentionOpFP16Case2(TestFusedAttentionOpFP16):
     def _set_shape(self):
         self.batch_size = 2
         self.q_seqlen = 1024
         self.kv_seqlen = 1024
-        self.num_heads = 4
+        self.num_heads = 2
         self.head_size = 64
 
 
 @unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedAttentionOpBF16WithPaddingMaskCase3(
-    TestFusedAttentionOpBF16WithPaddingMask
-):
+class TestFusedAttentionOpFP16Case3(TestFusedAttentionOpFP16):
     def _set_shape(self):
         self.batch_size = 1
         self.q_seqlen = 2048
@@ -374,15 +311,54 @@ class TestFusedAttentionOpBF16WithPaddingMaskCase3(
 
 
 @unittest.skipIf(skip_unit_test(), skip_msg)
-class TestFusedAttentionOpBF16WithCausalMaskCase2(
-    TestFusedAttentionOpBF16WithCausalMask
-):
+class TestFusedAttentionOpFP16WithCausalMask(TestFusedAttentionOpFP16):
     def _set_shape(self):
         self.batch_size = 2
         self.q_seqlen = 1024
         self.kv_seqlen = 1024
-        self.num_heads = 4
+        self.num_heads = 2
         self.head_size = 128
+
+    def _set_config(self):
+        self.is_causal_masking = True
+        self.dropout_prob = 0.0
+        self.dtype = "float16"
+        self.rtol = 1e-3
+        self.atol = 1e-3
+
+
+@unittest.skipIf(skip_unit_test(), skip_msg)
+class TestFusedAttentionOpBF16(TestFusedAttentionOpFP16):
+    def _set_shape(self):
+        self.batch_size = 1
+        self.q_seqlen = 2048
+        self.kv_seqlen = 2048
+        self.num_heads = 2
+        self.head_size = 128
+
+    def _set_config(self):
+        self.is_causal_masking = False
+        self.dropout_prob = 0.0
+        self.dtype = "bfloat16"
+        self.rtol = 5e-4
+        self.atol = 5e-4
+
+
+@unittest.skipIf(skip_unit_test(), skip_msg)
+class TestFusedAttentionOpBF16WithCausalMask(TestFusedAttentionOpFP16):
+    def _set_shape(self):
+        self.batch_size = 1
+        self.q_seqlen = 2048
+        self.kv_seqlen = 2048
+        self.num_heads = 2
+        self.head_size = 128
+
+    def _set_config(self):
+        self.is_causal_masking = True
+        self.dropout_prob = 0.0
+        self.dtype = "bfloat16"
+        self.rtol = 5e-4
+        self.atol = 5e-4
 
 
 if __name__ == "__main__":

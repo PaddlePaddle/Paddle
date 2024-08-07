@@ -44,7 +44,7 @@ def tensor_parallel_sync_filter_fn(
     param, pos_emb=True, layer_norm=True, bias=True
 ):
     """
-    Layer fliter function for tensor parallelism transformer.
+    Layer filter function for tensor parallelism transformer.
 
     In tensor parallelism of transformer like model, there is 4 kind of param
     that are supposed to be the same in all tensor parallel peers:
@@ -111,7 +111,7 @@ def copy_parameters(block_, params):
         )
         assert (
             param.is_distributed is False
-        ), f"Try to sync Distribted Parameter: {param}"
+        ), f"Try to sync Distributed Parameter: {param}"
         new_p.is_distributed = False
 
     block_.vars[new_p.name] = new_p
@@ -291,7 +291,7 @@ def add_extra_synchronization(
 
     sync_mode(string): select from
         "broadcast": parameter is sync by broadcasted from 'src_rank' to all other ranks.
-        "average": paramter is sync by average amonge all ranks
+        "average": parameter is sync by average among all ranks
 
     src_rank(int): the src used in broadcast sync_mode.
 
@@ -324,7 +324,7 @@ def add_extra_synchronization(
         if params_filter_fn(param):
             params_to_sync.append(param)
     logger.info(
-        "The following param are goning to be synchronization everytime the optimizer update phase of the program is runned: "
+        "The following param are going to be synchronization everytime the optimizer update phase of the program is runned: "
     )
     logger.info([p.name for p in params_to_sync])
 

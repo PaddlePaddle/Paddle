@@ -25,6 +25,7 @@ void ArgsortGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        int axis,
                        bool descending,
+                       bool stable,
                        DenseTensor* in_grad);
 
 }  // namespace phi

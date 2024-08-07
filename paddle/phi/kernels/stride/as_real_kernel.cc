@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/as_real_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -21,9 +24,14 @@ template <typename T, typename Context>
 void AsRealStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
   auto out_stride_v = common::vectorize(x.strides());
-  for (size_t i = 0; i < out_stride_v.size(); ++i) {
-    out_stride_v[i] *= 2;
+  for (auto& v : out_stride_v) {
+    v *= 2;
   }
   out_stride_v.push_back(1);
   out->set_strides(common::make_ddim(out_stride_v));
@@ -33,9 +41,9 @@ void AsRealStridedKernel(const Context& dev_ctx,
   } else if (x.dtype() == DataType::COMPLEX128) {
     out->set_type(DataType::FLOAT64);
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("as_real is not supported data type (%s).",
-                                   DataTypeToString(x.dtype())));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "as_real is not supported data type (%s).",
+        DataTypeToString(x.dtype())));
   }
   out->set_offset(x.offset());
   out->ResetHolder(x.Holder());
@@ -55,6 +63,17 @@ PD_REGISTER_KERNEL(as_real,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(as_real,
                    GPU,
+                   STRIDED,
+                   phi::AsRealStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(as_real,
+                   Custom,
                    STRIDED,
                    phi::AsRealStridedKernel,
                    phi::dtype::complex<float>,

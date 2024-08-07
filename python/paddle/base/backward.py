@@ -119,10 +119,7 @@ class ProgramStats:
         while idx_ > pre_segment_end_idx:
             if is_amp_cast(self.ops[idx_]):
                 _logger.info(
-                    "found amp-cast op: {}, : {}".format(
-                        self.ops[idx_].desc.type(),
-                        self.ops[idx_].desc.input_arg_names()[0],
-                    )
+                    f"found amp-cast op: {self.ops[idx_].desc.type()}, : {self.ops[idx_].desc.input_arg_names()[0]}"
                 )
                 updated_min_idx = idx_
                 idx_ -= 1
@@ -163,8 +160,7 @@ class ProgramStats:
         for name in checkpoints_name:
             if name not in self.var_op_deps:
                 _logger.info(
-                    "Recompute Optimizer: deleted %s from checkpoints, because it is not used in paddle program."
-                    % name
+                    f"Recompute Optimizer: deleted {name} from checkpoints, because it is not used in paddle program."
                 )
             elif self.var_op_deps[name]["var_as_output_ops"] == []:
                 # input nodes
@@ -409,9 +405,7 @@ def _infer_var_data_type_shape_(grad_var_name, block):
     else:
         # TODO(jiabin): Maybe we should not to this to cause some unexpected error on dtype
         warnings.warn(
-            "Set grad var: {} dtype to default FP32, since we can't find its related forward var".format(
-                grad_var_name
-            )
+            f"Set grad var: {grad_var_name} dtype to default FP32, since we can't find its related forward var"
         )
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
@@ -830,7 +824,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
         def __init__(self, var_name):
             self.var_name = var_name
             self.gen_op = None
-            self.pendding_ops = []
+            self.pending_ops = []
 
         def set_gen_op(self, gen_op):
             assert isinstance(gen_op, Op)
@@ -839,7 +833,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
 
         def add_pending_op(self, op):
             assert isinstance(op, Op)
-            self.pendding_ops.append(op)
+            self.pending_ops.append(op)
 
     class Op:
         def __init__(self, op_desc):
@@ -916,8 +910,8 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             op_node = candidate_ops.pop(0)
             if _all_in_set_(op_node.inputs, ready_vars):
                 for out_var in op_node.outputs:
-                    candidate_ops.extend(out_var.pendding_ops)
-                    op_list.extend(out_var.pendding_ops)
+                    candidate_ops.extend(out_var.pending_ops)
+                    op_list.extend(out_var.pending_ops)
                 ready_vars.update(op_node.outputs)
             else:
                 remove_ops = False
@@ -1038,25 +1032,17 @@ def _append_backward_ops_with_checkpoints_(
     for i, (idx1, idx2) in enumerate(recompute_segments):
         _logger.info(f"recompute segment[{i}]")
         _logger.info(
-            "segment start op: [{}]: [{}]".format(
-                ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
-            )
+            f"segment start op: [{ops[idx1].desc.type()}]: [{ops[idx1].desc.input_arg_names()}]"
         )
         _logger.info(
-            "segment end op: [{}]: [{}]".format(
-                ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()
-            )
+            f"segment end op: [{ops[idx2 - 1].desc.type()}]: [{ops[idx2 - 1].desc.input_arg_names()}]"
         )
         _logger.info(f"recompute segment[{i}]")
         _logger.info(
-            "segment start op: [{}]: [{}]".format(
-                ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
-            )
+            f"segment start op: [{ops[idx1].desc.type()}]: [{ops[idx1].desc.input_arg_names()}]"
         )
         _logger.info(
-            "segment end op: [{}]: [{}]".format(
-                ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()
-            )
+            f"segment end op: [{ops[idx2 - 1].desc.type()}]: [{ops[idx2 - 1].desc.input_arg_names()}]"
         )
 
     # 2) go through all forward ops and induct all variables that will be hold in memory
@@ -1069,9 +1055,7 @@ def _append_backward_ops_with_checkpoints_(
 
     cross_vars = set(vars_should_be_hold) - set(checkpoints_name)
     _logger.info(
-        "found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format(
-            len(cross_vars), cross_vars
-        )
+        f"found [{len(cross_vars)}] vars which cross recompute segment: [{cross_vars}], better checkpoints might be set to reduce those vars"
     )
 
     # b. output of seed op should be kept in memory
@@ -1094,8 +1078,9 @@ def _append_backward_ops_with_checkpoints_(
             if op.has_attr("sub_block"):
                 raise Exception(
                     "Recompute don't support ops with sub_block"
-                    "invoke op: %s"
-                    % _pretty_op_desc_(op.desc, "with_sub_block")
+                    "invoke op: {}".format(
+                        _pretty_op_desc_(op.desc, "with_sub_block")
+                    )
                 )
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, no_grad_dict[block.idx], []
@@ -1124,8 +1109,9 @@ def _append_backward_ops_with_checkpoints_(
             if op.has_attr("sub_block"):
                 raise Exception(
                     "Recompute don't support ops with sub_block"
-                    "invoke op: %s"
-                    % _pretty_op_desc_(op.desc, "with_sub_block")
+                    "invoke op: {}".format(
+                        _pretty_op_desc_(op.desc, "with_sub_block")
+                    )
                 )
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, no_grad_dict[block.idx], []
@@ -1154,8 +1140,9 @@ def _append_backward_ops_with_checkpoints_(
             if op.has_attr("sub_block"):
                 raise Exception(
                     "Recompute don't support ops with sub_block"
-                    "invoke op: %s"
-                    % _pretty_op_desc_(op.desc, "with_sub_block")
+                    "invoke op: {}".format(
+                        _pretty_op_desc_(op.desc, "with_sub_block")
+                    )
                 )
             input_and_output_names = []
             input_and_output_names.extend(op.desc.input_arg_names())
@@ -1571,7 +1558,7 @@ def _append_backward_ops_(
             # NOTE: In primitive mode, the intermediate variable generated by
             # decompositing raw grad op are not satisfied the rule of 'XX@GRAD',
             # which will cause it be pruned according to current pruning logic.
-            # For simplicity, we treate all prmitive operators as one raw
+            # For simplicity, we treat all primitive operators as one raw
             # operator, and keep the pruning logic consistent with currently
             # logic. The drawback of this solution is may lead to some primitive
             # operators are not pruned, which is needed to fixed.
@@ -1937,14 +1924,11 @@ def _get_no_grad_set_name(no_grad_set):
                     no_grad_set_name.add(no_grad_var)
                 else:
                     raise TypeError(
-                        "The type of no_grad_set's member must be paddle.base.Variable or str, but received %s."
-                        % (type(no_grad_var))
+                        f"The type of no_grad_set's member must be paddle.base.Variable or str, but received {type(no_grad_var)}."
                     )
         else:
             raise TypeError(
-                "The type of no_grad_set should be set or list or tuple, but received {}".format(
-                    type(no_grad_set)
-                )
+                f"The type of no_grad_set should be set or list or tuple, but received {type(no_grad_set)}"
             )
     return no_grad_set_name
 
@@ -1958,14 +1942,11 @@ def _get_no_grad_set_value(no_grad_set):
                     no_grad_set_value.add(no_grad_value)
                 else:
                     raise TypeError(
-                        "The type of no_grad_set's member must be paddle.pir.Value, but received %s."
-                        % (type(no_grad_value))
+                        f"The type of no_grad_set's member must be paddle.pir.Value, but received {type(no_grad_value)}."
                     )
         else:
             raise TypeError(
-                "The type of no_grad_set should be set or list or tuple, but received {}".format(
-                    type(no_grad_set)
-                )
+                f"The type of no_grad_set should be set or list or tuple, but received {type(no_grad_set)}"
             )
     return no_grad_set_value
 
@@ -2269,7 +2250,7 @@ def append_backward(
         for i, param in enumerate(parameter_list):
             check_type(
                 param,
-                'parameter_list[%s]' % i,
+                f'parameter_list[{i}]',
                 (framework.Variable, str),
                 'base.backward.append_backward',
             )
@@ -2553,9 +2534,7 @@ def calc_gradient_helper(
                 raise ValueError("all targets must be in the same block")
             if target.shape != grad.shape:
                 raise ValueError(
-                    "The shapes of target and grad are different: {} {}".format(
-                        target.name, grad.name
-                    )
+                    f"The shapes of target and grad are different: {target.name} {grad.name}"
                 )
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
@@ -2690,6 +2669,10 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         If an input does not affect targets, the corresponding gradient Tensor
         will be None
     """
+    if framework.in_pir_mode():
+        return paddle.autograd.ir_backward.calc_gradient(
+            targets, inputs, target_gradients, no_grad_set
+        )
 
     # NOTE: If you want to modify the logic of calc_gradient, please modify
     # it inside the calc_gradient_helper and _get_grad_vars functions

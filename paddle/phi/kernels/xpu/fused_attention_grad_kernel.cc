@@ -224,9 +224,9 @@ void FusedAttentionGradKernel(
   XPUTypeT *d_dropout_grad_ptr = NULL;  // dx5 [batch_size, seq_len, hidden]
 
   XPUTypeT *d_fmha_out_ptr =
-      NULL;  //  d_fmha_out [batch_size, seq_len, num_heads, head_dims]
-  XPUTypeT *d_fmha_out_transpos_tmp_ptr =
-      NULL;  // d_fmha_out_transpos [batch_size, seq_len, num_heads,
+      NULL;  // d_fmha_out [batch_size, seq_len, num_heads, head_dims]
+  XPUTypeT *d_fmha_out_transpose_tmp_ptr =
+      NULL;  // d_fmha_out_transpose [batch_size, seq_len, num_heads,
              // head_dims]
 
   XPUTypeT *d_qk_ptr =
@@ -235,7 +235,7 @@ void FusedAttentionGradKernel(
   XPUTypeT *d_combination_qkv_ptr =
       NULL;  // d_combination_qkv_ptr[3, batch_size, num_heads, seq_len,
              // head_dims]
-  XPUTypeT *d_transpos_qkv_ptr =
+  XPUTypeT *d_transpose_qkv_ptr =
       NULL;  // dx2 [batch_size, seq_len, 3, num_heads, head_dims]
 
   XPUTypeT *d_last_layernorm_grad_ptr =
@@ -250,9 +250,9 @@ void FusedAttentionGradKernel(
                                                        num_heads * head_dims);
   d_combination_qkv_ptr =
       RAII_GUARD.alloc<XPUTypeT>(batch_size * seq_len * embed_dims * 3);
-  d_transpos_qkv_ptr = RAII_GUARD.alloc_l3_or_gm<XPUTypeT>(
+  d_transpose_qkv_ptr = RAII_GUARD.alloc_l3_or_gm<XPUTypeT>(
       batch_size * seq_len * embed_dims * 3);
-  d_fmha_out_transpos_tmp_ptr =
+  d_fmha_out_transpose_tmp_ptr =
       RAII_GUARD.alloc_l3_or_gm<XPUTypeT>(batch_size * seq_len * embed_dims);
   d_qk_ptr = RAII_GUARD.alloc_l3_or_gm<XPUTypeT>(batch_size * seq_len *
                                                  seq_len * num_heads);
@@ -343,7 +343,7 @@ void FusedAttentionGradKernel(
     XPUTypeT *d_v_out_ptr = d_k_out_ptr + qkv_size;
     r = xpu::transpose<XPUTypeT>(xpu_ctx,
                                  d_fmha_out_ptr,
-                                 d_fmha_out_transpos_tmp_ptr,
+                                 d_fmha_out_transpose_tmp_ptr,
                                  {batch_size, seq_len, num_heads, head_dims},
                                  {0, 2, 1, 3});
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
@@ -381,7 +381,7 @@ void FusedAttentionGradKernel(
                                         false,
                                         attn_dropout_out_ptr,
                                         v_out_ptr,
-                                        d_fmha_out_transpos_tmp_ptr);
+                                        d_fmha_out_transpose_tmp_ptr);
 
     std::tie(info_d_qk, info_d_v, a_1, b_1, a_2, b_2) = fc_info;
     phi::MatMulXPUFunction<XPUTypeT>(
@@ -452,7 +452,7 @@ void FusedAttentionGradKernel(
   //
   r = xpu::transpose<XPUTypeT>(xpu_ctx,
                                d_combination_qkv_ptr,
-                               d_transpos_qkv_ptr,
+                               d_transpose_qkv_ptr,
                                {3, batch_size, num_heads, seq_len, head_dims},
                                {1, 3, 0, 2, 4});
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
@@ -487,7 +487,7 @@ void FusedAttentionGradKernel(
                                   true,
                                   use_calc_input_x_ptr,
                                   qkv_weight_ptr,
-                                  d_transpos_qkv_ptr);
+                                  d_transpose_qkv_ptr);
 
   std::tie(info_d_x, info_d_qkv_w, a_1, b_1, a_2, b_2) = fc_info;
   phi::MatMulXPUFunction<XPUTypeT>(
@@ -497,7 +497,7 @@ void FusedAttentionGradKernel(
 
   // d_qkv_bias
   r = xpu::reduce_sum(xpu_ctx,
-                      d_transpos_qkv_ptr,
+                      d_transpose_qkv_ptr,
                       d_qkv_bias_ptr,
                       {batch_size * seq_len, 3 * embed_dims},
                       {0});

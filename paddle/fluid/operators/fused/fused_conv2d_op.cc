@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/generator/get_expected_kernel_func.h"
 #include "paddle/phi/infermeta/multiary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class FusedConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -118,8 +117,7 @@ class FusedConvOp : public framework::OperatorWithKernel {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

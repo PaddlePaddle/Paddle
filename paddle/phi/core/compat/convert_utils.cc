@@ -14,15 +14,17 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/convert_utils.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/enforce.h"
-
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
+
+COMMON_DECLARE_bool(pinned_memory_as_cpu_backend);
 
 namespace phi {
 
@@ -33,8 +35,13 @@ Backend TransToPhiBackend(const phi::Place& place) {
       return Backend::GPU;
     case AllocationType::CPU:
       return Backend::CPU;
-    case AllocationType::GPUPINNED:
-      return Backend::GPU;
+    case AllocationType::GPUPINNED: {
+      if (FLAGS_pinned_memory_as_cpu_backend) {
+        return Backend::CPU;
+      } else {
+        return Backend::GPU;
+      }
+    }
     case AllocationType::XPU:
       return Backend::XPU;
     case AllocationType::IPU:
@@ -47,7 +54,7 @@ Backend TransToPhiBackend(const phi::Place& place) {
           phi::CustomRegisteredDeviceMap::Instance()
               .GetOrRegisterGlobalDeviceTypeId(place.GetDeviceType()));
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported transform %s to phi Backend.", place));
   }
 }
@@ -63,17 +70,13 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
       return phi::Place();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case phi::Backend::GPU:
+    case phi::Backend::GPUDNN:
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #ifdef PADDLE_WITH_DNNL
     case phi::Backend::ONEDNN:  // NOLINT
       return phi::CPUPlace();
-#endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case phi::Backend::GPUDNN:
-      return phi::GPUPlace(
-          set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #if defined(PADDLE_WITH_XPU)
     case phi::Backend::XPU:
@@ -92,6 +95,9 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
+      if (backend == phi::Backend::CUSTOM) {
+        device_type_id_ = 1;
+      }
       std::string device_type =
           phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
               device_type_id_);
@@ -103,7 +109,7 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
         return phi::CustomPlace();
       }
 #endif
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported backend `%s` when casting it to paddle place type.",
           backend));
     }

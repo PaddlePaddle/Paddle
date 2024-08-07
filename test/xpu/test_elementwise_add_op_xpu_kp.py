@@ -57,7 +57,7 @@ class TestElementwiseAddOp(XPUOpTest):
                 max_relative_error=self.max_relative_error,
             )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
@@ -68,7 +68,7 @@ class TestElementwiseAddOp(XPUOpTest):
                 max_relative_error=self.max_relative_error,
             )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         if paddle.is_compiled_with_xpu():
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(
@@ -313,7 +313,8 @@ class TestAddOp(unittest.TestCase):
             y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = paddle.add(x, y, name='add_res')
-            self.assertEqual(('add_res' in y_1.name), True)
+            if not paddle.framework.use_pir_api():
+                self.assertEqual(('add_res' in y_1.name), True)
 
     def test_declarative(self):
         with base.program_guard(base.Program()):
@@ -330,7 +331,7 @@ class TestAddOp(unittest.TestCase):
 
             place = base.XPUPlace(0)
             exe = base.Executor(place)
-            z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+            z_value = exe.run(feed=gen_data(), fetch_list=[z])
             z_expected = np.array([3.0, 8.0, 6.0])
             self.assertEqual((z_value == z_expected).all(), True)
 

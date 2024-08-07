@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import os
+import sys
 import tempfile
 import unittest
 
+sys.path.append("../../legacy_test")
 import numpy as np
 from op_test import OpTest
 
 import paddle
 import paddle.inference as paddle_infer
 from paddle import base
-from paddle.base.framework import in_dygraph_mode
+from paddle.base.framework import in_dygraph_mode, in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
@@ -63,7 +65,7 @@ class TestBincountOpAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             inputs_np = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
-            inputs = base.dygraph.to_variable(inputs_np)
+            inputs = paddle.to_tensor(inputs_np)
             actual = paddle.bincount(inputs)
             expected = np.bincount(inputs)
             self.assertTrue(
@@ -255,12 +257,13 @@ class TestTensorMinlength(unittest.TestCase):
         )
         np.testing.assert_allclose(np_out, pd_out.numpy())
 
+    @test_with_pir_api
     def test_static_and_infer(self):
         paddle.enable_static()
         np_x = np.random.randn(100).astype('float32')
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             # run static
             x = paddle.static.data(shape=np_x.shape, name='x', dtype=np_x.dtype)
             linear = paddle.nn.Linear(np_x.shape[0], np_x.shape[0])
@@ -272,14 +275,22 @@ class TestTensorMinlength(unittest.TestCase):
             )
 
             exe = paddle.static.Executor(self.place)
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
 
             # run infer
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-            config = paddle_infer.Config(
-                self.save_path + '.pdmodel', self.save_path + '.pdiparams'
-            )
+            if in_pir_mode():
+                config = paddle_infer.Config(
+                    self.save_path + '.json', self.save_path + '.pdiparams'
+                )
+                config.enable_new_executor()
+                config.enable_new_ir()
+            else:
+                config = paddle_infer.Config(
+                    self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+                )
+
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
             else:

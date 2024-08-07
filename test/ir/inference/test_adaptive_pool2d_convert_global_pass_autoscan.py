@@ -49,7 +49,7 @@ class TestAdaptivePool2dConvertGlobalPass(PassAutoScanTest):
         ceil_mode = draw(st.booleans())
         exclusive = draw(st.booleans())
         global_pooling = draw(st.booleans())
-        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VAILD"]))
+        padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
 
         pool_op = OpConfig(
             "pool2d",

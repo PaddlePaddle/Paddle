@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.framework import core
 from paddle.utils import unique_name
 
@@ -59,7 +60,7 @@ class OffloadHelper:
                 persistable=True,
             )
         dst_var = block.var(dst_name)
-        assert dst_var.dtype == core.VarDesc.VarType.FP16
+        assert dst_var.dtype == paddle.float16
         block._insert_op_without_sync(
             idx,
             type='cast',

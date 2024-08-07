@@ -22,15 +22,15 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/nccl.h"
+#include "paddle/phi/backends/dynload/nccl.h"
 #endif
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/rccl.h"
+#include "paddle/phi/backends/dynload/rccl.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(sync_nccl_allreduce);
+COMMON_DECLARE_bool(sync_nccl_allreduce);
 
 namespace paddle {
 namespace framework {
@@ -39,7 +39,7 @@ namespace details {
 class NCCLOpHandleBase : public OpHandleBase {
  public:
   NCCLOpHandleBase(ir::Node* node,
-                   const std::vector<platform::Place>& places,
+                   const std::vector<phi::Place>& places,
                    const platform::NCCLCommunicator* nccl_ctxs)
       : OpHandleBase(node), places_(places), nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs == nullptr) {
@@ -76,16 +76,16 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_EQ(
         places_.size(),
         1,
-        platform::errors::Unimplemented(
+        common::errors::Unimplemented(
             "Only supported for single place now, but got %d", places_.size()));
     PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
                       0,
-                      platform::errors::Unimplemented(
+                      common::errors::Unimplemented(
                           "Not supported use_hierarchical_allreduce_ now"));
     PADDLE_ENFORCE_NOT_NULL(
         nccl_ctxs_,
-        platform::errors::NotFound("Can't get flat %d nccl contexts.",
-                                   run_order_));
+        common::errors::NotFound("Can't get flat %d nccl contexts.",
+                                 run_order_));
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = places_[0].device;
     auto& nccl_ctx = flat_nccl_ctxs->at(dev_id);
@@ -97,7 +97,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_GE(
         run_order,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The argument run_order must be >= 0, but got %d.", run_order));
     run_order_ = run_order;
     use_hierarchical_allreduce_ = use_hierarchical_allreduce;
@@ -121,7 +121,7 @@ class NCCLOpHandleBase : public OpHandleBase {
 
     PADDLE_ENFORCE_EQ(places_.size(),
                       1,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "HierarchicalAllReduce can only run "
                           "one proccess with one card mode, but got %d cards.",
                           places_.size()));
@@ -155,7 +155,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void FlatNCCLAllReduce(platform::Place place,
+  void FlatNCCLAllReduce(phi::Place place,
                          const void* sendbuff,
                          void* recvbuff,
                          size_t count,
@@ -164,7 +164,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_GE(
         run_order_,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = place.device;
@@ -176,11 +176,11 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dev_id:" << dev_id << ", dtype:" << datatype
              << ", place:" << place;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
   }
 
-  void NCCLAllReduce(platform::Place place,
+  void NCCLAllReduce(phi::Place place,
                      const void* sendbuff,
                      void* recvbuff,
                      size_t count,
@@ -189,7 +189,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_GE(
         run_order_,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     if (!use_hierarchical_allreduce_) {
       FlatNCCLAllReduce(place, sendbuff, recvbuff, count, datatype, op);
@@ -199,7 +199,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     HierarchicalAllReduce(place, sendbuff, recvbuff, count, datatype, op);
   }
 
-  void HierarchicalAllReduce(platform::Place place,
+  void HierarchicalAllReduce(phi::Place place,
                              const void* sendbuff,
                              void* recvbuff,
                              size_t count,
@@ -208,7 +208,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     PADDLE_ENFORCE_GE(
         run_order_,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     InterReduce(place, sendbuff, recvbuff, count, datatype, op);
     // When a trainer is not in exter allreduce ring
@@ -220,7 +220,7 @@ class NCCLOpHandleBase : public OpHandleBase {
   }
 
  protected:
-  void InterReduce(platform::Place place,
+  void InterReduce(phi::Place place,
                    const void* sendbuff,
                    void* recvbuff,
                    size_t count,
@@ -238,7 +238,7 @@ class NCCLOpHandleBase : public OpHandleBase {
              << ", dtype:" << datatype << ", place:" << place
              << ", stream:" << stream;
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(
         sendbuff, recvbuff, count, datatype, ncclSum, 0, comm, stream));
 
 #ifdef PADDLE_WITH_HIP
@@ -252,7 +252,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void ExterAllReduce(platform::Place place,
+  void ExterAllReduce(phi::Place place,
                       const void* sendbuff,
                       void* recvbuff,
                       size_t count,
@@ -261,8 +261,8 @@ class NCCLOpHandleBase : public OpHandleBase {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalExterCtx(run_order_);
     PADDLE_ENFORCE_NOT_NULL(
         nccl_ctxs_,
-        platform::errors::NotFound("Can't get exter %d nccl contexts.",
-                                   run_order_));
+        common::errors::NotFound("Can't get exter %d nccl contexts.",
+                                 run_order_));
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
     auto stream = nccl_ctx.stream();
@@ -276,14 +276,14 @@ class NCCLOpHandleBase : public OpHandleBase {
 #ifdef PADDLE_WITH_HIP
     hipStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     hipEventRecord(exter_events_.at(dev_id), stream);
 #else
     cudaStreamWaitEvent(stream, inter_events_.at(dev_id), 0);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));
 
     cudaEventRecord(exter_events_.at(dev_id), stream);
@@ -293,7 +293,7 @@ class NCCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void InterBroadCast(platform::Place place,
+  void InterBroadCast(phi::Place place,
                       void* sendbuff,
                       size_t count,
                       ncclDataType_t datatype,
@@ -313,12 +313,12 @@ class NCCLOpHandleBase : public OpHandleBase {
 #else
     cudaStreamWaitEvent(stream, exter_events_.at(dev_id), 0);
 #endif
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
-        sendbuff, count, datatype, 0, comm, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::ncclBcast(sendbuff, count, datatype, 0, comm, stream));
   }
 
  protected:
-  std::vector<platform::Place> places_;
+  std::vector<phi::Place> places_;
   const platform::NCCLCommunicator* nccl_ctxs_{nullptr};
   // When multi trainer call collective function, they need run the same order.
   // Or the program will hang.So we use allreduce_deps_pass to set this

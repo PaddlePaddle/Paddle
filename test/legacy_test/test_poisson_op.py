@@ -381,7 +381,7 @@ class TestPoissonFP16OP(TestPoissonOp1):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestPoissonBF16Op(OpTest):
     def setUp(self):

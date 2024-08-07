@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -23,7 +24,7 @@ import paddle
 import paddle.distributed as dist
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.pir_utils import test_with_pir_api
+from paddle.pir_utils import IrGuard, test_with_pir_api
 
 
 class TestConcatOp(OpTest):
@@ -312,6 +313,15 @@ def create_test_AxisTensor(parent):
                     (self.x0, self.x1, self.x2), axis=self.actual_axis
                 )
             }
+
+        def test_check_output(self):
+            if self.dtype == np.uint16:
+                place = core.CUDAPlace(0)
+                self.check_output_with_place(
+                    place, check_pir=True, check_symbol_infer=False
+                )
+            else:
+                self.check_output(check_pir=True, check_symbol_infer=False)
 
         def test_check_grad(self):
             if (
@@ -793,7 +803,7 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -823,7 +833,13 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -837,7 +853,7 @@ class TestConcatTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -867,7 +883,13 @@ class TestConcatTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -940,5 +962,42 @@ class TestConcatOpAutoParallel(OpTest):
         pass
 
 
+class TestConcatOpErrorWithPir(unittest.TestCase):
+    @test_with_pir_api
+    def test_errors_with_pir(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            # The type of axis in concat_op should be int or Variable.
+            x6 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x6')
+            x7 = paddle.static.data(shape=[-1, 4], dtype='float32', name='x7')
+            x8 = paddle.static.data(shape=[-1, 4], dtype='float64', name='x8')
+
+            def test_axis_type():
+                paddle.concat([x6, x7], 3.2)
+
+            self.assertRaises(TypeError, test_axis_type)
+
+            # The input dtype must be same.
+            def test_input_same_dtype():
+                paddle.concat([x7, x8])
+
+            self.assertRaises(TypeError, test_input_same_dtype)
+
+    def test_empty_inputs_dygraph(self):
+        paddle.disable_static()
+        with self.assertRaisesRegex(ValueError, "but got empty list"):
+            paddle.concat([])
+
+    def test_empty_inputs_static(self):
+        with IrGuard(), paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            with self.assertRaisesRegex(ValueError, "but got empty list"):
+                paddle.concat([], axis=0)
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

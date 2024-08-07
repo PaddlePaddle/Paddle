@@ -14,6 +14,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
 PD_DECLARE_bool(new_executor_use_local_scope);
 
@@ -31,13 +32,13 @@ class InterpreterCore {
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 
  public:
-  InterpreterCore(const platform::Place& place,
+  InterpreterCore(const phi::Place& place,
                   const BlockDesc& block,
                   Scope* scope,
                   const ExecutionConfig& execution_config = ExecutionConfig());
   // This constructor is for New IR.
   TEST_API InterpreterCore(
-      const platform::Place& place,
+      const phi::Place& place,
       const std::vector<std::string>& fetch_var_names,
       const ::pir::Block* ir_prog,
       Scope* scope,
@@ -82,11 +83,15 @@ class InterpreterCore {
 
   const Scope* local_scope() const;
 
-  const platform::Place& GetPlace() const;
+  const phi::Place& GetPlace() const;
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
   void SetInputHooks(const std::vector<HookFunc>& hookfuncs);
+
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
   void Build(const std::vector<std::string>& feed_names,
              std::vector<paddle::framework::OpFuncNode>* op_func_nodes);

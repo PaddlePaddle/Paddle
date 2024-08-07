@@ -127,7 +127,7 @@ static const char* parallel_launch = "cinn_backend_parallel_launch";
 }  // namespace intrinsic
 
 /**
- * Call an intrnsic function.
+ * Call an intrinsic function.
  * @param type Return type of the function.
  * @param fn_name Name of the function.
  * @param args The arguments for the function.

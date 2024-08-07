@@ -60,7 +60,7 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
     PADDLE_ENFORCE_GE(
         rank,
         4,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of dimensions of attn_mask is expected to be greater "
             "or equal to 4, but received %d. The shape of attn_mask is {%s}",
             rank,
@@ -76,6 +76,58 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
                    origin_dims[rank - 1]};
   }
   return mask_dim_4d;
+}
+
+static std::vector<int64_t> GetAttnSparseMaskDims(
+    const DenseTensor* attn_mask_start_row_indices,
+    int64_t attn_mask_start_row,
+    int max_seqlen_q) {
+  std::vector<int64_t> mask_dim_3d;
+  if (attn_mask_start_row_indices) {
+    const auto& dtype = attn_mask_start_row_indices->dtype();
+    const auto& origin_dims = attn_mask_start_row_indices->dims();
+    auto rank = origin_dims.size();
+    PADDLE_ENFORCE_EQ(dtype,
+                      DataType::INT32,
+                      common::errors::InvalidArgument(
+                          "dtype of attn_mask_start_row_indices must be "
+                          "int32, but recieved %d",
+                          dtype));
+    PADDLE_ENFORCE_GE(
+        rank,
+        3,
+        common::errors::InvalidArgument(
+            "The number of dimenstions of attn_mask_start_row_indices is "
+            "expected to be greater or "
+            "equal to 3, but recieved %d. The shape of "
+            "attn_mask_start_row_indices is [%s]",
+            rank,
+            origin_dims));
+    PADDLE_ENFORCE_EQ(origin_dims[rank - 1],
+                      max_seqlen_q,
+                      common::errors::InvalidArgument(
+                          "The sparse_mask_dims[%d] of "
+                          "attn_mask_start_row_indices is expected to be "
+                          "equal to %d, but recieved %d.",
+                          rank - 1,
+                          max_seqlen_q,
+                          origin_dims[2]));
+    PADDLE_ENFORCE_GE(attn_mask_start_row,
+                      0,
+                      common::errors::InvalidArgument(
+                          "attn_mask_start_row should be greater or equal than "
+                          "0 when using attn_mask_start_row_indices, "
+                          "but recieved %d.",
+                          attn_mask_start_row));
+
+    int64_t first_dim = 1;
+    for (int i = 0; i < rank - 2; i++) {
+      first_dim *= origin_dims[i];
+    }
+    mask_dim_3d = {first_dim, origin_dims[rank - 2], origin_dims[rank - 1]};
+  }
+
+  return mask_dim_3d;
 }
 
 struct FlashAttnParamsBase {
@@ -100,16 +152,23 @@ struct FlashAttnParamsBase {
   std::vector<int64_t> mask_dims;
   const DenseTensor* attn_mask_tensor;
 
-  FlashAttnParamsBase(const int _batch_size,
-                      const int64_t _max_seqlen_q,
-                      const int64_t _max_seqlen_k,
-                      const int _num_heads,
-                      const int _num_heads_k,
-                      const int _head_size,
-                      const float _scale,
-                      const bool _causal,
-                      const DataType q_dtype,
-                      const paddle::optional<DenseTensor>& attn_mask)
+  const DenseTensor* attn_mask_start_row_indices_tensor;
+  std::vector<int64_t> attn_mask_start_row_indices_dims;
+  int attn_mask_start_row;
+
+  FlashAttnParamsBase(
+      const int _batch_size,
+      const int64_t _max_seqlen_q,
+      const int64_t _max_seqlen_k,
+      const int _num_heads,
+      const int _num_heads_k,
+      const int _head_size,
+      const float _scale,
+      const bool _causal,
+      const int _attn_mask_start_row,
+      const DataType q_dtype,
+      const paddle::optional<DenseTensor>& attn_mask,
+      const paddle::optional<DenseTensor>& attn_mask_start_row_indices)
       : batch_size(_batch_size),
         max_seqlen_q(_max_seqlen_q),
         max_seqlen_k(_max_seqlen_k),
@@ -118,7 +177,10 @@ struct FlashAttnParamsBase {
         head_size(_head_size),
         softmax_scale(_scale),
         causal(_causal),
-        attn_mask_tensor(attn_mask.get_ptr()) {
+        attn_mask_start_row(_attn_mask_start_row),
+        attn_mask_tensor(attn_mask.get_ptr()),
+        attn_mask_start_row_indices_tensor(
+            attn_mask_start_row_indices.get_ptr()) {
     is_bf16 = q_dtype == DataType::BFLOAT16;
 
     auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
@@ -131,17 +193,26 @@ struct FlashAttnParamsBase {
     if (attn_mask_tensor) {
       PADDLE_ENFORCE_NE(causal,
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "When attn_mask is set, causal can not be true."));
 
       PADDLE_ENFORCE_EQ(
           attn_mask->dtype(),
           q_dtype,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "attn_mask is expected to have the same data type with q."));
 
       mask_dims = GetAttnMaskDims(attn_mask_tensor);
     }
+
+    attn_mask_start_row_indices_dims = GetAttnSparseMaskDims(
+        attn_mask_start_row_indices_tensor, attn_mask_start_row, max_seqlen_q);
+
+    PADDLE_ENFORCE_NE(attn_mask_tensor && attn_mask_start_row_indices,
+                      true,
+                      common::errors::InvalidArgument(
+                          "attn_mask and attn_mask_start_row_indices cannot be "
+                          "set at same time."));
   }
 };
 
@@ -156,25 +227,28 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
   DenseTensor* softmax_lse;
   DenseTensor* seed_offset;
 
-  FlashAttnFwdParamsV2(const GPUContext& ctx,
-                       const int _batch_size,
-                       const int64_t _max_seqlen_q,
-                       const int64_t _max_seqlen_k,
-                       const int _num_heads,
-                       const int _num_heads_k,
-                       const int _head_size,
-                       const float _dropout,
-                       const float _scale,
-                       const bool _causal,
-                       const bool _return_softmax,
-                       const DataType q_dtype,
-                       const bool is_test,
-                       const std::string& rng_name,
-                       const paddle::optional<DenseTensor>& fixed_seed_offset,
-                       const paddle::optional<DenseTensor>& attn_mask,
-                       DenseTensor* _softmax,
-                       DenseTensor* _softmax_lse,
-                       DenseTensor* _seed_offset)
+  FlashAttnFwdParamsV2(
+      const GPUContext& ctx,
+      const int _batch_size,
+      const int64_t _max_seqlen_q,
+      const int64_t _max_seqlen_k,
+      const int _num_heads,
+      const int _num_heads_k,
+      const int _head_size,
+      const float _dropout,
+      const float _scale,
+      const bool _causal,
+      const bool _return_softmax,
+      const DataType q_dtype,
+      const bool is_test,
+      const std::string& rng_name,
+      const int _attn_mask_start_row,
+      const paddle::optional<DenseTensor>& fixed_seed_offset,
+      const paddle::optional<DenseTensor>& attn_mask,
+      const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+      DenseTensor* _softmax,
+      DenseTensor* _softmax_lse,
+      DenseTensor* _seed_offset)
       : FlashAttnParamsBase(_batch_size,
                             _max_seqlen_q,
                             _max_seqlen_k,
@@ -183,8 +257,10 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
                             _head_size,
                             _scale,
                             _causal,
+                            _attn_mask_start_row,
                             q_dtype,
-                            attn_mask),
+                            attn_mask,
+                            attn_mask_start_row_indices),
         dropout(_dropout),
         return_softmax(_return_softmax),
         softmax(_softmax),
@@ -213,7 +289,7 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
       PADDLE_ENFORCE_EQ(
           dropout > 0.0f,
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "return_softmax is only supported when dropout > 0.0"));
 
       softmax->Resize(
@@ -231,19 +307,22 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
   DenseTensor dq_accum;
   DenseTensor rng_state;
 
-  FlashAttnBwdParamsV2(const GPUContext& ctx,
-                       const int _batch_size,
-                       const int64_t _max_seqlen_q,
-                       const int64_t _max_seqlen_k,
-                       const int _num_heads,
-                       const int _num_heads_k,
-                       const int _head_size,
-                       const float _dropout,
-                       const float _scale,
-                       const bool _causal,
-                       const DataType q_dtype,
-                       const paddle::optional<DenseTensor>& attn_mask,
-                       const int64_t* seed_offset_data)
+  FlashAttnBwdParamsV2(
+      const GPUContext& ctx,
+      const int _batch_size,
+      const int64_t _max_seqlen_q,
+      const int64_t _max_seqlen_k,
+      const int _num_heads,
+      const int _num_heads_k,
+      const int _head_size,
+      const float _dropout,
+      const float _scale,
+      const bool _causal,
+      const int _attn_mask_start_row,
+      const DataType q_dtype,
+      const paddle::optional<DenseTensor>& attn_mask,
+      const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+      const int64_t* seed_offset_data)
       : FlashAttnParamsBase(_batch_size,
                             _max_seqlen_q,
                             _max_seqlen_k,
@@ -252,8 +331,10 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
                             _head_size,
                             _scale,
                             _causal,
+                            _attn_mask_start_row,
                             q_dtype,
-                            attn_mask),
+                            attn_mask,
+                            attn_mask_start_row_indices),
         dropout(_dropout) {
     seed = static_cast<uint64_t>(seed_offset_data[0]);
     offset = static_cast<uint64_t>(seed_offset_data[1]);
@@ -274,16 +355,16 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
 static void CheckFlashAttnStatus(const bool status) {
   PADDLE_ENFORCE_EQ(status,
                     true,
-                    phi::errors::External(
+                    common::errors::External(
                         "Error in Flash-Attention, detail information is: %s",
                         phi::dynload::flash_attn_error()));
 }
 #endif
 
 static void RaiseNotSupportedError() {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("FlashAttention is unsupported, please check "
-                                 "the GPU compability and CUDA Version."));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "FlashAttention is unsupported, please check "
+      "the GPU compability and CUDA Version."));
 }
 
 }  // namespace phi

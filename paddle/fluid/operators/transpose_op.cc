@@ -202,7 +202,7 @@ class Transpose2CompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     std::string dx_name = this->GetOutputName(dx);
     std::vector<int> axis =
         static_cast<std::vector<int>>(this->Attr<std::vector<int>>("axis"));
-    VLOG(6) << "Runing transpose2_grad composite func";
+    VLOG(6) << "Running transpose2_grad composite func";
     prim::transpose_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
     this->RecoverOutputName(dx, dx_name);
   }

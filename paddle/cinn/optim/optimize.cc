@@ -22,11 +22,13 @@
 #include "paddle/cinn/optim/eliminate_broadcast_in_forloop.h"
 #include "paddle/cinn/optim/extern_call_process.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
+#include "paddle/cinn/optim/if_fusion.h"
 #include "paddle/cinn/optim/insert_debug_log_callee.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/lower_function_call_bind_vars.h"
 #include "paddle/cinn/optim/lower_intrin.h"
 #include "paddle/cinn/optim/map_extern_call.h"
+#include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
@@ -43,7 +45,12 @@ Expr Optimize(Expr e,
               Target target,
               bool runtime_debug_info,
               bool remove_gpu_for_loops) {
-  CHECK(e.defined());
+  PADDLE_ENFORCE_EQ(
+      e.defined(),
+      true,
+      phi::errors::InvalidArgument(
+          "Expected expression 'e' to be defined, but it is undefined."));
+
   auto copied = ir::ir_utils::IRCopy(e);
 
   FoldCINNCallArguments(&copied);
@@ -57,16 +64,33 @@ Expr Optimize(Expr e,
 
   VectorizeLoops(&copied, target);
   VLOG(4) << "After Optimize VectorizeLoops:" << copied;
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (copied.as_lowered_func()) {
-    ir::SetCudaAxisInfo(&copied);
-  }
-  if (remove_gpu_for_loops) {
-    RemoveGpuForloopsAxis(&copied);
-  }
-  CudaSyncThreadsDropIfThenElse(&copied);
-  // TransBufferWithDynamicShape(&copied);
+        if (copied.as_lowered_func()) {
+          ir::SetCudaAxisInfo(&copied);
+        }
+        if (remove_gpu_for_loops) {
+          RemoveGpuForloopsAxis(&copied);
+        }
+        CudaSyncThreadsDropIfThenElse(&copied);
+    // CudaTransBufferWithDynamicShape(&copied);
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+        if (copied.as_lowered_func()) {
+          ir::SetCudaAxisInfo(&copied);
+        }
+        if (remove_gpu_for_loops) {
+          RemoveGpuForloopsAxis(&copied);
+        }
+        CudaSyncThreadsDropIfThenElse(&copied);
+    // CudaTransBufferWithDynamicShape(&copied);
+#endif
+      });
 
   SimplifyBlocks(&copied);
   VLOG(4) << "After SimplifyBlocks:" << copied;
@@ -79,6 +103,9 @@ Expr Optimize(Expr e,
   // Simplify already contains CastSimplify
   Simplify(&copied);
   VLOG(10) << "After Optimize Simplify:" << copied;
+
+  IfFusion(&copied);
+  VLOG(10) << "After Optimize IfFusion" << copied;
 
   if (runtime_debug_info) {
     LOG(WARNING) << "Turn on runtime debug information output";

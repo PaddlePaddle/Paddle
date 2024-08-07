@@ -19,11 +19,11 @@
 #include <vector>
 
 #include "paddle/common/errors.h"
+#include "paddle/common/flags.h"
 #include "paddle/common/hash_funcs.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_int32(search_cache_max_number);
+COMMON_DECLARE_int32(search_cache_max_number);
 
 namespace phi {
 namespace autotune {
@@ -109,7 +109,7 @@ class AlgorithmsCache {
     PADDLE_ENFORCE_NE(
         hash_.find(key),
         hash_.end(),
-        phi::errors::PreconditionNotMet("The key does not exist."));
+        common::errors::PreconditionNotMet("The key does not exist."));
     return hash_[key];
   }
 
@@ -209,7 +209,7 @@ class MatmulAlgorithmsCache : public AlgorithmsCache<KeyT, AlgorithmT> {
     PADDLE_ENFORCE_NE(
         sub_hash_.find(sub_key),
         sub_hash_.end(),
-        phi::errors::PreconditionNotMet("The key does not exist."));
+        common::errors::PreconditionNotMet("The key does not exist."));
     return sub_hash_[sub_key];
   }
 

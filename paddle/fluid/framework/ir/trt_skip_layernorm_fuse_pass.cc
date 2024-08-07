@@ -22,18 +22,11 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 struct TrtSkipLayerNorm : public PatternBase {
   TrtSkipLayerNorm(PDPattern *pattern, const std::string &name_scope)
@@ -102,11 +95,12 @@ PDNode *TrtSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
   return layer_norm_out_var;
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -218,7 +212,8 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       }
       new_desc.SetAttr("begin_norm_axis", begin_norm_axis);
     }
-    int32_t hidden_size = layer_norm_scale->Var()->GetShape()[0];
+    int32_t hidden_size =
+        static_cast<int32_t>(layer_norm_scale->Var()->GetShape()[0]);
     new_desc.SetAttr("hidden_size", hidden_size);
 
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
@@ -251,7 +246,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
           graph->Has(framework::ir::kMultiheadMatmulPass)) {
         VLOG(3) << "start varseqlen trt_skip_layernorm_fuse_pass";
       } else {
-        PADDLE_THROW(platform::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "Use transformer'varseqlen need "
             "trt_embedding_eltwise_layernorm_fuse_pass, "
             "trt_multihead_matmul_fuse_pass. please use no_varseqlen"));
@@ -260,19 +255,17 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       VLOG(3) << "start no_varseqlen trt_skip_layernorm_fuse_pass";
     } else {
       PADDLE_THROW(
-          platform::errors::Fatal("Use transformer'varseqlen need config: "
-                                  "use_varseqlen, set pos_id, set "
-                                  "mask_id. Or not use varseqlen, do not set "
-                                  "pos_id. Please "
-                                  "reconfig"));
+          common::errors::Fatal("Use transformer'varseqlen need config: "
+                                "use_varseqlen, set pos_id, set "
+                                "mask_id. Or not use varseqlen, do not set "
+                                "pos_id. Please "
+                                "reconfig"));
     }
   }
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_skip_layernorm_fuse_pass,
               paddle::framework::ir::TrtSkipLayerNormFusePass);

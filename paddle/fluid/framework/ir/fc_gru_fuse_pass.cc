@@ -17,7 +17,7 @@
 #include <string>
 
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 namespace paddle {
 namespace framework {
 class Scope;
@@ -222,22 +222,22 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
       PADDLE_ENFORCE_NE(
           gru_bias_var,
           nullptr,
-          platform::errors::NotFound("GRU bias var has not been found."));
+          common::errors::NotFound("GRU bias var has not been found."));
       PADDLE_ENFORCE_NE(
           fc_bias_var,
           nullptr,
-          platform::errors::NotFound("FC bias var has not been found."));
+          common::errors::NotFound("FC bias var has not been found."));
 
       auto* gru_bias_tensor = gru_bias_var->GetMutable<phi::DenseTensor>();
       auto* fc_bias_tensor = fc_bias_var->GetMutable<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           gru_bias_tensor->numel(),
           fc_bias_tensor->numel(),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "GRU and FC biases have to have equal number of elements."));
 
       auto gru_bias_data =
-          gru_bias_tensor->mutable_data<float>(platform::CPUPlace());
+          gru_bias_tensor->mutable_data<float>(phi::CPUPlace());
       auto* fc_bias_data = fc_bias_tensor->data<float>();
 
       // Recompute GRU bias

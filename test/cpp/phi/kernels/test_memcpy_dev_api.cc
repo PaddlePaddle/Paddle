@@ -27,7 +27,6 @@
 namespace phi {
 namespace tests {
 
-namespace framework = paddle::framework;
 using DDim = phi::DDim;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -44,7 +43,7 @@ TEST(DEV_API, memcpy_d2h) {
   auto* x_cpu_data = cpu_ctx->template Alloc<float>(&x_cpu);
 
   for (int i = 0; i < x_cpu.numel(); i++) {
-    x_cpu_data[i] = i;
+    x_cpu_data[i] = static_cast<float>(i);
   }
 
   const auto alloc =

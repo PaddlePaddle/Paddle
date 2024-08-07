@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 
 #include "gtest/gtest.h"
 
@@ -27,7 +27,7 @@ bool CheckXPUStatusFailure(T value, const std::string& msg) {
   try {
     PADDLE_ENFORCE_XPU_SUCCESS(value);
     return false;
-  } catch (phi::enforce::EnforceNotMet& error) {
+  } catch (common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     std::cout << ex_msg << std::endl;
     return ex_msg.find(msg) != std::string::npos;
@@ -45,7 +45,7 @@ bool CheckXDNNStatusFailure(T value, const std::string& msg) {
   try {
     PADDLE_ENFORCE_XDNN_SUCCESS(value, "XDNN Error ");
     return false;
-  } catch (phi::enforce::EnforceNotMet& error) {
+  } catch (common::enforce::EnforceNotMet& error) {
     std::string ex_msg = error.what();
     std::cout << ex_msg << std::endl;
     return ex_msg.find(msg) != std::string::npos;

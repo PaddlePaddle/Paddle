@@ -15,13 +15,11 @@
 #include "paddle/fluid/framework/details/exception_holder.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
-namespace f = paddle::framework;
-namespace p = paddle::platform;
 
 TEST(ExceptionHolderTester, TestEnforceNotMetCatch) {
   ExceptionHolder exception_holder;
@@ -69,7 +67,7 @@ TEST(ExceptionHolderTester, TestBadAllocCatch) {
   ASSERT_TRUE(catch_bad_alloc);
 }
 
-TEST(ExceptionHolderTester, TestBaseExpceptionCatch) {
+TEST(ExceptionHolderTester, TestBaseExceptionCatch) {
   ExceptionHolder exception_holder;
 
   try {

@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
 
 import paddle
 from paddle.base import framework
@@ -48,7 +49,7 @@ class Jacobian:
 
     Notes:
 
-        Eclipsis index is not supported currently.
+        Ellipsis index is not supported currently.
 
     Args:
 
@@ -448,10 +449,10 @@ def _multi_index(indexes, shape):
 
 
 def jacobian(
-    ys: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
-    xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
-    batch_axis: Optional[int] = None,
-) -> Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]:
+    ys: paddle.Tensor | tuple[paddle.Tensor, ...],
+    xs: paddle.Tensor | tuple[paddle.Tensor, ...],
+    batch_axis: int | None = None,
+) -> tuple[tuple[Jacobian, ...], ...] | tuple[Jacobian, ...] | Jacobian:
     r"""
     Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
@@ -495,7 +496,7 @@ def jacobian(
 
     Returns:
 
-        Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]: Jacobian(s) of ys deriveted from xs.
+        Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]: Jacobian(s) of ys derived from xs.
 
     Examples:
 
@@ -543,9 +544,9 @@ def jacobian(
 
 def hessian(
     ys: paddle.Tensor,
-    xs: Union[paddle.Tensor, Tuple[paddle.Tensor, ...]],
-    batch_axis: Optional[int] = None,
-) -> Union[Tuple[Tuple[Hessian, ...], ...], Hessian]:
+    xs: paddle.Tensor | tuple[paddle.Tensor, ...],
+    batch_axis: int | None = None,
+) -> tuple[tuple[Hessian, ...], ...] | Hessian:
     r"""
     Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
@@ -579,7 +580,7 @@ def hessian(
 
     Returns:
 
-        Union[Tuple[Tuple[Hessian, ...], ...], Tuple[Hessian, ...], Hessian]: Hessian(s) of ys deriveted from xs.
+        Union[Tuple[Tuple[Hessian, ...], ...], Tuple[Hessian, ...], Hessian]: Hessian(s) of ys derived from xs.
 
     Examples:
 

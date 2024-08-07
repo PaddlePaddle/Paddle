@@ -14,21 +14,24 @@ limitations under the License. */
 
 #include "paddle/phi/backends/xpu/xpu_l3_strategy.h"
 #include "glog/logging.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 
 namespace phi {
 
 void XPUL3CacheBlock::Set(void* addr, size_t size) {
   if (addr == nullptr || size == 0) {
-    LOG(FATAL) << "Set XPUL3CacheBlock Size as Zero";
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Set XPUL3CacheBlock Size as Zero"));
   }
   addr_ = addr;
   size_ = size;
 }
 
-void XPUL3Planner::RunAutotune(
+// return true means success, false means Autotune L3 fail
+bool XPUL3Planner::RunAutotune(
     const std::vector<XPUL3CacheBlock*>& l3_block_dict, size_t l3_size) {
   if (l3_block_dict.size() == 0 || l3_size <= 0 || !plan_.empty()) {
-    return;
+    return false;
   }
   VLOG(3) << "AutoTune XPU L3 Cache Block Start.";
   struct node {
@@ -70,7 +73,8 @@ void XPUL3Planner::RunAutotune(
     }
   }
   if (records.size() <= 0) {
-    return;
+    VLOG(3) << "No blocks to reuse!";
+    return false;
   }
   std::vector<node> res(records[0]);
   for (size_t block_idx = 1; block_idx < records.size(); block_idx++) {
@@ -148,6 +152,7 @@ void XPUL3Planner::RunAutotune(
   }
   plan_[l3_block_dict.size()] = xdnn_ctx_l3_size;
   VLOG(3) << "AutoTune XPU L3 Cache Block End.";
+  return true;
 }
 
 }  // namespace phi

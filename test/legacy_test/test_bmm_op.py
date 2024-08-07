@@ -26,7 +26,9 @@ from paddle.pir_utils import test_with_pir_api
 class TestBmmOp(OpTest):
     def setUp(self):
         self.op_type = "bmm"
+        self.prim_op_type = "comp"
         self.python_api = paddle.tensor.bmm
+        self.public_python_api = paddle.tensor.bmm
         X = np.random.random((10, 3, 4)).astype("float64")
         Y = np.random.random((10, 4, 5)).astype("float64")
         self.inputs = {'X': X, 'Y': Y}
@@ -34,7 +36,7 @@ class TestBmmOp(OpTest):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X', 'Y'], 'Out', check_pir=True)
@@ -43,8 +45,10 @@ class TestBmmOp(OpTest):
 class TestBmmFP16Op(OpTest):
     def setUp(self):
         self.op_type = "bmm"
+        self.prim_op_type = "comp"
         self.dtype = np.float16
         self.python_api = paddle.tensor.bmm
+        self.public_python_api = paddle.tensor.bmm
         X = np.random.random((10, 3, 4)).astype("float16")
         Y = np.random.random((10, 4, 5)).astype("float16")
         self.inputs = {'X': X, 'Y': Y}
@@ -52,7 +56,7 @@ class TestBmmFP16Op(OpTest):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X', 'Y'], 'Out', check_pir=True)
@@ -66,8 +70,10 @@ class TestBmmFP16Op(OpTest):
 class TestBmmBF16Op(OpTest):
     def setUp(self):
         self.op_type = "bmm"
+        self.prim_op_type = "comp"
         self.dtype = np.uint16
         self.python_api = paddle.tensor.bmm
+        self.public_python_api = paddle.tensor.bmm
         X = np.random.random((10, 3, 4)).astype("float32")
         Y = np.random.random((10, 4, 5)).astype("float32")
         self.inputs = {'X': X, 'Y': Y}
@@ -80,7 +86,9 @@ class TestBmmBF16Op(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_pir=True)
+        self.check_output_with_place(
+            self.place, check_pir=True, check_prim_pir=True
+        )
 
     def test_checkout_grad(self):
         self.check_grad_with_place(
@@ -129,8 +137,8 @@ class API_TestDygraphBmm(unittest.TestCase):
             ]
         )
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(input1)
-            y = base.dygraph.to_variable(input2)
+            x = paddle.to_tensor(input1)
+            y = paddle.to_tensor(input2)
             out = paddle.bmm(x, y)
             out_np = out.numpy()
         expected_result = np.matmul(input1, input2)

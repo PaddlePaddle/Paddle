@@ -34,12 +34,12 @@ class TreeNode {
 
  private:
   int is_prefix;
-  TreeNode* children[256];
+  TreeNode* children[256];  // NOLINT
 };
 
 void TreeNode::clear() {
-  for (int i = 0; i < 256; i++) {
-    if (children[i] != nullptr) delete children[i];
+  for (auto& i : children) {
+    delete i;
   }
 }
 
@@ -78,7 +78,8 @@ const char* pystr_to_cstr(PyObject* pystr) {
   if (PyUnicode_Check(pystr))
     return PyUnicode_AsUTF8(pystr);
   else
-    PADDLE_THROW(phi::errors::InvalidArgument("Input PyObject is not string!"));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Input PyObject is not string!"));
 }
 
 /*========================== SkipCodeInfo ===============================*/
@@ -200,8 +201,8 @@ void CodeStatus::add_with_graph_code(PyCodeObject* code) {
 }
 
 void CodeStatus::clear() {
-  for (auto iter = code_map.begin(); iter != code_map.end(); iter++) {
-    delete iter->second;
+  for (auto& iter : code_map) {
+    delete iter.second;
   }
   code_map.clear();
 }

@@ -38,6 +38,7 @@ class XPUQuantizeOpPass : public FusePassBase {
  protected:
   void ApplyImpl(Graph* graph) const override;
   void QuantizeConv(Graph* graph) const;
+  void QuantizeQkvAttention(Graph* graph) const;
   void QuantizeFC(Graph* graph) const;
 
  private:

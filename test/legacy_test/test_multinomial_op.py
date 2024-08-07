@@ -13,15 +13,19 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
 
+sys.path.append("../../legacy_test")
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 def sample_output_one_dimension(out, dim):
@@ -311,9 +315,9 @@ class TestMultinomialApi(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        startup_program = base.Program()
-        train_program = base.Program()
-        with base.program_guard(train_program, startup_program):
+        startup_program = paddle.static.Program()
+        train_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
             x = paddle.static.data('x', shape=[4], dtype='float32')
             out = paddle.multinomial(x, num_samples=100000, replacement=True)
 
@@ -393,7 +397,7 @@ class TestRandomValue(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
 
-        # Different GPU generatte different random value. Only test V100 here.
+        # Different GPU generate different random value. Only test V100 here.
         if "V100" not in paddle.device.cuda.get_device_name():
             return
 
@@ -454,11 +458,12 @@ class TestMultinomialTensorNumSamples(UnittestBase):
         out = paddle.multinomial(x, num_samples)
         return out
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([3, 4])
             x.stop_gradient = False
@@ -466,10 +471,11 @@ class TestMultinomialTensorNumSamples(UnittestBase):
             out = self.call_func(paddle.abs(feat))
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(paddle.cast(out, 'float32')))
-            self.assertTrue(self.var_prefix() in str(main_prog))
+            if not in_pir_mode():
+                self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[feat, out])
             paddle.static.save_inference_model(
                 self.save_path, [x], [feat, out], exe

@@ -14,13 +14,26 @@
 
 #pragma once
 
+#include <memory.h>
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn::common {
 
 struct DimExprConverter final {
   ir::Expr ConvertToIrExpr(const symbol::DimExpr&) const;
+};
+
+struct DimExprConverterWithSymbolBindings final {
+  ir::Expr ConvertToIrExpr(const symbol::DimExpr&) const;
+  DimExprConverterWithSymbolBindings(
+      const std::vector<ir::Tensor>& inputs,
+      const cinn::dialect::SymbolBindings& symbol_bindings);
+
+ private:
+  struct DimExprToIrExprVisitorWithSymbolBinding;
+  std::shared_ptr<DimExprToIrExprVisitorWithSymbolBinding> visitor_;
 };
 
 }  // namespace cinn::common

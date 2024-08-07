@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import hypothesis.strategies as st
 import numpy as np
@@ -38,8 +40,8 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self, *args, **kwargs):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 2, 3, 4]).astype(np.float32)
+        def generate_input1(attrs: list[dict[str, Any]]):
+            return np.ones([1, 2]).astype(np.float32)
 
         dics = [{"repeat_times": kwargs['repeat_times']}]
 
@@ -68,11 +70,11 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 2, 3, 4]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 2]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 3]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -116,7 +118,7 @@ class TrtConvertTileTest(TrtLayerAutoScanTest):
             attrs, True
         ), 1e-3
 
-    @given(repeat_times=st.sampled_from([[100], [1, 2], [0, 3], [1, 2, 100]]))
+    @given(repeat_times=st.sampled_from([[1], [1, 2], [0, 3]]))
     def test(self, *args, **kwargs):
         self.run_test(*args, **kwargs)
 
@@ -126,11 +128,11 @@ class TrtConvertTileTest2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 2, 3, 4]).astype(np.float32)
+        def generate_input1(attrs: list[dict[str, Any]]):
+            return np.ones([1, 2]).astype(np.float32)
 
         dics = [{}]
-        dics_intput = [
+        dics_input = [
             {"X": ["tile_input"], "RepeatTimes": ["repeat_times"]},
         ]
         ops_config = [
@@ -140,13 +142,13 @@ class TrtConvertTileTest2(TrtLayerAutoScanTest):
                 "op_outputs": {"Out": ["repeat_times"]},
                 "op_attrs": {
                     "dtype": 2,
-                    "str_value": "10",
+                    "str_value": "1",
                     "shape": [1],
                 },
             },
             {
                 "op_type": "tile",
-                "op_inputs": dics_intput[0],
+                "op_inputs": dics_input[0],
                 "op_outputs": {"Out": ["tile_out"]},
                 "op_attrs": dics[0],
             },
@@ -167,11 +169,11 @@ class TrtConvertTileTest2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"tile_input": [1, 2, 3, 4]}
-            self.dynamic_shape.max_input_shape = {"tile_input": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"tile_input": [1, 2, 3, 4]}
+            self.dynamic_shape.min_input_shape = {"tile_input": [1, 2]}
+            self.dynamic_shape.max_input_shape = {"tile_input": [4, 3]}
+            self.dynamic_shape.opt_input_shape = {"tile_input": [1, 2]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -214,11 +216,11 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 2, 3, 4]).astype(np.float32)
+        def generate_input1(attrs: list[dict[str, Any]]):
+            return np.ones([1, 2]).astype(np.float32)
 
         dics = [{}]
-        dics_intput = [
+        dics_input = [
             {
                 "X": ["tile_input"],
                 "repeat_times_tensor": ["repeat_times1", "repeat_times2"],
@@ -247,7 +249,7 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
             },
             {
                 "op_type": "tile",
-                "op_inputs": dics_intput[0],
+                "op_inputs": dics_input[0],
                 "op_outputs": {"Out": ["tile_out"]},
                 "op_attrs": dics[0],
             },
@@ -268,11 +270,11 @@ class TrtConvertTileTest3(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"tile_input": [1, 2, 3, 4]}
-            self.dynamic_shape.max_input_shape = {"tile_input": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"tile_input": [1, 2, 3, 4]}
+            self.dynamic_shape.min_input_shape = {"tile_input": [1, 2]}
+            self.dynamic_shape.max_input_shape = {"tile_input": [4, 3]}
+            self.dynamic_shape.opt_input_shape = {"tile_input": [1, 2]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}

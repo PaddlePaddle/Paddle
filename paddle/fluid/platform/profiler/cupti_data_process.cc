@@ -18,8 +18,8 @@
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/os_info.h"
 
 namespace paddle {
 namespace platform {
@@ -65,15 +65,16 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   constexpr int threads_per_warp = 32;
 #endif
   const gpuDeviceProp& device_property =
-      paddle::platform::GetDeviceProperties(kernel->deviceId);
+      paddle::platform::GetDeviceProperties(static_cast<int>(kernel->deviceId));
   blocks_per_sm =
       static_cast<float>(event.kernel_info.grid_x * event.kernel_info.grid_y *
                          event.kernel_info.grid_z) /
-      device_property.multiProcessorCount;
+      static_cast<float>(device_property.multiProcessorCount);
   warps_per_sm = blocks_per_sm *
-                 (event.kernel_info.block_x * event.kernel_info.block_y *
-                  event.kernel_info.block_z) /
-                 threads_per_warp;
+                 static_cast<float>(
+                     (event.kernel_info.block_x * event.kernel_info.block_y *
+                      event.kernel_info.block_z)) /
+                 static_cast<float>(threads_per_warp);
 #ifdef PADDLE_WITH_HIP
   occupancy = paddle::platform::CalculateEstOccupancy(
       kernel->deviceId,
@@ -87,11 +88,11 @@ void AddKernelRecord(const CUpti_ActivityKernel4* kernel,
   occupancy = paddle::platform::CalculateEstOccupancy(
       kernel->deviceId,
       event.kernel_info.registers_per_thread,
-      event.kernel_info.static_shared_memory,
-      event.kernel_info.dynamic_shared_memory,
-      event.kernel_info.block_x,
-      event.kernel_info.block_y,
-      event.kernel_info.block_z,
+      static_cast<int32_t>(event.kernel_info.static_shared_memory),
+      static_cast<int32_t>(event.kernel_info.dynamic_shared_memory),
+      static_cast<int32_t>(event.kernel_info.block_x),
+      static_cast<int32_t>(event.kernel_info.block_y),
+      static_cast<int32_t>(event.kernel_info.block_z),
       blocks_per_sm);
 #endif  // PADDLE_WITH_HIP
   event.kernel_info.blocks_per_sm = blocks_per_sm;
@@ -318,7 +319,7 @@ void AddApiRecord(const CUpti_ActivityAPI* api,
   event.name = CuptiRuntimeCbidStr::GetInstance().RuntimeKind(api->cbid);
   event.start_ns = api->start;
   event.end_ns = api->end;
-  event.process_id = GetProcessId();
+  event.process_id = phi::GetProcessId();
   uint64_t tid = 0;
   auto iter = tid_mapping.find(api->threadId);
   if (iter == tid_mapping.end()) {

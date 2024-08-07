@@ -183,7 +183,7 @@ struct PDNode {
         type_(type) {
     PADDLE_ENFORCE_NOT_NULL(
         teller_,
-        platform::errors::NotFound("invalid teller is set, teller is null"));
+        common::errors::NotFound("invalid teller is set, teller is null"));
   }
 
   PDNode(PDNode&& other) = default;
@@ -458,15 +458,15 @@ static std::string UniqueKey(const std::string& repr) {
 // var: variable.
 // arg: the argument declared by PATTERN_DECL_NODE in a pattern definition.
 // pat: the pattern object.
-#define GET_IR_NODE_FROM_SUBGRAPH(var, arg, pat)                               \
-  PADDLE_ENFORCE_NE(subgraph.count(pat.arg##_n()),                             \
-                    0UL,                                                       \
-                    platform::errors::NotFound("Node not found for PDNode %s", \
-                                               pat.arg##_repr()));             \
-  Node* var = subgraph.at(pat.arg##_n());                                      \
-  PADDLE_ENFORCE_NOT_NULL(var,                                                 \
-                          platform::errors::NotFound(                          \
-                              "node %s not exists in the sub-graph", #arg));
+#define GET_IR_NODE_FROM_SUBGRAPH(var, arg, pat)                             \
+  PADDLE_ENFORCE_NE(subgraph.count(pat.arg##_n()),                           \
+                    0UL,                                                     \
+                    common::errors::NotFound("Node not found for PDNode %s", \
+                                             pat.arg##_repr()));             \
+  Node* var = subgraph.at(pat.arg##_n());                                    \
+  PADDLE_ENFORCE_NOT_NULL(                                                   \
+      var,                                                                   \
+      common::errors::NotFound("node %s not exists in the sub-graph", #arg));
 
 // The base class of all the patterns.
 struct PatternBase {
@@ -998,10 +998,6 @@ struct DotProductAttention : public PatternBase {
   PATTERN_DECL_NODE(attn_v_transpose);
   PATTERN_DECL_NODE(attn_q_scale);
   PATTERN_DECL_NODE(attn_qk_matmul);
-  PATTERN_DECL_NODE(attn_mask_cast1);
-  PATTERN_DECL_NODE(attn_mask_scale1);
-  PATTERN_DECL_NODE(attn_mask_scale2);
-  PATTERN_DECL_NODE(attn_mask_cast2);
   PATTERN_DECL_NODE(attn_mask_eleadd);
   PATTERN_DECL_NODE(attn_softmax);
   PATTERN_DECL_NODE(attn_dropout);
@@ -1021,10 +1017,6 @@ struct DotProductAttention : public PatternBase {
   PATTERN_DECL_NODE(attn_q_scale_out);
   PATTERN_DECL_NODE(attn_qk_matmul_out);
   PATTERN_DECL_NODE(attn_mask);
-  PATTERN_DECL_NODE(attn_mask_cast1_out);
-  PATTERN_DECL_NODE(attn_mask_scale1_out);
-  PATTERN_DECL_NODE(attn_mask_scale2_out);
-  PATTERN_DECL_NODE(attn_mask_cast2_out);
   PATTERN_DECL_NODE(attn_mask_eleadd_out);
   PATTERN_DECL_NODE(attn_softmax_out);
   PATTERN_DECL_NODE(attn_dropout_out);
@@ -1613,8 +1605,8 @@ struct ConvElementwiseaddAct : public PatternBase {
 };
 
 // Conv + ElementwiseAdd + ElementwiseAdd + Activation
-struct ConvElementwiseadd2Act : public PatternBase {
-  ConvElementwiseadd2Act(PDPattern* pattern, const std::string& name_scope)
+struct ConvElementwiseAdd2Act : public PatternBase {
+  ConvElementwiseAdd2Act(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(
             pattern, name_scope, "conv_elementwiseadd2_elementwiseadd_act") {}
 
@@ -1638,7 +1630,7 @@ struct ConvElementwiseadd2Act : public PatternBase {
 };
 
 // Conv + ElementwiseAdd
-// This pattern should be used after ConvElementwiseadd2Act or
+// This pattern should be used after ConvElementwiseAdd2Act or
 // ConvElementwiseadd pass
 struct ConvElementwiseadd : public PatternBase {
   ConvElementwiseadd(PDPattern* pattern, const std::string& name_scope)
@@ -1869,9 +1861,9 @@ struct DeleteDropoutOpPattern : public PatternBase {
 
 struct DeleteQuantDequantOpPattern : public PatternBase {
   DeleteQuantDequantOpPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "delete_quantdequant_op_pattern") {}
+      : PatternBase(pattern, name_scope, "delete_quant_dequant_op_pattern") {}
 
-  void operator()(PDNode* input_node, const std::string& quantdequant_types);
+  void operator()(PDNode* input_node, const std::string& quant_dequant_types);
 
   PATTERN_DECL_NODE(quant_dequant_op_inscale);
   PATTERN_DECL_NODE(quant_dequant_op);
@@ -1883,7 +1875,7 @@ struct DeleteQuantDequantFilterOpPattern : public PatternBase {
   DeleteQuantDequantFilterOpPattern(PDPattern* pattern,
                                     const std::string& name_scope)
       : PatternBase(
-            pattern, name_scope, "delete_quantdequant_filter_op_pattern") {}
+            pattern, name_scope, "delete_quant_dequant_filter_op_pattern") {}
 
   void operator()();
 
@@ -2628,6 +2620,17 @@ struct BNAddActConvGrad : public PatternBase {
   PATTERN_DECL_NODE(d_bn2_x);
   PATTERN_DECL_NODE(d_bn2_scale);
   PATTERN_DECL_NODE(d_bn2_bias);
+};
+
+struct SparseConvOptimPartern : public PatternBase {
+  SparseConvOptimPartern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "sparse_conv_optim_partern") {}
+
+  void operator()();
+  PATTERN_DECL_NODE(sp_conv3d_x);
+  PATTERN_DECL_NODE(sp_conv3d_kernel);
+  PATTERN_DECL_NODE(sp_conv3d_op);
+  PATTERN_DECL_NODE(sp_conv3d_out);
 };
 
 }  // namespace patterns

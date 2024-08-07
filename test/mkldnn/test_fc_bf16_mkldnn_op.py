@@ -67,7 +67,7 @@ class TestFcBf16MklDNNOp(OpTest):
         self.outputs = {'Out': self.output}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
 
     def test_check_grad_normal(self):
         pass

@@ -20,14 +20,14 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
-#include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_bool(enable_auto_detect_gpu_topo);
-PHI_DECLARE_bool(enable_auto_rdma_trans);
+COMMON_DECLARE_bool(enable_auto_detect_gpu_topo);
+COMMON_DECLARE_bool(enable_auto_rdma_trans);
 
 namespace paddle {
 namespace framework {
@@ -72,7 +72,7 @@ XPUResource::XPUResource(std::vector<int> &dev_ids, int index) {
   dev_ids_ = dev_ids;
   dev_id_ = dev_ids_[index];
 
-  platform::XPUDeviceGuard guard(dev_id_);
+  phi::backends::xpu::XPUDeviceGuard guard(dev_id_);
   local_streams_.resize(dev_ids_.size());
 
   comm_streams_.resize(dev_ids_.size(), NULL);
@@ -86,7 +86,7 @@ XPUResource::XPUResource(std::vector<int> &dev_ids, int index) {
 }
 
 XPUResource::~XPUResource() {
-  platform::XPUDeviceGuard guard(dev_id_);
+  phi::backends::xpu::XPUDeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_destroy(local_streams_[i]));
   }
@@ -124,7 +124,7 @@ void HeterPsResource::enable_p2p() {
   }
 #endif
 }
-static std::string excute_cmd_result(const std::string &cmd) {
+static std::string execute_cmd_result(const std::string &cmd) {
   FILE *fp = popen(cmd.c_str(), "r");
   if (fp == NULL) {
     fprintf(stderr, "cmd %s open failed\n", cmd.c_str());
@@ -148,7 +148,13 @@ GpuRDMAChecker *GpuRDMAChecker::get(int device_num) {
     g_checker = std::make_shared<GpuRDMAChecker>(device_num);
   }
   // check gpu num
-  CHECK(device_num == g_checker->device_num());
+  PADDLE_ENFORCE_EQ(
+      device_num,
+      g_checker->device_num(),
+      common::errors::InvalidArgument(
+          "Invalid number of device. Should be %d. But received %d.",
+          device_num,
+          g_checker->device_num()));
   return g_checker.get();
 }
 GpuRDMAChecker::GpuRDMAChecker(int device_num) {
@@ -171,7 +177,8 @@ bool GpuRDMAChecker::check_device_status(const int &device_count,
     return false;
   }
   // a100
-  std::string str = excute_cmd_result("source ~/.bashrc && nvidia-smi topo -m");
+  std::string str =
+      execute_cmd_result("source ~/.bashrc && nvidia-smi topo -m");
   if (str.empty()) {  // a100 auto gpu card rdma status
     return false;
   }

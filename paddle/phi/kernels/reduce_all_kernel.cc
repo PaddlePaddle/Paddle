@@ -53,3 +53,7 @@ PD_REGISTER_KERNEL(
 #if defined(PADDLE_WITH_XPU_KP)
 PD_REGISTER_KERNEL(all, KPS, ALL_LAYOUT, phi::AllKernel, bool) {}
 #endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(all, XPU, ALL_LAYOUT, phi::AllKernel, bool) {}
+#endif

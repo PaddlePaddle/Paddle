@@ -102,7 +102,7 @@ class TestCostModel(TestCaseBase):
     def test_net(self):
         x = paddle.rand([10])
         net = Net()
-        net = paddle.jit.to_static(net, enable_fallback=True)
+        net = paddle.jit.to_static(net, full_graph=False)
         for i in range(30):
             x = net(x)
 

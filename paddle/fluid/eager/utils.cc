@@ -78,7 +78,7 @@ AutogradMeta* EagerUtils::autograd_meta(paddle::Tensor* target) {
 AutogradMeta* EagerUtils::unsafe_autograd_meta(const paddle::Tensor& target) {
   auto* p_autograd_meta = target.get_autograd_meta();
   PADDLE_ENFORCE(p_autograd_meta,
-                 paddle::platform::errors::Fatal(
+                 common::errors::Fatal(
                      "Null autograd_meta gotten from unsafe_autograd_meta()"));
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
@@ -114,6 +114,18 @@ std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
   metas.reserve(targets.size());
   for (const paddle::Tensor& t : targets) {
     metas.emplace_back(nullable_autograd_meta(t));
+  }
+  return metas;
+}
+
+std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
+    const paddle::optional<std::vector<paddle::Tensor>>& targets) {
+  std::vector<AutogradMeta*> metas;
+  if (targets.get_ptr() != nullptr) {
+    metas.reserve(targets.get_ptr()->size());
+    for (const paddle::Tensor& t : (*(targets.get_ptr()))) {
+      metas.emplace_back(nullable_autograd_meta(t));
+    }
   }
   return metas;
 }
@@ -227,7 +239,7 @@ void EagerUtils::CheckInplace(const paddle::Tensor& target,
   if (require_any_grad && autograd_meta) {
     PADDLE_ENFORCE_EQ(!autograd_meta->StopGradient() && IsLeafTensor(target),
                       false,
-                      paddle::platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Leaf Var (%s) that doesn't stop gradient "
                           "can't use inplace strategy.",
                           target.name()));
@@ -248,7 +260,7 @@ std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     paddle::Tensor* tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
-      paddle::platform::errors::Fatal(
+      common::errors::Fatal(
           "Should Not Pass Empty tensor pointer in, since only output can "
           "reach this, please check output value and make sure it's not null"));
   return {TrySyncToVar(*tensor)};
@@ -263,7 +275,7 @@ std::vector<std::shared_ptr<egr::EagerVariable>> EagerUtils::TrySyncToVars(
     auto* tensor = tensors[i];
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        paddle::platform::errors::Fatal(
+        common::errors::Fatal(
             "Tensor is null and cannot be copied. "
             "We are tring to TrySyncToVars tensor from its "
             "shared_ptr, this error may indicate some outputs "
@@ -301,8 +313,8 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
   PADDLE_ENFORCE_EQ(
       input_var->Var().IsInitialized(),
       true,
-      paddle::platform::errors::InvalidArgument(
-          "Tensor %s has not been initialized!", input_var->name()));
+      common::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                      input_var->name()));
 
   if (phi::DenseTensor::classof(input_var->GetTensorBase().get())) {
     auto input_dense_tensor =
@@ -310,7 +322,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     PADDLE_ENFORCE_EQ(
         input_dense_tensor->IsInitialized(),
         true,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "DenseTensor %s has not been initialized!", input_var->name()));
 
     auto* view_output_tensor =
@@ -329,8 +341,8 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
   PADDLE_ENFORCE_EQ(
       input_tensor.initialized(),
       true,
-      paddle::platform::errors::InvalidArgument(
-          "Tensor %s has not been initialized!", input_tensor.name()));
+      common::errors::InvalidArgument("Tensor %s has not been initialized!",
+                                      input_tensor.name()));
 
   if (input_tensor.is_dense_tensor()) {
     auto input_dense_tensor =
@@ -339,7 +351,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
       view_output_tensor->set_impl(std::make_shared<phi::DenseTensor>());
     } else {
       PADDLE_ENFORCE(view_output_tensor->is_dense_tensor(),
-                     phi::errors::Unavailable(
+                     common::errors::Unavailable(
                          "DenseTensor can not be inplaced with other Tensor."));
     }
     auto view_output_dense_tensor =
@@ -366,7 +378,7 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
                   ->dist_attr()));
     } else {
       PADDLE_ENFORCE(view_output_tensor->is_dist_tensor(),
-                     phi::errors::Unavailable(
+                     common::errors::Unavailable(
                          "DistTensor can not be inplaced with other Tensor."));
     }
     auto view_output_dense_tensor =
@@ -391,7 +403,7 @@ std::vector<paddle::Tensor> EagerUtils::GetOutputs(
   for (const auto& out : outs) {
     PADDLE_ENFORCE_NOT_NULL(
         out.get(),
-        paddle::platform::errors::Fatal(
+        common::errors::Fatal(
             "Eager Tensor %s is null and cannot be copied. "
             "We are tring to Get Output tensor from its "
             "shared_ptr, this error may indicate some outputs "
@@ -406,7 +418,7 @@ paddle::Tensor EagerUtils::GetOutput(
     const std::shared_ptr<EagerVariable>& out) {
   PADDLE_ENFORCE_NOT_NULL(
       out.get(),
-      paddle::platform::errors::Fatal(
+      common::errors::Fatal(
           "Eager Tensor %s is null and cannot be copied. We "
           "are tring to Get Output tensor from its shared_ptr, "
           "this error may indicate output is nullptr",
@@ -418,11 +430,10 @@ void EagerUtils::GetOutput(const std::shared_ptr<EagerVariable>& out,
                            paddle::Tensor* out_var) {
   PADDLE_ENFORCE_NOT_NULL(
       out_var,
-      paddle::platform::errors::Fatal(
-          "Tensor is null and cannot be copied. "
-          "We are tring to OverwriteOutput from its "
-          "shared_ptr, this error may indicate some outputs "
-          "are nullptr"));
+      common::errors::Fatal("Tensor is null and cannot be copied. "
+                            "We are tring to OverwriteOutput from its "
+                            "shared_ptr, this error may indicate some outputs "
+                            "are nullptr"));
   out_var->set_impl(out->GetTensorBase());
   out_var->set_name(out->name());
 }
@@ -441,7 +452,7 @@ void EagerUtils::GetOutputs(
   for (size_t i = 0; i < outs.size(); i++) {
     PADDLE_ENFORCE_NOT_NULL(
         out_var[i],
-        paddle::platform::errors::Fatal(
+        common::errors::Fatal(
             "Tensor is null and cannot be copied. "
             "We are tring to OverwriteOutput from its "
             "shared_ptr, this error may indicate some outputs "
@@ -459,11 +470,10 @@ void EagerUtils::GetOutputs(const std::shared_ptr<EagerVariable>& out,
                             const std::vector<paddle::Tensor*>& out_var) {
   PADDLE_ENFORCE_NOT_NULL(
       out_var[0],
-      paddle::platform::errors::Fatal(
-          "Tensor is null and cannot be copied. "
-          "We are tring to OverwriteOutput from its "
-          "shared_ptr, this error may indicate some outputs "
-          "are nullptr"));
+      common::errors::Fatal("Tensor is null and cannot be copied. "
+                            "We are tring to OverwriteOutput from its "
+                            "shared_ptr, this error may indicate some outputs "
+                            "are nullptr"));
   out_var[0]->set_impl(out->GetTensorBase());
 }
 
@@ -503,7 +513,7 @@ std::shared_ptr<egr::GradNodeBase> EagerUtils::GetGradAccumulationNode(
         return accumulation_ptr;
       } else {
         // Current GradNode is not a egr::GradNodeAccumulation
-        PADDLE_THROW(paddle::platform::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "GetGradAccumulationNode should only be called on leaf tensor, but "
             "target tensor: %s has GradNode which is not a "
             "GradNodeAccumulation, and this should not happened unless target "
@@ -602,7 +612,7 @@ void EagerUtils::FillZeroForEmptyGradInput(paddle::Tensor* in_grad,
   if (!in_grad->initialized()) {
     PADDLE_ENFORCE(
         grad_in_meta.HasTensorMeta(),
-        paddle::platform::errors::Fatal(
+        common::errors::Fatal(
             "Unable to fill empty grad inputs due to empty GradSlotMeta"));
     const auto& tensor_meta = grad_in_meta.GetTensorMeta();
     if (grad_in_meta.IsDistMeta()) {
@@ -717,8 +727,8 @@ std::string EagerUtils::GradNodeStr(const egr::GradNodeBase& node) {
       in_slot_str +=
           paddle::string::Sprintf(SLOT_INFO_TEMPLATE, i, sg_str, edges_str);
     }
-    std::string in_meta_str =
-        paddle::string::Sprintf(GRAD_SLOT_META_TEMPLATE, in_slot_str);
+    std::string in_meta_str = paddle::string::Sprintf(
+        GRAD_SLOT_META_TEMPLATE, in_metas.size(), in_slot_str);
     return paddle::string::Sprintf(
         GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
   } else if (VLOG_IS_ON(5)) {
@@ -777,9 +787,11 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                 "%s, Local Shape: %s", t.dims(), dist_t->local_dims()),
             dist_t->dist_attr());
       } else {
+        // NOTE: If the tensor is a dist-tensor, it's place may be `unknown` in
+        // the no-calculation rank.
         tensor_info_str += paddle::string::Sprintf(DIST_TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
-                                                   "Unknown",
+                                                   t.dtype(),
                                                    "Unknown",
                                                    dist_t->defined(),
                                                    dist_t->initialized(),

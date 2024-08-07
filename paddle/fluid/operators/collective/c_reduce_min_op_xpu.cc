@@ -21,7 +21,6 @@ DEFINE_C_REDUCE_XPU_KERNEL(CReduceMin, kRedMin);
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(
     c_reduce_min, XPU, ALL_LAYOUT, ops::CReduceMinXPUKernel, float) {}

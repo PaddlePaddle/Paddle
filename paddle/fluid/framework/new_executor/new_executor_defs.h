@@ -23,15 +23,15 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
@@ -40,9 +40,13 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace framework {
 
+class InstructionBase;
+class ValueExecutionInfo;
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 
 using HookFunc = std::function<void(OperatorBase*, Scope*)>;
+using PirHookFunc =
+    std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
 
 using SchedulingPriority = int64_t;
 
@@ -82,7 +86,7 @@ class VariableScope {
 
   void SetLocalScope(Scope* local_scope);
 
-  ~VariableScope();
+  ~VariableScope() = default;
 
   // Get variable id by name, return -1 if not found
   int GetIdByName(const std::string& name) const;
@@ -168,7 +172,7 @@ struct OpFuncNode {
   int stream_priority_{0};  // lower value, higher priority
   // fit for phi kernel
   phi::Kernel* phi_kernel_{nullptr};  // not owned
-  platform::DeviceContext* dev_ctx_;  // not owned
+  phi::DeviceContext* dev_ctx_;       // not owned
 
   std::map<int, int> inplace_back_map;
 
@@ -201,7 +205,7 @@ class Instruction {
  public:
   Instruction(size_t id,
               OpFuncNode&& op_func_node,
-              const platform::DeviceContext& dev_ctx);
+              const phi::DeviceContext& dev_ctx);
 
   bool IsArtificial() const { return is_artificial_; }
 
@@ -289,11 +293,11 @@ class Instruction {
 
   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
 
-  const platform::DeviceContext& DeviceContext() const;
+  const phi::DeviceContext& DeviceContext() const;
 
-  const std::vector<std::pair<Variable*, Variable*>>& InplaceInfo() const;
+  const std::vector<std::pair<const Variable*, Variable*>>& InplaceInfo() const;
 
-  void AddInplace(Variable* in, Variable* out);
+  void AddInplace(const Variable* in, Variable* out);
 
   void ClearInplace();
 
@@ -327,7 +331,7 @@ class Instruction {
   std::vector<EventInter> events_to_wait_;
 
   OpFuncNode op_func_node_;
-  const platform::DeviceContext& dev_ctx_;  // not owned
+  const phi::DeviceContext& dev_ctx_;  // not owned
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
@@ -336,7 +340,7 @@ class Instruction {
 
   std::vector<size_t> gc_check_vars_;
 
-  std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
+  std::vector<std::pair<const Variable*, Variable*>> vec_inplace_in_to_out_;
 
   bool pre_define_context_{false};
 };
@@ -348,7 +352,7 @@ static constexpr char kFetchVarName[] = "fetch";
 
 // static_ref_ is the numer of last live ops calculated to statically after
 // `build` the Instructions. dynamic_ref_  is the runtime version ref which will
-// be decreased by one dynamiclly after the execution of an op (in last ops
+// be decreased by one dynamically after the execution of an op (in last ops
 // list). var_ is the related variable
 
 // The dynamic_ref_ is initialized to static_ref_ first, and is decreased to 1
@@ -379,7 +383,7 @@ class VarRefInfo {
 
 // static_dep_ is the numer of dependencies (ops that must run before it) of
 // each op which is calculated to statically. static_dep_  is the runtime
-// version dep which will be decreased by one dynamiclly after the execution of
+// version dep which will be decreased by one dynamically after the execution of
 // one dependency op.
 
 // The dynamic_dep_ is initialized to static_dep_ first, and is decreased to 1

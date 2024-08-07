@@ -15,7 +15,7 @@
 #include "paddle/fluid/platform/device_event_base.h"
 
 #include "paddle/fluid/platform/device_event_cpu.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 
 namespace paddle {
 namespace platform {
@@ -57,7 +57,7 @@ unsigned int GenerateDeviceEventFlag(bool enable_timing,
 }
 
 void DeviceEventCreateCPU(DeviceEvent* event,
-                          const platform::Place& place,
+                          const phi::Place& place,
                           unsigned int flag) {
   event->InitEvent(std::make_shared<CPUDeviceEventWrapper>(place, flag));
 }
@@ -66,9 +66,9 @@ void DeviceEventRecordCPU(DeviceEvent* event, const DeviceContext* context) {
   auto* wrapper = static_cast<CPUDeviceEventWrapper*>(event->GetEvent().get());
 
   std::unique_lock<std::mutex> lock(wrapper->mutex_);
-  // NOTE: As for CudaEvent_t, it can be used to Record() repeatly. CudaEvent_t
-  // internally reset its status from finished into initialized.
-  // So we simulate the process here.
+  // NOTE: As for CudaEvent_t, it can be used to Record() repeatedly.
+  // CudaEvent_t internally reset its status from finished into initialized. So
+  // we simulate the process here.
   if (wrapper->status_.load() == EventStatus::SUCCESS) {
     VLOG(3) << "Found EventStatus is SUCCESS before RecordCPU. Reset it into "
                "INITIALIZED.";
@@ -78,7 +78,7 @@ void DeviceEventRecordCPU(DeviceEvent* event, const DeviceContext* context) {
   PADDLE_ENFORCE_LT(
       wrapper->status_.load(),
       EventStatus::SCHEDULED,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "EventStatus shall be not SCHEDULED before Record(), but received %s",
           wrapper->status_.load()));
   if (wrapper->status_ == EventStatus::INITIALIZED) {
@@ -90,7 +90,7 @@ bool DeviceEventQueryCPU(const DeviceEvent* event) {
   auto* wrapper = static_cast<CPUDeviceEventWrapper*>(event->GetEvent().get());
   PADDLE_ENFORCE_NOT_NULL(
       wrapper,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Failed to dynamic_cast event into CPUDeviceEventWrapper."));
 
   return wrapper->status_ == EventStatus::SUCCESS;
@@ -117,7 +117,7 @@ void EventSetFinishedCPU(const DeviceEvent* event) {
 
   PADDLE_ENFORCE_LE(wrapper->status_.load(),
                     EventStatus::SCHEDULED,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "EventStatus shall be  INITIALIZED | SCHEDULED before "
                         "EventSetFinishedCPU()"));
   wrapper->status_ = EventStatus::SUCCESS;

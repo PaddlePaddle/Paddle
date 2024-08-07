@@ -81,12 +81,12 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
                     ]
                     self.dims = dims
                     self.dtype = dtype
-                    dics_intput = [{"X": ["fill_any_like_input"]}]
+                    dics_input = [{"X": ["fill_any_like_input"]}]
 
                     ops_config = [
                         {
                             "op_type": "fill_any_like",
-                            "op_inputs": dics_intput[0],
+                            "op_inputs": dics_input[0],
                             "op_outputs": {"Out": ["fill_any_like_out"]},
                             "op_attrs": dics[0],
                         }

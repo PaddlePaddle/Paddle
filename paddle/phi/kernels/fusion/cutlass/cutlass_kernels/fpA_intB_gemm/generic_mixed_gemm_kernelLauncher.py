@@ -135,7 +135,7 @@ def SubstituteTemplate(template, values):
     while changed:
         changed = False
         for key, value in values.items():
-            regex = "\\{%s\\}" % key
+            regex = f"\\{{{key}\\}}"
             newtext = re.sub(regex, value, text)
             if newtext != text:
                 changed = True
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     header_name = "autogen_tmp/arch_define.h"
     if archs:
         for arch in archs:
-            define_line = "#define USE_FPAINTB_GEMM_WITH_SM%s\n" % str(arch)
+            define_line = f"#define USE_FPAINTB_GEMM_WITH_SM{arch}\n"
             header_all += define_line
     with open(header_name, "w") as f:
         f.write(header_all)
@@ -234,9 +234,7 @@ if __name__ == "__main__":
             for arch in archs:
                 for epilogue_tag in EpilogueTags.keys():
                     for stages in StagesList[arch]:
-                        file_name = "autogen_tmp/generic_mixed_gemm_kernelLauncher_{}_sm{}_stages{}_{}.cu".format(
-                            element_type, arch, stages, epilogue_tag
-                        )
+                        file_name = f"autogen_tmp/generic_mixed_gemm_kernelLauncher_{element_type}_sm{arch}_stages{stages}_{epilogue_tag}.cu"
                         all_code = generate_source_cu(
                             element_type,
                             arch,

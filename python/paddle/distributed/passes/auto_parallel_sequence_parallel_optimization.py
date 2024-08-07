@@ -18,6 +18,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     naive_set_dist_op_attr_for_program_by_mesh,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY
+from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 from paddle.static import default_main_program
 
 from .auto_parallel_sharding import _is_reshard_op
@@ -65,7 +66,7 @@ class SequenceParallelOptimizationPass(PassBase):
         with paddle.static.program_guard(main_program, startup_program):
             # TODO remove this pass when we use local reshard for all communication
             self._fuse_allreduce_split()
-            self._memory_opimization()
+            self._memory_optimization()
             self._overlap()
 
     def _fuse_allreduce_split(self):
@@ -123,16 +124,18 @@ class SequenceParallelOptimizationPass(PassBase):
             # replace ops
             new_op = block._insert_op_without_sync(
                 index=i + 1,
-                type="c_reducescatter",
-                inputs={'X': [allreduce_input_name]},
-                outputs={'Out': [keep_output_name]},
+                type="reduce_scatter",
+                inputs={'x': [allreduce_input_name]},
+                outputs={'out': [keep_output_name]},
                 attrs={
                     'ring_id': ring_id,
                     'nranks': nranks,
-                    'use_calc_stream': True,
                     'op_namescope': allreduce_op.attr("op_namescope"),
                     OP_ROLE_KEY: consumer_op.attr(OP_ROLE_KEY),
                 },
+            )
+            new_op.dist_attr.execution_stream = (
+                AutoParallelStreamType.CALC_STREAM.value
             )
             block._remove_op(i, False)
             block._remove_op(i - 1, False)
@@ -157,7 +160,7 @@ class SequenceParallelOptimizationPass(PassBase):
 
         block._sync_with_cpp()
 
-    def _memory_opimization(self):
+    def _memory_optimization(self):
         pass
 
     def _overlap(self):

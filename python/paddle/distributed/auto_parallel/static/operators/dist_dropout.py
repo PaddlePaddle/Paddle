@@ -111,7 +111,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"forward op [{str(src_op)}] don't have dist attribute !"
+        ), f"forward op [{src_op}] don't have dist attribute !"
 
         if is_enable_auto_rand_ctrl() and not op_dist_attr.is_recompute:
             # check validation of inputs / outputs
@@ -130,7 +130,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 and src_op.attr("seed")
             ):
                 _logger.info(
-                    f"Auto Parallel Random Control Skipped Since manul seed is set by user: {src_op}"
+                    f"Auto Parallel Random Control Skipped Since manual seed is set by user: {src_op}"
                 )
             elif rank_id not in op_dist_attr.process_mesh.process_ids:
                 pass
@@ -144,7 +144,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     assert (
                         pre_op.type == "seed"
                         and len(pre_op.attr("rng_name")) == 0
-                    ), f"found exception op {str(pre_op)}"
+                    ), f"found exception op {pre_op}"
 
                     # determinate rng
                     X_var = main_block._var_recursive(kwargs['X'][0])
@@ -161,7 +161,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     pre_op._set_attr("force_cpu", True)
                 else:
                     _logger.info(
-                        f"Auto Parallel Random Control Skipped Since manul seed is set by user: {src_op}"
+                        f"Auto Parallel Random Control Skipped Since manual seed is set by user: {src_op}"
                     )
             else:
                 # determinate rng

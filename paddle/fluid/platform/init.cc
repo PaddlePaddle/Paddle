@@ -16,24 +16,24 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+#include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/cupti.h"
+#include "paddle/phi/backends/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/os_info.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/os_info.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -52,19 +52,21 @@ limitations under the License. */
 #endif
 
 #include "paddle/common/enforce.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/memory.h"
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
 #endif
 
-PHI_DECLARE_int32(paddle_num_threads);
-PHI_DECLARE_int32(multiple_of_cupti_buffer_size);
+COMMON_DECLARE_int32(paddle_num_threads);
+COMMON_DECLARE_int32(multiple_of_cupti_buffer_size);
 
 namespace paddle {
 namespace framework {
@@ -113,20 +115,20 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                      \
-  {                                                                    \
-    PADDLE_ENFORCE_EQ(                                                 \
-        !platform::dynload::cuptiActivityGetAttribute(                 \
-            attr, &attrValueSize, &attrValue),                         \
-        true,                                                          \
-        platform::errors::Unavailable("Get cupti attribute failed.")); \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                  \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";          \
-    PADDLE_ENFORCE_EQ(                                                 \
-        !platform::dynload::cuptiActivitySetAttribute(                 \
-            attr, &attrValueSize, &attrValue),                         \
-        true,                                                          \
-        platform::errors::Unavailable("Set cupti attribute failed.")); \
+#define MULTIPLY_ATTR_VALUE(attr)                                    \
+  {                                                                  \
+    PADDLE_ENFORCE_EQ(                                               \
+        !phi::dynload::cuptiActivityGetAttribute(                    \
+            attr, &attrValueSize, &attrValue),                       \
+        true,                                                        \
+        common::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";        \
+    PADDLE_ENFORCE_EQ(                                               \
+        !phi::dynload::cuptiActivitySetAttribute(                    \
+            attr, &attrValueSize, &attrValue),                       \
+        true,                                                        \
+        common::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
@@ -146,7 +148,7 @@ void LoadCustomDevice(const std::string &library_dir) {
     auto dso_handle = dlopen(lib_path.c_str(), RTLD_LAZY);
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Fail to open library: %s with error: %s", lib_path, dlerror()));
 
     phi::LoadCustomRuntimeLib(lib_path, dso_handle);
@@ -162,7 +164,7 @@ static std::once_flag init_devices_flag;
 void InitDevices() {
   std::call_once(init_devices_flag, []() {
     // set name at the entry point of Paddle
-    platform::SetCurrentThreadName("MainThread");
+    phi::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
@@ -200,7 +202,7 @@ void InitDevices() {
 }
 
 void InitDevices(const std::vector<int> devices) {
-  std::vector<platform::Place> places;
+  std::vector<phi::Place> places;
 
   for (auto device : devices) {
     // In multi process multi gpu mode, we may have gpuid = 7
@@ -211,18 +213,18 @@ void InitDevices(const std::vector<int> devices) {
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    places.emplace_back(platform::CUDAPlace(device));
+    places.emplace_back(phi::GPUPlace(device));
 #endif
 #ifdef PADDLE_WITH_XPU
-    places.emplace_back(platform::XPUPlace(device));
+    places.emplace_back(phi::XPUPlace(device));
 #endif
 #ifdef PADDLE_WITH_IPU
-    places.emplace_back(platform::IPUPlace(device));
+    places.emplace_back(phi::IPUPlace(device));
 #endif
   }
-  places.emplace_back(platform::CPUPlace());
+  places.emplace_back(phi::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  places.emplace_back(platform::CUDAPinnedPlace());
+  places.emplace_back(phi::GPUPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   const char *custom_kernel_root_p = std::getenv("CUSTOM_DEVICE_ROOT");
@@ -240,7 +242,7 @@ void InitDevices(const std::vector<int> devices) {
         LOG(INFO) << "CustomDevice: " << dev_type
                   << ", visible devices count: " << device_list.size();
         for (auto &dev_id : device_list) {
-          places.push_back(platform::CustomPlace(dev_type, dev_id));
+          places.push_back(phi::CustomPlace(dev_type, dev_id));
         }
       }
     } else {
@@ -248,7 +250,7 @@ void InitDevices(const std::vector<int> devices) {
     }
   }
 #endif
-  platform::DeviceContextPool::Init(places);
+  phi::DeviceContextPool::Init(places);
 
 #ifndef PADDLE_WITH_DNNL
   platform::SetNumThreads(FLAGS_paddle_num_threads);
@@ -291,18 +293,18 @@ void SignalHandle(const char *data, int size) {
   try {
     // NOTE1: The glog FailureSignalHandler dumped messages
     //   are deal with line by line
-    auto signal_msg_dunmer_ptr = SignalMessageDumper::Instance().Get();
+    auto signal_msg_dumper_ptr = SignalMessageDumper::Instance().Get();
     // NOTE2: we only deal with the time info ane signal info,
     //   the stack trace will generated by paddle self
     if (StartsWith(data, "*** Aborted at")) {
-      *signal_msg_dunmer_ptr << "\n  [TimeInfo: " << std::string(data, size - 1)
+      *signal_msg_dumper_ptr << "\n  [TimeInfo: " << std::string(data, size - 1)
                              << "]\n";
     } else if (StartsWith(data, "***")) {
       std::string signal_info(data, size - 1);
       std::string useless_substr("; stack trace:");
       size_t start_pos = signal_info.rfind(useless_substr);
       signal_info.replace(start_pos, useless_substr.length(), "");
-      *signal_msg_dunmer_ptr << "  [SignalInfo: " << signal_info << "]\n";
+      *signal_msg_dumper_ptr << "  [SignalInfo: " << signal_info << "]\n";
 
       // NOTE3: Final signal error message print.
       // Here does not throw an exception,
@@ -322,11 +324,10 @@ void SignalHandle(const char *data, int size) {
 
       sout << "\n----------------------\nError Message "
               "Summary:\n----------------------\n";
-      sout << platform::errors::Fatal(
-                  "`%s` is detected by the operating system.",
-                  ParseSignalErrorString(signal_info))
+      sout << common::errors::Fatal("`%s` is detected by the operating system.",
+                                    ParseSignalErrorString(signal_info))
                   .to_string();
-      std::cout << sout.str() << (*signal_msg_dunmer_ptr).str() << std::endl;
+      std::cout << sout.str() << (*signal_msg_dumper_ptr).str() << std::endl;
     }
   } catch (...) {
     // Since the program has already triggered a system error,
@@ -340,7 +341,7 @@ void DisableSignalHandler() {
 #ifndef _WIN32
   for (const auto &SignalErrorString : SignalErrorStrings) {
     int signal_number = SignalErrorString.signal_number;
-    struct sigaction sig_action;
+    struct sigaction sig_action = {};
     memset(&sig_action, 0, sizeof(sig_action));
     sigemptyset(&sig_action.sa_mask);
     sig_action.sa_handler = SIG_DFL;
@@ -475,6 +476,34 @@ void InitMemoryMethod() {
     };
     memory_method->get_new_cuda_event = [](int device_id) {
       return paddle::platform::CudaEventResourcePool::Instance().New(device_id);
+    };
+#elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
+    // TODO(ZibinGuo): Use phi methods later.
+    memory_method->get_allocator =
+        [](int device_id, XPUStream stream) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::XPUPlace(device_id), stream)
+          .get();
+    };
+    memory_method->get_host_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_zero_allocator = [](int device_id) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::XPUPlace(device_id))
+          .get();
+    };
+    memory_method->get_host_zero_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::CPUPlace())
+          .get();
+    };
+    // XPUs do not have the concept of pinned memory,
+    // so the get_pinned_allocator function is not set.
+    memory_method->get_new_xpu_event = [](int device_id) {
+      return paddle::platform::XpuEventResourcePool::Instance().New(device_id);
     };
 #endif
 

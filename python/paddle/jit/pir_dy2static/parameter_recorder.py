@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.autograd.backward_utils import ValueDict
+from paddle.framework import core
 
 from ..dy2static.program_translator import _program_hash, synchronized
 
@@ -37,15 +38,24 @@ class ParametersRecorder:
         mappings = self.tensor2value[key]
         if id(tensor) not in mappings:
             non_used_initializer = paddle.nn.initializer.Constant(0.0)
+            dtype = tensor.dtype
+            if isinstance(dtype, core.VarDesc.VarType):
+                vartype_to_datatype[dtype]
             value = create_parameter(
-                dtype=vartype_to_datatype[tensor.dtype],
+                dtype=dtype,
                 shape=tensor.shape,
                 type=tensor.type,
+                name=tensor.name,
                 initializer=non_used_initializer,
+                trainable=(not tensor.stop_gradient),
+                placements=tensor.placements,
+                process_mesh=tensor.process_mesh,
             )
+
             if isinstance(tensor, paddle.Tensor):
                 params.add(tensor)
             mappings[id(tensor)] = value
+
         return mappings[id(tensor)]
 
     def pop(self, program):
@@ -53,12 +63,12 @@ class ParametersRecorder:
         params = self.params_dict.get(hash_id)
         if params is None:
             return [], []
-        params_values = [
-            self.tensor2value[hash_id][id(x)] for x in list(params)
-        ]
+        params = list(params)
+        params.sort(key=lambda x: x.name)
+        params_values = [self.tensor2value[hash_id][id(x)] for x in params]
         del self.params_dict[hash_id]
         del self.tensor2value[hash_id]
-        return list(params), list(params_values)
+        return params, params_values
 
 
 class InplaceMap:

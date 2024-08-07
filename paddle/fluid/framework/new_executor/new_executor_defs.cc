@@ -23,10 +23,10 @@
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
-VariableScope::VariableScope(Scope* scope) {
+VariableScope::VariableScope(Scope* scope)
+    : var_list_(), name2id_(), vec_meta_info_(), data_transfer_added_vars_() {
   // for @EMPTY@ variable
   name2id_[kEmptyVarName] = kEmptyVarIndex;
   var_list_.push_back(nullptr);
@@ -35,11 +35,9 @@ VariableScope::VariableScope(Scope* scope) {
   PADDLE_ENFORCE_NE(
       scope,
       nullptr,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "You have passed a nullptr to construct VariableScope."));
 }
-
-VariableScope::~VariableScope() = default;
 
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 
@@ -96,7 +94,7 @@ void VariableScope::AddVar(const std::string& name,
     auto id = VarSize();
     name2id_[name] = static_cast<int>(id);
     vec_meta_info_.emplace_back(0, var_desc);
-    if (local_scope_ != nullptr) {
+    if (local_scope_ != nullptr) {  // NOLINT
       var_list_.push_back(local_scope_->FindVar(name));
     } else {
       var_list_.push_back(scope_->FindVar(name));
@@ -104,7 +102,7 @@ void VariableScope::AddVar(const std::string& name,
     PADDLE_ENFORCE_EQ(
         var_list_.size(),
         name2id_.size(),
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of var_list and name2id map should be equal"));
   }
 }
@@ -138,26 +136,30 @@ bool VariableScope::GetVarSkipInplace(int id) const {
 void VariableScope::CheckExist(int id) const {
   PADDLE_ENFORCE_LT(id,
                     name2id_.size(),
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Required var_id < %d, but received var_id = %d.",
                         name2id_.size(),
                         id));
 }
 
 void VariableScope::CheckExist(const std::string& name) const {
-  PADDLE_ENFORCE_EQ(
-      HasVar(name),
-      true,
-      platform::errors::NotFound("%s not in VariableScope.", name));
+  PADDLE_ENFORCE_EQ(HasVar(name),
+                    true,
+                    common::errors::NotFound("%s not in VariableScope.", name));
 }
 
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
-                         const platform::DeviceContext& dev_ctx)
+                         const phi::DeviceContext& dev_ctx)
     : is_artificial_(false),
       id_(id),
+      next_instrs_in_different_thread(),
+      next_instrs_in_same_thread(),
+      events_to_wait_(),
       op_func_node_(op_func_node),
-      dev_ctx_(dev_ctx) {
+      dev_ctx_(dev_ctx),
+      gc_check_vars_(),
+      vec_inplace_in_to_out_() {
   if (op_func_node.operator_base_ != nullptr &&
       op_func_node.operator_base_->Type() == "depend") {
     is_artificial_ = true;
@@ -168,20 +170,20 @@ Instruction::Instruction(size_t id,
   }
   PADDLE_ENFORCE_GE(id,
                     0,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Required id >= 0, but received id = %d", id));
 }
 
 void Instruction::WaitEvent(const Place& place) const {
   // If InterpreterCore in on CPUPlace, do nothing.
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     return;
   }
 
   VLOG(6) << "Deal StreamWaitEventOrSync for " << this->OpBase()->Type();
 
   for (const EventInter& event_iter : events_to_wait_) {
-    platform::RecordEvent record(
+    phi::RecordEvent record(
         "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
     VLOG(6) << "Wait instruction: " << event_iter.instr_id_
             << " 's event with waiter_type: " << event_iter.waiter_type_;
@@ -190,7 +192,7 @@ void Instruction::WaitEvent(const Place& place) const {
 }
 
 void Instruction::RecordEvent(const Place& place) const {
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
   if (event_to_record_) {
     VLOG(6) << "Record event at instruction: " << id_;
@@ -224,7 +226,7 @@ OperatorBase* Instruction::OpBase() const {
   auto op_base = op_func_node_.operator_base_;
   PADDLE_ENFORCE_NOT_NULL(
       op_base,
-      platform::errors::PreconditionNotMet("op_base shall not be nullptr."));
+      common::errors::PreconditionNotMet("op_base shall not be nullptr."));
   return op_base.get();
 }
 
@@ -299,16 +301,16 @@ std::shared_ptr<ExecutionContext> Instruction::InnerExecutionContext() const {
   return execution_ctx_;
 }
 
-const platform::DeviceContext& Instruction::DeviceContext() const {
+const phi::DeviceContext& Instruction::DeviceContext() const {
   return dev_ctx_;
 }
 
-const std::vector<std::pair<Variable*, Variable*>>& Instruction::InplaceInfo()
-    const {
+const std::vector<std::pair<const Variable*, Variable*>>&
+Instruction::InplaceInfo() const {
   return vec_inplace_in_to_out_;
 }
 
-void Instruction::AddInplace(Variable* in, Variable* out) {
+void Instruction::AddInplace(const Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
 
@@ -349,5 +351,4 @@ void Instruction::UpdateRecordStreamForGcInfo() {
 }
 #endif
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

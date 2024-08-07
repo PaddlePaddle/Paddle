@@ -24,8 +24,8 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
@@ -51,7 +51,7 @@ void SynchronizeDevice() {
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto& dev_type : dev_types) {
     auto i = phi::DeviceManager::GetDevice(dev_type);
-    auto place = paddle::platform::CustomPlace(dev_type, i);
+    auto place = phi::CustomPlace(dev_type, i);
     phi::DeviceManager::SynchronizeDevice(place);
   }
 #endif
@@ -148,19 +148,19 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
                     collector.MemEvents(),
                     collector.OperatorSupplementEvents()));
   cpu_utilization_.RecordEndTimeInfo();
-  ExtraInfo extrainfo;
-  extrainfo.AddExtraInfo(std::string("System Cpu Utilization"),
-                         std::string("%f"),
-                         cpu_utilization_.GetCpuUtilization());
-  extrainfo.AddExtraInfo(std::string("Process Cpu Utilization"),
-                         std::string("%f"),
-                         cpu_utilization_.GetCpuCurProcessUtilization());
+  ExtraInfo extra_info;
+  extra_info.AddExtraInfo(std::string("System Cpu Utilization"),
+                          std::string("%f"),
+                          cpu_utilization_.GetCpuUtilization());
+  extra_info.AddExtraInfo(std::string("Process Cpu Utilization"),
+                          std::string("%f"),
+                          cpu_utilization_.GetCpuCurProcessUtilization());
   const std::unordered_map<uint64_t, std::string> thread_names =
       collector.ThreadNames();
   for (const auto& kv : thread_names) {
-    extrainfo.AddExtraInfo(string_format(std::string("%llu"), kv.first),
-                           std::string("%s"),
-                           kv.second.c_str());
+    extra_info.AddExtraInfo(string_format(std::string("%llu"), kv.first),
+                            std::string("%s"),
+                            kv.second.c_str());
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
@@ -170,10 +170,10 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
     device_property_map[device_id] = device_property;
   }
   ProfilerResult* profiler_result_ptr = new platform::ProfilerResult(
-      std::move(tree), extrainfo, device_property_map);
+      std::move(tree), extra_info, device_property_map);
 #else
   ProfilerResult* profiler_result_ptr =
-      new platform::ProfilerResult(std::move(tree), extrainfo);
+      new platform::ProfilerResult(std::move(tree), extra_info);
 #endif
   profiler_result_ptr->SetVersion(std::string(version));
   profiler_result_ptr->SetSpanIndx(span_indx);

@@ -116,29 +116,32 @@ class TestAllocContinuousSpace(OpTest):
     def verify_output(self, place):
         with base.dygraph.base.guard(place=place):
             tensor_input = [
-                base.dygraph.base.to_variable(value=data[1])
-                for data in self.inputs["Input"]
+                paddle.to_tensor(data[1]) for data in self.inputs["Input"]
             ]
             eager_outputs, eager_fused_output = coalesce_tensor_eager_api(
                 tensor_input,
                 datatype=self.attrs["dtype"],
-                copy_data=self.attrs["copy_data"]
-                if "copy_data" in self.attrs
-                else False,
-                set_constant=self.attrs["set_constant"]
-                if "set_constant" in self.attrs
-                else False,
+                copy_data=(
+                    self.attrs["copy_data"]
+                    if "copy_data" in self.attrs
+                    else False
+                ),
+                set_constant=(
+                    self.attrs["set_constant"]
+                    if "set_constant" in self.attrs
+                    else False
+                ),
                 persist_output=False,
-                constant=self.attrs["constant"]
-                if "constant" in self.attrs
-                else 0.0,
+                constant=(
+                    self.attrs["constant"] if "constant" in self.attrs else 0.0
+                ),
                 use_align=True,
                 align_size=-1,
-                user_defined_size_of_dtype=self.attrs[
-                    "user_defined_size_of_dtype"
-                ]
-                if "user_defined_size_of_dtype" in self.attrs
-                else -1,
+                user_defined_size_of_dtype=(
+                    self.attrs["user_defined_size_of_dtype"]
+                    if "user_defined_size_of_dtype" in self.attrs
+                    else -1
+                ),
                 concated_shapes=[],
                 concated_ranks=[],
             )

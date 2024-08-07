@@ -23,14 +23,7 @@ from paddle import base
 class VersionTest(unittest.TestCase):
     def test_check_output(self):
         warnings.warn(
-            "paddle.__version__: {}, base_version.full_version: {}, base_version.major: {}, base_version.minor: {}, base_version.patch: {}, base_version.rc: {}.".format(
-                paddle.__version__,
-                base_version.full_version,
-                base_version.major,
-                base_version.minor,
-                base_version.patch,
-                base_version.rc,
-            )
+            f"paddle.__version__: {paddle.__version__}, base_version.full_version: {base_version.full_version}, base_version.major: {base_version.major}, base_version.minor: {base_version.minor}, base_version.patch: {base_version.patch}, base_version.rc: {base_version.rc}."
         )
         ori_full_version = base_version.full_version
         ori_sep_version = [

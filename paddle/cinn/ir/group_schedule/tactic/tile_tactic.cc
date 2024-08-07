@@ -13,10 +13,24 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
+
+class TileTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "TileTactic"; }
+
+ private:
+  ScheduleContext* context_;
+};
 
 void TileTactic::Init(ScheduleContext* context) {
   context_ = context;
@@ -32,11 +46,24 @@ void TileTactic::Init(ScheduleContext* context) {
     }
   };
   auto GetTreeReduceSize = [&](const ir::Expr& total_rb_extent) -> int64_t {
+    const int64_t max_num_threads =
+        cinn::common::DefaultDeviceTarget().max_num_threads();
+    int64_t nums_thread_per_block = max_num_threads;
     if (total_rb_extent.is_constant()) {
       int64_t extent = static_cast<int64_t>(total_rb_extent.get_constant());
-      return GetFirstFactor(extent);
+      nums_thread_per_block = GetFirstFactor(extent);
+    } else {
+      if (context->bucket_info.space.size() == 2 &&
+          context->bucket_info.space[1].iter_type == "R") {
+        nums_thread_per_block = context_->bucket_info.space[1].lower_bound;
+      } else {
+        PADDLE_THROW(::common::errors::Unimplemented(
+            "Now, the function GetTreeReduceSize doesn't support the cases "
+            "except SR"));
+      }
     }
-    return context_->bucket_info.rb_lower_bound;
+    return nums_thread_per_block > max_num_threads ? max_num_threads
+                                                   : nums_thread_per_block;
   };
   auto GetNumThreadPerBlock = [&](int64_t lower_bound) -> int64_t {
     // When designing the tile config, we can further subdivided.
@@ -76,9 +103,17 @@ void TileTactic::Init(ScheduleContext* context) {
     // other bound to cuda thread.
     context_->iter_space_info.sp_space.emplace_back(
         ir::Expr(-1), IterativeSpaceInfo::AxisType::kCudaBlockX);
-    context_->iter_space_info.sp_space.emplace_back(
-        ir::Expr(GetNumThreadPerBlock(context_->bucket_info.rb_upper_bound)),
-        IterativeSpaceInfo::AxisType::kCudaThreadX);
+    if (context->bucket_info.space.size() == 2 &&
+        context->bucket_info.space[1].iter_type == "R") {
+      context_->iter_space_info.sp_space.emplace_back(
+          ir::Expr(
+              GetNumThreadPerBlock(context_->bucket_info.space[1].upper_bound)),
+          IterativeSpaceInfo::AxisType::kCudaThreadX);
+    } else {
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Now, the function GetTreeReduceSize doesn't support the cases "
+          "except SR"));
+    }
   }
   VLOG(6) << context_->iter_space_info.PrintIterSpace();
 }
@@ -86,8 +121,12 @@ void TileTactic::Init(ScheduleContext* context) {
 void TileTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
-  CHECK(loops.size() == 1 || loops.size() == 2)
-      << "All loops must be unified as sp_loop or rb_loop.";
+  PADDLE_ENFORCE_EQ((loops.size() == 1 || loops.size() == 2),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "All loops must be unified as sp_loop or "
+                        "rb_loop. Current loop size: %d.",
+                        loops.size()));
   if (loops.size() == 2) {
     std::vector<ir::Expr> rb_factors;
     for (const auto& axis : context_->iter_space_info.rb_space) {
@@ -105,6 +144,10 @@ void TileTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
   sch->Split(loops[0], sp_factors);
   VLOG(6) << "after split sp loop of " << block_id << ": "
           << sch->GetModule().GetExprs()[0];
+}
+
+std::unique_ptr<ScheduleTactic> CreateTileTactic() {
+  return std::make_unique<TileTactic>();
 }
 
 }  // namespace ir

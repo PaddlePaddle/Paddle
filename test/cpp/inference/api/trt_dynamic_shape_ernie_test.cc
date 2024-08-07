@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
@@ -33,22 +33,22 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data, int bs) {
   const int run_seq_len = 128;
   size_t len = run_batch * run_seq_len;
 
-  int32_t i0_bs1[run_seq_len] = {
+  std::array<int32_t, 128> i0_bs1 = {
       1,    3558, 4,   75,  491, 89, 340, 313, 93,   4,   255,   10, 75,    321,
       4095, 1902, 4,   134, 49,  75, 311, 14,  44,   178, 543,   15, 12043, 2,
       75,   201,  340, 9,   14,  44, 486, 218, 1140, 279, 12043, 2};
-  int32_t i1_bs1[run_seq_len] = {
+  std::array<int32_t, 128> i1_bs1 = {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  int32_t i2_bs1[run_seq_len] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                                 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                                 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-                                 30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
-  float i3_bs1[run_seq_len] = {
+  std::array<int32_t, 128> i2_bs1 = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                                     10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                                     20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+                                     30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
+  std::array<float, 128> i3_bs1 = {
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
       1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
@@ -231,8 +231,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
   const int run_batch = 2;
   const int run_seq_len = 71;
   const int max_seq_len = 128;
-
-  int32_t i1[run_seq_len] = {
+  std::vector<int32_t> i1 = {
       // sentence 1
       1,
       3558,
@@ -307,7 +306,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
       1012,
       102,
   };
-  int32_t i2[run_seq_len] = {// sentence 1
+  std::vector<int32_t> i2 = {// sentence 1
                              0,
                              0,
                              0,
@@ -381,32 +380,32 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
                              1,
                              1};
   // shape info of this batch
-  int32_t i3[3] = {0, 40, 71};
+  std::vector<int32_t> i3 = {0, 40, 71};
   // max_seq_len represents the max sentence length of all the sentences, only
   // length of
   // input i4 is useful, data means nothing.
-  float i4[max_seq_len] = {0};
+  std::vector<float> i4(max_seq_len, 0);
 
   auto input_names = predictor->GetInputNames();
   // first input
   auto input_t1 = predictor->GetInputHandle(input_names[0]);
   input_t1->Reshape({run_seq_len});
-  input_t1->CopyFromCpu(i1);
+  input_t1->CopyFromCpu(i1.data());
 
   // second input
   auto input_t2 = predictor->GetInputHandle(input_names[1]);
   input_t2->Reshape({run_seq_len});
-  input_t2->CopyFromCpu(i2);
+  input_t2->CopyFromCpu(i2.data());
 
   // third input
   auto input_t3 = predictor->GetInputHandle(input_names[2]);
   input_t3->Reshape({run_batch + 1});
-  input_t3->CopyFromCpu(i3);
+  input_t3->CopyFromCpu(i3.data());
 
   // fourth input
   auto input_t4 = predictor->GetInputHandle(input_names[3]);
   input_t4->Reshape({1, max_seq_len, 1});
-  input_t4->CopyFromCpu(i4);
+  input_t4->CopyFromCpu(i4.data());
 
   CHECK(predictor->Run());
 

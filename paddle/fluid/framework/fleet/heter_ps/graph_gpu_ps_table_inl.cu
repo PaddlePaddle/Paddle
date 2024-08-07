@@ -22,16 +22,16 @@
 #ifdef PADDLE_WITH_HETERPS
 #include "cudf/block_radix_topk.cuh"
 #include "cudf/random.cuh"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
-#include "paddle/phi/core/flags.h"
 
 #define ALIGN_INT64(LEN) (uint64_t((LEN) + 7) & uint64_t(~7))
 #define HBMPS_MAX_BUFF 1024 * 1024
 #define SAMPLE_SIZE_THRESHOLD 1024
 
-PHI_DECLARE_bool(enable_neighbor_list_use_uva);
-PHI_DECLARE_bool(enable_graph_multi_node_sampling);
+COMMON_DECLARE_bool(enable_neighbor_list_use_uva);
+COMMON_DECLARE_bool(enable_graph_multi_node_sampling);
 
 namespace paddle {
 namespace framework {
@@ -790,8 +790,7 @@ void GpuPsGraphTable::weighted_sample(GpuPsCommGraph& graph,
                                       float* weight_array,
                                       bool return_weight) {
   platform::CUDADeviceGuard guard(resource_->dev_id(remote_gpu_id));
-  platform::CUDAPlace place =
-      platform::CUDAPlace(resource_->dev_id(cur_gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(cur_gpu_id));
   auto cur_stream = resource_->remote_stream(remote_gpu_id, cur_gpu_id);
   constexpr int BLOCK_SIZE = 256;
 
@@ -903,8 +902,7 @@ void GpuPsGraphTable::unweighted_sample(GpuPsCommGraph& graph,
                                         float* weight_array,
                                         bool return_weight) {
   platform::CUDADeviceGuard guard(resource_->dev_id(remote_gpu_id));
-  platform::CUDAPlace place =
-      platform::CUDAPlace(resource_->dev_id(cur_gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(cur_gpu_id));
   auto cur_stream = resource_->remote_stream(remote_gpu_id, cur_gpu_id);
 
   if (sample_size > SAMPLE_SIZE_THRESHOLD) {
@@ -1714,7 +1712,7 @@ GpuPsGraphTable::get_edge_type_graph(int gpu_id, int edge_type_len) {
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
 
   std::vector<std::shared_ptr<phi::Allocation>> graphs_vec;
@@ -1787,7 +1785,7 @@ void GpuPsGraphTable::rank_build_ps(int dev_num,
     int tmp_len = cur_len + chunk_size > len ? len - cur_len : chunk_size;
 
     auto dst_place = place;
-    auto src_place = platform::CPUPlace();
+    auto src_place = phi::CPUPlace();
     memory_copy(dst_place,
                 reinterpret_cast<char*>(d_key_bufs[cur_stream]->ptr()),
                 src_place,
@@ -1890,7 +1888,7 @@ void GpuPsGraphTable::build_graph_on_single_gpu(const GpuPsCommGraph& g,
     }
     PADDLE_ENFORCE_EQ(cudaStatus,
                       cudaSuccess,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "failed to allocate memory for graph on gpu %d",
                           resource_->dev_id(gpu_id)));
     VLOG(0) << "successfully allocate " << g.neighbor_size * sizeof(uint64_t)
@@ -1909,7 +1907,7 @@ void GpuPsGraphTable::build_graph_on_single_gpu(const GpuPsCommGraph& g,
       PADDLE_ENFORCE_EQ(
           cudaStatus,
           cudaSuccess,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "failed to allocate memory for graph edge weight on gpu %d",
               resource_->dev_id(gpu_id)));
       VLOG(0) << "successfully allocate " << g.neighbor_size * sizeof(float)
@@ -1940,8 +1938,8 @@ void GpuPsGraphTable::build_graph_from_cpu(
   PADDLE_ENFORCE_EQ(
       cpu_graph_list.size(),
       resource_->total_device(),
-      platform::errors::InvalidArgument("the cpu node list size doesn't match "
-                                        "the number of gpu on your machine."));
+      common::errors::InvalidArgument("the cpu node list size doesn't match "
+                                      "the number of gpu on your machine."));
   clear_graph_info(edge_idx);
   for (int i = 0; i < cpu_graph_list.size(); i++) {
     int table_offset =
@@ -2130,7 +2128,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_all2all(
   // build final.actual_val
   if (compress) {
     CUDA_CHECK(cudaStreamSynchronize(stream));
-    platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+    phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
     platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
     size_t temp_storage_bytes = 0;
     int total_sample_size = 0;
@@ -2213,7 +2211,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     return result;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
 
   int* actual_sample_size = result.actual_sample_size;
@@ -2369,7 +2367,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
 
       PADDLE_ENFORCE_GT(sample_size,
                         0,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "sample_size should be greater than 0."));
       weighted_sample(graph,
                       node_info_list,
@@ -2521,7 +2519,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
 
   if (compress) {
     CUDA_CHECK(cudaStreamSynchronize(stream));
-    platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+    phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
     platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
     size_t temp_storage_bytes = 0;
     int total_sample_size = 0;
@@ -2759,7 +2757,7 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     return result;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
 
   int* actual_sample_size = result.actual_sample_size;
@@ -2935,7 +2933,7 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     uint64_t random_seed = distrib(gen);
     PADDLE_ENFORCE_GT(sample_size,
                       0,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "sample_size should be greater than 0."));
 
     if (!weighted) {
@@ -3107,7 +3105,7 @@ std::shared_ptr<phi::Allocation> GpuPsGraphTable::get_node_degree_all2all(
     int gpu_id, int edge_idx, uint64_t* key, int len) {
   platform::CUDADeviceGuard guard(gpu_id);
   auto& loc = storage_[gpu_id];
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   auto stream = resource_->local_stream(gpu_id, 0);
 
   loc.alloc(len, sizeof(int));
@@ -3142,7 +3140,7 @@ std::shared_ptr<phi::Allocation> GpuPsGraphTable::get_node_degree_all2all(
 std::shared_ptr<phi::Allocation> GpuPsGraphTable::get_node_degree_single(
     int gpu_id, int edge_idx, uint64_t* key, int len) {
   int total_gpu = resource_->total_device();
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   auto stream = resource_->local_stream(gpu_id, 0);
 
@@ -3383,7 +3381,7 @@ int GpuPsGraphTable::get_feature_info_of_nodes_all2all(
     return 0;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
@@ -3604,7 +3602,7 @@ int GpuPsGraphTable::get_feature_info_of_nodes_normal(
     is_float_feature = true;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
@@ -3969,7 +3967,7 @@ int GpuPsGraphTable::get_rank_info_of_nodes(int gpu_id,
     return -1;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
@@ -4170,7 +4168,7 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
     return -1;
   }
 
-  platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+  phi::GPUPlace place = phi::GPUPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);

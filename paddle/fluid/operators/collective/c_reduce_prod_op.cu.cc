@@ -21,7 +21,6 @@ DEFINE_C_REDUCE_CUDA_KERNEL(CReduceProd, kRedProd);
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_reduce_prod,
                           GPU,
@@ -31,4 +30,4 @@ PD_REGISTER_STRUCT_KERNEL(c_reduce_prod,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

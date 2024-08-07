@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import os
+import sys
 import tempfile
 import unittest
 
+sys.path.append("../../legacy_test")
 import nets
 import numpy as np
 from test_imperative_base import new_program_scope
@@ -23,6 +25,8 @@ from test_imperative_base import new_program_scope
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 def convolutional_neural_network(img):
@@ -49,8 +53,80 @@ def convolutional_neural_network(img):
     return prediction
 
 
+def simple_img_conv_pool(
+    input,
+    in_channels,
+    out_channels,
+    kernel_size,
+    pool_size,
+    pool_stride,
+    pool_padding=0,
+    pool_type='max',
+    global_pooling=False,
+    conv_stride=1,
+    conv_padding=0,
+    conv_dilation=1,
+    conv_groups=1,
+    param_attr=None,
+    bias_attr=None,
+    act=None,
+    use_cudnn=True,
+):
+    conv = paddle.nn.Conv2D(
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=conv_stride,
+        padding=conv_padding,
+        dilation=conv_dilation,
+        groups=conv_groups,
+        bias_attr=bias_attr,
+    )
+    conv_out = conv(input)
+    if pool_type == 'max':
+        pool_out = paddle.nn.functional.max_pool2d(
+            x=conv_out,
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
+        )
+    else:
+        pool_out = paddle.nn.functional.avg_pool2d(
+            x=conv_out,
+            kernel_size=pool_size,
+            stride=pool_stride,
+            padding=pool_padding,
+        )
+    return pool_out
+
+
+def convolutional_neural_network_pir(img):
+    conv_pool_1 = simple_img_conv_pool(
+        input=img,
+        in_channels=1,
+        out_channels=20,
+        kernel_size=5,
+        pool_size=2,
+        pool_stride=2,
+    )
+    conv_pool_1 = paddle.nn.BatchNorm(20)(conv_pool_1)
+    conv_pool_2 = simple_img_conv_pool(
+        input=conv_pool_1,
+        in_channels=20,
+        out_channels=50,
+        kernel_size=5,
+        pool_size=2,
+        pool_stride=2,
+    )
+    prediction = paddle.static.nn.fc(x=conv_pool_2, size=10, activation='relu')
+    return prediction
+
+
 def static_train_net(img, label):
-    prediction = convolutional_neural_network(img)
+    if in_pir_mode():
+        prediction = convolutional_neural_network_pir(img)
+    else:
+        prediction = convolutional_neural_network(img)
 
     loss = paddle.nn.functional.cross_entropy(
         input=prediction, label=label, reduction='none', use_softmax=False
@@ -78,8 +154,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
 
     def train_and_save_model(self):
         with new_program_scope():
-            startup_program = base.default_startup_program()
-            main_program = base.default_main_program()
+            startup_program = paddle.static.default_startup_program()
+            main_program = paddle.static.default_main_program()
 
             img = paddle.static.data(
                 name='img', shape=[None, 1, 28, 28], dtype='float32'
@@ -120,7 +196,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                         break
 
             static_param_dict = {}
-            for param in base.default_main_program().all_parameters():
+            for param in main_program.global_block().all_parameters():
                 static_param_dict[param.name] = base.executor._fetch_var(
                     param.name
                 )
@@ -130,6 +206,7 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                 [img],
                 [prediction],
                 exe,
+                program=main_program,
             )
 
         return static_param_dict
@@ -138,58 +215,68 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
         for var_name, value in orig_dict.items():
             np.testing.assert_array_equal(value, load_dict[var_name])
 
+    @test_with_pir_api
     def test_load_default(self):
-        self.save_dirname = os.path.join(
-            self.temp_dir.name, "static_mnist.load_state_dict.default"
-        )
-        self.model_filename = None
-        self.params_filename = None
-        orig_param_dict = self.train_and_save_model()
+        with paddle.base.unique_name.guard():
+            self.save_dirname = os.path.join(
+                self.temp_dir.name, "static_mnist.load_state_dict.default"
+            )
+            self.model_filename = None
+            self.params_filename = None
+            orig_param_dict = self.train_and_save_model()
 
-        new_load_param_dict = paddle.load(self.save_dirname)
-        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
+            new_load_param_dict = paddle.load(self.save_dirname)
+            self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
+    @test_with_pir_api
     def test_load_with_model_filename(self):
-        self.save_dirname = os.path.join(
-            self.temp_dir.name, "static_mnist.load_state_dict.model_filename"
-        )
-        self.model_filename = "static_mnist.model"
-        self.params_filename = None
-        orig_param_dict = self.train_and_save_model()
+        with paddle.base.unique_name.guard():
+            self.save_dirname = os.path.join(
+                self.temp_dir.name,
+                "static_mnist.load_state_dict.model_filename",
+            )
+            self.model_filename = "static_mnist.model"
+            self.params_filename = None
+            orig_param_dict = self.train_and_save_model()
 
-        new_load_param_dict = paddle.load(
-            self.save_dirname, model_filename=self.model_filename
-        )
-        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
+            new_load_param_dict = paddle.load(
+                self.save_dirname, model_filename=self.model_filename
+            )
+            self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
+    @test_with_pir_api
     def test_load_with_param_filename(self):
-        self.save_dirname = os.path.join(
-            self.temp_dir.name, "static_mnist.load_state_dict.param_filename"
-        )
-        self.model_filename = None
-        self.params_filename = "static_mnist.params"
-        orig_param_dict = self.train_and_save_model()
+        with paddle.base.unique_name.guard():
+            self.save_dirname = os.path.join(
+                self.temp_dir.name,
+                "static_mnist.load_state_dict.param_filename",
+            )
+            self.model_filename = None
+            self.params_filename = "static_mnist.params"
+            orig_param_dict = self.train_and_save_model()
 
-        new_load_param_dict = paddle.load(
-            self.save_dirname, params_filename=self.params_filename
-        )
-        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
+            new_load_param_dict = paddle.load(
+                self.save_dirname, params_filename=self.params_filename
+            )
+            self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
+    @test_with_pir_api
     def test_load_with_model_and_param_filename(self):
-        self.save_dirname = os.path.join(
-            self.temp_dir.name,
-            "static_mnist.load_state_dict.model_and_param_filename",
-        )
-        self.model_filename = "static_mnist.model"
-        self.params_filename = "static_mnist.params"
-        orig_param_dict = self.train_and_save_model()
+        with paddle.base.unique_name.guard():
+            self.save_dirname = os.path.join(
+                self.temp_dir.name,
+                "static_mnist.load_state_dict.model_and_param_filename",
+            )
+            self.model_filename = "static_mnist.model"
+            self.params_filename = "static_mnist.params"
+            orig_param_dict = self.train_and_save_model()
 
-        new_load_param_dict = paddle.load(
-            self.save_dirname,
-            params_filename=self.params_filename,
-            model_filename=self.model_filename,
-        )
-        self.check_load_state_dict(orig_param_dict, new_load_param_dict)
+            new_load_param_dict = paddle.load(
+                self.save_dirname,
+                params_filename=self.params_filename,
+                model_filename=self.model_filename,
+            )
+            self.check_load_state_dict(orig_param_dict, new_load_param_dict)
 
 
 if __name__ == '__main__':

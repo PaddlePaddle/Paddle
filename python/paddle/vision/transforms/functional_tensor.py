@@ -21,21 +21,20 @@ import paddle
 import paddle.nn.functional as F
 
 from ...base.framework import Variable
+from ...base.libpaddle.pir import Value
 
 __all__ = []
 
 
 def _assert_image_tensor(img, data_format):
     if (
-        not isinstance(img, (paddle.Tensor, Variable))
+        not isinstance(img, (paddle.Tensor, Variable, Value))
         or img.ndim < 3
         or img.ndim > 4
         or data_format.lower() not in ('chw', 'hwc')
     ):
         raise RuntimeError(
-            'not support [type={}, ndim={}, data_format={}] paddle image'.format(
-                type(img), img.ndim, data_format
-            )
+            f'not support [type={type(img)}, ndim={img.ndim}, data_format={data_format}] paddle image'
         )
 
 

@@ -14,11 +14,10 @@
 
 #include "paddle/fluid/distributed/fleet_executor/task_loop.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 thread_local TaskLoop* TaskLoop::thread_local_loop_ = nullptr;
 
@@ -29,7 +28,7 @@ TaskLoop::TaskLoop()
   PADDLE_ENFORCE_EQ(
       thread_local_loop_,
       nullptr,
-      platform::errors::AlreadyExists("Another TaskLoop is already init."));
+      common::errors::AlreadyExists("Another TaskLoop is already init."));
   thread_local_loop_ = this;
 }
 
@@ -38,7 +37,7 @@ TaskLoop::~TaskLoop() { thread_local_loop_ = nullptr; }
 void TaskLoop::Loop() {
   PADDLE_ENFORCE_EQ(looping_,
                     false,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Loop can only execute in one loop thread"));
   AssertInLoopThread();
 
@@ -75,11 +74,10 @@ void TaskLoop::WakeUp() {
 }
 
 void TaskLoop::AbortNotInLoopThread() {
-  PADDLE_THROW(platform::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "This TaskLoop was created in thread %d, but current thread is %d",
       thread_id_,
       std::this_thread::get_id()));
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

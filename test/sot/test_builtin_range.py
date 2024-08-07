@@ -67,7 +67,7 @@ def test_range_10(stop: int, tensor: paddle.Tensor):
     return tensor
 
 
-class TestExecutor(TestCaseBase):
+class TestRange(TestCaseBase):
     def test_cases(self):
         start = 3
         stop = 10

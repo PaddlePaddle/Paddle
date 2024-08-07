@@ -22,22 +22,19 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
-
-using phi::distributed::auto_parallel::str_join;
+namespace phi::distributed {
 
 std::tuple<std::string, std::string> FillConcatNotation(int64_t n_axis,
                                                         int64_t concat_axis) {
   PADDLE_ENFORCE_GT(
       n_axis,
       concat_axis,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "n_axis [%d] and concat_axis[%d] not match", n_axis, concat_axis));
   static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
   PADDLE_ENFORCE_GT(alphabet.size(),
                     static_cast<size_t>(n_axis),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "alphabet.size() [%d]; n_axis [%d] is too large",
                         alphabet.size(),
                         n_axis));
@@ -76,7 +73,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
       });
   auto non_empty_index = non_empty_iter - tensor_shapes.begin();
   int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
-  // normlize dim
+  // normalize dim
   auto dim = axis < 0 ? ndim + axis : axis;
   std::vector<TensorDistAttr> input_attrs;
   std::transform(
@@ -84,10 +81,10 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
         return meta.dist_attr();
       });
 
-  std::string all_aixs;
+  std::string all_axis;
   std::string align_axis;
-  std::tie(all_aixs, align_axis) = FillConcatNotation(ndim, dim);
-  std::vector<std::string> axis_names(input_attrs.size(), all_aixs);
+  std::tie(all_axis, align_axis) = FillConcatNotation(ndim, dim);
+  std::vector<std::string> axis_names(input_attrs.size(), all_axis);
   AlignDimsSharding(
       &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
 
@@ -140,7 +137,7 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
   auto non_empty_index = non_empty_iter - tensor_shapes.begin();
   int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
   auto dim = axis.to<int64_t>();
-  // normlize dim
+  // normalize dim
   dim = dim < 0 ? ndim + dim : dim;
   std::vector<TensorDistAttr> input_attrs;
   std::transform(
@@ -149,10 +146,10 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
       });
   input_attrs.push_back(output_grad.dist_attr());
   tensor_shapes.push_back(common::vectorize<int64_t>(output_grad.dims()));
-  std::string all_aixs;
+  std::string all_axis;
   std::string align_axis;
-  std::tie(all_aixs, align_axis) = FillConcatNotation(ndim, dim);
-  std::vector<std::string> axis_names(input_attrs.size(), all_aixs);
+  std::tie(all_axis, align_axis) = FillConcatNotation(ndim, dim);
+  std::vector<std::string> axis_names(input_attrs.size(), all_axis);
   AlignDimsSharding(
       &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
   auto output_grad_attr = input_attrs.back();
@@ -161,5 +158,4 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
   return {{input_attrs, output_grad_attr}, {inputs_grad}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

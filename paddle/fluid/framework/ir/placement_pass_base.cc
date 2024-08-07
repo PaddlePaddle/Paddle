@@ -18,9 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void PlacementPassBase::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies " << GetPlacementName() << " placement strategy.";
@@ -43,6 +41,4 @@ void PlacementPassBase::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

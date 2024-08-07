@@ -12,18 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# type: ignore[abstract]
+
+from __future__ import annotations
+
 import abc
 import functools
 import multiprocessing
 import os
 import re
 import shutil
+import subprocess
 import time
+from typing import TYPE_CHECKING, Callable, Literal, TypedDict, TypeVar
 
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.base import core
 
 from .log_util import logger
+
+if TYPE_CHECKING:
+    from typing_extensions import ParamSpec
+
+    _InputT = ParamSpec("_InputT")
+    _RetT = TypeVar("_RetT")
+
+    _HDFSClientConfig = TypedDict(
+        '_HDFSClientConfig', {'fs.default.name': str, 'hadoop.job.ugi': str}
+    )
+
+    class _FileInfo(TypedDict):
+        path: str
+        size: int
+
 
 __all__ = []
 
@@ -125,9 +146,9 @@ class LocalFS(FS):
 
     """
 
-    def ls_dir(self, fs_path):
+    def ls_dir(self, fs_path: str) -> tuple[list[str], list[str]]:
         """
-        List directorys and files under `fs_path` .
+        List directories and files under `fs_path` .
 
         Args:
             fs_path(str): The local file path.
@@ -159,7 +180,7 @@ class LocalFS(FS):
 
         return dirs, files
 
-    def mkdirs(self, fs_path):
+    def mkdirs(self, fs_path: str) -> None:
         """
         Create a local directory.
 
@@ -180,7 +201,7 @@ class LocalFS(FS):
         assert not os.path.isfile(fs_path), f"{fs_path} is already a file"
         os.makedirs(fs_path, exist_ok=True)
 
-    def rename(self, fs_src_path, fs_dst_path):
+    def rename(self, fs_src_path: str, fs_dst_path: str) -> None:
         """
         Rename the file.
 
@@ -214,7 +235,7 @@ class LocalFS(FS):
     def _rm(self, fs_path):
         os.remove(fs_path)
 
-    def delete(self, fs_path):
+    def delete(self, fs_path: str) -> None:
         """
         Delete the local file path, whether it's a file or directory.
 
@@ -240,10 +261,10 @@ class LocalFS(FS):
 
         return self._rmr(fs_path)
 
-    def need_upload_download(self):
+    def need_upload_download(self) -> Literal[False]:
         return False
 
-    def is_file(self, fs_path):
+    def is_file(self, fs_path: str) -> bool:
         """
         Whether the local file path is a file.
 
@@ -268,7 +289,7 @@ class LocalFS(FS):
         """
         return os.path.isfile(fs_path)
 
-    def is_dir(self, fs_path):
+    def is_dir(self, fs_path: str) -> bool:
         """
         Whether the local file path is a directory.
 
@@ -293,7 +314,7 @@ class LocalFS(FS):
         """
         return os.path.isdir(fs_path)
 
-    def is_exist(self, fs_path):
+    def is_exist(self, fs_path: str) -> bool:
         """
         Whether the local file path exists.
 
@@ -301,7 +322,7 @@ class LocalFS(FS):
             fs_path(str): The local file path.
 
         Returns:
-            Bool: Wheter it's a file or directory, return true if the path exists,
+            Bool: Whether it's a file or directory, return true if the path exists,
             otherwise return false.
 
         Examples:
@@ -316,7 +337,7 @@ class LocalFS(FS):
         """
         return os.path.exists(fs_path)
 
-    def touch(self, fs_path, exist_ok=True):
+    def touch(self, fs_path: str, exist_ok: bool = True) -> None:
         """
         Create a local file.
 
@@ -343,7 +364,13 @@ class LocalFS(FS):
         with open(fs_path, 'a'):
             pass
 
-    def mv(self, src_path, dst_path, overwrite=False, test_exists=False):
+    def mv(
+        self,
+        src_path: str,
+        dst_path: str,
+        overwrite: bool = False,
+        test_exists: bool = False,
+    ) -> None:
         """
         Move a local file or directory from `src_path` to `dst_path` .
 
@@ -375,9 +402,9 @@ class LocalFS(FS):
 
         return self.rename(src_path, dst_path)
 
-    def list_dirs(self, fs_path):
+    def list_dirs(self, fs_path: str) -> list[str]:
         """
-        Only list directorys under `fs_path` .
+        Only list directories under `fs_path` .
 
         Args:
             fs_path(str): The local file path.
@@ -405,10 +432,12 @@ class LocalFS(FS):
         return dirs
 
 
-def _handle_errors(max_time_out=None):
-    def decorator(f):
+def _handle_errors(
+    max_time_out: float | None = None,
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
+    def decorator(f: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(f)
-        def handler(*args, **kwargs):
+        def handler(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             o = args[0]
             time_out = max_time_out
             if time_out is None:
@@ -433,9 +462,7 @@ def _handle_errors(max_time_out=None):
 
                 if time.time() - last_print_time > 30:
                     print(
-                        "hadoop operator timeout:args:{} timeout:{}".format(
-                            args, time.time() - start
-                        )
+                        f"hadoop operator timeout:args:{args} timeout:{time.time() - start}"
                     )
                     last_print_time = time.time()
 
@@ -472,15 +499,17 @@ class HDFSClient(FS):
 
     """
 
+    pre_commands: list[str]
+
     def __init__(
         self,
-        hadoop_home,
-        configs,
-        time_out=5 * 60 * 1000,  # ms
-        sleep_inter=1000,
-    ):  # ms
+        hadoop_home: str,
+        configs: _HDFSClientConfig,
+        time_out: int = 5 * 60 * 1000,  # ms
+        sleep_inter: int = 1000,
+    ) -> None:  # ms
         self.pre_commands = []
-        hadoop_bin = '%s/bin/hadoop' % hadoop_home
+        hadoop_bin = f'{hadoop_home}/bin/hadoop'
         self.pre_commands.append(hadoop_bin)
         dfs = 'fs'
         self.pre_commands.append(dfs)
@@ -513,10 +542,40 @@ class HDFSClient(FS):
 
         return ret, output.splitlines()
 
+    def _run_safe_cmd(self, cmd, redirect_stderr=False, retry_times=5):
+        exe_cmd = [self._base_cmd] + cmd.split()
+        ret = 0
+        output = ""
+        retry_sleep_second = 3
+        for x in range(retry_times + 1):
+            try:
+                process = subprocess.run(
+                    exe_cmd,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=(
+                        subprocess.STDOUT
+                        if redirect_stderr
+                        else subprocess.PIPE
+                    ),
+                    text=True,
+                )
+                output = process.stdout
+                break
+            except subprocess.CalledProcessError as e:
+                ret = e.returncode
+                output = e.output
+                time.sleep(retry_sleep_second)
+            except Exception as e:
+                break
+
+        if ret == 134:
+            raise FSShellCmdAborted(cmd)
+
     @_handle_errors()
-    def list_dirs(self, fs_path):
+    def list_dirs(self, fs_path: str) -> list[str]:
         """
-        Only list directorys under `fs_path` .
+        Only list directories under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -548,9 +607,9 @@ class HDFSClient(FS):
         return dirs
 
     @_handle_errors()
-    def ls_dir(self, fs_path):
+    def ls_dir(self, fs_path: str) -> tuple[list[str], list[str]]:
         """
-        List directorys and files under `fs_path` .
+        List directories and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -612,7 +671,7 @@ class HDFSClient(FS):
         return None
 
     @_handle_errors()
-    def is_dir(self, fs_path):
+    def is_dir(self, fs_path: str) -> bool:
         """
         Whether the remote HDFS path is a directory.
 
@@ -658,7 +717,7 @@ class HDFSClient(FS):
 
         return True
 
-    def is_file(self, fs_path):
+    def is_file(self, fs_path: str) -> bool:
         """
         Whether the remote HDFS path is a file.
 
@@ -691,7 +750,7 @@ class HDFSClient(FS):
         return not self._is_dir(fs_path)
 
     @_handle_errors()
-    def is_exist(self, fs_path):
+    def is_exist(self, fs_path: str) -> bool:
         """
         Whether the remote HDFS path exists.
 
@@ -726,7 +785,9 @@ class HDFSClient(FS):
 
         return True
 
-    def upload_dir(self, local_dir, dest_dir, overwrite=False):
+    def upload_dir(
+        self, local_dir: str, dest_dir: str, overwrite: bool = False
+    ) -> None:
         """
         upload dir to hdfs
         Args:
@@ -746,7 +807,13 @@ class HDFSClient(FS):
         self._try_upload(local_dir, dest_dir)
 
     # can't retry
-    def upload(self, local_path, fs_path, multi_processes=5, overwrite=False):
+    def upload(
+        self,
+        local_path: str,
+        fs_path: str,
+        multi_processes: int = 5,
+        overwrite: bool = False,
+    ) -> None:
         """
         Upload the local path to remote HDFS.
 
@@ -838,7 +905,13 @@ class HDFSClient(FS):
             raise e
 
     # can't retry
-    def download(self, fs_path, local_path, multi_processes=5, overwrite=False):
+    def download(
+        self,
+        fs_path: str,
+        local_path: str,
+        multi_processes: int = 5,
+        overwrite: bool = False,
+    ) -> None:
         """
         Download remote HDFS path to the local.
 
@@ -912,7 +985,7 @@ class HDFSClient(FS):
             raise e
 
     @_handle_errors()
-    def mkdirs(self, fs_path):
+    def mkdirs(self, fs_path: str) -> None:
         """
         Create a remote HDFS directory.
 
@@ -957,7 +1030,13 @@ class HDFSClient(FS):
             if ret != 0:
                 raise ExecuteError(cmd)
 
-    def mv(self, fs_src_path, fs_dst_path, overwrite=False, test_exists=True):
+    def mv(
+        self,
+        fs_src_path: str,
+        fs_dst_path: str,
+        overwrite: bool = False,
+        test_exists: bool = True,
+    ) -> None:
         """
         Move a remote HDFS file or directory from `fs_src_path` to `fs_dst_path` .
 
@@ -965,7 +1044,7 @@ class HDFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Exception.
 
         Examples:
 
@@ -1022,7 +1101,7 @@ class HDFSClient(FS):
             raise ExecuteError(cmd)
 
     @_handle_errors()
-    def delete(self, fs_path):
+    def delete(self, fs_path: str) -> None:
         """
         Delete a remote HDFS path, whether it's a file or directory.
 
@@ -1055,7 +1134,7 @@ class HDFSClient(FS):
 
         return self._rm(fs_path)
 
-    def touch(self, fs_path, exist_ok=True):
+    def touch(self, fs_path: str, exist_ok: bool = True) -> None:
         """
         Create a remote HDFS file.
 
@@ -1095,15 +1174,15 @@ class HDFSClient(FS):
         if ret != 0:
             raise ExecuteError(cmd)
 
-    def need_upload_download(self):
+    def need_upload_download(self) -> Literal[True]:
         return True
 
-    def cat(self, fs_path=None):
+    def cat(self, fs_path: str | None = None) -> str:
         """
         Cat a remote HDFS file.
 
         Args:
-            fs_path(str): The HDFS file path.
+            fs_path(str|None): The HDFS file path.
 
         Returns:
             file content
@@ -1148,7 +1227,7 @@ class HDFSClient(FS):
             trainer_id(int): trainer mpi rank id
             trainers(int): all trainers num
         Returns:
-            fileist(list): file list of current trainer
+            filelist(list): file list of current trainer
         """
         remainder = len(files) % trainers
         blocksize = len(files) // trainers
@@ -1165,13 +1244,13 @@ class HDFSClient(FS):
 
         return trainer_files[trainer_id]
 
-    def list_files_info(self, path_list):
+    def list_files_info(self, path_list: list[str]) -> list[_FileInfo]:
         """
         list_files return file path and size
         Args:
             path_list(list): file list
         Returns:
-            fileist(list): file list with file path and size
+            filelist(list): file list with file path and size
         """
         if len(path_list) <= 0:
             return []
@@ -1187,7 +1266,7 @@ class HDFSClient(FS):
         )
         ret, lines = self._run_cmd(cmd)
         if len(lines) == 0:
-            logger.warning("list_files empty, path[%s]" % path_list)
+            logger.warning(f"list_files empty, path[{path_list}]")
             return []
         for line in lines:
             arr = line.split(' ')
@@ -1226,7 +1305,7 @@ class AFSClient(FS):
 
     def list_dirs(self, fs_path):
         """
-        Only list directorys under `fs_path` .
+        Only list directories under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -1254,7 +1333,7 @@ class AFSClient(FS):
 
     def ls_dir(self, fs_path):
         """
-        List directorys and files under `fs_path` .
+        List directories and files under `fs_path` .
 
         Args:
             fs_path(str): The HDFS file path.
@@ -1505,7 +1584,7 @@ class AFSClient(FS):
             fs_src_path(str):  Name of the file or directory, that's needed to be moved.
             fs_dst_path(str):  Name of the file or directory to which to move to.
             overwrite(bool): Whether to re-write `fs_dst_path` if that exists. Default is False.
-            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Excetption.
+            test_exists(bool): Check the existence of `fs_src_path` and `fs_dst_path` . When `test_exists` is set true, if `fs_src_path` doesn't exist or `fs_dst_path` exists, program will throw an Exception.
 
         Examples:
 
@@ -1621,7 +1700,7 @@ class AFSClient(FS):
             trainer_id(int): trainer mpi rank id
             trainers(int): all trainers num
         Returns:
-            fileist(list): file list of current trainer
+            filelist(list): file list of current trainer
         """
         remainder = len(files) % trainers
         blocksize = len(files) // trainers

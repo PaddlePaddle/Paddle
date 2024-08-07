@@ -1,0 +1,1 @@
+../../amp/test_amp_promote.py

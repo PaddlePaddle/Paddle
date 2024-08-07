@@ -17,7 +17,6 @@ from functools import partial
 import numpy as np
 
 import paddle
-from paddle import base
 
 pos_enc_param_names = (
     "src_pos_enc_table",
@@ -60,7 +59,7 @@ def multi_head_attention(
 ):
     """
     Multi-Head Attention. Note that attn_bias is added to the logit before
-    computing softmax activiation to mask certain selected positions so that
+    computing softmax activation to mask certain selected positions so that
     they will not considered in attention weights.
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
@@ -72,34 +71,33 @@ def multi_head_attention(
         """
         Add linear projection to queries, keys, and values.
         """
-        q = paddle.static.nn.fc(
-            x=queries,
-            size=d_key * n_head,
+        queries_flatten = paddle.nn.Flatten(start_axis=2)(queries)
+        q = paddle.nn.Linear(
+            in_features=queries_flatten.shape[-1],
+            out_features=d_key * n_head,
             weight_attr=paddle.nn.initializer.XavierNormal(
                 fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
-            num_flatten_dims=2,
-        )
-        k = paddle.static.nn.fc(
-            x=keys,
-            size=d_key * n_head,
+        )(queries_flatten)
+        keys_flatten = paddle.nn.Flatten(start_axis=2)(keys)
+        k = paddle.nn.Linear(
+            in_features=keys_flatten.shape[-1],
+            out_features=d_key * n_head,
             weight_attr=paddle.nn.initializer.XavierNormal(
                 fan_in=d_model * d_key, fan_out=n_head * d_key
             ),
             bias_attr=False,
-            num_flatten_dims=2,
-        )
-        v = paddle.static.nn.fc(
-            x=values,
-            size=d_value * n_head,
+        )(keys_flatten)
+        values_flatten = paddle.nn.Flatten(start_axis=2)(values)
+        v = paddle.nn.Linear(
+            in_features=values_flatten.shape[-1],
+            out_features=d_value * n_head,
             weight_attr=paddle.nn.initializer.XavierNormal(
-                fan_in=d_model * d_value,
-                fan_out=n_head * d_value,
+                fan_in=d_model * d_value, fan_out=n_head * d_value
             ),
             bias_attr=False,
-            num_flatten_dims=2,
-        )
+        )(values_flatten)
         return q, k, v
 
     def __split_heads(x, n_head):
@@ -182,13 +180,13 @@ def multi_head_attention(
     out = __combine_heads(ctx_multiheads)
 
     # Project back to the model size.
-    proj_out = paddle.static.nn.fc(
-        x=out,
-        size=d_model,
+    out_flatten = paddle.nn.Flatten(start_axis=2)(out)
+    proj_out = paddle.nn.Linear(
+        in_features=out_flatten.shape[-1],
+        out_features=d_model,
         weight_attr=paddle.nn.initializer.XavierNormal(),
         bias_attr=False,
-        num_flatten_dims=2,
-    )
+    )(out_flatten)
     return proj_out
 
 
@@ -198,29 +196,29 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     This module consists of two linear transformations with a ReLU activation
     in between, which is applied to each position separately and identically.
     """
-    hidden = paddle.static.nn.fc(
-        x,
-        size=d_inner_hid,
-        num_flatten_dims=2,
+    x_flatten = paddle.nn.Flatten(start_axis=2)(x)
+    hidden_l = paddle.nn.Linear(
+        in_features=x_flatten.shape[-1],
+        out_features=d_inner_hid,
         weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_hid**-0.5), high=(d_hid**-0.5)
         ),
-        activation="relu",
-    )
-    out = paddle.static.nn.fc(
-        x=hidden,
-        size=d_hid,
-        num_flatten_dims=2,
+    )(x_flatten)
+    hidden = paddle.nn.ReLU()(hidden_l)
+    hidden_flatten = paddle.nn.Flatten(start_axis=2)(hidden)
+    out = paddle.nn.Linear(
+        in_features=hidden_flatten.shape[-1],
+        out_features=d_hid,
         weight_attr=paddle.nn.initializer.Uniform(
             low=-(d_inner_hid**-0.5), high=(d_inner_hid**-0.5)
         ),
-    )
+    )(hidden_flatten)
     return out
 
 
 def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
     """
-    Add residual connection, layer normalization and droput to the out tensor
+    Add residual connection, layer normalization and dropout to the out tensor
     optionally according to the value of process_cmd.
 
     This will be used before or after multi-head attention and position-wise
@@ -230,12 +228,11 @@ def pre_post_process_layer(prev_out, out, process_cmd, dropout=0.0):
         if cmd == "a":  # add residual connection
             out = out + prev_out if prev_out else out
         elif cmd == "n":  # add layer normalization
-            out = paddle.static.nn.layer_norm(
-                out,
-                begin_norm_axis=len(out.shape) - 1,
-                param_attr=paddle.nn.initializer.Constant(1.0),
+            out = paddle.nn.LayerNorm(
+                out.shape[-1:],
+                weight_attr=paddle.nn.initializer.Constant(1.0),
                 bias_attr=paddle.nn.initializer.Constant(0.0),
-            )
+            )(out)
         elif cmd == "d":  # add dropout
             if dropout:
                 out = paddle.nn.functional.dropout(out, p=dropout)
@@ -263,18 +260,18 @@ def prepare_encoder(
 
     This module is used at the bottom of the encoder stacks.
     """
-    src_word_emb = paddle.static.nn.embedding(
-        src_word,
-        size=[src_vocab_size, src_emb_dim],
+    src_word_emb = paddle.nn.Embedding(
+        num_embeddings=src_vocab_size,
+        embedding_dim=src_emb_dim,
         padding_idx=src_pad_idx,
-        param_attr=paddle.nn.initializer.Normal(0.0, 1.0),
-    )
-    src_pos_enc = paddle.static.nn.embedding(
-        src_pos,
-        size=[src_max_len, src_emb_dim],
+        weight_attr=paddle.nn.initializer.Normal(0.0, 1.0),
+    )(src_word)
+    src_pos_enc = paddle.nn.Embedding(
+        num_embeddings=src_max_len,
+        embedding_dim=src_emb_dim,
         padding_idx=pos_pad_idx,
-        param_attr=base.ParamAttr(name=pos_enc_param_name, trainable=False),
-    )
+        weight_attr=paddle.ParamAttr(name=pos_enc_param_name, trainable=False),
+    )(src_pos)
     src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc
 
@@ -307,10 +304,10 @@ def encoder_layer(
 ):
     """The encoder layers that can be stacked to form a deep encoder.
 
-    This module consits of a multi-head (self) attention followed by
+    This module consists of a multi-head (self) attention followed by
     position-wise feed-forward networks and both the two components companied
     with the post_process_layer to add residual connection, layer normalization
-    and droput.
+    and dropout.
     """
     attn_output = multi_head_attention(
         enc_input,
@@ -580,14 +577,14 @@ def transformer(
 
     # TODO(guosheng): Share the weight matrix between the embedding layers and
     # the pre-softmax linear transformation.
+    dec_output_flatten = paddle.nn.Flatten(start_axis=2)(dec_output)
     predict = paddle.reshape(
-        x=paddle.static.nn.fc(
-            x=dec_output,
-            size=trg_vocab_size,
+        x=paddle.nn.Linear(
+            in_features=dec_output_flatten.shape[-1],
+            out_features=trg_vocab_size,
             weight_attr=paddle.nn.initializer.XavierNormal(),
             bias_attr=False,
-            num_flatten_dims=2,
-        ),
+        )(dec_output_flatten),
         shape=[-1, trg_vocab_size],
     )
     predict = paddle.nn.functional.softmax(predict)

@@ -56,7 +56,12 @@ void TransferLayoutElimPass::PutTransferlayoutAfterOp(
       var2 = ele;
     }
   }
-  CHECK_EQ(op_node_useful_output == 1, true);
+  PADDLE_ENFORCE_EQ(
+      op_node_useful_output == 1,
+      true,
+      common::errors::InvalidArgument("Wrong number of op_node_useful_output, "
+                                      "expected 1, received %d",
+                                      op_node_useful_output));
 
   // group_norm has 3 inputs, but we do not need there is a transfer_layout
   // before Bias and Scale so we extract useful_var1s from op_node->inputs.
@@ -69,7 +74,9 @@ void TransferLayoutElimPass::PutTransferlayoutAfterOp(
     // }
     useful_var1s.push_back(var1);
   }
-  CHECK_EQ(!useful_var1s.empty(), true);
+  PADDLE_ENFORCE_EQ(!useful_var1s.empty(),
+                    true,
+                    common::errors::InvalidArgument("useful_var1s is empty"));
 
   auto transfer_layout_opdesc = *useful_var1s[0]->inputs[0]->Op()->Proto();
   auto block = useful_var1s[0]->inputs[0]->Op()->Block();
@@ -82,7 +89,13 @@ void TransferLayoutElimPass::PutTransferlayoutAfterOp(
   // auto *var2_desc = block->Var(var2->Name());
   auto *var2_desc = var2->Var();
   auto var2_shape = var2_desc->GetShape();
-  CHECK_EQ(var2_shape.size() >= 4L, true);
+  PADDLE_ENFORCE_EQ(
+      var2_shape.size() >= 4L,
+      true,
+      common::errors::InvalidArgument("var2_shape.size is too small"
+                                      "expected no small than 4L"
+                                      "received %d",
+                                      var2_shape.size()));
   auto new_var2_shape = var2_shape;
 
   std::string suffix = "_nchw_to_nhwc";
@@ -156,7 +169,7 @@ bool TransferLayoutElimPass::AllInputIsTransferlayout(
 
   for (auto var : op_node->inputs) {
     // If this input is a 1D persistable tensor，we allow transfer_layout not
-    // appear before this var, but temporarily diasble this if.
+    // appear before this var, but temporarily disable this if.
     if (var->Var()->Persistable() && false) {
       auto var_dims =
           scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
@@ -208,8 +221,19 @@ void TransferLayoutElimPass::ElimTwoTransferlayout(Node *op_node,
   auto transfer_layout0 = var1->inputs[0];
   auto var0 = transfer_layout0->inputs[0];
   auto var2 = op_node->outputs[0];
-  CHECK_EQ(transfer_layout0->Name() == "transfer_layout", true);
-  CHECK_EQ(op_node->Name() == "transfer_layout", true);
+  PADDLE_ENFORCE_EQ(
+      op_node->Name() == "transfer_layout",
+      true,
+      common::errors::InvalidArgument("op_node->Name() must be transfer_layout",
+                                      "received %s",
+                                      op_node->Name()));
+  PADDLE_ENFORCE_EQ(
+      transfer_layout0->Name() == "transfer_layout",
+      true,
+      common::errors::InvalidArgument(
+          "op_node->inputs[0]->inputs[0]->Name() must be transfer_layout",
+          "received %s",
+          transfer_layout0->Name()));
   int dst0 = transfer_layout0->Op()->GetAttrIfExists<int>("dst_layout");
   int src0 = transfer_layout0->Op()->GetAttrIfExists<int>("src_layout");
   int dst1 = op_node->Op()->GetAttrIfExists<int>("dst_layout");
@@ -239,7 +263,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init(pattern_name, graph);
 
   auto transfer_format = [&](std::string data_format) -> std::string {
-    if (data_format == "NCHW") {
+    if (data_format == "NCHW") {  // NOLINT
       return "NHWC";
     } else if (data_format == "NHWC") {
       return "NCHW";
@@ -251,7 +275,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
   int elim_count = 0;
 
   while (true) {
-    auto op_node_sorted = framework::ir::TopologyVarientSort(
+    auto op_node_sorted = framework::ir::TopologyVariantSort(
         *graph, static_cast<framework::ir::SortKind>(0));
     bool modify = false;
     for (auto *op_node : op_node_sorted) {

@@ -42,7 +42,7 @@ class SimpleLayer(paddle.nn.Layer):
         self.use_reduction = use_reduction
         self.use_identity_loss = use_identity_loss
 
-    @to_static()
+    @to_static(full_graph=True)
     def forward(self, x, target=None):
         x = self.conv(x)
         x = paddle.flatten(x, 1, -1)

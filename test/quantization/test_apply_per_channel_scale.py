@@ -21,8 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.quant as Q
-from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def get_cuda_version():
@@ -71,9 +71,9 @@ class ApplyPerChannelScaleTest(unittest.TestCase):
 
     def get_out_static(self):
         paddle.enable_static()
-        main = base.Program()
-        start = base.Program()
-        with base.program_guard(main, start):
+        main = paddle.static.Program()
+        start = paddle.static.Program()
+        with paddle.static.program_guard(main, start):
             x = paddle.static.data("x", self.x.shape, dtype=self.dtype)
             scales = paddle.static.data(
                 "scales", self.scales.shape, dtype=self.dtype
@@ -86,26 +86,31 @@ class ApplyPerChannelScaleTest(unittest.TestCase):
                 'scales': self.scales.numpy(),
             }
 
-            exe = base.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
             exe.run(start)
             (out,) = exe.run(main, feed=feed_dict, fetch_list=[out])
         paddle.disable_static()
         return out
 
+    @test_with_pir_api
     def test_apply_per_channel_scale(self):
         if self.static:
             self.out_real = self.get_out_static()
         else:
+            paddle.disable_static()
             self.out_real = Q.apply_per_channel_scale(
                 x=self.x,
                 scales=self.scales,
             )
-
-        if self.dtype == 'bfloat16':
+        out_expected = self.out_expected
+        if self.dtype == 'bfloat16' and isinstance(
+            self.out_real, paddle.Tensor
+        ):
             self.out_real = convert_uint16_to_float(self.out_real)
-            self.out_expected = convert_uint16_to_float(self.out_expected)
+            out_expected = convert_uint16_to_float(self.out_expected)
+
         np.testing.assert_allclose(
-            self.out_expected, self.out_real, rtol=self.rtol, atol=self.atol
+            out_expected, self.out_real, rtol=self.rtol, atol=self.atol
         )
 
 

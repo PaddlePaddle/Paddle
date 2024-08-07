@@ -51,13 +51,7 @@ cd build
 Build paddle with cinn:
 
 ```
-cmake .. -DCINN_ONLY=OFF -DWITH_CINN=ON -DWITH_GPU=ON
-```
-
-Build cinn only:
-
-```
-cmake .. -DCINN_ONLY=ON -DWITH_CINN=ON -DWITH_GPU=ON
+cmake .. -DWITH_CINN=ON -DWITH_GPU=ON
 ```
 
 And then

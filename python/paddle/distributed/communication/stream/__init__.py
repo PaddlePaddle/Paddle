@@ -16,12 +16,12 @@ from .all_gather import all_gather
 from .all_reduce import all_reduce
 from .all_to_all import alltoall, alltoall_single
 from .broadcast import broadcast
+from .gather import gather
+from .recv import recv
 from .reduce import reduce
 from .reduce_scatter import reduce_scatter
-from .recv import recv
 from .scatter import scatter
 from .send import send
-from .gather import gather
 
 __all__ = [
     "all_gather",

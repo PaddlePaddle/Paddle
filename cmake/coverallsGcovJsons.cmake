@@ -248,7 +248,7 @@ foreach(GCOV_FILE ${GCOV_FILES})
   # Instead of trying to parse the source from the
   # gcov file, simply read the file contents from the source file.
   # (Parsing it from the gcov is hard because C-code uses ; in many places
-  #  which also happens to be the same as the CMake list delimeter).
+  #  which also happens to be the same as the CMake list delimiter).
   file(READ ${GCOV_SRC_PATH} GCOV_FILE_SOURCE)
 
   string(REPLACE "\\" "\\\\" GCOV_FILE_SOURCE "${GCOV_FILE_SOURCE}")

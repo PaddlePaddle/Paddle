@@ -17,7 +17,7 @@
 echo "#!/usr/bin/env bash" >> $1
 echo "unset GREP_OPTIONS" >> $1
 echo "set -e" >> $1
-echo -e >> $1 
+echo -e >> $1
 echo "# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved." >> $1
 echo "#" >> $1
 echo "# Licensed under the Apache License, Version 2.0 (the \"License\");" >> $1
@@ -25,7 +25,7 @@ echo "# you may not use this file except in compliance with the License." >> $1
 echo "# You may obtain a copy of the License at" >> $1
 echo "#" >> $1
 echo "#     http://www.apache.org/licenses/LICENSE-2.0" >> $1
-echo "#" >> $1 
+echo "#" >> $1
 echo "# Unless required by applicable law or agreed to in writing, software" >> $1
 echo "# distributed under the License is distributed on an \"AS IS\" BASIS," >> $1
 echo "# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied." >> $1

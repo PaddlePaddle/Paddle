@@ -17,7 +17,7 @@ import random
 import unittest
 
 import numpy as np
-from auto_parallel_pass_test_base import AutoPallelPassTestBase
+from auto_parallel_pass_test_base import AutoParallelPassTestBase
 
 import paddle
 import paddle.nn.functional as F
@@ -101,7 +101,7 @@ def mlp_forward(input, label, hidden_size):
     return loss
 
 
-class TestGradientMergePass(AutoPallelPassTestBase):
+class TestGradientMergePass(AutoParallelPassTestBase):
     def init(self):
         paddle.seed(2022)
         random.seed(2022)

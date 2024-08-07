@@ -150,7 +150,11 @@ class TestFusionGRUINT8MKLDNNOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, atol=self.error_margin)
+        self.check_output(
+            check_dygraph=False,
+            atol=self.error_margin,
+            check_pir_onednn=self.check_pir_onednn,
+        )
 
 
 class TestFusionGRUINT8MKLDNNOp2(TestFusionGRUINT8MKLDNNOp):

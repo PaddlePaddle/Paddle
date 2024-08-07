@@ -413,7 +413,7 @@ bool LaunchContiguousCazeOneKernel(
           input_dims[rank - 1] * input_dims[rank - 2] * input_dims[rank - 3]);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
   }
 
@@ -470,7 +470,7 @@ void LaunchContiguousDefaultKernel(
           input_data, input_stride, input_dims, numel, output_data);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
   }
 }
@@ -559,4 +559,6 @@ PD_REGISTER_KERNEL(contiguous,
                    ::phi::dtype::float16,
                    ::phi::dtype::bfloat16,
                    ::phi::dtype::complex<float>,
-                   ::phi::dtype::complex<double>) {}
+                   ::phi::dtype::complex<double>,
+                   ::phi::dtype::float8_e4m3fn,
+                   ::phi::dtype::float8_e5m2) {}

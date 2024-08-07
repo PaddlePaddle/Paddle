@@ -1,6 +1,6 @@
 # Design of CINN/DSL
 This module is a simple DSL defined in CINN project.
-The DSL module aims to represent the overall computation in a hardware indenpendent way.
+The DSL module aims to represent the overall computation in a hardware independent way.
 
 ## Concepts
 ### Object

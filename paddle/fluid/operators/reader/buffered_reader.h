@@ -22,8 +22,8 @@
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -39,18 +39,18 @@ namespace operators {
 namespace reader {
 
 class BufferedReader : public framework::DecoratedReader {
-  using TensorVec = paddle::framework::LoDTensorArray;
+  using TensorVec = phi::TensorArray;
   using VecFuture = std::future<TensorVec>;
 
  public:
   BufferedReader(const std::shared_ptr<framework::ReaderBase>& reader,
-                 const platform::Place& place,
+                 const phi::Place& place,
                  size_t buffer_size,
                  bool pin_memory = false);
 
   ~BufferedReader() override;
 
-  platform::Place GetPlace() const { return place_; }
+  phi::Place GetPlace() const { return place_; }
 
  private:
   void ReadTillBufferFullAsync();
@@ -60,11 +60,11 @@ class BufferedReader : public framework::DecoratedReader {
  protected:
   void ShutdownImpl() override;
   void StartImpl() override;
-  void ReadNextImpl(paddle::framework::LoDTensorArray* out) override;
+  void ReadNextImpl(phi::TensorArray* out) override;
 
  private:
   ThreadPool thread_pool_;
-  platform::Place place_;
+  phi::Place place_;
   const size_t buffer_size_;
   bool pin_memory_;
 
@@ -82,20 +82,20 @@ class BufferedReader : public framework::DecoratedReader {
   size_t prev_pos_{-1UL};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuStream_t compute_stream_;
-  std::shared_ptr<platform::CudaStreamObject> stream_;
-  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
+  std::shared_ptr<platform::CudaStreamObject> stream_ = nullptr;
+  std::vector<std::shared_ptr<platform::CudaEventObject>> events_{};
 #endif
 
 #ifdef PADDLE_WITH_XPU
   xpuStream compute_stream_;
-  std::shared_ptr<platform::XpuStreamObject> stream_;
-  std::vector<std::shared_ptr<platform::XpuEventObject>> events_;
+  std::shared_ptr<platform::XpuStreamObject> stream_ = nullptr;
+  std::vector<std::shared_ptr<platform::XpuEventObject>> events_{};
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  std::shared_ptr<phi::stream::Stream> custom_device_compute_stream_;
-  std::shared_ptr<phi::stream::Stream> custom_device_stream_;
-  std::vector<std::shared_ptr<phi::event::Event>> custom_device_events_;
+  std::shared_ptr<phi::stream::Stream> custom_device_compute_stream_ = nullptr;
+  std::shared_ptr<phi::stream::Stream> custom_device_stream_ = nullptr;
+  std::vector<std::shared_ptr<phi::event::Event>> custom_device_events_{};
 #endif
 };
 

@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/pscore/distributed_lookup_table_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(distributed_lookup_table,
                           GPU,

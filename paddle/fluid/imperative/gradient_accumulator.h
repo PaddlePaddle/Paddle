@@ -36,7 +36,7 @@ class GradientAccumulator {
       } else if (var->Var().IsType<phi::SelectedRows>()) {
         var->SetType(framework::proto::VarType::SELECTED_ROWS);
       } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
+        PADDLE_THROW(common::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
       }
     }
@@ -48,8 +48,8 @@ class GradientAccumulator {
       inner_var_->SetType(var->Type());
       inner_var_->SetDataType(var->DataType());
       inner_var_->SetForwardDataType(var->ForwardDataType());
-      inner_var_->InnerSetOverridedStopGradient(
-          var->InnerOverridedStopGradient());
+      inner_var_->InnerSetOverriddenStopGradient(
+          var->InnerOverriddenStopGradient());
       VLOG(6) << " Create inner grad var for (" << var->Name()
               << ") to store result of this Graph";
     }
@@ -102,14 +102,14 @@ class GradientAccumulator {
    *
    *    There are two types of gradient accumulation:
    *    1. Gradient accumulation in same batch
-   *    2. Gradient accumulation across batchs
+   *    2. Gradient accumulation across batches
    *    The order of execution between Hooks and gradient accumulation:
 
    *      [ Gradient accumulation in same batch]
    *                        |
    *            [ leaf GradVarBase hooks ]
    *                        |
-   *      [ Gradient accumulation across batchs ]
+   *      [ Gradient accumulation across batches ]
    *                        |
    *          [ Gradient reduce / allreduce hooks ]
 
@@ -187,7 +187,7 @@ void TensorAdd(const VarType& src, VarType* dst);
 inline void CheckVar(const std::shared_ptr<VariableWrapper>& pre,
                      const std::shared_ptr<VariableWrapper>& post) {
   if (pre->IsEmpty() && !post->IsEmpty()) {
-    PADDLE_THROW(platform::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "The tensor(%s) in before and after hook are not consistent",
         pre->Name()));
   }
@@ -196,7 +196,7 @@ inline void CheckVar(const std::shared_ptr<VariableWrapper>& pre,
     PADDLE_ENFORCE_EQ(
         pre->DataType(),
         post->DataType(),
-        platform::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "The dtype of tensor(%s) before(%s) and after(%s) hook are not "
             "consistent",
             pre->Name(),
@@ -204,7 +204,7 @@ inline void CheckVar(const std::shared_ptr<VariableWrapper>& pre,
             framework::DataTypeToString(post->DataType())));
     PADDLE_ENFORCE_EQ(pre->Place(),
                       post->Place(),
-                      platform::errors::PermissionDenied(
+                      common::errors::PermissionDenied(
                           "The place of tensor(%s) before(%s) and after(%s) "
                           "hook are not consistent",
                           pre->Name(),

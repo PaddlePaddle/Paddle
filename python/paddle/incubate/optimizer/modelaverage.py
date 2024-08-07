@@ -88,7 +88,7 @@ class ModelAverage(Optimizer):
             >>> CLASS_NUM = 10
 
             >>> # define a random dataset
-            >>> class RandomDataset(paddle.io.Dataset):
+            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...     def __getitem__(self, idx):
@@ -163,7 +163,7 @@ class ModelAverage(Optimizer):
             >>> with model_average.apply(need_restore=False):
             ...     evaluate(layer, eval_loader, loss_fn)
 
-            >>> print("\nEvaluate With Restored Paramters")
+            >>> print("\nEvaluate With Restored Parameters")
             >>> model_average.restore()
             >>> evaluate(layer, eval_loader, loss_fn)
 

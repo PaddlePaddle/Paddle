@@ -19,10 +19,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/dynload/cupti.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/backends/dynload/cupti.h"
+#include "paddle/phi/core/os_info.h"
 
 namespace paddle {
 namespace platform {
@@ -34,7 +34,7 @@ std::string string_format(const std::string& format, Args... args) {
   PADDLE_ENFORCE_GE(
       size_s,
       0,
-      platform::errors::Fatal("Error during profiler data formatting."));
+      common::errors::Fatal("Error during profiler data formatting."));
   auto size = static_cast<size_t>(size_s);
   auto buf = std::make_unique<char[]>(size);
   std::snprintf(buf.get(), size, format.c_str(), args...);

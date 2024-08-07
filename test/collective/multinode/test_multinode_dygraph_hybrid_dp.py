@@ -20,7 +20,7 @@ import unittest
 from test_collective_multi_nodes import TestDistBase
 
 
-class TestDYgraphDPMode(TestDistBase):
+class TestDygraphDPMode(TestDistBase):
     def setUp(self):
         self._trainers = 16
         self._init_env()

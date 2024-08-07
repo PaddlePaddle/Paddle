@@ -110,9 +110,7 @@ class TestJITLoad(unittest.TestCase):
                     np.testing.assert_array_equal(
                         x_grad,
                         pd_x_grad,
-                        err_msg='custom op x grad: {},\n paddle api x grad: {}'.format(
-                            x_grad, pd_x_grad
-                        ),
+                        err_msg=f'custom op x grad: {x_grad},\n paddle api x grad: {pd_x_grad}',
                     )
 
     def test_exception(self):

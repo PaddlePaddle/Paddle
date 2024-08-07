@@ -16,6 +16,7 @@ import unittest
 from time import time
 
 import numpy as np
+from dygraph_to_static_utils import test_legacy_and_pt_and_pir
 from test_mnist import MNIST, SEED, TestMNIST
 
 import paddle
@@ -31,6 +32,7 @@ class TestPureFP16(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
+    @test_legacy_and_pt_and_pir
     def test_mnist_to_static(self):
         if paddle.base.is_compiled_with_cuda():
             dygraph_loss = self.train_dygraph()
@@ -103,13 +105,7 @@ class TestPureFP16(TestMNIST):
                 mnist.clear_gradients()
                 if batch_id % 2 == 0:
                     print(
-                        "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}".format(
-                            epoch,
-                            batch_id,
-                            avg_loss.numpy(),
-                            acc.numpy(),
-                            time() - start,
-                        )
+                        f"Loss at epoch {epoch} step {batch_id}: loss: {avg_loss.numpy()}, acc: {acc.numpy()}, cost: {time() - start}"
                     )
                     start = time()
                 if batch_id == 10:

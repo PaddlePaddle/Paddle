@@ -20,6 +20,7 @@ from dygraph_to_static_utils import (
     enable_to_static_guard,
     test_default_and_pir,
     test_legacy_and_pt_and_pir,
+    test_pir_only,
 )
 from test_resnet import ResNetHelper
 
@@ -46,7 +47,6 @@ class TestResnetWithPass(Dy2StTestBase):
         dy_pre = self.resnet_helper.predict_dygraph(image)
         st_pre = self.resnet_helper.predict_static(image)
         dy_jit_pre = self.resnet_helper.predict_dygraph_jit(image)
-        predictor_pre = self.resnet_helper.predict_analysis_inference(image)
         np.testing.assert_allclose(
             dy_pre,
             st_pre,
@@ -59,6 +59,7 @@ class TestResnetWithPass(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
+        predictor_pre = self.resnet_helper.predict_analysis_inference(image)
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
@@ -66,7 +67,7 @@ class TestResnetWithPass(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_default_and_pir
+    @test_pir_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -76,9 +77,7 @@ class TestResnetWithPass(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
-        # TODO(@xiongkun): open after save / load supported in pir.
-        if not paddle.base.framework.use_pir_api():
-            self.verify_predict()
+        self.verify_predict()
 
     @test_default_and_pir
     def test_in_static_mode_mkldnn(self):

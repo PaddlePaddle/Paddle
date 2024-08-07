@@ -20,9 +20,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                                 \
@@ -201,14 +199,14 @@ TrtDeleteWeightQuantDequantLinearOpPass::
 void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     ir::Graph* graph) const {
   const std::string pattern_name =
-      "delete_weight_quantdequant_linear_op_pattern";
+      "delete_weight_quant_dequant_linear_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Scope in TrtDeleteWeightQuantDequantLinearOpPass should not be "
           "null."));
   // Create pattern
@@ -219,7 +217,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
 
   // Device context
   auto* dev_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -231,7 +229,18 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
       return;
     }
     */
+    // Scale and ZeroPoint tensor should be removed in save_optimized_model_pass
+    std::vector<std::string> vars2rm = {};
+    vars2rm.emplace_back(weight_dequantize_linear_op->Op()->Input("Scale")[0]);
+    vars2rm.emplace_back(
+        weight_dequantize_linear_op->Op()->Input("ZeroPoint")[0]);
+    auto& scale_and_zero_point_param = g->GetOrInit<std::vector<std::string>>(
+        framework::ir::kScaleAndZeroPointParamAttr);
+    scale_and_zero_point_param.insert(
+        scale_and_zero_point_param.end(), vars2rm.begin(), vars2rm.end());
+
     std::unordered_set<const Node*> nodes2rm = {};
+
     int bit_length = PADDLE_GET_CONST(
         int, weight_dequantize_linear_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
@@ -265,7 +274,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     if (quant_axis == -1) {  // per_layer quant_dequant: all OP
       PADDLE_ENFORCE_EQ(weight_scale_nums,
                         1,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "When quant_axis == -1 means use per_layer "
                             "quant_dequant, weight_scale'number should be 1."));
 
@@ -279,13 +288,13 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
       PADDLE_ENFORCE_EQ(
           weight_scale_nums,
           w_dims[quant_axis],
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When quant_axis == 0 means use per_channel quant_dequant, "
               "weight_scale'numbers should be equal channels."));
       PADDLE_ENFORCE_EQ(
           w_dims.size(),
           4,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When quant_axis == 0 means use per_channel "
               "quant_dequant, (conv2d, depthwise_conv2d, "
               "fused_conv2d_add_act)'s weight dims should be 4."));
@@ -299,7 +308,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
       PADDLE_ENFORCE_EQ(
           weight_scale_nums,
           w_dims[quant_axis],
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When quant_axis == 1 means use per_channel quant_dequant, "
               "weight_scale'numbers should be equal channels."));
 
@@ -310,7 +319,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
           PADDLE_ENFORCE_EQ(
               quantized_op_type,
               "conv2d_transpose",
-              platform::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "When quant_axis == 1 means use per_channel quant_dequant, "
                   "only conv2d_transpose weight dims equal 4."));
         }
@@ -325,12 +334,12 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
                                weight_scale[i % w_dims[1]];
         }
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "When quant_axis == 1 , weight dims should be 2 or 4, please check "
             "your model "));
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "quant_axis should be -1 or 0 or 1, please check your model "
           "OP'attribute "));
     }
@@ -362,9 +371,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_delete_weight_dequant_linear_op_pass,
               paddle::framework::ir::TrtDeleteWeightQuantDequantLinearOpPass);

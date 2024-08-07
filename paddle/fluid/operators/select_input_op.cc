@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/assign_op.h"
 #include "paddle/fluid/operators/select_op_helper.h"
+#include "paddle/phi/core/memory/memcpy.h"
 
 namespace paddle {
 namespace operators {
@@ -32,8 +32,8 @@ class SelectInputOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+               const phi::Place &dev_place) const override {
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
     auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
@@ -43,7 +43,7 @@ class SelectInputOp : public framework::OperatorBase {
     PADDLE_ENFORCE_LT(
         output_branch,
         x_names.size(),
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input 'Mask' in SelectInputOp is invalid. "
             "'Mask' must be less than the size of input vector 'X'. "
             "But received Mask = %d, X's size = %d.",

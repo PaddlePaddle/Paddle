@@ -38,6 +38,16 @@ void CheckNumericsKernel(const Context& ctx,
   values->Resize({static_cast<int64_t>(3)});
   float* values_ptr = ctx.template Alloc<float>(values);
 
+  if (tensor.numel() == 0) {
+    stats_ptr[0] = 0;
+    stats_ptr[1] = 0;
+    stats_ptr[2] = 0;
+    values_ptr[0] = static_cast<float>(0);
+    values_ptr[1] = static_cast<float>(0);
+    values_ptr[2] = static_cast<float>(0);
+    return;
+  }
+
   std::string cpu_hint_str =
       phi::funcs::GetCpuHintString<T>(op_type, var_name, tensor.place());
   phi::funcs::CheckNumericsCpuImpl(tensor.data<T>(),
@@ -61,4 +71,6 @@ PD_REGISTER_KERNEL(check_numerics,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2) {}

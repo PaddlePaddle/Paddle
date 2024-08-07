@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -141,6 +142,11 @@ class XPUTestSiluOP(XPUOpTestWrapper):
         def delete_env(self):
             if os.getenv('XPU_PADDLE_ACT_LUT'):
                 del os.environ['XPU_PADDLE_ACT_LUT']
+
+    @check_run_big_shape_test()
+    class TestSiluLargeShape1(XPUTestSilu):
+        def init_shape(self):
+            self.shape = [8192, 1728]
 
 
 class TestSiluAPI(unittest.TestCase):
@@ -350,10 +356,18 @@ class XPUTestReluOP(XPUOpTestWrapper):
             self.op_type = "relu"
             self.dtype = self.in_type
 
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+            tmp_x = np.random.uniform(-1, 1, [11, 17])
             # The same reason with TestAbs
-            x[np.abs(x) < 0.005] = 0.02
-            out = np.maximum(x, 0)
+            tmp_x[np.abs(tmp_x) < 0.005] = 0.02
+
+            if self.dtype == np.uint16:
+                # bfloat16 actually
+                tmp_out = np.maximum(tmp_x, 0)
+                x = convert_float_to_uint16(tmp_x)
+                out = convert_float_to_uint16(tmp_out)
+            else:
+                x = tmp_x.astype(self.dtype)
+                out = np.maximum(x, 0)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {'X': x}
@@ -664,7 +678,7 @@ class XPUTestReciprocalOP(XPUOpTestWrapper):
         self.op_name = 'reciprocal'
         self.use_dynamic_create_class = False
 
-    class XPUTestRecipocal(TestActivationOPBase):
+    class XPUTestReciprocal(TestActivationOPBase):
         def set_case(self):
             self.op_type = "reciprocal"
             self.dtype = self.in_type
@@ -1332,6 +1346,11 @@ class XPUTestSinOP(XPUOpTestWrapper):
         def init_config(self):
             self.tmp_x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22])
 
+    @check_run_big_shape_test()
+    class XPUTestSinLargeShape1(XPUTestSinBase):
+        def init_config(self):
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [1, 8192, 1, 128])
+
 
 support_types = get_xpu_op_support_types('sin')
 for stype in support_types:
@@ -1378,6 +1397,11 @@ class XPUTestCosOP(XPUOpTestWrapper):
     class XPUTestCos4(XPUTestCosBase):
         def init_config(self):
             self.tmp_x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22])
+
+    @check_run_big_shape_test()
+    class XPUTestCosLargeShape1(XPUTestCosBase):
+        def init_config(self):
+            self.tmp_x = np.random.uniform(-np.pi, np.pi, [1, 8192, 1, 128])
 
 
 support_types = get_xpu_op_support_types('cos')

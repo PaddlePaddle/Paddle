@@ -44,7 +44,7 @@ class MemcpyFunctor {
 
  public:
   MemcpyFunctor(framework::Variable *out,
-                const platform::DeviceContext &dev_ctx,
+                const phi::DeviceContext &dev_ctx,
                 const int dst_place_type)
       : out_(out), dev_ctx_(dev_ctx), dst_place_type_(dst_place_type) {}
 
@@ -53,12 +53,12 @@ class MemcpyFunctor {
 
     if (dst_place_type_ == DeviceType::CUDA_PINNED) {
       framework::TensorCopy(
-          lod_tensor, platform::CUDAPinnedPlace(), dev_ctx_, &out_tensor);
+          lod_tensor, phi::GPUPinnedPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CUDA) {
       framework::TensorCopy(
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CPU) {
-      framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
+      framework::TensorCopySync(lod_tensor, phi::CPUPlace(), &out_tensor);
 
 #ifdef PADDLE_WTIH_CUSTOM_DEVICE
     } else if (dst_place_type_ == DeviceType::CUSTOM_DEVICE) {
@@ -66,7 +66,7 @@ class MemcpyFunctor {
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
 #endif
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
     }
     out_tensor.set_lod(lod_tensor.lod());
@@ -74,7 +74,7 @@ class MemcpyFunctor {
 
   void operator()(const phi::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));
   }
 
@@ -83,13 +83,13 @@ class MemcpyFunctor {
     PADDLE_ENFORCE_EQ(
         true,
         false,
-        platform::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "Not support type for Memcpy op with type %s", typeid(T).name()));
   }
 
  private:
   framework::Variable *out_;
-  const platform::DeviceContext &dev_ctx_;
+  const phi::DeviceContext &dev_ctx_;
   const int dst_place_type_;
 };
 

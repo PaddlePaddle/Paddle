@@ -59,7 +59,7 @@ static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
     if (array_list.size() > 0) {
       PADDLE_ENFORCE_EQ(array_list[0].isa<pir::Int32Attribute>(),
                         true,
-                        phi::errors::Unimplemented(
+                        common::errors::Unimplemented(
                             "the 0th elementwise MUST be pir::Int32Attribute"));
       for (size_t i = 0; i < array_list.size(); ++i) {
         vec_res.push_back(array_list[i].dyn_cast<pir::Int32Attribute>().data());
@@ -77,14 +77,14 @@ static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
         }
 
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
             attr_type_name));
       }
     }
     return vec_res;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "ConvertPirAttribute2RuntimeAttribute not support [%s] ",
         attr_type_name));
   }
@@ -92,7 +92,7 @@ static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
 
 OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place), value_exec_info_(value_exec_info) {
@@ -117,7 +117,7 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   PADDLE_ENFORCE_NOT_NULL(
       yaml_interface,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", legacy_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(op_name),
@@ -217,9 +217,10 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
             .at("data_format_tensors")
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
-    std::vector<std::string> layout_transform_inputs;
+
     auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
-    std::string fluid_op_name = yaml_info_parser.GetOriginOpName();
+    std::string fluid_op_name =
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
     for (auto& attr : data_format_tensors_attr) {
       auto input_name = attr.dyn_cast<pir::StrAttribute>().AsString();
       data_format_tensors_.insert(
@@ -231,22 +232,39 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
   phi::MetaConfig new_config = infer_meta_context_.GetMetaConfig();
   new_config.is_run_mkldnn_kernel = true;
   infer_meta_context_.SetMetaConfig(new_config);
+
+  // Step4: Handle skip_transform_inputs
+  if (op_attributes.count("skip_transform_inputs")) {
+    std::vector<pir::Attribute> skip_transform_inputs =
+        op->attributes()
+            .at("skip_transform_inputs")
+            .dyn_cast<pir::ArrayAttribute>()
+            .AsVector();
+
+    auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
+    std::string fluid_op_name =
+        phi::TransToFluidOpName(yaml_info_parser.OpRuntimeInfo().kernel_func);
+
+    for (auto& input : skip_transform_inputs) {
+      auto input_name = input.dyn_cast<pir::StrAttribute>().AsString();
+      skip_format_tensors_.insert(
+          op_normalizer.GetLegacyArgName(fluid_op_name, input_name));
+    }
+  }
 }
 
 OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {
-  if (kernel_context_ != nullptr) {
-    delete kernel_context_;
-  }
-
-  if (phi_kernel_ != nullptr) {
-    delete phi_kernel_;
-  }
+  delete kernel_context_;
+  delete phi_kernel_;
 }
 
 void OneDNNLegacyKernelInstruction::Run() {
   // Step1. TransLayout
   auto inputs = kernel_context_->InNameList();
   for (auto& input_name : inputs) {
+    if (skip_format_tensors_.count(*input_name)) {
+      continue;
+    }
     auto input_vars = kernel_context_->MultiInputVar(*input_name);
     for (auto& var : input_vars) {
       if (var->IsType<phi::DenseTensor>()) {

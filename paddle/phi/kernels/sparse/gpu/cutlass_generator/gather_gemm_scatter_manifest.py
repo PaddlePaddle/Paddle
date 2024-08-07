@@ -65,7 +65,7 @@ namespace sparse {
 
         self.top_level_path = os.path.join(
             self.operation_path,
-            "all_%s_operations.h.tmp" % OperationKindNames[self.kind],
+            f"all_{OperationKindNames[self.kind]}_operations.h.tmp",
         )
 
         self.configuration_path = os.path.join(

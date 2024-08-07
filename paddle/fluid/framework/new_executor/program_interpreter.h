@@ -38,7 +38,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
  public:
   ProgramInterpreter(
-      const platform::Place& place,
+      const phi::Place& place,
       const BlockDesc& block,
       Scope* scope,
       const ExecutionConfig& execution_config = ExecutionConfig());
@@ -60,9 +60,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
-  void Build(
-      const std::vector<std::string>& feed_names,
-      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) override;
+  void Build(const std::vector<std::string>& feed_names,
+             std::vector<paddle::framework::OpFuncNode>* op_func_nodes,
+             bool switch_stream = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
@@ -91,7 +91,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   const Scope* local_scope() const override;
 
-  const platform::Place& GetPlace() const override { return place_; }
+  const phi::Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
     output_hookfuncs_ = hookfuncs;
@@ -100,6 +100,10 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void SetInputHooks(const std::vector<HookFunc>& hookfuncs) override {
     input_hookfuncs_ = hookfuncs;
   }
+
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) override {}
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) override {}
 
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
   GetForceEventsToWaitInfo() {
@@ -127,8 +131,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
   void AnalyseExecuteOrderForTrace();
-  void BuildOpFuncNode(
-      std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   // inplace
   void BuildInplace();
@@ -181,7 +183,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // op profiling status
   bool is_in_op_profiling_mode_{false};
 
-  const platform::Place place_;
+  const phi::Place place_;
   const BlockDesc& block_;  // not owned
 
   interpreter::DependencyBuilder dependency_builder_;

@@ -279,18 +279,18 @@ class TestCloudRoleMaker2(unittest.TestCase):
         tmp.barrier_worker()
         tmp.barrier_all()
         from paddle.incubate.distributed.fleet.role_maker import (
-            MPISymetricRoleMaker,
+            MPISymmetricRoleMaker,
         )
 
-        tmp1 = MPISymetricRoleMaker()
+        tmp1 = MPISymmetricRoleMaker()
         tmp1.all_gather(1)
         tmp1.all_gather(1)
-        tmp2 = MPISymetricRoleMaker()
+        tmp2 = MPISymmetricRoleMaker()
         tmp2.all_reduce_worker([], [])
-        tmp3 = MPISymetricRoleMaker()
+        tmp3 = MPISymmetricRoleMaker()
         tmp3.barrier_worker()
         tmp3.barrier_worker()
-        tmp4 = MPISymetricRoleMaker()
+        tmp4 = MPISymmetricRoleMaker()
         tmp4.barrier_all()
         tmp4.barrier_all()
 

@@ -69,7 +69,7 @@ custom_ops = load(
 
 BATCH_SIZE = 16
 BATCH_NUM = 4
-IMAGE_SIZE = 784
+IMAGE_SIZE = 128
 CLASS_NUM = 10
 
 

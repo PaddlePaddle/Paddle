@@ -21,7 +21,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/lowered_func.h"
-#include "paddle/cinn/utils/error.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace pybind {
@@ -66,24 +66,28 @@ class IRContext {
   template <typename TIRContextNode>
   const TIRContextNode* As() const {
     static_assert(std::is_base_of<IRContextNode, TIRContextNode>());
-    CHECK(data_.get()) << "IrContext holds null";
+    PADDLE_ENFORCE_NOT_NULL(
+        data_.get(), phi::errors::InvalidArgument("IrContext holds null"));
     auto* ctx_node = data_.get()->safe_as<TIRContextNode>();
     if (!ctx_node) {
       std::stringstream err_msg;
       err_msg << "TypeConvertError: convert " << data_.get()->type_info()
               << " to " << TIRContextNode::__type_info__;
 
-      CINN_THROW(err_msg.str());
+      PADDLE_THROW(::common::errors::InvalidArgument(err_msg.str()));
     }
     return ctx_node;
   }
   template <typename TIRContextNode>
   TIRContextNode* As() {
-    CHECK(data_.get()) << "IrContext holds null";
+    PADDLE_ENFORCE_NOT_NULL(
+        data_.get(), phi::errors::InvalidArgument("IrContext holds null"));
     auto* ctx_node = data_.get()->safe_as<TIRContextNode>();
     if (!ctx_node) {
-      LOG(FATAL) << "TypeConvertError: convert " << data_.get()->type_info()
-                 << " to " << TIRContextNode::__type_info__;
+      std::stringstream ss;
+      ss << "TypeConvertError: convert " << data_.get()->type_info() << " to "
+         << TIRContextNode::__type_info__;
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     }
     return ctx_node;
   }
@@ -235,8 +239,10 @@ void LinkToParentContext(ir::Expr);
 template <typename TIRContextNode>
 IRContext IRBuilderNode::GetLastContext() const {
   if (!(contexts.back().As<TIRContextNode>())) {
-    LOG(FATAL) << "TypeError: The last context is not "
-               << TIRContextNode::__type_info__;
+    std::stringstream ss;
+    ss << "TypeError: The last context is not "
+       << TIRContextNode::__type_info__;
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
   return contexts.back();
 }

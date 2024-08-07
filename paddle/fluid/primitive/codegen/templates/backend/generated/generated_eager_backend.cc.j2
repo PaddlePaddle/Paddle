@@ -12,7 +12,7 @@ namespace backend {
 
 {%- macro args(inputs, attrs) -%}  {#- Arguments are variable pass into method -#}
   {{common.sequence('', '', ', ', inputs)}}
-  {%- if attrs|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between 
+  {%- if attrs|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between
   nputs and attrs -#}
   {{common.sequence('', '', ', ', attrs)}}
 {%- endmacro -%}
@@ -37,7 +37,7 @@ return ::{{name}}_ad_func({{common.args(input_names, attr_names)}});
 {% for api in apis %}
   {%- if api.is_prim and api.name not in backend_black_list and api.name[-1] !=  '_' -%}
 {{sig(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} {
-{{body(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}} 
+{{body(api.name, api.inputs, api.attrs, api.outputs | trip_intermediate)}}
 }
 
   {% endif %}

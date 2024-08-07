@@ -22,7 +22,7 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-class TrtConvertElementwiseaddTransposeTest(TrtLayerAutoScanTest):
+class TrtConvertElementwiseAddTransposeTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 

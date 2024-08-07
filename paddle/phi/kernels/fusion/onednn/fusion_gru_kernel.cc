@@ -89,12 +89,12 @@ class GRUOneDNNHandler
       PADDLE_ENFORCE_EQ(
           gate_activation,
           "sigmoid",
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "oneDNN fusion_gru supports only sigmoid as a gate activation."));
       PADDLE_ENFORCE_EQ(
           activation,
           "tanh",
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "oneDNN fusion_gru supports only tanh as an activation."));
 
       // Weights for int8 kernel are of a type s8
@@ -457,7 +457,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   const auto& input_lod = x.lod()[0];
 
   // Calculate RNN dimensions
-  const int64_t N = input_lod.size() - 1;  // Number of sentences (batches)
+  const int64_t N = static_cast<int64_t>(input_lod.size() -
+                                         1);  // Number of sentences (batches)
   const int64_t Ti =  // Max length of the sentence in a batch
       [&input_lod]() {
         size_t res = 0;
@@ -572,15 +573,16 @@ void FusionGRUKernel(const Context& dev_ctx,
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("mkldnn_data_type"))
           : "float32";
-  std::string mkldnn_data_type_list[] = {"float32", "int8", "bfloat16"};
-  PADDLE_ENFORCE_EQ(
-      std::find(std::begin(mkldnn_data_type_list),
-                std::end(mkldnn_data_type_list),
-                mkldnn_data_type) != std::end(mkldnn_data_type_list),
-      true,
-      phi::errors::InvalidArgument("The mkldnn_data_type shoule be [float32, "
-                                   "int8, bfloat16], but found %s.",
-                                   mkldnn_data_type.c_str()));
+  std::vector<std::string> mkldnn_data_type_list = {
+      "float32", "int8", "bfloat16"};
+  PADDLE_ENFORCE_EQ(std::find(mkldnn_data_type_list.begin(),
+                              mkldnn_data_type_list.end(),
+                              mkldnn_data_type) != mkldnn_data_type_list.end(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The mkldnn_data_type shoule be [float32, "
+                        "int8, bfloat16], but found %s.",
+                        mkldnn_data_type.c_str()));
   const float scale_data =
       dev_ctx.HasDnnAttr("Scale_data")
           ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_data"))

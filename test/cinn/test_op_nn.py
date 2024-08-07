@@ -20,8 +20,9 @@ import unittest
 import conv2d_utils
 import numpy as np
 import pool_utils
-from cinn import framework
 from test_utils import SingleOpTester
+
+from paddle.cinn import framework
 
 
 class OpTest_relu(SingleOpTester):

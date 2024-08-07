@@ -10,11 +10,7 @@ register_unity_group(
   fused_embedding_fc_lstm_op.cc
   fused_embedding_seq_pool_op.cc
   fusion_lstm_op.cc
-  fusion_repeated_fc_relu_op.cc
-  fusion_seqconv_eltadd_relu_op.cc
-  fusion_seqexpand_concat_fc_op.cc
   fusion_seqpool_concat_op.cc
-  fusion_squared_mat_sub_op.cc
   multi_gru_op.cc
-  mkldnn/multi_gru_mkldnn_op.cc
+  onednn/multi_gru_onednn_op.cc
   fusion_seqpool_cvm_concat_op.cc)

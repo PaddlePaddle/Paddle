@@ -31,10 +31,9 @@ class TestComplexVariable(unittest.TestCase):
         b = np.array([[1.0 + 1.0j, 1.0 + 1.0j]]).astype(self._dtype)
 
         with dg.guard():
-            x = dg.to_variable(a, "x")
-            y = dg.to_variable(b)
+            x = paddle.to_tensor(a)
+            y = paddle.to_tensor(b)
             out = paddle.add(x, y)
-            self.assertIsNotNone(f"{out}")
 
         np.testing.assert_allclose(out.numpy(), a + b, rtol=1e-05)
         self.assertEqual(out.dtype, convert_np_dtype_to_dtype_(self._dtype))
@@ -47,14 +46,24 @@ class TestComplexVariable(unittest.TestCase):
         self.compare()
 
     def test_convert_np_dtype_to_dtype(self):
-        self.assertEqual(
-            convert_np_dtype_to_dtype_(np.complex64),
-            core.VarDesc.VarType.COMPLEX64,
-        )
-        self.assertEqual(
-            convert_np_dtype_to_dtype_(np.complex64),
-            core.VarDesc.VarType.COMPLEX64,
-        )
+        if paddle.framework.use_pir_api():
+            self.assertEqual(
+                convert_np_dtype_to_dtype_(np.complex64),
+                core.DataType.COMPLEX64,
+            )
+            self.assertEqual(
+                convert_np_dtype_to_dtype_(np.complex64),
+                core.DataType.COMPLEX64,
+            )
+        else:
+            self.assertEqual(
+                convert_np_dtype_to_dtype_(np.complex64),
+                core.VarDesc.VarType.COMPLEX64,
+            )
+            self.assertEqual(
+                convert_np_dtype_to_dtype_(np.complex64),
+                core.VarDesc.VarType.COMPLEX64,
+            )
 
     def test_convert_dtype(self):
         self.assertEqual(

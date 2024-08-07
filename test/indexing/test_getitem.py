@@ -234,6 +234,26 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         np.testing.assert_allclose(y.numpy(), np_res)
 
+    def test_combined_index_12(self):
+        np_data = (
+            np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6)).astype(self.ndtype)
+        )
+
+        if self.dtype == 'bfloat16':
+            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            np_data = np_data + 1j * np_data
+
+        np_res = np_data[:, :, [2, 4], :]
+
+        x = paddle.to_tensor(np_data, dtype=self.dtype)
+        y = x[:, :, [2, 4], :]
+
+        if self.dtype == 'bfloat16':
+            y = paddle.cast(y, dtype='float32')
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
     def test_index_has_range(self):
         np_data = (
             np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6)).astype(self.ndtype)
@@ -436,7 +456,7 @@ class TestINT64GetitemInDygraph(TestGetitemInDygraph):
 class TestBOOLGetitemInDygraph(TestGetitemInDygraph):
     def setUp(self):
         paddle.disable_static()
-        self.ndtype = np.bool8
+        self.ndtype = np.bool_
         self.dtype = 'bool'
 
 
@@ -743,7 +763,7 @@ class TestFP32GetitemGradInDygraph(TestGetitemGrad):
 class TestBOOLGetitemGradInDygraph(TestGetitemGrad):
     def setUp(self):
         paddle.disable_static()
-        self.ndtype = np.bool8
+        self.ndtype = np.bool_
         self.dtype = 'bool'
 
 
@@ -977,6 +997,21 @@ class TestGetitemInStatic(unittest.TestCase):
             x = paddle.to_tensor(np_data)
             y = _getitem_static(
                 x, (slice(None, None, None), [False, False, False, False], 4)
+            )
+            res = self.exe.run(fetch_list=[y])
+
+        np.testing.assert_allclose(res[0], np_res)
+
+    @test_with_pir_api
+    def test_combined_index_12(self):
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((3, 4, 5, 6))
+        np_res = np_data[:, :, [2, 4], :]
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(
+                x, (slice(None), slice(None), [2, 4], slice(None))
             )
             res = self.exe.run(fetch_list=[y])
 

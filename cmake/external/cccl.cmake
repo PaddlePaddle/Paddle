@@ -15,12 +15,18 @@ set(CCCL_INCLUDE_DIR ${CCCL_SOURCE_DIR})
 message("CCCL_INCLUDE_DIR is ${CCCL_INCLUDE_DIR}")
 include_directories(${CCCL_INCLUDE_DIR})
 
+file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/cccl/util_device.cuh.patch
+     native_src)
+set(CCCL_PATCH_COMMAND git checkout -- . && git checkout ${CCCL_TAG} && patch
+                       -p1 -Nd ${CCCL_SOURCE_DIR} < ${native_src})
+
 ExternalProject_Add(
   extern_cccl
   ${EXTERNAL_PROJECT_LOG_ARGS}
   SOURCE_DIR ${CCCL_SOURCE_DIR}
   PREFIX ${CCCL_PREFIX_DIR}
   UPDATE_COMMAND ""
+  PATCH_COMMAND ${CCCL_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""

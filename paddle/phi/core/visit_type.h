@@ -374,7 +374,7 @@ namespace phi {
       PD_PRIVATE_CASE_TYPE(                                                    \
           NAME, ::phi::DataType::FLOAT64, double, __VA_ARGS__)                 \
       default:                                                                 \
-        PADDLE_THROW(phi::errors::InvalidArgument(                             \
+        PADDLE_THROW(common::errors::InvalidArgument(                          \
             "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));     \
     }                                                                          \
   }()
@@ -400,8 +400,14 @@ namespace phi {
           NAME, ::phi::DataType::COMPLEX64, phi::complex64, __VA_ARGS__)       \
       PD_PRIVATE_CASE_TYPE(                                                    \
           NAME, ::phi::DataType::COMPLEX128, phi::complex128, __VA_ARGS__)     \
+      PD_PRIVATE_CASE_TYPE(NAME,                                               \
+                           ::phi::DataType::FLOAT8_E4M3FN,                     \
+                           phi::float8_e4m3fn,                                 \
+                           __VA_ARGS__)                                        \
+      PD_PRIVATE_CASE_TYPE(                                                    \
+          NAME, ::phi::DataType::FLOAT8_E5M2, phi::float8_e5m2, __VA_ARGS__)   \
       default:                                                                 \
-        PADDLE_THROW(phi::errors::InvalidArgument(                             \
+        PADDLE_THROW(common::errors::InvalidArgument(                          \
             "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));     \
     }                                                                          \
   }()
@@ -466,9 +472,25 @@ namespace phi {
           NAME, ::phi::DataType::BFLOAT16, phi::bfloat16, __VA_ARGS__)         \
       PD_PRIVATE_CASE_TYPE(NAME, ::phi::DataType::FLOAT32, float, __VA_ARGS__) \
       default:                                                                 \
-        PADDLE_THROW(phi::errors::InvalidArgument(                             \
+        PADDLE_THROW(common::errors::InvalidArgument(                          \
             "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));     \
     }                                                                          \
   }()
 
+#define PD_VISIT_KERNEL(                                                \
+    kernel_name, kernel_key, kernel_signature, use_strided_kernel, ...) \
+  [&] {                                                                 \
+    auto kernel_result =                                                \
+        phi::KernelFactory::Instance().SelectKernelOrThrowError(        \
+            kernel_name, kernel_key, use_strided_kernel);               \
+    const auto& kernel = kernel_result.kernel;                          \
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();   \
+    if (kernel_result.has_fallback_cpu) {                               \
+      PADDLE_THROW(common::errors::NotFound(                            \
+          "The kernel with key %s of kernel `%s` is not registered.",   \
+          kernel_key,                                                   \
+          kernel_name));                                                \
+    }                                                                   \
+    (*kernel_fn)(__VA_ARGS__);                                          \
+  }()
 }  // namespace phi

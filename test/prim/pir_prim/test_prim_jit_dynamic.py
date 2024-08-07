@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn.functional as F
 from paddle.framework import core
 from paddle.static import InputSpec
 
@@ -45,14 +44,6 @@ def rms_norm2(hidden_states, weight):
     variance = hidden_states.pow(2).mean((0, 1), keepdim=True)
     hidden_states = paddle.rsqrt(variance + 1e-5) * hidden_states
     return hidden_states * weight
-
-
-def log_softmax_net(x):
-    return F.log_softmax(x)
-
-
-def any_net(x):
-    return paddle.any(x)
 
 
 class TestPrimMode1(unittest.TestCase):
@@ -110,58 +101,6 @@ class TestPrimMode2(TestPrimMode1):
         self.y = np.random.random(self.shape_y).astype("float32")
         self.net = rms_norm2
         self.enable_cinn = False
-
-
-class TestPrimOne(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.shape_x = [1, 300, 4096]
-        self.x = np.random.random(self.shape_x).astype(self.dtype)
-        self.net = log_softmax_net
-        self.necessary_ops = "pd_op.log_softmax"
-
-    def base_net(self, flag=None):
-        if flag == "prim":
-            core._set_prim_all_enabled(True)
-        x = paddle.to_tensor(self.x)
-        fn = apply_to_static(
-            self.net,
-            use_cinn=False,
-            input_spec=[
-                InputSpec(shape=[None, None, 4096], dtype=self.dtype),
-            ],
-        )
-        res = fn(x)
-        ops = [
-            op.name()
-            for op in fn.program_cache.last()[-1][-1]
-            .infer_program.program.global_block()
-            .ops
-        ]
-
-        if flag == "prim":
-            assert self.necessary_ops not in ops
-            core._set_prim_all_enabled(False)
-        else:
-            assert self.necessary_ops in ops
-        return res
-
-    def test_prim_all_dynamic(self):
-        res_ref = self.base_net()
-        res = self.base_net("prim")
-        for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(ref, actual, rtol=1e-6)
-
-
-class TestPrimOne2(TestPrimOne):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "bool"
-        self.shape_x = [1, 300, 4096]
-        self.x = np.random.random(self.shape_x).astype(self.dtype)
-        self.net = any_net
-        self.necessary_ops = "pd_op.any"
 
 
 if __name__ == "__main__":

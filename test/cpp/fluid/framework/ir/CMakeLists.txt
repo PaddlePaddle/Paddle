@@ -1,0 +1,1 @@
+add_subdirectory(memory_optimize_pass)

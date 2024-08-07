@@ -13,10 +13,16 @@
 # limitations under the License.
 
 import warnings
+from typing import Callable, TypeVar
+
+from typing_extensions import ParamSpec
 
 import paddle  # noqa: F401
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import in_dynamic_mode
+
+_InputT = ParamSpec("_InputT")
+_RetT = TypeVar("_RetT")
 
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `_C_ops`
@@ -24,14 +30,14 @@ from paddle.framework import in_dynamic_mode
 # of the original API will be called.
 # NOTE(GGBond8488): Simply run the original version of the API under the static graph mode has a low
 # probability that the result is inconsistent with the dynamic graph.
-def _inplace_apis_in_dygraph_only_(func):
-    def __impl__(*args, **kwargs):
+def _inplace_apis_in_dygraph_only_(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         if not in_dynamic_mode():
             origin_api_name = func.__name__[:-1]
             warnings.warn(
-                "In static graph mode, {}() is the same as {}() and does not perform inplace operation.".format(
-                    func.__name__, origin_api_name
-                )
+                f"In static graph mode, {func.__name__}() is the same as {origin_api_name}() and does not perform inplace operation."
             )
             from ..base.dygraph.base import in_to_static_mode
 

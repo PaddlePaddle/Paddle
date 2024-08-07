@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_uint64(gpu_memory_limit_mb);
+COMMON_DECLARE_uint64(gpu_memory_limit_mb);
 
 namespace paddle {
 namespace platform {

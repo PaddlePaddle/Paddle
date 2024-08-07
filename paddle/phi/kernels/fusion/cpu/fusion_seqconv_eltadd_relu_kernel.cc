@@ -23,8 +23,7 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T, typename Context>
 void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
@@ -42,7 +41,7 @@ void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       bias.numel(),
       w_dims[1],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "bias size should be equal to weights feature size, but received "
           "bias size is: %d, weights feature size is: %d.",
           bias.numel(),
@@ -50,7 +49,7 @@ void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x_lod.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Only support one level sequence now, but received value is: %d.",
           x_lod.size()));
 
@@ -148,8 +147,7 @@ void FusionSeqConvEltAddReluKernel(const Context& dev_ctx,
      true);
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fusion_seqconv_eltadd_relu,
                    CPU,

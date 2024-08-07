@@ -78,9 +78,7 @@ def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
             save_graph_name = model_name
         graph.draw(save_graph_dir, save_graph_name, graph.all_op_nodes())
         print(
-            "Success! Generated dot and pdf files for {} model, that can be found at {} named {}.\n".format(
-                model_name, save_graph_dir, save_graph_name
-            )
+            f"Success! Generated dot and pdf files for {model_name} model, that can be found at {save_graph_dir} named {save_graph_name}.\n"
         )
 
 

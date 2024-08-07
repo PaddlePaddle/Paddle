@@ -162,5 +162,5 @@ void ClearCurBlock();
 int BlockDepth();
 
 // Set current thread id, so we can map the system thread id to thread id.
-void RecoreCurThreadId(uint64_t id);
+void RecordCurThreadId(uint64_t id);
 }  // namespace phi

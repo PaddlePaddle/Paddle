@@ -44,7 +44,7 @@ class ExecutionModeFull(IntEnum):
     CPU_FP32 = 1
     # Run fp32 model on ipu
     IPU_FP32 = 2
-    # Convert model to fp16 using mixed-precision approch
+    # Convert model to fp16 using mixed-precision approach
     # All parameters will be converted to fp16
     IPU_FP16 = 3
 
@@ -163,8 +163,7 @@ class IPUOpTest(IPUTest):
             self.scope = paddle.static.Scope()
             self.main_prog = paddle.static.Program()
             self.startup_prog = paddle.static.Program()
-            self.main_prog.random_seed = self.SEED
-            self.startup_prog.random_seed = self.SEED
+            paddle.seed(self.SEED)
             with paddle.static.scope_guard(self.scope):
                 with paddle.utils.unique_name.guard(
                     paddle.utils.unique_name.generate('')

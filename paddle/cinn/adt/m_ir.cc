@@ -38,12 +38,16 @@ void CollectTensorIndexIterators(const TensorIndexExpr& tensor_index_expr,
 
 void CollectTensorIndexIteratorsImpl(const Undefined& tensor_index_expr,
                                      std::unordered_set<Iterator>* ret) {
-  LOG(FATAL) << "Not Implemented";
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "CollectTensorIndexIteratorsImpl is not implemented for Undefined tensor "
+      "index expression. Please check your input."));
 }
 
 void CollectTensorIndexIteratorsImpl(const Ok& ok,
                                      std::unordered_set<Iterator>* ret) {
-  LOG(FATAL) << "Not Implemented";
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "CollectTensorIndexIteratorsImpl is not implemented for Ok state. Please "
+      "ensure the function is correctly called."));
 }
 
 void CollectTensorIndexIteratorsImpl(const Iterator& iterator,
@@ -134,7 +138,7 @@ LoopIterators GetAnchorTensorLoopIterators(
 namespace {
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const Undefined& undefined) {
-  LOG(FATAL) << "position not found";
+  PADDLE_THROW(::common::errors::Fatal("position not found"));
 }
 
 Tensor GetTensorImpl(const OpStmt& op_stmt, const tIn<std::size_t>& pos) {

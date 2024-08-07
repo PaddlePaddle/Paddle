@@ -19,11 +19,10 @@ from op_test import OpTest
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
-from paddle.base.framework import default_main_program
 from paddle.nn.layer.common import Dropout
 from paddle.nn.layer.norm import LayerNorm
 
-default_main_program().random_seed = 42
+paddle.seed(42)
 
 
 class TestFusedBiasDropoutResidualLayerNormOp(OpTest):

@@ -313,11 +313,11 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains NAN.", var_name));
     }
 
@@ -410,7 +410,8 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
         fprintf(stderr,
                 "push dense time percent: %f\n",
                 push_dense_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+        fprintf(
+            stderr, "%6.2f instances/s\n", total_inst / total_time);  // NOLINT
       }
     }
     timeline.Start();
@@ -426,7 +427,7 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
 /**
  * @brief add auc monitor
  */
-inline void AddAucMonitor(const Scope* scope, const platform::Place& place) {
+inline void AddAucMonitor(const Scope* scope, const phi::Place& place) {
   auto metric_ptr = Metric::GetInstance();
   auto& metric_list = metric_ptr->GetMetricList();
   for (auto& metric_item : metric_list) {
@@ -533,11 +534,11 @@ void DownpourLiteWorker::TrainFiles() {
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains NAN.", var_name));
     }
 

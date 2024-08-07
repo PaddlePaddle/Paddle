@@ -24,7 +24,7 @@ template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const SelectedRows& x,
                  const Scalar& scale,
-                 float bias,
+                 const Scalar& bias,
                  bool bias_after_scale,
                  SelectedRows* out);
 

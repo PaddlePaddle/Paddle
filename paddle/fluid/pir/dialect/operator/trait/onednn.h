@@ -16,7 +16,7 @@
 
 #ifdef PADDLE_WITH_DNNL
 
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
 namespace dialect {

@@ -47,7 +47,7 @@ TEST(tensorrt_tester_mobilenetv1, tuned_dynamic_trt_fp32_bz2) {
   if (tuned_shape) {
     // NOTE: shape_range_info will be saved after destructor of predictor
     // function
-    // prepare groudtruth config
+    // prepare ground truth config
     paddle_infer::Config tune_config;
     tune_config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
                          FLAGS_modeldir + "/inference.pdiparams");

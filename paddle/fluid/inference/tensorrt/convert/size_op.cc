@@ -39,7 +39,7 @@ class SizeOpConverter : public OpConverter {
                                        reduce_dim,
                                        false);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "size", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "size", {output_name}, test_mode);
   }
 };
 }  // namespace tensorrt

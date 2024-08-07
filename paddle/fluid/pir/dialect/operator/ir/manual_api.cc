@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/parameter.h"
-namespace paddle {
-namespace dialect {
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/parameter.h"
+namespace paddle::dialect {
 
 pir::Value builtin_combine(const std::vector<pir::Value>& x) {
   auto combine_op =
@@ -55,16 +56,45 @@ pir::Value parameter(const std::string& name) {
 }
 
 void set_parameter(const pir::Value& parameter, const std::string& name) {
-  std::unique_ptr<pir::Parameter> param(
+  pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
+  if (param) {
+    PADDLE_ENFORCE_EQ(param->type(),
+                      parameter.type(),
+                      common::errors::InvalidArgument(
+                          "Duplicate parameter %s with different type.", name));
+  } else {
+    std::unique_ptr<pir::Parameter> param_new(
+        new pir::Parameter(nullptr, 0, parameter.type()));
+    ApiBuilder::Instance().SetParameter(name, std::move(param_new));
+    ApiBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
+                                                                    name);
+  }
+}
+
+void update_parameter(const pir::Value& parameter, const std::string& name) {
+  pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
+  PADDLE_ENFORCE_NOT_NULL(param,
+                          common::errors::InvalidArgument(
+                              "Parameter %s not exist, can not update.", name));
+  std::unique_ptr<pir::Parameter> param_new(
       new pir::Parameter(nullptr, 0, parameter.type()));
-  ApiBuilder::Instance().SetParameter(name, std::move(param));
+  ApiBuilder::Instance().SetParameter(name, std::move(param_new));
   ApiBuilder::Instance().GetBuilder()->Build<pir::SetParameterOp>(parameter,
                                                                   name);
 }
 
 void shadow_output(const pir::Value& persist_value, const std::string& name) {
-  ApiBuilder::Instance().GetBuilder()->Build<pir::ShadowOutputOp>(persist_value,
-                                                                  name);
+  auto& builder = ApiBuilder::Instance().GetBuilder();
+  auto op = builder->Build<pir::ShadowOutputOp>(persist_value, name);
+  if (auto dist_interface =
+          persist_value.type().dyn_cast<DistTypeInterface>()) {
+    op->set_attribute(
+        kAttrOpDistAttr,
+        OperationDistAttribute::get(builder->ir_context(),
+                                    dist_interface.process_mesh_attr(),
+                                    {dist_interface.tensor_dist_attr()},
+                                    {}));
+  }
 }
 
 pir::Value embedding_grad(const pir::Value& x,
@@ -88,7 +118,7 @@ pir::Value embedding_grad(const pir::Value& x,
       return embedding_grad_op.weight_grad();
     }
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Now we do not support sparse weight embedding_grad."));
   }
 }
@@ -158,6 +188,13 @@ pir::Value array_read(pir::Value array, pir::Value i) {
   return array_read_op.out();
 }
 
+pir::Value fetch(pir::Value value, std::string name, int col) {
+  auto fetch_op =
+      ApiBuilder::Instance().GetBuilder()->Build<paddle::dialect::FetchOp>(
+          value, name, col);
+  return fetch_op.out();
+}
+
 pir::Value array_write_(pir::Value array, pir::Value x, pir::Value i) {
   auto array_write_op =
       ApiBuilder::Instance()
@@ -224,7 +261,7 @@ pir::Value assign(const pir::Value& x) {
             ->Build<paddle::dialect::AssignArrayOp>(x);
     return assign_array_op.result(0);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Currently, assign only supports DenseTensorType and "
         "DenseTensorArrayType."));
   }
@@ -257,10 +294,34 @@ pir::Value array_pop(pir::Value input, int index) {
             input, index);
     return array_pop_op.result(1);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "pop only supports DenseTensorArrayType."));
   }
 }
 
-}  // namespace dialect
-}  // namespace paddle
+std::vector<pir::Value> tensorrt_engine(
+    const std::vector<pir::Value>& inputs,
+    paddle::platform::EngineParams trt_params,
+    std::vector<std::string> input_names,
+    std::vector<std::string> output_names,
+    std::vector<std::vector<int64_t>> outputs_shape,
+    std::vector<phi::DataType> outputs_dtype,
+    const std::string& converter_debug_info) {
+  auto x =
+      ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>(inputs).out();
+  paddle::dialect::TensorRTEngineOp tensorrt_engine_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::TensorRTEngineOp>(x,
+                                                     trt_params,
+                                                     input_names,
+                                                     output_names,
+                                                     outputs_shape,
+                                                     outputs_dtype,
+                                                     converter_debug_info);
+  auto out_split_op = ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>(
+      tensorrt_engine_op.result(0));
+  return out_split_op.outputs();
+}
+
+}  // namespace paddle::dialect

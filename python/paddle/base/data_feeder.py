@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import struct
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+import paddle
 from paddle import pir
 
 from ..pir import Value
-from ..pir.core import ParameterMeta
+from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
 from . import core
 from .framework import (
     Variable,
@@ -30,10 +34,16 @@ from .framework import (
     in_pir_mode,
 )
 
+if TYPE_CHECKING:
+    from paddle._typing import DTypeLike
+    from paddle._typing.dtype_like import _DTypeLiteral
+
 __all__ = []
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
+    core.VarDesc.VarType.FP8_E4M3FN: 'float8_e4m3fn',
+    core.VarDesc.VarType.FP8_E5M2: 'float8_e5m2',
     core.VarDesc.VarType.FP16: 'float16',
     core.VarDesc.VarType.BF16: 'uint16',
     core.VarDesc.VarType.FP32: 'float32',
@@ -60,21 +70,6 @@ _NUMPY_DTYPE_2_PADDLE_DTYPE = {
     'uint8': core.VarDesc.VarType.UINT8,
     'complex64': core.VarDesc.VarType.COMPLEX64,
     'complex128': core.VarDesc.VarType.COMPLEX128,
-}
-
-_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
-    core.DataType.BOOL: 'bool',
-    core.DataType.FLOAT16: 'float16',
-    core.DataType.BFLOAT16: 'uint16',
-    core.DataType.FLOAT32: 'float32',
-    core.DataType.FLOAT64: 'float64',
-    core.DataType.INT8: 'int8',
-    core.DataType.INT16: 'int16',
-    core.DataType.INT32: 'int32',
-    core.DataType.INT64: 'int64',
-    core.DataType.UINT8: 'uint8',
-    core.DataType.COMPLEX64: 'complex64',
-    core.DataType.COMPLEX128: 'complex128',
 }
 
 
@@ -104,7 +99,7 @@ def convert_uint16_to_float(data):
     return np.reshape(new_data, data.shape)
 
 
-def convert_dtype(dtype):
+def convert_dtype(dtype: DTypeLike) -> _DTypeLiteral:
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
@@ -143,6 +138,8 @@ def convert_dtype(dtype):
             'uint8',
             'complex64',
             'complex128',
+            'float8_e4m3fn',
+            'float8_e5m2',
         ]:
             # NOTE(SigureMo): Since the np.dtype object is not an instance of
             # type, so it will not be handled by the previous branch. We need
@@ -156,8 +153,7 @@ def convert_dtype(dtype):
 
     raise TypeError(
         "dtype must be any of [bool, float16, uint16, float32, float64, int8, int16, "
-        "int32, int64, uint8, complex64, complex128, bfloat16], but received %s"
-        % dtype
+        f"int32, int64, uint8, complex64, complex128, bfloat16], but received {dtype}"
     )
 
 
@@ -169,7 +165,7 @@ def check_variable_and_dtype(
             input, input_name, (Value, ParameterMeta), op_name, extra_message
         )
     else:
-        check_type(input, input_name, Variable, op_name, extra_message)
+        check_type(input, input_name, (Variable, Value), op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
@@ -185,7 +181,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         return
 
     # NOTE: `in_to_static_mode` is used to determined whether this op is called under
-    # @to_static in transformation from dygrah to static layer. We add Tensor in
+    # @to_static in transformation from dygraph to static layer. We add Tensor in
     # expected_type to skip checking because Tensor may be created and used in unusual way.
     from .dygraph.base import in_to_static_mode
 
@@ -201,9 +197,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         )
     if not isinstance(input, expected_type):
         raise TypeError(
-            "The type of '{}' in {} must be {}, but received {}. {}".format(
-                input_name, op_name, expected_type, type(input), extra_message
-            )
+            f"The type of '{input_name}' in {op_name} must be {expected_type}, but received {type(input)}. {extra_message}"
         )
 
 
@@ -216,31 +210,29 @@ def check_dtype(
 
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
-            "The data type of '{}' in {} must be {}, but received {}. {}".format(
-                input_name,
-                op_name,
-                expected_dtype,
-                convert_dtype(input_dtype),
-                extra_message,
-            )
+            f"The data type of '{input_name}' in {op_name} must be {expected_dtype}, but received {convert_dtype(input_dtype)}. {extra_message}"
         )
 
 
 def check_shape(
     shape,
     op_name,
-    expected_shape_type=(list, tuple, Variable),
-    expected_element_type=(int, Variable),
+    expected_shape_type=(list, tuple, Variable, Value),
+    expected_element_type=(int, Variable, Value),
     expected_tensor_dtype=('int32', 'int64'),
 ):
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
     check_type(shape, 'shape', expected_shape_type, op_name)
-    if expected_element_type is not None and not isinstance(shape, Variable):
+    if expected_element_type is not None and not isinstance(
+        shape, (Variable, Value)
+    ):
         for item in shape:
             check_type(item, 'element of shape', expected_element_type, op_name)
-            if expected_tensor_dtype is not None and isinstance(item, Variable):
+            if expected_tensor_dtype is not None and isinstance(
+                item, (Variable, Value)
+            ):
                 check_dtype(
                     item.dtype,
                     'element of shape',
@@ -250,7 +242,9 @@ def check_shape(
                         ', '.join(expected_tensor_dtype)
                     ),
                 )
-    if expected_tensor_dtype is not None and isinstance(shape, Variable):
+    if expected_tensor_dtype is not None and isinstance(
+        shape, (Variable, Value)
+    ):
         check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
@@ -259,11 +253,11 @@ class DataToLoDTensorConverter:
         self.place = place
         self.lod_level = lod_level
         self.shape = shape
-        negtive_count = 0
+        negative_count = 0
         for s in self.shape:
             if s < 0:
-                negtive_count += 1
-            if negtive_count > 1:
+                negative_count += 1
+            if negative_count > 1:
                 self.shape = None
                 break
         self.dtype = convert_dtype(dtype)
@@ -288,9 +282,7 @@ class DataToLoDTensorConverter:
         for s1, s2 in zip(self.shape, shape):
             if s1 != s2 and s1 >= 0 and s2 >= 0:
                 raise ValueError(
-                    "Shape not match. What is defined in data layer is {}, but receive {}".format(
-                        self.shape, shape
-                    )
+                    f"Shape not match. What is defined in data layer is {self.shape}, but receive {shape}"
                 )
 
     def done(self):
@@ -301,9 +293,7 @@ class DataToLoDTensorConverter:
                     arr = arr.reshape(self.shape)
                 except ValueError:
                     raise ValueError(
-                        "Reshape error. What is defined in data layer is {}, but receive {}".format(
-                            self.shape, arr.shape
-                        )
+                        f"Reshape error. What is defined in data layer is {self.shape}, but receive {arr.shape}"
                     )
         t = core.LoDTensor()
         t.set(arr, self.place)
@@ -434,7 +424,7 @@ class DataFeeder:
                     raise TypeError("Feed list should contain a list of Value")
                 self.feed_dtypes.append(each_var.dtype)
                 self.feed_names.append(each_var.name)
-                self.feed_lod_level.append(each_var.lod_level)
+                self.feed_lod_level.append(0)
                 self.feed_shapes.append(each_var.shape)
         else:
             if program is None:
@@ -442,7 +432,7 @@ class DataFeeder:
             for each_var in feed_list:
                 if isinstance(each_var, str):
                     each_var = program.block(0).var(each_var)
-                if not isinstance(each_var, Variable):
+                if not isinstance(each_var, (Variable, Value)):
                     raise TypeError(
                         "Feed list should contain a list of variable"
                     )
@@ -504,13 +494,31 @@ class DataFeeder:
                 )
             )
 
-        for each_sample in iterable:
-            assert len(each_sample) == len(converter), (
-                "The number of fields in data (%d) does not match "
-                + "len(feed_list) (%d)"
-            ) % (len(each_sample), len(converter))
-            for each_converter, each_slot in zip(converter, each_sample):
-                each_converter.feed(each_slot)
+        def feed_data(converter, data):
+            if isinstance(data, (list, tuple)):
+                for item in data:
+                    feed_data(converter, item)
+            else:
+                converter.feed(data)
+
+        if paddle.framework.use_pir_api():
+            for each_sample in iterable:
+                assert len(each_sample) == len(converter), (
+                    "The number of fields in data (%d) does not match "
+                    + "len(feed_list) (%d)"
+                ) % (len(each_sample), len(converter))
+                for each_converter, each_slot in zip(converter, each_sample):
+                    feed_data(each_converter, each_slot)
+
+        else:
+            for each_sample in iterable:
+                assert len(each_sample) == len(converter), (
+                    "The number of fields in data (%d) does not match "
+                    + "len(feed_list) (%d)"
+                ) % (len(each_sample), len(converter))
+                for each_converter, each_slot in zip(converter, each_sample):
+                    each_converter.feed(each_slot)
+
         ret_dict = {}
         for each_name, each_converter in zip(self.feed_names, converter):
             ret_dict[each_name] = each_converter.done()

@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/infermeta_utils.h"
 
-namespace phi {
-namespace strings {
+namespace phi::strings {
 
 void UnchangedInferMeta(const StringTensorMeta& x_meta, MetaTensor* out) {
   out->set_dims(x_meta.dims);
@@ -31,5 +30,4 @@ void CreateLikeInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
-}  // namespace strings
-}  // namespace phi
+}  // namespace phi::strings

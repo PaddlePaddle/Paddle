@@ -11,6 +11,8 @@ if(WITH_TESTING)
     set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
     set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
     set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)
+    py_test(test_custom_cast_op_jit SRCS test_custom_cast_op_jit.py)
+    set_tests_properties(test_custom_cast_op_jit PROPERTIES TIMEOUT 180)
   endif()
 
   if(NOT WIN32)
@@ -18,6 +20,9 @@ if(WITH_TESTING)
     # We will fix it when abandoning translation in final state.
     if(WITH_GPU)
       py_test(test_inference_inplace SRCS test_inference_inplace.py)
+      py_test(test_inference_inplace_pir SRCS test_inference_inplace_pir.py
+                                              ENVS FLAGS_enable_pir_api=1)
+      set_tests_properties(test_inference_inplace_pir PROPERTIES TIMEOUT 180)
       set_tests_properties(test_inference_inplace PROPERTIES TIMEOUT 180)
     endif()
   endif()
@@ -49,8 +54,6 @@ if(WITH_TESTING)
                          PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 180)
   endif()
 
-  py_test(test_custom_raw_op_kernel_op SRCS test_custom_raw_op_kernel_op.py)
-  set_tests_properties(test_custom_raw_op_kernel_op PROPERTIES TIMEOUT 180)
   py_test(test_custom_tensor_operator SRCS test_custom_tensor_operator.py)
   set_tests_properties(test_custom_tensor_operator PROPERTIES TIMEOUT 180)
 
@@ -58,8 +61,6 @@ if(WITH_TESTING)
   py_test(test_dispatch_jit SRCS test_dispatch_jit.py)
   py_test(test_multi_out_jit SRCS test_multi_out_jit.py)
   py_test(test_custom_attrs_jit SRCS test_custom_attrs_jit.py)
-  py_test(test_custom_cast_op_jit SRCS test_custom_cast_op_jit.py)
-  set_tests_properties(test_custom_cast_op_jit PROPERTIES TIMEOUT 180)
   py_test(test_custom_concat SRCS test_custom_concat.py)
   set_tests_properties(
     test_custom_concat PROPERTIES ENVIRONMENT

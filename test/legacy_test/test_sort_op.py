@@ -64,6 +64,22 @@ class TestSortOnCPU(unittest.TestCase):
             np_result = np.sort(result, axis=1)
             self.assertEqual((result == np_result).all(), True)
 
+    @test_with_pir_api
+    def test_api_2(self):
+        with base.program_guard(base.Program()):
+            input = paddle.static.data(
+                name="input", shape=[30], dtype="float32"
+            )
+            output = paddle.sort(x=input, axis=0, stable=True)
+            exe = base.Executor(self.place)
+            data = np.array(
+                [100.0, 50.0, 10.0] * 10,
+                dtype='float32',
+            )
+            (result,) = exe.run(feed={'input': data}, fetch_list=[output])
+            np_result = np.sort(result, axis=0, kind='stable')
+            self.assertEqual((result == np_result).all(), True)
+
 
 class TestSortOnGPU(TestSortOnCPU):
     def init_place(self):
@@ -94,6 +110,21 @@ class TestSortDygraph(unittest.TestCase):
         out = paddle.sort(var_x, axis=-1)
         self.assertEqual(
             (np.sort(self.input_data, axis=-1) == out.numpy()).all(), True
+        )
+        paddle.enable_static()
+
+    def test_api_2(self):
+        paddle.disable_static(self.place)
+        var_x = paddle.to_tensor(np.array([100.0, 50.0, 10.0] * 10))
+        out = paddle.sort(var_x, axis=0)
+        self.assertEqual(
+            (
+                np.sort(
+                    np.array([100.0, 50.0, 10.0] * 10), axis=0, kind='stable'
+                )
+                == out.numpy()
+            ).all(),
+            True,
         )
         paddle.enable_static()
 

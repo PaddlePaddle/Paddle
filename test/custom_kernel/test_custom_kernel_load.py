@@ -26,11 +26,7 @@ class TestCustomKernelLoad(unittest.TestCase):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
 
         # --inplace to place output so file to current dir
-        cmd = (
-            'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
-                cur_dir, sys.executable
-            )
-        )
+        cmd = f'cd {cur_dir} && {sys.executable} custom_kernel_dot_setup.py build_ext --inplace'
         os.system(cmd)
 
         # get paddle lib path and place so

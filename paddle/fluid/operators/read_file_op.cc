@@ -24,8 +24,7 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/nullary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class ReadFileOp : public framework::OperatorWithKernel {
  public:
@@ -34,8 +33,7 @@ class ReadFileOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::UINT8,
-                          platform::CPUPlace());
+    return phi::KernelKey(framework::proto::VarType::UINT8, phi::CPUPlace());
   }
 };
 
@@ -46,13 +44,12 @@ class ReadFileOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 This operator read a file.
 )DOC");
-    AddAttr<std::string>("filename", "Path of the file to be readed.")
+    AddAttr<std::string>("filename", "Path of the file to be read.")
         .SetDefault({});
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

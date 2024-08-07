@@ -21,15 +21,15 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -40,6 +40,12 @@ class OpDesc;
 namespace paddle {
 namespace framework {
 namespace details {
+
+struct VariableInfo {
+  std::string name_;
+  proto::VarType::Type type_;
+  bool persistable_;
+};
 
 // all variable in each devices.
 // The outside vector is the device vector. Each element of this vector is a
@@ -63,7 +69,7 @@ constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;
 constexpr char kGraphDepVars[] = "dep_vars";
 
-typedef std::unordered_map<std::string, details::VariableInfo> FusedVars;
+typedef std::unordered_map<std::string, VariableInfo> FusedVars;
 constexpr char kFusedVars[] = "fused_vars";
 constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 
@@ -100,30 +106,11 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
   PADDLE_ENFORCE_EQ(
       ret.size() % 2,
       0,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of attribute %s must be an even number, but got %d",
           OpProtoAndCheckerMaker::OpRoleVarAttrName(),
           ret.size()));
   return PADDLE_GET_CONST(std::vector<std::string>, iter->second);
-}
-
-bool IsDataParallelInferenceGraph(const ir::Graph &graph);
-
-std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
-    ir::Graph *graph);
-
-bool HasDropLastReadOp(const ir::Graph &graph);
-
-bool HasKeepLastReadOp(const ir::Graph &graph);
-
-template <typename T>
-void CopyGraphAttrIfExists(const ir::Graph &src,
-                           ir::Graph *dst,
-                           const std::string &name) {
-  if (src.Has(name)) {
-    auto &attr = src.Get<T>(name);
-    dst->Set(name, new T(attr));
-  }
 }
 
 }  // namespace details

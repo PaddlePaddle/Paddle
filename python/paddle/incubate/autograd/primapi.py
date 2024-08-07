@@ -12,17 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 import typing
+from typing import TYPE_CHECKING, Sequence, TypeVar
 
 import paddle
 from paddle.base import backward, core, framework
 from paddle.base.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.framework import Block
+
+    _TensorOrTensorsT = TypeVar("_TensorOrTensorsT", Tensor, Sequence[Tensor])
+
 
 @framework.static_only
-def forward_grad(outputs, inputs, grad_inputs=None):
+def forward_grad(
+    outputs: _TensorOrTensorsT,
+    inputs: _TensorOrTensorsT,
+    grad_inputs: _TensorOrTensorsT | None = None,
+) -> _TensorOrTensorsT:
     """Forward mode of automatic differentiation.
 
     Note:
@@ -42,6 +55,7 @@ def forward_grad(outputs, inputs, grad_inputs=None):
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Transform NOT has linearize')
             >>> import numpy as np
             >>> import paddle
 
@@ -72,15 +86,19 @@ def forward_grad(outputs, inputs, grad_inputs=None):
             'operators, use enable_prim to turn it on.'
         )
 
-    if not isinstance(outputs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        outputs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
-    if not isinstance(inputs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        inputs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
         )
 
@@ -101,11 +119,19 @@ def forward_grad(outputs, inputs, grad_inputs=None):
     ad = primx.Transform(ys[0].block)
     _, ys_dot = ad.linearize(xs, ys, xs_dot)
 
-    return ys_dot[0] if isinstance(outputs, framework.Variable) else ys_dot
+    return (
+        ys_dot[0]
+        if isinstance(outputs, (framework.Variable, paddle.pir.Value))
+        else ys_dot
+    )
 
 
 @framework.static_only
-def grad(outputs, inputs, grad_outputs=None):
+def grad(
+    outputs: _TensorOrTensorsT,
+    inputs: _TensorOrTensorsT,
+    grad_outputs: _TensorOrTensorsT | None = None,
+) -> _TensorOrTensorsT:
     """Reverse mode of automatic differentiation.
 
     Note:
@@ -125,6 +151,7 @@ def grad(outputs, inputs, grad_outputs=None):
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Transform NOT has linearize')
             >>> import numpy as np
             >>> import paddle
 
@@ -151,11 +178,11 @@ def grad(outputs, inputs, grad_outputs=None):
     """
     if not utils.prim_enabled():
         grad_inputs = backward.gradients(outputs, inputs, grad_outputs)
-        # backward.gradients returns a list though the inputs is a signle Tensor.
+        # backward.gradients returns a list though the inputs is a single Tensor.
         # The follow code snippet fixes the problem by return the first element
-        # of grad_inputs when the inputs is a signle Tensor.
+        # of grad_inputs when the inputs is a single Tensor.
         if (
-            isinstance(inputs, framework.Variable)
+            isinstance(inputs, (framework.Variable, paddle.pir.Value))
             and isinstance(grad_inputs, typing.Sequence)
             and len(grad_inputs) > 0
         ):
@@ -163,15 +190,19 @@ def grad(outputs, inputs, grad_outputs=None):
         else:
             return grad_inputs
 
-    if not isinstance(outputs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        outputs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
-            f'Expected outputs is Tensor|Sequence[Tesnor], '
+            f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
-    if not isinstance(inputs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        inputs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
-            f'Expected inputs is Tensor|Sequence[Tesnor], '
+            f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
         )
 
@@ -213,17 +244,21 @@ def grad(outputs, inputs, grad_outputs=None):
     ad.erase_ops(sorted(op_indexes))
     ad.erase_dots(xs_dot)
 
-    return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+    return (
+        xs_bar[0]
+        if isinstance(inputs, (framework.Variable, paddle.pir.Value))
+        else xs_bar
+    )
 
 
 @framework.static_only
 def to_prim(
-    blocks,
-    blacklist=frozenset(),
-    whitelist=frozenset(),
-    start_idx=-1,
-    backward_length=-1,
-):
+    blocks: Block | Sequence[Block],
+    blacklist: set[str] | frozenset[str] = frozenset(),
+    whitelist: set[str] | frozenset[str] = frozenset(),
+    start_idx: int = -1,
+    backward_length: int = -1,
+) -> None:
     """Search nonbasic ops which have be registered composite rules and replace them with primitive ops.
     The operators in blacklist will be excluded from program when lowering into primitives, and only the
     operators in whitelist will be lowering. The priority of blacklist is higher than whitelist, it means
@@ -256,11 +291,11 @@ def to_prim(
         )
     if not isinstance(blacklist, (set, frozenset)):
         raise TypeError(
-            f'Expected type of blacklisst is set|frozenset, but got {type(blacklist)}.'
+            f'Expected type of blacklist is set|frozenset, but got {type(blacklist)}.'
         )
     if not isinstance(whitelist, (set, frozenset)):
         raise TypeError(
-            f'Expected type of whiltelist is set|frozenset, but got {type(whitelist)}.'
+            f'Expected type of whitelist is set|frozenset, but got {type(whitelist)}.'
         )
 
     blacklist = prim_config["forward_blacklist"] | blacklist

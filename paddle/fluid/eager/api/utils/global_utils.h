@@ -47,10 +47,8 @@ class Controller {
  public:
   TEST_API static Controller& Instance();
 
-  paddle::platform::Place GetExpectedPlace() const {
-    return tracer_->ExpectedPlace();
-  }
-  TEST_API void SetExpectedPlace(const paddle::platform::Place& place);
+  phi::Place GetExpectedPlace() const { return tracer_->ExpectedPlace(); }
+  TEST_API void SetExpectedPlace(const phi::Place& place);
   void SetAMPLevel(paddle::imperative::AmpLevel level) {
     tracer_->SetAmpLevel(level);
   }
@@ -91,8 +89,8 @@ class Controller {
     VLOG(6) << "Set current tracer for Controller: " << tracer_;
   }
 
-  const std::shared_ptr<paddle::imperative::AMPState>& GetCurrentAMPState() {
-    return paddle::imperative::GetCurrentAMPState();
+  const std::shared_ptr<paddle::imperative::AmpAttrs>& GetCurrentAmpAttrs() {
+    return paddle::imperative::GetCurrentAmpAttrs();
   }
 
   const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&

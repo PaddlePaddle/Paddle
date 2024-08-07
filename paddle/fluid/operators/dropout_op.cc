@@ -71,7 +71,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const float& drop_p) {
           PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
                             true,
-                            platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'dropout_prob' must be between 0.0 and 1.0."));
         })
         .SupportTensor();
@@ -100,7 +100,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train",
               true,
-              platform::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
@@ -108,7 +108,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Dropout Operator.
 
-Dropout refers to randomly dropping out units in a nerual network. It is a
+Dropout refers to randomly dropping out units in a neural network. It is a
 regularization technique for reducing overfitting by preventing neuron
 co-adaption during training. The dropout operator randomly set (according to
 the given dropout probability) the outputs of some units to zero, while others
@@ -175,34 +175,8 @@ class DropoutCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto mode = this->Attr<std::string>("dropout_implementation");
     prim::dropout_grad<prim::DescTensor>(
         mask, out_grad, p, is_test, mode, x_grad_p);
-    VLOG(3) << "Runing dropout_grad composite func";
+    VLOG(3) << "Running dropout_grad composite func";
     this->RecoverOutputName(x_grad, x_grad_name);
-  }
-};
-
-class DropoutNdOpMaker : public DropoutOpMaker {
- public:
-  void Make() override {
-    DropoutOpMaker::Make();
-    AddAttr<std::vector<int>>("axis",
-                              "(std::vector<int>). List of integers,"
-                              " indicating the dimensions to be dropout_nd.")
-        .SetDefault({});
-  }
-};
-
-template <typename T>
-class DropoutNdGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("dropout_nd_grad");
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetInput("Mask", this->Output("Mask"));
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -222,14 +196,3 @@ REGISTER_OPERATOR(dropout,
                   ops::DropoutGradOpMaker<paddle::imperative::OpBase>,
                   DropoutInferShapeFunctor);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
-
-DECLARE_INFER_SHAPE_FUNCTOR(dropout_nd,
-                            DropoutNdInferShapeFunctor,
-                            PD_INFER_META(phi::DropoutNdInferMeta));
-REGISTER_OPERATOR(dropout_nd,
-                  ops::DropoutOp,
-                  ops::DropoutNdOpMaker,
-                  ops::DropoutNdGradOpMaker<paddle::framework::OpDesc>,
-                  ops::DropoutNdGradOpMaker<paddle::imperative::OpBase>,
-                  DropoutNdInferShapeFunctor);
-REGISTER_OPERATOR(dropout_nd_grad, ops::DropoutOpGrad);

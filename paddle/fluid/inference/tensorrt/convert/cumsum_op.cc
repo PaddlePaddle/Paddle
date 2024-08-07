@@ -45,7 +45,7 @@ class CumsumOpConverter : public OpConverter {
         cumsum_dim.d[0] = 1;
       }
       layer->setReshapeDimensions(cumsum_dim);
-      RreplenishLayerAndOutput(layer, "cumsum", {output_name}, test_mode);
+      ReplenishLayerAndOutput(layer, "cumsum", {output_name}, test_mode);
     } else {
       int axis = 0;
       if (op_desc.HasAttr("axis")) {
@@ -161,7 +161,7 @@ class CumsumOpConverter : public OpConverter {
       nvinfer1::ILoopOutputLayer* loopOut =
           loop->addLoopOutput(*curSum->getOutput(0), reverseFlag, axis);
       loopOut->setInput(1, *tripLimit);
-      RreplenishLayerAndOutput(loopOut, "cumsum", {output_name}, test_mode);
+      ReplenishLayerAndOutput(loopOut, "cumsum", {output_name}, test_mode);
     }
 #else
     VLOG(3) << "Cumsum is not supported when TensorRT < 7.2.2";

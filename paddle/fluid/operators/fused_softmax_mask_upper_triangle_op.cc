@@ -13,8 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/generator.h"
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class SoftmaxMaskFuseUpperTriangleOp : public framework::OperatorWithKernel {
  public:
@@ -30,9 +29,9 @@ class SoftmaxMaskFuseUpperTriangleOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         4,
-        platform::errors::InvalidArgument("Input x must be in 4D dimension but "
-                                          "received the dimension of X is %d",
-                                          x_dims.size()));
+        common::errors::InvalidArgument("Input x must be in 4D dimension but "
+                                        "received the dimension of X is %d",
+                                        x_dims.size()));
 
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");
@@ -89,8 +88,7 @@ class SoftmaxMaskFuseUpperTriangleGradOpMaker
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

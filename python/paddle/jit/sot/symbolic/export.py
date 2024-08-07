@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import os
-import sys
 from itertools import chain
 
 import paddle
 from paddle.utils import flatten
 
-from ..utils import ConstTypes, ExportError, NameGenerator
+from ..utils import ConstTypes, ExportError, NameGenerator, get_api_fullname
 from .statement_ir import Symbol
 
 
@@ -32,8 +31,8 @@ class PyStatement:
 
     def get_lines(self, prefix=""):
         lines = [prefix + line for line in self.lines]
-        for statment in self.sub_statement:
-            lines.extend(statment.get_lines(self.tab + prefix))
+        for statement in self.sub_statement:
+            lines.extend(statement.get_lines(self.tab + prefix))
         return lines
 
     def add_sub(self, *lines):
@@ -138,21 +137,26 @@ class PyFileGen:
         self.create_tail()
         return self.roots_to_string()
 
+    def is_exportable_type(self, value):
+        if (
+            isinstance(value, (ConstTypes, Symbol, paddle.dtype))
+            or value is Ellipsis  # NOINT
+        ):
+            return True
+        if isinstance(value, slice):
+            return (
+                self.is_exportable_type(value.start)
+                and self.is_exportable_type(value.stop)
+                and self.is_exportable_type(value.step)
+            )
+        return False
+
     def check_exportable(self):
         for stmt in self.SIR.statements:
             for inp in flatten(stmt.inputs):
-                if not isinstance(inp, ConstTypes) and not isinstance(
-                    inp, Symbol
-                ):
+                if not self.is_exportable_type(inp):
                     raise ExportError(
                         f"Not support create python file with input: {inp}"
-                    )
-            for out in flatten(stmt.outputs):
-                if not isinstance(out, ConstTypes) and not isinstance(
-                    out, Symbol
-                ):
-                    raise ExportError(
-                        f"Not support create python file with output: {out}"
                     )
 
     def create_header(self):
@@ -189,7 +193,7 @@ class PyFileGen:
             if inp in self.SIR.non_param_symbol:
                 meta = self.SIR.symbol_meta_map[inp]
                 forward_definition.append(
-                    f"    {self.name_gener(inp)},    # {str(meta)}"
+                    f"    {self.name_gener(inp)},    # {meta}"
                 )
         forward_definition.append("):")
 
@@ -235,9 +239,7 @@ class PyFileGen:
                         f"    paddle.randint(low=0, high=2, shape={shape_str}, dtype=paddle.int32).cast(paddle.bool),"
                     )
                     numpy_inputs.append(
-                        "    np.random.randint(low=0, high=2, size={}, dtype='int').astype('bool'),".format(
-                            shape_str
-                        )
+                        f"    np.random.randint(low=0, high=2, size={shape_str}, dtype='int').astype('bool'),"
                     )
                 else:
                     paddle_inputs.append(
@@ -298,7 +300,7 @@ class PyFileGen:
         )
 
     def init_sub_layer(self, layer, layer_name):
-        # TODO @wuzhanfei need more effecient way to create a sub layer
+        # TODO @wuzhanfei need more efficient way to create a sub layer
         # now, we just close call_Layer behavior
         raise ExportError("Not support create sub layer now.")
 
@@ -341,20 +343,12 @@ class PyFileGen:
         return getattr(self, "create_" + stmt.type + "_stmt")(stmt)
 
     def create_api_stmt(self, stmt):
-        def get_api_str(api):
-            api_name = api.__name__
-            module_str = api.__module__
-            while len(module_str) > 0:
-                module = sys.modules[module_str]
-                if hasattr(module, api_name):
-                    return module_str + "." + api_name
-                module_str = module_str.rpartition(".")[0]
-            raise ExportError(f"Can not find module of {api}")
-
         args, kwargs = stmt.inputs
         input_str = self.create_input_string(args, kwargs)
         api = stmt.api
-        api_str = get_api_str(api)
+        api_str = get_api_fullname(api)
+        if api_str is None:
+            raise ExportError(f"Can not find module of {api}")
         if isinstance(stmt.outputs, Symbol):
             return [f"{self.name_gener(stmt.outputs)} = {api_str}({input_str})"]
         else:
@@ -389,4 +383,6 @@ def export(SIR, path):
 
     with open(os.path.join(path, f"{SIR.name}.py"), "w") as f:
         f.write(string)
-        print(f"[SOT] Export {SIR.name} Sucess with size {len(SIR.statements)}")
+        print(
+            f"[SOT] Export {SIR.name} Success with size {len(SIR.statements)}"
+        )

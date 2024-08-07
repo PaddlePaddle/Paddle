@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.base.dygraph as dg
-import paddle.nn.functional as F
 from paddle import base, nn
 
 
@@ -98,103 +97,6 @@ class Conv2DTestCase(unittest.TestCase):
         else:
             self.bias = None
 
-    def base_layer(self, place):
-        main = base.Program()
-        start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                input_shape = (
-                    (-1, -1, -1, self.num_channels)
-                    if self.channel_last
-                    else (-1, self.num_channels, -1, -1)
-                )
-                x_var = paddle.static.data(
-                    "input", input_shape, dtype=self.dtype
-                )
-                weight_attr = paddle.nn.initializer.Assign(self.weight)
-                if self.bias is None:
-                    bias_attr = False
-                else:
-                    bias_attr = paddle.nn.initializer.Assign(self.bias)
-                if self.padding_mode != 'zeros':
-                    x_var = F.pad(
-                        x_var,
-                        self._reversed_padding_repeated_twice,
-                        mode=self.padding_mode,
-                        data_format=self.data_format,
-                    )
-                    padding = 0
-                else:
-                    padding = self.padding
-
-                y_var = paddle.static.nn.conv2d(
-                    x_var,
-                    self.num_filters,
-                    self.filter_size,
-                    padding=padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    param_attr=weight_attr,
-                    bias_attr=bias_attr,
-                    data_format=self.data_format,
-                )
-
-        feed_dict = {"input": self.input}
-        exe = base.Executor(place)
-        exe.run(start)
-        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
-        return y_np
-
-    def functional(self, place):
-        main = base.Program()
-        start = base.Program()
-        with base.unique_name.guard():
-            with base.program_guard(main, start):
-                input_shape = (
-                    (-1, -1, -1, self.num_channels)
-                    if self.channel_last
-                    else (-1, self.num_channels, -1, -1)
-                )
-                x_var = paddle.static.data(
-                    "input", input_shape, dtype=self.dtype
-                )
-                w_var = paddle.static.data(
-                    "weight", self.weight_shape, dtype=self.dtype
-                )
-                b_var = paddle.static.data(
-                    "bias", (self.num_filters,), dtype=self.dtype
-                )
-
-                if self.padding_mode != 'zeros':
-                    x_var = F.pad(
-                        x_var,
-                        self._reversed_padding_repeated_twice,
-                        mode=self.padding_mode,
-                        data_format=self.data_format,
-                    )
-                    padding = 0
-                else:
-                    padding = self.padding
-
-                y_var = F.conv2d(
-                    x_var,
-                    w_var,
-                    b_var if not self.no_bias else None,
-                    padding=padding,
-                    stride=self.stride,
-                    dilation=self.dilation,
-                    groups=self.groups,
-                    data_format=self.data_format,
-                )
-        feed_dict = {"input": self.input, "weight": self.weight}
-        if self.bias is not None:
-            feed_dict["bias"] = self.bias
-        exe = base.Executor(place)
-        exe.run(start)
-        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
-        return y_np
-
     def paddle_nn_layer(self):
         x_var = paddle.to_tensor(self.input)
         x_var.stop_gradient = False
@@ -264,14 +166,6 @@ class Conv2DTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
-    def _test_equivalence(self, place):
-        result1 = self.base_layer(place)
-        result2 = self.functional(place)
-        with dg.guard(place):
-            result3, g1 = self.paddle_nn_layer()
-        np.testing.assert_array_almost_equal(result1, result2)
-        np.testing.assert_array_almost_equal(result2, result3)
-
     def _test_equivalence_in_pir(self, place):
         with paddle.pir_utils.IrGuard():
             result1 = self.run_Conv2D_static(place)
@@ -281,12 +175,10 @@ class Conv2DTestCase(unittest.TestCase):
 
     def runTest(self):
         place = base.CPUPlace()
-        self._test_equivalence(place)
         self._test_equivalence_in_pir(place)
 
         if base.core.is_compiled_with_cuda():
             place = base.CUDAPlace(0)
-            self._test_equivalence(place)
             self._test_equivalence_in_pir(place)
 
 

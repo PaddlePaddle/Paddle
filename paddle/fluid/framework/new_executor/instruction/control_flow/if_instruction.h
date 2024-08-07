@@ -31,7 +31,7 @@ class ValueExecutionInfo;
 class IfInstruction : public InstructionBase {
  public:
   IfInstruction(size_t id,
-                const platform::Place& place,
+                const phi::Place& place,
                 ::pir::Operation* op,
                 ValueExecutionInfo* value_exe_info,
                 interpreter::ExecutionConfig execution_config);
@@ -48,10 +48,11 @@ class IfInstruction : public InstructionBase {
 
   PirInterpreter* FalseBranchInterpreter() const { return false_branch_inter_; }
 
- private:
-  void CopyBranchOutput(const std::vector<std::string>& var_names,
-                        const PirInterpreter* inter);
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
+ private:
   ::pir::Operation* op_;
 
   std::string cond_name_{"if_instruction"};
@@ -64,15 +65,16 @@ class IfInstruction : public InstructionBase {
 
   PirInterpreter* false_branch_inter_ = nullptr;
 
-  std::vector<std::string> true_branch_outputs_;
-
-  std::vector<std::string> false_branch_outputs_;
-
   // TODO(zhangbo): Currently, only the output of IfOp is included. In the
   // future, need to consider how to support IfGradOp using IfOp value.
   std::vector<std::string> true_skip_gc_names_;
 
   std::vector<std::string> false_skip_gc_names_;
+
+  // NOTE(zhangbo): The fake_false_branch indicates that the false branch is an
+  // artificially constructed block, which will be directly skipped during the
+  // execution phase.
+  bool has_fake_false_branch_{false};
 };
 
 }  // namespace framework

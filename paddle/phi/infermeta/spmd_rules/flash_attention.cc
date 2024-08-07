@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
+const int kNumHeadsDimIndex = 2;
 
 #define LOG_SPMD_INPUT(name)                                                  \
   do {                                                                        \
@@ -65,11 +65,11 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   auto q_dist_attr = q.dist_attr();
   int q_dims_mapping_size = q_dist_attr.dims_mapping().size();
 
-  PADDLE_ENFORCE_EQ(
-      q_ndim,
-      4,
-      phi::errors::InvalidArgument("The Tensor q's shape must be [batch_size, "
-                                   "seq_len_q, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(q_ndim,
+                    4,
+                    common::errors::InvalidArgument(
+                        "The Tensor q's shape must be [batch_size, "
+                        "seq_len_q, num_heads, head_dim]"));
 
   auto batch_size = q_shape[0];
   auto num_heads = q_shape[2];
@@ -78,10 +78,10 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       q_ndim,
       q_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   q_ndim,
-                                   q_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      q_ndim,
+                                      q_dims_mapping_size));
 
   // k
   // [batch_size, seq_len_kv, num_heads, head_dim]
@@ -89,11 +89,11 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   int k_ndim = k_shape.size();
   auto k_dist_attr = k.dist_attr();
   int k_dims_mapping_size = k_dist_attr.dims_mapping().size();
-  PADDLE_ENFORCE_EQ(
-      k_ndim,
-      4,
-      phi::errors::InvalidArgument("The Tensor k's shape must be [batch_size, "
-                                   "seq_len_kv, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(k_ndim,
+                    4,
+                    common::errors::InvalidArgument(
+                        "The Tensor k's shape must be [batch_size, "
+                        "seq_len_kv, num_heads, head_dim]"));
 
   auto k_batch_size = k_shape[0];
   auto k_seq_len = k_shape[1];
@@ -103,23 +103,23 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       batch_size,
       k_batch_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor q and k's batch size [%d]  vs [%d] are not matched.",
           batch_size,
           k_batch_size));
 
   PADDLE_ENFORCE_EQ(
-      num_heads,
-      k_num_heads,
-      phi::errors::InvalidArgument(
-          "The Tensor q and k's num_heads [%d] vs [%d] are not matched.",
+      num_heads % k_num_heads == 0,
+      true,
+      common::errors::InvalidArgument(
+          "The num_heads of q must be divisible by k's, but [%d] vs [%d].",
           num_heads,
           k_num_heads));
 
   PADDLE_ENFORCE_EQ(
       head_dim,
       k_head_dim,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor q and k's head_dim [%d] vs [%d] are not matched.",
           head_dim,
           k_head_dim));
@@ -127,10 +127,18 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       k_ndim,
       k_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   k_ndim,
-                                   k_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      k_ndim,
+                                      k_dims_mapping_size));
+
+  bool is_divisible = true;
+  int64_t num_head_mesh_dim = k_dist_attr.dims_mapping()[kNumHeadsDimIndex];
+  if (num_head_mesh_dim != -1) {
+    int64_t num_head_split_size =
+        k_dist_attr.process_mesh().dim_size(num_head_mesh_dim);
+    is_divisible = k_num_heads % num_head_split_size == 0;
+  }
 
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
@@ -138,11 +146,11 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   int v_ndim = v_shape.size();
   auto v_dist_attr = v.dist_attr();
   int v_dims_mapping_size = v_dist_attr.dims_mapping().size();
-  PADDLE_ENFORCE_EQ(
-      v_ndim,
-      4,
-      phi::errors::InvalidArgument("The Tensor v's shape must be [batch_size, "
-                                   "seq_len_kv, num_heads, head_dim_v]"));
+  PADDLE_ENFORCE_EQ(v_ndim,
+                    4,
+                    common::errors::InvalidArgument(
+                        "The Tensor v's shape must be [batch_size, "
+                        "seq_len_kv, num_heads, head_dim_v]"));
 
   auto v_batch_size = v_shape[0];
   auto v_seq_len = v_shape[1];
@@ -151,23 +159,25 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       batch_size,
       v_batch_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor q and v's batch size [%d] vs [%d] are not matched.",
           batch_size,
           v_batch_size));
 
   PADDLE_ENFORCE_EQ(
-      num_heads,
-      v_num_heads,
-      phi::errors::InvalidArgument(
-          "The Tensor q and v's num_heads [%d] vs [%d] are not matched.",
+      num_heads % v_num_heads == 0,
+      true,
+      common::errors::InvalidArgument(
+          "The num_heads of q must be divisible by v's, but [%d] vs [%d].",
           num_heads,
           v_num_heads));
+
+  bool is_same_num_heads = num_heads == v_num_heads;
 
   PADDLE_ENFORCE_EQ(
       k_seq_len,
       v_seq_len,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor k and v's seq_len [%d] vs [%d] are not matched.",
           k_seq_len,
           v_seq_len));
@@ -175,10 +185,10 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       v_ndim,
       v_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor v's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   v_ndim,
-                                   v_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor v's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      v_ndim,
+                                      v_dims_mapping_size));
 
   // fixed_seed_offset
   // TODO(liuzhenhai): process fixed_seed_offset and attn_mask
@@ -190,13 +200,13 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   auto attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
   if (!IsEmpty(attn_mask_shape)) {
-    PADDLE_ENFORCE_EQ(
-        mask_ndim,
-        mask_dims_mapping_size,
-        phi::errors::InvalidArgument("The Tensor mask's rank [%d] and Its "
-                                     "dims_mapping size [%d] are not matched.",
-                                     mask_ndim,
-                                     mask_dims_mapping_size));
+    PADDLE_ENFORCE_EQ(mask_ndim,
+                      mask_dims_mapping_size,
+                      common::errors::InvalidArgument(
+                          "The Tensor mask's rank [%d] and Its "
+                          "dims_mapping size [%d] are not matched.",
+                          mask_ndim,
+                          mask_dims_mapping_size));
   }
 
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
@@ -229,6 +239,12 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   auto q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {1, 3});
   auto k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
   auto v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
+
+  if (!is_same_num_heads && !is_divisible) {
+    q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {2});
+    k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {2});
+    v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {2});
+  }
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
 
@@ -335,13 +351,13 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   auto attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
   if (!IsEmpty(attn_mask_shape)) {
-    PADDLE_ENFORCE_EQ(
-        mask_ndim,
-        mask_dims_mapping_size,
-        phi::errors::InvalidArgument("The Tensor mask's rank [%d] and Its "
-                                     "dims_mapping size [%d] are not matched.",
-                                     mask_ndim,
-                                     mask_dims_mapping_size));
+    PADDLE_ENFORCE_EQ(mask_ndim,
+                      mask_dims_mapping_size,
+                      common::errors::InvalidArgument(
+                          "The Tensor mask's rank [%d] and Its "
+                          "dims_mapping size [%d] are not matched.",
+                          mask_ndim,
+                          mask_dims_mapping_size));
   }
 
   // out
@@ -352,7 +368,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(out_ndim,
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor out's shape must be [batch_size, "
                         "seq_len_q, num_heads, head_dim_v]"));
 
@@ -363,10 +379,10 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor out's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor out's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping_size));
 
   // softmax_lse
   // [batch_size,  num_heads, seq_len_q, seq_len_kv]
@@ -377,17 +393,17 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
       softmax_lse_dist_attr.dims_mapping().size();
   PADDLE_ENFORCE_EQ(out_ndim,
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor softmax_lse's shape must be [batch_size, "
                         "num_heads, seq_len_q, seq_len_kv]"));
 
-  PADDLE_ENFORCE_EQ(
-      softmax_lse_ndim,
-      softmax_lse_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor softmax_lse's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   softmax_lse_ndim,
-                                   softmax_lse_dims_mapping_size));
+  PADDLE_ENFORCE_EQ(softmax_lse_ndim,
+                    softmax_lse_dims_mapping_size,
+                    common::errors::InvalidArgument(
+                        "The Tensor softmax_lse's rank [%d] and Its "
+                        "dims_mapping size [%d] are not matched.",
+                        softmax_lse_ndim,
+                        softmax_lse_dims_mapping_size));
 
   auto batch_size_2 = softmax_lse_shape[0];
   auto num_heads_2 = softmax_lse_shape[1];
@@ -396,7 +412,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       batch_size,
       batch_size_2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "batch size of Tensor out and softmax_lse is not matched: [] vs []",
           batch_size,
           batch_size_2));
@@ -404,7 +420,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       num_heads,
       num_heads_2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "num heads of Tensor out and softmax_lse is not matched: [] vs []",
           num_heads,
           num_heads_2));
@@ -412,7 +428,7 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       seq_len_q,
       seq_len_q_2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "seq_len_q of Tensor out and softmax_lse is not matched: [] vs []",
           seq_len_q,
           seq_len_q_2));
@@ -453,6 +469,21 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   auto out_dist_attr_dst = UnShardTensorDims(out_dist_attr, {1, 3});
   auto softmax_lse_dist_attr_dst =
       UnShardTensorDims(softmax_lse_dist_attr, {2});
+
+  bool is_same_num_heads = q_shape[2] == k_shape[2];
+  bool is_divisible = true;
+  int64_t num_head_mesh_dim = k_dist_attr.dims_mapping()[kNumHeadsDimIndex];
+  if (num_head_mesh_dim != -1) {
+    int64_t num_head_split_size =
+        k_dist_attr.process_mesh().dim_size(num_head_mesh_dim);
+    is_divisible = k_shape[2] % num_head_split_size == 0;
+  }
+
+  if (!is_same_num_heads && !is_divisible) {
+    out_dist_attr_dst = UnShardTensorDims(out_dist_attr_dst, {2});
+    softmax_lse_dist_attr_dst =
+        UnShardTensorDims(softmax_lse_dist_attr_dst, {1});
+  }
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
 
@@ -522,11 +553,11 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   auto q_dist_attr = q.dist_attr();
   int q_dims_mapping_size = q_dist_attr.dims_mapping().size();
 
-  PADDLE_ENFORCE_EQ(
-      q_ndim,
-      4,
-      phi::errors::InvalidArgument("The Tensor q's shape must be [batch_size, "
-                                   "seq_len_q, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(q_ndim,
+                    4,
+                    common::errors::InvalidArgument(
+                        "The Tensor q's shape must be [batch_size, "
+                        "seq_len_q, num_heads, head_dim]"));
 
   auto batch_size = q_shape[0];
   auto num_heads = q_shape[2];
@@ -535,10 +566,10 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       q_ndim,
       q_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   q_ndim,
-                                   q_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      q_ndim,
+                                      q_dims_mapping_size));
 
   // k
   // [batch_size, seq_len_kv, num_heads, head_dim]
@@ -546,11 +577,11 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   int k_ndim = k_shape.size();
   auto k_dist_attr = k.dist_attr();
   int k_dims_mapping_size = k_dist_attr.dims_mapping().size();
-  PADDLE_ENFORCE_EQ(
-      k_ndim,
-      4,
-      phi::errors::InvalidArgument("The Tensor k's shape must be [batch_size, "
-                                   "seq_len_kv, num_heads, head_dim]"));
+  PADDLE_ENFORCE_EQ(k_ndim,
+                    4,
+                    common::errors::InvalidArgument(
+                        "The Tensor k's shape must be [batch_size, "
+                        "seq_len_kv, num_heads, head_dim]"));
 
   auto k_batch_size = k_shape[0];
   auto k_seq_len = k_shape[1];
@@ -560,23 +591,23 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       batch_size,
       k_batch_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor q and k's batch size [%d]  vs [%d] are not matched.",
           batch_size,
           k_batch_size));
 
   PADDLE_ENFORCE_EQ(
-      num_heads,
-      k_num_heads,
-      phi::errors::InvalidArgument(
-          "The Tensor q and k's num_heads [%d] vs [%d] are not matched.",
+      num_heads % k_num_heads == 0,
+      true,
+      common::errors::InvalidArgument(
+          "The num_heads of q must be divisible by k's, but [%d] vs [%d].",
           num_heads,
           k_num_heads));
 
   PADDLE_ENFORCE_EQ(
       head_dim,
       k_head_dim,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor q and k's head_dim [%d] vs [%d] are not matched.",
           head_dim,
           k_head_dim));
@@ -584,10 +615,10 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       k_ndim,
       k_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor k's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   k_ndim,
-                                   k_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor k's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      k_ndim,
+                                      k_dims_mapping_size));
 
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
@@ -595,11 +626,11 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   int v_ndim = v_shape.size();
   auto v_dist_attr = v.dist_attr();
   int v_dims_mapping_size = v_dist_attr.dims_mapping().size();
-  PADDLE_ENFORCE_EQ(
-      v_ndim,
-      4,
-      phi::errors::InvalidArgument("The Tensor v's shape must be [batch_size, "
-                                   "seq_len_kv, num_heads, head_dim_v]"));
+  PADDLE_ENFORCE_EQ(v_ndim,
+                    4,
+                    common::errors::InvalidArgument(
+                        "The Tensor v's shape must be [batch_size, "
+                        "seq_len_kv, num_heads, head_dim_v]"));
 
   auto v_batch_size = v_shape[0];
   auto v_seq_len = v_shape[1];
@@ -608,23 +639,23 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       batch_size,
       v_batch_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor q and v's batch size [%d] vs [%d] are not matched.",
           batch_size,
           v_batch_size));
 
   PADDLE_ENFORCE_EQ(
-      num_heads,
-      v_num_heads,
-      phi::errors::InvalidArgument(
-          "The Tensor q and v's k_num_heads [%d] vs [%d] are not matched.",
+      num_heads % v_num_heads == 0,
+      true,
+      common::errors::InvalidArgument(
+          "The num_head of q must be divisible by v's, but [%d] vs [%d].",
           num_heads,
           v_num_heads));
 
   PADDLE_ENFORCE_EQ(
       k_seq_len,
       v_seq_len,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor k and v's seq_len [%d] vs [%d] are not matched.",
           k_seq_len,
           v_seq_len));
@@ -632,10 +663,10 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   PADDLE_ENFORCE_EQ(
       v_ndim,
       v_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor v's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   v_ndim,
-                                   v_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor v's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      v_ndim,
+                                      v_dims_mapping_size));
 
   // fixed_seed_offset
   auto seed_offset_dist_attr = seed_offset.dist_attr();
@@ -647,13 +678,13 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   auto attn_mask_dist_attr = attn_mask.dist_attr();
   int mask_dims_mapping_size = attn_mask_dist_attr.dims_mapping().size();
   if (!IsEmpty(attn_mask_shape)) {
-    PADDLE_ENFORCE_EQ(
-        mask_ndim,
-        mask_dims_mapping_size,
-        phi::errors::InvalidArgument("The Tensor mask's rank [%d] and Its "
-                                     "dims_mapping size [%d] are not matched.",
-                                     mask_ndim,
-                                     mask_dims_mapping_size));
+    PADDLE_ENFORCE_EQ(mask_ndim,
+                      mask_dims_mapping_size,
+                      common::errors::InvalidArgument(
+                          "The Tensor mask's rank [%d] and Its "
+                          "dims_mapping size [%d] are not matched.",
+                          mask_ndim,
+                          mask_dims_mapping_size));
   }
 
   auto out_shape = common::vectorize(out.dims());
@@ -699,6 +730,24 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   auto out_grad_dist_attr_dst = UnShardTensorDims(out_grad_dist_attr, {1, 3});
   auto softmax_lse_dist_attr_dst =
       UnShardTensorDims(softmax_lse_dist_attr, {2});
+
+  bool is_same_num_heads = num_heads == v_num_heads;
+  bool is_divisible = true;
+  int64_t num_head_mesh_dim = k_dist_attr.dims_mapping()[kNumHeadsDimIndex];
+  if (num_head_mesh_dim != -1) {
+    int64_t num_head_split_size =
+        k_dist_attr.process_mesh().dim_size(num_head_mesh_dim);
+    is_divisible = k_shape[2] % num_head_split_size == 0;
+  }
+  if (!is_same_num_heads && !is_divisible) {
+    q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {2});
+    k_dist_attr_dst = UnShardTensorDims(k_dist_attr_dst, {2});
+    v_dist_attr_dst = UnShardTensorDims(v_dist_attr_dst, {2});
+    out_dist_attr_dst = UnShardTensorDims(out_dist_attr_dst, {2});
+    out_grad_dist_attr_dst = UnShardTensorDims(out_grad_dist_attr_dst, {2});
+    softmax_lse_dist_attr_dst =
+        UnShardTensorDims(softmax_lse_dist_attr_dst, {1});
+  }
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   axes_sharding_info.emplace_back(q_axes, q_dist_attr_dst.dims_mapping());
@@ -756,5 +805,4 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
           {q_grad, k_grad, v_grad}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

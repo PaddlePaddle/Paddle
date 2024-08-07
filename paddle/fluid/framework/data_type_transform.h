@@ -28,10 +28,10 @@ class OpKernelType;
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
-void TransDataType(const phi::KernelKey& kernel_type_for_var,
-                   const phi::KernelKey& expected_kernel_type,
-                   const phi::DenseTensor& in,
-                   phi::DenseTensor* out);
+TEST_API void TransDataType(const phi::KernelKey& kernel_type_for_var,
+                            const phi::KernelKey& expected_kernel_type,
+                            const phi::DenseTensor& in,
+                            phi::DenseTensor* out);
 void TransDataType(const phi::DenseTensor& in,
                    const paddle::framework::proto::VarType::Type& type,
                    phi::DenseTensor* out);

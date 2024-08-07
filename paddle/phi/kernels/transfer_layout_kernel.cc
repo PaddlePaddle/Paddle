@@ -34,14 +34,15 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(
       from,
       to,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Layout transform should transform between different layout."));
   if (from == DataLayout::NCHW && to == DataLayout::NHWC) {
     return {0, 2, 3, 1};
   } else if (from == DataLayout::NHWC && to == DataLayout::NCHW) {
     return {0, 3, 1, 2};
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported layout transform."));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Unsupported layout transform."));
   }
 }
 
@@ -151,7 +152,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
   }
 
   if (src_layout != DataLayout::ONEDNN && dst_layout == DataLayout::ONEDNN) {
-    // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
+    // Case1 - transform from Non-MKLDNN OPKernel to OneDNN OPKernel
     // Just set layout/format. No real transform occur
     out->ShareDataWith(x);
     // For NHWC data we need reshape of tensors as MKL-DNN
@@ -166,8 +167,8 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
     out->set_mem_desc(out_mem_desc);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {
-    // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
-    // Do transform via MKLDNN lib
+    // Case2 - transform from OneDNN OPKernel to Non-MKLDNN OPKernel
+    // Do transform via OneDNN lib
     funcs::TransDataLayoutFromOneDNN(
         src_layout, dst_layout, x, out, dev_ctx.GetPlace());
   } else if (src_layout == DataLayout::ONEDNN &&

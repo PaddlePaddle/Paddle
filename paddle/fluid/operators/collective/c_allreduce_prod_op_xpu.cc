@@ -21,11 +21,11 @@ DEFINE_C_ALLREDUCE_XPU_KERNEL(CAllReduceProd, kRedProd)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(c_allreduce_prod,
                           XPU,
                           ALL_LAYOUT,
                           ops::CAllReduceProdXPUKernel,
                           float,
                           int,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

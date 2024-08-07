@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/thread_local_allocator.h"
+#include "paddle/phi/core/memory/allocation/thread_local_allocator.h"
 
 #include <condition_variable>  // NOLINT
 #include <thread>              // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
+#include "paddle/phi/core/memory/malloc.h"
 
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
@@ -55,12 +55,11 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
         cv.wait(lock, [&] { return flag; });
       }
       for (size_t j = 0; j < devices.size(); ++j) {
-        thread_allocations[j][i] =
-            memory::Alloc(platform::CUDAPlace(devices[j]), 10);
+        thread_allocations[j][i] = memory::Alloc(phi::GPUPlace(devices[j]), 10);
         auto tl_allocator_impl =
             ThreadLocalCUDAAllocatorPool::Instance().Get(devices[j]);
         allocator_addresses[j][i] = tl_allocator_impl.get();
-        memory::Release(platform::CUDAPlace(devices[j]));
+        memory::Release(phi::GPUPlace(devices[j]));
       }
     });
   }
@@ -78,7 +77,7 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
   for (auto &addresses : allocator_addresses) {
     std::sort(addresses.begin(), addresses.end());
     ASSERT_EQ(std::adjacent_find(
-                  addresses.begin(), addresses.end(), std::equal_to<void *>()),
+                  addresses.begin(), addresses.end(), std::equal_to<>()),
               addresses.end());
   }
 

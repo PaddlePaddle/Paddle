@@ -44,7 +44,7 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     FusedTokenPrunePluginDynamic* ptr = new FusedTokenPrunePluginDynamic(
         with_fp16_, keep_first_token_, keep_order_, flag_varseqlen_);
-    ptr->max_batchs_ = max_batchs_;
+    ptr->max_batches_ = max_batches_;
     ptr->max_token_length_ = max_token_length_;
     ptr->pruned_token_lengths_ = pruned_token_lengths_;
     ptr->token_index_ = token_index_;
@@ -91,7 +91,7 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
                        int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
                        int nb_outputs) TRT_NOEXCEPT override {
-    max_batchs_ = in[1].max.d[0];
+    max_batches_ = in[1].max.d[0];
     max_token_length_ = in[1].max.d[1];
     int32_t padding_token_length;
     if (max_token_length_ <= 64) {
@@ -106,16 +106,17 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
       padding_token_length = 512;
     } else {
       try {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Token_prune'token_length(max) must <= 512"));
       } catch (std::exception& e) {
       }
     }
     try {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-          &pruned_token_lengths_, (max_batchs_ + 1) * sizeof(int32_t)));
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-          &token_index_, max_batchs_ * padding_token_length * sizeof(int32_t)));
+          &pruned_token_lengths_, (max_batches_ + 1) * sizeof(int32_t)));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMalloc(&token_index_,
+                     max_batches_ * padding_token_length * sizeof(int32_t)));
       int32_t type_size = 4;
       if (in[0].desc.type == nvinfer1::DataType::kHALF) {
         type_size = 2;
@@ -123,7 +124,7 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
         type_size = 4;
       }
       PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(
-          &padding_scores_, max_batchs_ * padding_token_length * type_size));
+          &padding_scores_, max_batches_ * padding_token_length * type_size));
     } catch (std::exception& e) {
     }
   }
@@ -153,7 +154,7 @@ class FusedTokenPrunePluginDynamic : public DynamicPluginTensorRT {
   bool flag_varseqlen_;
   int32_t* pruned_token_lengths_;
   int32_t* token_index_;
-  int32_t max_batchs_;
+  int32_t max_batches_;
   int32_t max_token_length_;
   void* padding_scores_;
 };

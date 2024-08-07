@@ -38,7 +38,6 @@ int cinn_x86_malloc(void* context, cinn_buffer_t* buf) {
       buf->memory = (unsigned char*)aligned_alloc(buf->align, memory_size);
     }
     buf->memory_size = memory_size;
-    CINN_LOG("buf.memory size is %ld\n", buf->memory_size);
   }
   ASSERT_NOT_NULL(buf->memory);
   return 0;

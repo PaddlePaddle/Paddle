@@ -15,11 +15,9 @@
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^CSWinTransformer^CSWinTransformer_base_384
 # api:paddle.tensor.creation.to_tensor||method:reshape||method:transpose||method:reshape
-import unittest
+from base import *  # noqa: F403
 
-import numpy as np
-
-import paddle
+from paddle.static import InputSpec
 
 
 class LayerCase(paddle.nn.Layer):
@@ -30,43 +28,25 @@ class LayerCase(paddle.nn.Layer):
         self,
         var_0,  # (shape: [12, 288, 192], dtype: paddle.float32, stop_gradient: False)
     ):
-        var_1 = paddle.tensor.creation.to_tensor(6, 'int32')
-        var_2 = var_0.reshape([var_1, 2, 1, 12, 24, 192])
+        var_2 = var_0.reshape([6, 2, 1, 12, 24, 192])
         var_3 = var_2.transpose([0, 1, 3, 2, 4, 5])
-        var_4 = var_3.reshape([var_1, 24, 24, 192])
+        var_4 = var_3.reshape([6, 24, 24, 192])
         return var_4
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            )
+        ]
         self.inputs = (paddle.rand(shape=[12, 288, 192], dtype=paddle.float32),)
-        self.net = LayerCase()
-
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
-
-    # NOTE prim + cinn lead to error
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+        self.net = LayerCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

@@ -206,9 +206,7 @@ class TestFuseResUnitBase(unittest.TestCase):
                 verify_node_count(
                     program._graph, "fused_scale_bias_add_relu", 2
                 ),
-                "[{}] The number of fused_scale_bias_add_relu is miss-matched in the computing graph.".format(
-                    type(self).__name__
-                ),
+                f"[{type(self).__name__}] The number of fused_scale_bias_add_relu is miss-matched in the computing graph.",
             )
             conv_bnstats_count = 6 if self.is_shortcut else 8
             self.assertTrue(
@@ -217,9 +215,7 @@ class TestFuseResUnitBase(unittest.TestCase):
                     "fused_scale_bias_relu_conv_bn",
                     conv_bnstats_count,
                 ),
-                "[{}] The number of fused_scale_bias_relu_conv_bn is miss-matched in the computing graph.".format(
-                    type(self).__name__
-                ),
+                f"[{type(self).__name__}] The number of fused_scale_bias_relu_conv_bn is miss-matched in the computing graph.",
             )
 
         return np.array(loss_list)

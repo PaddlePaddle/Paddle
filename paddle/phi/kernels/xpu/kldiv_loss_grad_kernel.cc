@@ -25,6 +25,7 @@ void KLDivLossGradKernel(const Context& dev_ctx,
                          const DenseTensor& label,
                          const DenseTensor& d_out,
                          const std::string& reduction,
+                         bool log_target,
                          DenseTensor* d_x) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(d_x);
@@ -33,14 +34,35 @@ void KLDivLossGradKernel(const Context& dev_ctx,
   }
 
   int r = XPU_SUCCESS;
-  r = xpu::kldiv_loss_grad(dev_ctx.x_context(),
-                           reinterpret_cast<const XPUType*>(label.data<T>()),
-                           reinterpret_cast<const XPUType*>(d_out.data<T>()),
-                           reinterpret_cast<XPUType*>(d_x->data<T>()),
-                           d_x->numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "kldiv_loss_grad");
+
+  if (log_target) {
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    XPUType* label_exp = RAII_GUARD.alloc_l3_or_gm<XPUType>(label.numel());
+    PADDLE_ENFORCE_XDNN_NOT_NULL(label_exp);
+
+    r = xpu::exp(dev_ctx.x_context(),
+                 reinterpret_cast<const XPUType*>(label.data<T>()),
+                 label_exp,
+                 label.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "exp");
+
+    r = xpu::kldiv_loss_grad(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(label_exp),
+                             reinterpret_cast<const XPUType*>(d_out.data<T>()),
+                             reinterpret_cast<XPUType*>(d_x->data<T>()),
+                             d_x->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "kldiv_loss_grad");
+  } else {
+    r = xpu::kldiv_loss_grad(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(label.data<T>()),
+                             reinterpret_cast<const XPUType*>(d_out.data<T>()),
+                             reinterpret_cast<XPUType*>(d_x->data<T>()),
+                             d_x->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "kldiv_loss_grad");
+  }
+
   if ("none" != reduction) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Not supported reduction [%s] in kldiv_loss_grad", reduction));
   }
 }

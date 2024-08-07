@@ -11,33 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
 
 import paddle
 
-
-def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net,
-        build_strategy=build_strategy,
-        full_graph=True,
-    )
+sys.path.append(dirname(dirname(__file__)))
+import utils
 
 
-def exp_sub(x):
+def exp_sub_concat(x):
     y = paddle.exp(x)
     z = y - x
-    return z
+    out = paddle.concat([z, x], 0)
+    return out
 
 
 class CheckInferSymbolicNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
-        self.fn = exp_sub
+        self.fn = exp_sub_concat
 
     def forward(self, x):
         out = self.fn(x)
@@ -62,7 +58,7 @@ class TestCheckInferSymbolic(unittest.TestCase):
         paddle.seed(2022)
         net = CheckInferSymbolicNet()
         if use_cinn:
-            net = apply_to_static(net, use_cinn)
+            net = utils.apply_to_static(net, use_cinn)
         net.eval()
         out = net(self.x)
         return out

@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
@@ -31,11 +32,10 @@
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/selected_rows.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace imperative {
@@ -157,7 +157,7 @@ class PreparedOp {
              const framework::OperatorWithKernel::OpKernelFunc& func,
              const phi::ArgumentMappingFn* arg_map_fn,
              const phi::KernelSignature* default_kernel_signature,
-             platform::DeviceContext* dev_ctx);
+             phi::DeviceContext* dev_ctx);
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
@@ -166,26 +166,26 @@ class PreparedOp {
              const phi::KernelSignature* default_kernel_signature,
              phi::KernelSignature&& kernel_signature,
              const phi::Kernel& phi_kernel,
-             platform::DeviceContext* dev_ctx);
+             phi::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
                             const framework::OperatorWithKernel& op,
-                            const platform::Place& place,
+                            const phi::Place& place,
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
   static PreparedOp Prepare(const NameVarMap<VariableWrapper>& ins,
                             const NameVarMap<VariableWrapper>& outs,
                             const framework::OperatorWithKernel& op,
-                            const platform::Place& place,
+                            const phi::Place& place,
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
   static PreparedOp Prepare(const NameVarMap<egr::EagerVariable>& ins,
                             const NameVarMap<egr::EagerVariable>& outs,
                             const framework::OperatorWithKernel& op,
-                            const platform::Place& place,
+                            const phi::Place& place,
                             const framework::AttributeMap& attrs,
                             const framework::AttributeMap& default_attrs);
 
@@ -213,7 +213,7 @@ class PreparedOp {
   const framework::RuntimeContext& ctx_;
   phi::KernelKey kernel_key_;
   framework::OperatorWithKernel::OpKernelFunc func_;
-  platform::DeviceContext* dev_ctx_;
+  phi::DeviceContext* dev_ctx_;
   // NOTE(chenweihang): Similar op members are used to adapt to
   // new phi kernel, if there is a better design in the future,
   // we may polish the implementation here
@@ -252,7 +252,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
                                   const NameVarMap<VarType>& outs,
                                   const framework::AttributeMap& attrs,
                                   const framework::AttributeMap& default_attrs,
-                                  platform::DeviceContext* dev_ctx,
+                                  phi::DeviceContext* dev_ctx,
                                   phi::KernelContext* kernel_ctx) {
   kernel_ctx->SetDeviceContext(dev_ctx);
 
@@ -267,7 +267,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
   PADDLE_ENFORCE_EQ(
       input_names.size(),
       input_defs.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Op %s: the size of inputs_args names (%d) must be equal to "
           "the size of kernel input_defs (%d).",
           kernel_signature.name,
@@ -277,7 +277,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
   PADDLE_ENFORCE_EQ(
       output_names.size(),
       output_defs.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Op %s: the size of outputs_args names (%d) must be equal to "
           "the size of kernel output_defs (%d).",
           kernel_signature.name,
@@ -287,7 +287,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
   PADDLE_ENFORCE_EQ(
       attr_names.size(),
       attr_defs.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Op %s: the size of attribute_args names (%d) must be equal "
           "to the size of kernel attribute_defs (%d).",
           kernel_signature.name,
@@ -314,7 +314,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         kernel_ctx->AssignInputRange(std::make_pair(start_idx, end_idx), i);
         continue;
       } else {
-        PADDLE_THROW(phi::errors::NotFound(
+        PADDLE_THROW(common::errors::NotFound(
             "Can not find input variable '%s' for %s OP, please check whether "
             "the name setting in OpArgumentMapping is consistent with that in "
             "OpMaker.",
@@ -335,11 +335,11 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
       } else if (var.template IsType<phi::SelectedRows>()) {
         tensor_in = &(var.template Get<phi::SelectedRows>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
-      } else if (var.template IsType<framework::LoDTensorArray>()) {
-        tensor_in = &(var.template Get<framework::LoDTensorArray>());
+      } else if (var.template IsType<phi::TensorArray>()) {
+        tensor_in = &(var.template Get<phi::TensorArray>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
             framework::ToTypeName(var.Type())));
       }
@@ -377,11 +377,11 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<framework::LoDTensorArray>()) {
-          tensor_out = var->template GetMutable<framework::LoDTensorArray>();
+        } else if (var->template IsType<phi::TensorArray>()) {
+          tensor_out = var->template GetMutable<phi::TensorArray>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
-          PADDLE_THROW(platform::errors::Unimplemented(
+          PADDLE_THROW(common::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
               framework::ToTypeName(var->Type())));
         }
@@ -405,34 +405,34 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(float, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(float, attr)));
               break;
             case framework::proto::AttrType::FLOAT64:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(double, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(double, attr)));
               break;
             case framework::proto::AttrType::INT:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(int, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(int, attr)));
               break;
             case framework::proto::AttrType::LONG:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(int64_t, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr)));
               break;
             case framework::proto::AttrType::STRING:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(std::string, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(std::string, attr)));
               break;
             case framework::proto::AttrType::BOOLEAN:
               kernel_ctx->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(bool, attr))));
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr)));
               break;
             case framework::proto::AttrType::SCALAR:
-              kernel_ctx->EmplaceBackAttr(std::move(phi::Scalar(
-                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr))));
+              kernel_ctx->EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
               break;
             default:
-              PADDLE_THROW(platform::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to Scalar when construct "
                   "KernelContext in dygraph.",
                   attr_names[i]));
@@ -448,23 +448,23 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::INTS:
-              kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(PADDLE_GET_CONST(std::vector<int32_t>, attr))));
+              kernel_ctx->EmplaceBackAttr(
+                  phi::IntArray(PADDLE_GET_CONST(std::vector<int32_t>, attr)));
               break;
             case framework::proto::AttrType::LONGS:
-              kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(PADDLE_GET_CONST(std::vector<int64_t>, attr))));
+              kernel_ctx->EmplaceBackAttr(
+                  phi::IntArray(PADDLE_GET_CONST(std::vector<int64_t>, attr)));
               break;
             case framework::proto::AttrType::INT:
-              kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(&PADDLE_GET_CONST(int32_t, attr), 1)));
+              kernel_ctx->EmplaceBackAttr(
+                  phi::IntArray(&PADDLE_GET_CONST(int32_t, attr), 1));
               break;
             case framework::proto::AttrType::LONG:
-              kernel_ctx->EmplaceBackAttr(std::move(
-                  phi::IntArray(&PADDLE_GET_CONST(int64_t, attr), 1)));
+              kernel_ctx->EmplaceBackAttr(
+                  phi::IntArray(&PADDLE_GET_CONST(int64_t, attr), 1));
               break;
             default:
-              PADDLE_THROW(platform::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unsupported cast op attribute `%s` to IntArray when "
                   "construct KernelContext.",
                   attr_names[i]));
@@ -481,16 +481,16 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
               variables.push_back(var_base->MutableVar());
             }
             kernel_ctx->EmplaceBackAttr(
-                std::move(framework::MakePhiIntArrayFromVarList(variables)));
+                framework::MakePhiIntArrayFromVarList(variables));
           }
         }
         break;
       case phi::AttributeType::SCALARS: {
         PADDLE_ENFORCE_NOT_NULL(
             attr_ptr,
-            platform::errors::NotFound("(%s) is not found in AttributeMap when "
-                                       "buildind dygraph KernelContext.",
-                                       attr_names[i]));
+            common::errors::NotFound("(%s) is not found in AttributeMap when "
+                                     "building dygraph KernelContext.",
+                                     attr_names[i]));
         auto& attr = *attr_ptr;
         switch (AttrTypeID(attr)) {
           case framework::proto::AttrType::INTS: {
@@ -549,7 +549,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
             kernel_ctx->EmplaceBackAttr(std::move(scalar_list));
           } break;
           default:
-            PADDLE_THROW(platform::errors::Unimplemented(
+            PADDLE_THROW(common::errors::Unimplemented(
                 "Unsupported cast op attribute `%s` to vector<Scalar> when "
                 "construct KernelContext.",
                 attr_names[i]));
@@ -558,9 +558,9 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
       default: {
         PADDLE_ENFORCE_NOT_NULL(
             attr_ptr,
-            platform::errors::NotFound("(%s) is not found in AttributeMap when "
-                                       "buildind dygraph KernelContext.",
-                                       attr_names[i]));
+            common::errors::NotFound("(%s) is not found in AttributeMap when "
+                                     "building dygraph KernelContext.",
+                                     attr_names[i]));
         auto& attr = *attr_ptr;
         switch (attr_defs[i].type_index) {
           case phi::AttributeType::FLOAT32:
@@ -606,7 +606,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
                 kernel_ctx->EmplaceBackAttr(vector_int64_attr);
               } break;
               default:
-                PADDLE_THROW(platform::errors::Unimplemented(
+                PADDLE_THROW(common::errors::Unimplemented(
                     "Unsupported cast op attribute `%s` to vector<int64_t> "
                     "when "
                     "construct KernelContext.",
@@ -622,7 +622,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
                 PADDLE_GET_CONST(std::vector<std::string>, attr));
             break;
           default:
-            PADDLE_THROW(platform::errors::Unimplemented(
+            PADDLE_THROW(common::errors::Unimplemented(
                 "Unsupported cast op attribute `%s` when construct "
                 "KernelContext in dygraph.",
                 attr_names[i]));
@@ -642,7 +642,7 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
 
   PADDLE_ENFORCE_EQ(input_names.size(),
                     input_defs.size(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "the size of inputs_args names (%d) must be equal to "
                         "the size of kernel input_defs (%d).",
                         input_names.size(),

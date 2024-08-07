@@ -23,11 +23,11 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 
-// ------ Following codes are about `Apply` functions registry of variaous types
+// ------ Following codes are about `Apply` functions registry of various types
 // of ScheduleDesc::Step
 class PackedStepContext;
 // uniformed function prototype of a scheduling operation in IRSchedule
@@ -94,15 +94,23 @@ class PackedStepContext {
 
   // get the idx-th input whose signature is Expr
   Expr InputAt(size_t idx) const {
-    CHECK_LT(idx, input_range_.size()) << "idx overranges";
+    PADDLE_ENFORCE_LT(idx,
+                      input_range_.size(),
+                      ::common::errors::InvalidArgument("idx overranges"));
     const auto& range = input_range_.at(idx);
-    CHECK(range.second - range.first == 1) << "not single param";
+
+    PADDLE_ENFORCE_EQ(range.second - range.first,
+                      1,
+                      ::common::errors::InvalidArgument(
+                          "Input is not single param, idx: %d.", idx));
     return inputs_[range.first];
   }
 
   // get the idx-th input whose signature is `std::vector<Expr>`
   std::vector<Expr> InputsAt(size_t idx) const {
-    CHECK_LT(idx, input_range_.size()) << "idx overranges";
+    PADDLE_ENFORCE_LT(idx,
+                      input_range_.size(),
+                      ::common::errors::InvalidArgument("idx overranges"));
     const auto& range = input_range_.at(idx);
     std::vector<Expr> results;
     for (size_t s = range.first; s < range.second; ++s) {
@@ -117,9 +125,11 @@ class PackedStepContext {
     try {
       return absl::get<AttrType>(attrs_.at(idx));
     } catch (absl::bad_variant_access& ex) {
-      LOG(FATAL) << "Attribute cast error, idx:" << idx
-                 << ", get tpye:" << typeid(AttrType).name()
-                 << ", real index:" << attrs_.at(idx).index();
+      std::stringstream ss;
+      ss << "Attribute cast error, idx:" << idx
+         << ", get type:" << typeid(AttrType).name()
+         << ", real index:" << attrs_.at(idx).index();
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
       throw ex;
     }
   }
@@ -130,7 +140,11 @@ class PackedStepContext {
     size_t input_idx = 0;
     for (auto&& param_name : step_kind->inputs_) {
       auto arg_it = desc.inputs.find(param_name);
-      CHECK(arg_it != desc.inputs.end()) << "Can't find param:" << param_name;
+      PADDLE_ENFORCE_NE(
+          arg_it,
+          desc.inputs.end(),
+          ::common::errors::InvalidArgument(
+              "Can't find param: %s while building inputs", param_name));
       auto&& args = arg_it->second;
       inputs_.insert(inputs_.end(),
                      std::make_move_iterator(args.begin()),
@@ -143,8 +157,10 @@ class PackedStepContext {
     size_t attr_idx = 0;
     for (auto&& attr_name : step_kind->attrs_) {
       auto attr_it = desc.attrs.find(attr_name);
-      CHECK(attr_it != desc.attrs.end())
-          << "Can't find attribute:" << attr_name;
+      PADDLE_ENFORCE_NE(attr_it,
+                        desc.attrs.end(),
+                        ::common::errors::InvalidArgument(
+                            "Can't find attribute: %s", attr_name));
       attrs_.emplace_back(attr_it->second);
       ++attr_idx;
     }
@@ -197,7 +213,7 @@ struct FreeFuncConverter<Return (IRSchedule::*)(Args...) const, impl_fn> {
   }
 };
 
-// used for formatting scheduling functions with variaous function signatures to
+// used for formatting scheduling functions with various function signatures to
 // be uniformed form
 template <typename F, F f>
 struct ApplyFuncImpl;
@@ -483,6 +499,7 @@ CINN_BUILD_STEP_KIND(Rfactor)
 CINN_BUILD_STEP_KIND(FactorizeReduction)
     .Inputs({"rf_loop"})
     .Attrs({"rf_axis"})
+    .Attrs({"with_write_back_block_init"})
     .SetApplyFn(APPLY_FUNC_UNIFORM(
         FREE_FUNCTION_CONVERTER(&IRSchedule::FactorizeReduction)));
 
@@ -600,7 +617,9 @@ void AttrVariantToProto(const utils::Attribute& attr,
     SET_DESC_REPEATED_ITEM(10, std::vector<int64_t>, LONGS, longs);
     SET_DESC_REPEATED_ITEM(11, std::vector<double>, DOUBLES, doubles);
     default:
-      LOG(FATAL) << "Invalid index:" << attr.index();
+      std::stringstream ss;
+      ss << "Invalid index:" << attr.index();
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 
 #undef SET_DESC_SINGLE_ITEM
@@ -634,7 +653,9 @@ utils::Attribute AttrProtoToVariant(const proto::ScheduleDesc_Attr& attr) {
     PARSE_DESC_REPEATED_ITEM(LONGS, longs, std::vector<int64_t>);
     PARSE_DESC_REPEATED_ITEM(DOUBLES, doubles, std::vector<double>);
     default:
-      LOG(FATAL) << "Invalid type:" << attr.DebugString();
+      std::stringstream ss;
+      ss << "Invalid type:" << attr.DebugString();
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 
 #undef PARSE_DESC_SINGLE_ITEM
@@ -683,14 +704,16 @@ proto::ScheduleDesc ScheduleDesc::ToProto() const {
       expr_desc->set_parameter(param_name);
       for (auto&& expr : param2exprs.second) {
         auto expr_it = expr2name.find(expr);
-        CHECK(expr_it != expr2name.end())
-            << "Can't find expr of param_name: " << param_name;
+        PADDLE_ENFORCE_NE(expr_it,
+                          expr2name.end(),
+                          ::common::errors::InvalidArgument(
+                              "Can't find expr of param_name: %s", param_name));
         expr_desc->add_arguments(expr_it->second);
       }
     }
 
-    // each output Expr is represented by a formatted name, to be refered by
-    // suceeding steps
+    // each output Expr is represented by a formatted name, to be referred by
+    // succeeding steps
     for (auto&& expr : step.outputs) {
       std::string local_name = "e" + std::to_string(expr2name.size());
       expr2name.emplace(expr, local_name);
@@ -722,22 +745,31 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
   absl::flat_hash_map<std::string, Expr> name2expr;
   std::vector<Expr> last_outputs;
 
-  // resotre each scheduling step and apply to the new IRSchedule object
+  // restore each scheduling step and apply to the new IRSchedule object
   for (auto&& step_proto : desc_proto.steps()) {
     VLOG(4) << "Replay step:\n" << step_proto.DebugString();
     ScheduleDesc::Step step;
     step.type = step_proto.type();
-    CHECK(!step.type.empty()) << "Name of StepKind is empty";
+    PADDLE_ENFORCE_NE(
+        step.type.empty(),
+        true,
+        ::common::errors::InvalidArgument("Name of StepKind is empty"));
     if (without_post_schedule && step.type == "TagPostSchedule") {
       break;
     }
     const StepKindInfo* step_kind = StepKindRegistry::Global()->Find(step.type);
-    CHECK(step_kind) << "Can't find StepKind:" << step.type;
+    PADDLE_ENFORCE_NE(step_kind,
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "Can't find StepKind: %s", step.type));
 
     for (auto&& param2args : step_proto.inputs()) {
       for (auto&& arg : param2args.arguments()) {
         auto arg_it = name2expr.find(arg);
-        CHECK(arg_it != name2expr.end()) << "Cant't find argument:" << arg;
+        PADDLE_ENFORCE_NE(
+            arg_it,
+            name2expr.end(),
+            ::common::errors::InvalidArgument("Cant't find argument: %s", arg));
         step.inputs[param2args.parameter()].emplace_back(arg_it->second);
       }
     }
@@ -747,8 +779,10 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
 
     PackedStepContext context(step, step_kind, sch);
     step.outputs = step_kind->Apply(&context);
-    CHECK_EQ(step_proto.outputs().size(), step.outputs.size())
-        << "Output size not matched";
+    PADDLE_ENFORCE_EQ(
+        step_proto.outputs().size(),
+        step.outputs.size(),
+        ::common::errors::InvalidArgument("Output size not matched"));
     for (size_t i = 0; i < step.outputs.size(); ++i) {
       name2expr[step_proto.outputs(i)] = step.outputs.at(i);
     }

@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -33,13 +32,13 @@ std::string GetBroadcastAxes(const int64_t& tensor_ndim,
   PADDLE_ENFORCE_GE(
       alphabet.size(),
       broadcast_ndim,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of alphabet [%d] is less than broadcast ndim [%d]",
           alphabet.size(),
           broadcast_ndim));
   PADDLE_ENFORCE_GE(broadcast_ndim,
                     tensor_ndim,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The broadcast ndim [%d] is less than tensor ndim [%d]",
                         broadcast_ndim,
                         tensor_ndim));
@@ -63,12 +62,12 @@ int64_t ShardingMergeForAxis(const std::string& axis,
       return mesh_dim1;
     } else {
       // (TODO) local cost model here.
-      PADDLE_THROW(
-          phi::errors::Unimplemented("Tensor Axis[%s] is Sharded by two "
-                                     "different mesh dimension [%d] and [%d].",
-                                     axis,
-                                     mesh_dim1,
-                                     mesh_dim2));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Tensor Axis[%s] is Sharded by two "
+          "different mesh dimension [%d] and [%d].",
+          axis,
+          mesh_dim1,
+          mesh_dim2));
     }
 
   } else {
@@ -121,7 +120,7 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
           axis_to_dim_map[it.second.substr(i, 1)] = -1;
         }
       } else {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "Multiple Tensor Axes [%s] is sharded by same mesh dimension [%d].",
             str_join(it.second),
             it.first));
@@ -226,20 +225,20 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
   size_t n_inputs = input_attrs.size();
   PADDLE_ENFORCE_EQ(n_inputs,
                     tensor_shapes.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "n_inputs[%d] and tensor_shapes size [%d] not equal",
                         n_inputs,
                         tensor_shapes.size()));
   PADDLE_ENFORCE_EQ(n_inputs,
                     axis_names.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "n_inputs[%d] and axis_names size [%d] not equal",
                         n_inputs,
                         axis_names.size()));
 
-  PADDLE_ENFORCE_EQ(!align_axis.empty(),
-                    true,
-                    phi::errors::InvalidArgument("align_axis is empty"));
+  PADDLE_ENFORCE_EQ(align_axis.empty(),
+                    false,
+                    common::errors::InvalidArgument("align_axis is empty"));
 
   std::map<std::pair<int64_t, char>, int64_t> axis_name_to_dim;
 
@@ -247,7 +246,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     // 1、check all inputs have the align_axis
     for (char axi : align_axis) {
       if (axis_names[i].find(axi) == std::string::npos) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "[%s] some axis not in  input [%d],[%s]",
             align_axis,
             i,
@@ -341,7 +340,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     }
     std::priority_queue<std::pair<double, char>,
                         std::vector<std::pair<double, char>>,
-                        std::greater<std::pair<double, char>>>
+                        std::greater<>>
         cost_queue;
 
     for (auto axis_name : align_axis) {
@@ -363,10 +362,8 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
           if (IsDimSharded(tensor_dist_attr, shard_dim)) {
             continue;
           }
-          int64_t num = std::accumulate(tensor_shape.begin(),
-                                        tensor_shape.end(),
-                                        1,
-                                        std::multiplies<int64_t>());
+          int64_t num = std::accumulate(
+              tensor_shape.begin(), tensor_shape.end(), 1, std::multiplies<>());
           if (num == static_cast<int64_t>(0)) {
             continue;
           }
@@ -375,7 +372,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
           cost += std::accumulate(local_shape.begin(),
                                   local_shape.end(),
                                   1,
-                                  std::multiplies<int64_t>()) *
+                                  std::multiplies<>()) *
                   process_mess.dim_size(mesh_dim);
         }
       }
@@ -407,7 +404,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     for (auto pair : partial_dim_to_type) {
       placements[pair.first] = std::make_shared<PartialStatus>(pair.second);
     }
-    new_input_attrs.emplace_back(FromPlacements(e, placements));
+    new_input_attrs.emplace_back(FromPlacements(e, placements));  // NOLINT
   }
   std::swap(input_attrs, new_input_attrs);
 }
@@ -423,13 +420,14 @@ TensorDistAttr FromPlacements(
     auto& placement = placements[mesh_dim];
     if (placement->is_shard()) {
       auto shard_placement = std::dynamic_pointer_cast<ShardStatus>(placement);
-      dims_mapping[shard_placement->get_axis()] = mesh_dim;
+      dims_mapping[shard_placement->get_axis()] =
+          static_cast<int64_t>(mesh_dim);
     }
     if (placement->is_partial()) {
       auto partial_placement =
           std::dynamic_pointer_cast<PartialStatus>(placement);
       auto reduce_type = partial_placement->get_reduce_type();
-      partial_status[mesh_dim] = reduce_type;
+      partial_status[mesh_dim] = reduce_type;  // NOLINT
     }
   }
   dst_dist_attr.set_dims_mapping(dims_mapping);
@@ -470,7 +468,7 @@ std::vector<int64_t> GetLocalShape(
   for (size_t i = 0; i < n_placement; i++) {
     auto& placement = placements.at(i);
     if (placement->is_shard()) {
-      auto mesh_dim_size = mesh.dim_size(i);
+      auto mesh_dim_size = mesh.dim_size(i);  // NOLINT
       auto shard_dim =
           std::dynamic_pointer_cast<ShardStatus>(placement)->get_axis();
       auto split_size =
@@ -496,7 +494,7 @@ std::vector<int64_t> GetDimsMappingForAxes(
         if (unsharded_miss_axis) {
           dims_mapping.emplace_back(-1);
         } else {
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Tensor axis [%s] of not in axis_to_dim_map.", axis);
         }
       } else {
@@ -525,7 +523,7 @@ void DebugInfoForInferSpmd(const std::string& rule_name,
                 << "] need to be " << dist_attr_vec[j];
       }
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The dist attr of the %d th input should be TensorDistAttr "
           "or std::vector<TensorDistAttr>.",
           i));
@@ -546,7 +544,7 @@ void DebugInfoForInferSpmd(const std::string& rule_name,
                 << "] need to be " << dist_attr_vec[j];
       }
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The dist attr of the %d th output should be TensorDistAttr "
           "or std::vector<TensorDistAttr>.",
           i));
@@ -575,10 +573,10 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
   PADDLE_ENFORCE_GE(
       grad_dim,
       input_dim,
-      phi::errors::InvalidArgument("grad dim must ge than input dim, but we "
-                                   "got grad_dim [%d], input_dim[%d]",
-                                   grad_dim,
-                                   input_dim));
+      common::errors::InvalidArgument("grad dim must ge than input dim, but we "
+                                      "got grad_dim [%d], input_dim[%d]",
+                                      grad_dim,
+                                      input_dim));
   if (grad_dim == input_dim) {
     return grad;
   }
@@ -604,5 +602,4 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
   return grad_out;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

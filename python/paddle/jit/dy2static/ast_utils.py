@@ -27,8 +27,7 @@ def ast_to_source_code(ast_node):
     """
     if not isinstance(ast_node, (gast.AST, ast.AST)):
         raise TypeError(
-            "Type of ast_root should be gast.AST or ast.AST, but received %s."
-            % type(ast_node)
+            f"Type of ast_root should be gast.AST or ast.AST, but received {type(ast_node)}."
         )
     if isinstance(ast_node, gast.AST):
         ast_node = gast.gast_to_ast(ast_node)

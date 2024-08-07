@@ -155,14 +155,19 @@ void FusedTokenPrune::operator()() {
 void ElementWise::operator()() {
   // Create nodes for elementwise.
   auto* elementwise_input = pattern->NewNode(elementwise_input_repr())
-                                ->assert_is_op_input("elementwise_add", "X");
+                                ->assert_is_op_input("elementwise_add", "X")
+                                ->assert_var_not_persistable();
+  auto* elementwise_weight = pattern->NewNode(elementwise_weight_repr())
+                                 ->assert_is_op_input("elementwise_add", "Y")
+                                 ->assert_is_persistable_var();
   auto* elementwise_op =
       pattern->NewNode(elementwise_op_repr())->assert_is_op("elementwise_add");
   auto* elementwise_out = pattern->NewNode(elementwise_out_repr())
                               ->assert_is_op_output("elementwise_add");
 
   // Add links for elementwise op.
-  elementwise_op->LinksFrom({elementwise_input}).LinksTo({elementwise_out});
+  elementwise_op->LinksFrom({elementwise_input, elementwise_weight})
+      .LinksTo({elementwise_out});
 }
 }  // namespace patterns
 
@@ -182,7 +187,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   }
 
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
   int found_subgraph_count = 0;
@@ -243,7 +248,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     scope->Var(remove_padding_out_name);
     auto* remove_padding_out_tensor =
         scope->FindVar(remove_padding_out_name)->GetMutable<phi::DenseTensor>();
-    remove_padding_out_tensor->mutable_data<float>(platform::CUDAPlace());
+    remove_padding_out_tensor->mutable_data<float>(phi::GPUPlace());
 
     // rename
     op_node->Op()->RenameInput(input_node->Name(),
@@ -314,7 +319,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     auto* recover_padding_input_tensor =
         scope->FindVar(recover_padding_input_name)
             ->GetMutable<phi::DenseTensor>();
-    recover_padding_input_tensor->mutable_data<float>(platform::CUDAPlace());
+    recover_padding_input_tensor->mutable_data<float>(phi::GPUPlace());
 
     // rename
     op_node->Op()->RenameOutput(out_node->Name(), recover_padding_input_name);

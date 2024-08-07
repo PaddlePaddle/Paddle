@@ -27,7 +27,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
-#include "paddle/fluid/operators/fused_token_prune_op.cu.h"
+#include "paddle/phi/kernels/funcs/fused_token_prune_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -236,16 +236,16 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                        "num(%d) of the input and the output.",
-                                        pos,
-                                        nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (flag_varseqlen_) {
@@ -254,9 +254,9 @@ bool FusedTokenPrunePluginDynamic::supportsFormatCombination(
         return (in.type == nvinfer1::DataType::kHALF) &&
                (in.format == nvinfer1::TensorFormat::kLINEAR);
       } else {
-        PADDLE_THROW(platform::errors::Fatal(
-            "The FusedTokenPrune TRT Plugin's input type "
-            "should be half for varseqlen."));
+        PADDLE_THROW(
+            common::errors::Fatal("The FusedTokenPrune TRT Plugin's input type "
+                                  "should be half for varseqlen."));
       }
     } else if (pos == 6 || pos == 11) {  // mask_id, mask_id_out
       return (in.type == nvinfer1::DataType::kHALF) &&
@@ -340,7 +340,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
   if (flag_varseqlen_) {
     if (!(input_desc[0].type == nvinfer1::DataType::kHALF &&
           input_desc[1].type == nvinfer1::DataType::kHALF)) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Token_prune'type must half for varseqlen"));
     }
     float scale =
@@ -349,7 +349,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
         static_cast<const int32_t*>(inputs[5]);            // pre pos id
     int32_t* output3 = static_cast<int32_t*>(outputs[3]);  // new pos id
     half* output0 = static_cast<half*>(outputs[0]);
-    const int32_t B = input_desc[1].dims.d[0];  // batchs
+    const int32_t B = input_desc[1].dims.d[0];  // batches
     const int32_t max_sequnce_length =
         input_desc[1].dims.d[1];                     // max sequnce length
     const int32_t length = input_desc[1].dims.d[2];  // hidden size
@@ -367,7 +367,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
     } else if (max_sequnce_length <= 512) {
       padding_token_length = 512;
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Token_prune'token_length must <= 512"));
     }
 
@@ -389,7 +389,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
         NULL, temp_storage_bytes, pruned_token_lengths_, output3, B + 1);
     // Allocate temporary storage
 
-    platform::CUDAPlace place(platform::GetCurrentDeviceId());
+    phi::GPUPlace place(platform::GetCurrentDeviceId());
     auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
     // Run exclusive prefix sum
@@ -447,12 +447,13 @@ int FusedTokenPrunePluginDynamic::enqueue(
     const dim3 num_blocks(
         B,
         max_sequnce_length,
-        length / num_threads);  //  batchs, max_sequnce_length, vector_ength/***
+        length /
+            num_threads);  //  batches, max_sequnce_length, vector_ength/***
     varlen_prune_token_change_order<<<num_blocks, num_threads, 0, stream>>>(
         tokens, output3, padding_token_length, token_index_, output0);
   } else {
     auto input_type = input_desc[0].type;
-    const int32_t B = input_desc[1].dims.d[0];  // batchs
+    const int32_t B = input_desc[1].dims.d[0];  // batches
     const int32_t pre_sequnce_length = input_desc[1].dims.d[1];
     const int32_t new_sequnce_length = input_desc[3].dims.d[2];  // new mask
     const int32_t length = input_desc[1].dims.d[2];              // hidden size
@@ -474,7 +475,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
       } else if (pre_sequnce_length <= 512) {
         padding_token_length = 512;
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Token_prune'token_length must <= 512"));
       }
 
@@ -567,7 +568,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
       } else if (pre_sequnce_length <= 512) {
         padding_token_length = 512;
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Token_prune'token_length must <= 512"));
       }
 
@@ -644,8 +645,8 @@ int FusedTokenPrunePluginDynamic::enqueue(
       }
     } else {
       PADDLE_THROW(
-          platform::errors::Fatal("The FusedTokenPrune TRT Plugin's input type "
-                                  "should be float or half."));
+          common::errors::Fatal("The FusedTokenPrune TRT Plugin's input type "
+                                "should be float or half."));
     }
   }
   return cudaGetLastError() != cudaSuccess;

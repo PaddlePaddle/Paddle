@@ -16,14 +16,14 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
-#include "paddle/utils/flags.h"
 
-PD_DECLARE_int64(embedding_deterministic);
+COMMON_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 
@@ -134,13 +134,14 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
       return;
     }
   }
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "The data type of Input(Ids) must be int32 or int64."));
 }
 
 }  // namespace phi
 
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(c_embedding_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -148,7 +149,9 @@ PD_REGISTER_KERNEL(c_embedding_grad,
                    float,
                    double,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #else
 PD_REGISTER_KERNEL(c_embedding_grad,
                    GPU,
@@ -156,5 +159,7 @@ PD_REGISTER_KERNEL(c_embedding_grad,
                    phi::CEmbeddingGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #endif

@@ -28,7 +28,7 @@ namespace phi {
 using TensorNameMap = std::map<std::string, std::vector<std::string>>;
 
 class OneDNNContextThreadLocals {
-  // default mkldnn session id
+  // default onednn session id
 
   typedef OneDNNContextThreadLocals self;
   struct Body {
@@ -38,7 +38,7 @@ class OneDNNContextThreadLocals {
     // - For fixed-shape, it's a null string in default.
     // - For dynamic-shape, it's user specific.
     std::string cur_input_shape_str;
-    // the cache capacity of different input shapes for MKLDNN.
+    // the cache capacity of different input shapes for OneDNN.
     // Default 1 means fixed input shape, not dynamic shape.
     int cur_input_shape_cache_capacity;
     // Recently registered data_format. This is needed to
@@ -57,7 +57,7 @@ class OneDNNContextThreadLocals {
     size_t get_cur_mkldnn_session_id(void);
     void set_cur_input_shape_str(std::string input_shape_str);
     void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
-    void set_cur_paddle_data_layout(DataLayout dl);
+    TEST_API void set_cur_paddle_data_layout(DataLayout dl);
     DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
     const dnnl::engine& get_engine(void) { return cur_engine; }
@@ -73,11 +73,11 @@ class OneDNNContextThreadLocals {
   OneDNNContextThreadLocals(const OneDNNContextThreadLocals& c) = delete;
 
  public:
-  // default mkldnn session id
+  // default onednn session id
   static constexpr size_t kMKLDNNSessionID_Default = 0;
-  // mkldnn session id for cache clearing mode
+  // onednn session id for cache clearing mode
   static constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
-  static Body& fetch();
+  TEST_API static Body& fetch();
 };
 
 class OneDNNContext : public CPUContext {
@@ -89,7 +89,7 @@ class OneDNNContext : public CPUContext {
   template <class T>
   using umap_key_string_t = umap_value_smart_t<std::string, T>;
 
-  // Following three maps are used to cache MKLDNN primitives.
+  // Following three maps are used to cache OneDNN primitives.
   // There relations are:
   // - BlobMap = Map<cur_thread_id, ShapeBlob>
   // - ShapeBlob = Map<cur_input_shape_str, KeyBlob>
@@ -114,7 +114,7 @@ class OneDNNContext : public CPUContext {
   const dnnl::engine& GetEngine() const { return tls().get_engine(); }
 
   // Remove all entries from the blob map
-  void ResetBlobMap(void* ptr);
+  TEST_API void ResetBlobMap(void* ptr);
 
   // Prevent next ResetBlobMap()
   void BlockNextCacheClearing();

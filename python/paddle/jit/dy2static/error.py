@@ -44,7 +44,7 @@ BLANK_COUNT_BEFORE_FILE_STR = 4
 
 def attach_error_data(error, in_runtime=False):
     """
-    Attachs error data about original source code information and traceback to an error.
+    Attaches error data about original source code information and traceback to an error.
 
     Args:
         error(Exception): An native error.
@@ -75,7 +75,7 @@ class TraceBackFrame(OriginInfo):
         self.source_code = source_code
         self.error_line = ''
 
-    def formated_message(self):
+    def formatted_message(self):
         # self.source_code may be empty in some functions.
         # For example, decorator generated function
         return (
@@ -84,9 +84,11 @@ class TraceBackFrame(OriginInfo):
                 self.location.filepath,
                 self.location.lineno,
                 self.function_name,
-                self.source_code.lstrip()
-                if isinstance(self.source_code, str)
-                else self.source_code,
+                (
+                    self.source_code.lstrip()
+                    if isinstance(self.source_code, str)
+                    else self.source_code
+                ),
             )
         )
 
@@ -141,12 +143,10 @@ class TraceBackFrameRange(OriginInfo):
                     + self.source_code[i]
                 )
 
-    def formated_message(self):
+    def formatted_message(self):
         msg = (
             ' ' * BLANK_COUNT_BEFORE_FILE_STR
-            + 'File "{}", line {}, in {}\n'.format(
-                self.location.filepath, self.location.lineno, self.function_name
-            )
+            + f'File "{self.location.filepath}", line {self.location.lineno}, in {self.function_name}\n'
         )
         # add empty line after range code
         return msg + '\n'.join(self.source_code)
@@ -157,7 +157,7 @@ class SuggestionDict:
         # {(keywords): (suggestions)}
         self.suggestion_dict = {
             ('is not initialized.', 'Hint:', 'IsInitialized'): (
-                "Please ensure all your sublayers are inheritted from nn.Layer.",
+                "Please ensure all your sublayers are inherited from nn.Layer.",
                 "Please ensure there is no tensor created explicitly depended on external data, "
                 + "we suggest to register it as buffer tensor. "
                 + "See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/jit/principle_cn.html#buffers for details",
@@ -225,9 +225,7 @@ class ErrorData:
 
         if is_numpy_api_err and func_str:
             return [
-                "TypeError: Code '{}' called numpy API {}, please use Paddle API to replace it.".format(
-                    error_line, func_str
-                ),
+                f"TypeError: Code '{error_line}' called numpy API {func_str}, please use Paddle API to replace it.",
                 "           values will be changed to variables by dy2static, numpy api can not handle variables",
             ]
         else:
@@ -288,7 +286,7 @@ class ErrorData:
                     dygraph_func_info.source_code,
                 )
 
-            message_lines.append(traceback_frame.formated_message())
+            message_lines.append(traceback_frame.formatted_message())
             error_line = traceback_frame.error_line
         message_lines.append("")
 
@@ -304,7 +302,7 @@ class ErrorData:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code
             )
-            message_lines.append(traceback_frame.formated_message())
+            message_lines.append(traceback_frame.formatted_message())
         message_lines.append("")
 
         # Step3: Adds error message like "TypeError: dtype must be int32, but received float32".
@@ -341,7 +339,7 @@ class ErrorData:
                 for suggestion in self.suggestion_dict[keywords]:
                     suggestion_msg = (
                         ' ' * BLANK_COUNT_BEFORE_FILE_STR * 2
-                        + f'{str(len(revise_suggestions) - 1)}. {suggestion}'
+                        + f'{len(revise_suggestions) - 1}. {suggestion}'
                     )
                     revise_suggestions.append(suggestion_msg)
         return revise_suggestions if len(revise_suggestions) > 2 else []
@@ -413,7 +411,7 @@ class ErrorData:
                 traceback_frame = TraceBackFrame(
                     Location(filepath, lineno), funcname, code
                 )
-            error_frame.append(traceback_frame.formated_message())
+            error_frame.append(traceback_frame.formatted_message())
         error_frame.append("")
 
         # Add paddle traceback after user code traceback
@@ -428,7 +426,7 @@ class ErrorData:
             traceback_frame = TraceBackFrame(
                 Location(filepath, lineno), funcname, code
             )
-            error_frame.append(traceback_frame.formated_message())
+            error_frame.append(traceback_frame.formatted_message())
         error_frame.append("")
 
         error_frame.extend(bottom_error_message)
@@ -439,7 +437,7 @@ class ErrorData:
     def raise_new_exception(self):
         # Raises the origin error if disable dygraph2static error module,
         if int(os.getenv(DISABLE_ERROR_ENV_NAME, DEFAULT_DISABLE_NEW_ERROR)):
-            raise
+            raise self.error_value
 
         new_exception = self.create_exception()
         # NOTE(liym27):

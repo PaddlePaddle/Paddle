@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -57,9 +57,9 @@ class CCommInitAllKernel : public framework::OpKernel<T> {
     }
 
     if (devices.size() > 1) {
-      std::vector<platform::Place> place_list_;
+      std::vector<phi::Place> place_list_;
       for (size_t i = 0; i < devices.size(); ++i) {
-        auto p = platform::XPUPlace(devices[i]);
+        auto p = phi::XPUPlace(devices[i]);
         place_list_.push_back(p);
       }
 

@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
@@ -21,25 +21,26 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-using bfloat16 = paddle::platform::bfloat16;
+using bfloat16 = phi::dtype::bfloat16;
+using namespace phi::dtype;  // NOLINT
 
 TEST(bfloat16, conversion_cpu) {
   // Conversion from float
   EXPECT_EQ(bfloat16(1.0f).x, 0x3f80);
   EXPECT_EQ(bfloat16(0.5f).x, 0x3f00);
-  EXPECT_EQ(bfloat16(0.33333f).x, 0x3eaa);
+  EXPECT_EQ(bfloat16(0.33333f).x, 0x3eab);
   EXPECT_EQ(bfloat16(0.0f).x, 0x0000);
   EXPECT_EQ(bfloat16(-0.0f).x, 0x8000);
-  EXPECT_EQ(bfloat16(65504.0f).x, 0x477f);
+  EXPECT_EQ(bfloat16(65504.0f).x, 0x4780);
   EXPECT_EQ(bfloat16(65536.0f).x, 0x4780);
 
   // Conversion from double
   EXPECT_EQ(bfloat16(1.0).x, 0x3f80);
   EXPECT_EQ(bfloat16(0.5).x, 0x3f00);
-  EXPECT_EQ(bfloat16(0.33333).x, 0x3eaa);
+  EXPECT_EQ(bfloat16(0.33333).x, 0x3eab);
   EXPECT_EQ(bfloat16(0.0).x, 0x0000);
   EXPECT_EQ(bfloat16(-0.0).x, 0x8000);
-  EXPECT_EQ(bfloat16(65504.0).x, 0x477f);
+  EXPECT_EQ(bfloat16(65504.0).x, 0x4780);
   EXPECT_EQ(bfloat16(65536.0).x, 0x4780);
 
   // Conversion from int
@@ -60,7 +61,7 @@ TEST(bfloat16, conversion_cpu) {
   v_assign = 0.5f;
   EXPECT_EQ(v_assign.x, 0x3f00);
   v_assign = 0.33333;
-  EXPECT_EQ(v_assign.x, 0x3eaa);
+  EXPECT_EQ(v_assign.x, 0x3eab);
   v_assign = -1;
   EXPECT_EQ(v_assign.x, 0xbf80);
 
@@ -109,7 +110,7 @@ TEST(bfloat16, lod_tensor_cpu) {
       bfloat16(1.0f), bfloat16(0.5f), bfloat16(0.33333f), bfloat16(0.0f)};
   EXPECT_EQ(input_data[0].x, 0x3f80);
   EXPECT_EQ(input_data[1].x, 0x3f00);
-  EXPECT_EQ(input_data[2].x, 0x3eaa);
+  EXPECT_EQ(input_data[2].x, 0x3eab);
   EXPECT_EQ(input_data[3].x, 0x0000);
 
   lod_tensor.Resize({4, 1});
@@ -129,8 +130,8 @@ TEST(bfloat16, floating) {
   PADDLE_ENFORCE_EQ(
       std::is_floating_point<bfloat16>::value,
       true,
-      platform::errors::Fatal("std::is_floating_point with bfloat16 data type "
-                              "should be equal to true but it is not"));
+      common::errors::Fatal("std::is_floating_point with bfloat16 data type "
+                            "should be equal to true but it is not"));
 }
 
 TEST(bfloat16, print) {

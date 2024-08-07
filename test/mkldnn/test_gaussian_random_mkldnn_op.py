@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from op_test import OpTest
+
+sys.path.append("../deprecated/legacy_test")
 from test_gaussian_random_op import TestGaussianRandomOp
 
 import paddle
@@ -24,12 +27,14 @@ import paddle
 class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
     def setUp(self):
         TestGaussianRandomOp.setUp(self)
         self.use_mkldnn = True
+        self.check_pir_onednn = True
         self.attrs = {
             "shape": [123, 92],
             "mean": 1.0,

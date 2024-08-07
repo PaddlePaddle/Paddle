@@ -35,11 +35,11 @@ class OperatorStatsUnit:
         if dtype is None:
             self.other_calls = self.other_calls + 1
         else:
-            if dtype == paddle.base.core.VarDesc.VarType.FP32:
+            if dtype == paddle.float32:
                 self.fp32_calls = self.fp32_calls + 1
-            elif dtype == paddle.base.core.VarDesc.VarType.FP16:
+            elif dtype == paddle.float16:
                 self.fp16_calls = self.fp16_calls + 1
-            elif dtype == paddle.base.core.VarDesc.VarType.BF16:
+            elif dtype == paddle.bfloat16:
                 self.bf16_calls = self.bf16_calls + 1
             else:
                 self.other_calls = self.other_calls + 1
@@ -106,9 +106,7 @@ def _extract_compute_dtype(op, block):
                     var_dtype
                 ):
                     _logger.warning(
-                        "Operator < {} > has different input data types, input_names = {}, output_names = {}.".format(
-                            op.type, op.input_names, op.output_names
-                        )
+                        f"Operator < {op.type} > has different input data types, input_names = {op.input_names}, output_names = {op.output_names}."
                     )
                 elif _is_floating_point(var_dtype):
                     # When there are multiple inputs, such as embedding
@@ -132,9 +130,7 @@ def _extract_compute_dtype(op, block):
                     var_dtype
                 ):
                     _logger.warning(
-                        "Operator < {} > has different input / output data types, input_names = {}, output_names = {}.".format(
-                            op.type, op.input_names, op.output_names
-                        )
+                        f"Operator < {op.type} > has different input / output data types, input_names = {op.input_names}, output_names = {op.output_names}."
                     )
     return compute_dtype
 

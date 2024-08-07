@@ -35,7 +35,7 @@ class FlattenOpConverter : public OpConverter {
         PADDLE_ENFORCE_GT(
             dim_i,
             0,
-            platform::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "flatten input dim should be > 0, but got %d.", dim_i));
         dim_prod *= dim_i;
       }
@@ -88,7 +88,7 @@ class FlattenOpConverter : public OpConverter {
       layer->setInput(1, *(concat_layer->getOutput(0)));
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "flatten", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "flatten", {output_name}, test_mode);
   }
 };
 

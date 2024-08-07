@@ -26,6 +26,8 @@ limitations under the License. */
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
+#include "paddle/common/flags.h"
+#include "paddle/common/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/distributed/ps/service/brpc_utils.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
@@ -36,9 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/core/flags.h"
 
 namespace google {
 namespace protobuf {
@@ -53,7 +53,7 @@ class ProgramDesc;
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
@@ -80,14 +80,14 @@ class ServiceHandlerBase {
   virtual ~ServiceHandlerBase() {}
 
   void SetScope(const framework::Scope* scope) { scope_ = scope; }
-  void SetDevCtx(const platform::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
+  void SetDevCtx(const phi::DeviceContext* dev_ctx) { dev_ctx_ = dev_ctx; }
 
   virtual int Handle(const MultiVarMsg* request,
                      MultiVarMsg* response,
                      brpc::Controller* cntl) = 0;
 
  protected:
-  const platform::DeviceContext* dev_ctx_;
+  const phi::DeviceContext* dev_ctx_;
   const framework::Scope* scope_;
 };
 
@@ -162,7 +162,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
-        VLOG(0) << "vars not consumed exceed 10 miniutes";
+        VLOG(0) << "vars not consumed exceed 10 minutes";
         break;
       }
       */
@@ -182,7 +182,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
-        VLOG(0) << "vars not produced exceed 10 miniutes";
+        VLOG(0) << "vars not produced exceed 10 minutes";
         break;
       }
       */
@@ -208,9 +208,9 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
              MultiVarMsg* response,
              brpc::Controller* cntl) override {
     LOG(INFO) << "entered Handle";
-    platform::RecordEvent record_event("SendAndRecvVariableHandler->Handle",
-                                       platform::TracerEventType::Communication,
-                                       1);
+    phi::RecordEvent record_event("SendAndRecvVariableHandler->Handle",
+                                  platform::TracerEventType::Communication,
+                                  1);
     FLAGS_eager_delete_tensor_gb = -1;
 
     // get microID from request
@@ -219,8 +219,8 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     std::unique_ptr<::paddle::framework::Scope> local_scope_ptr(
         new ::paddle::framework::Scope());
     auto& local_scope = *(local_scope_ptr.get());
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::CPUPlace cpu_place;
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    phi::CPUPlace cpu_place;
     auto& cpu_dev_ctx = *pool.Get(cpu_place);
 
     auto message_name = request->message_name();
@@ -232,7 +232,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     auto* var = local_scope.FindVar("microbatch_id");
     PADDLE_ENFORCE_NE(var,
                       nullptr,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Not find variable microbatch_id in scope."));
     auto* tensor = var->GetMutable<phi::DenseTensor>();
     auto data = reinterpret_cast<const float*>(tensor->data());
@@ -249,7 +249,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       PADDLE_ENFORCE_EQ(
           (*micro_scopes_).find(minibatch_index) != (*micro_scopes_).end(),
           1,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "minibatch index should in current trainer"));
 
     } else {
@@ -390,7 +390,7 @@ class HeterService : public PsService {
     PADDLE_ENFORCE_NE(
         itr,
         handler_map_.end(),
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "HeterService::SendAndRecvVariable Get illegal message_name: %s "
             "which is not in HeterService::handler_map_",
             message_name));
@@ -439,7 +439,7 @@ class HeterService : public PsService {
         PADDLE_ENFORCE_NE(
             closure->cntl.Failed(),
             true,
-            platform::errors::Unimplemented(
+            common::errors::Unimplemented(
                 "HeterClient::SendS2S meets brpc error, error message is %s",
                 closure->cntl.ErrorText()));
       }
@@ -524,7 +524,7 @@ class HeterService : public PsService {
     peer_endpoints_ = peer_endpoints;
   }
 
-  void SetFanin(const int& fan_in) { fan_in_ = fan_in; }
+  void SetFanIn(const int& fan_in) { fan_in_ = fan_in; }
 
   void ForceExit() {
     VLOG(3) << "heter service force exit";
@@ -626,7 +626,7 @@ class HeterServer {
     service_.SetPeerEndPoints(peer_endpoints);
   }
 
-  void SetFanin(const int& fan_in);
+  void SetFanIn(const int& fan_in);
 
   void SetServiceHandler(
       std::shared_ptr<SendAndRecvVariableHandler> request_handler) {

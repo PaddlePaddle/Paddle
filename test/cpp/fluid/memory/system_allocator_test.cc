@@ -12,16 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/allocation/system_allocator.h"
+#include "paddle/phi/core/memory/allocation/system_allocator.h"
 
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 
-PHI_DECLARE_bool(use_pinned_memory);
+COMMON_DECLARE_bool(use_pinned_memory);
 
 void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
   bool freed = false;

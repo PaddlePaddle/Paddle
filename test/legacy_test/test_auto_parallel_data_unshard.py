@@ -14,12 +14,12 @@
 
 import unittest
 
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from test_parallel_dygraph_dataparallel import TestMultipleAccelerators
 
 
-class TestAutoParallelDataUnshard(TestMultipleGpus):
+class TestAutoParallelDataUnshard(TestMultipleAccelerators):
     def test_auto_parallel_data_unshard(self):
-        self.run_mnist_2gpu('auto_parallel_data_unshard.py')
+        self.run_mnist_2accelerators('auto_parallel_data_unshard.py')
 
 
 if __name__ == "__main__":

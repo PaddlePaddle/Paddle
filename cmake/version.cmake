@@ -1,5 +1,17 @@
 # Get the latest git tag.
 set(PADDLE_VERSION $ENV{PADDLE_VERSION})
+if(WITH_NIGHTLY_BUILD)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} show -s --format=%ci HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_COMMIT_TIME
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  string(REGEX REPLACE " (.*)$" "" DATE_ONLY "${GIT_COMMIT_TIME}")
+  string(REPLACE "-" "" DATE_ONLY "${DATE_ONLY}")
+  # Print the last commit date
+  message(STATUS "Last commit date: ${DATE_ONLY}")
+  set(PADDLE_VERSION "${PADDLE_VERSION}.dev${DATE_ONLY}")
+endif()
 set(tmp_version "HEAD")
 set(TAG_VERSION_REGEX "[0-9]+\\.[0-9]+\\.[0-9]+(\\.(a|b|rc)\\.[0-9]+)?")
 set(COMMIT_VERSION_REGEX "[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+[0-9a-f]+")
@@ -65,6 +77,7 @@ string(REPLACE "." ";" PADDLE_VER_LIST ${PADDLE_VER_LIST})
 list(GET PADDLE_VER_LIST 0 PADDLE_MAJOR_VER)
 list(GET PADDLE_VER_LIST 1 PADDLE_MINOR_VER)
 list(GET PADDLE_VER_LIST 2 PADDLE_PATCH_VER)
+
 math(EXPR PADDLE_VERSION_INTEGER "${PADDLE_MAJOR_VER} * 1000000
     + ${PADDLE_MINOR_VER} * 1000 + ${PADDLE_PATCH_VER}")
 
@@ -83,7 +96,7 @@ function(version version_file)
     "Paddle version: ${PADDLE_VERSION}\n"
     "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
     "WITH_MKL: ${WITH_MKL}\n"
-    "WITH_MKLDNN: ${WITH_MKLDNN}\n"
+    "WITH_ONEDNN: ${WITH_ONEDNN}\n"
     "WITH_GPU: ${WITH_GPU}\n"
     "WITH_ROCM: ${WITH_ROCM}\n"
     "WITH_IPU: ${WITH_IPU}\n")
@@ -108,9 +121,5 @@ function(version version_file)
       "WITH_TENSORRT: ${TENSORRT_FOUND}\n"
       "TensorRT version: v${TENSORRT_MAJOR_VERSION}.${TENSORRT_MINOR_VERSION}.${TENSORRT_PATCH_VERSION}.${TENSORRT_BUILD_VERSION}\n"
     )
-  endif()
-  if(WITH_LITE)
-    file(APPEND ${version_file} "WITH_LITE: ${WITH_LITE}\n"
-                                "LITE_GIT_TAG: ${LITE_GIT_TAG}\n")
   endif()
 endfunction()

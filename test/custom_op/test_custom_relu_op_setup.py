@@ -22,6 +22,7 @@ from utils import check_output, check_output_allclose
 
 import paddle
 from paddle import static
+from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
 
@@ -54,7 +55,7 @@ def custom_relu_static(
             x = paddle.static.data(name='X', shape=[None, 8], dtype=dtype)
             x.stop_gradient = False
             out = func(x) if use_func else paddle.nn.functional.relu(x)
-            # static.append_backward(out)
+            static.append_backward(out)
 
             exe = paddle.static.Executor()
             exe.run(paddle.static.default_startup_program())
@@ -230,6 +231,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     check_output(out, pd_out, "out")
                     check_output(x_grad, pd_x_grad, "x_grad")
 
+    @test_with_pir_api
     def _test_static_save_and_load_inference_model(self):
         paddle.enable_static()
         np_data = np.random.random((1, 1, 28, 28)).astype("float32")
@@ -257,33 +259,34 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
     def _test_static_save_and_run_inference_predictor(self):
         paddle.enable_static()
-        np_data = np.random.random((1, 1, 28, 28)).astype("float32")
-        np_label = np.random.random((1, 1)).astype("int64")
-        path_prefix = "custom_op_inference/custom_relu"
-        from paddle.inference import Config, create_predictor
+        with paddle.pir_utils.OldIrGuard():
+            np_data = np.random.random((1, 1, 28, 28)).astype("float32")
+            np_label = np.random.random((1, 1)).astype("int64")
+            path_prefix = "custom_op_inference/custom_relu"
+            from paddle.inference import Config, create_predictor
 
-        for device in self.devices:
-            predict = custom_relu_static_inference(
-                self.custom_ops[0], device, np_data, np_label, path_prefix
-            )
-            # load inference model
-            config = Config(
-                path_prefix + ".pdmodel", path_prefix + ".pdiparams"
-            )
-            predictor = create_predictor(config)
-            input_tensor = predictor.get_input_handle(
-                predictor.get_input_names()[0]
-            )
-            input_tensor.reshape(np_data.shape)
-            input_tensor.copy_from_cpu(np_data.copy())
-            predictor.run()
-            output_tensor = predictor.get_output_handle(
-                predictor.get_output_names()[0]
-            )
-            predict_infer = output_tensor.copy_to_cpu()
-            predict = np.array(predict).flatten()
-            predict_infer = np.array(predict_infer).flatten()
-            check_output_allclose(predict, predict_infer, "predict")
+            for device in self.devices:
+                predict = custom_relu_static_inference(
+                    self.custom_ops[0], device, np_data, np_label, path_prefix
+                )
+                # load inference model
+                config = Config(
+                    path_prefix + ".pdmodel", path_prefix + ".pdiparams"
+                )
+                predictor = create_predictor(config)
+                input_tensor = predictor.get_input_handle(
+                    predictor.get_input_names()[0]
+                )
+                input_tensor.reshape(np_data.shape)
+                input_tensor.copy_from_cpu(np_data.copy())
+                predictor.run()
+                output_tensor = predictor.get_output_handle(
+                    predictor.get_output_names()[0]
+                )
+                predict_infer = output_tensor.copy_to_cpu()
+                predict = np.array(predict).flatten()
+                predict_infer = np.array(predict_infer).flatten()
+                check_output_allclose(predict, predict_infer, "predict")
         paddle.disable_static()
 
     def _test_double_grad_dynamic(self):

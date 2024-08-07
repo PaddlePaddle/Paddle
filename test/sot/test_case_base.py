@@ -18,7 +18,6 @@ import contextlib
 import copy
 import types
 import unittest
-from functools import wraps
 
 import numpy as np
 
@@ -103,43 +102,3 @@ class TestCaseBase(unittest.TestCase):
                 sym_copied_fn.__globals__[key], paddle_fn.__globals__[key]
             )
         self.assert_nest_match(sym_output, paddle_output)
-
-
-# Some decorators for PIR test
-def to_pir_test(fn):
-    # NOTE(SigureMo): This function should sync with test/dygraph_to_static/dygraph_to_static_utils.py
-    @wraps(fn)
-    def impl(*args, **kwargs):
-        in_dygraph_mode = paddle.in_dynamic_mode()
-        with paddle.pir_utils.IrGuard():
-            if in_dygraph_mode:
-                paddle.disable_static()
-            ir_outs = fn(*args, **kwargs)
-        return ir_outs
-
-    return impl
-
-
-def run_in_pir_mode(fn):
-    @wraps(fn)
-    def impl(*args, **kwargs):
-        OpcodeExecutorCache().clear()
-        pir_fn = to_pir_test(fn)
-        return pir_fn(*args, **kwargs)
-
-    return impl
-
-
-def run_in_both_default_and_pir(fn):
-    @wraps(fn)
-    def impl(*args, **kwargs):
-        OpcodeExecutorCache().clear()
-        default_fn = fn
-        pir_fn = to_pir_test(fn)
-        default_outs = default_fn(*args, **kwargs)
-        OpcodeExecutorCache().clear()
-        # The out of test case should be None, which is not used.
-        _pir_outs = pir_fn(*args, **kwargs)
-        return default_outs
-
-    return impl

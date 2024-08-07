@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -48,7 +49,9 @@ class TestTileOpRank1(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_pir=True)
+        self.check_output(
+            check_cinn=self.check_cinn, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -144,6 +147,18 @@ class TestTileOpRank4(TestTileOpRank1):
     def if_enable_cinn(self):
         self.check_cinn = True
 
+    def test_check_output(self):
+        # todo: enable check_prim_pir
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+        )
+
 
 # Situation 2: repeat_times is a list (with tensor)
 # CINN not support repeat_times is a tensor now
@@ -172,7 +187,7 @@ class TestTileOpRank1_tensor_attr(OpTest):
         self.infer_repeat_times = [-1]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -213,7 +228,7 @@ class TestTileOpRank1_tensor(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -269,7 +284,9 @@ class TestTileFP16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn, check_pir=True)
+        self.check_output(
+            check_cinn=self.check_cinn, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -284,7 +301,7 @@ class TestTileFP16OP(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestTileBF16OP(OpTest):
     def setUp(self):
@@ -307,7 +324,10 @@ class TestTileBF16OP(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_cinn=self.check_cinn, check_pir=True
+            place,
+            check_cinn=self.check_cinn,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def init_data(self):
@@ -433,7 +453,7 @@ class TestTileDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -451,7 +471,13 @@ class TestTileDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -465,7 +491,7 @@ class TestTileTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -483,7 +509,13 @@ class TestTileTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

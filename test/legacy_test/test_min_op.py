@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
+sys.path.append("../../legacy_test")
 import numpy as np
 from op_test import check_out_dtype
 from test_sum_op import TestReduceOPTensorAxisBase
@@ -64,6 +66,7 @@ class ApiMinTest(unittest.TestCase):
             (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
         self.assertEqual((res == np.min(input_data, axis=(0, 1))).all(), True)
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
 

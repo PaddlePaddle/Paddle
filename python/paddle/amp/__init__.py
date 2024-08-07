@@ -11,34 +11,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .auto_cast import (  # noqa: F401
-    auto_cast,
-    decorate,
-    amp_guard,
-    amp_decorate,
-)
-from .amp_lists import (  # noqa: F401
-    white_list,
-    black_list,
-)
-
-from . import (  # noqa: F401
-    debugging,
-    grad_scaler,
-    accuracy_compare,
-)
-
-from .grad_scaler import (  # noqa: F401
-    GradScaler,
-    AmpScaler,
-    OptimizerState,
-)
+from __future__ import annotations
 
 from paddle.base import core
 from paddle.base.framework import (
     _current_expected_place,
     _get_paddle_place,
+)
+
+from . import (  # noqa: F401
+    accuracy_compare,
+    debugging,
+    grad_scaler,
+)
+from .amp_lists import (  # noqa: F401
+    black_list,
+    white_list,
+)
+from .auto_cast import (  # noqa: F401
+    amp_decorate,
+    amp_guard,
+    auto_cast,
+    decorate,
+)
+from .grad_scaler import (  # noqa: F401
+    AmpScaler,
+    GradScaler,
+    OptimizerState,
 )
 
 __all__ = [
@@ -50,7 +49,7 @@ __all__ = [
 ]
 
 
-def is_float16_supported(device=None):
+def is_float16_supported(device: str | None = None) -> bool:
     """
     Determine whether the place supports float16 in the auto-mixed-precision training.
 
@@ -77,7 +76,7 @@ def is_float16_supported(device=None):
     return core.is_float16_supported(device)
 
 
-def is_bfloat16_supported(device=None):
+def is_bfloat16_supported(device: str | None = None) -> bool:
     """
     Determine whether the place supports bfloat16 in the auto-mixed-precision training.
 

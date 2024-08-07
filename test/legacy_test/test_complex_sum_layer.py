@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -25,7 +26,13 @@ from paddle import base, tensor
 class TestComplexSumLayer(unittest.TestCase):
     def setUp(self):
         self._dtypes = ["float32", "float64"]
-        self._places = [paddle.CPUPlace()]
+        self._places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            self._places.append(paddle.CPUPlace())
         if base.core.is_compiled_with_cuda():
             self._places.append(paddle.CUDAPlace(0))
 
@@ -36,7 +43,7 @@ class TestComplexSumLayer(unittest.TestCase):
             ).astype(dtype)
             for place in self._places:
                 with dg.guard(place):
-                    var_x = dg.to_variable(input)
+                    var_x = paddle.to_tensor(input)
                     result = tensor.sum(var_x, axis=[1, 2]).numpy()
                     target = np.sum(input, axis=(1, 2))
                     np.testing.assert_allclose(result, target, rtol=1e-05)

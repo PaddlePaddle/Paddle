@@ -24,6 +24,13 @@ void CastKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DataType out_dtype,
                 DenseTensor* out) {
+  if (x.dtype() == out_dtype) {
+    if (!out->IsSharedWith(x)) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+
   if (out->IsSharedWith(x)) {
     auto x_origin = x;
     CastCUDAKernel<T>(dev_ctx, x_origin, out_dtype, out);
@@ -53,4 +60,7 @@ void CastKernel(const Context& dev_ctx,
     kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED); \
   }
 
-PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast, phi::dtype::bfloat16)
+PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast,
+                                  phi::dtype::bfloat16,
+                                  phi::dtype::float8_e4m3fn,
+                                  phi::dtype::float8_e5m2)

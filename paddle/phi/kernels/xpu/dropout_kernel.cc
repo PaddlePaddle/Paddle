@@ -34,15 +34,18 @@ void DropoutRawKernel(const Context& dev_ctx,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask) {
+  bool is_upscale = (mode == "upscale_in_train");
+  dev_ctx.template Alloc<T>(out);
+  if (mask) {
+    dev_ctx.template Alloc<uint8_t>(mask);
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto* y = out;
   const auto* x_data = x.data<T>();
-  auto* y_data = dev_ctx.template Alloc<T>(y);
+  auto* y_data = out->data<T>();
   float dropout_prob = p.to<float>();
 
-  int is_upscale = (mode == "upscale_in_train");
-
-  if (!is_test) {
+  if (!is_test && mask) {
     int seed_data = 0;
     if (seed_tensor.get_ptr() != nullptr) {
       if ((seed_tensor->place()).GetType() == phi::AllocationType::XPU) {
@@ -54,7 +57,6 @@ void DropoutRawKernel(const Context& dev_ctx,
       } else {
         seed_data = *(seed_tensor->data<int>());
       }
-
     } else {
       seed_data = fix_seed ? seed : 0;
     }
@@ -62,48 +64,70 @@ void DropoutRawKernel(const Context& dev_ctx,
       seed_data = dev_ctx.GetGenerator()->Random64();
     }
 
-    auto* mask_data = dev_ctx.template Alloc<uint8_t>(mask);
-
+    auto* mask_data = mask->data<uint8_t>();
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    XPUType* mask_tmp_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(mask->numel());
+    auto dev_version =
+        phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
     // Special case when dropout_prob is 1.0
     if (dropout_prob == 1.0f) {
       int r = xpu::constant(dev_ctx.x_context(),
                             reinterpret_cast<XPUType*>(y_data),
-                            y->numel(),
+                            out->numel(),
                             XPUType(0));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
       r = xpu::constant(
-          dev_ctx.x_context(), mask_tmp_data, mask->numel(), XPUType(0));
+          dev_ctx.x_context(), mask_data, mask->numel(), uint8_t(0));
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+      return;
+    }
+    if (dev_version == phi::backends::xpu::XPUVersion::XPU3) {
+      // int dropout_v3(Context* ctx, const T* input, T* res, uint8_t* mask,
+      // unsigned int seed, int64_t n, bool is_upscale, float dropout_prob);
+      int r = xpu::dropout_v3(dev_ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(x_data),
+                              reinterpret_cast<XPUType*>(y_data),
+                              mask_data,
+                              seed_data,
+                              mask->numel(),
+                              is_upscale,
+                              dropout_prob);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout_v3");
+    } else {
+      XPUType* mask_tmp_data =
+          RAII_GUARD.alloc_l3_or_gm<XPUType>(mask->numel());
+      // int dropout(Context* ctx, const T* input, T* res, T* mask, unsigned int
+      // seed, int64_t n, bool is_upscale, float dropout_prob);
+      int r = xpu::dropout(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUType*>(x_data),
+                           reinterpret_cast<XPUType*>(y_data),
+                           mask_tmp_data,
+                           seed_data,
+                           mask->numel(),
+                           is_upscale,
+                           dropout_prob);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout");
       r = xpu::cast<XPUType, uint8_t>(
           dev_ctx.x_context(), mask_tmp_data, mask_data, mask->numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-      return;
     }
-    int r = xpu::dropout(dev_ctx.x_context(),
-                         reinterpret_cast<const XPUType*>(x.data<T>()),
-                         reinterpret_cast<XPUType*>(y->data<T>()),
-                         mask_tmp_data,
-                         seed_data,
-                         mask->numel(),
-                         is_upscale,
-                         dropout_prob);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "dropout");
-    r = xpu::cast<XPUType, uint8_t>(
-        dev_ctx.x_context(), mask_tmp_data, mask_data, mask->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {
-    float scale =
-        (is_upscale) ? (1.0) : (static_cast<float>(1.0f - dropout_prob));
-    int r = xpu::scale(dev_ctx.x_context(),
-                       reinterpret_cast<const XPUType*>(x_data),
-                       reinterpret_cast<XPUType*>(y_data),
-                       x.numel(),
-                       false,
-                       scale,
-                       0.0f);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+    if (is_upscale) {
+      // y = x
+      int ret = xpu::copy(dev_ctx.x_context(),
+                          reinterpret_cast<const int8_t*>(x_data),
+                          reinterpret_cast<int8_t*>(y_data),
+                          x.numel() * phi::SizeOf(x.dtype()));
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+    } else {
+      int r = xpu::scale(dev_ctx.x_context(),
+                         reinterpret_cast<const XPUType*>(x_data),
+                         reinterpret_cast<XPUType*>(y_data),
+                         x.numel(),
+                         false,
+                         1.0f - dropout_prob,
+                         0.0f);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+    }
   }
 }
 
@@ -114,6 +138,8 @@ PD_REGISTER_KERNEL(dropout,
                    ALL_LAYOUT,
                    phi::DropoutRawKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }

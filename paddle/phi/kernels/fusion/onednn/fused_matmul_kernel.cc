@@ -52,9 +52,9 @@ class FusedMatmulOneDNNHandler
     std::vector<int64_t> x_dims(x_org_dims);
     std::vector<int64_t> y_dims(y_org_dims);
 
-    const int MB_idx = x_dims.size() - 3;
-    const int H_idx = x_dims.size() - 2;
-    const int W_idx = x_dims.size() - 1;
+    const int MB_idx = static_cast<int>(x_dims.size()) - 3;
+    const int H_idx = static_cast<int>(x_dims.size()) - 2;
+    const int W_idx = static_cast<int>(x_dims.size()) - 1;
 
     if (trans_x) std::swap(x_dims[H_idx], x_dims[W_idx]);
     if (trans_y) std::swap(y_dims[H_idx], y_dims[W_idx]);
@@ -96,7 +96,7 @@ class FusedMatmulOneDNNHandler
     out_ddims.insert(out_ddims.end(),
                      {std::max(x_dims[MB_idx], y_dims[MB_idx]), M, N});
 
-    for (int i = x_dims.size() - 4; i >= 0; --i) {
+    for (int i = static_cast<int>(x_dims.size()) - 4; i >= 0; --i) {
       out_ddims[i] = std::max(x_dims[i], y_dims[i]);
       if (x_strides_override.empty()) {
         x_strides[i] = x_dims[i + 1] * x_strides[i + 1];
@@ -180,7 +180,7 @@ class FusedMatmulOneDNNHandler
       auto residual_data_tz = vectorize(residual_data->dims());
       auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
       dnnl::memory::desc residual_data_md;
-      if (out_ddims.size() > 0 && out_ddims[0] > 1 &&
+      if (!out_ddims.empty() && out_ddims[0] > 1 &&
           residual_data_tz.size() == 4 && residual_data_tz[0] == 1 &&
           residual_data_tz[1] > 1 && residual_data_tz[2] > 1 &&
           residual_data_tz[3] > 1) {
@@ -491,7 +491,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
   auto y_strides_override = funcs::GetInputStrides(
       "Y", y.dims(), transpose_y, fused_reshape_Y, fused_transpose_Y);
 
-  int ndims = std::max(x_dims.size(), y_dims.size());
+  int ndims = static_cast<int>(std::max(x_dims.size(), y_dims.size()));
   ndims = std::max(ndims, 3);
 
   std::vector<int64_t> x_bd_dims(ndims, 1);

@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 template <typename T, typename DeviceContext>
 class SendAndRecvKernel : public framework::OpKernel<T> {
@@ -41,7 +40,7 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
     auto trainer_id = ctx.Attr<int>("trainer_id");
     auto mode = ctx.Attr<std::string>("mode");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto& context = *pool.Get(place);
 
     distributed::HeterClient* rpc_client =
@@ -63,7 +62,7 @@ class SendAndRecvOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, platform::CPUPlace());
+    return phi::KernelKey(data_type, phi::CPUPlace());
   }
 };
 
@@ -92,8 +91,7 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

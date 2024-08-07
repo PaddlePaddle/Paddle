@@ -15,46 +15,55 @@
 import os
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 import paddle
 
 
-class TestHybridPipeParallel(TestMultipleGpus):
+class TestHybridPipeParallel(TestMultipleAccelerators):
     def test_hybrid_parallel_pp_layer(self):
-        self.run_mnist_2gpu(
+        self.run_mnist_2accelerators(
             os.path.abspath('../../legacy_test/hybrid_parallel_pp_layer.py')
         )
 
     def test_hybrid_parallel_pp_tuple_inputs(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_embedding.py')
+        self.run_mnist_2accelerators('hybrid_parallel_pp_embedding.py')
 
     def test_hybrid_parallel_shared_weight(self):
-        self.run_mnist_2gpu('hybrid_parallel_shared_weight.py')
+        self.run_mnist_2accelerators('hybrid_parallel_shared_weight.py')
 
     def test_pipeline_parallel_amp(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_amp.py')
+        self.run_mnist_2accelerators('hybrid_parallel_pp_amp.py')
 
     def test_pipeline_parallel_fp16(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_fp16.py')
+        self.run_mnist_2accelerators('hybrid_parallel_pp_fp16.py')
 
     def test_pipeline_parallel_bf16(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_bf16.py')
+        self.run_mnist_2accelerators('hybrid_parallel_pp_bf16.py')
 
     def test_hybrid_parallel_transformer(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_transformer.py')
+        self.run_mnist_2accelerators('hybrid_parallel_pp_transformer.py')
 
     def test_hybrid_parallel_save_load(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_save_load.py')
+        self.run_mnist_2accelerators('hybrid_parallel_pp_save_load.py')
 
     def test_hybrid_parallel_recompute(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_recompute.py')
+        self.run_mnist_2accelerators('hybrid_parallel_pp_recompute.py')
 
     def test_hybrid_parallel_pp_clip_grad(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_clip_grad.py')
+        self.run_mnist_2accelerators('hybrid_parallel_pp_clip_grad.py')
 
     def test_hybrid_parallel_transformer_unbalanced_data(self):
-        self.run_mnist_2gpu('hybrid_parallel_pp_transformer_unbalanced_data.py')
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_pp_transformer_unbalanced_data.py'
+        )
+
+    def test_hybrid_parallel_pp_return_micro_batch_loss(self):
+        self.run_mnist_2accelerators(
+            'hybrid_parallel_pp_return_micro_batch_loss.py'
+        )
 
 
 class TestFakeMicroDataSet(unittest.TestCase):

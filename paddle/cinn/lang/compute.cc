@@ -32,10 +32,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
                    const std::vector<Expr> &shape) {
   return Compute(
       domain,
-      [fn](const std::vector<Expr> &axis) -> Expr {
-        // CHECK_EQ(axis.size(), 0);
-        return fn();
-      },
+      [fn](const std::vector<Expr> &axis) -> Expr { return fn(); },
       name,
       shape);
 }
@@ -47,7 +44,12 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
   return Compute(
       domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
-        CHECK_EQ(axis.size(), 1);
+        PADDLE_ENFORCE_EQ(axis.size(),
+                          1,
+                          ::common::errors::InvalidArgument(
+                              "The size of axis vector is incorrect"
+                              "Expected value is 1, but receive %d. ",
+                              axis.size()));
         return fn(axis[0]);
       },
       name,
@@ -61,7 +63,12 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
   return Compute(
       domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
-        CHECK_EQ(axis.size(), 2);
+        PADDLE_ENFORCE_EQ(axis.size(),
+                          2,
+                          ::common::errors::InvalidArgument(
+                              "The size of axis vector is incorrect"
+                              "Expected value is 2, but receive %d. ",
+                              axis.size()));
         return fn(axis[0], axis[1]);
       },
       name,
@@ -75,7 +82,12 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
   return Compute(
       domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
-        CHECK_EQ(axis.size(), 3);
+        PADDLE_ENFORCE_EQ(axis.size(),
+                          3,
+                          ::common::errors::InvalidArgument(
+                              "The size of axis vector is incorrect"
+                              "Expected value is 3, but receive %d. ",
+                              axis.size()));
         return fn(axis[0], axis[1], axis[2]);
       },
       name,
@@ -89,7 +101,12 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
   return Compute(
       domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
-        CHECK_EQ(axis.size(), 4);
+        PADDLE_ENFORCE_EQ(axis.size(),
+                          4,
+                          ::common::errors::InvalidArgument(
+                              "The size of axis vector is incorrect"
+                              "Expected value is 4, but receive %d. ",
+                              axis.size()));
         return fn(axis[0], axis[1], axis[2], axis[3]);
       },
       name,
@@ -103,7 +120,12 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
   return Compute(
       domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
-        CHECK_EQ(axis.size(), 5);
+        PADDLE_ENFORCE_EQ(axis.size(),
+                          5,
+                          ::common::errors::InvalidArgument(
+                              "The size of axis vector is incorrect"
+                              "Expected value is 5, but receive %d. ",
+                              axis.size()));
         return fn(axis[0], axis[1], axis[2], axis[3], axis[4]);
       },
       name,
@@ -117,7 +139,12 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
   return Compute(
       domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
-        CHECK_EQ(axis.size(), 6);
+        PADDLE_ENFORCE_EQ(axis.size(),
+                          6,
+                          ::common::errors::InvalidArgument(
+                              "The size of axis vector is incorrect"
+                              "Expected value is 6, but receive %d. ",
+                              axis.size()));
         return fn(axis[0], axis[1], axis[2], axis[3], axis[4], axis[5]);
       },
       name,
@@ -172,8 +199,11 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
 
   // check reduce_axis not include the reserved axis name
   for (auto &ra : reduce_axis) {
-    CHECK(!cinn::common::IsAxisNameReserved(ra->name))
-        << "reduce axis [" << ra->name << "]'s name is reserved";
+    PADDLE_ENFORCE_EQ(
+        !cinn::common::IsAxisNameReserved(ra->name),
+        true,
+        phi::errors::InvalidArgument("Reduce axis [%s]'s name is reserved.",
+                                     ra->name.c_str()));
   }
 
   VLOG(3) << "tensor " << name
@@ -187,6 +217,13 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
                            domain_without_reduce_axis,
                            op,
                            reduce_axis);
+  const auto set_keep_dim_for_tensor = [&]() {
+    for (int i = 0; i < _axis.size(); ++i) {
+      const auto &axis_var = _axis.at(i);
+      tensor->axis_[i]->is_keepdim = axis_var.as_var_ref()->is_keepdim;
+    }
+  };
+  set_keep_dim_for_tensor();
   return tensor;
 }
 
@@ -220,10 +257,12 @@ Expr CallExtern(const std::string &func_name,
                 const std::map<std::string, attr_t> &attrs) {
   auto *proto =
       backends::ExternFunctionProtoRegistry::Global().Lookup(func_name);
-  CHECK(proto)
-      << "No extern function prototype " << func_name << " found\n"
-      << "existing records are:\n"
-      << backends::ExternFunctionProtoRegistry::Global().debug_string();
+  PADDLE_ENFORCE_NOT_NULL(
+      proto,
+      phi::errors::InvalidArgument(
+          "No extern function prototype %s found\nExisting records are:\n%s",
+          func_name,
+          backends::ExternFunctionProtoRegistry::Global().debug_string()));
 
   auto call = ir::Call::Make(proto->ret_type,
                              func_name,

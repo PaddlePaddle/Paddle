@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import os
 import unittest
 
 import numpy as np
@@ -587,7 +588,7 @@ class TestPutAlongAxisOpMaxNotIncludeSelf(TestPutAlongAxisOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestPutAlongAxisBF16Op(OpTest):
     def setUp(self):
@@ -645,11 +646,17 @@ class TestPutAlongAxisAPI(unittest.TestCase):
         self.index_shape = [1, 1]
         self.index_np = np.array([[0]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 0
         self.value_np = 99.0
         self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -676,7 +683,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
             np.put_along_axis(
                 self.x_np, self.index_np, self.value_np, self.axis
             )
-            # numpy put_along_axis is an inplace opearion.
+            # numpy put_along_axis is an inplace operation.
             out_ref = self.x_np
 
             for out in res:
@@ -740,7 +747,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPILargeCase(unittest.TestCase):
     def setUp(self):
@@ -784,11 +791,17 @@ class TestPutAlongAxisAPICase2(TestPutAlongAxisAPI):
         self.index_shape = [2, 2]
         self.index_np = np.array([[0, 0], [1, 0]]).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 0
         self.value_np = 99.0
         self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -802,11 +815,17 @@ class TestPutAlongAxisAPICase3(TestPutAlongAxisAPI):
             'int64'
         )
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
         self.axis = 0
         self.value_np = 99.0
         self.value_shape = []
         self.x_feed = copy.deepcopy(self.x_np)
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -827,7 +846,13 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         self.value = (
             np.arange(1, 11).reshape(self.value_shape).astype(np.float32)
         )
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
@@ -874,8 +899,36 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
             paddle.enable_static()
 
+        def run_inplace(place):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor1 = paddle.to_tensor(self.index_np1)
+            value_tensor = paddle.to_tensor(self.value)
+            x_tensor.put_along_axis_(
+                index_tensor1, value_tensor, 0, 'assign', True, False
+            )
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index1_shape[0]):
+                for j in range(self.index1_shape[1]):
+                    out_ref[self.index_np1[i, j], j] = self.value[i, j]
+            np.testing.assert_allclose(x_tensor.numpy(), out_ref, rtol=0.001)
+
+            x_tensor = paddle.to_tensor(self.x_np)
+            index_tensor2 = paddle.to_tensor(self.index_np2)
+            x_tensor.put_along_axis_(
+                index_tensor2, 10, 1, 'assign', True, False
+            )
+            out_ref = copy.deepcopy(self.x_np)
+            for i in range(self.index2_shape[0]):
+                for j in range(self.index2_shape[1]):
+                    out_ref[i, self.index_np2[i, j]] = 10
+            np.testing.assert_allclose(x_tensor.numpy(), out_ref, rtol=0.001)
+
+            paddle.enable_static()
+
         for place in self.place:
             run(place)
+            run_inplace(place)
 
     @test_with_pir_api
     def test_api_static(self):
@@ -952,6 +1005,11 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             )
         except Exception as error:
             self.assertIsInstance(error, ValueError)
+        # len(values.shape) != len(indices.shape)
+        try:
+            tensorx.put_along_axis_(indices, values, 0, 'assign', True, False)
+        except Exception as error:
+            self.assertIsInstance(error, ValueError)
         indices = paddle.to_tensor(
             [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]
         ).astype("int32")
@@ -962,12 +1020,22 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
             )
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
+        # indices too large
+        try:
+            tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
+        except Exception as error:
+            self.assertIsInstance(error, RuntimeError)
         indices = paddle.to_tensor([[10]]).astype("int32")
         # the element of indices out of range
         try:
             res = paddle.put_along_axis(
                 tensorx, indices, 1.0, 0, 'assign', True, False
             )
+        except Exception as error:
+            self.assertIsInstance(error, RuntimeError)
+        # the element of indices out of range
+        try:
+            tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
         except Exception as error:
             self.assertIsInstance(error, RuntimeError)
 
@@ -983,7 +1051,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
     def setUp(self):
@@ -1033,7 +1101,7 @@ class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
     def setUp(self):
@@ -1084,7 +1152,7 @@ class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
     def setUp(self):
@@ -1133,7 +1201,7 @@ class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
     def setUp(self):
@@ -1182,7 +1250,7 @@ class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA",
+    "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulUint8(unittest.TestCase):
     def setUp(self):

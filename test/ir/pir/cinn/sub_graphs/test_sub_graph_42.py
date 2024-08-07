@@ -15,11 +15,9 @@
 # repo: PaddleDetection
 # model: configs^sparse_rcnn^sparse_rcnn_r50_fpn_3x_pro100_coco_single_dy2st_train
 # api:paddle.tensor.manipulation.concat||method:__pow__||method:__rmul__||method:__rsub__||method:__add__||method:log||method:__neg__||method:__mul__||method:__rsub__||method:__pow__||method:__rmul__||method:__add__||method:log||method:__neg__||method:__mul__||api:paddle.tensor.manipulation.gather||api:paddle.tensor.manipulation.gather||method:__sub__||method:unsqueeze||api:paddle.tensor.manipulation.concat||method:unsqueeze||method:tile||method:flatten||api:paddle.tensor.manipulation.concat||method:__truediv__||method:__truediv__||method:unsqueeze||api:paddle.nn.functional.loss.l1_loss||method:sum
-import unittest
+from base import *  # noqa: F403
 
-import numpy as np
-
-import paddle
+from paddle.static import InputSpec
 
 
 class LayerCase(paddle.nn.Layer):
@@ -35,7 +33,9 @@ class LayerCase(paddle.nn.Layer):
         var_4,  # (shape: [4], dtype: paddle.float32, stop_gradient: True)
         var_5,  # (shape: [2, 4], dtype: paddle.float32, stop_gradient: True)
     ):
-        var_6 = paddle.tensor.manipulation.concat([var_3])
+        # TODO(Aurelius84): concat compute logic does not support single element.
+        var_6 = var_3
+        # var_6 = paddle.tensor.manipulation.concat([var_3])
         var_7 = var_0**2.0
         var_8 = 0.75 * var_7
         var_9 = 1 - var_0
@@ -54,11 +54,13 @@ class LayerCase(paddle.nn.Layer):
         var_22 = paddle.tensor.manipulation.gather(var_13, var_1, axis=1)
         var_23 = var_21 - var_22
         var_24 = var_4.unsqueeze(0)
-        var_25 = paddle.tensor.manipulation.concat([var_24])
+        var_25 = var_24
+        # var_25 = paddle.tensor.manipulation.concat([var_24])
         var_26 = var_25.unsqueeze(1)
         var_27 = var_26.tile([1, 100, 1])
         var_28 = var_27.flatten(start_axis=0, stop_axis=1)
-        var_29 = paddle.tensor.manipulation.concat([var_5])
+        var_29 = var_5
+        # var_29 = paddle.tensor.manipulation.concat([var_5])
         var_30 = var_2 / var_28
         var_31 = var_6 / var_29
         var_32 = var_30.unsqueeze(-2)
@@ -69,8 +71,40 @@ class LayerCase(paddle.nn.Layer):
         return var_6, var_34, var_23
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1,), dtype=paddle.int32, name=None, stop_gradient=True
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1,), dtype=paddle.float32, name=None, stop_gradient=True
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+        ]
         self.inputs = (
             paddle.rand(shape=[100, 80], dtype=paddle.float32),
             paddle.randint(low=0, high=10, shape=[2], dtype=paddle.int32),
@@ -79,33 +113,12 @@ class TestLayer(unittest.TestCase):
             paddle.rand(shape=[4], dtype=paddle.float32),
             paddle.rand(shape=[2, 4], dtype=paddle.float32),
         )
-        self.net = LayerCase()
+        self.net = LayerCase
+        self.with_train = False
 
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
-
-    # NOTE prim + cinn lead to error
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+    def set_flags(self):
+        # NOTE(Aurelius84): cinn_op.pool2d only support pool_type='avg' under adaptive=True
+        paddle.set_flags({"FLAGS_deny_cinn_ops": "gather"})
 
 
 if __name__ == '__main__':

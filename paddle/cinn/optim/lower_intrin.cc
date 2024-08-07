@@ -25,12 +25,14 @@
 namespace cinn {
 namespace optim {
 
-void LowerIntrin(Expr *e, Target target) {
-  if (target.arch == Target::Arch::X86) {
-    codegen::RegisterCpuIntrinRule();
-  } else {
-    return;
-  }
+template <typename T>
+void LowerIntrinImpl(const T &, const Target &target, Expr *e) {
+  // Do nothing.
+}
+
+void LowerIntrinImpl(common::X86Arch, const Target &target, Expr *e) {
+  codegen::RegisterCpuIntrinRule();
+
   struct Mutator : ir::IRMutator<Expr *> {
     Target target;
 
@@ -40,7 +42,7 @@ void LowerIntrin(Expr *e, Target target) {
 
     void Visit(const ir::Add *op, Expr *expr) override {
       auto *node = expr->As<ir::Add>();
-      CHECK(node);
+      PADDLE_ENFORCE_NOT_NULL(node, "The node can not be treat as a Add node.");
       Expr ret;
       if (node->type().is_float()) {
         if (const ir::Mul *mul = node->b().As<ir::Mul>()) {
@@ -68,17 +70,24 @@ void LowerIntrin(Expr *e, Target target) {
 
     void Visit(const ir::Call *op, Expr *expr) override {
       auto *node = expr->As<ir::Call>();
-      CHECK(node);
-      LowerCpuintrinsicOp(node, expr);
+      PADDLE_ENFORCE_NOT_NULL(node,
+                              "The node can not be treat as a Call node.");
+      LowerCpuIntrinsicOp(node, expr);
     }
 
-    void LowerCpuintrinsicOp(ir::Call *op, Expr *expr) {
+    void LowerCpuIntrinsicOp(ir::Call *op, Expr *expr) {
       auto *node = expr->As<ir::Call>();
       if (kIntrinsicCalls.count(node->name)) {
-        CHECK(!node->name.empty());
+        PADDLE_ENFORCE_EQ(
+            !node->name.empty(),
+            true,
+            phi::errors::InvalidArgument("The node name is empty."));
         auto *func_ptr = ir::Registry::Get("lower_cpu_intrinsic_" + node->name);
-        CHECK(func_ptr) << "find no rule to lower cpu intrinsic for "
-                        << "lower_cpu_intrinsic_" + node->name;
+        PADDLE_ENFORCE_NOT_NULL(
+            func_ptr,
+            phi::errors::InvalidArgument(
+                "find no rule to lower cpu intrinsic for lower_cpu_intrinsic_" +
+                node->name));
         Expr ret = (*func_ptr)(Expr(node));
         if (!ret.same_as(*expr)) {
           ir::IRMutator<>::Visit(&ret, &ret);
@@ -97,6 +106,16 @@ void LowerIntrin(Expr *e, Target target) {
 
   Mutator m(target);
   m(e);
+}
+
+void LowerIntrinByArch(Expr *e, const Target &target) {
+  return std::visit(
+      [&](const auto &impl) { return LowerIntrinImpl(impl, target, e); },
+      target.arch.variant());
+}
+
+void LowerIntrin(Expr *e, Target target) {
+  return LowerIntrinByArch(e, target);
 }
 
 }  // namespace optim

@@ -17,10 +17,18 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
+
+
+def api_wrapper(x, axis=1):
+    return paddle._legacy_C_ops.flatten2(x, "axis", axis)
+
 
 class TestFlattenOp(OpTest):
     def setUp(self):
         self.op_type = "flatten2"
+        self.python_api = api_wrapper
+        self.python_out_sig = ["Out"]
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
         self.init_attrs()

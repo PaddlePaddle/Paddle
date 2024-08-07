@@ -32,9 +32,9 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
             if dims == 0:
-                return np.random.random([]).astype(np.bool8)
+                return np.random.random([]).astype(np.bool_)
             if dims == 1:
-                return np.random.random([32]).astype(np.bool8)
+                return np.random.random([32]).astype(np.bool_)
             else:
                 return np.random.random([batch, 3, 32, 32]).astype(np.int64)
 

@@ -334,12 +334,12 @@ class CudnnFrontendConvHelper {
       } catch (cudnn_frontend::cudnnException& e) {
         VLOG(4) << "Plan " << plan.describe()
                 << "failed to execute. Trying next plan.";
-      } catch (phi::enforce::EnforceNotMet& e) {
+      } catch (common::enforce::EnforceNotMet& e) {
         VLOG(4) << "Plan " << plan.describe()
                 << "failed to execute. Trying next plan.";
       }
     }
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "[CUDNN Frontend API] No valid plan could "
         "be found to execute. Try setting FLAGS_conv_workspace_size_limit "
         "higher."));

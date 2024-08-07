@@ -214,7 +214,7 @@ TEST(CustomKernel, custom_kernel_dot) {
   auto* dense_y_data = dev_ctx->template Alloc<uint8_t>(dense_y.get());
 
   // dot x,y and result
-  uint8_t sum[2] = {0, 0};
+  std::array<uint8_t, 2> sum = {0, 0};
   for (size_t i = 0; i < 2; ++i) {
     for (size_t j = 0; j < 3; ++j) {
       dense_x_data[i * 3 + j] = (i * 3 + j);

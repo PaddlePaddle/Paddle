@@ -18,8 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import base, static, tensor
-from paddle.base import Program, program_guard
+from paddle import base, tensor
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -39,9 +38,9 @@ class TestUnbind(unittest.TestCase):
     def test_unbind(self):
         paddle.enable_static()
         self.init_dtype()
-        main_program = static.Program()
-        startup_program = static.Program()
-        with static.program_guard(
+        main_program = paddle.base.Program()
+        startup_program = paddle.base.Program()
+        with paddle.base.program_guard(
             main_program=main_program, startup_program=startup_program
         ):
             x_1 = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x_1')
@@ -167,6 +166,7 @@ class TestUnbindOp(OpTest):
 
     def setUp(self):
         self._set_op_type()
+        self.prim_op_type = "comp"
         self.dtype = self.get_dtype()
         self.axis = 0
         self.num = 3
@@ -186,6 +186,7 @@ class TestUnbindOp(OpTest):
             'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
         }
         self.python_api = paddle.unbind
+        self.public_python_api = paddle.unbind
         self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
 
     def get_dtype(self):
@@ -195,10 +196,12 @@ class TestUnbindOp(OpTest):
         self.op_type = "unbind"
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
+        self.check_grad(
+            ['X'], ['out0', 'out1', 'out2'], check_pir=True, check_prim_pir=True
+        )
 
 
 class TestUnbindOp1(TestUnbindOp):
@@ -263,47 +266,73 @@ class TestUnbindOp1_Complex64(TestUnbindOp1):
     def get_dtype(self):
         return np.complex64
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
 
 class TestUnbindOp2_Complex64(TestUnbindOp2):
     def get_dtype(self):
         return np.complex64
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestUnbindOp3_Complex64(TestUnbindOp3):
     def get_dtype(self):
         return np.complex64
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
 
 class TestUnbindOp4_Complex64(TestUnbindOp4):
     def get_dtype(self):
         return np.complex64
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestUnbindOp1_Complex128(TestUnbindOp1):
     def get_dtype(self):
         return np.complex128
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
 
 class TestUnbindOp2_Complex128(TestUnbindOp2):
     def get_dtype(self):
         return np.complex128
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestUnbindOp3_Complex128(TestUnbindOp3):
     def get_dtype(self):
         return np.complex128
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
 
 class TestUnbindOp4_Complex128(TestUnbindOp4):
     def get_dtype(self):
         return np.complex128
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestUnbindFP16Op(OpTest):
     def setUp(self):
         paddle.disable_static()
         self.op_type = "unbind"
+        self.prim_op_type = "comp"
         self.python_api = paddle.unbind
+        self.public_python_api = paddle.unbind
         self.dtype = self.get_dtype()
         self.axis = 0
         self.num = 3
@@ -326,14 +355,16 @@ class TestUnbindFP16Op(OpTest):
         return np.float16
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
 
 class TestUnbindBF16Op(OpTest):
     def setUp(self):
         paddle.disable_static()
         self._set_op_type()
+        self.prim_op_type = "comp"
         self.python_api = paddle.unbind
+        self.public_python_api = paddle.unbind
         self.dtype = self.get_dtype()
         self.axis = 0
         self.num = 3
@@ -362,7 +393,7 @@ class TestUnbindBF16Op(OpTest):
         self.op_type = "unbind"
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         pass
@@ -376,7 +407,9 @@ class TestUnbindAxisError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
 
-        with program_guard(Program(), Program()):
+        with paddle.base.program_guard(
+            paddle.base.Program(), paddle.base.Program()
+        ):
             x = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x')
 
             def test_table_Variable():

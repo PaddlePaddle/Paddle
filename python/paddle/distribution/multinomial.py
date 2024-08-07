@@ -11,11 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distribution import categorical, distribution
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 class Multinomial(distribution.Distribution):
@@ -65,8 +70,10 @@ class Multinomial(distribution.Distribution):
               [0., 6., 4.],
               [3., 3., 4.]]])
     """
+    total_count: int
+    probs: Tensor
 
-    def __init__(self, total_count, probs):
+    def __init__(self, total_count: int, probs: Tensor) -> None:
         if not isinstance(total_count, int) or total_count < 1:
             raise ValueError(
                 'input parameter total_count must be int type and grater than zero.'
@@ -74,7 +81,7 @@ class Multinomial(distribution.Distribution):
 
         if probs.dim() < 1:
             raise ValueError(
-                'probs parameter shoule not be none and over one dimension'
+                'probs parameter should not be none and over one dimension'
             )
 
         self.probs = probs / probs.sum(-1, keepdim=True)
@@ -86,8 +93,8 @@ class Multinomial(distribution.Distribution):
         super().__init__(probs.shape[:-1], probs.shape[-1:])
 
     @property
-    def mean(self):
-        """mean of multinomial distribuion.
+    def mean(self) -> Tensor:
+        """mean of multinomial distribution.
 
         Returns:
             Tensor: mean value.
@@ -95,7 +102,7 @@ class Multinomial(distribution.Distribution):
         return self.probs * self.total_count
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """variance of multinomial distribution.
 
         Returns:
@@ -103,7 +110,7 @@ class Multinomial(distribution.Distribution):
         """
         return self.total_count * self.probs * (1 - self.probs)
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         """probability mass function evaluated at value.
 
         Args:
@@ -114,8 +121,8 @@ class Multinomial(distribution.Distribution):
         """
         return paddle.exp(self.log_prob(value))
 
-    def log_prob(self, value):
-        """probability mass function evaluated at value
+    def log_prob(self, value: Tensor) -> Tensor:
+        """probability mass function evaluated at value.
 
         Args:
             value (Tensor): value to be evaluated.
@@ -142,7 +149,7 @@ class Multinomial(distribution.Distribution):
             + (value * logits).sum(-1)
         )
 
-    def sample(self, shape=()):
+    def sample(self, shape: Iterable[int] = ()) -> Tensor:
         """draw sample data from multinomial distribution
 
         Args:
@@ -163,7 +170,7 @@ class Multinomial(distribution.Distribution):
             .sum(0)
         )
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         """entropy of multinomial distribution
 
         Returns:
@@ -182,7 +189,7 @@ class Multinomial(distribution.Distribution):
             (binomial_pmf * paddle.lgamma(support + 1)).sum([0, -1])
         )
 
-    def _binomial_logpmf(self, count, value):
+    def _binomial_logpmf(self, count: Tensor, value: Tensor) -> Tensor:
         logits = self._probs_to_logits(self.probs, is_binary=True)
 
         factor_n = paddle.lgamma(count + 1)

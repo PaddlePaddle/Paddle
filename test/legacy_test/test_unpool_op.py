@@ -400,6 +400,51 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
             np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
 
 
+class TestUnpoolOpAPI_dy4(unittest.TestCase):
+    def test_case(self):
+        import numpy as np
+
+        import paddle
+        import paddle.nn.functional as F
+        from paddle import base
+        from paddle.base import core
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with base.dygraph.guard(place):
+            input_data = np.array(
+                [
+                    [
+                        [
+                            [1, 2, 3, 4, 5],
+                            [6, 7, 8, 9, 10],
+                            [11, 12, 13, 14, 15],
+                            [16, 17, 18, 19, 20],
+                        ]
+                    ]
+                ]
+            ).astype("float32")
+            input_x = paddle.to_tensor(input_data)
+            output, indices = F.max_pool2d(
+                input_x, kernel_size=2, stride=2, return_mask=True
+            )
+            out_pp = F.max_unpool2d(
+                output.astype("int64"),
+                indices,
+                kernel_size=2,
+                stride=None,
+                output_size=input_x.shape,
+            )
+            output_np = output.numpy()
+            indices_np = indices.numpy()
+            expect_res = unpool2dmax_forward_naive(
+                output_np, indices_np, [2, 2], [2, 2], [0, 0], [4, 5]
+            ).astype("float64")
+            np.testing.assert_allclose(out_pp.numpy(), expect_res, rtol=1e-05)
+
+
 class TestUnpoolOpAPI_st(unittest.TestCase):
     @test_with_pir_api
     def test_case(self):
@@ -450,8 +495,8 @@ class TestOutputSizeTensor(UnittestBase):
     def test_static(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
-        starup_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, starup_prog):
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(6, 6)
             x = paddle.randn(self.shapes[0])
             x.stop_gradient = False
@@ -466,16 +511,14 @@ class TestOutputSizeTensor(UnittestBase):
                 self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[out])
             np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
-            if not in_pir_mode():
-                paddle.static.save_inference_model(
-                    self.save_path, [x], [out], exe
-                )
-                # Test for Inference Predictor
-                infer_outs = self.infer_prog()
-                np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
+
+            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
+            # Test for Inference Predictor
+            infer_outs = self.infer_prog()
+            np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
 
     def path_prefix(self):
         return 'unpool_var'

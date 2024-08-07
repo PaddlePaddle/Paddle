@@ -13,9 +13,9 @@
 # limitations under the License.
 
 
-from cinn import ir, to_cinn_llir
-from cinn.runtime.data_array import DataArray
-from cinn.schedule import IRSchedule as sch
+from paddle.cinn import ir, to_cinn_llir
+from paddle.cinn.runtime.data_array import DataArray
+from paddle.cinn.schedule import IRSchedule as sch
 
 
 def test_matmul():

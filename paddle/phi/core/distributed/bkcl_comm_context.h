@@ -30,6 +30,16 @@ class BKCLCommContext final : public CommContext {
 
   XPUStream GetStream();
 
+  XPUEvent GetComputeEvent();
+
+  void SetComputeEvent(
+      std::shared_ptr<std::remove_pointer<XPUEvent>::type>&& compute_event);
+
+  XPUEvent GetCommEvent();
+
+  void SetCommEvent(
+      std::shared_ptr<std::remove_pointer<XPUEvent>::type>&& comm_event);
+
   phi::XPUContext* GetDevContext();
 
   void SetDevContext(std::unique_ptr<phi::XPUContext>&& dev_ctx);
@@ -79,6 +89,12 @@ class BKCLCommContext final : public CommContext {
   BKCLContext_t bkcl_comm_;
 
   std::unique_ptr<phi::XPUContext> dev_ctx_;
+
+  // used for comm wait compute, compute_stream-->event-->comm_stream
+  std::shared_ptr<std::remove_pointer<XPUEvent>::type> compute_event_;
+
+  // used for compute wait comm, comm_stream-->event-->compute_stream
+  std::shared_ptr<std::remove_pointer<XPUEvent>::type> comm_event_;
 };
 
 }  // namespace distributed

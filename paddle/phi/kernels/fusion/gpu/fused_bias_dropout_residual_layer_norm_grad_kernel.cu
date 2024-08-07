@@ -11,7 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifndef PADDLE_WITH_HIP
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#else
 #include <cuda_fp16.h>
 #include <cub/cub.cuh>
 #endif
@@ -21,16 +26,13 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
-#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
-#endif
 
 namespace phi {
 namespace fusion {
 template <typename T, typename Context>
 void FusedBiasDropoutResidualLnGradKernel(
     const Context& dev_ctx,
-    const DenseTensor& y_grad,
     const DenseTensor& x,
     const DenseTensor& residual,
     const paddle::optional<DenseTensor>& bias,
@@ -40,6 +42,7 @@ void FusedBiasDropoutResidualLnGradKernel(
     const DenseTensor& ln_variance,
     const DenseTensor& bias_dropout_residual_out,
     const DenseTensor& dropout_mask_out,
+    const DenseTensor& y_grad,
     const float dropout_rate,
     const bool is_test,
     const bool dropout_fix_seed,
@@ -51,7 +54,6 @@ void FusedBiasDropoutResidualLnGradKernel(
     DenseTensor* bias_grad,
     DenseTensor* ln_scale_grad,
     DenseTensor* ln_bias_grad) {
-#ifndef PADDLE_WITH_HIP
   using U = LayerNormParamType<T>;
   auto* d_y_data = y_grad.data<T>();
   auto* ln_scale_data =
@@ -114,15 +116,19 @@ void FusedBiasDropoutResidualLnGradKernel(
       d_x_data,
       d_bias_data,
       d_residual_data);
-#else
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "FusedBiasDropoutResidualLnGradKernel not surpport for rocm"));
-#endif
 }
 
 }  // namespace fusion
 }  // namespace phi
 
+#ifdef PADDLE_WITH_HIP
+PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedBiasDropoutResidualLnGradKernel,
+                   float,
+                   phi::dtype::float16) {}
+#else
 PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -130,3 +136,4 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
+#endif

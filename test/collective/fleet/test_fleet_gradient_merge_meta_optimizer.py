@@ -75,7 +75,7 @@ class TestFleetGradientMergeMetaOptimizer(TestFleetMetaOptimizer):
 
         params = train_prog.all_parameters()
         for param in train_prog.all_parameters():
-            self.assertEqual(param.dtype, paddle.base.core.VarDesc.VarType.FP16)
+            self.assertEqual(param.dtype, paddle.float16)
 
         vars = [x.name for x in train_prog.list_vars()]
         self.assertIn('@GradientMerge', ''.join(vars))

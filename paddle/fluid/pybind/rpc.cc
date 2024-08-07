@@ -19,7 +19,6 @@
 
 namespace py = pybind11;
 using paddle::distributed::FutureWrapper;
-using paddle::distributed::PythonRpcHandler;
 using paddle::distributed::RpcAgent;
 using paddle::distributed::WorkerInfo;
 namespace paddle {

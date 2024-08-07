@@ -14,13 +14,13 @@
 
 import json
 
-from .controller import ControleMode, Controller
+from .controller import Controller, ControllerMode
 
 
 class RpcController(Controller):
     @classmethod
     def enable(cls, ctx):
-        if ctx.args.run_mode == ControleMode.RPC:
+        if ctx.args.run_mode == ControllerMode.RPC:
             ctx.logger.debug(f"{cls.__name__} enabled")
             return True
         else:

@@ -55,8 +55,18 @@ struct DataRecord {
       CHECK(!data.link_step_data_all.empty()) << "empty";
       CHECK(!data.week_data_all.empty());
       CHECK(!data.minute_data_all.empty());
-      CHECK_EQ(data.link_step_data_all.size(), data.week_data_all.size());
-      CHECK_EQ(data.minute_data_all.size(), data.link_step_data_all.size());
+      PADDLE_ENFORCE_EQ(
+          data.link_step_data_all.size(),
+          data.week_data_all.size(),
+          platform::errors::InvalidArgument(
+              "The value of data.link_step_data_all.size() is not equal to the "
+              "value of data.week_data_all.size()."))
+      PADDLE_ENFORCE_EQ(
+          data.minute_data_all.size(),
+          data.link_step_data_all.size(),
+          platform::errors::InvalidArgument(
+              "The value of data.minute_data_all.size() is not equal to the "
+              "value of data.link_step_data_all.size()."))
       for (size_t j = 0; j < data.link_step_data_all.size(); j++) {
         for (const auto &d : data.link_step_data_all[j]) {
           data.rnn_link_data.push_back(d);
@@ -191,11 +201,13 @@ void PrepareZeroCopyInputs(ZeroCopyTensor *lod_attention_tensor,
   minute_tensor->SetLoD({one_batch.lod3});
 
   // assign data
-  float arr0[] = {0, 0};
+  std::array<float, 2> arr0 = {0, 0};
   std::vector<float> zeros(batch_size * 15, 0);
+  std::copy_n(arr0.data(),
+              2,
+              lod_attention_tensor->mutable_data<float>(PaddlePlace::kCPU));
   std::copy_n(
-      arr0, 2, lod_attention_tensor->mutable_data<float>(PaddlePlace::kCPU));
-  std::copy_n(arr0, 2, data_tensor->mutable_data<float>(PaddlePlace::kCPU));
+      arr0.data(), 2, data_tensor->mutable_data<float>(PaddlePlace::kCPU));
   std::copy_n(zeros.begin(),
               zeros.size(),
               cell_init_tensor->mutable_data<float>(PaddlePlace::kCPU));
@@ -217,7 +229,8 @@ void SetConfig(AnalysisConfig *cfg) {
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
   std::vector<PaddleTensor> input_slots;
-  int epoch = FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+  int epoch =
+      FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;  // NOLINT
   LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
   for (int bid = 0; bid < epoch; ++bid) {
     PrepareInputs(&input_slots, &data, FLAGS_batch_size);

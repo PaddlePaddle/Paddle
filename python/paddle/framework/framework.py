@@ -12,19 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 import paddle
 from paddle.base.data_feeder import convert_dtype
-
-# TODO: define framework api
 from paddle.base.layer_helper_base import LayerHelperBase
+
+if TYPE_CHECKING:
+    from paddle._typing.dtype_like import DTypeLike, _DTypeLiteral
 
 __all__ = []
 
 
-def set_default_dtype(d):
+def set_default_dtype(d: DTypeLike) -> None:
     """
     Set default dtype. The default dtype is initially float32.
 
@@ -49,7 +53,7 @@ def set_default_dtype(d):
         else:
             raise TypeError(
                 "set_default_dtype only supports [float16, float32, float64] "
-                ", but received %s" % d.__name__
+                f", but received {d.__name__}"
             )
     else:
         if isinstance(d, paddle.dtype):
@@ -67,20 +71,20 @@ def set_default_dtype(d):
         else:
             raise TypeError(
                 "set_default_dtype only supports [float16, float32, float64, bfloat16] "
-                ", but received %s" % str(d)
+                f", but received {d}"
             )
 
     LayerHelperBase.set_default_dtype(d)
 
 
-def get_default_dtype():
+def get_default_dtype() -> _DTypeLiteral:
     """
     Get the current default dtype. The default dtype is initially float32.
 
     Args:
         None.
     Returns:
-        String, this global dtype only supports float16, float32, float64.
+        str, this global dtype only supports float16, float32, float64.
 
     Examples:
         .. code-block:: python

@@ -26,7 +26,9 @@ from paddle.pir_utils import test_with_pir_api
 class TestIndexSampleOp(OpTest):
     def setUp(self):
         self.op_type = "index_sample"
+        self.prim_op_type = "comp"
         self.python_api = paddle.index_sample
+        self.public_python_api = paddle.index_sample
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         if self.x_type == np.complex64 or self.x_type == np.complex128:
@@ -47,7 +49,7 @@ class TestIndexSampleOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True)
@@ -158,7 +160,9 @@ class TestIndexSampleComplex128(TestIndexSampleOp):
 class TestIndexSampleBF16Op(OpTest):
     def setUp(self):
         self.op_type = "index_sample"
+        self.prim_op_type = "comp"
         self.python_api = paddle.index_sample
+        self.public_python_api = paddle.index_sample
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         indexnp = np.random.randint(
@@ -177,7 +181,9 @@ class TestIndexSampleBF16Op(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_pir=True)
+        self.check_output_with_place(
+            self.place, check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(self.place, ['X'], 'Out', check_pir=True)

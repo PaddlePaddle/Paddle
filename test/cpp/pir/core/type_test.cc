@@ -17,15 +17,15 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/type.h"
-#include "paddle/pir/core/type_base.h"
-#include "paddle/pir/core/type_name.h"
-#include "paddle/pir/core/type_util.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/core/type_base.h"
+#include "paddle/pir/include/core/type_name.h"
+#include "paddle/pir/include/core/type_utils.h"
+#include "paddle/pir/include/core/utils.h"
 #include "test/cpp/pir/tools/macros_utils.h"
 
 class TypeA {};
@@ -35,6 +35,11 @@ IR_DEFINE_EXPLICIT_TYPE_ID(TypeA)
 class TypeB {};
 IR_DECLARE_EXPLICIT_TEST_TYPE_ID(TypeB)
 IR_DEFINE_EXPLICIT_TYPE_ID(TypeB)
+
+std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+  lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  return lhs;
+}
 
 TEST(type_test, type_id) {
   // Test 1: Test construct TypeId by TypeId::get<T>() and overloaded operator==
@@ -173,8 +178,8 @@ struct IntegerTypeStorage : public pir::TypeStorage {
   using ParamKey = std::pair<unsigned, unsigned>;
 
   static std::size_t HashValue(const ParamKey &key) {
-    return pir::hash_combine(std::hash<unsigned>()(std::get<0>(key)),
-                             std::hash<unsigned>()(std::get<1>(key)));
+    return hash_combine(std::hash<unsigned>()(std::get<0>(key)),
+                        std::hash<unsigned>()(std::get<1>(key)));
   }
 
   bool operator==(const ParamKey &key) const {
@@ -244,6 +249,55 @@ TEST(type_test, custom_type_dialect) {
   EXPECT_EQ(dialect_integer1, dialect_integer2);
 }
 
+TEST(type_test, sparse_coo) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  common::DDim dims = {4, 4};
+  common::DDim non_zero_dims = {4, 1};
+  common::DataLayout data_layout = common::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  pir::DenseTensorType none_zero_indices = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  pir::DenseTensorType none_zero_elements = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  bool coalesced = false;
+  paddle::dialect::SparseCooTensorTypeStorage storage1(fp32_dtype,
+                                                       dims,
+                                                       non_zero_dims,
+                                                       data_layout,
+                                                       none_zero_indices,
+                                                       none_zero_elements,
+                                                       coalesced);
+  auto storage2 = std::make_tuple(fp32_dtype,
+                                  dims,
+                                  non_zero_dims,
+                                  data_layout,
+                                  none_zero_indices,
+                                  none_zero_elements,
+                                  coalesced);
+  pir::Type pir_type =
+      paddle::dialect::SparseCooTensorType::get(ctx,
+                                                fp32_dtype,
+                                                dims,
+                                                non_zero_dims,
+                                                data_layout,
+                                                none_zero_indices,
+                                                none_zero_elements,
+                                                coalesced);
+  EXPECT_TRUE(storage1 == storage2);
+  EXPECT_EQ(pir_type.isa<paddle::dialect::SparseCooTensorType>(), true);
+  paddle::dialect::SparseCooTensorType sparse_coo_tensor_type =
+      pir_type.dyn_cast<paddle::dialect::SparseCooTensorType>();
+  EXPECT_EQ(sparse_coo_tensor_type.dims(), dims);
+  EXPECT_EQ(sparse_coo_tensor_type.non_zero_dims(), non_zero_dims);
+  EXPECT_EQ(sparse_coo_tensor_type.data_layout(), data_layout);
+  EXPECT_EQ(sparse_coo_tensor_type.non_zero_indices(), none_zero_indices);
+  EXPECT_EQ(sparse_coo_tensor_type.non_zero_elements(), none_zero_elements);
+  EXPECT_EQ(sparse_coo_tensor_type.coalesced(), coalesced);
+}
+
 TEST(type_test, pd_op_dialect) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -260,6 +314,51 @@ TEST(type_test, pd_op_dialect) {
   EXPECT_EQ(select_rows_dtype.data_layout(), data_layout);
   EXPECT_EQ(select_rows_dtype.lod(), lod);
   EXPECT_EQ(select_rows_dtype.offset(), offset);
+}
+
+TEST(type_test, sparse_csr) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  pir::Type fp32_dtype = pir::Float32Type::get(ctx);
+  common::DDim dims = {4, 4};
+  common::DataLayout data_layout = common::DataLayout::NCHW;
+  pir::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+  pir::DenseTensorType non_zero_crows = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  pir::DenseTensorType non_zero_cols = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  pir::DenseTensorType non_zero_elements = pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset);
+  paddle::dialect::SparseCsrTensorTypeStorage storage1(fp32_dtype,
+                                                       dims,
+                                                       data_layout,
+                                                       non_zero_crows,
+                                                       non_zero_cols,
+                                                       non_zero_elements);
+  auto storage2 = std::make_tuple(fp32_dtype,
+                                  dims,
+                                  data_layout,
+                                  non_zero_crows,
+                                  non_zero_cols,
+                                  non_zero_elements);
+  pir::Type pir_type =
+      paddle::dialect::SparseCsrTensorType::get(ctx,
+                                                fp32_dtype,
+                                                dims,
+                                                data_layout,
+                                                non_zero_crows,
+                                                non_zero_cols,
+                                                non_zero_elements);
+  EXPECT_TRUE(storage1 == storage2);
+  EXPECT_EQ(pir_type.isa<paddle::dialect::SparseCsrTensorType>(), true);
+  paddle::dialect::SparseCsrTensorType sparse_csr_tensor_type =
+      pir_type.dyn_cast<paddle::dialect::SparseCsrTensorType>();
+  EXPECT_EQ(sparse_csr_tensor_type.dims(), dims);
+  EXPECT_EQ(sparse_csr_tensor_type.data_layout(), data_layout);
+  EXPECT_EQ(sparse_csr_tensor_type.non_zero_crows(), non_zero_crows);
+  EXPECT_EQ(sparse_csr_tensor_type.non_zero_cols(), non_zero_cols);
+  EXPECT_EQ(sparse_csr_tensor_type.non_zero_elements(), non_zero_elements);
 }
 
 TEST(type_test, type_util) {

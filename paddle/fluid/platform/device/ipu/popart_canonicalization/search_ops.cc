@@ -33,7 +33,7 @@ Node *topk_handler(Graph *graph, Node *node) {
     auto shape = GetInputVarNode("X", node)->Var()->GetShape();
     int rank = shape.size();
     if (rank < 1) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The dimension of the shape of topK input should be large than 1"));
     }
     axis_ = rank - 1;

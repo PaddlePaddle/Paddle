@@ -46,19 +46,7 @@ class TensorInfo:
         self.num_zero = None
 
     def __str__(self):
-        return "[TensorInfo] device={}, op_type={}, tensor_name={}, dtype={}, numel={}, num_inf={}, num_nan={}, num_zero={}, max_value={:.6f}, min_value={:.6f}, mean_value={:.6f}".format(
-            self.device,
-            self.op_type,
-            self.tensor_name,
-            self.dtype,
-            self.numel,
-            self.has_inf,
-            self.has_nan,
-            self.num_zero,
-            self.max_value,
-            self.min_value,
-            self.mean_value,
-        )
+        return f"[TensorInfo] device={self.device}, op_type={self.op_type}, tensor_name={self.tensor_name}, dtype={self.dtype}, numel={self.numel}, num_inf={self.has_inf}, num_nan={self.has_nan}, num_zero={self.num_zero}, max_value={self.max_value:.6f}, min_value={self.min_value:.6f}, mean_value={self.mean_value:.6f}"
 
     def key(
         self,
@@ -163,9 +151,7 @@ class MixedPrecisionTensorInfo:
             assert fp32_tensor_info.op_type == fp16_tensor_info.op_type
             assert (
                 fp32_tensor_info.numel == fp16_tensor_info.numel
-            ), "Error:\n\tFP32 Tensor Info:{}\n\tFP16 Tensor Info:{}".format(
-                fp32_tensor_info, fp16_tensor_info
-            )
+            ), f"Error:\n\tFP32 Tensor Info:{fp32_tensor_info}\n\tFP16 Tensor Info:{fp16_tensor_info}"
             # Fp16 divided by fp32
             self.fp32_div_fp16_max_value = self._div(
                 self.fp16_max_value, self.fp32_max_value
@@ -183,25 +169,9 @@ class MixedPrecisionTensorInfo:
         def _float_str(value):
             return f"{value:.6f}" if value is not None else value
 
-        debug_str = "[MixedPrecisionTensorInfo] op_type={}, numel={}".format(
-            self.op_type, self.numel
-        )
-        debug_str += "\n  FP32: tensor_name={}, dtype={}, max_value={}, min_value={}, mean_value={}".format(
-            self.fp32_tensor_name,
-            self.fp32_dtype,
-            _float_str(self.fp32_max_value),
-            _float_str(self.fp32_min_value),
-            _float_str(self.fp32_mean_value),
-        )
-        debug_str += "\n  FP16: tensor_name={}, dtype={}, max_value={}, min_value={}, mean_value={}, has_inf={}, has_nan={}".format(
-            self.fp16_tensor_name,
-            self.fp16_dtype,
-            _float_str(self.fp16_max_value),
-            _float_str(self.fp16_min_value),
-            _float_str(self.fp16_mean_value),
-            self.fp16_has_inf,
-            self.fp16_has_nan,
-        )
+        debug_str = f"[MixedPrecisionTensorInfo] op_type={self.op_type}, numel={self.numel}"
+        debug_str += f"\n  FP32: tensor_name={self.fp32_tensor_name}, dtype={self.fp32_dtype}, max_value={_float_str(self.fp32_max_value)}, min_value={_float_str(self.fp32_min_value)}, mean_value={_float_str(self.fp32_mean_value)}"
+        debug_str += f"\n  FP16: tensor_name={self.fp16_tensor_name}, dtype={self.fp16_dtype}, max_value={_float_str(self.fp16_max_value)}, min_value={_float_str(self.fp16_min_value)}, mean_value={_float_str(self.fp16_mean_value)}, has_inf={self.fp16_has_inf}, has_nan={self.fp16_has_nan}"
         return debug_str
 
     def _div(self, a, b):
@@ -640,9 +610,7 @@ def merge_tensor_info_list(
         for i in range(len(fp16_tensor_info_list)):
             if i % 10 == 0:
                 print(
-                    "-- Processing {:-8d} / {:-8d} FP16 Tensor Info".format(
-                        i, len(fp16_tensor_info_list)
-                    ),
+                    f"-- Processing {i:-8d} / {len(fp16_tensor_info_list):-8d} FP16 Tensor Info",
                     end="\r",
                 )
             fp16_tensor_info = fp16_tensor_info_list[i]
@@ -667,9 +635,7 @@ def merge_tensor_info_list(
         for i in range(len(fp32_tensor_info_list)):
             if i % 10 == 0:
                 print(
-                    "-- Processing {:-8d} / {:-8d} FP32 Tensor Info".format(
-                        i, len(fp32_tensor_info_list)
-                    ),
+                    f"-- Processing {i:-8d} / {len(fp32_tensor_info_list):-8d} FP32 Tensor Info",
                     end="\r",
                 )
             tensor_info = fp32_tensor_info_list[i]
@@ -699,9 +665,7 @@ def compare_accuracy(
         if "worker_" in name:
             workerlog_filenames.append(name)
     print(
-        "-- There are {} workerlogs under {}: {}".format(
-            len(workerlog_filenames), dump_path, workerlog_filenames
-        )
+        f"-- There are {len(workerlog_filenames)} workerlogs under {dump_path}: {workerlog_filenames}"
     )
 
     for filename in sorted(workerlog_filenames):

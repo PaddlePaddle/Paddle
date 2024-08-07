@@ -23,7 +23,7 @@ from ..base.core import (  # noqa: F401
     IPUPlace,
     XPUPlace,
 )
-from ..base.dygraph import base, to_variable  # noqa: F401
+from ..base.dygraph import base  # noqa: F401
 from ..base.dygraph.base import (  # noqa: F401
     disable_dygraph as enable_static,
     enable_dygraph as disable_static,
@@ -54,6 +54,7 @@ from ..base.framework import (  # noqa: F401
     get_flags,
     in_dygraph_mode as in_dynamic_mode,
     in_dynamic_or_pir_mode,
+    in_pir_executor_mode,
     in_pir_mode,
     set_flags,
     switch_main_program,

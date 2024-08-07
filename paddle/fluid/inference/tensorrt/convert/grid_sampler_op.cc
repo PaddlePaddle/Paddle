@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * GridSampler Op
@@ -48,9 +46,17 @@ class GridSamplerOpConverter : public OpConverter {
     nvinfer1::InterpolationMode interpolationMode{
         nvinfer1::InterpolationMode::kNEAREST};
     if (mode == "nearest") {
+#if IS_TRT_VERSION_GE(8600)
+      interpolationMode = nvinfer1::InterpolationMode::kNEAREST;
+#else
       interpolationMode = nvinfer1::ResizeMode::kNEAREST;
+#endif
     } else if (mode == "bilinear") {
+#if IS_TRT_VERSION_GE(8600)
+      interpolationMode = nvinfer1::InterpolationMode::kLINEAR;
+#else
       interpolationMode = nvinfer1::ResizeMode::kLINEAR;
+#endif
     }
 
     nvinfer1::SampleMode sampleMode{nvinfer1::SampleMode::kFILL};
@@ -66,15 +72,13 @@ class GridSamplerOpConverter : public OpConverter {
     layer->setSampleMode(sampleMode);
     layer->setAlignCorners(align_corners);
 
-    RreplenishLayerAndOutput(layer, "grid_sampler", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "grid_sampler", {output_name}, test_mode);
 #else
     VLOG(3) << "grid_sampler is not supported when TensorRT < 8.5.1";
 #endif
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(grid_sampler, GridSamplerOpConverter);

@@ -16,12 +16,15 @@ from __future__ import annotations
 
 import random
 import time
+from typing import TYPE_CHECKING
 
-from .container import Container
 from .status import Status
 
+if TYPE_CHECKING:
+    from .container import Container
 
-class PodSepc:
+
+class PodSpec:
     def __init__(self):
         self._name = ''.join(
             random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6)
@@ -41,7 +44,7 @@ class PodSepc:
         self._exit_code = 0
 
 
-class Pod(PodSepc):
+class Pod(PodSpec):
     def __init__(self):
         super().__init__()
 

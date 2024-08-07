@@ -81,7 +81,16 @@ def _reference_instance_norm_grad(x, scale, mean, var):
 
 class TestInstanceNorm(unittest.TestCase):
     def test_error(self):
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda()
+            and core.op_support_gpu("instance_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu(
             "instance_norm"
         ):
@@ -116,7 +125,16 @@ class TestInstanceNorm(unittest.TestCase):
                 self.assertRaises(ValueError, error3d)
 
     def test_dygraph(self):
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda()
+            and core.op_support_gpu("instance_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu(
             "instance_norm"
         ):
@@ -144,7 +162,16 @@ class TestInstanceNorm(unittest.TestCase):
     @test_with_pir_api
     def test_static(self):
         with static_guard():
-            places = [base.CPUPlace()]
+            places = []
+            if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+                '1',
+                'true',
+                'on',
+            ] or not (
+                core.is_compiled_with_cuda()
+                and core.op_support_gpu("instance_norm")
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda() and core.op_support_gpu(
                 "instance_norm"
             ):
@@ -223,9 +250,9 @@ class TestInstanceNormFP32OP(OpTest):
             atol=self.atol,
             check_prim=self.check_prim,
             check_pir=True,
-            check_prim_pir=False
-            if os.getenv("FLAGS_enable_pir_in_executor")
-            else True,
+            check_prim_pir=(
+                False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            ),
         )
 
     def test_check_grad(self):
@@ -234,9 +261,9 @@ class TestInstanceNormFP32OP(OpTest):
             'Y',
             check_prim=self.check_prim,
             check_pir=True,
-            check_prim_pir=False
-            if os.getenv("FLAGS_enable_pir_in_executor")
-            else True,
+            check_prim_pir=(
+                False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            ),
         )
 
     def init_dtype(self):
@@ -284,9 +311,9 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
             atol=self.atol,
             check_prim=self.check_prim,
             check_pir=True,
-            check_prim_pir=False
-            if os.getenv("FLAGS_enable_pir_in_executor")
-            else True,
+            check_prim_pir=(
+                False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            ),
         )
 
     def test_check_grad(self):
@@ -298,9 +325,9 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
             max_relative_error=self.max_relative_error,
             check_prim=self.check_prim,
             check_pir=True,
-            check_prim_pir=False
-            if os.getenv("FLAGS_enable_pir_in_executor")
-            else True,
+            check_prim_pir=(
+                False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            ),
         )
 
 
@@ -364,9 +391,9 @@ class TestInstanceNormBF16OP(OpTest):
             place,
             check_prim=self.check_prim,
             check_pir=True,
-            check_prim_pir=False
-            if os.getenv("FLAGS_enable_pir_in_executor")
-            else True,
+            check_prim_pir=(
+                False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            ),
         )
 
     def test_check_grad(self):
@@ -378,9 +405,9 @@ class TestInstanceNormBF16OP(OpTest):
             user_defined_grads=self.user_defined_grads,
             check_prim=self.check_prim,
             check_pir=True,
-            check_prim_pir=False
-            if os.getenv("FLAGS_enable_pir_in_executor")
-            else True,
+            check_prim_pir=(
+                False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            ),
         )
 
 
@@ -402,7 +429,7 @@ class PrimNet(paddle.nn.Layer):
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=False)
+    return paddle.jit.to_static(net, build_strategy=False, full_graph=True)
 
 
 class TestPrimForwardAndBackward(unittest.TestCase):

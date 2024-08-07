@@ -20,7 +20,7 @@ from ..placement_type import get_shard_spec
 from .utils import convert_to_dims_mapping
 
 
-class DistrubutedInputSpec(InputSpec):
+class DistributedInputSpec(InputSpec):
     def __init__(
         self,
         shape,
@@ -29,22 +29,24 @@ class DistrubutedInputSpec(InputSpec):
         stop_gradient=False,
         mesh=None,
         placements=None,
+        local_shape=None,
     ):
         super().__init__(shape, dtype, name, stop_gradient)
         self.mesh = copy.deepcopy(mesh)
         sharding_specs = get_shard_spec(mesh, placements, len(self.shape))
         self.dims_mapping = convert_to_dims_mapping(sharding_specs, mesh)
+        self.local_shape = local_shape
 
     @classmethod
     def from_dtensor(cls, dtensor, name=None):
         """
-        Generates a DistrubutedInputSpec based on dist tensor.
+        Generates a DistributedInputSpec based on dist tensor.
 
         Args:
             dtensor: the dist tensor.
 
         Returns:
-            A DistrubutedInputSpec instance generated from dtensor.
+            A DistributedInputSpec instance generated from dtensor.
         """
         return cls(
             shape=dtensor.shape,
@@ -53,9 +55,8 @@ class DistrubutedInputSpec(InputSpec):
             stop_gradient=dtensor.stop_gradient,
             mesh=dtensor.process_mesh,
             placements=dtensor.placements,
+            local_shape=dtensor._local_value().shape,
         )
 
     def __repr__(self):
-        return "{}, mesh:{}, placements:{}".format(
-            super().__repr__(), self.mesh, self.dims_mapping
-        )
+        return f"{super().__repr__()}, mesh:{self.mesh}, placements:{self.dims_mapping}"

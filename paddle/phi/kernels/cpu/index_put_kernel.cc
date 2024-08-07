@@ -64,13 +64,19 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
   auto* x_data = x.data<T>();
   auto* val_data = value.data<T>();
   bool is_initialized = out->initialized();
+  bool is_same_place = true;
+
+  if (is_initialized) {
+    is_same_place = (x.place() == out->place());
+  }
+
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  if (!is_initialized) {
+  if (!is_initialized || !is_same_place) {
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   const int64_t numel = indices[0]->numel();
   auto x_stride = common::stride(x_dims);
 
@@ -102,17 +108,18 @@ void IndexPutKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       value.dtype(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The data type of tensor value must be same to the data type "
           "of tensor x."));
-  PADDLE_ENFORCE_EQ(indices.empty(),
-                    false,
-                    phi::errors::InvalidArgument("Indices cannot be empty."));
+  PADDLE_ENFORCE_EQ(
+      indices.empty(),
+      false,
+      common::errors::InvalidArgument("Indices cannot be empty."));
 
   const size_t total_dims = x.dims().size();
   PADDLE_ENFORCE_LE(total_dims,
                     6,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Dims of input tensor should be less than 7."));
 
   std::vector<DenseTensor> tmp_args;

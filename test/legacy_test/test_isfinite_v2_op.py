@@ -111,9 +111,95 @@ TEST_META_DATA = [
     },
 ]
 
+TEST_META_DATA_ADDITIONAL = [
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [2, 3, 4, 5],
+        'type': 'int8',
+        'sv_list': [np.inf, np.nan],
+    },
+    {
+        'low': 0,
+        'high': 100,
+        'np_shape': [11, 17, 10],
+        'type': 'int16',
+        'sv_list': [np.inf, np.nan],
+    },
+    {
+        'low': 0,
+        'high': 999,
+        'np_shape': [132],
+        'type': 'uint8',
+        'sv_list': [np.inf, np.nan],
+    },
+]
 
-def test(test_case, op_str, use_gpu=False):
-    for meta_data in TEST_META_DATA:
+TEST_META_DATA2 = [
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [11, 17],
+        'type': 'float32',
+        'sv_list': [-np.inf, np.inf],
+    },
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [2, 3, 4, 5],
+        'type': 'float64',
+        'sv_list': [np.inf, -np.inf],
+    },
+    {
+        'low': 0,
+        'high': 999,
+        'np_shape': [132],
+        'type': 'uint8',
+        'sv_list': [-np.inf, np.inf],
+    },
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [2, 3, 4, 5],
+        'type': 'int8',
+        'sv_list': [-np.inf, np.inf],
+    },
+    {
+        'low': 0,
+        'high': 100,
+        'np_shape': [11, 17, 10],
+        'type': 'int16',
+        'sv_list': [np.inf, -np.inf],
+    },
+    {
+        'low': 0,
+        'high': 100,
+        'np_shape': [11, 17, 10],
+        'type': 'int32',
+        'sv_list': [-np.inf, np.inf],
+    },
+    {
+        'low': 0,
+        'high': 999,
+        'np_shape': [132],
+        'type': 'int64',
+        'sv_list': [np.inf, -np.inf],
+    },
+]
+
+TEST_META_DATA3 = [
+    {
+        'low': 0.1,
+        'high': 1,
+        'np_shape': [8, 17, 5, 6, 7],
+        'type': 'float16',
+        'sv_list': [np.inf, -np.inf],
+    },
+]
+
+
+def test(test_case, op_str, use_gpu=False, data_set=TEST_META_DATA):
+    for meta_data in data_set:
         meta_data = dict(meta_data)
         meta_data['op_str'] = op_str
         x_np, result_np = np_data_generator(**meta_data)
@@ -134,6 +220,18 @@ def test(test_case, op_str, use_gpu=False):
         test_static_or_pir_mode()
 
 
+def test_bf16(test_case, op_str):
+    x_np = np.array([float('inf'), -float('inf'), 2.0, 3.0])
+    result_np = getattr(np, op_str)(x_np)
+
+    place = paddle.CUDAPlace(0)
+    paddle.disable_static(place)
+    x = paddle.to_tensor(x_np, dtype='bfloat16')
+    dygraph_result = getattr(paddle, op_str)(x).numpy()
+
+    test_case.assertTrue((dygraph_result == result_np).all())
+
+
 class TestCPUNormal(unittest.TestCase):
     def test_inf(self):
         test(self, 'isinf')
@@ -143,6 +241,15 @@ class TestCPUNormal(unittest.TestCase):
 
     def test_finite(self):
         test(self, 'isfinite')
+
+    def test_inf_additional(self):
+        test(self, 'isinf', data_set=TEST_META_DATA_ADDITIONAL)
+
+    def test_posinf(self):
+        test(self, 'isposinf', data_set=TEST_META_DATA2)
+
+    def test_neginf(self):
+        test(self, 'isneginf', data_set=TEST_META_DATA2)
 
 
 class TestCUDANormal(unittest.TestCase):
@@ -154,6 +261,41 @@ class TestCUDANormal(unittest.TestCase):
 
     def test_finite(self):
         test(self, 'isfinite', True)
+
+    def test_inf_additional(self):
+        test(self, 'isinf', True, data_set=TEST_META_DATA_ADDITIONAL)
+
+    def test_posinf(self):
+        test(self, 'isposinf', True, data_set=TEST_META_DATA2)
+
+    def test_neginf(self):
+        test(self, 'isneginf', True, data_set=TEST_META_DATA2)
+
+
+@unittest.skipIf(
+    not base.core.is_compiled_with_cuda()
+    or not base.core.is_float16_supported(base.core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the float16",
+)
+class TestCUDAFP16(unittest.TestCase):
+    def test_posinf(self):
+        test(self, 'isposinf', True, data_set=TEST_META_DATA3)
+
+    def test_neginf(self):
+        test(self, 'isneginf', True, data_set=TEST_META_DATA3)
+
+
+@unittest.skipIf(
+    not base.core.is_compiled_with_cuda()
+    or not base.core.is_bfloat16_supported(base.core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestCUDABFP16(unittest.TestCase):
+    def test_posinf(self):
+        test_bf16(self, 'isposinf')
+
+    def test_neginf(self):
+        test_bf16(self, 'isneginf')
 
 
 class TestError(unittest.TestCase):
@@ -179,6 +321,18 @@ class TestError(unittest.TestCase):
                 result = paddle.isfinite(x)
 
             self.assertRaises(TypeError, test_isfinite_bad_x)
+
+            def test_isposinf_bad_x():
+                x = [1, 2, 3]
+                result = paddle.isposinf(x)
+
+            self.assertRaises(TypeError, test_isposinf_bad_x)
+
+            def test_isneginf_bad_x():
+                x = [1, 2, 3]
+                result = paddle.isneginf(x)
+
+            self.assertRaises(TypeError, test_isneginf_bad_x)
 
 
 if __name__ == '__main__':

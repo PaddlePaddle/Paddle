@@ -481,13 +481,13 @@ class PipelineOptimizer:
         if device:
             assert device[0:3] == 'gpu', (
                 "Now, only gpu devices are "
-                "supported in pipeline parallemism."
+                "supported in pipeline parallelism."
             )
         return device
 
     def _add_op_device_attr_for_op(self, op, idx, block):
         """
-        Add op_device attrribute for ops that have not that attribute set.
+        Add op_device attribute for ops that have not that attribute set.
         We use "gpu:all" to represent the op should be put on all
         sub-programs, such as lr-related ops. Note that: "gpu:all"
         is only used by pipeline as an indicator.
@@ -609,7 +609,7 @@ class PipelineOptimizer:
 
     def _add_op_device_attr(self, block):
         """
-        Add op_device attrribute for ops in block that have
+        Add op_device attribute for ops in block that have
         not that attribute set.
         """
         for idx, op in enumerate(list(block.ops)):
@@ -660,9 +660,7 @@ class PipelineOptimizer:
             op_role = op.attr(self._op_role_key)
             assert (
                 int(op_role) in valid_op_role_value
-            ), "op_role {} for op {} must be one of {}".format(
-                op_role, op.type, valid_op_role_value
-            )
+            ), f"op_role {op_role} for op {op.type} must be one of {valid_op_role_value}"
 
             assert op.has_attr(
                 self._op_device_key
@@ -752,16 +750,12 @@ class PipelineOptimizer:
                     if is_forward:
                         assert prev_id < cur_id, (
                             "In forward, send/recv can only be passed forward, but now "
-                            "prev_stage={} great than cur_stage={}, please check op_device of op={}".format(
-                                prev_id, cur_id, op
-                            )
+                            f"prev_stage={prev_id} great than cur_stage={cur_id}, please check op_device of op={op}"
                         )
                     elif is_backward:
                         assert prev_id > cur_id, (
                             "In backward, send/recv can only be passed backward, but now "
-                            "prev_stage={} less than cur_stage={}, please check op_device of op={}".format(
-                                prev_id, cur_id, op
-                            )
+                            f"prev_stage={prev_id} less than cur_stage={cur_id}, please check op_device of op={op}"
                         )
 
                 def _insert_send_recv(cur_id, prev_id):
@@ -1011,7 +1005,7 @@ class PipelineOptimizer:
             if op.type == 'cast' or op.type == "c_sync_comm_stream":
                 continue
             # append "MERGED" to the names of parameter gradients,
-            # and mofify the op_role_var attribute (by rename_arg func).
+            # and modify the op_role_var attribute (by rename_arg func).
             for name in in_out_names:
                 if core.grad_var_suffix() not in name:
                     continue
@@ -1285,7 +1279,7 @@ class PipelineOptimizer:
                     # To meet the requirement, 128 fp16 or 64 float will be aligned
                     # Think the total shape of the input tensors if [64],
                     # if the dtype is float, then the shape of the fuse var is [64]
-                    # however if the dytpe if fp16, the shape of the fuse var is [128],
+                    # however if the dtype if fp16, the shape of the fuse var is [128],
                     # which will cause the fused vars' shape vary between each other.
                     # To make sure the shape of the fused vars are identical,
                     # we set the dtype of float and fp16 both to 2.

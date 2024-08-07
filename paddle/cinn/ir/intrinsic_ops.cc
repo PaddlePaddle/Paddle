@@ -13,38 +13,62 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/intrinsic_ops.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::ir {
 
 const char* IntrinsicOp::type_info() const { return IrNode::type_info(); }
 
 const Type& IntrinsicOp::GetInputType(int offset) const {
-  CHECK_LT(offset, input_types_.size());
+  PADDLE_ENFORCE_LT(
+      offset,
+      input_types_.size(),
+      ::common::errors::InvalidArgument("offset %d is out of range", offset));
   return input_types_[offset];
 }
 const Type& IntrinsicOp::GetOutputType(int offset) const {
-  CHECK_LT(offset, output_types_.size());
+  PADDLE_ENFORCE_LT(
+      offset,
+      output_types_.size(),
+      ::common::errors::InvalidArgument("offset %d is out of range", offset));
   return output_types_[offset];
 }
 
 void IntrinsicOp::Verify(llvm::ArrayRef<Type> input_types,
                          llvm::ArrayRef<Type> output_types) const {
-  CHECK_EQ(input_types.size(), input_types_.size());
-  CHECK_EQ(output_types.size(), output_types_.size());
+  PADDLE_ENFORCE_EQ(input_types.size(),
+                    input_types_.size(),
+                    ::common::errors::InvalidArgument(
+                        "input_types.size() != input_types_.size()"));
+  PADDLE_ENFORCE_EQ(output_types.size(),
+                    output_types_.size(),
+                    ::common::errors::InvalidArgument(
+                        "output_types.size() != output_types_.size()"));
 
   for (int i = 0; i < input_types.size(); i++) {
-    CHECK_EQ(input_types[i], input_types_[i]);
+    PADDLE_ENFORCE_EQ(input_types[i],
+                      input_types_[i],
+                      ::common::errors::InvalidArgument(
+                          "input_types[%d] != input_types_[%d]", i, i));
   }
 
   for (int i = 0; i < output_types.size(); i++) {
-    CHECK_EQ(output_types[i], output_types_[i]);
+    PADDLE_ENFORCE_EQ(output_types[i],
+                      output_types_[i],
+                      ::common::errors::InvalidArgument(
+                          "output_types[%d] != output_types_[%d]", i, i));
   }
 }
 
 void IntrinsicOp::Verify(llvm::ArrayRef<Expr> inputs) const {
-  CHECK_EQ(inputs.size(), input_types_.size());
+  PADDLE_ENFORCE_EQ(inputs.size(),
+                    input_types_.size(),
+                    ::common::errors::InvalidArgument(
+                        "inputs.size() != input_types_.size()"));
   for (int i = 0; i < inputs.size(); i++) {
-    CHECK_EQ(inputs[i].type().IgnoreConst(), input_types_[i].IgnoreConst());
+    PADDLE_ENFORCE_EQ(inputs[i].type().IgnoreConst(),
+                      input_types_[i].IgnoreConst(),
+                      ::common::errors::InvalidArgument(
+                          "inputs[%d].type() != input_types_[%d]", i, i));
   }
 }
 
@@ -100,10 +124,20 @@ Expr intrinsics::GetAddr::Make(Expr data) {
 
 Expr intrinsics::ArgsConstruct::Make(Var var, llvm::ArrayRef<Expr> args) {
   auto* n = new ArgsConstruct;
-  CHECK_EQ(var->type().ElementOf(), type_of<cinn_pod_value_t>());
-  CHECK_GE(var->type().lanes(), 1);
+  PADDLE_ENFORCE_EQ(
+      var->type().ElementOf(),
+      type_of<cinn_pod_value_t>(),
+      ::common::errors::InvalidArgument(
+          "var->type().ElementOf() != type_of<cinn_pod_value_t>()"));
+  PADDLE_ENFORCE_GE(
+      var->type().lanes(),
+      1,
+      ::common::errors::InvalidArgument("var->type().lanes() < 1"));
   for (auto& arg : args) {
-    CHECK_EQ(arg.type(), type_of<cinn_pod_value_t*>());
+    PADDLE_ENFORCE_EQ(arg.type(),
+                      type_of<cinn_pod_value_t*>(),
+                      ::common::errors::InvalidArgument(
+                          "arg.type() != type_of<cinn_pod_value_t*>()"));
     n->AddInputType(var->type());
     n->AddInputType(arg.type());
   }
@@ -123,7 +157,10 @@ Expr intrinsics::BuiltinIntrin::Make(const std::string& name,
   n->args.assign(args.begin(), args.end());
   n->id = id;
   n->arg_nums = arg_nums;
-  CHECK(!type.is_unk());
+  PADDLE_ENFORCE_EQ(!type.is_unk(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The type is unknown. Please provide a valid type."));
   n->type_ = type;
 
   return Expr(n);

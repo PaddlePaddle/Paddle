@@ -23,7 +23,7 @@ void ResetParameterVector(const std::vector<TensorType>& raw_params_vec,
                           const int& num_layers,
                           const bool& is_bidirec,
                           std::vector<std::vector<T*>>* params_vec) {
-  // the parameter raw seuquence is [FWhi, FWhh, BWhi, BWhh] * num_layers
+  // the parameter raw sequence is [FWhi, FWhh, BWhi, BWhh] * num_layers
   // + [FBhi, FBhh, BBhi, BBhh] * num_layers, we will reset the parameter to
   // ([FWhi, FWhh, FBhi, FBhh] + [BWhi, BWhh, BBhi, BBhh]) * num_layers
   const int& direction_num = is_bidirec ? 2 : 1;

@@ -28,17 +28,21 @@ class DynamicShapeGroupScheduler : public GroupScheduler {
   DynamicShapeGroupScheduler(
       ir::IRSchedule* ir_sch,
       const std::unordered_set<std::string>& output_tensor_names,
-      const cinn::common::Target& target)
-      : GroupScheduler(ir_sch, output_tensor_names, target) {
+      const cinn::common::Target& target,
+      const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info)
+      : GroupScheduler(ir_sch, output_tensor_names, target, group_info) {
     Init();
   }
 
   void Schedule() override;
 
   std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetIRs() override;
+  std::vector<std::pair<SymbolicPredicate, ir::Expr>> GetCX86IRs() override;
+  std::vector<int> GetPriorities() override;
 
   struct BucketContext {
     SymbolicPredicate predicate;
+    int priority;
     std::unique_ptr<ir::IRSchedule> ir_sch;
     std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph;
     ScheduleContext schedule_context;

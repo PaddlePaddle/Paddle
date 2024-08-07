@@ -37,9 +37,9 @@ from ....utils import (
 from ....utils.exceptions import BreakGraphError, FallbackError, SotErrorBase
 from ..dispatcher import Dispatcher
 from ..guard import (
-    StringifyExpression,
+    StringifiedExpression,
     check_guard,
-    object_equal_stringify_guard,
+    object_equal_stringified_guard,
     union_free_vars,
 )
 from ..tracker import (
@@ -126,7 +126,7 @@ class FunctionVariable(CallableVariable):
         self.tracker = GetAttrTracker(class_var, name)
         return method_var
 
-    make_stringify_guard = object_equal_stringify_guard
+    make_stringified_guard = object_equal_stringified_guard
 
 
 class UserDefinedFunctionVariable(FunctionVariable):
@@ -254,7 +254,7 @@ class PaddleApiVariable(FunctionVariable):
             "name": self.value.__name__,
         }
 
-    make_stringify_guard = object_equal_stringify_guard
+    make_stringified_guard = object_equal_stringified_guard
 
 
 class TensorFunctionVariable(FunctionVariable):
@@ -270,7 +270,14 @@ class TensorFunctionVariable(FunctionVariable):
     def __init__(
         self, method_name: str, graph: FunctionGraph, tracker: Tracker
     ):
-        fn = getattr(paddle.static.Variable, method_name)
+        fn = getattr(
+            (
+                paddle.pir.Value
+                if paddle.framework.use_pir_api()
+                else paddle.static.Variable
+            ),
+            method_name,
+        )
         super().__init__(fn, graph, tracker)
         self.method_name = method_name
 
@@ -424,15 +431,15 @@ class LayerVariable(CallableVariable):
         return fn_var(*(self, *args), **kwargs)
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
         return [
-            StringifyExpression(
+            StringifiedExpression(
                 f"id({{}}) == {id(self.get_py_value())}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             ),
-            StringifyExpression(
+            StringifiedExpression(
                 f"{{}}.training == {self.get_py_value().training}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
@@ -481,11 +488,11 @@ class ContainerLayerVariable(LayerVariable):
         else:
             return super().get_iter()
 
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.value, PD_SEQ_CONTAINERS):
             frame_value_tracer = self.tracker.trace_value_from_frame()
 
-            len_guard = StringifyExpression(
+            len_guard = StringifiedExpression(
                 f"len({{}}) == {len(self.value)}",
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
@@ -496,11 +503,11 @@ class ContainerLayerVariable(LayerVariable):
                 layer_variable = VariableFactory.from_value(
                     layer, self.graph, GetItemTracker(self, idx)
                 )
-                guards.extend(layer_variable.make_stringify_guard())
+                guards.extend(layer_variable.make_stringified_guard())
 
             return guards
         else:
-            return super().make_stringify_guard()
+            return super().make_stringified_guard()
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -537,14 +544,14 @@ class PaddleLayerVariable(LayerVariable):
         weak_ref = not isinstance(self.tracker, CreateLayerTracker)
         return self.graph.call_layer(self, weak_ref, *args, **kwargs)
 
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         if isinstance(self.tracker, CreateLayerTracker):
             return reduce(
                 operator.add,
-                [var.make_stringify_guard() for var in self.tracker.inputs],
+                [var.make_stringified_guard() for var in self.tracker.inputs],
             )
         else:
-            return super().make_stringify_guard()
+            return super().make_stringified_guard()
 
     @property
     def main_info(self) -> dict[str, Any]:
@@ -646,6 +653,16 @@ class BuiltinVariable(FunctionVariable):
                 )
                 assert isinstance(fn_var, VariableBase)
                 return fn_var(*args)
+            # If __bool__ and __len__ method are absent, inline bool calls return True.
+            # See https://github.com/python/cpython/blob/3.11/Objects/typeobject.c#L7463
+            elif magic_method.name == "__bool__" and not hasattr(
+                arg_type, "__len__"
+            ):
+                return VariableFactory.from_value(
+                    True,
+                    self.graph,
+                    DummyTracker([self] + list(args) + list(kwargs.values())),
+                )
 
         # Break graph if neither of the above conditions is met
         arg_types = ", ".join([type(arg).__name__ for arg in args])
@@ -671,9 +688,9 @@ class BuiltinVariable(FunctionVariable):
         }
 
 
-class UserDefinedGeneratorVariable(FunctionVariable):
+class UserDefinedGeneratorFunctionVariable(FunctionVariable):
     """
-    UserDefinedGeneratorVariable is a subclass of FunctionVariable used to wrap a user-defined generator.
+    UserDefinedGeneratorFunctionVariable is a subclass of FunctionVariable used to wrap a user-defined generator.
     Args:
         fn (Callable[..., Any]): The user-defined generator to be wrapped.
         graph(FunctionGraph): The FunctionGraph object that this variable is associated with.
@@ -701,7 +718,7 @@ class UserDefinedGeneratorVariable(FunctionVariable):
     )
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if inspect.isgeneratorfunction(value):
-            return UserDefinedGeneratorVariable(value, graph, tracker)
+            return UserDefinedGeneratorFunctionVariable(value, graph, tracker)
         return None
 
 
@@ -714,7 +731,13 @@ class ClassVariable(CallableVariable):
         return self.value
 
     def call_function(self, /, *args, **kwargs):
-        new_object = self.value.__new__(self.value)
+        from ..function_graph import convert_to_py_value
+
+        new_object = self.value.__new__(
+            self.value,
+            *convert_to_py_value(args),
+            **convert_to_py_value(kwargs),
+        )
 
         # do not have init function
         if self.value.__init__ is object.__init__:
@@ -744,7 +767,7 @@ class ClassVariable(CallableVariable):
         fn_var(new_object_variable, *args, **kwargs)
         return new_object_variable
 
-    make_stringify_guard = object_equal_stringify_guard
+    make_stringified_guard = object_equal_stringified_guard
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):

@@ -21,7 +21,7 @@ class TestReshardSToR(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=2, timeout=120)
         self._default_envs = {
-            "shape": "(10, 20)",
+            "shape": "(11, 20)",
             "dtype": "float32",
             "seeds": str(self._seeds),
         }

@@ -51,8 +51,7 @@ class TestBase(IPUOpTest):
         scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        main_prog.random_seed = self.SEED
-        startup_prog.random_seed = self.SEED
+        paddle.seed(self.SEED)
         np.random.seed(self.SEED)
 
         with paddle.static.scope_guard(scope):
@@ -60,9 +59,12 @@ class TestBase(IPUOpTest):
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32'
                 )
-                conv1 = paddle.static.nn.conv2d(
-                    image, num_filters=3, filter_size=3, bias_attr=False
-                )
+                conv1 = paddle.nn.Conv2D(
+                    in_channels=image.shape[1],
+                    out_channels=3,
+                    kernel_size=3,
+                    bias_attr=False,
+                )(image)
                 loss = paddle.mean(conv1)
 
                 weight_decay = self.attrs['weight_decay']

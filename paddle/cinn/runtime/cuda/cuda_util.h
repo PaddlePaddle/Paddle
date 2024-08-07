@@ -68,12 +68,6 @@ void cinn_call_cholesky_nvgpu(void* v_args,
                               bool upper,
                               void* stream = nullptr);
 
-void cinn_assert_true_nvgpu(void* v_args,
-                            int num_args,
-                            int msg,
-                            bool only_warning,
-                            void* stream = nullptr);
-
 void cinn_call_triangular_solve_nvgpu(void* v_args,
                                       int num_args,
                                       int batch_size,
@@ -113,6 +107,7 @@ void cinn_call_cuda_kernel(void* kernel_fn,
                            int block_x,
                            int block_y,
                            int block_z,
+                           int shared_memory_bytes,
                            void* stream);
 
 void cinn_call_cublas(void* v_args,

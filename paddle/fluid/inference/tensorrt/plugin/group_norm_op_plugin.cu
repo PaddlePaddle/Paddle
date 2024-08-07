@@ -74,7 +74,7 @@ static int32_t findMaxDivisor(int32_t n, int32_t maxAllowedDivisor) {
 
 template <int tTHREADS_PER_BLOCK>
 __global__ void groupNormNCHW32SumKernelQDQ(
-    const GroupNormNHWCParams<__half> params) {
+    const GroupNormNDHWCParams<__half> params) {
   // The object in charge of doing the sums for the different blocks.
   typedef cub::BlockScan<GroupSums, tTHREADS_PER_BLOCK> BlockScan;
 
@@ -90,9 +90,9 @@ __global__ void groupNormNCHW32SumKernelQDQ(
   int32_t ci = blockIdx.x * params.cPerBlock + threadIdx.x * 2;
 
   // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
+  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
+  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // The sums.
   float sum = 0.F;
@@ -102,13 +102,13 @@ __global__ void groupNormNCHW32SumKernelQDQ(
 
   // nchw32 layout
   // batch offset + channel offset
-  int nc_offset = static_cast<int64_t>(ni) * params.hwc +
-                  ci / 32 * params.hw * 32 + ci % 32;
+  int nc_offset = static_cast<int64_t>(ni) * params.dhwc +
+                  ci / 32 * params.dhw * 32 + ci % 32;
 
   // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The offset.
-    int64_t offset = nc_offset + static_cast<int64_t>(hwi) * 32;
+    int64_t offset = nc_offset + static_cast<int64_t>(dhwi) * 32;
 
     // Fetch two channels per thread.
     __half2 h2(0, 0);
@@ -166,14 +166,14 @@ __global__ void groupNormNCHW32SumKernelQDQ(
   atomicAdd(&params.redBuffer[(2 * ni + 1) * params.groups + gj], sums.y);
 }
 
-void groupNormNCHW32SumQDQ(const GroupNormNHWCParams<__half> &params,
+void groupNormNCHW32SumQDQ(const GroupNormNDHWCParams<__half> &params,
                            cudaStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.
   grid.x = divUp(params.c, params.cPerBlock);
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp(params.hw, params.hwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
@@ -198,7 +198,7 @@ void groupNormNCHW32SumQDQ(const GroupNormNHWCParams<__half> &params,
 
 template <int tTHREADS_PER_BLOCK>
 __global__ void groupNormNCHW32ScaleKernelQDQ(
-    const GroupNormNHWCParams<__half> params) {
+    const GroupNormNDHWCParams<__half> params) {
   // The instance in the batch.
   int32_t ni = blockIdx.z;
   // The channel loaded by that thread (2 channels per thread for F16x2).
@@ -226,25 +226,25 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
   }
 
   // Compute the mean.
-  float mean = sum * params.invHWC;
+  float mean = sum * params.invDHWC;
   // Compute the variance.
-  float var = sumSq * params.invHWC - (mean * mean);
+  float var = sumSq * params.invDHWC - (mean * mean);
   // Compute the inverse of the stddev.
   float invStdDev = rsqrtf(var + params.eps);
 
   // The first activation loaded by that block.
-  int32_t hwBegin = blockIdx.y * params.hwPerBlock;
+  int32_t dhwBegin = blockIdx.y * params.dhwPerBlock;
   // The last activation loaded by that block.
-  int32_t hwEnd = min(hwBegin + params.hwPerBlock, params.hw);
+  int32_t dhwEnd = min(dhwBegin + params.dhwPerBlock, params.dhw);
 
   // nchw32 layout
-  int c_offset = ci / 32 * params.hw * 32 + ci % 32;
+  int c_offset = ci / 32 * params.dhw * 32 + ci % 32;
 
   // Iterate over the activations to compute the sums.
-  for (int32_t hwi = hwBegin; hwi < hwEnd; ++hwi) {
+  for (int32_t dhwi = dhwBegin; dhwi < dhwEnd; ++dhwi) {
     // The src/dst offset.
-    int64_t offset = static_cast<int64_t>(ni) * params.hwc + c_offset +
-                     static_cast<int64_t>(hwi) * 32;
+    int64_t offset = static_cast<int64_t>(ni) * params.dhwc + c_offset +
+                     static_cast<int64_t>(dhwi) * 32;
 
     // Fetch two channels per thread.
     __half2 h2(0, 0);
@@ -290,14 +290,14 @@ __global__ void groupNormNCHW32ScaleKernelQDQ(
   }
 }
 
-void groupNormNCHW32ScaleQDQ(const GroupNormNHWCParams<__half> &params,
+void groupNormNCHW32ScaleQDQ(const GroupNormNDHWCParams<__half> &params,
                              cudaStream_t stream) {
   dim3 grid;
 
   // The number of blocks to compute all the channels.
   grid.x = divUp(params.c, params.cPerBlock);
   // The number of blocks to compute all the activations in a given instance.
-  grid.y = divUp(params.hw, params.hwPerBlock);
+  grid.y = divUp(params.dhw, params.dhwPerBlock);
   // The number of instances.
   grid.z = params.n;
 
@@ -319,8 +319,8 @@ void groupNormNCHW32ScaleQDQ(const GroupNormNHWCParams<__half> &params,
       break;
     default:
       PADDLE_THROW(
-          platform::errors::Fatal("The function groupNormNCHW32ScaleQDQ of "
-                                  "GroupNorm TRT Plugin encounter error"));
+          common::errors::Fatal("The function groupNormNCHW32ScaleQDQ of "
+                                "GroupNorm TRT Plugin encounter error"));
   }
 }
 
@@ -402,7 +402,7 @@ int GroupNormPlugin::enqueue(int batch_size,
   PADDLE_ENFORCE_EQ(
       C,
       scale_.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "scale's size should be equal to the channel number in groupnorm,"
           "but got channel number:%d, scale's size:%d.",
           C,
@@ -410,7 +410,7 @@ int GroupNormPlugin::enqueue(int batch_size,
   PADDLE_ENFORCE_EQ(
       C,
       bias_.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "bias's size should be equal to the channel number in groupnorm,"
           "but got channel number:%d, bias's size:%d.",
           C,
@@ -454,7 +454,7 @@ int GroupNormPlugin::enqueue(int batch_size,
                variance_d,
                DataLayout::kNCHW);
   } else {
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The GroupNorm TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
@@ -474,15 +474,15 @@ bool GroupNormPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of groupnorm plugin shoule not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                        "num(%d) of the input and the output.",
-                                        pos,
-                                        nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
 
   bool int8_support = in.type == nvinfer1::DataType::kINT8 &&
@@ -513,14 +513,14 @@ nvinfer1::DataType GroupNormPluginDynamic::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The groupnorm Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
   PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
                      input_types[0] == nvinfer1::DataType::kHALF),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input type should be half or float"));
 
   return input_types[0];
@@ -587,7 +587,7 @@ int GroupNormPluginDynamic::enqueue(
   PADDLE_ENFORCE_EQ(
       C,
       scale_.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "scale's size should be equal to the channel number in groupnorm,"
           "but got feature_size:%d, scale's size:%d.",
           C,
@@ -595,7 +595,7 @@ int GroupNormPluginDynamic::enqueue(
   PADDLE_ENFORCE_EQ(
       C,
       bias_.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "bias's size should be equal to the channel number in groupnorm,"
           "but got feature_size:%d, bias's size:%d.",
           C,
@@ -642,7 +642,7 @@ int GroupNormPluginDynamic::enqueue(
                  DataLayout::kNCHW);
     } else if (input_desc[0].format == nvinfer1::PluginFormat::kHWC8) {
       int32_t cPerBlock = 320;
-      int32_t maxBlocksPerHW = 1024;
+      int32_t maxBlocksPerDHW = 1024;
       switch (input_desc[0].dims.d[1]) {
         case 960:
         case 1920:
@@ -660,6 +660,25 @@ int GroupNormPluginDynamic::enqueue(
       }
       if (cPerBlock > input_desc[0].dims.d[1]) {
         cPerBlock = 8;
+      }
+      auto d_dim = input_desc[0].dims.nbDims;
+      params_.n = input_desc[0].dims.d[0];
+      if (d_dim == 3) {
+        params_.c = input_desc[0].dims.d[1];
+        params_.d = 1;
+        params_.h = 1;
+        params_.w = input_desc[0].dims.d[2];
+      } else if (d_dim == 4) {
+        params_.c = input_desc[0].dims.d[1];
+        params_.d = 1;
+        params_.h = input_desc[0].dims.d[2];
+        params_.w = input_desc[0].dims.d[3];
+      } else {
+        // d_dim == 5
+        params_.c = input_desc[0].dims.d[1];
+        params_.d = input_desc[0].dims.d[2];
+        params_.h = input_desc[0].dims.d[3];
+        params_.w = input_desc[0].dims.d[4];
       }
 
       params_.withSilu = with_silu_;
@@ -669,18 +688,19 @@ int GroupNormPluginDynamic::enqueue(
       params_.beta = reinterpret_cast<half *>(bias_gpu_);
       params_.redBuffer = static_cast<float *>(workspace);
       params_.var_data = nullptr;
-      params_.n = input_desc[0].dims.d[0];
-      params_.h = input_desc[0].dims.d[2];
-      params_.w = input_desc[0].dims.d[3];
-      params_.c = input_desc[0].dims.d[1];
+      // params_.n = input_desc[0].dims.d[0];
+      // params_.h = input_desc[0].dims.d[2];
+      // params_.w = input_desc[0].dims.d[3];
+      // params_.c = input_desc[0].dims.d[1];
       params_.groups = groups_;
-      params_.hw = params_.h * params_.w;
-      const int32_t blocksPerHW = findMaxDivisor(params_.hw, maxBlocksPerHW);
-      params_.hwPerBlock = divUp(params_.hw, blocksPerHW);
+      params_.dhw = params_.d * params_.h * params_.w;
+      const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+      params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
       params_.cPerBlock = cPerBlock;
       params_.cPerGroup = params_.c / params_.groups;
-      params_.hwc = params_.hw * params_.c;
-      params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
+      params_.dhwc = params_.dhw * params_.c;
+      params_.invDHWC =
+          1.F / static_cast<float>(params_.dhw * params_.cPerGroup);
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
       params_.eps = eps_;
       params_.var_data = nullptr;
@@ -690,12 +710,12 @@ int GroupNormPluginDynamic::enqueue(
                       2 * sizeof(float) * params_.n * groups_,
                       stream);
 
-      phi::groupNormNHWCSum<half> nhwc_sum;
-      nhwc_sum(&params_, stream);
-      phi::groupNormNHWCScale<half> nhwc_scale;
-      nhwc_scale(params_, stream);
+      phi::groupNormNDHWCSum<half> ndhwc_sum;
+      ndhwc_sum(&params_, stream);
+      phi::groupNormNDHWCScale<half> ndhwc_scale;
+      ndhwc_scale(params_, stream);
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The Groupnorm TRT Plugin's only support nchw or nhwc8 input"));
     }
   } else if (input_type == nvinfer1::DataType::kINT8) {
@@ -704,7 +724,7 @@ int GroupNormPluginDynamic::enqueue(
 
     if (input_desc[0].format == nvinfer1::PluginFormat::kCHW32) {
       int32_t cPerBlock = 320;
-      int32_t maxBlocksPerHW = 1024;
+      int32_t maxBlocksPerDHW = 1024;
       switch (input_desc[0].dims.d[1]) {
         case 960:
         case 1920:
@@ -723,6 +743,25 @@ int GroupNormPluginDynamic::enqueue(
       if (cPerBlock > input_desc[0].dims.d[1]) {
         cPerBlock = 8;
       }
+      auto d_dim = input_desc[0].dims.nbDims;
+      params_.n = input_desc[0].dims.d[0];
+      if (d_dim == 3) {
+        params_.c = input_desc[0].dims.d[1];
+        params_.d = 1;
+        params_.h = 1;
+        params_.w = input_desc[0].dims.d[2];
+      } else if (d_dim == 4) {
+        params_.c = input_desc[0].dims.d[1];
+        params_.d = 1;
+        params_.h = input_desc[0].dims.d[2];
+        params_.w = input_desc[0].dims.d[3];
+      } else {
+        // d_dim == 5
+        params_.c = input_desc[0].dims.d[1];
+        params_.d = input_desc[0].dims.d[2];
+        params_.h = input_desc[0].dims.d[3];
+        params_.w = input_desc[0].dims.d[4];
+      }
       params_.withSilu = with_silu_;
       params_.dst = static_cast<half *>(outputs[0]);
       params_.srcX = static_cast<half const *>(inputs[0]);
@@ -730,21 +769,33 @@ int GroupNormPluginDynamic::enqueue(
       params_.gamma = scale_gpu_;
       params_.beta = bias_gpu_;
       params_.redBuffer = static_cast<float *>(workspace);
-      params_.n = input_desc[0].dims.d[0];
-      params_.h = input_desc[0].dims.d[2];
-      params_.w = input_desc[0].dims.d[3];
-      params_.c = input_desc[0].dims.d[1];
+      // params_.n = input_desc[0].dims.d[0];
+      // params_.h = input_desc[0].dims.d[2];
+      // params_.w = input_desc[0].dims.d[3];
+      // params_.c = input_desc[0].dims.d[1];
       params_.groups = groups_;
-      params_.hw = params_.h * params_.w;
-      const int32_t blocksPerHW = findMaxDivisor(params_.hw, maxBlocksPerHW);
-      params_.hwPerBlock = divUp(params_.hw, blocksPerHW);
+      params_.dhw = params_.d * params_.h * params_.w;
+      const int32_t blocksPerDHW = findMaxDivisor(params_.dhw, maxBlocksPerDHW);
+      params_.dhwPerBlock = divUp(params_.dhw, blocksPerDHW);
       params_.cPerBlock = cPerBlock;
       params_.cPerGroup = params_.c / params_.groups;
-      params_.hwc = params_.hw * params_.c;
-      params_.invHWC = 1.F / static_cast<float>(params_.hw * params_.cPerGroup);
+      params_.dhwc = params_.dhw * params_.c;
+      params_.invDHWC =
+          1.F / static_cast<float>(params_.dhw * params_.cPerGroup);
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
-      CHECK_EQ(cPerBlock % params_.cPerGroup, 0);
-      CHECK_EQ(params_.cPerGroup % 2, 0);
+      PADDLE_ENFORCE_EQ(cPerBlock % params_.cPerGroup,
+                        0,
+                        common::errors::InvalidArgument(
+                            "cPerBlock should be multiple of params_.cPerGroup"
+                            "now cPerBlock is %d, params_.cPerGroup is %d",
+                            cPerBlock,
+                            params_.cPerGroup));
+      PADDLE_ENFORCE_EQ(
+          params_.cPerGroup % 2,
+          0,
+          common::errors::InvalidArgument(
+              "params_.cPerGroup should be a even number, but received %d",
+              params_.cPerGroup));
       params_.eps = eps_;
       params_.dqScaleIn = input_desc[0].scale;
       params_.inv_qScale = 1.f / output_desc[0].scale;
@@ -761,12 +812,12 @@ int GroupNormPluginDynamic::enqueue(
       groupNormNCHW32SumQDQ(params_, stream);
       groupNormNCHW32ScaleQDQ(params_, stream);
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The Groupnorm TRT Plugin only support nchw32 input"));
     }
   } else {
     // input not float
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The Groupnorm TRT Plugin's only support fp32, fp16 or int8 input"));
   }
 

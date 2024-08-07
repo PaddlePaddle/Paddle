@@ -14,8 +14,10 @@
 from __future__ import annotations
 
 import collections
+import logging
 import warnings
 from collections.abc import Sequence
+from functools import lru_cache
 from typing import Any
 
 from paddle import pir
@@ -25,13 +27,46 @@ from paddle.base.libpaddle.pir import (
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
+# TODO(CZ): to be removed when we support dynamic shape by default.
+ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
+    "pd_op.abs",
+    "pd_op.assign",
+    "pd_op.sin",
+    "pd_op.cos",
+    "pd_op.tanh",
+    "pd_op.cast",
+    "pd_op.log",
+    "pd_op.exp",
+    "pd_op.sqrt",
+    "pd_op.rsqrt",
+    "pd_op.sigmoid",
+    "pd_op.silu",
+    "pd_op.sum",
+    "pd_op.mean",
+    "pd_op.add",
+    "pd_op.subtract",
+    "pd_op.concat",
+    "pd_op.split",
+    "pd_op.multiply",
+    "pd_op.relu",
+    "pd_op.sigmoid",
+    "pd_op.divide",
+    "pd_op.pow",
+    "pd_op.elementwise_pow",
+    "pd_op.softmax",
+    "pd_op.matmul",
+]
+
 
 class ValueWrapper:
     def __init__(self, value) -> None:
         if isinstance(value, ValueWrapper):
             assert isinstance(value._value, (type(None), pir.Value))
         else:
-            assert isinstance(value, (type(None), pir.Value))
+            if not isinstance(value, (type(None), pir.Value)):
+                raise TypeError(
+                    "Value Wrapper is onlys support None and pir.Value"
+                )
         self._value = value._value if isinstance(value, ValueWrapper) else value
 
     def __hash__(self) -> int:
@@ -86,10 +121,20 @@ class ValueDict:
         for key, val in self._items.items():
             yield key._value, val
 
+    def get(self, key, default=None):
+        if not self.__contains__(key):
+            return default
+        return self._items[ValueWrapper(key)]
+
     def pop(self, key):
         if not self.__contains__(key):
             raise KeyError(f'{key} is not in ValueDict')
         return self._items.pop(ValueWrapper(key))
+
+    def setdefault(self, key, default=None):
+        if not self.__contains__(key):
+            self[key] = default
+        return self[key]
 
     def __setitem__(self, key, val: Any):
         self._items[ValueWrapper(key)] = val
@@ -141,6 +186,9 @@ class ValueSet:
         for val in other:
             self.add(val)
 
+    def pop(self):
+        return self._set.pop()._value
+
     def __and__(self, other: ValueSet):
         return ValueSet(self._set & other._set)
 
@@ -168,7 +216,7 @@ class ValueSet:
 class State:
     """
     record relationship of forward op/value and backward op/value
-    one state must be bining with a block, if block has parent block,
+    one state must be binding with a block, if block has parent block,
     state will include parent block info.
 
     """
@@ -188,7 +236,7 @@ class State:
         self.opgrad_to_op = collections.defaultdict(list)
         # only for controlflow
         # inside_value is sub block value, which will yield to parent block,
-        # parant block value is outside_value
+        # parent block value is outside_value
         self.inside_value_to_outside_value_map = ValueDict()
 
     def turn_map(self) -> None:
@@ -233,8 +281,7 @@ class State:
 def _check_vjp_dynamic_shape(op, inputs):
     for items in inputs:
         for item in items:
-            shape = item.shape
-            if -1 in shape:
+            if item.initialized() and -1 in item.shape:
                 warnings.warn(
                     f"[Prim] Decomp op does not support dynamic shape -1, but got shape {item.shape} in inputs of op {op.name()} . Prim will skip its vjp op."
                 )
@@ -244,17 +291,23 @@ def _check_vjp_dynamic_shape(op, inputs):
 # Prim currently does not support dynamic shape, when dynamic shape exits in shape of op inputs, prim will be skipped its vjp op.
 @signature_safe_contextmanager
 def dynamic_shape_prim_vjp_guard(op, inputs):
-    skip_prim = (
-        core._is_bwd_prim_enabled()
-        and core._enable_prim_skip_dynamic_shape()
-        and _check_vjp_dynamic_shape(op, inputs)
-    )
+    origin_prim = core._is_bwd_prim_enabled()
+    if op.name() == "cf.tuple_push":
+        skip_prim = True
+    else:
+        skip_prim = (
+            origin_prim
+            and core._enable_prim_skip_dynamic_shape()
+            and _check_vjp_dynamic_shape(op, inputs)
+            and op.name() not in ALLOW_DYNAMIC_SHAPE_VJP_OPS
+        )
+
     try:
-        if skip_prim:
+        if origin_prim and skip_prim:
             core._set_prim_backward_enabled(False)
         yield
     finally:
-        if skip_prim:
+        if origin_prim:
             core._set_prim_backward_enabled(True)
 
 
@@ -272,23 +325,16 @@ def _as_list(x):
 
 
 def some_in_set(value_list, value_set):
-    def operand2value(values):
-        value_set = ValueSet()
-        for item in values:
-            if isinstance(item, pir.OpOperand):
-                value_set.add(item.source())
-            else:
-                value_set.add(item)
-        return value_set
-
-    if operand2value(value_list) & operand2value(value_set):
-        return True
-    else:
-        return False
+    return any(v in value_set for v in value_list)
 
 
 def is_control_flow(op):
     return op.name() == "pd_op.if" or op.name() == "pd_op.while"
+
+
+def is_builtin_op(op):
+    dialect_name, opname = op.name().split(".")
+    return dialect_name == "builtin"
 
 
 def update_no_grad_set_by_stopgradient(block, no_grad_set):
@@ -308,21 +354,25 @@ def get_real_op_inputs(op):
         return op.operands_source() + get_used_external_value(
             op.as_while_op().body()
         )
+    elif op.name() == "pd_op.pylayer":
+        return get_used_external_value(op)
     else:
         return op.operands_source()
 
 
-def inverse_sort_op(ops):
+def inverse_sort_op(old_ops):
     '''
     if topo graph is op1 -> op2 -> op3
     return [op3, op2, op1]
 
     '''
 
-    # init pending_count[op] which descibes number of
+    # init pending_count[op] which describes number of
     # pending edges for its grad_op
 
     pending_count = collections.defaultdict(int)
+    ops = []
+    [ops.append(x) for x in old_ops if x not in ops]
     ops_set = set(ops)
     sorted_list = []
     for op in ops:
@@ -381,7 +431,7 @@ def inverse_sort_op(ops):
 
 def is_inplace_net(op_list):
     '''
-    when program has inpalce op , it's difficult to find the actual pending_count.
+    when program has inplace op , it's difficult to find the actual pending_count.
     '''
     for op in op_list:
         if op.name() in ["pd_op.array_write_", "pd_op.assign_out_"]:
@@ -398,7 +448,6 @@ def remove_op(block, op, state):
     '''
     remove op from block
     '''
-    block.remove_op(op)
     if state.opgrad_to_op[op] != []:
         fwd_op = state.opgrad_to_op[op][0]
         state.op_to_opgrad[fwd_op].remove(op)
@@ -410,8 +459,21 @@ def remove_op(block, op, state):
 
             if value in state.sumvaluegrad_to_value:
                 raise ValueError(
-                    'input_grad in [%s] is value which need to sum ', op.name()
+                    f'input_grad in [%s] is value which need to sum {op.name()}'
                 )
+    # NOTE(SigureMo): Ensure access to the op's results before removing it.
+    # Otherwise, the op will be deconstructed and access the num_results
+    # will be undefined behavior, it always cause hanging on the macOS.
+    block.remove_op(op)
+
+
+def while_prune_check(while_tuple_ops):
+    if len(while_tuple_ops) != 0:
+        for opresult in while_tuple_ops[0].results():
+            if not opresult.use_empty():
+                return False
+        return True
+    return False
 
 
 def remove_useless_full_like_ops(block, ops, state):
@@ -419,16 +481,21 @@ def remove_useless_full_like_ops(block, ops, state):
     remove ops which are not in use recursively,
 
     '''
+    remove_ops = []
+    inverse_ops = inverse_sort_op(list(ops))
     # from output to input
-    for op in inverse_sort_op(list(ops)):
-        if op.name() == 'pd_op.full_like':
+    for op in inverse_ops:
+        if op.name() == "pd_op.full_like":
             if op.result(0).use_empty():
                 full_op = op.operand_source(1).get_defining_op()
-                remove_op(block, op, state)
-                remove_op(block, full_op, state)
+                remove_ops.append(op)
+                remove_ops.append(full_op)
         elif is_control_flow(op):
             for sub_block in op.blocks():
                 remove_useless_full_like_ops(sub_block, sub_block.ops, state)
+
+    for op in remove_ops:
+        remove_op(block, op, state)
 
 
 def all_stop_gradient_true(block):
@@ -439,10 +506,34 @@ def all_stop_gradient_true(block):
     return True
 
 
+def all_input_stop_gradient_true(list_of_list):
+    for list_ in list_of_list:
+        for stop_gradient in list_:
+            if stop_gradient is False:
+                return False
+    return True
+
+
+def all_output_grad_none(list_of_list):
+    for list_ in list_of_list:
+        for value in list_:
+            if value is not None:
+                return False
+    return True
+
+
+def op_has_vjp(op):
+    # NOTE(MarioLulab): In PIR mode, even though the `PyLayer` op does
+    # not have a vjp interface, we still need to generate the backward
+    # block based on its registered backward function. To achieve this,
+    # we add more handling logic for `PyLayer` Op in the `call_vjp` function
+    return core.has_vjp(op) or op.name() == "pd_op.pylayer"
+
+
 def parent_total_ops(block):
     '''
     when block is sub_block, forward op should include its parent block ops
-    (sub block nest should Add on demand to aviod block copy)
+    (sub block nest should Add on demand to avoid block copy)
     '''
     total_ops = []
     if block.parent_block is not None:
@@ -466,7 +557,7 @@ def return_map_value_list(value, map):
     output = []
     for i in range(len(value)):
         if value[i] in map:
-            output.append(map[value[i]])
+            output.append(return_map_value(value[i], map))
         else:
             output.append(value[i])
     return output
@@ -502,7 +593,10 @@ def get_grad_semantic_info(op):
         "builtin.combine",
         "pd_op.if",
         "pd_op.while",
+        "pd_op.pylayer",
         "cf.tuple_push",
+        "dist_op.dtensor_from_local_tensors",
+        "dist_op.local_tensors_from_dtensor",
     ]:
         grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]
         if op.name() == "pd_op.if":
@@ -510,3 +604,15 @@ def get_grad_semantic_info(op):
     else:
         grad_semantic_info = op.get_input_grad_semantics()
     return grad_semantic_info
+
+
+def get_split_op(value):
+    for op in value.all_used_ops():
+        if op.name() == "builtin.split":
+            return op
+    return None
+
+
+@lru_cache
+def warning_once(message: str):
+    logging.warning(message)

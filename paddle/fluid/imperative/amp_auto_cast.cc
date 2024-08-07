@@ -23,8 +23,7 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 class VarBase;
 
@@ -47,19 +46,19 @@ OpSupportedInfos(const std::string& place,
                  place.end(),
                  std::back_inserter(query_place),
                  [](unsigned char c) { return std::toupper(c); });
-  using fn_type = std::add_pointer<bool(const platform::Place&)>::type;
+  using fn_type = std::add_pointer<bool(const phi::Place&)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
-      {"GPU", &platform::is_gpu_place},
-      {"CPU", &platform::is_cpu_place},
-      {"XPU", &platform::is_xpu_place},
-      {"CUSTOM_DEVICE", &platform::is_custom_place},
+      {"GPU", &phi::is_gpu_place},
+      {"CPU", &phi::is_cpu_place},
+      {"XPU", &phi::is_xpu_place},
+      {"CUSTOM_DEVICE", &phi::is_custom_place},
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-      {query_place, &platform::is_custom_place},
+      {query_place, &phi::is_custom_place},
 #endif
   };
   PADDLE_ENFORCE_NE(is_target_place.count(query_place),
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The argument `place` should be 'GPU', 'CPU', 'XPU' or "
                         "other Custom Device, but got '%s'.",
                         place));
@@ -119,10 +118,8 @@ OpSupportedInfos(const std::string& place,
       std::move(all_ops), std::move(supported_ops), std::move(unsupported_ops));
 }
 
-AutoCastGuard::AutoCastGuard(std::shared_ptr<AMPState> state, AmpLevel level)
-    : state_(state) {
-  pre_amp_level_ = state_->GetAmpLevel();
-
+AutoCastGuard::AutoCastGuard(std::shared_ptr<AmpAttrs> state, AmpLevel level)
+    : state_(state), pre_amp_level_(state_->GetAmpLevel()) {
   if (pre_amp_level_ != level) {
     state_->SetAmpLevel(level);
   }
@@ -162,8 +159,6 @@ AmpOperators::AmpOperators()
           << unsupported_bf16_ops_->size();
 }
 
-AmpOperators::~AmpOperators() = default;
-
 AmpOperators& AmpOperators::Instance() {
   static AmpOperators instance;
   return instance;
@@ -185,9 +180,9 @@ AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
       data_type == phi::DataType::FLOAT16 ||
           data_type == phi::DataType::BFLOAT16,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
-  if (data_type == phi::DataType::FLOAT16) {
+  if (data_type == phi::DataType::FLOAT16) {  // NOLINT
     return unsupported_fp16_ops_;
   } else {
     return unsupported_bf16_ops_;
@@ -231,25 +226,25 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops) {
   return os;
 }
 
-thread_local bool AMPState::use_promote_ = false;
+thread_local bool AmpAttrs::use_promote_ = false;
 
-thread_local AmpLevel AMPState::amp_level_ = AmpLevel::O0;
+thread_local AmpLevel AmpAttrs::amp_level_ = AmpLevel::O0;
 
-thread_local phi::DataType AMPState::amp_dtype_ = phi::DataType::FLOAT32;
+thread_local phi::DataType AmpAttrs::amp_dtype_ = phi::DataType::FLOAT32;
 
-AMPState::AMPState() {}
+AmpAttrs::AmpAttrs() {}
 
-AMPState::~AMPState() = default;
+// AmpAttrs::~AmpAttrs() = default;
 
-bool AMPState::GetUsePromote() const { return use_promote_; }
+bool AmpAttrs::GetUsePromote() const { return use_promote_; }
 
-void AMPState::SetUsePromote(bool use_promote) { use_promote_ = use_promote; }
+void AmpAttrs::SetUsePromote(bool use_promote) { use_promote_ = use_promote; }
 
-AmpLevel AMPState::GetAmpLevel() const { return amp_level_; }
+AmpLevel AmpAttrs::GetAmpLevel() const { return amp_level_; }
 
-void AMPState::SetAmpLevel(AmpLevel level) { amp_level_ = level; }
+void AmpAttrs::SetAmpLevel(AmpLevel level) { amp_level_ = level; }
 
-std::string AMPState::GetAmpDtype() const {
+std::string AmpAttrs::GetAmpDtype() const {
   if (amp_dtype_ == phi::DataType::FLOAT16) {
     return std::string("float16");
   } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
@@ -259,7 +254,7 @@ std::string AMPState::GetAmpDtype() const {
   }
 }
 
-void AMPState::SetAmpDtype(std::string amp_dtype) {
+void AmpAttrs::SetAmpDtype(std::string amp_dtype) {
   if (amp_dtype == "float16") {
     amp_dtype_ = phi::DataType::FLOAT16;
   } else if (amp_dtype == "bfloat16") {
@@ -269,7 +264,7 @@ void AMPState::SetAmpDtype(std::string amp_dtype) {
   }
 }
 
-phi::DataType AMPState::GetAmpPhiDtype() const { return amp_dtype_; }
+phi::DataType AmpAttrs::GetAmpPhiDtype() const { return amp_dtype_; }
 
 template <typename VarType>
 inline std::string GetDtypeStr(const std::shared_ptr<VarType>& var) {
@@ -279,10 +274,8 @@ template <typename VarType>
 inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   auto place = GetPlace(var);
   auto data_type = GetDataType<VarType>(var);
-  if (paddle::platform::is_gpu_place(place) ||
-      paddle::platform::is_cuda_pinned_place(place) ||
-      paddle::platform::is_xpu_place(place) ||
-      paddle::platform::is_custom_place(place)) {
+  if (phi::is_gpu_place(place) || phi::is_cuda_pinned_place(place) ||
+      phi::is_xpu_place(place) || phi::is_custom_place(place)) {
     // CudaPinnedPlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
         data_type == paddle::framework::proto::VarType::FP16 ||
@@ -308,7 +301,7 @@ static inline std::shared_ptr<VarType> CastToType(
   imperative::NameVarMap<VarType> outs = {{"Out", {out}}};
 
   {
-    AutoCastGuard guard(imperative::GetCurrentAMPState(), AmpLevel::O0);
+    AutoCastGuard guard(imperative::GetCurrentAmpAttrs(), AmpLevel::O0);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
 
@@ -377,7 +370,8 @@ template <typename VarType>
 NameVarMap<VarType> AutoCastInputs(const std::string& op_type,
                                    const NameVarMap<VarType>& ins) {
   NameVarMap<VarType> new_ins(ins);
-  if (AmpOperators::Instance().GetMutableAllowOps()->count(op_type)) {
+  if (AmpOperators::Instance().GetMutableAllowOps()->count(
+          op_type)) {  // NOLINT
     for (auto& pair : new_ins) {
       // NOTE(zhiqiu): batch_norm and layer_norm support only input x is fp16.
       if ((op_type == "batch_norm" || op_type == "layer_norm" ||
@@ -590,5 +584,4 @@ template NameVarMap<VarBase> CastPureBf16Inputs<VarBase>(
 template NameVarMap<egr::EagerVariable> CastPureBf16Inputs<egr::EagerVariable>(
     const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

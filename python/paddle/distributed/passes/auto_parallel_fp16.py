@@ -90,7 +90,7 @@ def set_auto_cast_attr(cast_op, block):
         out_var.desc.set_dtype(out_var_fw.dtype)
 
 
-# adapot for backward op
+# adapt for backward op
 # TODO check if bf16 and fp16 still share the same logic
 def _keep_fp32_input(op, in_name):
     if not op.amp_options.enable:
@@ -272,7 +272,7 @@ class FP16State:
         elif is_backward_op(op) == int(OpRole.Backward):
             if op.desc.original_id() in self.grad_op_to_op_map:
                 fwd_op_id = self.grad_op_to_op_map[op.desc.original_id()]
-                assert fwd_op_id in self._op_fp16_dict, f"{str(op)}"
+                assert fwd_op_id in self._op_fp16_dict, f"{op}"
                 self._op_fp16_dict[op.desc.original_id()] = self._op_fp16_dict[
                     fwd_op_id
                 ]
@@ -297,7 +297,7 @@ class FP16State:
         ):
             return
 
-        if var.dtype == core.VarDesc.VarType.FP32:
+        if var.dtype == paddle.float32:
             var.desc.set_dtype(__target_dtype__)
 
     def resolute_cast_op(self, block):
@@ -433,7 +433,7 @@ class FP16State:
                     for in_var_name in op.input_arg_names:
                         assert (
                             in_var.dtype == block.var(in_var_name).dtype
-                        ), f"{in_var}, {block.var(in_var_name)}, {str(op)}"
+                        ), f"{in_var}, {block.var(in_var_name)}, {op}"
                     out_var.desc.set_dtype(in_var.dtype)
 
             idx += num_cast_ops + 1
@@ -445,9 +445,7 @@ class FP16State:
         num_cast_ops = 0
 
         for in_name in op.input_names:
-            if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
-                op, in_name
-            ):
+            if src_dtype == paddle.float32 and _keep_fp32_input(op, in_name):
                 continue
 
             consume_op_attr = dist_context.get_op_dist_attr_for_program(op)
@@ -550,7 +548,7 @@ class FP16State:
             out_var = block.var(out_var_name)
             if _keep_fp32_output(op, out_var.name):
                 continue
-            assert out_var.dtype == dst_dtype, f"{str(out_var)}, {dst_dtype}"
+            assert out_var.dtype == dst_dtype, f"{out_var}, {dst_dtype}"
 
         for (
             cast_name,
@@ -564,7 +562,7 @@ class FP16State:
             if slot_name in op.input_names:
                 assert src_name in op.input(
                     slot_name
-                ), f"var: {src_name} not in op's {slot_name}. {str(op)}"
+                ), f"var: {src_name} not in op's {slot_name}. {op}"
                 src_var_dist_attr = grad_op_attr.get_input_dist_attr(src_name)
                 assert src_var_dist_attr is not None
                 op._rename_input(src_name, cast_name)
@@ -578,7 +576,7 @@ class FP16State:
                     continue
                 assert (
                     len(op.output(grad_slot_name)) == 1
-                ), f"[{grad_slot_name}], Current Op: {str(op)}"
+                ), f"[{grad_slot_name}], Current Op: {op}"
                 grad_name = op.output(grad_slot_name)[0]
                 grad = block.var(grad_name)
                 grad_dist_attr = grad_op_attr.get_output_dist_attr(grad_name)
@@ -692,7 +690,7 @@ def _check_and_update_gradient(grads, loss_scaling, name, dist_context):
 
 def _split_grads(params_grads):
     grads = [g for _, g in params_grads]
-    fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
+    fp32_grads = [g for g in grads if g.dtype == paddle.float32]
     fp16_grads = [g for g in grads if g.dtype == __target_dtype__]
     assert len(fp32_grads) + len(fp16_grads) == len(
         grads
@@ -807,9 +805,9 @@ def cast_startup_program():
             if param_to_dtype.get(output_name, None) == __target_dtype__:
                 assert op.has_attr(
                     'dtype'
-                ), f"initialization op is supported to has dtype attribute but got {str(op)}."
+                ), f"initialization op is supported to has dtype attribute but got {op}."
                 out_var = startup_program.global_block().var(output_name)
-                if out_var.dtype == core.VarDesc.VarType.FP32:
+                if out_var.dtype == paddle.float32:
                     out_var.desc.set_dtype(__target_dtype__)
                 if op.attr('dtype') == core.VarDesc.VarType.FP32:
                     op._set_attr('dtype', __target_dtype__)
@@ -833,7 +831,7 @@ class FP16Pass(AMPPass):
             self.use_optimizer_fp16 = self.get_attr("level", None) == "o3"
 
         AMPList = amp_utils.AutoMixedPrecisionLists
-        # swith enviroment for fp16 / bf16.
+        # switch environment for fp16 / bf16.
         if self.target_dtype == "float16":
             __target_dtype = core.VarDesc.VarType.FP16
         elif self.target_dtype == "bfloat16":
@@ -853,7 +851,7 @@ class FP16Pass(AMPPass):
             dtype=self.target_dtype,
         )
 
-        # NOTE don't not change input data dtype, since it is controled by dataloader
+        # NOTE don't not change input data dtype, since it is controlled by dataloader
         # and which is out of control of FP16 Pass
         input_data_var_names = [var.name for var in self.get_attr("input_data")]
         with paddle.static.program_guard(main_program, startup_program):

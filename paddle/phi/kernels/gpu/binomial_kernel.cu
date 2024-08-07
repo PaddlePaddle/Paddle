@@ -74,8 +74,13 @@ __device__ int64_t btrs(
   const T m = std::floor((n + 1) * p);
 
   while (1) {
+#ifdef __NVCC__
     U = static_cast<T>(curand_uniform(&state)) - 0.5;
     V = static_cast<T>(curand_uniform(&state));
+#elif __HIPCC__
+    U = static_cast<T>(hiprand_uniform(&state)) - 0.5;
+    V = static_cast<T>(hiprand_uniform(&state));
+#endif
 
     us = 0.5 - std::abs(U);
     k = static_cast<int64_t>(std::floor((2 * a / us + b) * U + c));
@@ -118,7 +123,11 @@ __device__ int64_t binomial_inversion(
 #endif
 
   while (1) {
+#ifdef __NVCC__
     unif = static_cast<T>(curand_uniform(&state));
+#elif __HIPCC__
+    unif = static_cast<T>(hiprand_uniform(&state));
+#endif
     T geom = std::ceil(std::log(unif) / logprob);
     geom_sum += geom;
     if (geom_sum > n) {

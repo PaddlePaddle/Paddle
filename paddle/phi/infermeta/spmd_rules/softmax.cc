@@ -23,24 +23,23 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   // Step0: Verify input args based on softmax logic
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
 
   VLOG(6) << "SoftmaxInferSpmd Inputs: "
           << "X shape: [" << str_join(x_shape) << "], x_dims_mapping: ["
@@ -57,7 +56,7 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // naive support for sharding on softmax_axis
   // softmax_axis should be resharded as replicated (TODO: support sharding on
   // softmax_axis effeciently)
@@ -70,7 +69,7 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
             << "resharded dims_mapping[" << str_join(x_dims_mapping) << "].";
   }
 
-  // Avoid multiple tensor axes sharded by same mesh deminsion
+  // Avoid multiple tensor axes sharded by same mesh dimension
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}}, false);
 
@@ -100,17 +99,17 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
   // Step0: verify input args based on softmax logic
   auto x_shape = common::vectorize(x.dims());
   auto out_shape = common::vectorize(out.dims());
-  int x_ndim = x_shape.size();
-  int out_ndim = out_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(out_shape.size());
   auto out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping.size()));
 
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
@@ -126,7 +125,7 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
   // so set its dim mapping to -1
   out_dims_mapping[axis] = -1;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{out_axes, out_dims_mapping}});
 
@@ -160,19 +159,19 @@ SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
 
   PADDLE_ENFORCE_EQ(out_grad.dims().size(),
                     out_grad.dist_attr().dims_mapping().size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor out_grad's rank [%d] and out_grad's "
                         "dims_mapping size [%d] are not matched.",
                         out_grad.dims().size(),
                         out_grad.dist_attr().dims_mapping().size()));
 
-  PADDLE_ENFORCE_GE(
-      out_grad.dist_attr().dims_mapping().size(),
-      axis,
-      phi::errors::InvalidArgument("The Tensor out_grad's rank [%d] must be "
-                                   "greater than axis [%d].",
-                                   out_grad.dist_attr().dims_mapping().size(),
-                                   axis));
+  PADDLE_ENFORCE_GE(out_grad.dist_attr().dims_mapping().size(),
+                    axis,
+                    common::errors::InvalidArgument(
+                        "The Tensor out_grad's rank [%d] must be "
+                        "greater than axis [%d].",
+                        out_grad.dist_attr().dims_mapping().size(),
+                        axis));
 
   // To keeping consistent with forward propagation, sharding on softmax_axis
   // is not supported now, the axis should be resharded as replicated.
@@ -206,5 +205,4 @@ SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
       DistMetaTensor(out_grad.dims(), out_grad_dist_attr));
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

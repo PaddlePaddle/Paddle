@@ -81,18 +81,23 @@ class TestRecurrentFeed(unittest.TestCase):
             in2.stop_gradient = False
             rt1 = RecurrentTest("RecurrentTest")
             static_sum_out, static_out = rt1(in1, in2)
-            base.backward.append_backward(static_sum_out)
+            static_out.persistable = True
             exe = base.Executor(
                 base.CPUPlace()
                 if not core.is_compiled_with_cuda()
                 else base.CUDAPlace(0)
             )
 
-            static_dout = (
-                base.default_main_program()
-                .block(0)
-                ._find_var_recursive(static_out.name + "@GRAD")
-            )
+            if paddle.framework.use_pir_api():
+                grad_list = paddle.static.append_backward(static_sum_out)
+                _, static_dout = grad_list[-1]
+            else:
+                base.backward.append_backward(static_sum_out)
+                static_dout = (
+                    base.default_main_program()
+                    .block(0)
+                    ._find_var_recursive(static_out.name + "@GRAD")
+                )
             fetch_list = [static_sum_out, static_out, static_dout]
             for i in range(3):
                 out = exe.run(

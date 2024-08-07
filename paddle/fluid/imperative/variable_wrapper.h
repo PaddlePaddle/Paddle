@@ -51,36 +51,36 @@ class VariableWrapper {
   framework::Variable* MutableVar() { return &var_; }
 
   // This is used for python api
-  void SetOverridedStopGradient(bool stop_gradient) {
-    overrided_stop_gradient_ = static_cast<int>(stop_gradient);
+  void SetOverriddenStopGradient(bool stop_gradient) {
+    overridden_stop_gradient_ = static_cast<int>(stop_gradient);
 
     if (auto grad_var = grad_var_.lock()) {
-      grad_var->SetOverridedStopGradient(stop_gradient);
+      grad_var->SetOverriddenStopGradient(stop_gradient);
     }
   }
 
   // This is used for python api
-  bool OverridedStopGradient() const { return overrided_stop_gradient_ != 0; }
+  bool OverriddenStopGradient() const { return overridden_stop_gradient_ != 0; }
 
   // This is used inside C++
-  int InnerOverridedStopGradient() const { return overrided_stop_gradient_; }
+  int InnerOverriddenStopGradient() const { return overridden_stop_gradient_; }
 
   // This is used inside C++
-  void InnerSetOverridedStopGradient(bool stop_gradient) {
-    if (overrided_stop_gradient_ == -1) {
-      overrided_stop_gradient_ = static_cast<int>(stop_gradient);
+  void InnerSetOverriddenStopGradient(bool stop_gradient) {
+    if (overridden_stop_gradient_ == -1) {
+      overridden_stop_gradient_ = static_cast<int>(stop_gradient);
     } else {
       VLOG(6) << "Ignore Stop gradient conversion for Var: " << Name()
-              << "Set value is: " << overrided_stop_gradient_;
+              << "Set value is: " << overridden_stop_gradient_;
     }
 
     if (auto grad_var = grad_var_.lock()) {
-      grad_var->InnerSetOverridedStopGradient(stop_gradient);
+      grad_var->InnerSetOverriddenStopGradient(stop_gradient);
     }
   }
 
   bool IsLeaf() const {
-    if (OverridedStopGradient()) {
+    if (OverriddenStopGradient()) {
       return true;
     }
     if (HasGradVar() && !GetGradVar()->HasGradNode()) {
@@ -90,7 +90,7 @@ class VariableWrapper {
   }
 
   bool IsLeafGrad() const {
-    if (!HasGradNode() && !OverridedStopGradient()) {
+    if (!HasGradNode() && !OverriddenStopGradient()) {
       return true;
     }
     return false;
@@ -109,7 +109,7 @@ class VariableWrapper {
       } else if (var_.IsType<phi::SelectedRows>()) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
-        PADDLE_THROW(platform::errors::PermissionDenied(
+        PADDLE_THROW(common::errors::PermissionDenied(
             "Only support LoDTensor and SelectedRows for gradient var"));
       }
       if (tensor && tensor->IsInitialized()) {
@@ -191,10 +191,9 @@ class VariableWrapper {
 
   void SetDataLayout(const phi::DataLayout layout) { layout_ = layout; }
 
-  const platform::Place Place() const {
+  const phi::Place Place() const {
     const phi::DenseTensor* tensor = nullptr;
-    auto place =
-        platform::CPUPlace();  // Default place for var not initialized.
+    auto place = phi::CPUPlace();  // Default place for var not initialized.
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
         tensor = &(var_.Get<phi::DenseTensor>());
@@ -287,7 +286,7 @@ class VariableWrapper {
       PADDLE_ENFORCE_EQ(
           shared_var,
           nullptr,
-          platform::errors::PermissionDenied(
+          common::errors::PermissionDenied(
               "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
     }
@@ -306,7 +305,7 @@ class VariableWrapper {
         PADDLE_ENFORCE_EQ(
             shared_node,
             nullptr,
-            platform::errors::PermissionDenied(
+            common::errors::PermissionDenied(
                 "Cannot set gradient op twice unless using Inplace Strategy."));
       } else if (shared_node) {
         VLOG(3) << "The gradient op of Var (" << Name()
@@ -325,7 +324,7 @@ class VariableWrapper {
   std::map<phi::KernelKey, std::shared_ptr<VariableWrapper>> var_cache;
   // add this property for users may set stop_gradient themselves and this
   // should override the frameworks setting (-1) unset, (1) true, (0) false
-  int overrided_stop_gradient_{-1};
+  int overridden_stop_gradient_{-1};
   bool persistable_{false};
 
   // Used for checking whether there is any inplace operation affecting gradient

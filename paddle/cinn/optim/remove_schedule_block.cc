@@ -29,13 +29,27 @@ struct ScheduleBlockRemover : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::ScheduleBlockRealize* op, Expr* expr) override {
     auto* node = expr->As<ir::ScheduleBlockRealize>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node,
+        phi::errors::InvalidArgument(
+            "The expression could not be cast to ir::ScheduleBlockRealize. "
+            "Please check the expression type."));
     auto& iter_values = node->iter_values;
     auto* schedule_block = node->schedule_block.As<ir::ScheduleBlock>();
-    CHECK(schedule_block);
+    PADDLE_ENFORCE_NOT_NULL(
+        schedule_block,
+        phi::errors::InvalidArgument(
+            "The schedule block could not be cast to ir::ScheduleBlock. Please "
+            "check the schedule block type."));
     auto& iter_vars = schedule_block->iter_vars;
     Expr body = schedule_block->body;
-    CHECK_EQ(iter_vars.size(), iter_values.size());
+    PADDLE_ENFORCE_EQ(iter_vars.size(),
+                      iter_values.size(),
+                      ::common::errors::InvalidArgument(
+                          "The size of iter vars and iter values is not equal,"
+                          "where iter vars:%d but iter values:%d.",
+                          iter_vars.size(),
+                          iter_values.size()));
     for (int i = 0; i < iter_vars.size(); i++) {
       optim::ReplaceVarWithExpr(&body, iter_vars[i], iter_values[i]);
     }

@@ -17,6 +17,7 @@ import unittest
 from test_case_base import TestCaseBase
 
 import paddle
+from paddle.framework import use_pir_api
 from paddle.jit.sot import symbolic_translate
 from paddle.static import BuildStrategy
 
@@ -33,7 +34,7 @@ def simple(x):
     return ret
 
 
-class TestExecutor(TestCaseBase):
+class TestExecutionBase(TestCaseBase):
     def test_simple(self):
         x = paddle.to_tensor([1.0])
         y = paddle.to_tensor([2.0])
@@ -52,6 +53,9 @@ class TestBackend(TestCaseBase):
     def test_backend(self):
         x = paddle.randn([2, 3])
         dy_out = foo(x)
+        # TODO(SigureMo): Find a better way to test the CINN backend.
+        if not paddle.is_compiled_with_cinn() and use_pir_api():
+            return
         sot_out = symbolic_translate(
             foo, build_strategy=BuildStrategy(), backend='CINN'
         )(x)

@@ -14,13 +14,15 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestDygraphShardingStage1(TestMultipleGpus):
+class TestDygraphShardingStage1(TestMultipleAccelerators):
     # check sharding logic as well as the accuracy with single mode
     def test_dygraph_sharding_stage1_bf16(self):
-        self.run_mnist_2gpu('dygraph_group_sharded_stage1_bf16.py')
+        self.run_mnist_2accelerators('dygraph_group_sharded_stage1_bf16.py')
 
 
 if __name__ == "__main__":

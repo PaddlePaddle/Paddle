@@ -15,15 +15,15 @@
 #pragma once
 
 #include <string>
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-PHI_DECLARE_int32(check_nan_inf_level);
+COMMON_DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {
@@ -42,7 +42,7 @@ struct TensorCheckerVisitor {
   TensorCheckerVisitor(const std::string& o,
                        const std::string& v,
                        const phi::DenseTensor& t,
-                       const platform::Place& p)
+                       const phi::Place& p)
       : op_type(o), var_name(v), tensor(t), place(p) {}
 
   template <typename T>
@@ -52,14 +52,13 @@ struct TensorCheckerVisitor {
   }
 
   template <typename T>
-  void apply(
-      typename std::enable_if<
-          std::is_floating_point<T>::value ||
-          std::is_same<T, ::paddle::platform::complex<float>>::value ||
-          std::is_same<T, ::paddle::platform::complex<double>>::value>::type* =
-          0) const {
+  void apply(typename std::enable_if<
+                 std::is_floating_point<T>::value ||
+                 std::is_same<T, ::phi::dtype::complex<float>>::value ||
+                 std::is_same<T, ::phi::dtype::complex<double>>::value>::type* =
+                 0) const {
     auto* dev_ctx = reinterpret_cast<Context*>(
-        platform::DeviceContextPool::Instance().Get(tensor.place()));
+        phi::DeviceContextPool::Instance().Get(tensor.place()));
 
     phi::DenseTensor stats;
     phi::DenseTensor values;
@@ -78,18 +77,22 @@ struct TensorCheckerVisitor {
   std::string op_type;
   std::string var_name;
   const phi::DenseTensor& tensor;
-  const platform::Place& place;
+  const phi::Place& place;
 };
 
 template <typename Context>
 void tensor_check(const std::string& op_type,
                   const std::string& var_name,
                   const phi::DenseTensor& tensor,
-                  const platform::Place& place) {
+                  const phi::Place& place) {
   TensorCheckerVisitor<Context> vistor(op_type, var_name, tensor, place);
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
+void InitWhiteListFormEnv();
+std::unordered_set<std::string>& op_type_nan_inf_white_list();
+std::unordered_map<std::string, std::vector<std::string>>&
+op_var_nan_inf_white_list();
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

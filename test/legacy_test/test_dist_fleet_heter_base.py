@@ -209,40 +209,24 @@ class TestFleetHeterBase(unittest.TestCase):
 
         if DIST_UT_PORT:
             print("set begin_port:", DIST_UT_PORT)
-            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                DIST_UT_PORT,
-                DIST_UT_PORT + 1,
+            self._ps_endpoints = (
+                f"127.0.0.1:{DIST_UT_PORT},127.0.0.1:{DIST_UT_PORT + 1}"
             )
-            self._tr_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                DIST_UT_PORT + 2,
-                DIST_UT_PORT + 3,
+            self._tr_endpoints = (
+                f"127.0.0.1:{DIST_UT_PORT + 2},127.0.0.1:{DIST_UT_PORT + 3}"
             )
-            self._heter_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                DIST_UT_PORT + 4,
-                DIST_UT_PORT + 5,
+            self._heter_endpoints = (
+                f"127.0.0.1:{DIST_UT_PORT + 4},127.0.0.1:{DIST_UT_PORT + 5}"
             )
-            self._heter_endpoints_2 = "127.0.0.1:{},127.0.0.1:{}".format(
-                DIST_UT_PORT + 6,
-                DIST_UT_PORT + 7,
+            self._heter_endpoints_2 = (
+                f"127.0.0.1:{DIST_UT_PORT + 6},127.0.0.1:{DIST_UT_PORT + 7}"
             )
             DIST_UT_PORT += 8
         else:
-            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                self._find_free_port(),
-                self._find_free_port(),
-            )
-            self._tr_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                self._find_free_port(),
-                self._find_free_port(),
-            )
-            self._heter_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                self._find_free_port(),
-                self._find_free_port(),
-            )
-            self._heter_endpoints_2 = "127.0.0.1:{},127.0.0.1:{}".format(
-                self._find_free_port(),
-                self._find_free_port(),
-            )
+            self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
+            self._tr_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
+            self._heter_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
+            self._heter_endpoints_2 = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
 
         self._python_interp = sys.executable
         self._geo_sgd_need_push_nums = 5
@@ -376,47 +360,11 @@ class TestFleetHeterBase(unittest.TestCase):
             (self._heter_endpoints, self._heter_endpoints_2)
         )
 
-        tr_cmd = "{} {} --role trainer --endpoints {} --trainer_endpoints {} --current_id {{}} --trainers {} --mode {} --geo_sgd_need_push_nums {} --reader {} --gloo_path {} --heter_trainer_endpoints {} --heter_trainer_device {}".format(
-            python_path,
-            model,
-            self._ps_endpoints,
-            self._tr_endpoints,
-            self._trainers,
-            self._mode,
-            self._geo_sgd_need_push_nums,
-            self._reader,
-            gloo_path,
-            self._all_heter_endpoints,
-            self._heter_device,
-        )
+        tr_cmd = f"{python_path} {model} --role trainer --endpoints {self._ps_endpoints} --trainer_endpoints {self._tr_endpoints} --current_id {{}} --trainers {self._trainers} --mode {self._mode} --geo_sgd_need_push_nums {self._geo_sgd_need_push_nums} --reader {self._reader} --gloo_path {gloo_path} --heter_trainer_endpoints {self._all_heter_endpoints} --heter_trainer_device {self._heter_device}"
 
-        ps_cmd = "{} {} --role pserver --endpoints {} --trainer_endpoints {} --current_id {{}} --trainers {} --mode {} --geo_sgd_need_push_nums {} --reader {} --gloo_path {} --heter_trainer_endpoints {} --heter_trainer_device {}".format(
-            python_path,
-            model,
-            self._ps_endpoints,
-            self._tr_endpoints,
-            self._trainers,
-            self._mode,
-            self._geo_sgd_need_push_nums,
-            self._reader,
-            gloo_path,
-            self._all_heter_endpoints,
-            self._heter_device,
-        )
+        ps_cmd = f"{python_path} {model} --role pserver --endpoints {self._ps_endpoints} --trainer_endpoints {self._tr_endpoints} --current_id {{}} --trainers {self._trainers} --mode {self._mode} --geo_sgd_need_push_nums {self._geo_sgd_need_push_nums} --reader {self._reader} --gloo_path {gloo_path} --heter_trainer_endpoints {self._all_heter_endpoints} --heter_trainer_device {self._heter_device}"
 
-        heter_cmd = "{} {} --role heter_trainer --endpoints {} --trainer_endpoints {} --current_id {{}} --stage_id {{}} --trainers {} --mode {} --geo_sgd_need_push_nums {} --reader {} --gloo_path {} --heter_trainer_endpoints {} --heter_trainer_device {}".format(
-            python_path,
-            model,
-            self._ps_endpoints,
-            self._tr_endpoints,
-            self._trainers,
-            self._mode,
-            self._geo_sgd_need_push_nums,
-            self._reader,
-            gloo_path,
-            self._all_heter_endpoints,
-            self._heter_device,
-        )
+        heter_cmd = f"{python_path} {model} --role heter_trainer --endpoints {self._ps_endpoints} --trainer_endpoints {self._tr_endpoints} --current_id {{}} --stage_id {{}} --trainers {self._trainers} --mode {self._mode} --geo_sgd_need_push_nums {self._geo_sgd_need_push_nums} --reader {self._reader} --gloo_path {gloo_path} --heter_trainer_endpoints {self._all_heter_endpoints} --heter_trainer_device {self._heter_device}"
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)

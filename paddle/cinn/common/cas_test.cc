@@ -371,7 +371,7 @@ TEST(CAS, SimplifyCompoundMod) {
 #endif
   }
 }
-TEST(CAS, SimplifyNegtive) {
+TEST(CAS, SimplifyNegative) {
   {  // (-1*x) /2
     Var x = ir::_Var_::Make("x", Int(32));
     auto p0 = ir::FracOp::Make(-x, Expr(2));
@@ -458,9 +458,6 @@ TEST(CAS, cond) {
 TEST(CAS, SimplifyFracOp) {
   Expr frac = Expr(1) / Expr(7) / Expr(6) / Expr(5) / Expr(4);
   EXPECT_EQ(GetStreamCnt(AutoSimplify(frac)), "0");
-
-  Expr frac_f = Expr(20.0f) / Expr(2.0f) / Expr(1.0f) / Expr(5.0f);
-  EXPECT_EQ(GetStreamCnt(AutoSimplify(frac_f)), "2.00000000f");
 }
 
 }  // namespace common

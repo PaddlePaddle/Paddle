@@ -72,7 +72,7 @@ class FusionGroupPassTest(PassTest):
             elif var.dtype == paddle.float16:
                 dtype = "float16"
             else:
-                raise ValueError("Unsupported dtype %s" % var.dtype)
+                raise ValueError(f"Unsupported dtype {var.dtype}")
             feeds[var.name] = np.random.random(shape).astype(dtype)
         return feeds
 

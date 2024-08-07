@@ -20,14 +20,14 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
 #include "paddle/fluid/jit/engine/predictor_engine.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_string(jit_engine_type);
+COMMON_DECLARE_string(jit_engine_type);
 
 namespace paddle {
 namespace jit {
@@ -37,7 +37,7 @@ using FunctionInfoMap =
 
 Layer Deserializer::operator()(const std::string& path,
                                const phi::Place& place) {
-  const auto& pdmodel_paths = utils::PdmodelFilePaths(path);
+  const auto& pdmodel_paths = utils::ModelFilePaths(path);
   // set is ordered
   std::set<std::string> param_names_set;
   FunctionInfoMap info_map;
@@ -98,14 +98,14 @@ void Deserializer::ReadTensorData(
     std::shared_ptr<VariableMap> params_dict) const {
   VLOG(3) << "ReadTensorData from: " << file_name;
   std::ifstream fin(file_name, std::ios::binary);
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(place);
   for (const auto& item : var_name) {
     VLOG(3) << "load Tensor: " << item;
     Variable v;
     // TODO(dev): Support framework::Vocab
-    DenseTensor* dense_tesnor = v.GetMutable<DenseTensor>();
-    framework::DeserializeFromStream(fin, dense_tesnor, dev_ctx);
+    DenseTensor* dense_tensor = v.GetMutable<DenseTensor>();
+    framework::DeserializeFromStream(fin, dense_tensor, dev_ctx);
     (*params_dict)[item] = std::make_shared<Variable>(v);
   }
 }

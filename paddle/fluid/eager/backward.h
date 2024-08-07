@@ -27,7 +27,7 @@ TEST_API void Backward(const std::vector<paddle::Tensor>& tensors,
                        const std::vector<paddle::Tensor>& grad_tensors,
                        bool retain_graph = false);
 
-std::vector<paddle::Tensor> Grad(
+TEST_API std::vector<paddle::Tensor> Grad(
     const std::vector<paddle::Tensor>& tensors,
     const std::vector<paddle::Tensor>& inputs,
     const std::vector<paddle::Tensor>& grad_tensors = {},

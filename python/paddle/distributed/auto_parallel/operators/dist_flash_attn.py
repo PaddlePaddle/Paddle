@@ -66,7 +66,7 @@ class DistributedFlashAttnImpl0(DistributedElementwiseImpl0):
         ):
             assert (
                 op_dist_attr is not None
-            ), f"forward op [{str(src_op)}] don't have dist attribute !"
+            ), f"forward op [{src_op}] don't have dist attribute !"
 
             if (
                 len(kwargs.get('fixed_seed_offset', [])) > 0

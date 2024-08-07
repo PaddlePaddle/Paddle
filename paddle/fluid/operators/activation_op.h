@@ -26,19 +26,19 @@ limitations under the License. */
 
 #include <type_traits>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::To32BitIndex;
+using phi::To32BitIndex;
 
 using ActBwdOpFwdDeps = phi::funcs::ActBwdOpFwdDeps;
 
@@ -54,12 +54,12 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
   auto x_var = context.InputVar("X");
   auto out_var = context.OutputVar("Out");
   PADDLE_ENFORCE_NOT_NULL(x_var,
-                          platform::errors::NotFound(
+                          common::errors::NotFound(
                               "Cannot get input Variable X, variable name = %s",
                               context.InputName("X")));
   PADDLE_ENFORCE_NOT_NULL(
       out_var,
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "Cannot get output Variable Out, variable name = %s",
           context.OutputName("Out")));
   if (CanBeUsedBySelectedRows.count(context.Type())) {
@@ -73,9 +73,9 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
 
   PADDLE_ENFORCE_NOT_NULL(
       *Out,
-      platform::errors::NotFound("Cannot get the tensor from the Variable "
-                                 "Output(Out), variable name = %s",
-                                 context.OutputName("Out")));
+      common::errors::NotFound("Cannot get the tensor from the Variable "
+                               "Output(Out), variable name = %s",
+                               context.OutputName("Out")));
 }
 
 template <ActBwdOpFwdDeps kDepValue>
@@ -94,20 +94,20 @@ inline void ExtractActivationGradTensor(
     out_var = context.InputVar("Out");
     PADDLE_ENFORCE_NOT_NULL(
         out_var,
-        platform::errors::NotFound(
+        common::errors::NotFound(
             "Cannot get input Variable Out, variable name = %s",
             context.InputName("Out")));
   }
 
   PADDLE_ENFORCE_NOT_NULL(
       out_grad_var,
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "Cannot get input Variable %s, variable name = %s",
           framework::GradVarName("Out"),
           context.InputName(framework::GradVarName("Out"))));
   PADDLE_ENFORCE_NOT_NULL(
       x_grad_var,
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "Cannot get output Variable %s, variable name = %s",
           framework::GradVarName("X"),
           context.OutputName(framework::GradVarName("X"))));
@@ -138,7 +138,7 @@ inline void ExtractActivationGradTensor(
   }
 
   PADDLE_ENFORCE_NOT_NULL(*dX,
-                          platform::errors::NotFound(
+                          common::errors::NotFound(
                               "Cannot get the tensor from the Variable "
                               "Output(Out), variable name = %s",
                               context.OutputName(framework::GradVarName("X"))));
@@ -147,9 +147,9 @@ inline void ExtractActivationGradTensor(
     auto x_var = context.InputVar("X");
     PADDLE_ENFORCE_NOT_NULL(
         x_var,
-        platform::errors::NotFound("Cannot get the tensor from the "
-                                   "Variable Input(X), variable name = %s",
-                                   context.InputName("X")));
+        common::errors::NotFound("Cannot get the tensor from the "
+                                 "Variable Input(X), variable name = %s",
+                                 context.InputName("X")));
     if (CanBeUsedBySelectedRows.count(context.Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     } else {
@@ -173,9 +173,9 @@ class ActivationKernel
     ExtractActivationTensor(context, &X, &Out);
     Out->mutable_data<T>(context.GetPlace());
 
-    auto x = framework::EigenVector<T>::Flatten(
+    auto x = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "Activation"));
-    auto out = framework::EigenVector<T>::Flatten(
+    auto out = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
@@ -187,7 +187,8 @@ class ActivationKernel
     }
     // use 32bit index to speed up computation
     bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-    bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+    bool is_gpu_place =
+        context.GetPlace().GetType() == phi::AllocationType::GPU;
     if (use_32bit_index && is_gpu_place) {
       functor(*place, To32BitIndex(x), To32BitIndex(out));
     } else {
@@ -208,13 +209,13 @@ class ActivationGradKernel
     ExtractActivationGradTensor<Functor::FwdDeps()>(
         context, &X, &Out, &dOut, &dX);
     dX->mutable_data<T>(context.GetPlace());
-    auto dout = framework::EigenVector<T>::Flatten(
+    auto dout = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
-    auto out = framework::EigenVector<T>::Flatten(
+    auto out = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
-    auto dx = framework::EigenVector<T>::Flatten(
+    auto dx = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
-    auto x = framework::EigenVector<T>::Flatten(
+    auto x = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
@@ -225,7 +226,8 @@ class ActivationGradKernel
     }
     // use 32bit index to speed up computation
     bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-    bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+    bool is_gpu_place =
+        context.GetPlace().GetType() == phi::AllocationType::GPU;
     if (use_32bit_index && is_gpu_place) {
       functor(*place,
               To32BitIndex(x),
@@ -356,12 +358,12 @@ struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
                   phi::DenseTensor* dOut,
                   phi::DenseTensor* dX) const {
     auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(
+    auto ddx = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "DDX", "AbsGradGrad"));
-    auto x = framework::EigenVector<T>::Flatten(
+    auto x = phi::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "AbsGradGrad"));
     if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(
+      auto ddout = phi::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "AbsGradGrad"));
       ddout.device(*d) = ddx * x.sign();
     }
@@ -371,7 +373,7 @@ struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
 
 // TODO(dengkaipeng): double gradient calculation for Square/Sqrt need
 // DOut(dy) as input(not output), tensor extraction is different from
-// others. Impliment extraction kernel separately here.
+// others. Implement extraction kernel separately here.
 inline void ExtractDoubleGradTensorWithInputDOut(
     const framework::ExecutionContext& ctx,
     const phi::DenseTensor** X,
@@ -384,7 +386,7 @@ inline void ExtractDoubleGradTensorWithInputDOut(
   auto ddo_var = ctx.OutputVar("DDOut");
   PADDLE_ENFORCE_NOT_NULL(
       ddx_var,
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "Cannot get input Variable Out, variable name = %s",
           ctx.InputName("DDX")));
   *ddX = ctx.Input<phi::DenseTensor>("DDX");
@@ -393,7 +395,7 @@ inline void ExtractDoubleGradTensorWithInputDOut(
   }
   PADDLE_ENFORCE_NOT_NULL(
       ddX,
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "Cannot get the tensor from the Variable DDX, variable name = %s",
           ctx.OutputName("DDX")));
 
@@ -401,7 +403,7 @@ inline void ExtractDoubleGradTensorWithInputDOut(
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE_NOT_NULL(
       x_var,
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "Cannot get input Variable Out, variable name = %s",
           ctx.InputName("X")));
   auto dx_var = ctx.OutputVar("DX");

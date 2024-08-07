@@ -21,8 +21,8 @@
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/simplify_value.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
-
+#include "paddle/common/enforce.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 namespace cinn::adt {
 
 namespace {
@@ -67,7 +67,7 @@ struct SimplifyRedundantBroadcastedIterator {
       const auto& simplified_bd = DimExpr{symbol::SimplifyDimExpr(bd)};
       return BroadcastedIterator<Value, DimExpr>{inner_iterator, simplified_bd};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 };
 
@@ -221,7 +221,12 @@ struct SimplifyGcdShape {
         IndexDotValue<Value, List<DimExpr>> sub_range_dot{
             sub_range_dot_iterators, sub_range_dot_dims};
         if (sub_range_undot_dims->size() == 1) {
-          CHECK_EQ(sub_range_item_idx, 0);
+          PADDLE_ENFORCE_EQ(
+              sub_range_item_idx,
+              0UL,
+              ::common::errors::InvalidArgument(
+                  "The sub_range_item_idx should be 0, but got %d.",
+                  sub_range_item_idx));
           return sub_range_dot;
         } else {
           IndexUnDotValue<Value, List<DimExpr>> sub_range_undot{
@@ -269,11 +274,44 @@ struct SimplifyGcdShape {
   template <typename ContainerT>
   void CheckRange(const ContainerT& container,
                   const std::pair<int, int>& range) const {
-    CHECK_GE(range.first, 0);
-    CHECK_GE(range.second, 0);
-    CHECK_LE(range.first, container->size());
-    CHECK_LE(range.second, container->size());
-    CHECK_LT(range.first, range.second);
+    PADDLE_ENFORCE_GE(
+        range.first,
+        0UL,
+        ::common::errors::InvalidArgument(
+            "The range.first should be greater than or equal to 0, "
+            "but got %d.",
+            range.first));
+    PADDLE_ENFORCE_GE(
+        range.second,
+        0UL,
+        ::common::errors::InvalidArgument(
+            "The range.second should be greater than or equal to 0, "
+            "but got %d.",
+            range.second));
+    PADDLE_ENFORCE_LE(range.first,
+                      container->size(),
+                      ::common::errors::InvalidArgument(
+                          "The range.first should be less than or equal to the "
+                          "size of the container, but got range.first = %d, "
+                          "container size = %d.",
+                          range.first,
+                          container->size()));
+    PADDLE_ENFORCE_LE(
+        range.second,
+        container->size(),
+        ::common::errors::InvalidArgument(
+            "The range.second should be less than or equal to the "
+            "size of the container, but got range.second = %d, "
+            "container size = %d.",
+            range.second,
+            container->size()));
+    PADDLE_ENFORCE_LT(range.first,
+                      range.second,
+                      ::common::errors::InvalidArgument(
+                          "The range.first should be less than range.second, "
+                          "but got range.first = %d, range.second = %d.",
+                          range.first,
+                          range.second));
   }
 };
 
@@ -292,7 +330,14 @@ struct SimplifyDotDot {
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
     const auto& [index_dot_values, dot_dims] =
         value.Get<IndexDotValue<Value, List<DimExpr>>>().tuple();
-    CHECK_EQ(index_dot_values.Get<List<Value>>()->size(), dot_dims->size());
+    PADDLE_ENFORCE_EQ(
+        index_dot_values.Get<List<Value>>()->size(),
+        dot_dims->size(),
+        ::common::errors::InvalidArgument(
+            "The size of index_dot_values and dot_dims should be equal, "
+            "but got index_dot_values size = %d, dot_dims size = %d.",
+            index_dot_values.Get<List<Value>>()->size(),
+            dot_dims->size()));
     List<Value> new_dot_values{};
     List<DimExpr> new_dot_dims{};
     for (std::size_t i = 0; i < index_dot_values.Get<List<Value>>()->size();
@@ -368,7 +413,7 @@ struct SymbolicDim_SimplifyDotUndot {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 };
 
@@ -415,7 +460,7 @@ struct SymbolicDim_SimplifyDotUndot_DimExpr {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    LOG(FATAL) << "Dead code";
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 };
 
@@ -471,7 +516,14 @@ struct SymbolicDim_SimplifyDotDot {
   Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
     const auto& [index_dot_values, dot_dims] =
         value.Get<IndexDotValue<Value, List<DimExpr>>>().tuple();
-    CHECK_EQ(index_dot_values.Get<List<Value>>()->size(), dot_dims->size());
+    PADDLE_ENFORCE_EQ(
+        index_dot_values.Get<List<Value>>()->size(),
+        dot_dims->size(),
+        ::common::errors::InvalidArgument(
+            "The size of index_dot_values and dot_dims should be equal, "
+            "but got index_dot_values size = %d, dot_dims size = %d.",
+            index_dot_values.Get<List<Value>>()->size(),
+            dot_dims->size()));
     List<Value> new_dot_values{};
     List<DimExpr> new_dot_dims{};
     for (std::size_t i = 0; i < index_dot_values.Get<List<Value>>()->size();

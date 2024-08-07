@@ -40,7 +40,7 @@ dygraph_guard = wrap_decorator(_dygraph_guard_)
 
 def random_var(size, low=-1, high=1, dtype='float32'):
     x_np = np.random.uniform(low=low, high=high, size=size).astype(dtype)
-    return base.dygraph.to_variable(x_np)
+    return paddle.to_tensor(x_np)
 
 
 class TestEagerGrad(TestCase):
@@ -322,7 +322,7 @@ class TestDygraphDoubleGrad(TestCase):
         )
         np.random.shuffle(x_np)
 
-        x = base.dygraph.to_variable(x_np)
+        x = paddle.to_tensor(x_np)
         x.stop_gradient = False
 
         alpha = 0.2
@@ -537,8 +537,14 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
         with base.dygraph.guard():
             paddle.seed(123)
-            paddle.framework.random._manual_program_seed(123)
-            a = base.dygraph.to_variable(value)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(123)
+                paddle.framework.random._manual_program_seed(123)
+            else:
+                paddle.framework.random._manual_program_seed(123)
+            a = paddle.to_tensor(value)
             a.stop_gradient = False
 
             out = model_f(a)
@@ -555,8 +561,14 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
 
         with base.dygraph.guard():
             paddle.seed(123)
-            paddle.framework.random._manual_program_seed(123)
-            a = base.dygraph.to_variable(value)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(123)
+                paddle.framework.random._manual_program_seed(123)
+            else:
+                paddle.framework.random._manual_program_seed(123)
+            a = paddle.to_tensor(value)
             a.stop_gradient = False
 
             out = model_f(a)
@@ -567,25 +579,16 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
         np.testing.assert_array_equal(grad_1, grad_2)
 
 
-class TestRaiseNoDoubleGradOp(TestCase):
-    def test_no_grad_op(self):
-        with base.dygraph.guard():
-            x = paddle.ones(shape=[2, 3, 2, 2], dtype='float32')
-            x.stop_gradient = False
-            y = paddle.static.nn.group_norm(x, groups=1)
-
-            dx = base.dygraph.grad(
-                outputs=[y], inputs=[x], create_graph=True, retain_graph=True
-            )[0]
-
-            loss = paddle.mean(dx)
-            loss.backward()
-
-
 class TestDoubleGradResNet(TestCase):
     def setUp(self):
         paddle.seed(123)
-        paddle.framework.random._manual_program_seed(123)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                paddle.framework.random._manual_program_seed(123)
+            paddle.framework.random._manual_program_seed(123)
+        else:
+            paddle.framework.random._manual_program_seed(123)
         self.data = np.random.rand(1, 3, 224, 224).astype(np.float32)
 
     @dygraph_guard

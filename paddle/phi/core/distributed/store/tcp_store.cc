@@ -20,13 +20,10 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
-#include "paddle/phi/core/flags.h"
 
-namespace phi {
-namespace distributed {
-
-namespace detail {
+namespace phi::distributed::detail {
 
 constexpr int INFTIME = 10000;  // 10 seconds
 
@@ -105,7 +102,7 @@ void MasterDaemon::_do_get(SocketType socket) {
   PADDLE_ENFORCE_NE(
       iter,
       _store.end(),
-      phi::errors::InvalidArgument("Key %s not found in TCPStore.", key));
+      common::errors::InvalidArgument("Key %s not found in TCPStore.", key));
   std::vector<uint8_t> value = iter->second;
   tcputils::send_vector<uint8_t>(socket, value);
 }
@@ -128,7 +125,7 @@ void MasterDaemon::InitControlFd() {
   PADDLE_ENFORCE_NE(
       pipe(_control_fd.data()),
       -1,
-      phi::errors::Fatal("failed to cread control pipe errno:%d", errno));
+      common::errors::Fatal("failed to cread control pipe errno:%d", errno));
 }
 void MasterDaemon::CloseControlFd() {
   for (int fd : _control_fd) {
@@ -143,7 +140,7 @@ void MasterDaemon::StopByControlFd() {
     PADDLE_ENFORCE_NE(
         ::write(_control_fd[1], "\0", 1),
         -1,
-        phi::errors::Fatal("failed to write control pipe errno:%d", errno));
+        common::errors::Fatal("failed to write control pipe errno:%d", errno));
     // close the write end of the pipe
     ::close(_control_fd[1]);
     _control_fd[1] = -1;
@@ -154,7 +151,7 @@ void MasterDaemon::InitControlFd() {
   ghStopEvent_ = CreateEvent(NULL, TRUE, FALSE, NULL);
   PADDLE_ENFORCE_NE(ghStopEvent_,
                     nullptr,
-                    phi::errors::Fatal("failed to cread control pipe"));
+                    common::errors::Fatal("failed to cread control pipe"));
 }
 void MasterDaemon::CloseControlFd() { CloseHandle(ghStopEvent_); }
 void MasterDaemon::StopByControlFd() { SetEvent(ghStopEvent_); }
@@ -241,8 +238,12 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
 #else
       _sockets.erase(_sockets.begin() + i - 2);
 #endif
-
-      VLOG(5) << "Meet some exceptions during run:" << ex.what();
+      std::string s(ex.what());
+      if (s.find("TCP connection reset by peer") != std::string::npos) {
+        VLOG(5) << "TCP connection reset by peer";
+      } else {
+        VLOG(5) << "Meet some exceptions during run:" << ex.what();
+      }
     }
   }
 }
@@ -284,7 +285,7 @@ void MasterDaemon::run() {
     if (fds[1].revents != 0) {
       if (fds[1].revents & ~(POLLIN | POLLHUP)) {
         PADDLE_THROW(
-            phi::errors::Fatal("Undefined event type:%d", fds[1].revents));
+            common::errors::Fatal("Undefined event type:%d", fds[1].revents));
       }
       VLOG(0)
           << "receive shutdown event and so quit from MasterDaemon run loop";
@@ -354,7 +355,8 @@ std::vector<T> TCPClient::receive_vector() {
   return tcputils::receive_vector<T>(_socket);
 }
 
-}  // namespace detail
+}  // namespace phi::distributed::detail
+namespace phi::distributed {
 
 TCPStore::TCPStore(std::string host,
                    uint16_t port,
@@ -366,7 +368,9 @@ TCPStore::TCPStore(std::string host,
       _num_workers(static_cast<int>(num_workers)) {
   _timeout = timeout;
   PADDLE_ENFORCE_GT(
-      timeout, 0, phi::errors::InvalidArgument("timeout must >= %d", timeout));
+      timeout,
+      0,
+      common::errors::InvalidArgument("timeout must >= %d", timeout));
 
   VLOG(7) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
@@ -399,16 +403,16 @@ void TCPStore::waitWorkers() {
 
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       if (_timeout != 0 && elapsed.count() > _timeout) {
-        LOG(FATAL) << paddle::string::Sprintf(
+        PADDLE_THROW(common::errors::Fatal(paddle::string::Sprintf(
             "_timeout:%d elapsed:%d (elapsed > _timeout)=%d",
             _timeout,
             elapsed.count(),
-            elapsed.count() > _timeout);
+            elapsed.count() > _timeout)));
 
         PADDLE_ENFORCE_EQ(
             completed,
             _num_workers,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "TCPStore timeouted and not all workers got ready."));
       }
     } while (true);
@@ -455,10 +459,9 @@ void TCPStore::wait(const std::string& key) {
   PADDLE_ENFORCE_EQ(
       reply == ReplyType::STOP_WAIT,
       true,
-      phi::errors::InvalidArgument("Stop_waiting response is expected"));
+      common::errors::InvalidArgument("Stop_waiting response is expected"));
 }
 
 TCPStore::~TCPStore() { VLOG(7) << "TCPStore destructure"; }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

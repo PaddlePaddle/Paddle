@@ -24,7 +24,7 @@ std::vector<int64_t> GetExtendedXDims(const std::vector<int64_t>& x_vec_dims,
   std::vector<int64_t> extended_x_dims(new_size, 1);
   std::copy(x_vec_dims.begin(),
             x_vec_dims.end(),
-            extended_x_dims.begin() + new_size - x_vec_dims.size());
+            extended_x_dims.begin() + new_size - x_vec_dims.size());  // NOLINT
 
   return extended_x_dims;
 }
@@ -45,7 +45,7 @@ void ExpandKernel(const Context& dev_ctx,
   }
 
   if (x_vec_dims.size() != out_new_dims.size()) {
-    x_vec_dims = GetExtendedXDims(x_vec_dims, out_new_dims.size());
+    x_vec_dims = GetExtendedXDims(x_vec_dims, out_new_dims.size());  // NOLINT
   }
 
   out->Resize(common::make_ddim(out_new_dims));

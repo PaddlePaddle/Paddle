@@ -22,10 +22,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op =
@@ -71,13 +71,29 @@ TEST(DrrTest, reduce_sum) {
 
   auto it = program.block()->begin();
 
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::FullOp, but it is not."));
   it++;
-  CHECK_EQ(it->isa<cinn::dialect::ReduceSumOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<cinn::dialect::ReduceSumOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "cinn::dialect::ReduceSumOp, but it is not."));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::ReluOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::ReluOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::ReluOp, but it is not."));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::ExpOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::ExpOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::ExpOp, but it is not."));
 }
 
 TEST(DrrTest, reduce_max) {
@@ -95,11 +111,27 @@ TEST(DrrTest, reduce_max) {
 
   auto it = program.block()->begin();
 
-  CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::FullOp, but it is not."));
   it++;
-  CHECK_EQ(it->isa<cinn::dialect::ReduceMaxOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<cinn::dialect::ReduceMaxOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "cinn::dialect::ReduceMaxOp, but it is not."));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::ReluOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::ReluOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::ReluOp, but it is not."));
   it++;
-  CHECK_EQ(it->isa<paddle::dialect::ExpOp>(), true);
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::ExpOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::ExpOp, but it is not."));
 }

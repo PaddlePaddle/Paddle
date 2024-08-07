@@ -18,7 +18,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/op_base.h"
 
 using KernelKeyTuple = std::tuple<phi::DataType, phi::Backend>;
 
@@ -56,6 +56,14 @@ class ParseKernelKeyInterface
 
 // Register the ParseKernelKeyInterface for unique op.
 KernelKeyTuple UniqueOpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple SaveCombineOpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple NopOpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple Nop_OpParseKernelKey(pir::Operation *op);
+
+KernelKeyTuple PullGpupsSparseKernelKey(pir::Operation *op);
 
 }  // namespace dialect
 }  // namespace paddle

@@ -11,10 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
+from typing import TYPE_CHECKING, Any, Generator
 
 import paddle
+from paddle import _C_ops
 
 from . import unique_name
 from .dygraph_utils import _append_activation_in_dygraph
@@ -27,9 +30,13 @@ from .framework import (
 from .layer_helper_base import LayerHelperBase
 from .param_attr import ParamAttr
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.framework import Operator
+
 
 class LayerHelper(LayerHelperBase):
-    def __init__(self, layer_type, **kwargs):
+    def __init__(self, layer_type: str, **kwargs: Any) -> None:
         self.kwargs = kwargs
         name = self.kwargs.get('name', None)
         # TODO(panyx0718, minqiyang): dygraph mode
@@ -45,10 +52,10 @@ class LayerHelper(LayerHelperBase):
 
         super().__init__(self.kwargs['name'], layer_type=layer_type)
 
-    def append_op(self, *args, **kwargs):
+    def append_op(self, *args: Any, **kwargs: Any) -> Operator:
         return self.main_program.current_block().append_op(*args, **kwargs)
 
-    def multiple_input(self, input_param_name='input'):
+    def multiple_input(self, input_param_name: str = 'input') -> list[Tensor]:
         inputs = self.kwargs.get(input_param_name, [])
         ret = []
         if isinstance(inputs, (list, tuple)):
@@ -58,22 +65,22 @@ class LayerHelper(LayerHelperBase):
             ret.append(self.to_variable(inputs))
         return ret
 
-    def input(self, input_param_name='input'):
+    def input(self, input_param_name: str = 'input') -> Tensor:
         inputs = self.multiple_input(input_param_name)
         if len(inputs) != 1:
             raise f"{self.layer_type} layer only takes one input"
         return inputs[0]
 
     @property
-    def param_attr(self):
+    def param_attr(self) -> ParamAttr:
         return ParamAttr._to_attr(self.kwargs.get('param_attr', None))
 
     @property
-    def bias_attr(self):
+    def bias_attr(self) -> ParamAttr:
         return ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of param_attr
-    def multiple_param_attr(self, length):
+    def multiple_param_attr(self, length: int) -> list[ParamAttr]:
         param_attr = self.param_attr
         if isinstance(param_attr, ParamAttr):
             param_attr = [param_attr]
@@ -87,12 +94,16 @@ class LayerHelper(LayerHelperBase):
             param_attr = tmp
         return param_attr
 
-    def iter_inputs_and_params(self, input_param_name='input'):
+    def iter_inputs_and_params(
+        self, input_param_name: str = 'input'
+    ) -> Generator[tuple[Tensor, ParamAttr]]:
         inputs = self.multiple_input(input_param_name)
         param_attrs = self.multiple_param_attr(len(inputs))
         yield from zip(inputs, param_attrs)
 
-    def input_dtype(self, input_param_name='input'):
+    def input_dtype(
+        self, input_param_name: str = 'input'
+    ) -> None | paddle.dtype:
         inputs = self.multiple_input(input_param_name)
         dtype = None
         for each in inputs:
@@ -104,14 +115,16 @@ class LayerHelper(LayerHelperBase):
                 )
         return dtype
 
-    def get_parameter(self, name):
+    def get_parameter(self, name: str) -> Tensor:
         param = self.main_program.global_block().var(name)
         if not isinstance(param, Parameter):
-            raise ValueError("no Parameter name %s found" % name)
+            raise ValueError(f"no Parameter name {name} found")
         return param
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of bias_attr
-    def append_bias_op(self, input_var, dim_start=1, dim_end=None):
+    def append_bias_op(
+        self, input_var: Tensor, dim_start: int = 1, dim_end: int | None = None
+    ) -> Tensor:
         """
         Append bias operator and return its output. If the user does not set
         bias_attr, append_bias_op will return input_var
@@ -145,7 +158,7 @@ class LayerHelper(LayerHelperBase):
         return tmp
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of act
-    def append_activation(self, input_var):
+    def append_activation(self, input_var: Tensor) -> Tensor:
         act = self.kwargs.get('act', None)
         if act is None:
             return input_var
@@ -162,6 +175,21 @@ class LayerHelper(LayerHelperBase):
         if in_dygraph_mode():
             res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
+        elif in_pir_mode():
+
+            def _append_activation_in_pir(input, act=None, use_cudnn=None):
+                if act is None:
+                    return input
+
+                attrs = ()
+                if use_cudnn:
+                    attrs = ('use_cudnn', use_cudnn)
+                act_op = getattr(_C_ops, act)
+                if act == 'softmax':
+                    return act_op(input, -1)
+                return act_op(input, *attrs)
+
+            return _append_activation_in_pir(input_var, act_type, use_cudnn)
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
             self.append_op(
@@ -181,7 +209,7 @@ class LayerHelper(LayerHelperBase):
             return paddle.nn.initializer.Constant()
 
     # TODO (jiabin): reconstruct this in LayerObjHelper and avoid dependency of kwargs
-    def is_instance(self, param_name, cls):
+    def is_instance(self, param_name: str, cls: Any) -> None:
         param = self.kwargs.get(param_name, None)
         if not isinstance(param, cls):
             raise TypeError(

@@ -21,8 +21,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #endif
-#include <errno.h>
-#include <stdio.h>
+#include <cerrno>
+#include <cstdio>
 
 namespace phi {
 namespace distributed {
@@ -34,7 +34,7 @@ static int _get_sockname_of_win(int sock, char* out, int out_len) {
 }
 #else
 static int _get_sockname(int sock, char *out, int out_len) {
-  struct sockaddr_in addr;
+  struct sockaddr_in addr = {};
   socklen_t s_len = sizeof(addr);
 
   if (::getpeername(sock, reinterpret_cast<sockaddr *>(&addr), &s_len)) {
@@ -43,7 +43,7 @@ static int _get_sockname(int sock, char *out, int out_len) {
     return -1;
   }
 
-  std::array<char, 128> ip;
+  std::array<char, 128> ip = {};
   int port = 0;
 
   // deal with both IPv4 and IPv6:
@@ -71,7 +71,7 @@ int GetSockName(int sock, char* out, int out_len) {
 }
 
 std::string GetSockName(int fd) {
-  std::array<char, 256> out;
+  std::array<char, 256> out = {};
   GetSockName(fd, out.data(), sizeof(out));
   return std::string(out.data());
 }

@@ -1,17 +1,22 @@
 file(GLOB_RECURSE standalone_executor_srcs "*.cc")
 
-if(NOT (WITH_CINN AND NOT CINN_ONLY))
+if(NOT (WITH_CINN))
   list(REMOVE_ITEM standalone_executor_srcs
        ${CMAKE_CURRENT_SOURCE_DIR}/instruction/cinn_jit_instruction.cc)
 endif()
 
-if(NOT WITH_MKLDNN)
+if(NOT WITH_ONEDNN)
   list(
     REMOVE_ITEM
     standalone_executor_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_legacy_instruction.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_instruction.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_mixed_instruction.cc)
+endif()
+
+if(NOT TENSORRT_FOUND OR NOT WITH_TENSORRT)
+  list(REMOVE_ITEM standalone_executor_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/instruction/tensorrt_engine_instruction.cc)
 endif()
 
 set(standalone_executor_deps
@@ -26,7 +31,7 @@ set(standalone_executor_deps
     device_event_base
     framework_proto)
 
-if(WITH_CINN AND NOT CINN_ONLY)
+if(WITH_CINN)
   set(standalone_executor_deps
       ${standalone_executor_deps}
       cinn_runtime_dialect
@@ -36,6 +41,10 @@ if(WITH_CINN AND NOT CINN_ONLY)
       device_context
       op_registry
       ${DEVICE_EVENT_LIBS})
+endif()
+
+if(TENSORRT_FOUND AND WITH_TENSORRT)
+  set(standalone_executor_deps ${standalone_executor_deps} trt_engine)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
@@ -54,6 +63,6 @@ cc_library(
 
 add_dependencies(standalone_executor xxhash framework_proto)
 
-if(WITH_MKLDNN)
-  add_dependencies(standalone_executor mkldnn)
+if(WITH_ONEDNN)
+  add_dependencies(standalone_executor onednn)
 endif()

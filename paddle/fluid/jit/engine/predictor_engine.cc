@@ -36,9 +36,9 @@ PredictorEngine::PredictorEngine(
   // TODO(Aurelius84): Expose AnalysisConfig to user.
   AnalysisConfig config;
   config.SetProgFile(info->ProgramFilePath());
-  if (platform::is_gpu_place(place_)) {
+  if (phi::is_gpu_place(place_)) {
     config.EnableUseGpu(100, place_.GetDeviceId());
-  } else if (platform::is_cpu_place(place_)) {
+  } else if (phi::is_cpu_place(place_)) {
     config.DisableGpu();
     config.EnableMKLDNN();
     config.EnableMkldnnInt8();
@@ -66,8 +66,8 @@ PredictorEngine::PredictorEngine(
           predictor)) {}
 
 std::unique_ptr<BaseEngine> PredictorEngine::Clone(void *stream) {
-  auto *x = new PredictorEngine(
-      info_, scope_, place_, std::move(predictor_->Clone(stream)));
+  auto *x =
+      new PredictorEngine(info_, scope_, place_, predictor_->Clone(stream));
   return std::unique_ptr<BaseEngine>(x);
 }
 

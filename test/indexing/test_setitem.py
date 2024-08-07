@@ -418,7 +418,7 @@ class TestINT64SetitemInDygraph(TestSetitemInDygraph):
 class TestBOOLSetitemInDygraph(TestSetitemInDygraph):
     def setUp(self):
         paddle.disable_static()
-        self.ndtype = np.bool8
+        self.ndtype = np.bool_
         self.dtype = 'bool'
 
 
@@ -700,7 +700,7 @@ class TestSetitemInStatic(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             x = paddle.ones((3, 3), dtype='int32')
-            v = paddle.to_tensor([-1, -1, -1])
+            v = paddle.to_tensor([-1, -1, -1], dtype='int32')
             y = _setitem_static(
                 x,
                 (slice(None), [0, 2]),

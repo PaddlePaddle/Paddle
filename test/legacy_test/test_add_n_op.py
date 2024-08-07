@@ -70,15 +70,15 @@ class TestAddnOp(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             return
         dtypes = ['float32', 'complex64', 'complex128']
-        for dtyte in dtypes:
-            if dtyte == 'complex64' or dtyte == 'complex128':
+        for dtype in dtypes:
+            if dtype == 'complex64' or dtype == 'complex128':
                 self.x_np = (
                     np.random.random([self.l, 16, 256])
                     + 1j * np.random.random([self.l, 16, 256])
-                ).astype(dtyte)
+                ).astype(dtype)
 
-            y_np_32, x_g_np_32 = self.check_main(self.x_np, dtyte)
-            y_np_gt = np.sum(self.x_np, axis=0).astype(dtyte)
+            y_np_32, x_g_np_32 = self.check_main(self.x_np, dtype)
+            y_np_gt = np.sum(self.x_np, axis=0).astype(dtype)
             np.testing.assert_allclose(y_np_32, y_np_gt, rtol=1e-06)
 
 

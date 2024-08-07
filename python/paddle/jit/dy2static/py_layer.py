@@ -15,7 +15,9 @@
 import functools
 import inspect
 
-from paddle.base.framework import Variable
+from paddle import pir
+from paddle.base.framework import Variable, in_pir_mode
+from paddle.base.libpaddle.pir import build_pipe_for_pylayer
 from paddle.common_ops_import import LayerHelper
 from paddle.static.nn import static_pylayer
 
@@ -26,22 +28,39 @@ class StaticPyLayerContext:
     def __init__(self):
         self.saved_vars = []
 
+        if in_pir_mode():
+            self.tuple_push_op_name = "cf.tuple_push"
+            self.tuple_pop_op_name = "cf.tuple_pop"
+
     def save_for_backward(self, *tensors):
-        for tensor in tensors:
-            assert isinstance(tensor, Variable)
-            self.saved_vars.append(tensor)
+        if in_pir_mode():
+            current_insert_point = pir.get_current_insertion_point()
+            current_block = current_insert_point.block()
+            build_pipe_for_pylayer(current_block, tensors)
+        else:
+            for tensor in tensors:
+                assert isinstance(tensor, Variable)
+                self.saved_vars.append(tensor)
 
     def saved_tensor(self):
-        helper = LayerHelper("StaticPyLayerContext")
-        out_list = []
-        for saved_var in self.saved_vars:
-            out = helper.create_variable(
-                name=saved_var.name,
-                dtype=saved_var.dtype,
-                shape=saved_var.shape,
-                type=saved_var.type,
-            )
-            out_list.append(out)
+        if in_pir_mode():
+            current_insert_point = pir.get_current_insertion_point()
+            current_block = current_insert_point.block()
+            out_list = []
+            for op in current_block.ops:
+                if op.name() == self.tuple_pop_op_name:
+                    out_list = op.as_tuple_pop_op().pop_all_values()
+        else:
+            helper = LayerHelper("StaticPyLayerContext")
+            out_list = []
+            for saved_var in self.saved_vars:
+                out = helper.create_variable(
+                    name=saved_var.name,
+                    dtype=saved_var.dtype,
+                    shape=saved_var.shape,
+                    type=saved_var.type,
+                )
+                out_list.append(out)
 
         return out_list
 

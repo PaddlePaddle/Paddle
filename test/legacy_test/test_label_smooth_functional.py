@@ -82,7 +82,7 @@ class LabelSmoothTestCase(unittest.TestCase):
 
     def paddle_dygraph_layer(self):
         paddle.disable_static()
-        label_var = dg.to_variable(self.label)
+        label_var = paddle.to_tensor(self.label)
         y_var = F.label_smooth(
             label_var, prior_dist=self.prior_dist, epsilon=self.epsilon
         )

@@ -16,9 +16,7 @@
 #include "paddle/fluid/inference/tensorrt/plugin/c_allreduce_op_plugin.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 using ReduceType = paddle::inference::tensorrt::plugin::ReduceType;
 std::map<std::string, ReduceType> op_to_reduce_type = {
     {"c_allreduce_sum", paddle::inference::tensorrt::plugin::kRedSum},
@@ -34,8 +32,8 @@ class CAllReduceOpConverter : public OpConverter {
     VLOG(4) << "convert callreduce op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(
-          platform::errors::Fatal("Unsupported static graph mode. Please set "
-                                  "dynamic shape of inputs."));
+          common::errors::Fatal("Unsupported static graph mode. Please set "
+                                "dynamic shape of inputs."));
     }
     ReduceType red_type = op_to_reduce_type[op.type()];
     std::string name = op.type();
@@ -46,7 +44,7 @@ class CAllReduceOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         input_num,
         1,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input X's size must equal to 1 in TRT c_allreduce op."
             " But received X's size %d.",
             input_num));
@@ -56,7 +54,7 @@ class CAllReduceOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         output_num,
         1UL,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output Out's size must equal to 1 in TRT c_allreduce op. "
             "But received Out's size %u.",
             output_num));
@@ -78,19 +76,17 @@ class CAllReduceOpConverter : public OpConverter {
             ring_id, use_calc_stream, red_type, with_fp16);
     layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "You are running the TRT Dynamic Shape mode, need to confirm that "
         "your TRT version is no less than 6.0"));
 #endif
     auto output_name = op_desc.Output("Out")[0];
 
-    RreplenishLayerAndOutput(layer, name, {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, name, {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(c_allreduce_sum, CAllReduceOpConverter);
 REGISTER_TRT_OP_CONVERTER(c_allreduce_max, CAllReduceOpConverter);

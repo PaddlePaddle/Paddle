@@ -18,17 +18,14 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void CustomKernelInstruction::BuildCustomContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
-  CheckDefaultInferShapeDtype(
-      infershape_func_, inferdtype_func_, *custom_op_meta_);
   auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
   // check inplace
   for (auto const& pair : op_inplace_map) {
@@ -39,7 +36,7 @@ void CustomKernelInstruction::BuildCustomContext(
       // make sure ctx has valid inplace optional outputs
       PADDLE_ENFORCE(
           paddle::framework::detail::IsOptionalVar(pair.second),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Custom operator couldn't find custom output name for %s. If "
               "you are using inplace optional inputs & outputs, please "
               "check "
@@ -66,7 +63,7 @@ void CustomKernelInstruction::BuildCustomContext(
     PADDLE_ENFORCE_EQ(
         name2id.count(t),
         true,
-        phi::errors::NotFound("param [%s] MUST in name2id map", t));
+        common::errors::NotFound("param [%s] MUST in name2id map", t));
 
     pir::Value ptr = op_->operand_source(op_yaml_info.InputName2Id().at(t));
     if (!IsInvalid(ptr)) {
@@ -87,7 +84,7 @@ void CustomKernelInstruction::BuildCustomContext(
         input_name2id_map_[t] = input_index;
         input_index++;
         input_ptrs_.emplace_back(nullptr);
-        custom_kernel_ctx_.EmplaceBackInput(std::move(paddle::Tensor()));
+        custom_kernel_ctx_.EmplaceBackInput(paddle::Tensor());
       }
       VLOG(8) << "ctx->EmplaceBackInput : an optional input " << t;
       continue;
@@ -97,7 +94,7 @@ void CustomKernelInstruction::BuildCustomContext(
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
-                            phi::errors::PreconditionNotMet(
+                            common::errors::PreconditionNotMet(
                                 "can not find var[%s] in scope", in_var_name));
     auto var = inner_scope->FindVar(in_var_name);
     if (var->IsType<phi::DenseTensor>()) {
@@ -130,7 +127,7 @@ void CustomKernelInstruction::BuildCustomContext(
           custom_in.set_impl(tensor_in);
           vec_custom_in.push_back(std::move(custom_in));
         } else {
-          PADDLE_THROW(phi::errors::Unimplemented(
+          PADDLE_THROW(common::errors::Unimplemented(
               "Only support Vector<DenseTensor> and vector<SelectedRows> now, "
               "not support vector<%d>.",
               variable_array[i]->Type()));
@@ -141,19 +138,19 @@ void CustomKernelInstruction::BuildCustomContext(
       vec_input_ptrs_.push_back(vec_input_ptrs);
       custom_kernel_ctx_.EmplaceBackInputs(vec_custom_in);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented("Not support var type [%d] ",
-                                              var->Type()));
+      PADDLE_THROW(common::errors::Unimplemented("Not support var type [%d] ",
+                                                 var->Type()));
     }
   }
   // EmplaceBackAttributes
   auto& vec_attr_params = op_yaml_info.AttrParams(true);
   for (auto& t : vec_attr_params) {
-    PADDLE_ENFORCE_NE(
-        attr_map.find(t),
-        attr_map.end(),
-        phi::errors::NotFound("Not found %s in attr_map, it maybe need mapping "
-                              "it in OpTranslator.",
-                              t));
+    PADDLE_ENFORCE_NE(attr_map.find(t),
+                      attr_map.end(),
+                      common::errors::NotFound(
+                          "Not found %s in attr_map, it maybe need mapping "
+                          "it in OpTranslator.",
+                          t));
     auto& attr_type_name = op_yaml_info.AttrTypeName(t);
     if (attr_type_name == "pir::Int32Attribute") {
       custom_attrs_.push_back(
@@ -192,7 +189,7 @@ void CustomKernelInstruction::BuildCustomContext(
         PADDLE_ENFORCE_EQ(
             array_list[0].isa<pir::Int32Attribute>(),
             true,
-            phi::errors::Unimplemented(
+            common::errors::Unimplemented(
                 "the 0th elementwise MUST be pir::Int32Attribute"));
         for (size_t i = 0; i < array_list.size(); ++i) {
           vec_res.push_back(
@@ -212,8 +209,8 @@ void CustomKernelInstruction::BuildCustomContext(
           }
 
         } else {
-          PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                                  attr_type_name));
+          PADDLE_THROW(common::errors::Unimplemented(
+              "attr type not support [%s] ", attr_type_name));
         }
       }
       custom_attrs_.push_back(vec_res);
@@ -226,7 +223,7 @@ void CustomKernelInstruction::BuildCustomContext(
         PADDLE_ENFORCE_EQ(
             array_list[0].isa<pir::Int64Attribute>(),
             true,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "Element in array list MUST be pir::Int64Attribute "));
 
         for (size_t i = 0; i < array_list.size(); ++i) {
@@ -244,7 +241,7 @@ void CustomKernelInstruction::BuildCustomContext(
         PADDLE_ENFORCE_EQ(
             array_list[0].isa<pir::StrAttribute>(),
             true,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "Element in array list MUST be pir::StrAttribute "));
 
         for (size_t i = 0; i < array_list.size(); ++i) {
@@ -256,8 +253,8 @@ void CustomKernelInstruction::BuildCustomContext(
       custom_kernel_ctx_.EmplaceBackAttr(vec_res);
 
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented("attr type not support [%s] ",
-                                              attr_type_name));
+      PADDLE_THROW(common::errors::Unimplemented("attr type not support [%s] ",
+                                                 attr_type_name));
     }
     VLOG(6) << "ctx->EmplaceBackAttr: " << t;
   }
@@ -271,7 +268,7 @@ void CustomKernelInstruction::BuildCustomContext(
       PADDLE_ENFORCE(
           paddle::framework::detail::IsOptionalVar(out_name) &&
               !inplace_id_map.empty(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Custom operator couldn't find custom output for name %s. If "
               "you "
               "are using inplace optional inputs & outputs, please check "
@@ -282,8 +279,7 @@ void CustomKernelInstruction::BuildCustomContext(
               out_name));
       VLOG(3) << "Custom Operator: BuildContext - inplace optional outputs : "
               << out_name << " is None.";
-      cache_out_ptrs_.emplace_back(nullptr);
-      custom_kernel_ctx_.EmplaceBackOutput(std::move(paddle::Tensor()));
+      custom_kernel_ctx_.EmplaceBackOutput(paddle::Tensor());
 
       VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;
@@ -313,7 +309,7 @@ void CustomKernelInstruction::BuildCustomContext(
       std::vector<paddle::Tensor> custom_vec_out;
       PADDLE_ENFORCE(
           !inplace_id_map.empty() || (i == 0UL && op_->num_results() == 1UL),
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "If custom operator's outputs contains `paddle::Vec()` type "
               "without setting InplaceMap, it only can hold one output."));
       for (size_t j = 0; j < variable_array.size(); ++j) {
@@ -329,7 +325,7 @@ void CustomKernelInstruction::BuildCustomContext(
           custom_out.set_impl(tensor_out);
           custom_vec_out.push_back(std::move(custom_out));
         } else {
-          PADDLE_THROW(phi::errors::Unimplemented(
+          PADDLE_THROW(common::errors::Unimplemented(
               "Only support Vector<DenseTensor> now, "
               "not support vector<%d>.",
               variable_array[j]->Type()));
@@ -339,8 +335,8 @@ void CustomKernelInstruction::BuildCustomContext(
               << value_exec_info_.GetVarName(out_ptr);
       custom_kernel_ctx_.EmplaceBackOutputs(custom_vec_out);
     } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("only support DenseTensor and vector "));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "only support DenseTensor and vector "));
     }
   }
 
@@ -354,10 +350,21 @@ void CustomKernelInstruction::BuildCustomContext(
 
 CustomKernelInstruction::CustomKernelInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo& value_exec_info)
-    : InstructionBase(id, place), value_exec_info_(value_exec_info) {
+    : InstructionBase(id, place),
+      input_name2id_map_(),
+      vec_input_name2id_map_(),
+      input_shapes_(),
+      vec_input_shapes_(),
+      custom_attrs_(),
+      input_dtypes_(),
+      vec_input_dtypes_(),
+      input_ptrs_(),
+      vec_input_ptrs_(),
+      cache_out_ptrs_(),
+      value_exec_info_(value_exec_info) {
   auto op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
@@ -376,7 +383,7 @@ CustomKernelInstruction::CustomKernelInstruction(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   PADDLE_ENFORCE_NOT_NULL(
       yaml_interface,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", custom_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(custom_op_name_),
@@ -403,6 +410,18 @@ CustomKernelInstruction::CustomKernelInstruction(
                          GetStreamPriority()));
   VLOG(6) << "finish process device context";
 
+  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
+  for (auto const& pair : op_inplace_map) {
+    pir::Value input_value =
+        op->operand_source(yaml_info_parser.InputName2Id().at(pair.first));
+    pir::Value output_value =
+        op->result(yaml_info_parser.OutputName2Id().at(pair.second));
+    if (IsInvalid(output_value) && IsInvalid(input_value)) {
+      this->AddInplace(value_exec_info_.GetVarByValue(input_value),
+                       value_exec_info_.GetVarByValue(output_value));
+    }
+  }
+
   InitInputsOutputsIds(op, value_exec_info_);
   VLOG(6) << "finish process inputs outputs index";
 
@@ -421,7 +440,7 @@ void CustomKernelInstruction::UpdateOutputMeta(
   PADDLE_ENFORCE_EQ(
       output_shapes.size(),
       cache_out_ptrs_.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of output shapes after running custom operator's "
           "InferShapeFunc is wrong, "
           "expected contains %d Tensors' shape, but actually contains %d "
@@ -432,7 +451,7 @@ void CustomKernelInstruction::UpdateOutputMeta(
   PADDLE_ENFORCE_EQ(
       output_dtypes.size(),
       cache_out_ptrs_.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of output dtypes after running custom operator's "
           "InferDtypeFunc is wrong, "
           "expected contains %d Tensors' dtype, but actually contains %d "
@@ -446,57 +465,7 @@ void CustomKernelInstruction::UpdateOutputMeta(
     auto out_meta = phi::DenseTensorUtils::GetMutableMeta(out_in_scope);
     out_meta->dims = phi::make_ddim(output_shapes[i]);
     out_meta->dtype = output_dtypes[i];
-  }
-}
-
-void CheckDefaultInferShapeDtype(paddle::InferShapeFunc infershape_func,
-                                 paddle::InferDtypeFunc inferdtype_func,
-                                 const paddle::OpMetaInfo& custom_op_meta) {
-  if (infershape_func && inferdtype_func) {
-    return;
-  }
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(custom_op_meta);
-  if (inplace_map.empty()) {  // general case, assure single input and output
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetInputs(custom_op_meta).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple inputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the "
-            "InferShapeFn/InferDtypeFn. "
-            "At this time, the input shape/dtype will be directly set to "
-            "the output shape/dtype.\n"
-            "Please set the InferShapeFn/InferDtypeFn of custom "
-            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...)) / "
-            ".SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple outputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the "
-            "InferShapeFn/InferDtypeFn. "
-            "At this time, the input shape/dtype will be directly set to "
-            "the output shape/dtype.\n"
-            "Please set the InferShapeFn/InferDtypeFn of custom "
-            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...)) / "
-            ".SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-  } else {  // inplace case
-    PADDLE_ENFORCE_EQ(
-        inplace_map.size(),
-        OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
-        phi::errors::Unavailable(
-            "Your custom operator uses `SetInplaceMap` without setting the "
-            "InferShapeFn/InferDtypeFn. However, `Outputs` size = %d does not "
-            "match the "
-            "`InplaceMap` size = %d. Please check `SetInplaceMap` again or set "
-            "the InferShapeFn/InferDtypeFn of custom operator by "
-            ".SetInferShapeFn(PD_INFER_SHAPE(...)) / "
-            ".SetInferDtypeFn(PD_INFER_DTYPE(...))",
-            OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
-            inplace_map.size()));
+    out_meta->strides = out_meta->calc_strides(out_meta->dims);
   }
 }
 
@@ -528,116 +497,6 @@ void CustomKernelInstruction::BuildShapeDtype() {
   }
 }
 
-std::vector<std::vector<int64_t>> RunDefaultInferShape(
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<std::vector<int64_t>>& input_shapes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map) {
-  std::vector<std::vector<int64_t>> output_shapes;
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(custom_op_meta);
-  if (inplace_map.empty()) {  // general case, assure single input and output
-    VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
-    if (input_shapes.size() == 1) {
-      output_shapes = input_shapes;
-    } else if (vec_input_shapes.size() == 1) {
-      output_shapes = vec_input_shapes[0];
-    } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "We only allow a custom operator that contains only one input "
-          "and only one output without setting the InferShapeFn. "));
-    }
-  } else {  // inplace case
-    for (auto const& pair : inplace_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
-        int input_index = vec_input_name2id_map.at(pair.first);
-        auto input_shape = vec_input_shapes[input_index];
-        output_shapes.insert(
-            output_shapes.end(), input_shape.begin(), input_shape.end());
-      } else {
-        int input_index = input_name2id_map.at(pair.first);
-        auto input_shape = input_shapes[input_index];
-        output_shapes.push_back(input_shape);
-      }
-    }
-  }
-  return output_shapes;
-}
-
-std::vector<DataType> RunDefaultInferDtype(
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<DataType>& input_dtypes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<DataType>>& vec_input_dtypes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map) {
-  std::vector<DataType> output_dtypes;
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(custom_op_meta);
-  if (inplace_map.empty()) {  // general case, assure single input and output
-    VLOG(3) << "Custom Operator: Default InferDtype - share ddim.";
-    if (input_dtypes.size() == 1) {
-      output_dtypes = input_dtypes;
-    } else if (vec_input_dtypes.size() == 1) {
-      output_dtypes = vec_input_dtypes[0];
-    } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "We only allow a custom operator that contains only one input "
-          "and only one output without setting the InferDtypeFn. "));
-    }
-  } else {  // inplace case
-    for (auto const& pair : inplace_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
-        int input_index = vec_input_name2id_map.at(pair.first);
-        auto input_dtype = vec_input_dtypes[input_index];
-        output_dtypes.insert(
-            output_dtypes.end(), input_dtype.begin(), input_dtype.end());
-      } else {
-        int input_index = input_name2id_map.at(pair.first);
-        auto input_dtype = input_dtypes[input_index];
-        output_dtypes.push_back(input_dtype);
-      }
-    }
-  }
-  return output_dtypes;
-}
-
-std::vector<std::vector<int64_t>> RunInferShape(
-    paddle::InferShapeFunc infershape_func,
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<std::vector<int64_t>>& input_shapes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map,
-    const std::vector<paddle::any>& custom_attrs) {
-  if (infershape_func) {
-    return infershape_func(input_shapes, vec_input_shapes, custom_attrs);
-  } else {
-    return RunDefaultInferShape(custom_op_meta,
-                                input_shapes,
-                                input_name2id_map,
-                                vec_input_shapes,
-                                vec_input_name2id_map);
-  }
-}
-
-std::vector<DataType> RunInferDtype(
-    paddle::InferDtypeFunc inferdtype_func,
-    const paddle::OpMetaInfo& custom_op_meta,
-    const std::vector<DataType>& input_dtypes,
-    const std::unordered_map<std::string, int>& input_name2id_map,
-    const std::vector<std::vector<DataType>>& vec_input_dtypes,
-    const std::unordered_map<std::string, int>& vec_input_name2id_map,
-    const std::vector<paddle::any>& custom_attrs) {
-  if (inferdtype_func) {
-    return inferdtype_func(input_dtypes, vec_input_dtypes, custom_attrs);
-  } else {
-    return RunDefaultInferDtype(custom_op_meta,
-                                input_dtypes,
-                                input_name2id_map,
-                                vec_input_dtypes,
-                                vec_input_name2id_map);
-  }
-}
-
 void CustomKernelInstruction::Run() {
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
   BuildShapeDtype();
@@ -658,9 +517,10 @@ void CustomKernelInstruction::Run() {
                     vec_input_name2id_map_,
                     custom_attrs_);
   UpdateOutputMeta(output_shapes, output_dtypes);
-
+  for (auto& pair : this->InplaceInfo()) {
+    ShareVarBuffer(pair.first, pair.second);
+  }
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

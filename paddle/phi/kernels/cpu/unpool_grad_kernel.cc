@@ -57,7 +57,7 @@ void UnpoolGradKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_LT(
             index,
             output_feasize,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "index should less than output tensor height * output tensor "
                 "width. Expected %ld < %ld, but got "
                 "%ld >= %ld. Please check input value.",
@@ -110,7 +110,7 @@ void Unpool3dGradKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_LT(
             index,
             output_feasize,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "index should less than output tensor depth * output tensor "
                 "height "
                 "* output tensor width. Expected %ld < %ld, but got "
@@ -130,8 +130,18 @@ void Unpool3dGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    unpool_grad, CPU, ALL_LAYOUT, phi::UnpoolGradKernel, float, double) {}
+PD_REGISTER_KERNEL(unpool_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::UnpoolGradKernel,
+                   float,
+                   double,
+                   int64_t) {}
 
-PD_REGISTER_KERNEL(
-    unpool3d_grad, CPU, ALL_LAYOUT, phi::Unpool3dGradKernel, float, double) {}
+PD_REGISTER_KERNEL(unpool3d_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Unpool3dGradKernel,
+                   float,
+                   double,
+                   int64_t) {}

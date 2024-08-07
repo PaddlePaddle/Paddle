@@ -17,16 +17,15 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void MvCsrKernel(const Context& dev_ctx UNUSED,
                  const SparseCsrTensor& x UNUSED,
                  const DenseTensor& vec UNUSED,
                  DenseTensor* out UNUSED) {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("Not support CPU kernel of 'sparse.mv' now."));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Not support CPU kernel of 'sparse.mv' now."));
 }
 
 template <typename T, typename Context>
@@ -34,12 +33,11 @@ void MvCooKernel(const Context& dev_ctx UNUSED,
                  const SparseCooTensor& x UNUSED,
                  const DenseTensor& vec UNUSED,
                  DenseTensor* out UNUSED) {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("Not support CPU kernel of 'sparse.mv' now."));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Not support CPU kernel of 'sparse.mv' now."));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(
     mv_csr, CPU, ALL_LAYOUT, phi::sparse::MvCsrKernel, float, double) {

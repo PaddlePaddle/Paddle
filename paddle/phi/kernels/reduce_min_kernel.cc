@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/reduce_kernel_impl.h"
 
 namespace phi {
 
@@ -63,7 +64,9 @@ PD_REGISTER_KERNEL(min, KPS, ALL_LAYOUT, phi::MinKernel, float) {}
 
 #if defined(PADDLE_WITH_DNNL)
 PD_REGISTER_KERNEL(
-    min, OneDNN, ONEDNN, phi::MinKernel, float, phi::dtype::bfloat16) {}
+    min, OneDNN, ONEDNN, phi::MinKernel, float, phi::dtype::bfloat16) {
+  kernel->check_if_onednn_kernel_support_ = phi::ReduceCheckIfOneDNNSupport;
+}
 #endif
 
 #if defined(PADDLE_WITH_XPU)

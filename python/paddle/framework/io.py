@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import copyreg
 import os
@@ -20,6 +22,7 @@ import sys
 import threading
 import warnings
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -34,8 +37,10 @@ from paddle.base.framework import (
     Variable,
     _create_tensor,
     _current_expected_place,
+    _current_expected_place_,
     _dygraph_tracer,
     in_dygraph_mode,
+    in_pir_mode,
 )
 
 from .io_utils import (
@@ -48,11 +53,35 @@ from .io_utils import (
     _unpack_saved_dict,
 )
 
+if TYPE_CHECKING:
+    from io import BytesIO
+    from typing import Any, Literal, TypedDict
+
+    from typing_extensions import NotRequired, Unpack
+
+    from paddle import Tensor
+    from paddle._typing import NestedStructure
+    from paddle.nn.layer.layers import _StateDict
+
+    class _EmptyDict(TypedDict):
+        pass
+
+    class _LoadOptions(TypedDict):
+        model_filename: NotRequired[str]
+        params_filename: NotRequired[str]
+        keep_name_table: NotRequired[bool]
+        return_numpy: NotRequired[bool]
+
+    class _SaveOptions(TypedDict):
+        use_binary_format: NotRequired[bool]
+        pickle_protocol: NotRequired[Literal[2, 3, 4]]
+
+
 __all__ = []
 async_save_queue = []
 
 
-def clear_async_save_task_queue():
+def clear_async_save_task_queue() -> None:
     '''
     wait until all async save task to be done.
     '''
@@ -62,13 +91,19 @@ def clear_async_save_task_queue():
             task.join()
 
 
-def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
+def async_save(
+    obj: object,
+    path: str | BytesIO,
+    protocol: Literal[2, 3, 4] = 4,
+    sync_other_task: bool = False,
+    **configs: Unpack[_EmptyDict],
+) -> None:
     '''
     async version of paddle.save.
     Note:
         currently only support dygraph mode.
     Note:
-        any argument passed through configs will be overrided by default setting.
+        any argument passed through configs will be overridden by default setting.
     Args:
         obj(Object) : The object to be saved.
         path(str|BytesIO) : The path/buffer of the object to be saved.
@@ -76,7 +111,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 4
         sync_other_task(bool) : Determine whether to wait other async save task to be finished before this one be put in queue.
-        **configs(dict, optional): compatible argument to paddle.save, but will be overrided by default setting.
+        **configs(dict, optional): compatible argument to paddle.save, but will be overridden by default setting.
     Examples:
         .. code-block:: python
             :name: code-example-1
@@ -98,7 +133,7 @@ def async_save(obj, path, protocol=4, sync_other_task=False, **configs):
         )
     if len(configs) > 0:
         warnings.warn(
-            "configs are not supported in async mode, will be overided by default settings."
+            "configs are not supported in async mode, will be overridden by default settings."
         )
 
     # TODO: make this part async
@@ -137,6 +172,8 @@ def _build_saved_state_dict(state_dict):
                     raise ValueError(
                         "The saved tensor is not initialized. If you used group sharded, please use save_group_sharded_model."
                     )
+                if value.is_dense() and value.place.is_custom_place():
+                    value = paddle._C_ops.npu_identity(value, -1)
                 save_dict[key] = np.array(value.cpu())
             name_table[key] = value.name
         else:
@@ -150,25 +187,38 @@ def _load_state_dict_from_save_inference_model(model_path, config):
     # 1. load program desc & construct _ProgramHolder
     # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
     # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
-    from paddle.jit.translated_layer import (
-        _construct_params_and_buffers,
-        _construct_program_holders,
-    )
+    if in_pir_mode():
+        from paddle.jit.pir_translated_layer import (
+            _construct_params_and_buffers,
+            _construct_program_holders,
+        )
 
-    programs = _construct_program_holders(model_path, config.model_filename)
+        programs = _construct_program_holders(model_path, config.model_filename)
+
+    else:
+        from paddle.jit.translated_layer import (
+            _construct_params_and_buffers,
+            _construct_program_holders,
+        )
+
+        programs = _construct_program_holders(model_path, config.model_filename)
 
     # 2. load layer parameters & buffers
     with base.dygraph.guard():
         persistable_var_dict = _construct_params_and_buffers(
-            model_path, programs, config.params_filename, append_suffix=False
+            model_path, programs, config.params_filename
         )
 
         # 3. construct state_dict
         load_param_dict = {}
         for var_name in persistable_var_dict:
-            load_param_dict[var_name] = np.array(
-                persistable_var_dict[var_name].cpu()
-            )
+            tmp_var = persistable_var_dict[var_name]
+            if tmp_var.is_dense() and tmp_var.place.is_custom_place():
+                load_param_dict[var_name] = np.array(
+                    paddle._C_ops.npu_identity(tmp_var, -1).cpu()
+                )
+            else:
+                load_param_dict[var_name] = np.array(tmp_var.cpu())
 
         # if *.info exists, we can recover structured_name
         var_info_filename = str(config.params_filename) + ".info"
@@ -181,10 +231,9 @@ def _load_state_dict_from_save_inference_model(model_path, config):
                 structured_name = extra_var_info[var_name].get(
                     'structured_name', None
                 )
-                assert structured_name is not None, (
-                    "Cannot find saved variable (%s)'s structured name in saved model."
-                    % var_name
-                )
+                assert (
+                    structured_name is not None
+                ), f"Cannot find saved variable ({var_name})'s structured name in saved model."
                 structured_para_dict[structured_name] = load_param_dict[
                     var_name
                 ]
@@ -222,6 +271,8 @@ def _load_state_dict_from_save_params(model_path):
     # 3. construct state_dict
     load_param_dict = {}
     for var in load_var_list:
+        if var.is_dense() and var.place.is_custom_place():
+            var = paddle._C_ops.npu_identity(var, -1)
         load_param_dict[var.name] = np.array(var.cpu())
 
     return load_param_dict
@@ -246,12 +297,18 @@ def _build_load_path_and_config(path, config):
     # raise error, avoid confusing behavior
     # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
     # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
+    from paddle.jit.pir_translated_layer import (
+        PIR_INFER_MODEL_SUFFIX,
+    )
     from paddle.jit.translated_layer import (
         INFER_MODEL_SUFFIX,
         INFER_PARAMS_SUFFIX,
     )
 
-    prefix_format_path = path + INFER_MODEL_SUFFIX
+    if in_pir_mode():
+        prefix_format_path = path + PIR_INFER_MODEL_SUFFIX
+    else:
+        prefix_format_path = path + INFER_MODEL_SUFFIX
     prefix_format_exist = os.path.exists(prefix_format_path)
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
@@ -284,7 +341,10 @@ def _build_load_path_and_config(path, config):
                     "specified file prefix, the ``model_filename`` config does "
                     "not take effect."
                 )
-            config.model_filename = file_prefix + INFER_MODEL_SUFFIX
+            if in_pir_mode():
+                config.model_filename = file_prefix + PIR_INFER_MODEL_SUFFIX
+            else:
+                config.model_filename = file_prefix + INFER_MODEL_SUFFIX
             if config.params_filename is not None:
                 warnings.warn(
                     "When loading the result saved with the "
@@ -311,8 +371,7 @@ def _parse_load_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.load` is not supported."
-                % key
+                f"The additional config ({key}) of `paddle.load` is not supported."
             )
 
     # construct inner config
@@ -336,8 +395,7 @@ def _parse_save_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.save` is not supported."
-                % key
+                f"The additional config ({key}) of `paddle.save` is not supported."
             )
 
     # construct inner config
@@ -365,7 +423,10 @@ def _pickle_save(obj, f, protocol):
         )
 
     def reduce_varbase(self):
-        data = np.array(self.cpu())
+        if self.is_dense() and self.place.is_custom_place():
+            data = np.array(paddle._C_ops.npu_identity(self, -1).cpu())
+        else:
+            data = np.array(self.cpu())
         name = self.name
 
         return (tuple, ((name, data),))
@@ -373,7 +434,10 @@ def _pickle_save(obj, f, protocol):
     def reduce_LoDTensor(self):
         p = core.Place()
         p.set_place(paddle.CPUPlace())
-        data = np.array(self._copy(p))
+        if self._place().is_custom_place():
+            data = np.array(paddle._C_ops.npu_identity(self, -1)._copy(p))
+        else:
+            data = np.array(self._copy(p))
 
         return (eval, ('data', {'data': data}))
 
@@ -505,7 +569,7 @@ def _to_LodTensor(ndarray):
             f'Type of `ndarray` should be numpy.ndarray, but received {type(ndarray)}.'
         )
     t = core.LoDTensor()
-    place = _current_expected_place()
+    place = _current_expected_place_()
     t.set(ndarray, place)
     return t
 
@@ -566,9 +630,7 @@ def _parse_every_object(obj, condition_func, convert_func):
             (str, np.ndarray, core.eager.Tensor, core.LoDTensor),
         ):
             raise NotImplementedError(
-                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
-                    type(obj)
-                )
+                f"The iterable objects supported are tuple, list, dict, OrderedDict, string. But received {type(obj)}."
             )
         return obj
 
@@ -596,13 +658,13 @@ def _parse_load_result(obj, return_numpy):
     def ndarray_to_tensor(obj):
         return _ndarray_to_tensor(obj, return_numpy=return_numpy)
 
-    # tuple(name, ndarry) was converted from varbase of paddle2.1,
-    # and all tuple(name, ndarry) are converted to tensor.
+    # tuple(name, ndarray) was converted from varbase of paddle2.1,
+    # and all tuple(name, ndarray) are converted to tensor.
     if _contain_x(obj, _transformed_from_varbase):
         return _parse_every_object(
             obj, _transformed_from_varbase, tuple_to_tensor
         )
-    # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0
+    # If there is no tuple(name, ndarray), it is considered to be saved by paddle2.0
     # or converted from LoDTensor, and all ndarrays are converted to tensor.
     else:
         return _parse_every_object(
@@ -628,9 +690,7 @@ def _save_lod_tensor(tensor, file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports saving objects to file or BytesIO, but received {type(file_name)}'
         )
     return _seek
 
@@ -649,9 +709,7 @@ def _load_lod_tensor(file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports load objects from file or BytesIO, but received {type(file_name)}'
         )
 
     return temp_t, _seek
@@ -671,9 +729,7 @@ def _save_selected_rows(selected_rows, file_name):
             _seek = f.tell()
     else:
         raise NotImplementedError(
-            'Only supports saving objects to file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports saving objects to file or BytesIO, but received {type(file_name)}'
         )
     return _seek
 
@@ -694,9 +750,7 @@ def _load_selected_rows(file_name):
 
     else:
         raise NotImplementedError(
-            'Only supports load objects from file or BytesIO, but received {}'.format(
-                type(file_name)
-            )
+            f'Only supports load objects from file or BytesIO, but received {type(file_name)}'
         )
 
     return temp_sr, _seek
@@ -712,13 +766,16 @@ def _save_binary_var(obj, path):
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
         raise NotImplementedError(
-            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}.".format(
-                type(obj)
-            )
+            f"When use_binary_format = True, `paddle.save`  expected Tensor, but received {type(obj)}."
         )
 
 
-def save(obj, path, protocol=4, **configs):
+def save(
+    obj: _StateDict | NestedStructure[Tensor] | Program,
+    path: str | BytesIO,
+    protocol: Literal[2, 3, 4] = 4,
+    **configs: Unpack[_SaveOptions],
+) -> None:
     '''
     Save an object to the specified path.
 
@@ -761,7 +818,7 @@ def save(obj, path, protocol=4, **configs):
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
             >>> scheduler = paddle.optimizer.lr.NoamDecay(
-            ...     d_model=0.01, warmup_steps=100, verbose=True)
+            ...     d_model=100, warmup_steps=100, verbose=True)
             >>> adam = paddle.optimizer.Adam(
             ...     learning_rate=scheduler,
             ...     parameters=emb.parameters())
@@ -872,9 +929,7 @@ def save(obj, path, protocol=4, **configs):
 
     if not isinstance(config.use_binary_format, bool):
         raise TypeError(
-            "Type of `use_binary_format` should be bool, but received {}.".format(
-                type(config.use_binary_format)
-            )
+            f"Type of `use_binary_format` should be bool, but received {type(config.use_binary_format)}."
         )
 
     if config.use_binary_format:
@@ -887,10 +942,15 @@ def save(obj, path, protocol=4, **configs):
                 "'pickle_protocol' is a deprecated argument. Please use 'protocol' instead."
             )
 
-        if isinstance(obj, Program):
-            obj.desc.flush()
-            with _open_file_buffer(path, "wb") as f:
-                f.write(obj.desc.serialize_to_string())
+        if isinstance(obj, paddle.static.Program):
+            if in_pir_mode():
+                paddle.core.serialize_pir_program(
+                    obj, path, 1, True, False, True
+                )
+            else:
+                obj.desc.flush()
+                with _open_file_buffer(path, "wb") as f:
+                    f.write(obj.desc.serialize_to_string())
 
         elif _is_state_dict(obj):
             if in_dygraph_mode():
@@ -907,7 +967,7 @@ def _legacy_save(obj, path, protocol=2):
     if not isinstance(obj, dict):
         raise NotImplementedError(
             "Now only supports save state_dict of Layer or Optimizer, "
-            "expect dict, but received %s." % type(obj)
+            f"expect dict, but received {type(obj)}."
         )
 
     if len(obj) == 0:
@@ -957,7 +1017,7 @@ def _legacy_save(obj, path, protocol=2):
             pickle.dump(saved_obj, f, protocol=protocol)
 
 
-def load(path, **configs):
+def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
     '''
     Load an object can be used in paddle from specified path.
 
@@ -1019,7 +1079,7 @@ def load(path, **configs):
             >>> paddle.save(layer_state_dict, "emb.pdparams")
 
             >>> scheduler = paddle.optimizer.lr.NoamDecay(
-            ...     d_model=0.01, warmup_steps=100, verbose=True)
+            ...     d_model=100, warmup_steps=100, verbose=True)
             >>> adam = paddle.optimizer.Adam(
             ...     learning_rate=scheduler,
             ...     parameters=emb.parameters())
@@ -1181,18 +1241,55 @@ def load(path, **configs):
                     if config.return_numpy:
                         p = core.Place()
                         p.set_place(paddle.CPUPlace())
-                        return np.array(tensor._copy(p))
+                        if tensor._place().is_custom_place():
+                            return np.array(
+                                paddle._C_ops.npu_identity(tensor, -1)._copy(p)
+                            )
+                        else:
+                            return np.array(tensor._copy(p))
                     else:
                         if in_dygraph_mode():
                             return _lod_tensor2varbase(tensor)
                         return tensor
                 except:
                     try:
+                        if in_pir_mode():
+                            program = paddle.static.Program()
+                            paddle.core.deserialize_pir_program(
+                                path, program, 1
+                            )
+                            return program
                         with _open_file_buffer(path, "rb") as f:
                             program_desc_str = f.read()
                             program = Program.parse_from_string(
                                 program_desc_str
                             )
+                            if paddle.framework.in_pir_executor_mode():
+                                with paddle.pir_utils.IrGuard():
+                                    program = paddle.pir.translate_to_pir(
+                                        program.desc
+                                    )
+                                    block = program.global_block()
+                                    remove_op_list = []
+                                    for op in block.ops:
+                                        if op.name() == "pd_op.feed":
+                                            var_name = op.attrs()["name"]
+                                            org_value = op.result(0)
+                                            with block:
+                                                value = paddle.static.data(
+                                                    name=var_name,
+                                                    shape=org_value.shape,
+                                                    dtype=org_value.dtype,
+                                                )
+                                                org_value.replace_all_uses_with(
+                                                    value
+                                                )
+                                                value.get_defining_op().move_before(
+                                                    op
+                                                )
+                                            remove_op_list.append(op)
+                                    for op in remove_op_list:
+                                        block.remove_op(op)
                             return program
                     except:
                         raise ValueError(

@@ -1,0 +1,1 @@
+{"priority":-1,"bucketInfo":{"dimension":[{"lowerBound":4096,"upperBound":4096,"iterType":"R"}]},"tileConfig":{"warpNum":"1","treeReduceNum":"32","spatialInnerNum":"1"}}

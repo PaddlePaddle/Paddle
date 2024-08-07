@@ -72,7 +72,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
                 },
                 {},
             ]
-            dics_intput = [
+            dics_input = [
                 {
                     "X": ["batch_norm_input"],
                     "Bias": ["Bias"],
@@ -89,7 +89,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
                     "Variance": ["Variance"],
                 },
             ]
-            dics_intputs = [
+            dics_inputs = [
                 {
                     "Bias": TensorConfig(
                         data_gen=partial(generate_bias, dics, batch)
@@ -129,7 +129,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
             ops_config = [
                 {
                     "op_type": "batch_norm",
-                    "op_inputs": dics_intput[num_input],
+                    "op_inputs": dics_input[num_input],
                     "op_outputs": {
                         "Y": ["batch_norm_out"],
                         "MeanOut": ["Mean"],
@@ -143,14 +143,14 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
             ops = self.generate_op_config(ops_config)
             program_config = ProgramConfig(
                 ops=ops,
-                weights=dics_intputs[num_input],
+                weights=dics_inputs[num_input],
                 inputs={
                     "batch_norm_input": TensorConfig(
                         data_gen=partial(generate_input1, dics, batch)
                     )
                 },
                 outputs=["batch_norm_out"],
-                no_cast_list=list(dics_intputs[num_input].keys()),
+                no_cast_list=list(dics_inputs[num_input].keys()),
             )
 
             yield program_config

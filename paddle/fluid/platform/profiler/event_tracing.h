@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
 
 namespace paddle {
@@ -28,7 +28,7 @@ namespace platform {
 // Chrome Trace Viewer Format: Instant Event
 struct RecordInstantEvent {
   /**
-   * @param name: It is the caller's reponsibility to manage the underlying
+   * @param name: It is the caller's responsibility to manage the underlying
    * storage. RecordInstantEvent stores the pointer.
    * @param type: Classification which is used to instruct the profiling
    * data statistics.

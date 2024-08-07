@@ -69,7 +69,31 @@ void DivScalarCsrKernel(const Context& dev_ctx,
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR); \
   }
 
-PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(sin, Sin)
+#define PD_REGISTER_SPARSE_UNARY_GPU_KERNEL_WITH_COMPLEX(name, prefix) \
+  PD_REGISTER_KERNEL(name##_coo,                                       \
+                     GPU,                                              \
+                     ALL_LAYOUT,                                       \
+                     phi::sparse::prefix##CooKernel,                   \
+                     phi::dtype::float16,                              \
+                     float,                                            \
+                     double,                                           \
+                     phi::dtype::complex<float>,                       \
+                     phi::dtype::complex<double>) {                    \
+    kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);     \
+  }                                                                    \
+                                                                       \
+  PD_REGISTER_KERNEL(name##_csr,                                       \
+                     GPU,                                              \
+                     ALL_LAYOUT,                                       \
+                     phi::sparse::prefix##CsrKernel,                   \
+                     phi::dtype::float16,                              \
+                     float,                                            \
+                     double,                                           \
+                     phi::dtype::complex<float>,                       \
+                     phi::dtype::complex<double>) {                    \
+    kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);     \
+  }
+
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(tan, Tan)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(asin, Asin)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(atan, Atan)
@@ -81,12 +105,14 @@ PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(sqrt, Sqrt)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(square, Square)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(log1p, Log1p)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu, Relu)
-PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(abs, Abs)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(pow, Pow)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(scale, Scale)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(expm1, Expm1)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
+
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL_WITH_COMPLEX(sin, Sin)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL_WITH_COMPLEX(abs, Abs)
 
 PD_REGISTER_KERNEL(divide_scalar_coo,
                    GPU,

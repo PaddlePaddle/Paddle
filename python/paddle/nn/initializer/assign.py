@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Sequence
+
 import paddle
 from paddle import _C_ops
 
@@ -22,6 +27,9 @@ from ...base.framework import (
     in_pir_mode,
 )
 from .initializer import Initializer
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 __all__ = []
 
@@ -38,19 +46,21 @@ class NumpyArrayInitializer(Initializer):
 
     """
 
-    def __init__(self, value):
+    def __init__(self, value: npt.NDArray[Any]) -> None:
         import numpy
 
         assert isinstance(value, numpy.ndarray)
         super().__init__()
         self._value = value
 
-    def forward(self, var, block=None):
+    def forward(
+        self, var: paddle.Tensor, block: paddle.pir.Block | None = None
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with Numpy array.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
+            block(Block|None, optional): The block in which initialization ops
                    should be added. Used in static graph only, default None.
 
         Returns:
@@ -66,8 +76,12 @@ class NumpyArrayInitializer(Initializer):
         )
         assert isinstance(block, (framework.Block, paddle.pir.Block))
 
-        # to be compatible of fp16 initalizers
-        if var.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
+        # to be compatible of fp16 initializers
+        origin_dtype = var.dtype
+        if origin_dtype in [
+            core.VarDesc.VarType.FP16,
+            core.VarDesc.VarType.BF16,
+        ]:
             out_dtype = core.VarDesc.VarType.FP32
             np_value = self._value.astype("float32")
             out_var = block.create_var(
@@ -79,13 +93,13 @@ class NumpyArrayInitializer(Initializer):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
             )
-        elif var.dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
+        elif origin_dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
             out_var = var
             out_dtype = core.DataType.FLOAT32
             np_value = self._value.astype("float32")
         else:
             out_var = var
-            out_dtype = var.dtype
+            out_dtype = origin_dtype
             np_value = self._value
 
         if out_dtype in (core.VarDesc.VarType.FP32, core.DataType.FLOAT32):
@@ -106,7 +120,7 @@ class NumpyArrayInitializer(Initializer):
             value_name = "int8_values"
             values = [int(v) for v in np_value.flat]
         else:
-            raise ValueError("Unsupported dtype %s", self._value.dtype)
+            raise ValueError(f"Unsupported dtype {self._value.dtype}")
         if self._value.size > 1024 * 1024 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "
@@ -121,11 +135,13 @@ class NumpyArrayInitializer(Initializer):
                 values,
                 _current_expected_place(),
             )
-            if var.dtype in [
+            if origin_dtype in [
                 core.VarDesc.VarType.FP16,
                 core.VarDesc.VarType.BF16,
+                core.DataType.FLOAT16,
+                core.DataType.BFLOAT16,
             ]:
-                var_tmp = _C_ops.cast(out_var, var.dtype)
+                var_tmp = _C_ops.cast(out_var, origin_dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -137,8 +153,8 @@ class NumpyArrayInitializer(Initializer):
                 values,
                 _current_expected_place(),
             )
-            if var.dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
-                out_var = _C_ops.cast(out_var, var.dtype)
+            if origin_dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
+                out_var = _C_ops.cast(out_var, origin_dtype)
             return out_var
         else:
             op = block.append_op(
@@ -152,7 +168,7 @@ class NumpyArrayInitializer(Initializer):
                 stop_gradient=True,
             )
 
-            if var.dtype in [
+            if origin_dtype in [
                 core.VarDesc.VarType.FP16,
                 core.VarDesc.VarType.BF16,
             ]:
@@ -160,7 +176,10 @@ class NumpyArrayInitializer(Initializer):
                     type="cast",
                     inputs={"X": out_var},
                     outputs={"Out": var},
-                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
+                    attrs={
+                        "in_dtype": out_var.dtype,
+                        "out_dtype": origin_dtype,
+                    },
                 )
 
             var.op = op
@@ -172,7 +191,7 @@ class Assign(NumpyArrayInitializer):
 
     Args:
         value (Tensor|numpy.ndarray|list|tuple): numpy array, list, tuple, or tensor to initialize the parameter.
-        name(str, optional): Normally there is no need for user to set this
+        name(str|None, optional): Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -186,10 +205,10 @@ class Assign(NumpyArrayInitializer):
 
             >>> # numpy array
             >>> data_1 = paddle.ones(shape=[1, 2], dtype='float32')
-            >>> weight_attr_1 = paddle.framework.ParamAttr(
+            >>> weight_attr_1 = paddle.ParamAttr(
             ...     name="linear_weight_1",
             ...     initializer=paddle.nn.initializer.Assign(np.array([2, 2])))
-            >>> bias_attr_1 = paddle.framework.ParamAttr(
+            >>> bias_attr_1 = paddle.ParamAttr(
             ...     name="linear_bias_1",
             ...     initializer=paddle.nn.initializer.Assign(np.array([2])))
             >>> linear_1 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_1, bias_attr=bias_attr_1)
@@ -204,10 +223,10 @@ class Assign(NumpyArrayInitializer):
 
             >>> # python list
             >>> data_2 = paddle.ones(shape=[1, 2], dtype='float32')
-            >>> weight_attr_2 = paddle.framework.ParamAttr(
+            >>> weight_attr_2 = paddle.ParamAttr(
             ...     name="linear_weight_2",
             ...     initializer=paddle.nn.initializer.Assign([2, 2]))
-            >>> bias_attr_2 = paddle.framework.ParamAttr(
+            >>> bias_attr_2 = paddle.ParamAttr(
             ...     name="linear_bias_2",
             ...     initializer=paddle.nn.initializer.Assign([2]))
             >>> linear_2 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_2, bias_attr=bias_attr_2)
@@ -222,10 +241,10 @@ class Assign(NumpyArrayInitializer):
 
             >>> # tensor
             >>> data_3 = paddle.ones(shape=[1, 2], dtype='float32')
-            >>> weight_attr_3 = paddle.framework.ParamAttr(
+            >>> weight_attr_3 = paddle.ParamAttr(
             ...     name="linear_weight_3",
             ...     initializer=paddle.nn.initializer.Assign(paddle.full([2], 2)))
-            >>> bias_attr_3 = paddle.framework.ParamAttr(
+            >>> bias_attr_3 = paddle.ParamAttr(
             ...     name="linear_bias_3",
             ...     initializer=paddle.nn.initializer.Assign(paddle.full([1], 2)))
             >>> linear_3 = paddle.nn.Linear(2, 2, weight_attr=weight_attr_3, bias_attr=bias_attr_3)
@@ -239,7 +258,11 @@ class Assign(NumpyArrayInitializer):
             [6.]
     """
 
-    def __init__(self, value, name=None):
+    def __init__(
+        self,
+        value: npt.NDArray[Any] | Sequence[int] | paddle.Tensor,
+        name: str | None = None,
+    ) -> None:
         import numpy
 
         check_type(

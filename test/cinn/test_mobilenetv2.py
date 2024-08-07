@@ -19,10 +19,10 @@ import time
 import unittest
 
 import numpy as np
-from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
-from cinn.frontend import Interpreter
 
 from paddle import base
+from paddle.cinn.common import DefaultHostTarget, DefaultNVGPUTarget
+from paddle.cinn.frontend import Interpreter
 
 enable_gpu = sys.argv.pop()
 model_dir = sys.argv.pop()
@@ -110,7 +110,7 @@ class TestLoadResnetModel(unittest.TestCase):
 
     def test_model(self):
         self.apply_test()
-        # self.target.arch = Target.Arch.NVGPU
+        # self.target.arch = Target.NVGPUArch()
         # self.apply_test()
 
 

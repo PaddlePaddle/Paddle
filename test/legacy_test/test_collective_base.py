@@ -147,7 +147,7 @@ def runtime_main(test_class, col_type, sub_type):
     args["col_type"] = col_type
     args["dtype"] = os.getenv("DTYPE")
     args["dynamic_static_unified_comm"] = bool(
-        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+        int(os.getenv("FLAGS_dynamic_static_unified_comm", "1"))
     )
     model.run_trainer(args)
 
@@ -156,10 +156,7 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-            self._find_free_port(),
-            self._find_free_port(),
-        )
+        self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
         self._python_interp = sys.executable
 
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -235,8 +232,8 @@ class TestDistBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
-        sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
+        sys.stderr.write(f'trainer 0 stderr: {tr0_err}\n')
+        sys.stderr.write(f'trainer 1 stderr: {tr1_err}\n')
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
@@ -266,7 +263,6 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1",
-            "FLAGS_dynamic_static_unified_comm": "0",
             "DTYPE": "float32",
         }
         required_envs.update(need_envs)

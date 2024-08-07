@@ -29,7 +29,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-using phi::GroupNormNHWCParams;
+using phi::GroupNormNDHWCParams;
 class GroupNormPlugin : public PluginTensorRT {
  public:
   size_t getSerializationSize() const TRT_NOEXCEPT override {
@@ -289,7 +289,7 @@ class GroupNormPluginDynamic : public DynamicPluginTensorRT {
   float eps_;
   std::vector<int64_t> mean_shape_;
   std::vector<int64_t> variance_shape_;
-  GroupNormNHWCParams<half> params_;
+  GroupNormNDHWCParams<half> params_;
   bool with_silu_;
   bool with_fp16_;
   bool with_int8_;

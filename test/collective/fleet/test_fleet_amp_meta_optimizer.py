@@ -100,7 +100,7 @@ class TestFleetAMPOptimizer(TestFleetMetaOptimizer):
 
         params = train_prog.all_parameters()
         for param in train_prog.all_parameters():
-            self.assertEqual(param.dtype, base.core.VarDesc.VarType.FP16)
+            self.assertEqual(param.dtype, paddle.float16)
 
         ops = [op.type for op in avg_cost.block.ops]
         self.assertIn('cast', ops)

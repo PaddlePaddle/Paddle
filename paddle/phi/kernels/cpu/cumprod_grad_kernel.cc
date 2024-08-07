@@ -32,8 +32,10 @@ void CumprodGradKernel(const Context& dev_ctx,
                        const DenseTensor& out,
                        const DenseTensor& d_out,
                        int dim,
+                       bool exclusive,
+                       bool reverse,
                        DenseTensor* d_x) {
-  DDim shape = x.dims();
+  const DDim& shape = x.dims();
 
   auto* d_out_data = d_out.data<T>();
   auto* x_data = x.data<T>();
@@ -77,28 +79,82 @@ void CumprodGradKernel(const Context& dev_ctx,
     x_data_deal = x_data;
     out_data_deal = out_data;
   }
-
-  for (size_t i = 0; i < outer_dim; i++) {
-    for (size_t k = 0; k < inner_dim; k++) {
-      for (size_t j = 0; j < mid_dim; j++) {
-        size_t index = i * mid_dim * inner_dim + j * inner_dim + k;
-        d_x_data[index] = 0;
-        for (size_t n = 0; n < mid_dim; n++) {
-          size_t pos = i * mid_dim * inner_dim + n * inner_dim + k;
-          T elem;
-          if (j == 0) {
-            elem = d_out_data[pos];
-          } else {
-            elem = d_out_data[pos] * out_data_deal[index - inner_dim];
-          }
-          if (pos > index) {
-            for (size_t m = index + inner_dim; m <= pos; m += inner_dim) {
-              elem *= x_data_deal[m];
+  if (!reverse) {
+    for (size_t i = 0; i < outer_dim; i++) {
+      for (size_t k = 0; k < inner_dim; k++) {
+        for (size_t j = 0; j < mid_dim; j++) {
+          size_t index = i * mid_dim * inner_dim + j * inner_dim + k;
+          d_x_data[index] = 0;
+          for (size_t n = 0; n < mid_dim; n++) {
+            size_t pos = i * mid_dim * inner_dim + n * inner_dim + k;
+            T elem;
+            if (exclusive) {
+              if (pos > index) {
+                elem = d_out_data[pos] * out_data_deal[index];
+                for (size_t m = index + inner_dim; m <= pos - inner_dim;
+                     m += inner_dim) {
+                  elem *= x_data_deal[m];
+                }
+              } else {
+                elem = static_cast<T>(0);
+              }
+            } else {
+              if (j == 0) {
+                elem = d_out_data[pos];
+              } else {
+                elem = d_out_data[pos] * out_data_deal[index - inner_dim];
+              }
+              if (pos > index) {
+                for (size_t m = index + inner_dim; m <= pos; m += inner_dim) {
+                  elem *= x_data_deal[m];
+                }
+              } else if (pos < index) {
+                elem = static_cast<T>(0);
+              }
             }
-          } else if (pos < index) {
-            elem = static_cast<T>(0);
+            d_x_data[index] += elem;
           }
-          d_x_data[index] += elem;
+        }
+      }
+    }
+  } else {
+    for (size_t i = 0; i < outer_dim; i++) {
+      for (size_t k = 0; k < inner_dim; k++) {
+        for (size_t j = mid_dim; j > 0; j--) {
+          size_t index = i * mid_dim * inner_dim + (j - 1) * inner_dim + k;
+          d_x_data[index] = 0;
+          for (size_t n = mid_dim; n > 0; n--) {
+            size_t pos = i * mid_dim * inner_dim + (n - 1) * inner_dim + k;
+            T elem;
+            if (exclusive) {
+              if (pos < index) {
+                elem = d_out_data[pos] * out_data_deal[index];
+                for (size_t m = index - inner_dim; m >= pos + inner_dim;
+                     m -= inner_dim) {
+                  elem *= x_data_deal[m];
+                }
+              } else {
+                elem = static_cast<T>(0);
+              }
+            } else {
+              if (j == mid_dim) {
+                elem = d_out_data[pos];
+              } else {
+                elem = d_out_data[pos] * out_data_deal[index + inner_dim];
+              }
+              if (pos < index) {
+                for (size_t m = index - inner_dim + inner_dim;
+                     m >= pos + inner_dim;
+                     m -= inner_dim) {  // both m and pos should + inner_dim to
+                                        // avoid 0-a=MAX_SIZET-a
+                  elem *= x_data_deal[m - inner_dim];
+                }
+              } else if (pos > index) {
+                elem = static_cast<T>(0);
+              }
+            }
+            d_x_data[index] += elem;
+          }
         }
       }
     }

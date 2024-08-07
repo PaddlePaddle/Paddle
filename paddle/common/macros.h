@@ -14,6 +14,17 @@ limitations under the License. */
 
 #pragma once
 
+#if defined(_WIN32) && !defined(STATIC_PADDLE)
+#ifndef PADDLE_API
+#ifdef PADDLE_DLL_EXPORT
+#define PADDLE_API __declspec(dllexport)
+#else
+#define PADDLE_API __declspec(dllimport)
+#endif  // PADDLE_DLL_EXPORT
+#endif  // PADDLE_API
+#else
+#define PADDLE_API
+#endif  // _WIN32
 namespace common {
 
 // Disable the copy and assignment operator for a class.

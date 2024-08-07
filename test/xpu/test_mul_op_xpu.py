@@ -64,7 +64,7 @@ class XPUTestMulOp(XPUOpTestWrapper):
                 place, ['X', 'Y'], 'Out', max_relative_error=0.1
             )
 
-        def test_check_grad_ingore_x(self):
+        def test_check_grad_ignore_x(self):
             place = paddle.XPUPlace(0)
             paddle.enable_static()
             self.check_grad_with_place(
@@ -109,7 +109,7 @@ class XPUTestMulOp(XPUOpTestWrapper):
                 place, ['X', 'Y'], 'Out', max_relative_error=0.1
             )
 
-        def test_check_grad_ingore_x(self):
+        def test_check_grad_ignore_x(self):
             place = paddle.XPUPlace(0)
             paddle.enable_static()
             self.check_grad_with_place(
@@ -120,7 +120,7 @@ class XPUTestMulOp(XPUOpTestWrapper):
                 no_grad_set=set("X"),
             )
 
-        def test_check_grad_ingore_y(self):
+        def test_check_grad_ignore_y(self):
             place = paddle.XPUPlace(0)
             paddle.enable_static()
             self.check_grad_with_place(

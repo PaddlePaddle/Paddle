@@ -24,7 +24,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a multihead_mamul_roformer op to a corresponding "
+    VLOG(3) << "convert a multihead_matmul_roformer op to a corresponding "
                "tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
@@ -67,14 +67,14 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     int hidden_out = weight_dims[2];  // channels_out
     int m = hidden_in;
     int n = three * hidden_out;
-    auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
+    auto transpose_weight = [](const float* src, float* dst, int m, int n) {
       for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
           dst[j * m + i] = src[i * n + j];
         }
       }
     };
-    tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
+    transpose_weight(weight_data_tmp.data(), weight_data, m, n);
 
     int head_number = PADDLE_GET_CONST(int, op_desc.GetAttr("head_number"));
 
@@ -87,12 +87,12 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
     if (engine_->with_dynamic_shape()) {
       if (flag_varseqlen) {
         PADDLE_THROW(
-            platform::errors::Fatal("roformer not support varseqlen yet"));
+            common::errors::Fatal("roformer not support varseqlen yet"));
       } else {
         PADDLE_ENFORCE_EQ(
             input->getDimensions().nbDims,
             3,
-            platform::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The Input dim of the MultiheadMatMul should be 3, "
                 "but it's (%d) now.",
                 input->getDimensions().nbDims));
@@ -108,7 +108,53 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT,
                                     static_cast<void*>(bias_data),
                                     static_cast<size_t>(bias_t->numel())};
-
+#if IS_TRT_VERSION_GE(8600)
+        auto* weight_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Constant, nvinfer1::Dims3(1, n, m), weight.get());
+        auto* bias_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Constant, nvinfer1::Dims3(1, 1, n), bias.get());
+        auto* matmul_layer =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 MatrixMultiply,
+                                 *input,
+                                 nvinfer1::MatrixOperation::kNONE,
+                                 *weight_layer->getOutput(0),
+                                 nvinfer1::MatrixOperation::kTRANSPOSE);
+        matmul_layer->setName(
+            ("multihead_matmul_matmul(Output: " + output_name + ")").c_str());
+        auto* add_layer =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 ElementWise,
+                                 *matmul_layer->getOutput(0),
+                                 *bias_layer->getOutput(0),
+                                 nvinfer1::ElementWiseOperation::kSUM);
+        add_layer->setName(
+            ("multihead_matmul_add(Output: " + output_name + ")").c_str());
+        if (op_desc.HasAttr("fc_out_threshold")) {
+          PADDLE_ENFORCE_EQ(
+              op_desc.HasAttr("fc_out_threshold"),
+              true,
+              common::errors::InvalidArgument(
+                  "must have out threshold in multihead layers in int8 mode"));
+          float out_scale =
+              PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+          engine_->SetTensorDynamicRange(add_layer->getOutput(0), out_scale);
+        }
+        auto* reshape_after_fc_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *add_layer->getOutput(0));
+        nvinfer1::Dims reshape_after_fc_dim;
+        reshape_after_fc_dim.nbDims = 5;
+        reshape_after_fc_dim.d[0] = 0;
+        reshape_after_fc_dim.d[1] = 0;
+        reshape_after_fc_dim.d[2] = 0;
+        reshape_after_fc_dim.d[3] = 1;
+        reshape_after_fc_dim.d[4] = 1;
+        reshape_after_fc_layer->setReshapeDimensions(reshape_after_fc_dim);
+        reshape_after_fc_layer->setName(
+            ("shuffle_after_multihead_matmul(Output: " + output_name + ")")
+                .c_str());
+        auto* fc_layer = reshape_after_fc_layer;
+#else
         // add shuffle before fc
         nvinfer1::Dims reshape_before_fc_dim;
         reshape_before_fc_dim.nbDims = 5;
@@ -134,7 +180,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           nvinfer1::DimsHW nv_ksize(1, 1);
           fc_layer =
               TRT_ENGINE_ADD_LAYER(engine_,
-                                   Convolution,
+                                   ConvolutionNd,
                                    *reshape_before_fc_layer->getOutput(0),
                                    n,
                                    nv_ksize,
@@ -154,7 +200,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
           PADDLE_ENFORCE_EQ(
               op_desc.HasAttr("fc_out_threshold"),
               true,
-              platform::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "must have out threshold in multihead layers in int8 mode"));
           float out_scale =
               PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
@@ -164,6 +210,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
             ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
 
         // no need to add shuffle after fc, just change it in
+#endif
         // QkvToContextPluginDynamic
 
         // add qkv to context
@@ -187,13 +234,13 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         layer = engine_->AddDynamicPlugin(plugin_inputs.data(), 4, plugin);
       }
     } else {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "You are running the Ernie(Bert) model in static shape mode, which "
           "is not supported for the time being.\n"
           "You can use the config.SetTRTDynamicShapeInfo(...) interface to set "
           "the shape information to run the dynamic shape mode."));
     }
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "multihead_matmul_roformer", {output_name}, test_mode);
   }
 };

@@ -962,9 +962,7 @@ class MCMC(SearchAlgorithm):
         pipeline_min_cost = None
         for process_mesh_topology in process_mesh_topology_list:
             print(
-                "MCMC search: search process mesh {} with pipeline mode.".format(
-                    process_mesh_topology
-                )
+                f"MCMC search: search process mesh {process_mesh_topology} with pipeline mode."
             )
             (
                 valid_dist_attr_dict,
@@ -983,9 +981,7 @@ class MCMC(SearchAlgorithm):
                 valid_dist_attr_dict, init_dist_context, pipeline_process_meshes
             )
             print(
-                "MCMC search: the min cost is {} in the process mesh {} with pipeline mode.".format(
-                    cost, process_mesh_topology
-                )
+                f"MCMC search: the min cost is {cost} in the process mesh {process_mesh_topology} with pipeline mode."
             )
             best_dist_context._dist_op_context = DistributedOperatorContext()
             pipeline_min_cost = (
@@ -1007,9 +1003,7 @@ class MCMC(SearchAlgorithm):
             if len(process_mesh_topology) == 3:
                 continue
             print(
-                "MCMC search: search process mesh {} without pipeline mode.".format(
-                    process_mesh_topology
-                )
+                f"MCMC search: search process mesh {process_mesh_topology} without pipeline mode."
             )
             (
                 valid_dist_attr_dict,
@@ -1028,9 +1022,7 @@ class MCMC(SearchAlgorithm):
                 valid_dist_attr_dict, init_dist_context, pipeline_process_meshes
             )
             print(
-                "MCMC search: the min cost is {} in the process mesh {} without pipeline mode.".format(
-                    cost, process_mesh_topology
-                )
+                f"MCMC search: the min cost is {cost} in the process mesh {process_mesh_topology} without pipeline mode."
             )
             best_dist_context._dist_op_context = DistributedOperatorContext()
             non_pipeline_min_cost = (
@@ -1061,9 +1053,7 @@ class MCMC(SearchAlgorithm):
             pg0.add_ranks(process_mesh.process_ids)
         end_time = time.time()
         print(
-            "End MCMC searching: the min cost is {} and the search time is {}s.".format(
-                min_cost, end_time - start_time
-            )
+            f"End MCMC searching: the min cost is {min_cost} and the search time is {end_time - start_time}s."
         )
         return searched_dist_context, min_cost
 

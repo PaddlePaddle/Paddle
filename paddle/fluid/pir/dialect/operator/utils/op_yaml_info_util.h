@@ -15,8 +15,9 @@
 #pragma once
 
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/operation_utils.h"
 
 namespace paddle {
 namespace dialect {
@@ -94,9 +95,12 @@ struct OpRunTimeInfo {
   std::vector<std::pair<std::string, std::string>> inplace;
   std::vector<std::pair<std::string, std::string>> view;
   std::vector<std::string> extra_args;
+  std::vector<std::string> skip_transform_inputs;
+  pir::AttributeMap extra_args_default_value;
   std::vector<std::string> data_format_tensors;
-  bool is_onednn_only;
-  bool dynamic_fallback;
+  bool is_onednn_only = false;
+  bool dynamic_fallback = false;
+  OpRunTimeInfo() = default;
 
   OpRunTimeInfo(const std::string& infer_meta_func,
                 const std::vector<std::string>& infer_meta_param,
@@ -107,6 +111,8 @@ struct OpRunTimeInfo {
                 const std::vector<std::pair<std::string, std::string>>& inplace,
                 const std::vector<std::pair<std::string, std::string>>& view,
                 const std::vector<std::string>& extra_args = {},
+                const std::vector<std::string>& skip_transform_inputs = {},
+                const pir::AttributeMap& extra_args_default_value = {{}},
                 const std::vector<std::string>& data_format_tensors = {},
                 bool is_onednn_only = false,
                 bool dynamic_fallback = false)
@@ -119,6 +125,8 @@ struct OpRunTimeInfo {
         inplace(inplace),
         view(view),
         extra_args(extra_args),
+        skip_transform_inputs(skip_transform_inputs),
+        extra_args_default_value(extra_args_default_value),
         data_format_tensors(data_format_tensors),
         is_onednn_only(is_onednn_only),
         dynamic_fallback(dynamic_fallback) {}

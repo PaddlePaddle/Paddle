@@ -49,7 +49,7 @@ std::vector<size_t> ReadSentenceLod(std::ifstream &file,
   file.clear();
   file.seekg(offset);
   file.read(reinterpret_cast<char *>(sentence_lod.data()),
-            total_sentences_num * sizeof(size_t));
+            total_sentences_num * sizeof(size_t));  // NOLINT
 
   if (file.eof()) LOG(ERROR) << "Reached end of stream";
   if (file.fail()) throw std::runtime_error("Failed reading file.");
@@ -63,7 +63,7 @@ std::shared_ptr<std::vector<PaddleTensor>> WarmupData(
 
   PADDLE_ENFORCE_LE(static_cast<size_t>(num_images),
                     data_size,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The requested quantization warmup data size must be "
                         "lower or equal to the test data size. But received"
                         "warmup size is %d and test data size is %d",
@@ -274,15 +274,19 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
     } else if (FLAGS_enable_int8_qat) {
       analysis_cfg.EnableMkldnnInt8();
     } else {
-      // if fp32 => disable mkldnn fc passes
+      // if fp32 => disable onednn fc passes
       // when passes are enabled dnnl error occurs for iterations==0
       analysis_cfg.DisableMkldnnFcPasses();
     }
     std::vector<double> acc_analysis(3);
     acc_analysis = Lexical_Test(input_slots_all, &outputs, &analysis_cfg, true);
     for (size_t i = 0; i < acc_analysis.size(); i++) {
-      CHECK_LE(std::abs(acc_ref[i] - acc_analysis[i]),
-               FLAGS_quantized_accuracy);
+      PADDLE_ENFORCE_LE(
+          std::abs(acc_ref[i] - acc_analysis[i]),
+          FLAGS_quantized_accuracy,
+          common::errors::InvalidArgument(
+              "Required abs(acc_ref[i] - acc_analysis[i]) should be less than "
+              "or euqal to FLAGS_quantized_accuracy. "));
     }
   }
 }

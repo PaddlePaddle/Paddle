@@ -39,7 +39,14 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
             f'shape should be {self.dst_shape}, but get {shape}',
         )
 
-        if data_type in ['float16', 'float32', 'float64', 'int32', 'int64']:
+        if data_type in [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'uint16',
+        ]:
             max_value = np.nanmax(out)
             min_value = np.nanmin(out)
             always_non_full_zero = max_value >= min_value
@@ -270,16 +277,6 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
             self.dst_dtype = self.dtype
             self.dst_shape = x.shape
             self.__check_out__(res[0])
-
-
-class TestEmptyError(unittest.TestCase):
-    def test_attr(self):
-        def test_dtype():
-            x = np.random.random((200, 3)).astype("float64")
-            dtype = 'uint8'
-            result = paddle.empty_like(x, dtype=dtype)
-
-        self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == '__main__':

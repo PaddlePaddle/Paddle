@@ -21,7 +21,7 @@
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/llvm/simple_jit.h"
@@ -35,6 +35,7 @@
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/utils/timer.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace backends {
@@ -57,8 +58,13 @@ void __launch_bounds__(200) elementwise_mul(const float* __restrict__ A, const f
 }
   )ROC";
   std::ofstream file(cuda_source_name);
-  CHECK(file.is_open()) << "failed to open file " << cuda_source_name;
-  file << CodeGenCUDA_Dev::GetSourceHeader();
+  PADDLE_ENFORCE_EQ(file.is_open(),
+                    true,
+                    ::common::errors::Unavailable(
+                        "Failed to open file: %s. Please check if the file "
+                        "path is correct and the file is accessible.",
+                        cuda_source_name));
+  file << CodeGenCudaDev::GetSourceHeader();
   file << cuda_source_code;
   file.close();
   LOG(WARNING) << "Output C source to file " << cuda_source_name;

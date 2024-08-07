@@ -19,18 +19,18 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 /* Source pattern:
                                        input1
                                     /  |  \  \  \
                                   /    |   \   \    \
              full               /      |    |    \     \           full_tmp
-            /  |        transpos1      | trans2 trans3    \         /   |
+            /  |        transpose1      | trans2 trans3    \        /   |
            /   |         /    |        |    |      |        \      /    |
     softmax1   |        /     |        |    |      |          \   /     |
          \     |      /    softmax2    |    |      |          add1      |
@@ -54,6 +54,8 @@
 // only focusing on the process of matching and replacing)
 class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
  public:
+  std::string name() const override { return "SameTypeBindingTestPattern"; }
+
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern src = ctx->SourcePattern();
 
@@ -66,7 +68,7 @@ class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
     src.Tensor("softmax_2_out") = softmax_2(src.Tensor("transpose_1_out"));
     const auto &matmul_2 =
         src.Op("pd_op.matmul",
-               {{"transpose_x", src.Attr("matmul_2_tradnspose_x")},
+               {{"transpose_x", src.Attr("matmul_2_transpose_x")},
                 {"transpose_y", src.Attr("matmul_2_transpose_y")}});
     src.Tensor("matmul_2_out") =
         matmul_2(src.Tensor("softmax_2_out"), src.Tensor("input_1"));
@@ -178,8 +180,6 @@ class SameTypeBindingTestPattern : public paddle::drr::DrrPatternBase {
     res.Tensor("output5") = full_5();
     res.Tensor("output6") = full_6();
   }
-
-  std::string name() const override { return "SameTypeBindingTestPattern"; }
 };
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
@@ -292,7 +292,7 @@ class DrrPatternRewritePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(SameTypeBindingTestPattern().Build(context));
+    ps.Add(paddle::drr::Create<SameTypeBindingTestPattern>(context));
 
     return ps;
   }

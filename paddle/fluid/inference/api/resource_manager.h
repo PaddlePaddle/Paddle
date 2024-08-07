@@ -19,7 +19,7 @@
 #include <memory>
 #include <mutex>
 
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/cpu/forwards.h"
 #include "paddle/phi/common/place.h"
@@ -81,14 +81,14 @@ class GPUContextResource {
   int GetGPUMultiProcessors() const;
   int GetGpuMaxThreadsPerMp() const;
   int GetGpuMaxThreadsPerBlock() const;
-  std::array<int, 3> GetGpuMaxGridDimSize() const;
+  std::array<unsigned int, 3> GetGpuMaxGridDimSize() const;
 
  private:
   void InitGPUResource(void* stream);
   void DestroyGPUResource();
   void InitGpuProperties();
   void InitGpuEigenDevice();
-  void InitDnnHanlde();
+  void InitDnnHandle();
   void DestroyDnnHandle();
   void DestroyBlasHandle();
   void InitBlasLtHandle();
@@ -107,7 +107,7 @@ class GPUContextResource {
   int multi_process_;
   int max_threads_per_mp_;
   int max_threads_per_block_;
-  std::array<int, 3> max_grid_dim_size_;
+  std::array<unsigned int, 3> max_grid_dim_size_;
 
   bool owned_stream_{true};
   gpuStream_t stream_;

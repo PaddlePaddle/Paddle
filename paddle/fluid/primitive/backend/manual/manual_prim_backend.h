@@ -29,6 +29,25 @@ Tensor full(const IntArray& shape,
             DataType dtype = DataType::FLOAT32,
             Place place = Place());
 
+template <typename T>
+Tensor full_with_tensor(const Tensor& shape,
+                        const Scalar& value,
+                        DataType dtype = DataType::FLOAT32,
+                        Place place = Place());
+
+template <typename T>
+Tensor reshape_with_tensor(const Tensor& x, const Tensor& shape);
+
+template <typename T>
+Tensor expand_with_tensor(const Tensor& x, const Tensor& shape);
+
+template <typename T>
+Tensor arange_with_tensor(const Tensor& start,
+                          const Tensor& end,
+                          const Tensor& step,
+                          DataType dtype = DataType::FLOAT64,
+                          Place place = CPUPlace());
+
 }  // namespace backend
 }  // namespace primitive
 }  // namespace paddle

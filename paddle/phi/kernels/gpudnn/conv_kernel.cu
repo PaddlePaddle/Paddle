@@ -43,6 +43,10 @@
 // clang-format on
 #endif
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -231,7 +235,7 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
   PADDLE_ENFORCE_EQ(
       groups,
       1,
-      phi::errors::Unimplemented(
+      common::errors::Unimplemented(
           "Group concolution using CUDNNv8 API unsupported for now"));
 
   T* input_data = const_cast<T*>(input_tensor->data<T>());
@@ -324,7 +328,7 @@ void ConvCudnnKernel(const Context& ctx,
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
@@ -373,7 +377,8 @@ void ConvCudnnKernel(const Context& ctx,
     transformed_input_channel.ShareDataWith(input);
     transformed_output.ShareDataWith(*output);
   }
-  if (compute_format == phi::backends::gpu::DataLayout::kNHWC) {
+  if (compute_format == phi::backends::gpu::DataLayout::kNHWC &&
+      !FLAGS_manually_trans_conv_filter) {
     VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
     ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
     TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
@@ -457,7 +462,7 @@ void ConvCudnnKernel(const Context& ctx,
                                           &transformed_input);
       } break;
       default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "ConvOp only support tensors with 4 or 5 dimensions."));
     }
 
@@ -617,6 +622,17 @@ PD_REGISTER_KERNEL(conv3d,
                    phi::Conv3DCudnnKernel,
                    float,
                    double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#elif CUDNN_VERSION_MIN(8, 6, 0) && CUDA_VERSION >= 11800 && \
+    defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 890
+PD_REGISTER_KERNEL(conv2d,
+                   GPUDNN,
+                   ALL_LAYOUT,
+                   phi::ConvCudnnKernel,
+                   float,
+                   double,
+                   phi::dtype::float8_e4m3fn,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 #else

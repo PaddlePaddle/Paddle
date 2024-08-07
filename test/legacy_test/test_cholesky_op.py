@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -63,7 +64,14 @@ class TestCholeskyOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -121,14 +129,14 @@ class TestCholeskyOp(OpTest):
                 for i in range(len(out)):
                     yi = out[i]
                     dy = paddle.static.data(
-                        name='dys_%s' % i,
+                        name=f'dys_{i}',
                         shape=yi.shape,
                         dtype=root_data.dtype,
                     )
                     dy.stop_gradient = False
                     dy.persistable = True
                     value = np.zeros(yi.shape, dtype=root_data.dtype)
-                    feeds.update({'dys_%s' % i: value})
+                    feeds.update({f'dys_{i}': value})
                     dys.append(dy)
                 fetch_list = base.gradients(out, root, dys)
             grad_check(
@@ -169,7 +177,14 @@ class TestDygraph(unittest.TestCase):
 
 class TestCholeskySingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
             self.places.append(base.CUDAPlace(0))
 
@@ -209,7 +224,7 @@ class TestCholeskySingularAPI(unittest.TestCase):
                         [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
                     ]
                 ).astype("float64")
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 try:
                     result = paddle.cholesky(input)
                 except RuntimeError as ex:

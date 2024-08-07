@@ -18,8 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 void SetInMemDescWithSqueeze2FuseSupport(
     const std::vector<int> fused_squeeze2_axes,
@@ -34,7 +33,7 @@ void SetInMemDescWithSqueeze2FuseSupport(
   int j = 0;
   for (size_t i = 0; i < x_vec_dims.size(); ++i) {
     if (squeeze2_axes_set.count(i) ||
-        squeeze2_axes_set.count(i - x_vec_dims.size())) {
+        squeeze2_axes_set.count(i - x_vec_dims.size())) {  // NOLINT
       PADDLE_ENFORCE_EQ(
           x_vec_dims[i],
           1,
@@ -68,12 +67,12 @@ void FusedTransposeKernel(const Context& dev_ctx,
   if ((x_dims.size() >= 3) &&
       (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
        phi::DataLayout::kNHWC)) {
-    int axis_size = axis.size();
-    std::vector<int> formated_axis = axis;
+    int axis_size = static_cast<int>(axis.size());
+    std::vector<int> formatted_axis = axis;
     std::vector<int> count(axis_size, 0);
     for (int i = 0; i < axis_size; i++) {
       if (axis[i] < 0) {
-        formated_axis[i] = axis[i] + axis_size;
+        formatted_axis[i] = axis[i] + axis_size;
       }
     }
     auto dims = common::vectorize<int>(x_dims);
@@ -85,7 +84,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
 
     phi::DDim out_dims(x_dims);
     for (size_t i = 0; i < axis.size(); i++) {
-      out_dims[i] = x_dims[formated_axis[i]];
+      out_dims[i] = x_dims[formatted_axis[i]];  // NOLINT
     }
     out->Resize(out_dims);
   }
@@ -194,8 +193,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fused_transpose,
                    OneDNN,

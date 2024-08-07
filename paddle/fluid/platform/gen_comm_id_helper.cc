@@ -28,9 +28,9 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/split.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/phi/backends/c_comm_lib.h"
 #endif
 
-PHI_DECLARE_int32(get_host_by_name_time);
+COMMON_DECLARE_int32(get_host_by_name_time);
 
 namespace paddle {
 namespace platform {
@@ -61,7 +61,7 @@ struct CommHead {
   do {                                                      \
     RETRY_SYS_CALL_VAL(call, name, retval);                 \
     if (retval == -1) {                                     \
-      PADDLE_THROW(platform::errors::Unavailable(           \
+      PADDLE_THROW(common::errors::Unavailable(             \
           "Call to %s failed: %s", name, strerror(errno))); \
     }                                                       \
   } while (false)
@@ -82,7 +82,7 @@ static int SocketSend(int fd, const char* buffer, int size) {
   int offset = 0;
   int bytes = 0;
   while (offset < size) {
-    bytes = send(fd, buffer + offset, size - offset, 0);
+    bytes = send(fd, buffer + offset, size - offset, 0);  // NOLINT
     if (bytes == -1) {
       if (errno != EINTR && errno != EWOULDBLOCK && errno != EAGAIN) {
         // send failed
@@ -100,7 +100,7 @@ static int SocketRecv(int fd, char* buffer, int size) {
   int offset = 0;
   int bytes = 0;
   while (offset < size) {
-    bytes = recv(fd, buffer + offset, size - offset, 0);
+    bytes = recv(fd, buffer + offset, size - offset, 0);  // NOLINT
     if (bytes == 0) {
       // closed by client, maybe probing alive client
       return 0;
@@ -125,10 +125,10 @@ static void BindOrConnectFailed(int timeout,
   PADDLE_ENFORCE_LT(
       *total_time,
       timeout,
-      platform::errors::Unavailable("%s addr=%s timeout, failed reason: %s",
-                                    op,
-                                    ep.c_str(),
-                                    strerror(errno)));
+      common::errors::Unavailable("%s addr=%s timeout, failed reason: %s",
+                                  op,
+                                  ep.c_str(),
+                                  strerror(errno)));
   ++(*try_times);
   int retry_time = std::min(*try_times * 500, 3000);  // max 3 seconds
   *total_time += retry_time;
@@ -144,7 +144,7 @@ int CreateListenSocket(const std::string& ep) {
   PADDLE_ENFORCE_EQ(
       addr.size(),
       2UL,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
@@ -163,7 +163,7 @@ int CreateListenSocket(const std::string& ep) {
   int opt = 1;
 
   // NOTE. The linger is used for skipping TIME-WAIT status forcefully.
-  linger ling;
+  linger ling = {};
   ling.l_onoff = 1;
   ling.l_linger = 0;
 
@@ -185,7 +185,7 @@ int CreateListenSocket(const std::string& ep) {
       "setsockopt");
 #endif
 
-  struct sockaddr_in address;
+  struct sockaddr_in address = {};
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port);
@@ -219,7 +219,7 @@ static int SocketAccept(int server_fd, const CommHead head) {
   static_assert(sizeof(CommHead) <= 1024,
                 "sizeof(CommHead) must <= buffer size");
 
-  struct sockaddr_in client_addr;
+  struct sockaddr_in client_addr = {};
   socklen_t addr_length = sizeof(client_addr);
   std::array<char, 1024> buffer{0};
   int conn = -1;
@@ -250,12 +250,12 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
   PADDLE_ENFORCE_EQ(
       addr.size(),
       2UL,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
 
-  struct sockaddr_in server_addr;
+  struct sockaddr_in server_addr = {};
   memset(&server_addr, 0, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(port);
@@ -274,7 +274,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
   }
   PADDLE_ENFORCE_NOT_NULL(
       hp,
-      platform::errors::InvalidArgument("Fail to get host by name %s.", host));
+      common::errors::InvalidArgument("Fail to get host by name %s.", host));
 
   int i = 0;
   while (hp->h_addr_list[i] != nullptr) {
@@ -285,7 +285,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
 
   PADDLE_ENFORCE_GT(inet_pton(AF_INET, ip, &server_addr.sin_addr),
                     0,
-                    platform::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Open address %s failed: %s", ep, strerror(errno)));
 
   static_assert(sizeof(CommHead) <= 1024,
@@ -477,11 +477,11 @@ SocketServer& SocketServer::GetInstance(const std::string& end_point) {
   });
   PADDLE_ENFORCE_NE(instance.server_fd_,
                     -1,
-                    platform::errors::Unavailable(
+                    common::errors::Unavailable(
                         "listen socket failed with end_point=%s", end_point));
   PADDLE_ENFORCE_EQ(instance.end_point_,
                     end_point,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "old end_point=%s must equal with new end_point=%s",
                         instance.end_point_,
                         end_point));

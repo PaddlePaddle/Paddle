@@ -27,11 +27,11 @@ namespace interpreter {
  * A Helper class to implement data transform operation.
  * It will apply layout/dtype/device transfer by turns.
  */
-class DataTranferHelper {
+class DataTransferHelper {
  public:
-  DataTranferHelper(const platform::Place& place,
-                    VariableScope* var_scope,
-                    Scope* local_scope)
+  DataTransferHelper(const phi::Place& place,
+                     VariableScope* var_scope,
+                     Scope* local_scope)
       : place_(place), var_scope_(var_scope), scope_(local_scope) {}
 
   bool apply(const phi::KernelKey& kernel_type_for_var,
@@ -56,13 +56,13 @@ class DataTranferHelper {
                                  bool static_build = false);
 
  private:
-  platform::Place place_;
+  phi::Place place_;
   VariableScope* var_scope_;
   Scope* scope_;
 };
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
-                        const platform::Place& place,
+                        const phi::Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableValueMap* outs_map_temp,
                         VariableScope* var_scope,
@@ -72,7 +72,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         bool static_build = false);
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
-                                 const platform::Place& place,
+                                 const phi::Place& place,
                                  const VariableNameMap& out_names,
                                  VariableValueMap* out_vars,
                                  VariableScope* var_scope,
@@ -89,9 +89,9 @@ inline bool need_device_transform(const phi::KernelKey& kernel_type_for_var,
   }
 
   phi::Place expected_place = phi::TransToPhiPlace(expected_backend);
-  if (platform::is_same_place(tensor->place(), expected_place) ||
-      (platform::is_cuda_pinned_place(tensor->place()) &&
-       platform::is_cpu_place(expected_place))) {
+  if (phi::is_same_place(tensor->place(), expected_place) ||
+      (phi::is_cuda_pinned_place(tensor->place()) &&
+       phi::is_cpu_place(expected_place))) {
     return false;
   }
   return true;
@@ -126,8 +126,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
 
 std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                              std::string* new_var_name,
-                                             const platform::Place& src_place,
-                                             const platform::Place& dst_place,
+                                             const phi::Place& src_place,
+                                             const phi::Place& dst_place,
                                              VariableScope* var_scope,
                                              framework::Scope* local_scope);
 

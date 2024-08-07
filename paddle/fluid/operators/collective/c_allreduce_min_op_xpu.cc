@@ -21,11 +21,11 @@ DEFINE_C_ALLREDUCE_XPU_KERNEL(CAllReduceMin, kRedMin)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(c_allreduce_min,
                           XPU,
                           ALL_LAYOUT,
                           ops::CAllReduceMinXPUKernel,
                           float,
                           int,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

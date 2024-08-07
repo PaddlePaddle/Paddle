@@ -17,7 +17,7 @@
 #include <string>
 
 #include "paddle/fluid/inference/analysis/passes/passes.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -30,7 +30,7 @@ void Analyzer::Run(Argument *argument) { RunAnalysis(argument); }
 void Analyzer::RunAnalysis(Argument *argument) {
   PADDLE_ENFORCE_EQ(argument->analysis_passes_valid(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "analysis_passes is not valid in the argument."));
   const bool disable_logs = argument->disable_logs();
   for (auto &pass : argument->analysis_passes()) {
@@ -40,9 +40,9 @@ void Analyzer::RunAnalysis(Argument *argument) {
     if (!argument->enable_ir_optim() && pass == "ir_analysis_pass") continue;
 
     auto *ptr = PassRegistry::Global().Retrieve(pass);
-    PADDLE_ENFORCE_NOT_NULL(ptr,
-                            platform::errors::PreconditionNotMet(
-                                "no analysis pass called %s", pass));
+    PADDLE_ENFORCE_NOT_NULL(
+        ptr,
+        common::errors::PreconditionNotMet("no analysis pass called %s", pass));
     ptr->Run(argument);
   }
 }

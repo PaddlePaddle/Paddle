@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/pull_gpups_sparse_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {

@@ -46,7 +46,7 @@ class MemOptVarInfo {
     PADDLE_ENFORCE_GE(
         ref_cnt,
         1,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Reference count(%d) must be larger than or equal to 1.", ref_cnt));
     ref_cnt_ = ref_cnt;
     runtime_ref_cnt_ = ref_cnt;
@@ -89,7 +89,7 @@ class MemOptVarInfo {
    * scheduled in many threads inside ParallelExecutor, runtime_ref_cnt_
    * must be an atomic integer to guarantee the thread safety and visibility.
    *
-   * Speciallly, if ref_cnt_ is 1, we do not need to reset runtime_ref_cnt_
+   * Specially, if ref_cnt_ is 1, we do not need to reset runtime_ref_cnt_
    * after iteration ends.
    */
   size_t ref_cnt_;

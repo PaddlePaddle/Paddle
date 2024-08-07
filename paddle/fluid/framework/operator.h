@@ -37,13 +37,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/unused_var_check.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/memory/malloc.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -61,7 +61,7 @@ namespace phi {
 class KernelContext;
 }
 
-PHI_DECLARE_int32(inner_op_parallelism);
+COMMON_DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
 namespace framework {
@@ -107,7 +107,7 @@ constexpr char kAllKernelsMustComputeRuntimeShape[] =
 
 // define some kernel priority
 /* Define multiple kernel type fallback order*/
-extern std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority;
+extern std::vector<std::tuple<phi::Place, LibraryType>> kKernelPriority;
 
 inline std::string GradVarName(const std::string& var_name) {
   std::string result;
@@ -282,7 +282,7 @@ class TEST_API OperatorBase {
 
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
-  void Run(const Scope& scope, const platform::Place& place);
+  void Run(const Scope& scope, const phi::Place& place);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}
@@ -308,7 +308,7 @@ class TEST_API OperatorBase {
       PADDLE_ENFORCE_NE(
           it,
           runtime_attrs_.end(),
-          platform::errors::NotFound(
+          common::errors::NotFound(
               "(%s) is not found in AttributeMap and RuntimeAttributeMap.",
               name));
     }
@@ -318,7 +318,7 @@ class TEST_API OperatorBase {
     PADDLE_ENFORCE_EQ(
         HasAttr(name),
         true,
-        platform::errors::NotFound(
+        common::errors::NotFound(
             "The attribute %s is not found in operator %s", name, Type()));
 
     attrs_[name] = v;
@@ -337,8 +337,8 @@ class TEST_API OperatorBase {
   const OpInfo& Info() const {
     PADDLE_ENFORCE_NOT_NULL(
         info_,
-        platform::errors::NotFound("OpInfo of operator (%s) is not found.",
-                                   type_));
+        common::errors::NotFound("OpInfo of operator (%s) is not found.",
+                                 type_));
     return *info_;
   }
 
@@ -364,11 +364,10 @@ class TEST_API OperatorBase {
   virtual void SetIsRuntimeInferShape(bool x UNUSED) {}
 
   virtual void RuntimeInferShape(const Scope& scope UNUSED,
-                                 const platform::Place& place UNUSED,
+                                 const phi::Place& place UNUSED,
                                  const RuntimeContext& ctx UNUSED) const {}
 
-  virtual platform::Place GetExecutionPlace(
-      const platform::Place& place) const {
+  virtual phi::Place GetExecutionPlace(const phi::Place& place) const {
     return place;
   }
 
@@ -418,15 +417,14 @@ class TEST_API OperatorBase {
  private:
   void GenerateTemporaryNames();
   void CheckAllInputOutputSet() const;
-  virtual void RunImpl(const Scope& scope,
-                       const platform::Place& place) const = 0;
+  virtual void RunImpl(const Scope& scope, const phi::Place& place) const = 0;
 };
 
 class ExecutionContext : public phi::KernelContext {
  public:
   ExecutionContext(const OperatorBase& op,
                    const Scope& scope,
-                   const platform::DeviceContext& device_context,
+                   const phi::DeviceContext& device_context,
                    const RuntimeContext& ctx)
       : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
   virtual ~ExecutionContext() {}
@@ -466,10 +464,10 @@ class ExecutionContext : public phi::KernelContext {
       PADDLE_ENFORCE_NE(
           iter,
           op_.RuntimeAttrs().end(),
-          platform::errors::NotFound("(%s) is not found in AttributeMap and "
-                                     "RuntimeAttributeMap of (%s) operator.",
-                                     name,
-                                     op_.Type()));
+          common::errors::NotFound("(%s) is not found in AttributeMap and "
+                                   "RuntimeAttributeMap of (%s) operator.",
+                                   name,
+                                   op_.Type()));
     }
     return iter->second;
   }
@@ -573,29 +571,27 @@ class ExecutionContext : public phi::KernelContext {
     return res;
   }
 
-  platform::Place GetPlace() const { return device_context_.GetPlace(); }
+  phi::Place GetPlace() const { return device_context_.GetPlace(); }
 
   template <typename DeviceContextType>
   const DeviceContextType& device_context() const {
     return *reinterpret_cast<const DeviceContextType*>(&device_context_);
   }
 
-  const platform::DeviceContext& device_context() const {
-    return device_context_;
-  }
+  const phi::DeviceContext& device_context() const { return device_context_; }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const inline phi::GPUContext& cuda_device_context() const {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(device_context_.GetPlace()),
+    PADDLE_ENFORCE_EQ(phi::is_gpu_place(device_context_.GetPlace()),
                       true,
-                      platform::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Current device context place is not GPUPlace."));
     return *reinterpret_cast<const phi::GPUContext*>(&device_context_);
   }
 #endif
 
   template <typename T, typename DevContext>
-  phi::DenseTensor AllocateTmpTensor(const framework::DDim& dim,
+  phi::DenseTensor AllocateTmpTensor(const phi::DDim& dim,
                                      const DevContext& dev_ctx) const {
     phi::DenseTensor tmp;
     tmp.Resize(dim);
@@ -611,7 +607,7 @@ class ExecutionContext : public phi::KernelContext {
  private:
   const OperatorBase& op_;
   const Scope& scope_;
-  const platform::DeviceContext& device_context_;
+  const phi::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
 };
 
@@ -673,7 +669,7 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
   bool IsDenseTensorVectorInput(const std::string& name) const override {
     auto vars = ctx_.MultiInputVar(name);
     return std::all_of(vars.begin(), vars.end(), [](const Variable* var) {
-      return var->IsType<framework::LoDTensorArray>();
+      return var->IsType<phi::TensorArray>();
     });
   }
 
@@ -795,7 +791,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   void RuntimeInferShape(const Scope& scope,
-                         const platform::Place& place,
+                         const phi::Place& place,
                          const RuntimeContext& ctx) const override;
 
   proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
@@ -816,8 +812,8 @@ class OperatorWithKernel : public OperatorBase {
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const;
 
-  platform::Place GetExecutionPlace(
-      const platform::Place& platform UNUSED) const override {
+  phi::Place GetExecutionPlace(
+      const phi::Place& platform UNUSED) const override {
     return kernel_type_->place_;
   }
 
@@ -839,7 +835,7 @@ class OperatorWithKernel : public OperatorBase {
   void ChooseKernel(const ExecutionContext& ctx) const;
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
-                             platform::DeviceContext* dev_ctx,
+                             phi::DeviceContext* dev_ctx,
                              phi::KernelContext* phi_kernel_context) const;
 
   phi::KernelSignature* PhiKernelSignature() const {
@@ -864,9 +860,9 @@ class OperatorWithKernel : public OperatorBase {
   void SetDnnFallback(bool dnn_fallback) const { dnn_fallback_ = dnn_fallback; }
 
  private:
-  void RunImpl(const Scope& scope, const platform::Place& place) const final;
+  void RunImpl(const Scope& scope, const phi::Place& place) const final;
   void RunImpl(const Scope& scope,
-               const platform::Place& place,
+               const phi::Place& place,
                RuntimeContext* runtime_ctx) const;
 
   /**
@@ -910,9 +906,9 @@ class OperatorWithKernel : public OperatorBase {
                                              const std::string& name) const;
 
  protected:
-  mutable std::unique_ptr<OpKernelType> kernel_type_;
-  mutable std::unique_ptr<OpKernelFunc> kernel_func_;
-  mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
+  mutable std::unique_ptr<OpKernelType> kernel_type_ = nullptr;
+  mutable std::unique_ptr<OpKernelFunc> kernel_func_ = nullptr;
+  mutable std::unique_ptr<RuntimeContext> runtime_ctx_ = nullptr;
   mutable const Scope* pre_scope_ = nullptr;
   mutable bool need_prepare_data_ = true;
   mutable bool need_prepare_phi_data_ = false;
@@ -921,7 +917,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
   // NOTE(jiahongyu): Whether fallback to plain kernel after calling
-  // GetExpectedKernelType, use this bool flag to solve mkldnn and cudnn hard
+  // GetExpectedKernelType, use this bool flag to solve onednn and cudnn hard
   // code
   mutable bool dnn_fallback_ = false;
   // NOTE(chenweihang): Similar op members are used to adapt to
@@ -929,9 +925,9 @@ class OperatorWithKernel : public OperatorBase {
   // we may polish the implementation here
   mutable bool run_phi_kernel_ = false;
   mutable bool run_kp_kernel = false;
-  mutable std::unique_ptr<phi::KernelSignature> kernel_signature_;
-  mutable std::unique_ptr<phi::Kernel> phi_kernel_;
-  mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
+  mutable std::unique_ptr<phi::KernelSignature> kernel_signature_ = nullptr;
+  mutable std::unique_ptr<phi::Kernel> phi_kernel_ = nullptr;
+  mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_ = nullptr;
 
  private:
   struct CacheImpl;

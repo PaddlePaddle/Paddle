@@ -50,9 +50,9 @@ void GatherKernel(const Context& dev_ctx,
   } else if (index_type == phi::DataType::INT64) {
     phi::funcs::CPUGather<T, int64_t>(dev_ctx, x, index, out);
   } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("The data type of Input(Index) of gather "
-                                     "must be int32 or int64 on CPU."));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The data type of Input(Index) of gather "
+        "must be int32 or int64 on CPU."));
   }
 }
 
@@ -67,4 +67,6 @@ PD_REGISTER_KERNEL(gather,
                    int,
                    uint8_t,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

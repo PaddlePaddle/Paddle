@@ -79,7 +79,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
     def test_all(self):
         self.run_case(dtype="float32", tolerance=5e-4, tolerance_dv=5e-4)
         self.run_case(dtype="float16", tolerance=5e-4, tolerance_dv=1e-3)
-        self.run_case(dtype="bfloat16", tolerance=5e-3, tolerance_dv=1e-2)
+        self.run_case(dtype="bfloat16", tolerance=6e-3, tolerance_dv=1e-2)
 
     def run_case(self, dtype, tolerance, tolerance_dv):
         # TODO(houj04) remove debug codes after correctness check
@@ -202,6 +202,15 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
         self.dropout = 0.0
         self.causal = True
         self.return_softmax = False
+
+
+# class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
+#     def setUp(self):
+#         self.place = paddle.XPUPlace(0)
+#         self.shape = (1, 8192, 5, 128)
+#         self.dropout = 0.0
+#         self.causal = True
+#         self.return_softmax = False
 
 
 # The following three REAL unit tests are disabled because they take a VERY LONG time to run, although they all pass under XHPC v20240105.

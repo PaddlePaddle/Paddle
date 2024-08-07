@@ -15,10 +15,10 @@ limitations under the License. */
 #include <array>
 #include <memory>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
 PHI_DECLARE_bool(cudnn_deterministic);
-PHI_DECLARE_bool(cudnn_exhaustive_search);
+COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 namespace fusion {
@@ -992,14 +992,14 @@ void FusedDconvDreluDbnKernel(
     DenseTensor* grad_bn2_beta) {
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
   auto cudnn_version = phi::backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8900,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports CUDNN version >= 8900, "
                         "but got %d.",
                         cudnn_version));
@@ -1009,7 +1009,7 @@ void FusedDconvDreluDbnKernel(
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
   // update padding and dilation

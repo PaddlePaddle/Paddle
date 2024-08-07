@@ -35,6 +35,23 @@ PD_REGISTER_KERNEL(shadow_feed,
                    phi::complex64,
                    phi::complex128) {}
 
+PD_REGISTER_KERNEL(shadow_feed_tensors,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ShadowFeedTensorsKernel,
+                   bool,
+                   uint8_t,
+                   float,
+                   int8_t,
+                   int16_t,
+                   int32_t,
+                   int64_t,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+
 PD_REGISTER_KERNEL(print_kernel,
                    GPU,
                    ALL_LAYOUT,

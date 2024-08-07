@@ -19,6 +19,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+from paddle import _C_ops
+
 
 def round_c_single_element(val):
     dtype = type(val)
@@ -36,6 +38,40 @@ def get_compute_type(dtype):
     if dtype == np.float16:
         return np.float32
     return dtype
+
+
+def fake_channel_wise_quantize_dequantize_abs_max_wrapper(
+    x, bit_length=8, round_type=1, quant_axis=0
+):
+    return _C_ops.fake_channel_wise_quantize_dequantize_abs_max(
+        x, bit_length, round_type, quant_axis
+    )
+
+
+def fake_quantize_dequantize_moving_average_abs_max_wrapper(
+    x,
+    in_scale,
+    in_accum,
+    in_state,
+    moving_rate=0.9,
+    bit_length=8,
+    is_test=False,
+    round_type=1,
+):
+    return _C_ops.fake_quantize_dequantize_moving_average_abs_max(
+        x,
+        in_scale,
+        in_accum,
+        in_state,
+        moving_rate,
+        bit_length,
+        is_test,
+        round_type,
+    )
+
+
+def fake_quantize_dequantize_abs_max_wrapper(x, bit_length=8, round_type=1):
+    return _C_ops.fake_quantize_dequantize_abs_max(x, bit_length, round_type)
 
 
 class TestFakeQuantizeAbsMaxOp(OpTest):
@@ -260,6 +296,9 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_quantize_moving_average_abs_max'
         self.attrs = {'bit_length': 5, 'moving_rate': 0.9, 'is_test': False}
+        self.python_api = (
+            fake_quantize_dequantize_moving_average_abs_max_wrapper
+        )
 
     def _fake_quantize_moving_average_abs_max(
         self,
@@ -344,6 +383,7 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_quantize_dequantize_abs_max'
         self.attrs = {'bit_length': 8}
+        self.python_api = fake_quantize_dequantize_abs_max_wrapper
 
     def _fake_quantize_dequantize_abs_max(
         self, dtype, input_shape, distribution, round_type='TiesAwayFromZero'
@@ -417,6 +457,7 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
         if quant_axis == 1:
             scale_broadcast = np.transpose(scale_broadcast, (1,) + compute_axis)
         scale = scale_broadcast.reshape(input_shape[quant_axis], -1)[:, 0]
+        self.python_api = fake_channel_wise_quantize_dequantize_abs_max_wrapper
         self.inputs = {'X': input_data}
         self.outputs = {'Out': output_data, 'OutScale': scale}
         self.dtype = dtype

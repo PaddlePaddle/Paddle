@@ -173,30 +173,10 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         )
         paddle.autograd.backward([fused_out], [paddle.to_tensor(dout)], True)
 
-        correct_ffn_str = 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}'.format(
-            self.d_model,
-            self.dim_feedforward,
-            self.dropout_rate,
-            fused_encoder.ffn._epsilon,
-            self.activation,
-            self.dropout_rate,
-            self.pre_layer_norm,
-            self.dtype,
-        )
+        correct_ffn_str = f'd_model={self.d_model}, dim_feedforward={self.dim_feedforward}, dropout_rate={self.dropout_rate}, epsilon={fused_encoder.ffn._epsilon}, activation={self.activation}, act_dropout_rate={self.dropout_rate}, normalize_before={self.pre_layer_norm}, dtype={self.dtype}'
         self.assertTrue(fused_encoder.ffn.extra_repr(), correct_ffn_str)
 
-        correct_attn_str = 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, epsilon={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}'.format(
-            self.embed_dim,
-            self.num_heads,
-            self.dropout_rate,
-            self.dropout_rate,
-            fused_encoder.fused_attn._epsilon,
-            None,
-            None,
-            self.pre_layer_norm,
-            False,
-            self.dtype,
-        )
+        correct_attn_str = f'embed_dim={self.embed_dim}, num_heads={self.num_heads}, dropout_rate={self.dropout_rate}, attn_dropout_rate={self.dropout_rate}, epsilon={fused_encoder.fused_attn._epsilon}, kdim={None}, vdim={None}, normalize_before={self.pre_layer_norm}, need_weights={False}, dtype={self.dtype}'
         self.assertTrue(fused_encoder.fused_attn.extra_repr(), correct_attn_str)
 
         np.testing.assert_allclose(

@@ -57,7 +57,6 @@ class TestPyReader(unittest.TestCase):
                 )
                 # definition of network is omitted
                 executor = base.Executor(base.core.CPUPlace())
-                executor.run(base.default_main_program())
 
                 for _ in range(self.epoch_num):
                     for data in reader():

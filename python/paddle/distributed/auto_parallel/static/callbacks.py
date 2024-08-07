@@ -91,9 +91,9 @@ class ProgBarLoggerAuto(ProgBarLogger):
 
     def _updates(self, logs, mode):
         values = []
-        metrics = getattr(self, '%s_metrics' % (mode))
-        progbar = getattr(self, '%s_progbar' % (mode))
-        steps = getattr(self, '%s_step' % (mode))
+        metrics = getattr(self, f'{mode}_metrics')
+        progbar = getattr(self, f'{mode}_progbar')
+        steps = getattr(self, f'{mode}_step')
 
         for k in metrics:
             if k in logs:
@@ -113,8 +113,8 @@ class ProgBarLoggerAuto(ProgBarLogger):
         for k in out_logs:
             values.append((k, out_logs[k]))
 
-        if self.verbose == 3 and hasattr(self, '_%s_timer' % (mode)):
-            timer = getattr(self, '_%s_timer' % (mode))
+        if self.verbose == 3 and hasattr(self, f'_{mode}_timer'):
+            timer = getattr(self, f'_{mode}_timer')
             cnt = timer['count'] if timer['count'] > 0 else 1.0
             samples = timer['samples'] if timer['samples'] > 0 else 1.0
             values.append(

@@ -12,15 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import bisect
-from typing import Iterable
+import math
+import warnings
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Sequence,
+    Tuple,
+    TypeVar,
+)
+
+from typing_extensions import Never, TypeVarTuple, Unpack
 
 import paddle
 
 from ... import framework
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 
-class Dataset:
+_T = TypeVar('_T')
+_Ts = TypeVarTuple('_Ts')
+
+
+class Dataset(Generic[_T]):
     """
     An abstract class to encapsulate methods and behaviors of datasets.
 
@@ -62,23 +85,28 @@ class Dataset:
             ...     # do something
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> _T:
         raise NotImplementedError(
             "'{}' not implement in class "
             "{}".format('__getitem__', self.__class__.__name__)
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         raise NotImplementedError(
             "'{}' not implement in class "
             "{}".format('__len__', self.__class__.__name__)
         )
 
+    if TYPE_CHECKING:
+        # A virtual method for type checking only
+        def __iter__(self) -> Iterator[_T]:
+            ...
 
-class IterableDataset(Dataset):
+
+class IterableDataset(Dataset[_T]):
     """
     An abstract class to encapsulate methods and behaviors of iterable datasets.
 
@@ -239,34 +267,34 @@ class IterableDataset(Dataset):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_T]:
         raise NotImplementedError(
             "'{}' not implement in class "
             "{}".format('__iter__', self.__class__.__name__)
         )
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Never:
         raise RuntimeError(
             "'{}' should not be called for IterableDataset"
             "{}".format('__getitem__', self.__class__.__name__)
         )
 
-    def __len__(self):
+    def __len__(self) -> Never:
         raise RuntimeError(
             "'{}' should not be called for IterableDataset"
             "{}".format('__len__', self.__class__.__name__)
         )
 
 
-class TensorDataset(Dataset):
+class TensorDataset(Dataset["Tensor"]):
     """
     Dataset defined by a list of tensors.
 
     Each tensor should be in shape of [N, ...], while N is the sample number,
-    and ecah tensor contains a field of sample, :code:`TensorDataset` retrieve
+    and each tensor contains a field of sample, :code:`TensorDataset` retrieve
     each sample by indexing tensors in the 1st dimension.
 
     Args:
@@ -296,7 +324,9 @@ class TensorDataset(Dataset):
             ...     # do something
     """
 
-    def __init__(self, tensors):
+    tensors: Sequence[Tensor]
+
+    def __init__(self, tensors: Sequence[Tensor]) -> None:
         if not framework.in_dynamic_mode():
             raise RuntimeError(
                 "TensorDataset con only be used in imperative mode"
@@ -306,10 +336,10 @@ class TensorDataset(Dataset):
         ), "tensors not have same shape of the 1st dimension"
         self.tensors = tensors
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> tuple[Tensor, ...]:
         return tuple(tensor[index] for tensor in self.tensors)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.tensors[0].shape[0]
 
 
@@ -321,7 +351,7 @@ def to_list(value):
     return [value]
 
 
-class ComposeDataset(Dataset):
+class ComposeDataset(Dataset[Tuple[Unpack[_Ts]]]):
     """
     A Dataset which composes fields of multiple datasets.
 
@@ -342,9 +372,8 @@ class ComposeDataset(Dataset):
             >>> import paddle
             >>> from paddle.io import Dataset, ComposeDataset
 
-
             >>> # define a random dataset
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -356,15 +385,17 @@ class ComposeDataset(Dataset):
             ...     def __len__(self):
             ...         return self.num_samples
             ...
-            >>> dataset = ComposeDataset([RandomDataset(10), RandomDataset(10)])
+            >>> dataset = ComposeDataset([RandomDataset(10), RandomDataset(10)])  # type: ignore[var-annotated]
             >>> for i in range(len(dataset)):
             ...     image1, label1, image2, label2 = dataset[i]
             ...     # do something
     """
 
-    def __init__(self, datasets):
+    datasets: list[Dataset[Any]]
+
+    def __init__(self, datasets: list[Dataset[Any]]) -> None:
         self.datasets = list(datasets)
-        assert len(self.datasets) > 0, "input datasets shoule not be empty"
+        assert len(self.datasets) > 0, "input datasets should not be empty"
         for i, dataset in enumerate(self.datasets):
             assert isinstance(
                 dataset, Dataset
@@ -377,17 +408,17 @@ class ComposeDataset(Dataset):
                     self.datasets[i - 1]
                 ), "lengths of datasets should be same"
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.datasets[0])
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> tuple[Unpack[_Ts]]:
         sample = []
         for dataset in self.datasets:
             sample.extend(to_list(dataset[idx]))
         return tuple(sample)
 
 
-class ChainDataset(IterableDataset):
+class ChainDataset(IterableDataset[Any]):
     """
     A Dataset which chains multiple iterable-style datasets.
 
@@ -427,20 +458,20 @@ class ChainDataset(IterableDataset):
 
     """
 
-    def __init__(self, datasets):
+    def __init__(self, datasets: list[IterableDataset[Any]]):
         self.datasets = list(datasets)
-        assert len(self.datasets) > 0, "input datasets shoule not be empty"
+        assert len(self.datasets) > 0, "input datasets should not be empty"
         for i, dataset in enumerate(self.datasets):
             assert isinstance(
                 dataset, IterableDataset
             ), "ChainDataset only support paddle.io.IterableDataset"
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for dataset in self.datasets:
             yield from dataset
 
 
-class Subset(Dataset):
+class Subset(Dataset[_T]):
     """
     Subset of a dataset at specified indices.
 
@@ -456,38 +487,55 @@ class Subset(Dataset):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.io import Subset
 
-            >>> # example 1:
-            >>> a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2])
+            >>> class RangeDataset(paddle.io.Dataset):  # type: ignore[type-arg]
+            ...     def __init__(self, start, stop):
+            ...         self.start = start
+            ...         self.stop = stop
+            ...
+            ...     def __getitem__(self, index):
+            ...         return index + self.start
+            ...
+            ...     def __len__(self):
+            ...         return self.stop - self.start
+
+            >>> # Example 1:
+            >>> a = paddle.io.Subset(dataset=RangeDataset(1, 4), indices=[0, 2])
             >>> print(list(a))
             [1, 3]
 
-            >>> # example 2:
-            >>> b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])
+            >>> # Example 2:
+            >>> b = paddle.io.Subset(dataset=RangeDataset(1, 4), indices=[1, 1])
             >>> print(list(b))
             [2, 2]
     """
 
-    def __init__(self, dataset, indices):
+    dataset: Dataset[_T]
+    indices: Sequence[int]
+
+    def __init__(self, dataset: Dataset[_T], indices: Sequence[int]) -> None:
         self.dataset = dataset
         self.indices = indices
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> _T:
         return self.dataset[self.indices[idx]]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.indices)
 
 
-def random_split(dataset, lengths, generator=None):
+def random_split(
+    dataset: Dataset[_T],
+    lengths: Sequence[int],
+    generator: Any | None = None,
+) -> list[Subset[_T]]:
     """
     Randomly split a dataset into non-overlapping new datasets of given lengths.
     Optionally fix the generator for reproducible results, e.g.:
 
     Args:
         dataset (Dataset): Dataset to be split
-        lengths (sequence): lengths of splits to be produced
+        lengths (sequence): lengths or fractions of splits to be produced
         generator (Generator, optional): Generator used for the random permutation. Default is None then the DefaultGenerator is used in manual_seed().
 
     Returns:
@@ -500,19 +548,19 @@ def random_split(dataset, lengths, generator=None):
             >>> import paddle
 
             >>> paddle.seed(2023)
-            >>> a_list = paddle.io.random_split(range(10), [3, 7])
+            >>> a_list = paddle.io.random_split(range(10), [3, 7])  # type: ignore[arg-type, var-annotated]
             >>> print(len(a_list))
             2
 
             >>> # output of the first subset
-            >>> for idx, v in enumerate(a_list[0]):
+            >>> for idx, v in enumerate(a_list[0]):  # type: ignore[arg-type, var-annotated]
             ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 7
             1 6
             2 5
 
             >>> # output of the second subset
-            >>> for idx, v in enumerate(a_list[1]):
+            >>> for idx, v in enumerate(a_list[1]):  # type: ignore[arg-type, var-annotated]
             ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 1
             1 9
@@ -522,6 +570,28 @@ def random_split(dataset, lengths, generator=None):
             5 3
             6 8
     """
+    if math.isclose(sum(lengths), 1) and sum(lengths) <= 1:
+        subset_lengths = []
+        for i, frac in enumerate(lengths):
+            if frac < 0 or frac > 1:
+                raise ValueError(
+                    f"Fraction at index {i} is not between 0 and 1"
+                )
+            n_items_in_split = int(math.floor(len(dataset) * frac))
+            subset_lengths.append(n_items_in_split)
+        remainder = len(dataset) - sum(subset_lengths)
+
+        for i in range(remainder):
+            idx_to_add_at = i % len(subset_lengths)
+            subset_lengths[idx_to_add_at] += 1
+        lengths = subset_lengths
+        for i, length in enumerate(lengths):
+            if length == 0:
+                warnings.warn(
+                    f"Length of split at index {i} is 0. "
+                    f"This might result in an empty dataset."
+                )
+
     # Cannot verify that dataset is Sized
     if sum(lengths) != len(dataset):  # type: ignore
         raise ValueError(
@@ -536,7 +606,9 @@ def random_split(dataset, lengths, generator=None):
     ]
 
 
-def _accumulate(iterable, fn=lambda x, y: x + y):
+def _accumulate(
+    iterable: Iterable[_T], fn: Callable[[_T, _T], _T] = lambda x, y: x + y
+) -> Generator[_T, None, None]:
     """
     Return running totals
 
@@ -571,7 +643,7 @@ def _accumulate(iterable, fn=lambda x, y: x + y):
         yield total
 
 
-class ConcatDataset(Dataset):
+class ConcatDataset(Dataset[_T]):
     """
     Dataset as a concatenation of multiple datasets.
 
@@ -591,9 +663,8 @@ class ConcatDataset(Dataset):
             >>> import paddle
             >>> from paddle.io import Dataset, ConcatDataset
 
-
             >>> # define a random dataset
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -605,14 +676,14 @@ class ConcatDataset(Dataset):
             ...     def __len__(self):
             ...         return self.num_samples
             ...
-            >>> dataset = ConcatDataset([RandomDataset(10), RandomDataset(10)])
+            >>> dataset = ConcatDataset([RandomDataset(10), RandomDataset(10)])  # type: ignore[var-annotated]
             >>> for i in range(len(dataset)):
             ...     image, label = dataset[i]
             ...     # do something
     """
 
     @staticmethod
-    def cumsum(sequence):
+    def cumsum(sequence: Sequence[Any]) -> list[int]:
         r, s = [], 0
         for e in sequence:
             l = len(e)
@@ -620,7 +691,7 @@ class ConcatDataset(Dataset):
             s += l
         return r
 
-    def __init__(self, datasets: Iterable[Dataset]):
+    def __init__(self, datasets: Iterable[Dataset[Any]]) -> None:
         self.datasets = list(datasets)
         assert (
             len(self.datasets) > 0
@@ -631,10 +702,10 @@ class ConcatDataset(Dataset):
             ), "ConcatDataset does not support IterableDataset"
         self.cumulative_sizes = self.cumsum(self.datasets)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.cumulative_sizes[-1]
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> _T:
         if idx < 0:
             if -idx > len(self):
                 raise ValueError(

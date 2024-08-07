@@ -22,8 +22,7 @@
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 bool RToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
@@ -46,7 +45,7 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
-  VLOG(3) << "Call RToSReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& out_dims_mapping = out_dist_attr.dims_mapping();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   const DenseTensor& in_physical_tensor_cur_rank = in.value();
@@ -110,7 +109,7 @@ void RToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
                                         const DistTensor& in,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
-  VLOG(3) << "Call RToSReshardFunctionCrossMesh Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
 
   DistTensor tmp_result;
@@ -122,7 +121,7 @@ void RToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
     RToSReshardFunction r_to_s_func;
     PADDLE_ENFORCE(
         r_to_s_func.IsSuitable(in, in_dist_attr_shard),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invoke the r to s reshard function is not valid from %s to %s.",
             in_dist_attr,
             in_dist_attr_shard));
@@ -134,12 +133,11 @@ void RToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
   SameStatusReshardFunction same_status_func;
   PADDLE_ENFORCE(
       same_status_func.IsSuitable(tmp_result, out_dist_attr),
-      phi::errors::InvalidArgument("Invoke the same status reshard function "
-                                   "is not valid from %s to %s.",
-                                   tmp_result.dist_attr(),
-                                   out_dist_attr));
+      common::errors::InvalidArgument("Invoke the same status reshard function "
+                                      "is not valid from %s to %s.",
+                                      tmp_result.dist_attr(),
+                                      out_dist_attr));
   same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

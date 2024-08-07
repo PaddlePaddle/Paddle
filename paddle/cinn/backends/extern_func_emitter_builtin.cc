@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/backends/llvm/ir_builder_mixin.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace backends {
@@ -36,12 +37,16 @@ bool ExternFunctionLLVMEmitter::RetValuePacked() const {
 
 FunctionProto& ExternFunctionLLVMEmitter::fn_proto() const {
   auto* proto = ExternFunctionProtoRegistry::Global().Lookup(fn_name_);
-  CHECK(proto) << "No function prototype found for " << fn_name_;
+  PADDLE_ENFORCE_NOT_NULL(proto,
+                          ::common::errors::InvalidArgument(
+                              "No function prototype found for %s.", fn_name_));
   return *proto;
 }
 llvm::FunctionType* ExternFunctionLLVMEmitter::llvm_fn_type() const {
   auto* proto = ExternFunctionProtoRegistry::Global().Lookup(fn_name_);
-  CHECK(proto) << "No function prototype found for " << fn_name_;
+  PADDLE_ENFORCE_NOT_NULL(proto,
+                          ::common::errors::InvalidArgument(
+                              "No function prototype found for %s.", fn_name_));
 
   auto* llvm_ret_type = CinnTypeToLLVMType(proto->ret_type, codegen_->m());
   std::vector<llvm::Type*> arg_types;
@@ -54,16 +59,22 @@ llvm::FunctionType* ExternFunctionLLVMEmitter::llvm_fn_type() const {
   auto* fn_type = llvm::FunctionType::get(llvm_ret_type, arg_types, false);
   return fn_type;
 }
+
 const char* ExternFunctionLLVMEmitter::backend_kind() const { return nullptr; }
 
 void ExternFunctionLLVMEmitter::EmitImpl(const ir::Call* op) {
-  CHECK(codegen_);
+  PADDLE_ENFORCE_NOT_NULL(
+      codegen_,
+      ::common::errors::InvalidArgument("Code not generate, please check."));
   CodeGenLLVMforEmitter codegen_for_emitter(codegen_);
   llvm::Function* custom_function = llvm::dyn_cast<llvm::Function>(
       codegen_for_emitter.m()
           ->getOrInsertFunction(fn_name_, llvm_fn_type())
           .getCallee());
-  CHECK(custom_function) << "No function registered in JIT called " << fn_name_;
+  PADDLE_ENFORCE_NOT_NULL(
+      custom_function,
+      ::common::errors::InvalidArgument(
+          "No function registered in JIT called %s.", fn_name_));
   custom_function->setCallingConv(llvm::CallingConv::C);
 
   std::vector<llvm::Value*> args;

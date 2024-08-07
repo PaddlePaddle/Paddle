@@ -26,7 +26,7 @@
 #include "paddle/cinn/runtime/cpu/thread_backend.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 //! Root of the builtin code.
 PD_DECLARE_string(cinn_x86_builtin_code_root);
 
@@ -44,7 +44,10 @@ void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
     auto source = Compile(module, OutputKind::CHeader);
     str_ = "";
     std::ofstream file(outputs.c_header_name);
-    CHECK(file.is_open()) << "failed to open file " << outputs.c_header_name;
+    PADDLE_ENFORCE_EQ(file.is_open(),
+                      true,
+                      phi::errors::InvalidArgument("failed to open file %s",
+                                                   outputs.c_header_name));
     file << source;
     file.close();
     LOG(WARNING) << "Output C header to file " << outputs.c_header_name;
@@ -54,7 +57,10 @@ void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
     auto source = Compile(module, OutputKind::CImpl);
     str_ = "";
     std::ofstream file(outputs.c_source_name);
-    CHECK(file.is_open()) << "failed to open file " << outputs.c_source_name;
+    PADDLE_ENFORCE_EQ(file.is_open(),
+                      true,
+                      phi::errors::InvalidArgument("failed to open file %s",
+                                                   outputs.c_source_name));
     file << source;
     file.close();
     LOG(WARNING) << "Output C source to file " << outputs.c_source_name;
@@ -76,14 +82,17 @@ std::string CodeGenC::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    LOG(FATAL) << "Not supported OutputKind";
+    PADDLE_THROW(::common::errors::Unimplemented("Not supported OutputKind"));
   }
   return str_;
 }
 
 // TODO(LiuYang): Here the Ret type seems unuseful
 void CodeGenC::Compile(const ir::LoweredFunc &function) {
-  CHECK(function.defined());
+  PADDLE_ENFORCE_EQ(
+      function.defined(),
+      true,
+      phi::errors::InvalidArgument("The function is not defined."));
   IrPrinter::Visit(function);
   str_ += "\n\n";
 }
@@ -116,11 +125,14 @@ std::string CodeGenC::GetTypeName(Type type) {
 
   // customized_type
   if (type.is_customized_type()) {
-    CHECK(!type.customized_type().empty()) << "customized_type can't be empty.";
+    PADDLE_ENFORCE_EQ(type.customized_type().empty(),
+                      false,
+                      phi::errors::InvalidArgument(
+                          "customized_type is empty. It can't be empty."));
     auto customized_name = type.customized_type();
     // get name of a cuda built-in vector type, it is started with a
     // 'CudaVectorType::' prefix
-    if (utils::Startswith(
+    if (utils::StartsWith(
             customized_name,
             cinn::common::customized_type::kcuda_builtin_vector_t)) {
       customized_name.erase(
@@ -205,7 +217,10 @@ void CodeGenC::Visit(const ir::For *op) {
     Expr num_task_var = Var("num_task");
     IrPrinter::Visit((op->extent + num_task_var - 1) / num_task_var);
     str_ += ";\n";
-    CHECK_EQ(min.as_int32(), 0);
+    PADDLE_ENFORCE_EQ(min.as_int32(),
+                      0,
+                      ::common::errors::InvalidArgument(
+                          "The min of the for loop should be 0"));
     auto task_id = Var("task_id");
     auto n_per_task = Var("n_per_task");
     min = task_id * n_per_task;
@@ -300,12 +315,13 @@ void CodeGenC::Visit(const ir::Block *op) {
 
   IncIndent();
 
-  for (int i = 0; i < op->stmts.size() - 1; i++) {
-    DoIndent();
-    IrPrinter::Visit(op->stmts[i]);
-    str_ += ";\n";
-  }
+  // Note: size_t (0 - 1) = 18446744073709551615
   if (op->stmts.size() >= 1) {
+    for (int i = 0; i < op->stmts.size() - 1; i++) {
+      DoIndent();
+      IrPrinter::Visit(op->stmts[i]);
+      str_ += ";\n";
+    }
     DoIndent();
     IrPrinter::Visit(op->stmts.back());
     str_ += ";";
@@ -339,7 +355,12 @@ void CodeGenC::Visit(const ir::Call *op) {
       emitter.BindCodeGen(this);
       emitter.Emit(op);
     } else {
-      CHECK(!op->read_args.empty() || !op->write_args.empty());
+      if (op->read_args.empty())
+        PADDLE_ENFORCE_EQ(
+            op->read_args.empty(),
+            false,
+            phi::errors::InvalidArgument(
+                "Either read_args or write_args must not be empty."));
       str_ += op->name;
       str_ += "(";
       PrintCallArgs(op);
@@ -369,7 +390,10 @@ void CodeGenC::PrintCallArgs(const ir::Call *op) {
 }
 
 void CodeGenC::PrintCall_buffer_malloc(const ir::Call *op) {
-  CHECK_EQ(op->read_args.size(), 2UL);
+  PADDLE_ENFORCE_EQ(
+      op->read_args.size(),
+      2UL,
+      ::common::errors::InvalidArgument("The number of read_args should be 2"));
   str_ += op->name;
   str_ += "(";
   PrintCastExpr("void*", op->read_args[0]);
@@ -379,7 +403,10 @@ void CodeGenC::PrintCall_buffer_malloc(const ir::Call *op) {
 }
 
 void CodeGenC::PrintCall_cinn_pod_value_to_(const ir::Call *op) {
-  CHECK_EQ(op->read_args.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op->read_args.size(),
+      1UL,
+      ::common::errors::InvalidArgument("The number of read_args should be 1"));
   str_ += op->name;
   str_ += "(";
   str_ += "&(";
@@ -389,11 +416,20 @@ void CodeGenC::PrintCall_cinn_pod_value_to_(const ir::Call *op) {
 }
 
 void CodeGenC::PrintCall_get_address(const ir::Call *op) {
-  CHECK_EQ(op->read_args.size(), 1UL);
-  CHECK(op->write_args.empty());
+  PADDLE_ENFORCE_EQ(
+      op->read_args.size(),
+      1UL,
+      ::common::errors::InvalidArgument("The number of read_args should be 1"));
+  PADDLE_ENFORCE_EQ(op->write_args.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "write_args is not empty. It must be empty."));
   auto *read_var = op->read_args.front().as_var();
   auto *read_buf = op->read_args.front().as_buffer();
-  CHECK(read_var || read_buf) << "Only Var or Buffer can get address";
+  if (!read_var)
+    PADDLE_ENFORCE_NOT_NULL(
+        read_buf,
+        phi::errors::InvalidArgument("Only Var or Buffer can get address"));
 
   if (read_var) {
     if (read_var->type().lanes() <= 1) str_ += "&";
@@ -407,15 +443,28 @@ void CodeGenC::PrintCall_get_address(const ir::Call *op) {
 }
 
 void CodeGenC::PrintCall_pod_values_to_array(const ir::Call *op) {
-  CHECK(!op->read_args.empty());
-  CHECK_EQ(op->write_args.size(), 1UL);
+  PADDLE_ENFORCE_EQ(op->read_args.empty(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "The read_args is empty. It should not be empty."));
+  PADDLE_ENFORCE_EQ(op->write_args.size(),
+                    1UL,
+                    ::common::errors::InvalidArgument(
+                        "The number of write_args should be 1"));
   auto output_var = op->write_args.front().as_var_ref();
-  CHECK(output_var.defined());
+  PADDLE_ENFORCE_EQ(
+      output_var.defined(),
+      true,
+      phi::errors::InvalidArgument(
+          "The variable 'output_var' is not be defined. It must be defined."));
 
   std::vector<std::string> arg_names;
   for (auto &arg : op->read_args) {
     auto arg_var = arg.as_var();
-    CHECK(arg_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        arg_var,
+        phi::errors::InvalidArgument(
+            "The 'arg_var' is an invalid argument. It must be true."));
     arg_names.push_back(arg_var->name);
   }
 
@@ -433,30 +482,45 @@ void CodeGenC::Visit(const ir::_Module_ *op) { CINN_NOT_IMPLEMENTED }
 void CodeGenC::Visit(const ir::_Var_ *op) { str_ += op->name; }
 
 void CodeGenC::Visit(const ir::Load *op) {
-  Expr dense_strided_ramp = detail::StridedRampBase(op->index(), 1);
+  ir::Expr offset = [&] {
+    if (load_to_offset_.count(op) == 0) {
+      load_to_offset_[op] = op->index();
+    }
+    return load_to_offset_.at(op);
+  }();
+
+  Expr dense_strided_ramp = detail::StridedRampBase(offset, 1);
   if (dense_strided_ramp.defined()) {  // Loading a continuous Ramp address.
-    CHECK(op->type().is_vector());
-    PrintStackVecType(op->type().ElementOf(), op->index().type().lanes());
+    PADDLE_ENFORCE_EQ(
+        op->type().is_vector(),
+        true,
+        phi::errors::InvalidArgument(
+            "The operation type is not a vector. It must be a vector."));
+    PrintStackVecType(op->type().ElementOf(), offset.type().lanes());
     str_ += "::";
     str_ += "Load(";
     str_ += op->tensor.As<ir::_Tensor_>()->name;
     str_ += ",";
     IrPrinter::Visit(dense_strided_ramp);
     str_ += ")";
-  } else if (op->index().type().is_vector()) {
+  } else if (offset.type().is_vector()) {
     // gather
-    CHECK(op->type().is_vector());
-    PrintStackVecType(op->type().ElementOf(), op->index().type().lanes());
+    PADDLE_ENFORCE_EQ(
+        op->type().is_vector(),
+        true,
+        phi::errors::InvalidArgument(
+            "The operation type is not a vector. It must be a vector."));
+    PrintStackVecType(op->type().ElementOf(), offset.type().lanes());
     str_ += "::Load(";
     str_ += op->tensor.As<ir::_Tensor_>()->name;
     str_ += ",";
-    IrPrinter::Visit(op->index());
+    IrPrinter::Visit(offset);
     str_ += ")";
   } else if (op->is_addr_tensor()) {
     auto *tensor = op->tensor.As<ir::_Tensor_>();
     str_ += tensor->name;
     str_ += "[";
-    IrPrinter::Visit(op->index());
+    IrPrinter::Visit(offset);
     str_ += "]";
   } else {
     IrPrinter::Visit(op);
@@ -464,13 +528,24 @@ void CodeGenC::Visit(const ir::Load *op) {
 }
 
 void CodeGenC::Visit(const ir::Store *op) {
-  CHECK(op->is_addr_tensor());
-
+  PADDLE_ENFORCE_EQ(
+      op->is_addr_tensor(),
+      true,
+      phi::errors::InvalidArgument(
+          "The operation type is invalid. It must be an address tensor."));
+  ir::Expr offset = [&] {
+    if (store_to_offset_.count(op) == 0) {
+      store_to_offset_[op] = op->index();
+    }
+    return store_to_offset_.at(op);
+  }();
   auto *tensor = op->tensor.As<ir::_Tensor_>();
-  CHECK(tensor);
+  PADDLE_ENFORCE_NOT_NULL(
+      tensor,
+      phi::errors::InvalidArgument("The tensor is null. It must not be null."));
   str_ += tensor->name;
   str_ += "[";
-  IrPrinter::Visit(op->index());
+  IrPrinter::Visit(offset);
   str_ += "]";
   str_ += " = ";
   IrPrinter::Visit(op->value);
@@ -499,7 +574,10 @@ void CodeGenC::Visit(const ir::_Buffer_ *op) { str_ += op->name; }
 void CodeGenC::Visit(const ir::_Tensor_ *op) { str_ += op->buffer->name; }
 void CodeGenC::Visit(const ir::Let *op) {
   bool is_vec = false;
-  CHECK(op->type().valid());
+  PADDLE_ENFORCE_EQ(op->type().valid(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The operation type is invalid. It must be valid."));
   if (op->body.defined() && op->body.As<ir::Broadcast>()) {
     // broadcast's type is hard to print, so use c++11 auto instead.
     str_ += "auto";
@@ -525,8 +603,9 @@ void CodeGenC::Visit(const ir::Let *op) {
 }
 
 void CodeGenC::Visit(const ir::Reduce *op) {
-  LOG(FATAL) << "Reduce IR is just for internal representation, should not be "
-                "used for CodeGen.";
+  PADDLE_THROW(::common::errors::InvalidArgument(
+      "Reduce IR is just for internal representation, should not be "
+      "used for CodeGen."));
 }
 
 void CodeGenC::Visit(const ir::Ramp *op) {
@@ -598,9 +677,12 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   DoIndent();
 
-  CHECK_EQ(op->alloc_output_buffer_exprs.size(),
-           op->dealloc_output_buffer_exprs.size())
-      << "the count of allocation and deallocation expressions is not match";
+  PADDLE_ENFORCE_EQ(
+      op->alloc_output_buffer_exprs.size(),
+      op->dealloc_output_buffer_exprs.size(),
+      ::common::errors::InvalidArgument(
+          "The count of allocation and deallocation expressions is not "
+          "match"));
 
   std::vector<Expr> new_body;
 
@@ -730,7 +812,8 @@ void CodeGenC::PrintRuntimeType(const cinn_type_t &type) {
   } else if (type == cinn_float64_t()) {
     str_ += "cinn_float64_t()";
   } else {
-    LOG(FATAL) << "Unknown type is not supported to print";
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "Unknown type is not supported to print"));
   }
 }
 
@@ -805,7 +888,9 @@ void CodeGenC::Visit(const ir::intrinsics::PodValueToX *op) {
   } else if (to_type == type_of<cinn_buffer_t *>()) {
     str_ += runtime::intrinsic::pod_value_to_buffer_p;
   } else {
-    LOG(FATAL) << "Not supported type: " << to_type;
+    std::stringstream ss;
+    ss << "Not supported type: " << to_type;
+    PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 
   str_ += "(";
@@ -815,7 +900,10 @@ void CodeGenC::Visit(const ir::intrinsics::PodValueToX *op) {
 
 void CodeGenC::Visit(const ir::intrinsics::BufferCreate *op) {
   const ir::_Buffer_ *buffer_arg = op->buffer.as_buffer();
-  CHECK(buffer_arg);
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer_arg,
+      phi::errors::InvalidArgument(
+          "The buffer argument is invalid. It must be true."));
 
   str_ += runtime::intrinsic::buffer_create;
   str_ += "(";
@@ -877,17 +965,26 @@ void CodeGenC::Visit(const ir::intrinsics::BuiltinIntrin *op) {
 }
 
 std::string ReadWholeFile(const std::string &path) {
-  CHECK(!path.empty());
+  PADDLE_ENFORCE_EQ(
+      path.empty(),
+      false,
+      phi::errors::InvalidArgument("The path is empty. It must not be empty."));
   std::ifstream file(path);
-  CHECK(file.is_open()) << "Failed to open file: " << path;
+  PADDLE_ENFORCE_EQ(
+      file.is_open(),
+      true,
+      phi::errors::InvalidArgument("Failed to open file: %s", path.c_str()));
   std::stringstream ss;
   ss << file.rdbuf();
   return ss.str();
 }
 
 void CodeGenC::PrintBuiltinCodes() {
-  CHECK(!FLAGS_cinn_x86_builtin_code_root.empty())
-      << "The flag cinn_x86_builtin_code_root should be set first";
+  PADDLE_ENFORCE_EQ(
+      FLAGS_cinn_x86_builtin_code_root.empty(),
+      false,
+      phi::errors::InvalidArgument(
+          "The flag cinn_x86_builtin_code_root should be set first"));
 
   const std::string x86_code_file = "_x86_builtin_source.cc";
 

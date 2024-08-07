@@ -22,7 +22,13 @@
 # remove this file and support Vjp methods
 # code gen.
 
+# Operators which only has composite implementation should be added below.
+# For example
+# * `silu_double_grad` only has composite implementation, so `silu_grad` was added below.
+# * `log_double_grad` has both composite and kernel implementation, so `log_grad` should not be added below.
 
 vjp_interface_black_list = [
     'silu_grad',
+    'exp_grad',
+    'abs_double_grad',
 ]

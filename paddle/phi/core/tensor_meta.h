@@ -71,11 +71,11 @@ struct TEST_API DenseTensorMeta {
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
-  bool is_contiguous() const noexcept;
+  bool is_contiguous() const;
 
   bool is_scalar{false};
   /// \brief Determine whether using gpudnn speed-up library in the new dygraph.
-  /// It maybe also support MKLDNN library in the near future.
+  /// It maybe also support OneDNN library in the near future.
   bool use_gpudnn{true};
   DDim dims;
   DataType dtype{DataType::UNDEFINED};
@@ -121,7 +121,7 @@ struct SparseTensorMeta {
   bool valid() const noexcept;
 
   DDim dims;
-  DataType dtype;
+  DataType dtype{DataType::UNDEFINED};
   DataLayout layout{DataLayout::NCHW};
 };
 

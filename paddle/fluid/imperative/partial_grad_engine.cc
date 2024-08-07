@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -32,14 +33,12 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_bool(sort_sum_gradient);
+COMMON_DECLARE_bool(sort_sum_gradient);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 struct HashPair {
   template <class T1, class T2>
@@ -86,8 +85,8 @@ static void GetGraphInfoBetweenTargets(
     auto *output_target = *iter;
     PADDLE_ENFORCE_NOT_NULL(
         output_target,
-        platform::errors::NotFound("output_target must not be nullptr"));
-    if (output_target->OverridedStopGradient() ||
+        common::errors::NotFound("output_target must not be nullptr"));
+    if (output_target->OverriddenStopGradient() ||
         output_target->GradVarBase() == nullptr ||
         output_target->GradVarBase()->GradNode() == nullptr) {
       VLOG(10) << output_target->Name()
@@ -319,13 +318,13 @@ static std::string GradPendingOpTypes(const GradOpNode &node) {
 
 static void FillConstantLike(const VariableWrapper &ref_var,
                              VariableWrapper *dst_var,
-                             const platform::Place &place,
+                             const phi::Place &place,
                              float value) {
   auto &ref_tensor = ref_var.Var().Get<phi::DenseTensor>();
   auto *dst_tensor = dst_var->MutableVar()->GetMutable<phi::DenseTensor>();
-  auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  auto *dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   dst_tensor->Resize(ref_tensor.dims());
-  // TOOD(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
+  // TODO(jiabin): Ugly fix here we have fwd_data_type_ and data_type, since in
   // grad mission
   // we can't get data_type_ directly. We need to check if we can only use
   // default data_type for now.
@@ -354,6 +353,8 @@ class GradientAccumulationInfo {
                                     bool sort_gradient,
                                     bool create_graph)
       : mapped_grad_var_(var.get()),
+        accumulator_(nullptr),
+        partial_grad_grads_(),
         sort_gradient_(sort_gradient),
         create_graph_(create_graph) {}
 
@@ -365,8 +366,8 @@ class GradientAccumulationInfo {
     if (total_ref_cnt_ > 1) {
       if (!grad_var_) {
         grad_var_ = std::make_shared<VarBase>(true, mapped_grad_var_->Name());
-        grad_var_->SetOverridedStopGradient(false);
-        if (sort_gradient_) {
+        grad_var_->SetOverriddenStopGradient(false);
+        if (sort_gradient_) {  // NOLINT
           accumulator_ = std::make_unique<SortedGradientAccumulator>(
               grad_var_->SharedVar().get());
         } else {
@@ -395,19 +396,19 @@ class GradientAccumulationInfo {
       bool *is_finished,
       bool unchange_input = false) {
     PADDLE_ENFORCE_NOT_NULL(grad_var_partial,
-                            platform::errors::PermissionDenied(
+                            common::errors::PermissionDenied(
                                 "Partial grad of %s would not be nullptr",
                                 mapped_grad_var_->Name()));
     PADDLE_ENFORCE_GT(total_ref_cnt_,
                       1,
-                      platform::errors::PermissionDenied(
+                      common::errors::PermissionDenied(
                           "Gradient accumulation should not be called when "
                           "reference count is 1 or 0"));
 
     ++cur_ref_cnt_;
     PADDLE_ENFORCE_LE(cur_ref_cnt_,
                       total_ref_cnt_,
-                      platform::errors::PermissionDenied(
+                      common::errors::PermissionDenied(
                           "Reference count overflows, this may be a bug"));
 
     *is_finished = (cur_ref_cnt_ == total_ref_cnt_);
@@ -468,23 +469,24 @@ class ReadyGradVarInfoMap {
   };
 
  public:
+  ReadyGradVarInfoMap() : vars_(), target_vars_() {}
   void IncreaseRefCnt(const VariableWrapper *var) {
     ++(vars_[var].total_ref_cnt);
   }
 
   std::shared_ptr<VarBase> Get(const VariableWrapper *var,
-                               const platform::Place &place,
+                               const phi::Place &place,
                                bool *is_last) {
     auto iter = vars_.find(var);
     PADDLE_ENFORCE_EQ(
         iter != vars_.end(),
         true,
-        platform::errors::NotFound("Variable %s not found, this may be a bug",
-                                   var->Name()));
+        common::errors::NotFound("Variable %s not found, this may be a bug",
+                                 var->Name()));
     auto &ready_var = iter->second;
     PADDLE_ENFORCE_LT(ready_var.cur_ref_cnt,
                       ready_var.total_ref_cnt,
-                      platform::errors::PermissionDenied(
+                      common::errors::PermissionDenied(
                           "Reference count overflows for %s", var->Name()));
 
     if (ready_var.var == nullptr && ready_var.cur_ref_cnt == 0) {
@@ -494,7 +496,7 @@ class ReadyGradVarInfoMap {
     } else {
       PADDLE_ENFORCE_NOT_NULL(
           ready_var.var,
-          platform::errors::NotFound(
+          common::errors::NotFound(
               "%s is not found when reference count does not decreases to 0"));
     }
 
@@ -513,7 +515,7 @@ class ReadyGradVarInfoMap {
            const std::shared_ptr<VarBase> &var) {
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        platform::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "Cannot set nullptr as ready grad var for %s", mapped_var->Name()));
     {
       auto target_iter = target_vars_.find(mapped_var);
@@ -521,8 +523,8 @@ class ReadyGradVarInfoMap {
         PADDLE_ENFORCE_EQ(
             target_iter->second,
             nullptr,
-            platform::errors::PermissionDenied("Cannot set target var %s twice",
-                                               mapped_var->Name()));
+            common::errors::PermissionDenied("Cannot set target var %s twice",
+                                             mapped_var->Name()));
         target_iter->second = var;
       }
     }
@@ -533,12 +535,12 @@ class ReadyGradVarInfoMap {
       PADDLE_ENFORCE_EQ(
           ready_var.var,
           nullptr,
-          platform::errors::PermissionDenied("Cannot set target var %s twice",
-                                             mapped_var->Name()));
+          common::errors::PermissionDenied("Cannot set target var %s twice",
+                                           mapped_var->Name()));
       PADDLE_ENFORCE_EQ(
           ready_var.cur_ref_cnt,
           0,
-          platform::errors::PermissionDenied(
+          common::errors::PermissionDenied(
               "Reference count must be 0 when ready var %s is set",
               mapped_var->Name()));
       ready_var.var = var;
@@ -559,21 +561,21 @@ class ReadyGradVarInfoMap {
   void SetTarget(const VariableWrapper *var) {
     PADDLE_ENFORCE_EQ(target_vars_[var],
                       nullptr,
-                      platform::errors::PermissionDenied(
+                      common::errors::PermissionDenied(
                           "Target var would not be generated when marking"));
   }
 
   // Get target var
   const std::shared_ptr<VarBase> &GetTarget(const VariableWrapper *var) const {
     auto iter = target_vars_.find(var);
-    PADDLE_ENFORCE_EQ(iter != target_vars_.end(),
-                      true,
-                      platform::errors::NotFound("Target var %s does not exist",
-                                                 var->Name()));
+    PADDLE_ENFORCE_EQ(
+        iter != target_vars_.end(),
+        true,
+        common::errors::NotFound("Target var %s does not exist", var->Name()));
     PADDLE_ENFORCE_NOT_NULL(
         iter->second,
-        platform::errors::PermissionDenied(
-            "Target var %s should not be nullptr", var->Name()));
+        common::errors::PermissionDenied("Target var %s should not be nullptr",
+                                         var->Name()));
     return iter->second;
   }
 
@@ -589,7 +591,7 @@ class PartialGradTask {
                   const std::vector<std::shared_ptr<VarBase>> &output_targets,
                   const std::vector<std::shared_ptr<VarBase>> &output_grads,
                   const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-                  const platform::Place &place,
+                  const phi::Place &place,
                   bool create_graph,
                   bool retain_graph,
                   bool allow_unused,
@@ -634,7 +636,7 @@ class PartialGradTask {
   std::unordered_set<VariableWrapper *> no_grad_var_grad_;
   std::vector<std::weak_ptr<VariableWrapper>> reset_stop_gradient_vars_;
 
-  platform::Place place_;
+  phi::Place place_;
   bool create_graph_;
   bool retain_graph_;
   bool allow_unused_;
@@ -646,11 +648,21 @@ PartialGradTask::PartialGradTask(
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-    const platform::Place &place,
+    const phi::Place &place,
     bool create_graph,
     bool retain_graph,
     bool allow_unused,
-    bool only_inputs) {
+    bool only_inputs)
+    : startup_ops_(),
+      pending_ops_(),
+      op_deps_(),
+      grad_accumulators_(),
+      double_grad_nodes_(),
+      grads_to_accumulate_(),
+      input_targets_(),
+      input_target_grads_(),
+      no_grad_var_grad_(),
+      reset_stop_gradient_vars_() {
   input_targets_ = input_targets;
   place_ = place;
   create_graph_ = create_graph;
@@ -658,10 +670,10 @@ PartialGradTask::PartialGradTask(
   allow_unused_ = allow_unused;
   only_inputs_ = only_inputs;
 
-  PADDLE_ENFORCE_EQ(only_inputs_,
-                    true,
-                    platform::errors::Unimplemented(
-                        "only_inputs=False is not supported yet"));
+  PADDLE_ENFORCE_EQ(
+      only_inputs_,
+      true,
+      common::errors::Unimplemented("only_inputs=False is not supported yet"));
 
   VLOG(10) << "no_grad_vars size: " << no_grad_vars.size();
   for (auto &var : no_grad_vars) {
@@ -673,30 +685,30 @@ PartialGradTask::PartialGradTask(
   PADDLE_ENFORCE_EQ(
       input_targets.empty(),
       false,
-      platform::errors::PermissionDenied("inputs can not be empty"));
+      common::errors::PermissionDenied("inputs can not be empty"));
   PADDLE_ENFORCE_EQ(
       output_targets.empty(),
       false,
-      platform::errors::PermissionDenied("outputs can not be empty"));
+      common::errors::PermissionDenied("outputs can not be empty"));
 
   std::unordered_set<VarBase *> out_set;
   for (auto &output : output_targets) {
     PADDLE_ENFORCE_NOT_NULL(output,
-                            platform::errors::PermissionDenied(
+                            common::errors::PermissionDenied(
                                 "Variable inside outputs should not be null"));
     PADDLE_ENFORCE_EQ(
-        output->GradVarBase() && !output->OverridedStopGradient(),
+        output->GradVarBase() && !output->OverriddenStopGradient(),
         true,
-        platform::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "Variable %s inside outputs has no gradient", output->Name()));
     PADDLE_ENFORCE_EQ(
         out_set.count(output.get()),
         0,
-        platform::errors::AlreadyExists("outputs contain duplicate variable %s",
-                                        output->Name()));
+        common::errors::AlreadyExists("outputs contain duplicate variable %s",
+                                      output->Name()));
     PADDLE_ENFORCE_EQ(IsValidGradVar(output->GradVarBase()->SharedVar()),
                       true,
-                      platform::errors::PermissionDenied(
+                      common::errors::PermissionDenied(
                           "outputs contain var that is inside no_grad_set"));
 
     out_set.insert(output.get());
@@ -706,24 +718,24 @@ PartialGradTask::PartialGradTask(
   std::unordered_set<VariableWrapper *> one_grad_vars;
   for (auto &input : input_targets) {
     PADDLE_ENFORCE_NOT_NULL(input,
-                            platform::errors::PermissionDenied(
+                            common::errors::PermissionDenied(
                                 "Variable inside inputs should not be null"));
     PADDLE_ENFORCE_EQ(
-        input->GradVarBase() && !input->OverridedStopGradient(),
+        input->GradVarBase() && !input->OverriddenStopGradient(),
         true,
-        platform::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "Variable %s inside inputs has no gradient", input->Name()));
     PADDLE_ENFORCE_EQ(
         in_set.count(input.get()),
         0,
-        platform::errors::AlreadyExists("inputs contain duplicate variable %s",
-                                        input->Name()));
+        common::errors::AlreadyExists("inputs contain duplicate variable %s",
+                                      input->Name()));
     in_set.insert(input.get());
     input_target_grads_.insert(input->GradVarBase()->SharedVar().get());
 
     PADDLE_ENFORCE_EQ(IsValidGradVar(input->GradVarBase()->SharedVar()),
                       true,
-                      platform::errors::PermissionDenied(
+                      common::errors::PermissionDenied(
                           "inputs contain var that is inside no_grad_set"));
 
     // Record same vars between inputs and outputs
@@ -762,7 +774,7 @@ PartialGradTask::PartialGradTask(
   if (!output_grads.empty()) {
     PADDLE_ENFORCE_EQ(output_targets.size(),
                       output_grads.size(),
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "grad_outputs number should be equal to outputs"));
   }
 
@@ -792,13 +804,13 @@ PartialGradTask::PartialGradTask(
       PADDLE_ENFORCE_EQ(
           grad_tensor.dims(),
           out_tensor.dims(),
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The %d-th grad_output's shape does not match the %d-th output",
               i,
               i));
       PADDLE_ENFORCE_EQ(framework::TransToProtoVarType(grad_tensor.dtype()),
                         framework::TransToProtoVarType(out_tensor.dtype()),
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The %d-th grad_output's data type does not "
                             "match the %d-th output",
                             i,
@@ -806,10 +818,10 @@ PartialGradTask::PartialGradTask(
       out_grad_var = output_grads[i]->SharedVar();
       PADDLE_ENFORCE_EQ(IsValidGradVar(out_grad_var),
                         true,
-                        platform::errors::PermissionDenied(
+                        common::errors::PermissionDenied(
                             "grad_outputs contain var inside no_grad_set"));
 
-      if (out_grad_var->OverridedStopGradient()) {
+      if (out_grad_var->OverriddenStopGradient()) {
         VLOG(10) << "Grad var " << out_grad_var->Name()
                  << " should reset stop gradient";
         reset_stop_gradient_vars_.emplace_back(out_grad_var);
@@ -818,7 +830,7 @@ PartialGradTask::PartialGradTask(
       unchange_input = true;
     }
 
-    out_grad_var->SetOverridedStopGradient(false);
+    out_grad_var->SetOverriddenStopGradient(false);
     auto grad_accumulator_iter = grad_accumulators_.find(mapped_out_grad_var);
     if (grad_accumulator_iter == grad_accumulators_.end()) {
       ready_grad_vars_.Set(mapped_out_grad_var,
@@ -833,7 +845,7 @@ PartialGradTask::PartialGradTask(
       PADDLE_ENFORCE_EQ(
           is_finished,
           false,
-          platform::errors::Fatal("gradient accumulator should not finish"));
+          common::errors::Fatal("gradient accumulator should not finish"));
       VLOG(10) << "Add 1.0f or user-provided gradient to gradient accumulator"
                << out_grad_var->Name();
     }
@@ -872,8 +884,8 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::Run() {
       PADDLE_ENFORCE_EQ(
           dep_iter != op_deps_.end(),
           true,
-          platform::errors::Fatal("Dependency number of %s does not exist",
-                                  pending_op->Type()));
+          common::errors::Fatal("Dependency number of %s does not exist",
+                                pending_op->Type()));
       if (--(dep_iter->second) == 0) {
         q.push(pending_op);
       }
@@ -886,7 +898,7 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::Run() {
 }
 
 void PartialGradTask::RunEachOp(OpBase *op) {
-  platform::RecordEvent op_type_record_event(
+  phi::RecordEvent op_type_record_event(
       op->Type() + " grad trace_op", platform::TracerEventType::Operator, 1);
   // Prepare new inputs
   NameVarMap<VarBase> tmp_ins;
@@ -938,15 +950,15 @@ void PartialGradTask::RunEachOp(OpBase *op) {
         if (IsValidGradVar(grad_var)) {
           VLOG(10) << "Creating output grad var " << grad_var->Name();
           auto new_grad_var_iter = grad_accumulators_.find(grad_var.get());
-          PADDLE_ENFORCE_EQ(new_grad_var_iter != grad_accumulators_.end(),
-                            true,
-                            platform::errors::Fatal(
-                                "Cannot find gradient accumulator of %s %p",
-                                grad_var->Name(),
-                                grad_var.get()));
+          PADDLE_ENFORCE_EQ(
+              new_grad_var_iter != grad_accumulators_.end(),
+              true,
+              common::errors::Fatal("Cannot find gradient accumulator of %s %p",
+                                    grad_var->Name(),
+                                    grad_var.get()));
 
           auto new_grad_var = std::make_shared<VarBase>(true, grad_var->Name());
-          new_grad_var->SetOverridedStopGradient(false);
+          new_grad_var->SetOverriddenStopGradient(false);
           new_grad_var->SetForwardDataType(grad_var->ForwardDataType());
           if (new_grad_var_iter->second->TotalRefCnt() > 1) {
             grads_to_accumulate_.emplace_back(new_grad_var_iter->second.get(),
@@ -955,7 +967,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
             PADDLE_ENFORCE_EQ(
                 new_grad_var_iter->second->GradVar(),
                 nullptr,
-                platform::errors::AlreadyExists(
+                common::errors::AlreadyExists(
                     "When reference count is 1, the grad var should not be "
                     "created in gradient accumulator"));
             grad_accumulators_.erase(new_grad_var_iter);
@@ -987,11 +999,11 @@ void PartialGradTask::RunEachOp(OpBase *op) {
                                              {});
     PADDLE_ENFORCE_NOT_NULL(
         double_grad_node,
-        platform::errors::NotFound("The Op %s doesn't have any grad op. If you "
-                                   "don't intend calculating higher order "
-                                   "derivatives, please set `create_graph` to "
-                                   "False.",
-                                   op->Type()));
+        common::errors::NotFound("The Op %s doesn't have any grad op. If you "
+                                 "don't intend calculating higher order "
+                                 "derivatives, please set `create_graph` to "
+                                 "False.",
+                                 op->Type()));
     VLOG(10) << "Create " << double_grad_node->size()
              << " double grad op(s) for " << op->Type()
              << ", pending ops: " << GradPendingOpTypes(*double_grad_node);
@@ -1013,7 +1025,7 @@ void PartialGradTask::RunEachOp(OpBase *op) {
     if (!partial_grad_grads.empty()) {
       auto sum_grad_var_grad =
           accumulator_info->GradVarBase()->MutableGradVarBase();
-      sum_grad_var_grad->SetOverridedStopGradient(false);
+      sum_grad_var_grad->SetOverriddenStopGradient(false);
 
       auto assign_node = std::make_shared<GradOpNode>();
       sum_grad_var_grad->SetGradNode(assign_node);
@@ -1096,17 +1108,17 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::CreateResult() {
     auto &input_target = input_targets_[i];
     PADDLE_ENFORCE_NOT_NULL(
         input_target->GradVarBase(),
-        platform::errors::InvalidArgument("input should have gradient"));
+        common::errors::InvalidArgument("input should have gradient"));
     auto *original_grad_var = input_target->GradVarBase()->SharedVar().get();
     auto iter = input_target_grads_.find(original_grad_var);
     if (iter != input_target_grads_.end()) {
       auto ready_var = ready_grad_vars_.GetTarget(original_grad_var);
-      ready_var->SetOverridedStopGradient(!create_graph_);
+      ready_var->SetOverriddenStopGradient(!create_graph_);
       result.emplace_back(std::move(ready_var));
     } else {  // return None if it does not appear in the graph
       PADDLE_ENFORCE_EQ(allow_unused_,
                         true,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The %d-th input does not appear in the backward "
                             "graph. Please check the input variable or set "
                             "allow_unused=True to get None result.",
@@ -1118,7 +1130,7 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::CreateResult() {
   for (auto &weak_var : reset_stop_gradient_vars_) {
     if (auto var = weak_var.lock()) {
       VLOG(10) << "Reset " << var->Name() << " stop gradient";
-      var->SetOverridedStopGradient(!var->OverridedStopGradient());
+      var->SetOverriddenStopGradient(!var->OverriddenStopGradient());
     }
   }
 
@@ -1134,7 +1146,7 @@ PartialGradEngine::PartialGradEngine(
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
-    const platform::Place &place,
+    const phi::Place &place,
     bool create_graph,
     bool retain_graph,
     bool allow_unused,
@@ -1164,12 +1176,11 @@ void PartialGradEngine::Clear() {
 
 void PartialGradEngine::Execute() {
   PADDLE_ENFORCE_NOT_NULL(task_,
-                          platform::errors::PermissionDenied(
+                          common::errors::PermissionDenied(
                               "PartialGradEngine has been destructed"));
   VLOG(3) << "Starts to execute PartialGradEngine";
   results_ = task_->Run();
   Clear();
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

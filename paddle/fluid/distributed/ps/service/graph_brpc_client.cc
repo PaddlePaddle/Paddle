@@ -25,16 +25,15 @@
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/string/string_helper.h"
-namespace paddle {
-namespace distributed {
+#include "paddle/utils/string/string_helper.h"
+namespace paddle::distributed {
 
 void GraphPsService_Stub::service(
     ::google::protobuf::RpcController *controller,
     const ::paddle::distributed::PsRequestMessage *request,
     ::paddle::distributed::PsResponseMessage *response,
     ::google::protobuf::Closure *done) {
-  if (graph_service != NULL && local_channel == channel()) {
+  if (graph_service != nullptr && local_channel == channel()) {
     // VLOG(0)<<"use local";
     task_pool->enqueue([this, controller, request, response, done]() -> int {
       this->graph_service->service(controller, request, response, done);
@@ -248,7 +247,7 @@ std::future<int32_t> GraphBrpcClient::add_graph_node(
             reinterpret_cast<char *>(request_bucket[request_idx].data()),
             sizeof(int64_t) * node_num);
     if (add_weight) {
-      bool weighted[is_weighted_bucket[request_idx].size() + 1];
+      bool weighted[is_weighted_bucket[request_idx].size() + 1];  // NOLINT
       for (size_t j = 0; j < is_weighted_bucket[request_idx].size(); j++)
         weighted[j] = is_weighted_bucket[request_idx][j];
       closure->request(request_idx)
@@ -714,9 +713,8 @@ int32_t GraphBrpcClient::Initialize() {
   // set_shard_num(_config.shard_num());
   BrpcPsClient::Initialize();
   server_size = GetServerNums();
-  graph_service = NULL;
-  local_channel = NULL;
+  graph_service = nullptr;
+  local_channel = nullptr;
   return 0;
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

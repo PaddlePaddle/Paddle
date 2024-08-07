@@ -26,7 +26,7 @@ void assign_cpu_kernel(const data_t* x_data,
   }
 }
 
-std::vector<paddle::Tensor> DispatchTestInterger(const paddle::Tensor& x) {
+std::vector<paddle::Tensor> DispatchTestInteger(const paddle::Tensor& x) {
   auto out = paddle::empty_like(x);
 
   PD_DISPATCH_INTEGRAL_TYPES(
@@ -41,7 +41,7 @@ std::vector<paddle::Tensor> DispatchTestInterger(const paddle::Tensor& x) {
 PD_BUILD_OP(dispatch_test_integer)
     .Inputs({"X"})
     .Outputs({"Out"})
-    .SetKernelFn(PD_KERNEL(DispatchTestInterger));
+    .SetKernelFn(PD_KERNEL(DispatchTestInteger));
 
 std::vector<paddle::Tensor> DispatchTestFloatAndInteger(
     const paddle::Tensor& x) {

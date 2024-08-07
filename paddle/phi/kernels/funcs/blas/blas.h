@@ -26,6 +26,9 @@
 
 #if defined(PADDLE_USE_OPENBLAS) || defined(PADDLE_USE_REFERENCE_CBLAS)
 #include <cblas.h>
+#elif defined(PADDLE_USE_ACCELERATE)
+#include <Accelerate/Accelerate.h>
+#define CBLAS_LAYOUT CBLAS_ORDER
 #endif
 
 namespace phi {

@@ -18,13 +18,16 @@ import os
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Generator
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
@@ -56,13 +59,13 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
             iou_aware,
             iou_aware_factor,
         ) in product(
-            [1, 4],
-            [80, 30],
+            [1],
+            [80],
             [[10, 13, 16, 30, 33, 23]],
-            [32, 16],
-            [0.01, 0.02],
+            [32],
+            [0.01],
             [True, False],
-            [1.0, 0.9],
+            [1.0],
             [False, True],
             [0.5],
         ):

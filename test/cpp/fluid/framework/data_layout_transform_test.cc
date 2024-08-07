@@ -15,10 +15,10 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/phi/common/bfloat16.h"
 
 TEST(DataTransform, DataLayoutFunction) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
   phi::DenseTensor out = phi::DenseTensor();
   in.mutable_data<double>(common::make_ddim({2, 3, 1, 2}), place);
@@ -26,15 +26,15 @@ TEST(DataTransform, DataLayoutFunction) {
 
   auto kernel_nhwc =
       phi::KernelKey(place, phi::DataLayout::kNHWC, phi::DataType::FLOAT32);
-  auto kernel_ncwh =
+  auto kernel_nchw =
       phi::KernelKey(place, phi::DataLayout::kNCHW, phi::DataType::FLOAT32);
 
-  paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out, place);
+  paddle::framework::TransDataLayout(kernel_nhwc, kernel_nchw, in, &out, place);
 
   EXPECT_TRUE(out.layout() == phi::DataLayout::kNCHW);
   EXPECT_TRUE(out.dims() == common::make_ddim({2, 2, 3, 1}));
 
-  paddle::framework::TransDataLayout(kernel_ncwh, kernel_nhwc, in, &out, place);
+  paddle::framework::TransDataLayout(kernel_nchw, kernel_nhwc, in, &out, place);
 
   EXPECT_TRUE(in.layout() == phi::DataLayout::kNHWC);
   EXPECT_TRUE(in.dims() == common::make_ddim({2, 3, 1, 2}));
@@ -42,19 +42,17 @@ TEST(DataTransform, DataLayoutFunction) {
 
 #ifdef PADDLE_WITH_DNNL
 TEST(DataTransformBf16, GetDataFromTensorDNNL) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
-  in.mutable_data<paddle::platform::bfloat16>(common::make_ddim({2, 3, 1, 2}),
-                                              place);
+  in.mutable_data<phi::dtype::bfloat16>(common::make_ddim({2, 3, 1, 2}), place);
 
   void* in_data =
       phi::funcs::GetDataFromTensor(in, dnnl::memory::data_type::bf16);
-  EXPECT_EQ(in_data,
-            phi::funcs::to_void_cast(in.data<paddle::platform::bfloat16>()));
+  EXPECT_EQ(in_data, phi::funcs::to_void_cast(in.data<phi::dtype::bfloat16>()));
 }
 
 TEST(DataTransformInt32, GetDataFromTensorDNNL) {
-  auto place = paddle::platform::CPUPlace();
+  auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
   in.mutable_data<int32_t>(common::make_ddim({2, 3, 1, 2}), place);
 

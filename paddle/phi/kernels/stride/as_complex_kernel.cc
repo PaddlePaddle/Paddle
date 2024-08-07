@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/as_complex_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -23,10 +26,16 @@ template <typename T, typename Context>
 void AsComplexStridedKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
   PADDLE_ENFORCE_EQ(
       x.strides()[x.strides().size() - 1],
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected the stride of last dimension of input(X) to be 1."
           "But received %d. This means that the last dimension of the"
           "Tensor(x) is not continuous and cannot be as_complex directly."
@@ -44,7 +53,7 @@ void AsComplexStridedKernel(const Context& dev_ctx,
   } else if (x.dtype() == DataType::FLOAT64) {
     out->set_type(DataType::COMPLEX128);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "as_complex is not supported data type (%s).",
         DataTypeToString(x.dtype())));
   }
@@ -63,6 +72,13 @@ PD_REGISTER_KERNEL(
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(
     as_complex, GPU, STRIDED, phi::AsComplexStridedKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(
+    as_complex, Custom, STRIDED, phi::AsComplexStridedKernel, float, double) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif

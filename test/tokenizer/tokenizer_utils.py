@@ -38,12 +38,12 @@ def convert_to_unicode(text):
     elif isinstance(text, bytes):
         return text.decode("utf-8", "ignore")
     else:
-        raise ValueError("Unsupported string type: %s" % (type(text)))
+        raise ValueError(f"Unsupported string type: {type(text)}")
 
 
 def whitespace_tokenize(text):
     """
-    Runs basic whitespace cleaning and splitting on a peice of text.
+    Runs basic whitespace cleaning and splitting on a piece of text.
     Args:
         text (str): Text to be tokened.
     Returns:
@@ -60,7 +60,7 @@ def _is_whitespace(char):
     """
     Checks whether `chars` is a whitespace character.
     """
-    # \t, \n, and \r are technically contorl characters but we treat them
+    # \t, \n, and \r are technically control characters but we treat them
     # as whitespace since they are generally considered as such.
     if char == " " or char == "\t" or char == "\n" or char == "\r":
         return True
@@ -484,7 +484,7 @@ class PretrainedTokenizer:
                 continue
             path = os.path.join(default_root, file_path.split('/')[-1])
             if os.path.exists(path):
-                print("Already cached %s" % path)
+                print(f"Already cached {path}")
                 resolved_vocab_files[file_id] = path
             else:
                 print(f"Downloading {file_path} and saved to {default_root}")

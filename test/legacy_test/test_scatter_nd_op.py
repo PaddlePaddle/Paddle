@@ -29,16 +29,16 @@ def numpy_scatter_nd(ref, index, updates, fun):
     index_shape = index.shape
 
     end_size = index_shape[-1]
-    remain_numl = 1
+    remain_numel = 1
     for i in range(len(index_shape) - 1):
-        remain_numl *= index_shape[i]
+        remain_numel *= index_shape[i]
 
     slice_size = 1
     for i in range(end_size, len(ref_shape)):
         slice_size *= ref_shape[i]
 
-    flat_index = index.reshape([remain_numl] + list(index_shape[-1:]))
-    flat_updates = updates.reshape((remain_numl, slice_size))
+    flat_index = index.reshape([remain_numel] + list(index_shape[-1:]))
+    flat_updates = updates.reshape((remain_numel, slice_size))
     flat_output = ref.reshape(list(ref_shape[:end_size]) + [slice_size])
 
     for i_up, i_out in enumerate(flat_index):
@@ -118,7 +118,7 @@ class TestScatterNdAddSimpleFP16Op(TestScatterNdAddSimpleOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
     """
@@ -205,7 +205,7 @@ class TestScatterNdAddWithEmptyIndexFP16(TestScatterNdAddWithEmptyIndex):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
     """
@@ -291,7 +291,7 @@ class TestScatterNdAddWithHighRankSameFP16(TestScatterNdAddWithHighRankSame):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
     """
@@ -513,7 +513,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
         self.assertRaises(IndexError, check_raise_is_test)
 
     def test_check_raise2(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             with static_guard():
                 ref6 = paddle.static.data(
                     name='ref6',

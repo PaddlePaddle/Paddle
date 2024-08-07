@@ -15,7 +15,7 @@
 #pragma once
 
 #include <memory>
-#include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/include/core/dll_decl.h"
 
 namespace pir {
 

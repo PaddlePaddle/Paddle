@@ -74,86 +74,86 @@ struct Argument {
     }
   }
 
-#define DECL_ARGUMENT_FIELD(field__, Field, type__)                      \
- public:                                                                 \
-  type__& field__() {                                                    \
-    PADDLE_ENFORCE_EQ(                                                   \
-        Has(#field__),                                                   \
-        true,                                                            \
-        platform::errors::PreconditionNotMet("There is no such field")); \
-    return field__##_;                                                   \
-  }                                                                      \
-  void Set##Field(const type__& x) {                                     \
-    field__##_ = x;                                                      \
-    valid_fields_.insert(#field__);                                      \
-  }                                                                      \
-  DECL_ARGUMENT_FIELD_VALID(field__);                                    \
-  type__* field__##_ptr() { return &field__##_; }                        \
-                                                                         \
- private:                                                                \
+#define DECL_ARGUMENT_FIELD(field__, Field, type__)                    \
+ public:                                                               \
+  type__& field__() {                                                  \
+    PADDLE_ENFORCE_EQ(                                                 \
+        Has(#field__),                                                 \
+        true,                                                          \
+        common::errors::PreconditionNotMet("There is no such field")); \
+    return field__##_;                                                 \
+  }                                                                    \
+  void Set##Field(const type__& x) {                                   \
+    field__##_ = x;                                                    \
+    valid_fields_.insert(#field__);                                    \
+  }                                                                    \
+  DECL_ARGUMENT_FIELD_VALID(field__);                                  \
+  type__* field__##_ptr() { return &field__##_; }                      \
+                                                                       \
+ private:                                                              \
   type__ field__##_;
 
-#define DECL_POINTER_ARGUMENT_FIELD(field__, Field, type__)              \
- public:                                                                 \
-  type__& field__() {                                                    \
-    PADDLE_ENFORCE_EQ(                                                   \
-        Has(#field__),                                                   \
-        true,                                                            \
-        platform::errors::PreconditionNotMet("There is no such field")); \
-    return field__##_;                                                   \
-  }                                                                      \
-  void Set##Field(type__ x) {                                            \
-    field__##_ = x;                                                      \
-    valid_fields_.insert(#field__);                                      \
-  }                                                                      \
-  DECL_ARGUMENT_FIELD_VALID(field__);                                    \
-  type__* field__##_ptr() { return &field__##_; }                        \
-                                                                         \
- private:                                                                \
+#define DECL_POINTER_ARGUMENT_FIELD(field__, Field, type__)            \
+ public:                                                               \
+  type__& field__() {                                                  \
+    PADDLE_ENFORCE_EQ(                                                 \
+        Has(#field__),                                                 \
+        true,                                                          \
+        common::errors::PreconditionNotMet("There is no such field")); \
+    return field__##_;                                                 \
+  }                                                                    \
+  void Set##Field(type__ x) {                                          \
+    field__##_ = x;                                                    \
+    valid_fields_.insert(#field__);                                    \
+  }                                                                    \
+  DECL_ARGUMENT_FIELD_VALID(field__);                                  \
+  type__* field__##_ptr() { return &field__##_; }                      \
+                                                                       \
+ private:                                                              \
   type__ field__##_;
 
 #define DECL_ARGUMENT_FIELD_VALID(field__) \
   bool field__##_valid() { return Has(#field__); }
 
-#define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__)                  \
- public:                                                                    \
-  type__& field__() {                                                       \
-    PADDLE_ENFORCE_NOT_NULL(                                                \
-        field__##_,                                                         \
-        platform::errors::PreconditionNotMet("filed should not be null.")); \
-    PADDLE_ENFORCE_EQ(                                                      \
-        Has(#field__),                                                      \
-        true,                                                               \
-        platform::errors::PreconditionNotMet("There is no such field"));    \
-    return *static_cast<type__*>(field__##_.get());                         \
-  }                                                                         \
-  void Set##Field(type__* x) {                                              \
-    field__##_ =                                                            \
-        unique_ptr_t(x, [](void* x) { delete static_cast<type__*>(x); });   \
-    valid_fields_.insert(#field__);                                         \
-  }                                                                         \
-  void Set##Field##NotOwned(type__* x) {                                    \
-    valid_fields_.insert(#field__);                                         \
-    field__##_ = unique_ptr_t(x, [](void* x UNUSED) {});                    \
-  }                                                                         \
-  DECL_ARGUMENT_FIELD_VALID(field__);                                       \
-  type__* field__##_ptr() {                                                 \
-    PADDLE_ENFORCE_EQ(                                                      \
-        Has(#field__),                                                      \
-        true,                                                               \
-        platform::errors::PreconditionNotMet("There is no such field"));    \
-    return static_cast<type__*>(field__##_.get());                          \
-  }                                                                         \
-  type__* Release##Field() {                                                \
-    PADDLE_ENFORCE_EQ(                                                      \
-        Has(#field__),                                                      \
-        true,                                                               \
-        platform::errors::PreconditionNotMet("There is no such field"));    \
-    valid_fields_.erase(#field__);                                          \
-    return static_cast<type__*>(field__##_.release());                      \
-  }                                                                         \
-                                                                            \
- private:                                                                   \
+#define DECL_ARGUMENT_UNIQUE_FIELD(field__, Field, type__)                \
+ public:                                                                  \
+  type__& field__() {                                                     \
+    PADDLE_ENFORCE_NOT_NULL(                                              \
+        field__##_,                                                       \
+        common::errors::PreconditionNotMet("filed should not be null.")); \
+    PADDLE_ENFORCE_EQ(                                                    \
+        Has(#field__),                                                    \
+        true,                                                             \
+        common::errors::PreconditionNotMet("There is no such field"));    \
+    return *static_cast<type__*>(field__##_.get());                       \
+  }                                                                       \
+  void Set##Field(type__* x) {                                            \
+    field__##_ =                                                          \
+        unique_ptr_t(x, [](void* x) { delete static_cast<type__*>(x); }); \
+    valid_fields_.insert(#field__);                                       \
+  }                                                                       \
+  void Set##Field##NotOwned(type__* x) {                                  \
+    valid_fields_.insert(#field__);                                       \
+    field__##_ = unique_ptr_t(x, [](void* x UNUSED) {});                  \
+  }                                                                       \
+  DECL_ARGUMENT_FIELD_VALID(field__);                                     \
+  type__* field__##_ptr() {                                               \
+    PADDLE_ENFORCE_EQ(                                                    \
+        Has(#field__),                                                    \
+        true,                                                             \
+        common::errors::PreconditionNotMet("There is no such field"));    \
+    return static_cast<type__*>(field__##_.get());                        \
+  }                                                                       \
+  type__* Release##Field() {                                              \
+    PADDLE_ENFORCE_EQ(                                                    \
+        Has(#field__),                                                    \
+        true,                                                             \
+        common::errors::PreconditionNotMet("There is no such field"));    \
+    valid_fields_.erase(#field__);                                        \
+    return static_cast<type__*>(field__##_.release());                    \
+  }                                                                       \
+                                                                          \
+ private:                                                                 \
   unique_ptr_t field__##_;
 
   DECL_ARGUMENT_FIELD(predictor_id, PredictorID, int);
@@ -165,6 +165,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(save_optimized_model, SaveOptimizedModel, bool);
+  DECL_ARGUMENT_FIELD(optimized_model_save_path,
+                      OptimizedModelSavePath,
+                      std::string);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 
@@ -224,6 +227,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_cutlass, UseCutlass, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+  DECL_ARGUMENT_FIELD(use_pir, UsePIR, bool);
 
   // Usually use for trt dynamic shape.
   // TRT will select the best kernel according to opt shape
@@ -244,8 +248,22 @@ struct Argument {
   DECL_ARGUMENT_FIELD(trt_output_tensor_names,
                       TRTOutputTensorNames,
                       std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_exclude_var_names,
+                      TRTExcludeVarNames,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_forbid_dynamic_op, TRTForbidDynamicOp, bool);
+
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_fp16,
+                      TRTParameterRunFp16,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_int8,
+                      TRTParameterRunInt8,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(trt_parameter_run_bfp16,
+                      TRTParameterRunBfp16,
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode, int);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine,
@@ -283,32 +301,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_ops_run_float,
                       TensorRtOpsRunFloat,
                       std::unordered_set<std::string>);
-
-  DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
-  DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
-  DECL_ARGUMENT_FIELD(dlnne_max_batch_size, DlnneMaxBatchSize, int);
-  DECL_ARGUMENT_FIELD(dlnne_use_static_batch, DlnneUseStaticBatch, bool);
-  DECL_ARGUMENT_FIELD(dlnne_weight_share_mode,
-                      DlnneWeightShareMode,
-                      std::string);
-  DECL_ARGUMENT_FIELD(dlnne_disable_nodes_by_outputs,
-                      DlnneDisableNodesByOutputs,
-                      std::unordered_set<std::string>);
-  DECL_ARGUMENT_FIELD(dlnne_use_calib_mode, DlnneUseCalibMode, bool);
-  DECL_ARGUMENT_FIELD(dlnne_precision_mode, DlnnePrecisionMode, int);
-
-  using dlnne_input_shape_type = std::map<std::string, std::vector<int64_t>>;
-  DECL_ARGUMENT_FIELD(dlnne_input_shape_dict,
-                      DlnneInputShapeDict,
-                      dlnne_input_shape_type);
-  DECL_ARGUMENT_FIELD(dlnne_workspace_size, DlnneWorkspaceSize, int);
-
-  DECL_ARGUMENT_FIELD(lite_passes_filter,
-                      LitePassesFilter,
-                      std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter, std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(lite_precision_mode, LitePrecisionMode, int);
-  DECL_ARGUMENT_FIELD(lite_zero_copy, LiteZeroCopy, bool);
 
   DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
   DECL_ARGUMENT_FIELD(xpu_locked, XpuLocked, bool);
@@ -355,35 +347,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_op_types,
                       XpuQuantPostDynamicOpTypes,
                       std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(xpu_lite_l3_locked, XpuLiteL3Locked, bool);
-  DECL_ARGUMENT_FIELD(xpu_lite_enable_multi_stream,
-                      XpuLiteEnableMultiStream,
-                      bool);
-
-  DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
-
-  DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
-  DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir,
-                      NNAdapterModelCacheDir,
-                      std::string);
-  DECL_ARGUMENT_FIELD(nnadapter_device_names,
-                      NNAdapterDeviceNames,
-                      std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(nnadapter_context_properties,
-                      NNAdapterContextProperties,
-                      std::string);
-  DECL_ARGUMENT_FIELD(nnadapter_subgraph_partition_config_buffer,
-                      NNAdapterSubgraphPartitionConfigBuffer,
-                      std::string);
-  DECL_ARGUMENT_FIELD(nnadapter_subgraph_partition_config_path,
-                      NNAdapterSubgraphPartitionConfigPath,
-                      std::string);
-  DECL_ARGUMENT_FIELD(nnadapter_model_cache_token,
-                      NNAdapterModelCacheToken,
-                      std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(nnadapter_model_cache_buffer,
-                      NNAdapterModelCacheBuffer,
-                      std::vector<std::vector<char>>);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
@@ -458,7 +421,7 @@ struct Argument {
   PADDLE_ENFORCE_EQ(                                  \
       argument__->Has(#fieldname__),                  \
       true,                                           \
-      platform::errors::PreconditionNotMet(           \
+      common::errors::PreconditionNotMet(             \
           "the argument field [%s] should be set", #fieldname__));
 
 }  // namespace analysis

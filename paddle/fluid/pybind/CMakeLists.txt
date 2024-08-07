@@ -14,7 +14,7 @@ set(PYBIND_DEPS
     pass
     generate_pass
     pass_builder
-    parallel_executor
+    compiled_program
     profiler
     layer
     tracer
@@ -41,6 +41,7 @@ set(PYBIND_DEPS
     op_dialect_vjp
     program_translator
     pir_transforms
+    pir_save_load
     new_profiler
     fluid_jit
     prim_utils
@@ -51,7 +52,8 @@ set(PYBIND_DEPS
 
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
-                  sub_graph_checker)
+                  sub_graph_checker add_cinn_pass)
+  list(REMOVE_ITEM PYBIND_DEPS imperative_flag)
 endif()
 
 if(WITH_PSCORE)
@@ -64,10 +66,6 @@ if(WITH_RPC)
   set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
                   common)
 endif()
-if(WITH_GPU OR WITH_ROCM)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
-endif()
 
 if(WITH_GPU)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_profiler)
@@ -79,10 +77,6 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-endif()
-
-if(WITH_XPU)
-  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
 endif()
 
 if(WITH_XPU_BKCL)
@@ -119,17 +113,16 @@ set(PYBIND_SRCS
     pybind.cc
     imperative.cc
     inference_api.cc
-    ops_api.cc
-    static_op_function.cc
     control_flow_api.cc
     pir.cc
+    pir_utils.cc
     graph.cc
     bind_fleet_executor.cc
     reader_py.cc
     protobuf.cc
     exception.cc
     op_function_common.cc
-    parallel_executor.cc
+    compiled_program.cc
     tensor.cc
     place.cc
     const_value.cc
@@ -153,7 +146,13 @@ set(PYBIND_SRCS
     auto_parallel_py.cc
     eval_frame_tools.cc
     cpython_internals.c
-    eval_frame.c)
+    eval_frame.c
+    op_callstack_utils.cc
+    python_callable_registry.cc)
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+#endif
 
 if(NOT WITH_SHARED_IR)
   # Note: We want to compile pir source into paddle.so directly, because
@@ -171,7 +170,7 @@ endif()
 if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl async_load)
   endif()
   if(WITH_XPU_BKCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl)
@@ -265,7 +264,7 @@ endif()
 if(WITH_PYTHON)
   # generate op pybind functions automatically for dygraph.
 
-  set(OP_FUNCTION_GENERETOR_DEPS
+  set(OP_FUNCTION_GENERATOR_DEPS
       pybind
       proto_desc
       executor
@@ -274,47 +273,33 @@ if(WITH_PYTHON)
       engine
       imperative_profiler
       imperative_flag)
-  list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
-  list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
+  list(APPEND OP_FUNCTION_GENERATOR_DEPS ${GLOB_OP_LIB})
+  list(APPEND OP_FUNCTION_GENERATOR_DEPS ${GLOB_OPERATOR_DEPS})
 
   if(WITH_NCCL OR WITH_RCCL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
+    list(APPEND OP_FUNCTION_GENERATOR_DEPS nccl_context)
   endif()
 
   if(WITH_XPU_BKCL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
+    list(APPEND OP_FUNCTION_GENERATOR_DEPS bkcl_context)
   endif()
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
+    list(APPEND OP_FUNCTION_GENERATOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
   if(WITH_CUSTOM_DEVICE)
-    set(OP_FUNCTION_GENERETOR_DEPS ${OP_FUNCTION_GENERETOR_DEPS}
+    set(OP_FUNCTION_GENERATOR_DEPS ${OP_FUNCTION_GENERATOR_DEPS}
                                    custom_device_common_op_registry)
   endif()
 
-  add_executable(eager_legacy_op_function_generator
-                 eager_legacy_op_function_generator.cc)
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
-  if(NOT WITH_ARM)
+  if(WIN32)
     list(REMOVE_ITEM GENERATOR_DEPS python)
-  endif()
-  target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
-  if(NOT WIN32)
-    add_executable(kernel_signature_generator kernel_signature_generator.cc)
-    target_link_libraries(kernel_signature_generator
-                          ${OP_FUNCTION_GENERETOR_DEPS})
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-  target_link_libraries(eager_legacy_op_function_generator
-                        ${os_dependency_modules})
-  if(WITH_ROCM)
-    target_link_libraries(eager_legacy_op_function_generator ${ROCM_HIPRTC_LIB})
-    target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
-  endif()
 
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
   set(CODE_GEN_SPLIT_FILE_COUNT "8")
@@ -329,8 +314,153 @@ if(WITH_PYTHON)
       "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/"
       "${CODE_GEN_SPLIT_FILE_COUNT}")
 
-  set(EAGER_OP_IMPL_DEPS eager_legacy_op_function_generator
-                         eager_python_c_codegen)
+  set(EAGER_GENERATOR_DEPS
+      ${GLOB_OP_LIB}
+      ${GLOB_OPERATOR_DEPS}
+      pybind
+      proto_desc
+      executor
+      layer
+      tracer
+      engine
+      imperative_profiler
+      imperative_flag)
+
+  if(WITH_CINN)
+    list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
+  endif()
+
+  if(WITH_CUSTOM_DEVICE)
+    set(EAGER_GENERATOR_DEPS ${EAGER_GENERATOR_DEPS}
+                             custom_device_common_op_registry)
+  endif()
+
+  add_executable(
+    eager_generator generator.cc eager_legacy_op_function_generator.cc
+                    eager_generator.cc)
+  target_link_libraries(eager_generator ${EAGER_GENERATOR_DEPS})
+  target_link_libraries(eager_generator ${GENERATOR_DEPS})
+
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  target_link_libraries(eager_generator ${os_dependency_modules})
+
+  set(EAGER_OP_IMPL_DEPS eager_generator eager_python_c_codegen)
+
+  if(WITH_ROCM)
+    target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
+  endif()
+
+  if(WITH_CINN)
+    target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
+  endif()
+
+  if(WIN32)
+    set(EAGER_CODEGEN_DEPS eager_generator)
+    if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+      set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}")
+    else()
+      set(eager_generator_path
+          "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
+    endif()
+
+    if(WITH_SHARED_PHI)
+      message("Copied phi.dll for Eager AutoCodeGen")
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/phi.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
+        DEPENDS phi)
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/phi_core.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${eager_generator_path}
+        DEPENDS phi)
+      if(WITH_GPU OR WITH_ROCM)
+        add_custom_command(
+          OUTPUT ${eager_generator_path}/phi_gpu.dll
+          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB}
+                  ${eager_generator_path}
+          DEPENDS phi)
+      endif()
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
+    endif()
+
+    add_custom_command(
+      OUTPUT ${eager_generator_path}/common.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${COMMON_LIB} ${eager_generator_path}
+      DEPENDS common)
+    list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/common.dll)
+
+    if(WITH_SHARED_IR)
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/ir.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${eager_generator_path}
+        DEPENDS pir)
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/ir.dll)
+    endif()
+
+    if(${CBLAS_PROVIDER} STREQUAL MKLML)
+      message("Copied libiomp5md.dll for Eager AutoCodeGen")
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/libiomp5md.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB}
+                ${eager_generator_path}
+        DEPENDS mklml)
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/libiomp5md.dll)
+    else()
+      message("Copied openblas.dll for Eager AutoCodeGen")
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/openblas.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB}
+                ${eager_generator_path}
+        DEPENDS extern_openblas)
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/openblas.dll)
+    endif()
+
+    if(WITH_ONEDNN)
+      message("Copied mkldnn.dll for Eager AutoCodeGen")
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/mkldnn.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB}
+                ${eager_generator_path}
+        DEPENDS onednn)
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/mkldnn.dll)
+    endif()
+
+    if(WITH_ONNXRUNTIME)
+      message("Copied onnxruntime for Eager AutoCodeGen")
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/onnxruntime.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONNXRUNTIME_SHARED_LIB}
+                ${eager_generator_path}
+        DEPENDS onnxruntime)
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/onnxruntime.dll)
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/paddle2onnx.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE2ONNX_LIB}
+                ${eager_generator_path}
+        DEPENDS paddle2onnx)
+      list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/paddle2onnx.dll)
+    endif()
+
+    add_custom_target(
+      legacy_eager_codegen
+      COMMAND
+        "${eager_generator_path}/eager_generator.exe"
+        "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
+        "${CODE_GEN_SPLIT_FILE_COUNT}"
+      DEPENDS ${EAGER_CODEGEN_DEPS}
+      VERBATIM)
+  else()
+    add_custom_target(
+      legacy_eager_codegen
+      COMMAND
+        ${CMAKE_COMMAND} -E env
+        "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind:${PADDLE_BINARY_DIR}/third_party/install/mklml/lib"
+        "${CMAKE_CURRENT_BINARY_DIR}/eager_generator"
+        "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
+        "${CODE_GEN_SPLIT_FILE_COUNT}"
+      DEPENDS eager_generator
+      VERBATIM)
+  endif()
 
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
@@ -346,8 +476,8 @@ if(WITH_PYTHON)
       "set build_times=1\n"
       ":retry\n"
       "ECHO eager_legacy_op_function_generator run %build_times% time\n"
-      "taskkill /f /im eager_legacy_op_function_generator.exe 2>NUL\n"
-      "${op_impl_path}/eager_legacy_op_function_generator.exe ${tmp_eager_impl_file}\n"
+      "taskkill /f /im eager_generator.exe 2>NUL\n"
+      "${op_impl_path}/eager_generator.exe ${tmp_eager_impl_file}\n"
       "if %ERRORLEVEL% NEQ 0 (\n"
       "    set /a build_times=%build_times%+1\n"
       "    if %build_times% GEQ 10 (\n"
@@ -363,6 +493,16 @@ if(WITH_PYTHON)
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/phi_core.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${op_impl_path}
+        DEPENDS phi)
+      if(WITH_GPU OR WITH_ROCM)
+        add_custom_command(
+          OUTPUT ${op_impl_path}/phi_gpu.dll
+          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB} ${op_impl_path}
+          DEPENDS phi)
+      endif()
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
     endif()
 
@@ -396,11 +536,11 @@ if(WITH_PYTHON)
       list(APPEND OP_IMPL_DEPS ${op_impl_path}/openblas.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/openblas.dll)
     endif()
-    if(WITH_MKLDNN)
+    if(WITH_ONEDNN)
       add_custom_command(
         OUTPUT ${op_impl_path}/mkldnn.dll
-        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${op_impl_path}
-        DEPENDS mkldnn)
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB} ${op_impl_path}
+        DEPENDS onednn)
       list(APPEND OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/mkldnn.dll)
     endif()
@@ -432,12 +572,12 @@ if(WITH_PYTHON)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file}
                 ${eager_impl_file}
         COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
-        DEPENDS ${EAGER_OP_IMPL_DEPS})
+        DEPENDS ${EAGER_OP_IMPL_DEPS} legacy_eager_codegen)
     endif()
   else()
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH,
     # copy these *.so to current directory and append current directory to
-    # LD_LIBRARY_PATH. This is different with Windows platformm, which search
+    # LD_LIBRARY_PATH. This is different with Windows platform, which search
     # *.dll in current directory automatically.
     if(WITH_ONNXRUNTIME)
       set(PADDLE2ONNX_PYBIND_OUT
@@ -471,12 +611,12 @@ if(WITH_PYTHON)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libiomp5.so)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libiomp5.so)
     endif()
-    if(WITH_MKLDNN)
+    if(WITH_ONEDNN)
       add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0
-        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB}
+        COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB}
                 ${CMAKE_CURRENT_BINARY_DIR}
-        DEPENDS mkldnn)
+        DEPENDS onednn)
       list(APPEND OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
       list(APPEND EAGER_OP_IMPL_DEPS ${CMAKE_CURRENT_BINARY_DIR}/libdnnl.so.0)
     endif()
@@ -485,12 +625,11 @@ if(WITH_PYTHON)
         OUTPUT ${eager_impl_file}
         COMMAND
           ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
-          "${CMAKE_CURRENT_BINARY_DIR}/eager_legacy_op_function_generator"
-          "${tmp_eager_impl_file}"
+          "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" "${tmp_eager_impl_file}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file}
                 ${eager_impl_file}
         COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
-        DEPENDS ${EAGER_OP_IMPL_DEPS}
+        DEPENDS ${EAGER_OP_IMPL_DEPS} legacy_eager_codegen
         VERBATIM)
     endif()
   endif()
@@ -509,6 +648,8 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_legacy_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS ops_api.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS static_op_function.cc ${PYBIND_SRCS})
     list(APPEND PYBIND_DEPS eager_api)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)
@@ -543,6 +684,10 @@ if(WITH_PYTHON)
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    target_compile_options(${SHARD_LIB_NAME} PRIVATE -Wno-maybe-uninitialized)
+  endif()
 
   # cc_test do not respect deps, whole archive to link symbols that may need by test
   if(WITH_TESTING)

@@ -27,11 +27,13 @@ from paddle.incubate.distributed.fleet.base import (
 )
 from paddle.incubate.distributed.fleet.role_maker import (
     HeterRoleMaker,
-    MPISymetricRoleMaker,
+    MPISymmetricRoleMaker,
 )
 
-from .optimizer_factory import DistributedAdam  # noqa: F401
-from .optimizer_factory import FLEET_GLOBAL_DICT
+from .optimizer_factory import (
+    FLEET_GLOBAL_DICT,
+    DistributedAdam,  # noqa: F401
+)
 
 
 class PSLib(Fleet):
@@ -50,7 +52,7 @@ class PSLib(Fleet):
 
     def init(self, role_maker=None):
         if role_maker is None:
-            role_maker = MPISymetricRoleMaker()
+            role_maker = MPISymmetricRoleMaker()
         super().init(role_maker)
         self._fleet_ptr = core.Fleet()
         self._heter_ptr = None
@@ -222,7 +224,7 @@ class PSLib(Fleet):
             self._fleet_ptr.init_server(
                 self._dist_desc_str, self._role_maker.server_index() * 2
             )
-            if isinstance(self._role_maker, MPISymetricRoleMaker):
+            if isinstance(self._role_maker, MPISymmetricRoleMaker):
                 self._local_ip = self._fleet_ptr.run_server()
             else:
                 local_endpoint = self._role_maker.get_local_endpoint()
@@ -799,7 +801,7 @@ class PSLib(Fleet):
             hadoop_bin = self._opt_info["fleet_desc"].fs_client_param.hadoop_bin
             # download model_path if it's hdfs/afs
             if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
-                dest = "./model_for_load_table_%s" % table_id
+                dest = f"./model_for_load_table_{table_id}"
                 cmd = (
                     hadoop_bin
                     + " fs -D fs.default.name="
@@ -819,7 +821,7 @@ class PSLib(Fleet):
             if model_proto_file.startswith(
                 "hdfs:"
             ) or model_proto_file.startswith("afs:"):
-                dest = "./model_proto_file_for_load_table_%s" % table_id
+                dest = f"./model_proto_file_for_load_table_{table_id}"
                 cmd = (
                     hadoop_bin
                     + " fs -D fs.default.name="
@@ -1043,95 +1045,6 @@ def _prepare_params(
         raise ValueError("dtype must be float32")
 
 
-def _fleet_embedding(
-    input,
-    size,
-    is_sparse=False,
-    is_distributed=False,
-    padding_idx=None,
-    param_attr=None,
-    dtype='float32',
-):
-    """
-    Add fleet embedding, this interface is not for users.
-
-    Args:
-        input (Variable|list of Variable): Input is a Tensor<int64> Variable.
-        size (list[int]): The embedding dim.
-        is_sparse (bool, optional): Whether input is sparse ids. Default is False.
-        is_distributed (bool, optional): Whether in distributed mode. Default is False.
-        padding_idx (int, optional): Padding idx of input. Default is None.
-        param_attr (ParamAttr, optional): To specify the weight parameter property. Default is None.
-        dtype (str, optional): Data type of output. Default is 'float32'.
-    """
-
-    def _pull_sparse(
-        input,
-        size,
-        table_id,
-        accessor_class,
-        name="embedding",
-        ctr_label_name="",
-        padding_id=0,
-        dtype='float32',
-        scale_sparse_grad=True,
-    ):
-        helper = LayerHelper(name, **locals())
-        inputs = helper.multiple_input()
-        outs = [helper.create_variable_for_type_inference(dtype)]
-        input_names = [i.name for i in inputs]
-        attrs = {
-            'EmbeddingDim': size,
-            'TableId': table_id,
-            'AccessorClass': accessor_class,
-            'CtrLabelName': ctr_label_name,
-            'PaddingId': padding_id,
-            'ScaleSparseGrad': scale_sparse_grad,
-            'InputNames': input_names,
-            # this is only for compatible with embedding op
-            'is_distributed': True,
-        }
-        # this is only for compatible with embedding op
-        w, _ = helper.create_or_get_global_variable(
-            name=name,
-            shape=[size],
-            dtype=dtype,
-            is_bias=False,
-            persistable=True,
-        )
-        helper.append_op(
-            type='pull_sparse',
-            inputs={'Ids': inputs, 'W': w},
-            outputs={'Out': outs},
-            attrs=attrs,
-        )
-        if len(outs) == 1:
-            return outs[0]
-        return outs
-
-    # check and set params
-    _prepare_params(
-        input, size, is_sparse, is_distributed, padding_idx, param_attr, dtype
-    )
-    name = param_attr.name
-    size = size[-1]
-    if padding_idx is None:
-        padding_idx = 0
-    global FLEET_GLOBAL_DICT
-
-    return _pull_sparse(
-        input=input,
-        size=size,
-        table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
-        accessor_class=FLEET_GLOBAL_DICT["emb_to_accessor"][name],
-        name=name,
-        ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
-        padding_id=padding_idx,
-        dtype=dtype,
-        scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"],
-    )
-
-
 def _fleet_embedding_v2(
     input,
     size,
@@ -1283,7 +1196,7 @@ class DownpourOptimizer(DistributedOptimizer):
         super().__init__(optimizer, strategy)
 
         self._optimizer = optimizer
-        self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
+        self._optimizer_name = f"Distributed{optimizer.type.capitalize()}"
         if optimizer.type != "adam":
             print(
                 "Currently, distributed optimizer only support Adam"
@@ -1310,7 +1223,7 @@ class DownpourOptimizer(DistributedOptimizer):
 
     def _remove_collective_ops(self, program, name):
         """
-        colective init op should call once, so remove other call.
+        collective init op should call once, so remove other call.
         """
         block = program.global_block()
         for ids, op in list(enumerate(block.ops)):

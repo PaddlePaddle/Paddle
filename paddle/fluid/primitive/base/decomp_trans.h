@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 
@@ -31,26 +31,34 @@ class DecompProgram {
   DecompProgram(pir::Program* program,
                 const std::vector<pir::Value>& src_vars,
                 const std::set<std::string>& blacklist,
-                const std::set<std::string>& whitelist)
+                const std::set<std::string>& whitelist,
+                int start_index,
+                int end_index)
       : program_(program),
         src_vars_(src_vars),
         blacklist_(blacklist),
-        whitelist_(whitelist) {}
+        whitelist_(whitelist),
+        start_index_(start_index),
+        end_index_(end_index) {}
 
   void decomp_program();
+  void decomp_block(pir::Block* block,
+                    const std::unordered_map<pir::Value, int>& orig_vars_dict,
+                    std::vector<pir::Value>& tar_vars);  // NOLINT
   bool check_decomp_dynamic_shape(pir::Operation* op);
   void check_decomp_outputs(const std::string& op_name,
                             const std::vector<pir::Value>& orig_outs,
                             const std::vector<pir::Value>& decomp_outs);
+  void check_ops();
   std::vector<pir::Value> format_decomp_res(
       const std::string& op_name,
       const std::vector<pir::Value>& orig_outs,
       const std::vector<std::vector<pir::Value>>& decomp_outs);
-  std::vector<pir::Value> construct_dst_vars(
-      const std::string& op_name,
-      const std::vector<pir::Value>& orig_outs,
-      const std::vector<pir::Value>& decomp_outs,
-      std::unordered_map<pir::Value, int> orig_vars_dict);
+  void construct_dst_vars(const std::string& op_name,
+                          const std::vector<pir::Value>& orig_outs,
+                          const std::vector<pir::Value>& decomp_outs,
+                          std::unordered_map<pir::Value, int> orig_vars_dict,
+                          std::vector<pir::Value>* tar_vars);
   bool enable_decomp_by_filter(const std::string& op_name);
   void set_src_vars(const std::vector<pir::Value>& src_vars) {
     src_vars_ = src_vars;
@@ -64,11 +72,17 @@ class DecompProgram {
   std::vector<pir::Value> get_dst_vars();
 
  private:
+  std::vector<pir::Operation*> parse_block_ops(pir::Block* block);
+
   pir::Program* program_;
   std::vector<pir::Value> src_vars_;
   std::vector<pir::Value> dst_vars_;
   std::set<std::string> blacklist_;
   std::set<std::string> whitelist_;
+  std::set<std::string> decomposed_prog_ops_set_;
+  // Used to slice ops for global block.
+  int start_index_{0};
+  int end_index_{-1};
 };
 
 bool has_decomp_rule(const pir::Operation& op);

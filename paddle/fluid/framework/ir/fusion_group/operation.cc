@@ -16,10 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace fusion_group {
+namespace paddle::framework::ir::fusion_group {
 
 OperationMap *OperationMap::map = nullptr;
 
@@ -49,7 +46,7 @@ void OperationMap::Insert(int type,
   Operation op(type, num_operands, op_type, {expr}, input_names, output_names);
   PADDLE_ENFORCE_EQ(op.IsValid(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Operation %s is invalid. Please set correct "
                         "expression for forward calculation.",
                         op_type));
@@ -79,7 +76,7 @@ void OperationMap::Insert(int type,
                       grad_output_names);
     PADDLE_ENFORCE_EQ(grad_op.IsValid(),
                       true,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Operation %s is invalid. Please set correct "
                           "expression for backward calculation.",
                           grad_op_type));
@@ -96,8 +93,8 @@ void OperationMap::InsertUnaryElementwiseOperations() {
                             std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = 1;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
+    int num_operands = 1;
+    Insert(type, num_operands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
   // relu:
@@ -152,7 +149,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
-  // For binary elementwise oprations:
+  // For binary elementwise operations:
   //  ${0} - x
   //  ${1} - y
   //  ${2} - out
@@ -161,8 +158,8 @@ void OperationMap::InsertBinaryElementwiseOperations() {
                             std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = 2;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X", "Y"}, {"Out"});
+    int num_operands = 2;
+    Insert(type, num_operands, op_type, expr, grad_exprs, {"X", "Y"}, {"Out"});
   };
 
   // elementwise_add:
@@ -209,8 +206,8 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
                             std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = -1;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
+    int num_operands = -1;
+    Insert(type, num_operands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
   // sum:
@@ -226,14 +223,11 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
                                           std::string expr,
                                           std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = 0;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {}, {"Out"});
+    int num_operands = 0;
+    Insert(type, num_operands, op_type, expr, grad_exprs, {}, {"Out"});
   };
   // fill_constant:
   insert_handler_without_input("fill_constant", "${str_value}", {});
 }
 
-}  // namespace fusion_group
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fusion_group

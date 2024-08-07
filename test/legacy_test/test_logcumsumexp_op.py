@@ -200,10 +200,13 @@ class TestLogcumsumexp(unittest.TestCase):
         self.run_static(use_gpu=True)
 
     def test_name(self):
-        with base.program_guard(base.Program()):
-            x = paddle.static.data('x', [3, 4])
-            y = paddle.logcumsumexp(x, name='out')
-            self.assertTrue('out' in y.name)
+        paddle.enable_static()
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(base.Program()):
+                x = paddle.static.data('x', [3, 4])
+                y = paddle.logcumsumexp(x, name='out')
+                self.assertTrue('out' in y.name)
+        paddle.disable_static()
 
     @test_with_pir_api
     def test_type_error(self):
@@ -325,7 +328,7 @@ class TestLogcumsumexpFP16(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestLogcumsumexpBF16Op(OpTest):
     def setUp(self):

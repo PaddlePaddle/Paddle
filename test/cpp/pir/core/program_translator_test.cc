@@ -31,13 +31,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/parser/ir_parser.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/parser/ir_parser.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
 using ProgramDesc = paddle::framework::ProgramDesc;
@@ -278,7 +278,7 @@ TEST(OperatorDialectTest, WhileOpProgram) {
               EXPECT_TRUE(op2.isa<paddle::dialect::LessThanOp>());
             }
             if (body_body_id == 3 || body_body_id == 4) {
-              EXPECT_TRUE(op2.isa<paddle::dialect::AssignOp>());
+              EXPECT_TRUE(op2.isa<paddle::dialect::AssignOut_Op>());
             }
             if (body_body_id == 5) {
               EXPECT_TRUE(op2.isa<pir::YieldOp>());
@@ -290,7 +290,7 @@ TEST(OperatorDialectTest, WhileOpProgram) {
           EXPECT_TRUE(op1.isa<paddle::dialect::LessThanOp>());
         }
         if (body_id == 5 || body_id == 6) {
-          EXPECT_TRUE(op1.isa<paddle::dialect::AssignOp>());
+          EXPECT_TRUE(op1.isa<paddle::dialect::AssignOut_Op>());
         }
         if (body_id == 7) {
           EXPECT_TRUE(op1.isa<pir::YieldOp>());

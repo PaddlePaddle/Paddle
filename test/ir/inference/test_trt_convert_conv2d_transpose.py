@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -52,10 +54,10 @@ class TrtConvertConv2dTransposeTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(batch, num_channels, attrs: List[Dict[str, Any]]):
+        def generate_input1(batch, num_channels, attrs: list[dict[str, Any]]):
             return np.ones([batch, num_channels, 64, 64]).astype(np.float32)
 
-        def generate_weight1(num_channels, attrs: List[Dict[str, Any]]):
+        def generate_weight1(num_channels, attrs: list[dict[str, Any]]):
             if attrs[0]['groups'] == 1:
                 return np.random.random(
                     [num_channels, num_channels, 3, 3]
@@ -80,7 +82,6 @@ class TrtConvertConv2dTransposeTest(TrtLayerAutoScanTest):
                                         self.num_channels = num_channels
                                         dics = [
                                             {
-                                                "data_fromat": data_format,
                                                 "dilations": dilations,
                                                 "padding_algorithm": padding_algorithm,
                                                 "groups": groups,
@@ -137,7 +138,7 @@ class TrtConvertConv2dTransposeTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.num_channels == 2:
                 self.dynamic_shape.min_input_shape = {
@@ -255,12 +256,12 @@ class TrtConvertConv2dTransposeTest2(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(batch, num_channels, attrs: List[Dict[str, Any]]):
+        def generate_input1(batch, num_channels, attrs: list[dict[str, Any]]):
             return (
                 np.ones([batch, num_channels, 20, 30]).astype(np.float32) / 100
             )
 
-        def generate_weight1(num_channels, attrs: List[Dict[str, Any]]):
+        def generate_weight1(num_channels, attrs: list[dict[str, Any]]):
             return (
                 np.random.random([num_channels, 64, 3, 3]).astype(np.float32)
                 / 100
@@ -272,7 +273,7 @@ class TrtConvertConv2dTransposeTest2(TrtLayerAutoScanTest):
         self.num_channels = num_channels
         dics = [
             {
-                "data_fromat": 'NCHW',
+                "data_format": 'NCHW',
                 "dilations": [1, 1],
                 "padding_algorithm": 'EXPLICIT',
                 "groups": 1,
@@ -315,7 +316,7 @@ class TrtConvertConv2dTransposeTest2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 128, 20, 30],

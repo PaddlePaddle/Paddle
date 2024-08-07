@@ -19,9 +19,9 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/attribute.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace dialect {
@@ -57,8 +57,12 @@ static inline phi::DataType TransToPhiDataType(pir::Type dtype) {
     return phi::DataType::COMPLEX64;
   } else if (dtype.isa<pir::Complex128Type>()) {
     return phi::DataType::COMPLEX128;
+  } else if (dtype.isa<pir::Float8E4M3FNType>()) {
+    return phi::DataType::FLOAT8_E4M3FN;
+  } else if (dtype.isa<pir::Float8E5M2Type>()) {
+    return phi::DataType::FLOAT8_E5M2;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported ir data type when casting it into "
         "phi data type."));
   }
@@ -96,8 +100,12 @@ static inline pir::Type TransToIrDataType(phi::DataType dtype,
       return pir::Complex64Type::get(ctx);
     case phi::DataType::COMPLEX128:
       return pir::Complex128Type::get(ctx);
+    case phi::DataType::FLOAT8_E4M3FN:
+      return pir::Float8E4M3FNType::get(ctx);
+    case phi::DataType::FLOAT8_E5M2:
+      return pir::Float8E5M2Type::get(ctx);
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "
           "ir data type.",
           dtype));
@@ -127,7 +135,7 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
       return pir::Complex128Attribute::get(
           ctx, scalar.to<phi::dtype::complex<double>>());
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "
           "ir attribute.",
           scalar.dtype()));
@@ -135,6 +143,8 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
 }
 
 VariantType GetAttributeData(const pir::Attribute& attr);
+
+paddle::any TransAttrToAny(const pir::Attribute& attr);
 
 bool IsLegacyOp(const std::string& name);
 
@@ -164,6 +174,14 @@ phi::DataType GetValueDataType(const pir::Value& value);
 
 std::vector<int64_t> ParseValueShape(const pir::Value& shape_,
                                      bool* is_from_tensor);
+
+const std::unordered_map<std::string, std::string>& CppTypeToAttrTypeMap();
+
+const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap();
+
+const std::unordered_map<std::string, phi::Place>& StringToPlaceMap();
+
+const std::unordered_map<std::string, phi::DataLayout>& StringToDataLayoutMap();
 
 }  // namespace dialect
 }  // namespace paddle

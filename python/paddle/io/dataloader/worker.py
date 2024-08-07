@@ -11,11 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
 import queue
 import sys
 import traceback
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -29,6 +31,9 @@ from ..multiprocess_utils import (
 )
 from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
 from .flat import _flatten_batch
+
+if TYPE_CHECKING:
+    from paddle.io import Dataset
 
 
 class _IterableDatasetStopIteration:
@@ -76,7 +81,7 @@ class ParentWatchDog:
 _worker_info = None
 
 
-def get_worker_info():
+def get_worker_info() -> WorkerInfo:
     """
     Get DataLoader worker process information function, this function is
     used to split data copy in worker process for IterableDataset
@@ -104,7 +109,7 @@ def get_worker_info():
             >>> import numpy as np
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            >>> class SplitedIterableDataset(IterableDataset):
+            >>> class SplitedIterableDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, start, end):
             ...         self.start = start
             ...         self.end = end
@@ -156,6 +161,11 @@ def get_worker_info():
 
 
 class WorkerInfo:
+    num_workers: int
+    id: int
+    dataset: Dataset[Any]
+    seed: int
+
     __initialized = False
 
     def __init__(self, **kwargs):
@@ -179,9 +189,7 @@ class _WorkerException:
         self.exc_msg = "".join(traceback.format_exception(*exc_info))
 
     def reraise(self):
-        msg = "DataLoader worker({}) caught {} with message:\n{}".format(
-            self.worker_id, self.exc_type.__name__, self.exc_msg
-        )
+        msg = f"DataLoader worker({self.worker_id}) caught {self.exc_type.__name__} with message:\n{self.exc_msg}"
         if getattr(self.exc_type, "message", None):
             raise self.exc_type(message=msg)
         raise self.exc_type(msg)
@@ -249,9 +257,9 @@ def _generate_states(base_seed=0, worker_id=0):
         result = (result ^ (result >> XSHIFT)) & MASK32
         return result
 
-    # init entropys with based_seed and worker_id and calculate pool
-    entropys = [worker_id, base_seed & MASK32, base_seed >> 32, 0]
-    pool = [hash(entropy) for entropy in entropys]
+    # init entropies with based_seed and worker_id and calculate pool
+    entropies = [worker_id, base_seed & MASK32, base_seed >> 32, 0]
+    pool = [hash(entropy) for entropy in entropies]
 
     # mix all bits together
     for i in range(len(pool)):
@@ -284,7 +292,7 @@ def _worker_loop(
     num_workers,
     use_shared_memory,
     base_seed,
-    shm_cahce_size=0,
+    shm_cache_size=0,
 ):
     try:
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
@@ -296,7 +304,7 @@ def _worker_loop(
         # set signal handler
         core._set_process_signal_handler()
 
-        core._set_max_memory_map_allocation_pool_size(shm_cahce_size)
+        core._set_max_memory_map_allocation_pool_size(shm_cache_size)
 
         # set different numpy seed for each worker
         try:
@@ -391,9 +399,11 @@ def _worker_loop(
                         return lodtensor
 
                     tensor_list = [
-                        numpy2lodtensor(b)
-                        if isinstance(b, np.ndarray)
-                        else b.get_tensor()
+                        (
+                            numpy2lodtensor(b)
+                            if isinstance(b, np.ndarray)
+                            else b.get_tensor()
+                        )
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))

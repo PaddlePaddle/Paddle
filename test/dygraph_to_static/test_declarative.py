@@ -19,11 +19,9 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
 )
-from test_basic_api_transformation import dyfunc_to_variable
 
 import paddle
 from paddle.framework import use_pir_api
@@ -33,6 +31,11 @@ from paddle.jit.dy2static.program_translator import (
 )
 from paddle.nn import Layer
 from paddle.static import InputSpec
+
+
+def call_to_tensor(x):
+    res = paddle.to_tensor(x)
+    return res
 
 
 def create_simple_net():
@@ -145,29 +148,27 @@ class TestInputSpec(Dy2StTestBase):
 
         # 2. test save load
         net.inner_function(x)
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if not use_pir_api():
-            paddle.jit.save(net, self.model_path)
-            infer_net = paddle.jit.load(self.model_path)
-            pred = infer_net(x)
-            np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
+        paddle.jit.save(net, self.model_path)
+        infer_net = paddle.jit.load(self.model_path)
+        pred = infer_net(x)
+        np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
 
-            # 3. we can decorate any method
-            x_2 = paddle.to_tensor(np.ones([4, 20]).astype('float32'))
-            # uses `to_static(func)` instead of `@to_static`
-            net.add_func = paddle.jit.to_static(net.add_func)
-            out = net.add_func(x_2, np.ones([20]).astype('float32'))
-            self.assertTrue(len(net.add_func.program_cache) == 1)
+        # 3. we can decorate any method
+        x_2 = paddle.to_tensor(np.ones([4, 20]).astype('float32'))
+        # uses `to_static(func)` instead of `@to_static`
+        net.add_func = paddle.jit.to_static(net.add_func)
+        out = net.add_func(x_2, np.ones([20]).astype('float32'))
+        self.assertTrue(len(net.add_func.program_cache) == 1)
 
-            # 5. test input with list
-            out = net.func_with_list([x, y], int_val)
+        # 5. test input with list
+        out = net.func_with_list([x, y], int_val)
 
-            # 6. test input with dict
-            out = net.func_with_dict({'x': x, 'y': y})
+        # 6. test input with dict
+        out = net.func_with_dict({'x': x, 'y': y})
 
-            # 7. test input with lits contains dict
-            int_np = np.ones([1]).astype('float32')
-            out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
+        # 7. test input with lits contains dict
+        int_np = np.ones([1]).astype('float32')
+        out = net.func_with_list_dict([int_np, {'x': x, 'y': y}])
 
     @test_legacy_and_pt_and_pir
     def test_with_error(self):
@@ -246,7 +247,7 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
 
         foo = paddle.jit.to_static(foo_func)
 
-        # [16, 10] + [10] (varbase)
+        # [16, 10] + [10] (Tensor)
         out_1 = foo(paddle.to_tensor(x_data), paddle.to_tensor(y_data))
         np.testing.assert_allclose(x_data + y_data, out_1.numpy(), rtol=1e-05)
         self.assertTrue(len(foo.program_cache) == 1)
@@ -370,7 +371,7 @@ class TestDeclarativeAPI(Dy2StTestBase):
     @test_ast_only
     @test_legacy_and_pt_and_pir
     def test_error(self):
-        func = paddle.jit.to_static(dyfunc_to_variable)
+        func = paddle.jit.to_static(call_to_tensor)
 
         paddle.enable_static()
 
@@ -378,12 +379,6 @@ class TestDeclarativeAPI(Dy2StTestBase):
         # if it does NOT in dynamic mode.
         with self.assertRaises(RuntimeError):
             func(np.ones(5).astype("int32"))
-
-        with enable_to_static_guard(False):
-            with self.assertRaises(AssertionError):
-                # AssertionError: We Only support to_variable in imperative mode,
-                #  please use base.dygraph.guard() as context to run it in imperative Mode
-                func(np.ones(5).astype("int32"))
 
         paddle.disable_static()
 
@@ -507,9 +502,7 @@ class TestSetBuffers(Dy2StTestBase):
         net = paddle.jit.to_static(SetBuffersNet1())
         out = net()
         self.assertEqual(out.numpy().tolist(), [2])
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if not use_pir_api():
-            paddle.jit.save(net, self.model_path)
+        paddle.jit.save(net, self.model_path)
 
     @test_ast_only
     def test_set_buffers2(self):

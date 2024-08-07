@@ -18,8 +18,7 @@
 
 #include "glog/logging.h"
 
-namespace phi {
-namespace autotune {
+namespace phi::autotune {
 
 size_t TransposeKey(const std::vector<int64_t>& x_dims,
                     const std::vector<int32_t>& perm,
@@ -116,5 +115,4 @@ void AutoTuneCache::UpdateStatus() {
   total_cache_misses_ = cache_misses;
 }
 
-}  // namespace autotune
-}  // namespace phi
+}  // namespace phi::autotune

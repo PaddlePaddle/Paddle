@@ -38,9 +38,9 @@ limitations under the License. */
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/profiler/profiler_helper.h"
+#include "paddle/phi/core/memory/memory.h"
 
 namespace paddle {
 namespace platform {
@@ -117,7 +117,7 @@ void SynchronizeAllDevice() {
   for (const auto &dev_type : dev_types) {
     int pre_device_id = phi::DeviceManager::GetDevice(dev_type);
     for (auto &dev_id : phi::DeviceManager::GetSelectedDeviceList(dev_type)) {
-      auto place = paddle::platform::CustomPlace(dev_type, dev_id);
+      auto place = phi::CustomPlace(dev_type, dev_id);
       phi::DeviceManager::SetDevice(place);
       phi::DeviceManager::SynchronizeDevice(place);
     }
@@ -132,7 +132,7 @@ static double ToMegaBytes(size_t bytes) {
 
 // Print results
 void PrintMemProfiler(
-    const std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>
+    const std::map<Place, std::unordered_map<std::string, MemoryProfilerReport>>
         &annotation_report,
     const size_t name_width,
     const size_t data_width) {
@@ -200,7 +200,7 @@ void PrintMemProfiler(
 void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
   if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   // place, annotation, alloc times,  alloc size
-  std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>
+  std::map<Place, std::unordered_map<std::string, MemoryProfilerReport>>
       annotation_report;
 
   for (auto &tmp : events) {
@@ -513,7 +513,7 @@ std::string FindOrdinaryParent(
 
 // When TracerOption is KDefault, OpDetail will be recorded but only default
 // profile result will be printed.
-// GpuMemcpy should be printed in kDefault setting, however it offten occurs
+// GpuMemcpy should be printed in kDefault setting, however it often occurs
 // during 'compute' or 'prepare data' process, so the elements of sub_child_map
 // need to be changed before being inserted into child_map. for instance:
 // it->first: OpType/compute => OpType
@@ -625,7 +625,7 @@ void PrintProfiler(
     } else if (phi::ProfilerHelper::g_state == ProfilerState::kAll) {
       place = "All";
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Except profiler state must to be one of ['CPU', 'GPU' 'ALL'], but "
           "received Invalid profiler state."));
     }
@@ -740,7 +740,7 @@ void AnalyzeEvent(
     size_t *max_name_width,
     OverHead *overhead,
     bool merge_thread) {
-  // In oreder to deal with special event in main thread
+  // In order to deal with special event in main thread
   std::set<std::string> main_thread_event_name;
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {

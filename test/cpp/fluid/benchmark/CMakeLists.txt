@@ -1,17 +1,4 @@
-cc_test(
-  op_tester
-  SRCS op_tester.cc
-  DEPS timer
-       framework_proto
-       proto_desc
-       lod_tensor
-       op_registry
-       device_context
-       scope
-       ${GLOB_OP_LIB}
-       ${GLOB_OPERATOR_DEPS}
-       phi
-       common)
+paddle_test(op_tester SRCS op_tester.cc DEPS common phi)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

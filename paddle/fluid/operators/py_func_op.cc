@@ -47,7 +47,7 @@ static py::object *GetPythonCallableObject(size_t i) {
   PADDLE_ENFORCE_LT(
       i,
       g_py_callables.size(),
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid python callable id %d, which should be less than %d.",
           i,
           g_py_callables.size()));
@@ -81,7 +81,7 @@ static void CallPythonFunc(py::object *callable,
     // Otherwise, ret_num must be equal to out_num
     PADDLE_ENFORCE_EQ(ret_num == 1,
                       true,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Python function has no return values or returns "
                           "None. In this case, ret_num = 1 && ret[0] == None "
                           "&& out_num should be 0. But ret_num is %d",
@@ -90,7 +90,7 @@ static void CallPythonFunc(py::object *callable,
     PADDLE_ENFORCE_EQ(
         out_num == 0,
         true,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
             "this case, ret_num = 1 && ret[0] == None && out_num should "
             "be 0. But out_num is %d",
@@ -99,7 +99,7 @@ static void CallPythonFunc(py::object *callable,
     PADDLE_ENFORCE_EQ(
         py::cast<phi::DenseTensor *>(ret_tuple[0]) == nullptr,
         true,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Python function has no return values or returns None. In "
             "this case, ret_num = 1 && ret[0] == None && out_num should "
             "be 0. But ret[0] is not None"));
@@ -113,13 +113,13 @@ static void CallPythonFunc(py::object *callable,
     try {
       auto *py_out_tensor = py::cast<phi::DenseTensor *>(ret_tuple[i]);
       PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
-                              platform::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Output tensor %d should not be nullptr", i));
       out->set_lod(py_out_tensor->lod());
       out->ShareDataWith(*py_out_tensor);
     } catch (py::cast_error &) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "py::cast to phi::DenseTensor error. The %d-th output expection is "
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "py::cast to phi::DenseTensor error. The %d-th output exception is "
           "phi::DenseTensor",
           i));
     }
@@ -139,15 +139,15 @@ class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
     PADDLE_ENFORCE_EQ(
         has_in || has_out,
         true,
-        platform::errors::InvalidArgument("Input(X) or Output(Out) must exist, "
-                                          "but has_in is %d, has_out is %d.",
-                                          has_in,
-                                          has_out));
+        common::errors::InvalidArgument("Input(X) or Output(Out) must exist, "
+                                        "but has_in is %d, has_out is %d.",
+                                        has_in,
+                                        has_out));
 
     PADDLE_ENFORCE_GE(
         PADDLE_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId.data())),
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Function id cannot be less than 0, but received value is %d.",
             PADDLE_GET_CONST(int,
                              ctx->GetAttr(kForwardPythonCallableId.data()))));
@@ -192,8 +192,8 @@ class PyFuncOpShapeInference : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         !ctx->IsRuntime(),
         true,
-        platform::errors::InvalidArgument("Shape inference cannot be called at "
-                                          "run time in 'py_func' operator."));
+        common::errors::InvalidArgument("Shape inference cannot be called at "
+                                        "run time in 'py_func' operator."));
   }
 };
 
@@ -310,7 +310,7 @@ class PyFuncOp : public framework::OperatorBase {
 
  protected:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto &in_arg_names = Inputs("X");
     auto &out_arg_names = Outputs("Out");
 
@@ -325,8 +325,8 @@ class PyFuncOp : public framework::OperatorBase {
       if (!in_tensor.IsInitialized()) {
         continue;
       }
-      if (platform::is_gpu_place(in_tensor.place())) {
-        framework::TensorCopySync(in_tensor, platform::CPUPlace(), &inputs[i]);
+      if (in_tensor.place().GetType() == phi::AllocationType::GPU) {
+        framework::TensorCopySync(in_tensor, phi::CPUPlace(), &inputs[i]);
       } else {
         inputs[i].ShareDataWith(in_tensor);
       }

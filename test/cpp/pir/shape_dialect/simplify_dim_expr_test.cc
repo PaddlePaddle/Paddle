@@ -14,7 +14,7 @@
 
 #include <atomic>
 #include "gtest/gtest.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_simplify.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
 
 namespace symbol::test {
 
@@ -55,6 +55,15 @@ TEST(Simplify, UnitReciprocal) {
   DimExpr unit{Reciprocal<DimExpr>{DimExpr{1}}};
 
   DimExpr simplified_dim_expr = SimplifyDimExpr(unit);
+  ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
+}
+
+TEST(Simplify, DoubleNegative) {
+  DimExpr inner_expr{Negative<DimExpr>(DimExpr{1})};
+  DimExpr expr{Negative<DimExpr>(inner_expr)};
+
+  DimExpr simplified_dim_expr = SimplifyDimExpr(expr);
   ASSERT_TRUE((simplified_dim_expr.Has<std::int64_t>()));
   ASSERT_EQ((simplified_dim_expr.Get<std::int64_t>()), 1);
 }
@@ -135,4 +144,42 @@ TEST(Simplify, NestSymbolicMulAddUnit) {
   ASSERT_TRUE((simplified_dim_expr.Has<std::string>()));
   ASSERT_TRUE((simplified_dim_expr == sym));
 }
+
+TEST(Simplify, ConstantMaxMin) {
+  List<DimExpr> max_lists{DimExpr(4), DimExpr(6)};
+  DimExpr dim_expr1{Max<DimExpr>{max_lists}};
+
+  DimExpr simplified_dim_expr1 = SimplifyDimExpr(dim_expr1);
+  ASSERT_TRUE((simplified_dim_expr1.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr1.Get<std::int64_t>()), 6);
+
+  List<DimExpr> min_lists{DimExpr(2), DimExpr(3)};
+  DimExpr dim_expr2{Min<DimExpr>{min_lists}};
+
+  DimExpr simplified_dim_expr2 = SimplifyDimExpr(dim_expr2);
+  ASSERT_TRUE((simplified_dim_expr2.Has<std::int64_t>()));
+  ASSERT_EQ((simplified_dim_expr2.Get<std::int64_t>()), 2);
+}
+
+TEST(Simplify, FoldBroadcast) {
+  DimExpr sym0{"S0"};
+  DimExpr sym1{"S1"};
+  DimExpr mul{Mul<DimExpr>{{sym0, sym1}}};
+  DimExpr broadcast0{Broadcast<DimExpr>{{mul, sym0}}};
+  DimExpr broadcast1{Broadcast<DimExpr>{{sym1, mul}}};
+  DimExpr simplify_broadcast0 = SimplifyDimExpr(broadcast0);
+  DimExpr simplify_broadcast1 = SimplifyDimExpr(broadcast1);
+
+  DimExpr add{Add<DimExpr>{{sym0, sym1}}};
+  DimExpr broadcast2{Broadcast<DimExpr>{{add, sym0}}};
+  DimExpr broadcast3{Broadcast<DimExpr>{{sym1, add}}};
+  DimExpr simplify_broadcast2 = SimplifyDimExpr(broadcast2);
+  DimExpr simplify_broadcast3 = SimplifyDimExpr(broadcast3);
+
+  ASSERT_TRUE(simplify_broadcast0 == mul);
+  ASSERT_TRUE(simplify_broadcast1 == mul);
+  ASSERT_TRUE(simplify_broadcast2 == add);
+  ASSERT_TRUE(simplify_broadcast3 == add);
+}
+
 }  // namespace symbol::test
