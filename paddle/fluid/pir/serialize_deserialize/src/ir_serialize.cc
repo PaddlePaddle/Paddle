@@ -196,7 +196,6 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
   // persistable; array(bool)
   // stop_gradient; array(bool)
   // trainable; array(bool)
-  // op_dist_attr; array(bool)
   Json op_json = Json::object();
   op_json[ID] = PARAMETEROP;
   // serialize opoperands
