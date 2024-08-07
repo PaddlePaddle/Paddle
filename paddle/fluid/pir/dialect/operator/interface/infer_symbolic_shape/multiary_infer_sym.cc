@@ -642,15 +642,6 @@ bool CheckFiniteAndUnscaleOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  PADDLE_ENFORCE_EQ(
-      xs_shapes.size(),
-      op->num_results() - 1,
-      phi::errors::InvalidArgument("The number of inputs (xs) should match the "
-                                   "number of outputs (outs), "
-                                   "but got %d inputs and %d outputs.",
-                                   xs_shapes.size(),
-                                   op->num_results() - 1));
-
   // Set the shapes for the output tensor list
   symbol::TensorListShapeOrDataDimExprs outs_shapes;
   outs_shapes.reserve(xs_shapes.size());
