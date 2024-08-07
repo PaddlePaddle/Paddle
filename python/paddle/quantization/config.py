@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import copy
-from typing import Dict, Union
+from typing import Union
 
 import paddle
 from paddle import nn
@@ -23,7 +23,7 @@ from .factory import QuanterFactory
 from .wrapper import ObserveWrapper
 
 # TODO: Implement quanted layer and fill the mapping dict
-DEFAULT_QAT_LAYER_MAPPINGS: Dict[Layer, Layer] = {
+DEFAULT_QAT_LAYER_MAPPINGS: dict[Layer, Layer] = {
     nn.quant.Stub: nn.quant.stub.QuanterStub,
     nn.Linear: nn.quant.qat.QuantedLinear,
     nn.Conv2D: nn.quant.qat.QuantedConv2D,

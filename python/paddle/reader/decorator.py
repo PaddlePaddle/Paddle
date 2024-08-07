@@ -20,19 +20,20 @@ import multiprocessing
 import random
 import sys
 import warnings
+from collections.abc import Callable, Generator
 from itertools import zip_longest
 from queue import Queue
 from threading import Thread
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Generator,
-    Sequence,
     TypedDict,
     TypeVar,
     overload,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 from typing_extensions import NotRequired, TypeAlias, Unpack
 

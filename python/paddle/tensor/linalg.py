@@ -13,7 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 import numpy as np
 from typing_extensions import TypeAlias

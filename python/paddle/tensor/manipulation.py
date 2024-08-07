@@ -15,7 +15,10 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
 
 import numpy as np
 

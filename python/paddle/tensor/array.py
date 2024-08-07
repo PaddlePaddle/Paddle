@@ -15,7 +15,10 @@
 # Define functions about array.
 from __future__ import annotations
 
-from typing import Any, Sequence, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, overload
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 import paddle
 from paddle import _typing
