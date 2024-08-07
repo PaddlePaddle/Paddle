@@ -178,6 +178,7 @@ OP_SAME_OPERANDS_AND_RESULT(MergeSelectedRows)
 OP_SAME_OPERANDS_AND_RESULT(Renorm)
 OP_SAME_OPERANDS_AND_RESULT(Renorm_)
 OP_SAME_OPERANDS_AND_RESULT(TanhShrink)
+OP_SAME_OPERANDS_AND_RESULT(YoloBoxHead)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {

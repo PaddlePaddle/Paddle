@@ -4540,6 +4540,7 @@
   kernel:
     func: tdm_child
     data_type: x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tdm_sampler
   args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
@@ -4861,6 +4862,7 @@
   data_transform :
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : view_dtype
   args : (Tensor input, DataType dtype)
@@ -4977,6 +4979,7 @@
   kernel :
     func : yolo_box
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : yolo_box_head
   args : (Tensor x, int[] anchors, int class_num)
@@ -4986,6 +4989,7 @@
   kernel :
     func : yolo_box_head
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : yolo_box_post
   args : (Tensor boxes0, Tensor boxes1, Tensor boxes2, Tensor image_shape, Tensor image_scale, int[] anchors0, int[] anchors1, int[] anchors2, int class_num, float conf_thresh, int downsample_ratio0, int downsample_ratio1, int downsample_ratio2, bool clip_bbox, float scale_x_y, float nms_threshold)
@@ -4995,6 +4999,7 @@
   kernel :
     func : yolo_box_post
     data_type : boxes0
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0)
