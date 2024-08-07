@@ -330,9 +330,11 @@ class TestCrossEntropyOp7(TestCrossEntropyOp):
     def get_cross_entropy(self):
         self.cross_entropy = np.array(
             [
-                [-np.log(self.x[i][self.label[i][0]])]
-                if self.label[i][0] != self.ignore_index
-                else [0]
+                (
+                    [-np.log(self.x[i][self.label[i][0]])]
+                    if self.label[i][0] != self.ignore_index
+                    else [0]
+                )
                 for i in range(self.x.shape[0])
             ]
         ).astype(self.dtype)
@@ -360,9 +362,11 @@ class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
     def get_cross_entropy(self):
         self.cross_entropy = np.array(
             [
-                [-np.log(self.x[i][self.label[i]])]
-                if self.label[i] != self.ignore_index
-                else [0]
+                (
+                    [-np.log(self.x[i][self.label[i]])]
+                    if self.label[i] != self.ignore_index
+                    else [0]
+                )
                 for i in range(self.x.shape[0])
             ]
         ).astype(self.dtype)

@@ -1694,8 +1694,7 @@ class Executor:
         return_numpy: Literal[True] = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
-    ) -> list[npt.NDArray[Any]]:
-        ...
+    ) -> list[npt.NDArray[Any]]: ...
 
     @overload
     def run(
@@ -1709,8 +1708,7 @@ class Executor:
         return_numpy: Literal[False] = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
-    ) -> list[Tensor]:
-        ...
+    ) -> list[Tensor]: ...
 
     @overload
     def run(
@@ -1724,8 +1722,7 @@ class Executor:
         return_numpy: bool = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
-    ) -> list[Tensor] | list[npt.NDArray[Any]]:
-        ...
+    ) -> list[Tensor] | list[npt.NDArray[Any]]: ...
 
     def run(
         self,

@@ -1683,9 +1683,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             amp_inputs_call_list[pos] = name
             type_promote_inputs_call_list[pos] = name
             if default_val is not None:
-                inputs_args_declaration_list[
-                    pos
-                ] = f"{atype} {name} = {default_val}"
+                inputs_args_declaration_list[pos] = (
+                    f"{atype} {name} = {default_val}"
+                )
             else:
                 inputs_args_declaration_list[pos] = f"{atype} {name}"
             inputs_args_definition_list[pos] = f"{atype} {name}"
@@ -2564,9 +2564,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                             name=transformed_tensor_name
                         )
                     )
-                    grad_api_args[
-                        grad_api_position
-                    ] = f"{transformed_tensor_name}_optional"
+                    grad_api_args[grad_api_position] = (
+                        f"{transformed_tensor_name}_optional"
+                    )
                 else:
                     grad_api_args[grad_api_position] = transformed_tensor_name
             else:

@@ -38,16 +38,20 @@ class HistoryRecorder:
     def sort_metric(self, direction, metric_name) -> None:
         if direction == 'Maximize':
             self.history.sort(
-                key=lambda x: x[metric_name]
-                if x[metric_name] is not None
-                else float('-inf'),
+                key=lambda x: (
+                    x[metric_name]
+                    if x[metric_name] is not None
+                    else float('-inf')
+                ),
                 reverse=True,
             )
         else:
             self.history.sort(
-                key=lambda x: x[metric_name]
-                if x[metric_name] is not None
-                else float('inf'),
+                key=lambda x: (
+                    x[metric_name]
+                    if x[metric_name] is not None
+                    else float('inf')
+                ),
                 reverse=False,
             )
 
@@ -129,9 +133,11 @@ class HistoryRecorder:
                     ) and cfg["error_info"] is None:
                         _history.append(copy.deepcopy(cfg))
                 _history.sort(
-                    key=lambda x: x[self.additional_metric_key]
-                    if x[self.additional_metric_key] is not None
-                    else float('-inf'),
+                    key=lambda x: (
+                        x[self.additional_metric_key]
+                        if x[self.additional_metric_key] is not None
+                        else float('-inf')
+                    ),
                     reverse=True,
                 )
                 self._store_history_impl(

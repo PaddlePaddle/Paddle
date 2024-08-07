@@ -365,9 +365,9 @@ class Optimizer:
                     state_dict[var_tmp.name] = var_tmp
                     # save scale value for xpu
                     if core.is_compiled_with_xpu():
-                        state_dict[
-                            var_tmp.name + ".SCALE_VALUE"
-                        ] = var_tmp.get_tensor().get_xpu_scale_value()
+                        state_dict[var_tmp.name + ".SCALE_VALUE"] = (
+                            var_tmp.get_tensor().get_xpu_scale_value()
+                        )
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:

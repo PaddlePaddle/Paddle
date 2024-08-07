@@ -738,9 +738,13 @@ def _dynamic_decode_imperative(
                     next_states,
                 )
         else:
-            warnings.warn(
-                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
-            ) if not hasattr(next_states, "lengths") else None
+            (
+                warnings.warn(
+                    "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+                )
+                if not hasattr(next_states, "lengths")
+                else None
+            )
             next_sequence_lengths = getattr(
                 next_states, "lengths", sequence_lengths
             )
@@ -903,9 +907,13 @@ def _dynamic_decode_declarative(
                     next_states,
                 )
         else:
-            warnings.warn(
-                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
-            ) if not hasattr(next_states, "lengths") else None
+            (
+                warnings.warn(
+                    "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+                )
+                if not hasattr(next_states, "lengths")
+                else None
+            )
             next_sequence_lengths = getattr(
                 next_states, "lengths", sequence_lengths
             )

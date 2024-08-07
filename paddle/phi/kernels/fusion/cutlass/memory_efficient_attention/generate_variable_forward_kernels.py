@@ -354,9 +354,9 @@ def write_decl_impl(
     kernels.sort()
 
     implfile_to_kernels: Dict[str, List[T]] = collections.defaultdict(list)
-    cat_to_kernels: Dict[
-        Tuple[str, int, int], List[T]
-    ] = collections.defaultdict(list)
+    cat_to_kernels: Dict[Tuple[str, int, int], List[T]] = (
+        collections.defaultdict(list)
+    )
 
     dispatch_all = ""
     declarations = cpp_file_header + "#pragma once\n"

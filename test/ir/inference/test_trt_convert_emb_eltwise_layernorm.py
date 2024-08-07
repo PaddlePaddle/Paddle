@@ -93,9 +93,12 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
                                                             "embedding1_output"
                                                         ]
                                                     },
-                                                    "op_attrs": dics[0]
-                                                    if type == "lookup_table"
-                                                    else dics[1],
+                                                    "op_attrs": (
+                                                        dics[0]
+                                                        if type
+                                                        == "lookup_table"
+                                                        else dics[1]
+                                                    ),
                                                 },
                                                 {
                                                     "op_type": type,
@@ -110,9 +113,12 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
                                                             "embedding2_output"
                                                         ]
                                                     },
-                                                    "op_attrs": dics[0]
-                                                    if type == "lookup_table"
-                                                    else dics[1],
+                                                    "op_attrs": (
+                                                        dics[0]
+                                                        if type
+                                                        == "lookup_table"
+                                                        else dics[1]
+                                                    ),
                                                 },
                                                 {
                                                     "op_type": type,
@@ -127,9 +133,12 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
                                                             "embedding3_output"
                                                         ]
                                                     },
-                                                    "op_attrs": dics[0]
-                                                    if type == "lookup_table"
-                                                    else dics[1],
+                                                    "op_attrs": (
+                                                        dics[0]
+                                                        if type
+                                                        == "lookup_table"
+                                                        else dics[1]
+                                                    ),
                                                 },
                                                 {
                                                     "op_type": "elementwise_add",

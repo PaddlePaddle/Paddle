@@ -3160,8 +3160,7 @@ def qr(
     x: Tensor,
     mode: Literal['reduced', 'complete'] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3169,8 +3168,7 @@ def qr(
     x: Tensor,
     mode: Literal['r'] = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 def qr(
@@ -3248,8 +3246,7 @@ def lu(
     pivot: bool = ...,
     get_infos: Literal[False] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3258,15 +3255,13 @@ def lu(
     pivot: bool = ...,
     get_infos: Literal[True] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
 def lu(
     x: Tensor, pivot: bool = ..., get_infos: bool = ..., name: str | None = ...
-) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]: ...
 
 
 def lu(

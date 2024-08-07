@@ -523,9 +523,9 @@ class TestASGDValidation:
                         - y_validation[param.name]
                         + grad_validation[param.name]
                     )
-                    ys_validation[param.name][
-                        i % self.batch_num
-                    ] = grad_validation[param.name]
+                    ys_validation[param.name][i % self.batch_num] = (
+                        grad_validation[param.name]
+                    )
                     n_validation[param.name] = min(i + 1, self.batch_num)
                     param_validation[param.name] = (
                         param_validation[param.name]
