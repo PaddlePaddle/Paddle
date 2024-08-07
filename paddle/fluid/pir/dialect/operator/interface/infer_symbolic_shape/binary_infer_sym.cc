@@ -754,12 +754,38 @@ bool SearchsortedOpInferSymbolicShape(
 
 bool SegmentPoolOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &input_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &input_shape = input_shape_or_data.shape();
+  const auto &ids_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &ids_shape = ids_shape_or_data.shape();
+  const std::string pool_type =
+      op->attribute<pir::StrAttribute>("pooltype").AsString();
+
+  int ndims_ids = ids_shape.size();
+  int last_dim = static_cast<int>(ids_shape[ndims_ids - 1].Get<std::int64_t>());
+
   std::vector<symbol::DimExpr> out_shape;
-  symbol::DimExpr out_unknown =
-      infer_context->GetNextSymName();  // unknown until runtime
-  out_shape.push_back(out_unknown);
+  if (pool_type == "MEAN") {
+    std::vector<symbol::DimExpr> summed_shape;
+  }
+  if (ids_shape_or_data.data().has_value()) {
+    const auto &ids_data = ids_shape_or_data.data();
+    int out_known =
+        static_cast<int>(ids_data.value()[last_dim - 1].Get<std::int64_t>());
+    out_shape.push_back(symbol::DimExpr{out_known + 1});
+    if (pool_type == "MEAN") {
+      summed_shape.push_back(out_shape[0]);
+    }
+  } else {
+    symbol::DimExpr out_unknown =
+        infer_context->GetNextSymName();  // unknown until runtime
+    out_shape.push_back(out_unknown);
+    if (pool_type == "MEAN") {
+      summed_shape.push_back(out_unknown);  // same as before
+    }
+  }
   int axis = input_shape.size();
   for (int i = 1; i < axis; ++i) {
     out_shape.push_back(input_shape[i]);
@@ -767,12 +793,7 @@ bool SegmentPoolOpInferSymbolicShape(
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_shape)};
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
-
-  const std::string pool_type =
-      op->attribute<pir::StrAttribute>("pooltype").AsString();
   if (pool_type == "MEAN") {
-    std::vector<symbol::DimExpr> summed_shape;
-    summed_shape.push_back(out_unknown);
     summed_shape.push_back(symbol::DimExpr{1});
     infer_context->SetShapeOrDataForValue(
         op->result(1),
