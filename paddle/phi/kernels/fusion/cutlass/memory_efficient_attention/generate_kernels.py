@@ -22,13 +22,15 @@
 # Kernels are ordered (see `sort_index`), and when dispatching,
 # we select the first kernel in the list that supports the inputs
 
+from __future__ import annotations
+
 import argparse
 import collections
 import itertools
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, TypeVar
+from typing import TypeVar
 
 DEFAULT_ARCH = [50, 70, 75, 80]
 MAX_ARCH = 90
@@ -138,16 +140,16 @@ KERNEL_IMPL_TEMPLATE = """__global__ void __launch_bounds__(
 
 @dataclass(order=True)
 class FwdKernel:
-    sort_index: Tuple[int, ...] = field(init=False, repr=False)
+    sort_index: tuple[int, ...] = field(init=False, repr=False)
     aligned: bool
     dtype: str
-    sm_range: Tuple[int, int]
+    sm_range: tuple[int, int]
     q: int
     k: int
     single_value_iter: bool
     supports_dropout: bool = True
     supports_bias: bool = True
-    dispatch_cond: Optional[str] = None
+    dispatch_cond: str | None = None
 
     def __post_init__(self) -> None:
         # Set kernel selection priority
@@ -204,8 +206,8 @@ class FwdKernel:
         )
 
     @classmethod
-    def get_all(cls) -> List["FwdKernel"]:
-        kernels: List[FwdKernel] = []
+    def get_all(cls) -> list[FwdKernel]:
+        kernels: list[FwdKernel] = []
         for aligned, dtype, (sm, sm_max) in itertools.product(
             [True, False], DTYPES.keys(), zip(SM, SM[1:] + [args.max_arch])
         ):
@@ -234,8 +236,8 @@ class FwdKernel:
 
 @dataclass(order=True)
 class BwdKernel:
-    sort_index: Tuple[int, ...] = field(init=False, repr=False)
-    sm_range: Tuple[int, int]
+    sort_index: tuple[int, ...] = field(init=False, repr=False)
+    sm_range: tuple[int, int]
     dtype: str
     aligned: bool
     apply_dropout: bool
@@ -243,7 +245,7 @@ class BwdKernel:
     block_i: int
     block_j: int
     max_k: int
-    dispatch_cond: Optional[str] = None
+    dispatch_cond: str | None = None
 
     def __post_init__(self) -> None:
         # Set kernel selection priority
@@ -306,8 +308,8 @@ class BwdKernel:
         )
 
     @classmethod
-    def get_all(cls) -> List["BwdKernel"]:
-        kernels: List[BwdKernel] = []
+    def get_all(cls) -> list[BwdKernel]:
+        kernels: list[BwdKernel] = []
         for (
             aligned,
             dtype,
@@ -377,16 +379,16 @@ T = TypeVar("T", FwdKernel, BwdKernel)
 
 
 def write_decl_impl(
-    kernels: List[T], family_name: str, impl_file: str, enable_def: str
+    kernels: list[T], family_name: str, impl_file: str, enable_def: str
 ) -> None:
     cpp_file_header = """// This file is auto-generated. See "generate_kernels.py"
 """
 
     kernels.sort()
 
-    implfile_to_kernels: Dict[str, List[T]] = collections.defaultdict(list)
-    cat_to_kernels: Dict[
-        Tuple[str, int, int], List[T]
+    implfile_to_kernels: dict[str, list[T]] = collections.defaultdict(list)
+    cat_to_kernels: dict[
+        tuple[str, int, int], list[T]
     ] = collections.defaultdict(list)
 
     dispatch_all = ""

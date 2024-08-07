@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import collections
 import os
-from typing import List, Tuple
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils import download
@@ -111,7 +112,7 @@ class TESS(AudioClassificationDataset):
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 
-    def _get_meta_info(self, files) -> List[collections.namedtuple]:
+    def _get_meta_info(self, files) -> list[collections.namedtuple]:
         ret = []
         for file in files:
             basename_without_extend = os.path.basename(file)[:-4]
@@ -120,7 +121,7 @@ class TESS(AudioClassificationDataset):
 
     def _get_data(
         self, mode: str, n_folds: int, split: int
-    ) -> Tuple[List[str], List[int]]:
+    ) -> tuple[list[str], list[int]]:
         if not os.path.isdir(os.path.join(DATA_HOME, self.audio_path)):
             download.get_path_from_url(
                 self.archive['url'],

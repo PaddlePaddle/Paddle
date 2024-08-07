@@ -793,7 +793,8 @@ def GenDistBranch(args, op_info):
     {}
     CvtAllInputsToDist(input_values, op_mesh);
     auto ctx = pir::IrContext::Instance();
-    std::vector<pir::Attribute> dist_operand_attrs, dist_result_attrs;"""
+    std::vector<pir::Attribute> dist_operand_attrs, dist_result_attrs;
+    """
 
     extra_call = ""
     for name in op_info.spmd_params:
@@ -810,8 +811,10 @@ def GenDistBranch(args, op_info):
         extra_call = "CopyLeafOpToMesh(scale_, op_mesh);"
     dist_branch_str = TEMPLATE.format(merge_input_meshes, extra_call)
     infer_spmd_args_list = []
+    spmd_input_value_num = 0
+    map_input_idx = {}
     # Prepare inputs_meta_tensor & attributes for infer spmd
-    for name in op_info.spmd_params:
+    for spmd_arg_idx, name in enumerate(op_info.spmd_params):
         # is input
         if name in op_info.input_name_list:
             input_index = op_info.input_name_list.index(name)
@@ -838,6 +841,8 @@ def GenDistBranch(args, op_info):
     auto dist_meta_{name} = CvtToDistMetaTensor({name}_.type().dyn_cast<DistDenseTensorType>());"""
                     dist_branch_str += TEMPLATE.format(name=name)
                 infer_spmd_args_list.append("dist_meta_" + name)
+            spmd_input_value_num += 1
+            map_input_idx[input_index] = spmd_arg_idx
         else:
             attr_index = op_info.attribute_name_list.index(name)
             param_type = op_info.attribute_gen_arg_type_list[attr_index]
@@ -856,26 +861,52 @@ def GenDistBranch(args, op_info):
     DebugInfoForInferSpmd("{op_name}", spmd_info);
     PADDLE_ENFORCE_EQ(spmd_info.first.size(), {input_size}u, common::errors::Unavailable(
         "Size of spmd_info.first for op[{op_name}]is unexpected."));
-    for(auto& arg_dist : spmd_info.first) {{
-        dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
-    }}
 """
     dist_branch_str += TEMPLATE.format(
         spmd_func=spmd_rule_func,
         args=', '.join(infer_spmd_args_list),
-        input_size=len(op_info.input_name_list),
+        input_size=spmd_input_value_num,
         op_name=op_info.class_name,
     )
+
+    if spmd_input_value_num == len(op_info.input_name_list):
+        TEMPLATE = """
+    for(auto& arg_dist : spmd_info.first) {
+      dist_operand_attrs.push_back(CvtToPirAttr(arg_dist));
+    }
+"""
+        dist_branch_str += TEMPLATE
+    else:
+        for i in range(len(op_info.input_name_list)):
+            if i in map_input_idx:
+                spmd_idx = map_input_idx[i]
+                TEMPLATE = """
+    dist_operand_attrs.push_back(CvtToPirAttr(spmd_info.first[{idx}]));"""
+                dist_branch_str += TEMPLATE.format(idx=spmd_idx)
+            # vector<Tensor> input
+            elif "pir::VectorType" in op_info.input_type_list[i]:
+                TEMPLATE = """
+    dist_operand_attrs.push_back(GetTensorDistAttrArray({name}));"""
+                dist_branch_str += TEMPLATE.format(
+                    name=op_info.input_name_list[i]
+                )
+            # Tensor input
+            else:
+                TEMPLATE = """
+    dist_operand_attrs.push_back({name}.type().dyn_cast<DistTypeInterface>().tensor_dist_attr());"""
+                dist_branch_str += TEMPLATE.format(
+                    name=op_info.input_name_list[i]
+                )
 
     if len(op_info.mutable_attribute_name_list) > 0:
         TEMPLATE = """
     for(int i = {input_size}; i < {all_input_size}; ++i) {{
-        if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
-            dist_operand_attrs.push_back(dist_type.tensor_dist_attr());
-        }}
-        else {{
-            dist_operand_attrs.push_back(nullptr);
-        }}
+      if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
+        dist_operand_attrs.push_back(dist_type.tensor_dist_attr());
+      }}
+      else {{
+        dist_operand_attrs.push_back(nullptr);
+      }}
     }}
 """
         dist_branch_str += TEMPLATE.format(
