@@ -14,37 +14,16 @@
 
 #include "paddle/fluid/pir/transforms/gpu/horizontal_fuse_pass.h"
 
-#include <cassert>
-#include <iostream>
-#include <memory>
-#include <sstream>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
-#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 
-#include "paddle/common/errors.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
-
-#include "paddle/pir/include/core/builder.h"
-#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
-#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
-#include "paddle/pir/include/core/op_trait.h"
 #include "paddle/pir/include/core/operation.h"
-#include "paddle/pir/include/core/parameter.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/region.h"
 #include "paddle/pir/include/core/value.h"
@@ -68,9 +47,9 @@ class HorizontalFusePattern : public pir::RewritePattern {
       pir::PatternRewriter& rewriter) const override {  // NOLINT
     bool match_flag = false;
     for (size_t i = 0; i < op->num_results(); i++) {
-      if (getOpCntUseX(op->result(i)) > 1) {
+      if (GetOpCntUseX(op->result(i)) > 1) {
         match_flag = true;
-        rewriteOpsbyValue(op, &rewriter, i);
+        RewriteOpsbyValue(op, &rewriter, i);
         VLOG(4) << "horizontal_fuse_pass applied rewrite on [" << op->name()
                 << "] op";
       }
@@ -79,7 +58,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
   }
 
  private:
-  bool isValidOp(pir::Operation* curr_op) const {
+  bool IsValidOp(pir::Operation* curr_op) const {
     if (curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
         curr_op->isa<paddle::dialect::FcOp>()) {
       return true;
@@ -101,7 +80,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
     return false;
   }
 
-  bool areAttributeMapsEqual(const pir::AttributeMap& attrs1,
+  bool AreAttributeMapsEqual(const pir::AttributeMap& attrs1,
                              const pir::AttributeMap& attrs2) const {
     if (attrs1.size() != attrs2.size()) {
       return false;
@@ -117,7 +96,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
     return attrs2_copy.empty();
   }
 
-  int getOpCntUseX(const pir::Value& x) const {
+  int GetOpCntUseX(const pir::Value& x) const {
     // At least two same MatmulOp/GemmEpilogueOp/FcOp using x
     // MatmulOp/GemmEpilogueOp/FcOp mutually exclusive and don't appear at the
     // same time. All ops'attrs should also be exactly equal. if not, fusion is
@@ -125,20 +104,23 @@ class HorizontalFusePattern : public pir::RewritePattern {
     int op_cnt_use_x = 0;
     pir::Operation* op_example = nullptr;
     std::string op_example_name;
+    uint32_t op_example_num_operands = 0;
     pir::AttributeMap op_example_attrs;
     for (auto it = x.use_begin(); it != x.use_end(); ++it) {
       pir::Operation* curr_op = it.owner();
-      if (!isValidOp(curr_op)) {
+      if (!IsValidOp(curr_op)) {
         continue;
       }
       if (op_example == nullptr) {
         op_example = curr_op;
         op_example_name = curr_op->name();
+        op_example_num_operands = curr_op->num_operands();
         op_example_attrs = curr_op->attributes();
         op_cnt_use_x++;
       } else {
         if (curr_op->name() == op_example_name &&
-            areAttributeMapsEqual(op_example_attrs, curr_op->attributes())) {
+            curr_op->num_operands() == op_example_num_operands &&
+            AreAttributeMapsEqual(op_example_attrs, curr_op->attributes())) {
           op_cnt_use_x++;
         } else {
           return 0;
@@ -149,7 +131,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
   }
 
   template <typename OpTy, typename... Args>
-  pir::Value insertOpAfter(pir::Operation** prev_op_ptr,
+  pir::Value InsertOpAfter(pir::Operation** prev_op_ptr,
                            pir::PatternRewriter* rewriter,
                            Args&&... args) const {
     rewriter->SetInsertionPointAfter(*prev_op_ptr);
@@ -158,7 +140,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
     return new_op->result(0);
   }
 
-  void rewriteOpsbyValue(pir::Operation* op,
+  void RewriteOpsbyValue(pir::Operation* op,
                          pir::PatternRewriter* rewriter,
                          size_t idx) const {
     /// x is used by the op, which belongs to a kind of
@@ -175,14 +157,13 @@ class HorizontalFusePattern : public pir::RewritePattern {
     std::vector<int64_t> w_shapes;
     std::vector<pir::Value> combine_op_inputs_weight;
     // prepare bias
-    bool with_bias = false;
     std::vector<pir::Value> combine_op_inputs_bias;
     // prepare outs
     std::vector<pir::Value> src_outs;
 
     for (auto it = x.use_begin(); it != x.use_end(); ++it) {
       pir::Operation* curr_op = it.owner();
-      if (!isValidOp(curr_op)) {
+      if (!IsValidOp(curr_op)) {
         continue;
       }
       fused_matmul_ops.push_back(curr_op);
@@ -195,11 +176,8 @@ class HorizontalFusePattern : public pir::RewritePattern {
       if (fused_matmul_op_name.empty()) {
         fused_matmul_op_name = curr_op->name();
         fused_matmul_op_attrs = curr_op->attributes();
-        with_bias =
-            (fused_matmul_op_name == paddle::dialect::GemmEpilogueOp::name() ||
-             fused_matmul_op_name == paddle::dialect::FcOp::name());
       }
-      if (with_bias) {
+      if (curr_op->num_operands() > 2) {
         combine_op_inputs_bias.push_back(curr_op->operand_source(2));
       }
     }
@@ -207,33 +185,33 @@ class HorizontalFusePattern : public pir::RewritePattern {
     /// build new graph
     /// insert new ops
     pir::Operation* prev_op = op;
-    auto weight_combined = insertOpAfter<pir::CombineOp>(
+    auto weight_combined = InsertOpAfter<pir::CombineOp>(
         &prev_op, rewriter, combine_op_inputs_weight);
-    auto w_qkv = insertOpAfter<paddle::dialect::ConcatOp>(
+    auto w_qkv = InsertOpAfter<paddle::dialect::ConcatOp>(
         &prev_op, rewriter, weight_combined, 1);
 
     pir::Value bias_qkv;
-    if (with_bias) {
-      auto bias_combined = insertOpAfter<pir::CombineOp>(
+    if (combine_op_inputs_bias.size()) {
+      auto bias_combined = InsertOpAfter<pir::CombineOp>(
           &prev_op, rewriter, combine_op_inputs_bias);
-      bias_qkv = insertOpAfter<paddle::dialect::ConcatOp>(
+      bias_qkv = InsertOpAfter<paddle::dialect::ConcatOp>(
           &prev_op, rewriter, bias_combined, 0);
     }
 
     pir::Value xw_fused;
     if (fused_matmul_op_name == paddle::dialect::MatmulOp::name()) {
-      xw_fused = insertOpAfter<paddle::dialect::MatmulOp>(
+      xw_fused = InsertOpAfter<paddle::dialect::MatmulOp>(
           &prev_op, rewriter, x, w_qkv, fused_matmul_op_attrs);
     } else if (fused_matmul_op_name ==
                paddle::dialect::GemmEpilogueOp::name()) {
-      xw_fused = insertOpAfter<paddle::dialect::GemmEpilogueOp>(
+      xw_fused = InsertOpAfter<paddle::dialect::GemmEpilogueOp>(
           &prev_op, rewriter, x, w_qkv, bias_qkv, fused_matmul_op_attrs);
     } else {
-      xw_fused = insertOpAfter<paddle::dialect::FcOp>(
+      xw_fused = InsertOpAfter<paddle::dialect::FcOp>(
           &prev_op, rewriter, x, w_qkv, bias_qkv, fused_matmul_op_attrs);
     }
 
-    auto xw_splitted = insertOpAfter<paddle::dialect::SplitOp>(
+    auto xw_splitted = InsertOpAfter<paddle::dialect::SplitOp>(
         &prev_op, rewriter, xw_fused, w_shapes, x_last_axis);
     rewriter->SetInsertionPointAfter(prev_op);
     auto split_builtin_op = rewriter->Build<pir::SplitOp>(xw_splitted);
