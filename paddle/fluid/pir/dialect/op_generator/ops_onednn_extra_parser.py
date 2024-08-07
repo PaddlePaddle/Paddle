@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import re
-from typing import Dict, List, Tuple
 
 
-def parse_plain_list(s: str, sep=",") -> List[str]:
+def parse_plain_list(s: str, sep=",") -> list[str]:
     if sep == ",":
         patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
         items = re.split(patten, s.strip())
@@ -26,7 +27,7 @@ def parse_plain_list(s: str, sep=",") -> List[str]:
         return [item.strip() for item in s.strip().split(sep)]
 
 
-def parse_arg(op_name: str, s: str) -> Dict[str, str]:
+def parse_arg(op_name: str, s: str) -> dict[str, str]:
     """parse an argument in following formats:
     1. typename name
     2. typename name = default_value
@@ -60,7 +61,7 @@ def parse_arg(op_name: str, s: str) -> Dict[str, str]:
         return {"typename": typename, "name": name}
 
 
-def parse_extra_args(op_name: str, arguments: str) -> List:
+def parse_extra_args(op_name: str, arguments: str) -> list:
     if arguments is None:
         return []
     args_str = arguments.strip()
@@ -78,7 +79,7 @@ def parse_extra_args(op_name: str, arguments: str) -> List:
 
 def parse_data_format_tensors(
     op_name: str, data_format_tensors: str
-) -> Tuple[str, List]:
+) -> tuple[str, list]:
     if data_format_tensors is None:
         return "", []
     return parse_plain_list(data_format_tensors)

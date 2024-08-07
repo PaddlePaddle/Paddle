@@ -67,7 +67,7 @@ struct SimplifyRedundantBroadcastedIterator {
       const auto& simplified_bd = DimExpr{symbol::SimplifyDimExpr(bd)};
       return BroadcastedIterator<Value, DimExpr>{inner_iterator, simplified_bd};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code"));
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 };
 
@@ -224,7 +224,7 @@ struct SimplifyGcdShape {
           PADDLE_ENFORCE_EQ(
               sub_range_item_idx,
               0UL,
-              phi::errors::InvalidArgument(
+              ::common::errors::InvalidArgument(
                   "The sub_range_item_idx should be 0, but got %d.",
                   sub_range_item_idx));
           return sub_range_dot;
@@ -277,20 +277,20 @@ struct SimplifyGcdShape {
     PADDLE_ENFORCE_GE(
         range.first,
         0UL,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The range.first should be greater than or equal to 0, "
             "but got %d.",
             range.first));
     PADDLE_ENFORCE_GE(
         range.second,
         0UL,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The range.second should be greater than or equal to 0, "
             "but got %d.",
             range.second));
     PADDLE_ENFORCE_LE(range.first,
                       container->size(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The range.first should be less than or equal to the "
                           "size of the container, but got range.first = %d, "
                           "container size = %d.",
@@ -299,7 +299,7 @@ struct SimplifyGcdShape {
     PADDLE_ENFORCE_LE(
         range.second,
         container->size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The range.second should be less than or equal to the "
             "size of the container, but got range.second = %d, "
             "container size = %d.",
@@ -307,7 +307,7 @@ struct SimplifyGcdShape {
             container->size()));
     PADDLE_ENFORCE_LT(range.first,
                       range.second,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The range.first should be less than range.second, "
                           "but got range.first = %d, range.second = %d.",
                           range.first,
@@ -333,7 +333,7 @@ struct SimplifyDotDot {
     PADDLE_ENFORCE_EQ(
         index_dot_values.Get<List<Value>>()->size(),
         dot_dims->size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of index_dot_values and dot_dims should be equal, "
             "but got index_dot_values size = %d, dot_dims size = %d.",
             index_dot_values.Get<List<Value>>()->size(),
@@ -413,7 +413,7 @@ struct SymbolicDim_SimplifyDotUndot {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code"));
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 };
 
@@ -460,7 +460,7 @@ struct SymbolicDim_SimplifyDotUndot_DimExpr {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code"));
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 };
 
@@ -519,7 +519,7 @@ struct SymbolicDim_SimplifyDotDot {
     PADDLE_ENFORCE_EQ(
         index_dot_values.Get<List<Value>>()->size(),
         dot_dims->size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of index_dot_values and dot_dims should be equal, "
             "but got index_dot_values size = %d, dot_dims size = %d.",
             index_dot_values.Get<List<Value>>()->size(),

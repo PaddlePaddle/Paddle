@@ -33,7 +33,7 @@ bool HasCUFFT() {
 void EnforceCUFFTLoaded(const char* fn_name) {
   PADDLE_ENFORCE_NOT_NULL(
       cufft_dso_handle,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Cannot load cufft shared library. Cannot invoke method %s.",
           fn_name));
 }

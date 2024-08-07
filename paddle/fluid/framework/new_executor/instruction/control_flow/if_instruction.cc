@@ -58,9 +58,9 @@ IfInstruction::IfInstruction(size_t id,
       false_branch_inter_(nullptr),
       true_skip_gc_names_(),
       false_skip_gc_names_() {
-  PADDLE_ENFORCE(
-      op->isa<paddle::dialect::IfOp>(),
-      phi::errors::PreconditionNotMet("Cond instruction only support if op"));
+  PADDLE_ENFORCE(op->isa<paddle::dialect::IfOp>(),
+                 common::errors::PreconditionNotMet(
+                     "Cond instruction only support if op"));
   auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
   op_ = op;
 
@@ -111,7 +111,7 @@ IfInstruction::IfInstruction(size_t id,
       PADDLE_ENFORCE_EQ(
           value_exec_info->HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "input should in name map, [%d] 'th input of [%s] op",
               i,
               "if op"));
@@ -232,7 +232,7 @@ void IfInstruction::Run() {
           cond_tensor, phi::CPUPlace(), &cpu_cond);
       cond = cpu_cond.data<bool>()[0];
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "This version of PaddlePaddle does NOT support GPU/XPU but got "
           "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
           "WITH_XPU option."));

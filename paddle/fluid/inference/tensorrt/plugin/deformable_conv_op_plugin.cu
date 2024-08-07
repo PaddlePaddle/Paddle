@@ -98,16 +98,16 @@ DeformableConvPlugin::DeformableConvPlugin(const nvinfer1::DataType data_type,
   strides_.insert(strides_.end(), strides.cbegin(), strides.cend());
   paddings_.insert(paddings_.end(), paddings.cbegin(), paddings.cend());
   dilations_.insert(dilations_.end(), dilations.cbegin(), dilations.cend());
-  PADDLE_ENFORCE_EQ(
-      data_type_ == nvinfer1::DataType::kFLOAT ||
-          data_type_ == nvinfer1::DataType::kHALF,
-      true,
-      phi::errors::InvalidArgument("The DeformableConv TRT Plugin's input type "
-                                   "should be float or half."));
+  PADDLE_ENFORCE_EQ(data_type_ == nvinfer1::DataType::kFLOAT ||
+                        data_type_ == nvinfer1::DataType::kHALF,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The DeformableConv TRT Plugin's input type "
+                        "should be float or half."));
   PADDLE_ENFORCE_EQ(
       paddings_.size(),
       strides_.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of paddings (%d) is not equal to the size of strides (%d).",
           paddings_.size(),
           strides_.size()));
@@ -143,16 +143,16 @@ DeformableConvPlugin::DeformableConvPlugin(const nvinfer1::DataType data_type,
   offset_dim_.insert(offset_dim_.end(), offset_dim.cbegin(), offset_dim.cend());
   mask_dim_.insert(mask_dim_.end(), mask_dim.cbegin(), mask_dim.cend());
   output_dim_.insert(output_dim_.end(), output_dim.cbegin(), output_dim.cend());
-  PADDLE_ENFORCE_EQ(
-      data_type_ == nvinfer1::DataType::kFLOAT ||
-          data_type_ == nvinfer1::DataType::kHALF,
-      true,
-      phi::errors::InvalidArgument("The DeformableConv TRT Plugin's input type "
-                                   "should be float or half."));
+  PADDLE_ENFORCE_EQ(data_type_ == nvinfer1::DataType::kFLOAT ||
+                        data_type_ == nvinfer1::DataType::kHALF,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The DeformableConv TRT Plugin's input type "
+                        "should be float or half."));
   PADDLE_ENFORCE_EQ(
       paddings_.size(),
       strides_.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of paddings (%d) is not equal to the size of strides (%d).",
           paddings_.size(),
           strides_.size()));
@@ -198,7 +198,7 @@ nvinfer1::Dims DeformableConvPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* inputs, int nb_input_dims) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nb_input_dims,
                     3,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of inputs should be equal to 3, but got %d",
                         nb_input_dims));
   nvinfer1::Dims ret;
@@ -260,11 +260,11 @@ int DeformableConvPlugin::enqueue(int batch_size,
 #if TRT_PLUGIN_FP16_AVALIABLE
     enqueue_impl<half>(batch_size, inputs, outputs, workspace, stream);
 #else
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Current CUDA arch dose not support fp16. Please use fp32 instead."));
 #endif
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The DeformableConv TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
@@ -646,7 +646,7 @@ void gemm_impl<half>(cublasHandle_t handle,
   phi::dynload::cublasHgemm(
       handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 #else
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "Current CUDA arch dose not support fp16. Please use fp32 instead."));
 #endif
 }
@@ -833,12 +833,12 @@ void DeformableConvPlugin::configurePlugin(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of inputs should be equal to 3, but got %d", nb_inputs));
   PADDLE_ENFORCE_EQ(
       nb_outputs,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of inputs should be equal to 1, but got %d", nb_outputs));
 
   for (int i = 0; i < input_dims[0].nbDims; i++) {
@@ -939,7 +939,7 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::createPlugin(
     } else if (field_name.compare("with_fp16")) {
       with_fp16 = *static_cast<const bool*>(fc->fields[i].data);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unknown plugin field name [%s] in the DeformableConv TRT Plugin.",
           field_name));
     }
@@ -991,16 +991,16 @@ DeformableConvPluginDynamic::DeformableConvPluginDynamic(
   strides_.insert(strides_.end(), strides.cbegin(), strides.cend());
   paddings_.insert(paddings_.end(), paddings.cbegin(), paddings.cend());
   dilations_.insert(dilations_.end(), dilations.cbegin(), dilations.cend());
-  PADDLE_ENFORCE_EQ(
-      data_type_ == nvinfer1::DataType::kFLOAT ||
-          data_type_ == nvinfer1::DataType::kHALF,
-      true,
-      phi::errors::InvalidArgument("The DeformableConv TRT Plugin's input type "
-                                   "should be float or half."));
+  PADDLE_ENFORCE_EQ(data_type_ == nvinfer1::DataType::kFLOAT ||
+                        data_type_ == nvinfer1::DataType::kHALF,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The DeformableConv TRT Plugin's input type "
+                        "should be float or half."));
   PADDLE_ENFORCE_EQ(
       paddings_.size(),
       strides_.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of paddings (%d) is not equal to the size of strides (%d).",
           paddings_.size(),
           strides_.size()));
@@ -1099,12 +1099,12 @@ size_t DeformableConvPluginDynamic::getWorkspaceSize(
   PADDLE_ENFORCE_EQ(
       nbInputs,
       3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of inputs should be equal to 3, but got %d", nbInputs));
   PADDLE_ENFORCE_EQ(
       nbOutputs,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of inputs should be equal to 1, but got %d", nbOutputs));
   int c_i = inputs[0].dims.d[1], h_i = inputs[0].dims.d[2],
       w_i = inputs[0].dims.d[3];
@@ -1125,7 +1125,7 @@ nvinfer1::DimsExprs DeformableConvPluginDynamic::getOutputDimensions(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of inputs should be equal to 3, but got %d", nb_inputs));
   nvinfer1::DimsExprs ret;
   ret.nbDims = inputDims[0].nbDims;
@@ -1171,15 +1171,15 @@ bool DeformableConvPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of groupnorm plugin shoule not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
@@ -1202,7 +1202,7 @@ nvinfer1::DataType DeformableConvPluginDynamic::getOutputDataType(
     int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Elementwise Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
@@ -1217,12 +1217,12 @@ void DeformableConvPluginDynamic::configurePlugin(
   PADDLE_ENFORCE_EQ(
       nbInputs,
       3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of inputs should be equal to 3, but got %d", nbInputs));
   PADDLE_ENFORCE_EQ(
       nbOutputs,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of inputs should be equal to 1, but got %d", nbOutputs));
 }
 
@@ -1241,11 +1241,11 @@ int DeformableConvPluginDynamic::enqueue(
     enqueue_impl<half>(
         input_desc, output_desc, inputs, outputs, workspace, stream);
 #else
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Current CUDA arch dose not support fp16. Please use fp32 instead."));
 #endif
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The DeformableConv TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
@@ -1386,7 +1386,7 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginDynamicCreator::createPlugin(
     } else if (field_name.compare("with_fp16")) {
       with_fp16 = *static_cast<const bool*>(fc->fields[i].data);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unknown plugin field name [%s] in the DeformableConv TRT Plugin.",
           field_name));
     }

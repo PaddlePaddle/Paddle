@@ -33,9 +33,9 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
       // TODO(Superjomn) should avoid the case when a TensorArray is a
       // parameter.
       if (var_name == "feed" || var_name == "fetch") continue;
-      if (var->IsType<framework::LoDTensorArray>()) {
+      if (var->IsType<phi::TensorArray>()) {
         VLOG(4) << "collect " << var_name;
-        arrays_.push_back(var->GetMutable<framework::LoDTensorArray>());
+        arrays_.push_back(var->GetMutable<phi::TensorArray>());
       }
     }
     for (auto *kid : scope->kids()) {

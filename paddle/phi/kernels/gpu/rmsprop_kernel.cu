@@ -58,13 +58,13 @@ struct RmsFunctor<T, phi::GPUContext> {
         PADDLE_ENFORCE_EQ(
             mg_tensor->Holder(),
             mean_grad_out->Holder(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "MeanGrad and MeanGradOut must be the same Tensor"));
       } else {
         PADDLE_ENFORCE_EQ(
             mg_tensor,
             mean_grad_out,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "MeanGrad and MeanGradOut must be the same Tensor"));
       }
 

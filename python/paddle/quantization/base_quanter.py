@@ -11,15 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import abc
-from collections.abc import Iterable
-from typing import Union
+from typing import TYPE_CHECKING, Any, Iterable
 
-import numpy as np
-
-import paddle
 from paddle.nn import Layer
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    from paddle import Tensor
 
 
 class BaseQuanter(Layer, metaclass=abc.ABCMeta):
@@ -28,15 +30,15 @@ class BaseQuanter(Layer, metaclass=abc.ABCMeta):
     and implement abstract methods.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     @abc.abstractmethod
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor | npt.NDArray[Any]:
         pass
 
     @abc.abstractmethod
-    def scales(self) -> Union[paddle.Tensor, np.ndarray]:
+    def scales(self) -> Tensor | npt.NDArray[Any]:
         r"""
         Get the scales used for quantization.
         It can be none which means the quanter didn't hold scales for quantization.
@@ -44,7 +46,7 @@ class BaseQuanter(Layer, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def zero_points(self) -> Union[paddle.Tensor, np.ndarray]:
+    def zero_points(self) -> Tensor | npt.NDArray[Any]:
         r"""
         Get the zero points used for quantization.
         It can be none which means the quanter didn't hold zero points for quantization.
@@ -52,14 +54,14 @@ class BaseQuanter(Layer, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def quant_axis(self) -> Union[int, Iterable]:
+    def quant_axis(self) -> int | Iterable[int]:
         r"""
         Get the axis of quantization. None means tensor-wise quantization.
         """
         pass
 
     @abc.abstractmethod
-    def bit_length(self):
+    def bit_length(self) -> int | Iterable[int]:
         r"""
         Get the bit length of quantization.
         """

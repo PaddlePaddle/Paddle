@@ -368,7 +368,7 @@ PreparedOp PrepareImpl(
   PADDLE_ENFORCE_NE(
       kernels_iter,
       all_op_kernels.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "There are no kernels which are registered in the %s operator.",
           op.Type()));
 
@@ -435,9 +435,9 @@ PreparedOp PrepareImpl(
   PADDLE_ENFORCE_NE(
       kernel_iter,
       kernels.end(),
-      phi::errors::NotFound("Operator %s does not have kernel for %s.",
-                            op.Type(),
-                            KernelTypeToString(fluid_kernel_type)));
+      common::errors::NotFound("Operator %s does not have kernel for %s.",
+                               op.Type(),
+                               KernelTypeToString(fluid_kernel_type)));
 
   if (!phi::places_are_same_class(fluid_kernel_type.place_,
                                   dev_ctx->GetPlace())) {
@@ -519,10 +519,10 @@ static void PreparedOpRunImpl(
   // TODO(zjl): remove scope in dygraph
 
   {
-    platform::RecordEvent record_event("infer_shape",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       platform::EventRole::kInnerOp);
+    phi::RecordEvent record_event("infer_shape",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
                                                       &outs,
                                                       &attrs,
@@ -538,10 +538,10 @@ static void PreparedOpRunImpl(
   }
 
   {
-    platform::RecordEvent record_event("compute",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       platform::EventRole::kInnerOp);
+    phi::RecordEvent record_event("compute",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
 
     func(DygraphExecutionContext<VarType>(
         op, empty_scope, *dev_ctx, ctx, ins, outs, attrs, default_attrs));
@@ -592,10 +592,10 @@ static void PreparedOpRunPtImpl(
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
   {
-    platform::RecordEvent record_event("infer_shape",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       platform::EventRole::kInnerOp);
+    phi::RecordEvent record_event("infer_shape",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
                                                       &outs,
                                                       &attrs,
@@ -611,10 +611,10 @@ static void PreparedOpRunPtImpl(
   }
 
   {
-    platform::RecordEvent record_event("compute",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       platform::EventRole::kInnerOp);
+    phi::RecordEvent record_event("compute",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
 
     if (phi_kernel.GetKernelRegisteredType() ==
         phi::KernelRegisteredType::FUNCTION) {

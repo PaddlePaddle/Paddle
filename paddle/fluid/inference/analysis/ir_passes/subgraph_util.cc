@@ -128,7 +128,7 @@ void RenameAndGetOutputs(
     auto arg_var_node = graph_var_map.find(graph_arg);
     PADDLE_ENFORCE_NE(arg_var_node,
                       graph_var_map.end(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Can not find %s in graph_var_map", graph_arg));
     auto *var_t = block_desc->Var(block_arg);
     var_t->SetShape(arg_var_node->second->Var()->GetShape());
@@ -143,9 +143,9 @@ void RenameAndGetOutputs(
     PADDLE_ENFORCE_EQ(
         correspond_node->Name(),
         op->type(),
-        phi::errors::PreconditionNotMet("We should get %s, but get %s",
-                                        op->type(),
-                                        correspond_node->Name()));
+        common::errors::PreconditionNotMet("We should get %s, but get %s",
+                                           op->type(),
+                                           correspond_node->Name()));
 
     std::unordered_map<std::string, size_t> var2id;
     std::unordered_map<std::string, framework::ir::Node *> in_vars;

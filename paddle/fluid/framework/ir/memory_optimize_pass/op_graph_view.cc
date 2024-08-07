@@ -40,7 +40,7 @@ void OpGraphView::Build(const std::vector<details::OpHandleBase *> &ops) {
   }
   PADDLE_ENFORCE(
       preceding_ops_.size() == ops.size() && pending_ops_.size() == ops.size(),
-      phi::errors::InvalidArgument("There are duplicate ops in graph."));
+      common::errors::InvalidArgument("There are duplicate ops in graph."));
 }
 
 std::unordered_set<details::OpHandleBase *> OpGraphView::AllOps() const {
@@ -60,8 +60,8 @@ void OpGraphView::EnforceHasOp(details::OpHandleBase *op) const {
   PADDLE_ENFORCE_EQ(
       HasOp(op),
       true,
-      phi::errors::NotFound("Cannot find op %s in OpGraphView.",
-                            op == nullptr ? "nullptr" : op->DebugString()));
+      common::errors::NotFound("Cannot find op %s in OpGraphView.",
+                               op == nullptr ? "nullptr" : op->DebugString()));
 }
 
 const std::unordered_set<details::OpHandleBase *> &OpGraphView::PendingOps(

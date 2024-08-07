@@ -15,6 +15,7 @@
 import os
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 import unittest
 

@@ -57,7 +57,7 @@ inline void CopyBCastOff(const BroadCastInfo& bcast_info,
 inline int FindNumThreads(int dim, int max_num_threads) {
   PADDLE_ENFORCE_GE(dim,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Required dim >= 0, but received dim = %d", dim));
   int res = max_num_threads;
   if (dim == 0) res = 1;
@@ -82,7 +82,7 @@ inline int FindNumBlocks(char axis, int nblocks, int max_num_blocks = -1) {
       break;
     default:
       PADDLE_THROW(
-          phi::errors::InvalidArgument("%c axis is not recognized", axis));
+          common::errors::InvalidArgument("%c axis is not recognized", axis));
   }
   if (max_num_blocks == -1) {
     max_num_blocks = default_max_num_blocks;
@@ -90,9 +90,9 @@ inline int FindNumBlocks(char axis, int nblocks, int max_num_blocks = -1) {
   PADDLE_ENFORCE_GT(
       max_num_blocks,
       0,
-      phi::errors::InvalidArgument("max_num_blocks should be larger than 0, "
-                                   "but received %d",
-                                   max_num_blocks));
+      common::errors::InvalidArgument("max_num_blocks should be larger than 0, "
+                                      "but received %d",
+                                      max_num_blocks));
   if (nblocks < max_num_blocks) {
     return nblocks;
   }
