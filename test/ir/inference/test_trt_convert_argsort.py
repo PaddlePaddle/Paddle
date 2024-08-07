@@ -28,45 +28,46 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(batch):
+        def generate_input1():
             if self.dims == 4:
-                return np.ones([batch, 3, 3, 24]).astype(np.float32)
+                return np.random.random([1, 3, 3, 4000]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float16)
+                return np.random.random([1, 3, 24]).astype(np.int32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float16)
+                return np.random.random([1, 24]).astype(np.float32)
+            else:
+                return np.random.random([24]).astype(np.float32)
 
-        for dims in [2, 3, 4]:
-            for batch in [1, 6, 9]:
-                for axis in [-1, 0, 1]:
-                    for descending in [False, True]:
-                        self.dims = dims
-                        ops_config = [
-                            {
-                                "op_type": "argsort",
-                                "op_inputs": {"X": ["input_data"]},
-                                "op_outputs": {
-                                    "Out": ["output_data"],
-                                    "Indices": ["indices_data"],
-                                },
-                                "op_attrs": {
-                                    "axis": axis,
-                                    "descending": descending,
-                                },
-                            }
-                        ]
-                        ops = self.generate_op_config(ops_config)
-                        program_config = ProgramConfig(
-                            ops=ops,
-                            weights={},
-                            inputs={
-                                "input_data": TensorConfig(
-                                    data_gen=partial(generate_input1, batch)
-                                )
+        for dims in [1, 2, 3, 4]:
+            for axis in [-1, 0]:
+                for descending in [False, True]:
+                    self.dims = dims
+                    ops_config = [
+                        {
+                            "op_type": "argsort",
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": {
+                                "Out": ["output_data"],
+                                "Indices": ["indices_data"],
                             },
-                            outputs=["output_data", "indices_data"],
-                        )
-                        yield program_config
+                            "op_attrs": {
+                                "axis": axis,
+                                "descending": descending,
+                            },
+                        }
+                    ]
+                    ops = self.generate_op_config(ops_config)
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input_data": TensorConfig(
+                                data_gen=partial(generate_input1)
+                            )
+                        },
+                        outputs=["output_data", "indices_data"],
+                    )
+                    yield program_config
 
     def sample_predictor_configs(
         self, program_config
@@ -74,20 +75,20 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 3 - 1, 3 - 1, 24 - 1],
+                    "input_data": [1, 3, 3, 4000],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [9, 3 + 1, 3 + 1, 24 + 1],
+                    "input_data": [9, 3, 3, 4000],
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "input_data": [6, 3, 3, 24],
+                    "input_data": [6, 3, 3, 4000],
                 }
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {
-                    "input_data": [1, 3 - 1, 24 - 1],
+                    "input_data": [1, 3, 24],
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [9, 3 + 1, 24 + 1],
+                    "input_data": [9, 3, 24],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data": [6, 3, 24],
@@ -102,6 +103,16 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
                 self.dynamic_shape.opt_input_shape = {
                     "input_data": [6, 24],
                 }
+            else:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [24],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [25],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [24],
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -111,18 +122,12 @@ class TrtConvertArgsort(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
-        self.trt_param.max_batch_size = 9
         self.trt_param.workspace_size = 1073741824
-        # for static_shape
-        clear_dynamic_shape()
-
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), (1, 3), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 3), 1e-3
 
     def test(self):

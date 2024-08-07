@@ -234,7 +234,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
         grad_t->mutable_value()->clear();
       }
     } else {
-      platform::RecordEvent record_event(
+      phi::RecordEvent record_event(
           "ClearGradient", platform::TracerEventType::UserDefined, 2);
       auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
       if (grad_t->IsInitialized()) {
