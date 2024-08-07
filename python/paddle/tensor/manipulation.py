@@ -1310,6 +1310,15 @@ def concat(
     Concatenates the input along the axis. It doesn't support 0-D Tensor because it requires a certain axis, and 0-D Tensor
     doesn't have any axis.
 
+    The image illustrates a typical case of the concat operation.
+    Two three-dimensional tensors with shapes [2, 3, 4] are concatenated along different axes, resulting in tensors of different shapes.
+    The effects of concatenation along various dimensions are clearly visible.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/concat.png
+        :width: 500
+        :alt: legend of concat API
+        :align: center
+
     Args:
         x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16, bfloat16,
             float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128. All the Tensors in ``x`` must have same data type.

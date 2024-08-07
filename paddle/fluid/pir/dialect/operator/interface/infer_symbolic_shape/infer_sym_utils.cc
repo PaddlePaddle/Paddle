@@ -125,7 +125,7 @@ ExprVec GetOrCreateExprVecFromData(
     PADDLE_ENFORCE_EQ(
         optional_int64_shape.has_value(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The shape of tensor should be known when GetExprVecFromData."));
     return std::accumulate(optional_int64_shape->begin(),
                            optional_int64_shape->end(),
@@ -163,13 +163,13 @@ ExprVec GetOrCreateExprVecFromData(
         }
       },
       [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "Dead code, RankedTensorArrayShapeOrDataDimExprs can not get "
             "data"));
         return;
       },
       [&](const symbol::NullShapeOrDataDimExpr &impl) {
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "Dead code, NullShapeOrDataDimExpr can not get data"));
         return;
       });

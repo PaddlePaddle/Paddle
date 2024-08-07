@@ -60,21 +60,21 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   PADDLE_ENFORCE_EQ(
       pm.Run(origin_program.get()),
       true,
-      phi::errors::InvalidArgument("Origin program not run. Expected run."));
+      common::errors::InvalidArgument("Origin program not run. Expected run."));
   LOG(INFO) << "after pass: " << *origin_program;
 
-  PADDLE_ENFORCE_EQ(
-      origin_program->block()->size(),
-      1u,
-      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
-                                   "Expected 1 but received %d.",
-                                   origin_program->block()->size()));
+  PADDLE_ENFORCE_EQ(origin_program->block()->size(),
+                    1u,
+                    common::errors::InvalidArgument(
+                        "Size of block of origin program mismatch. "
+                        "Expected 1 but received %d.",
+                        origin_program->block()->size()));
   pir::Operation& group_op = origin_program->block()->front();
   pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
   PADDLE_ENFORCE_EQ(
       group_block->size(),
       6u,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Size of group block mismatch. Expected 6 but received %d.",
           group_block->size()));
 
@@ -91,7 +91,7 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
     PADDLE_ENFORCE_EQ(
         op.name(),
         op_names[index++],
-        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
+        common::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 }
 
@@ -124,15 +124,15 @@ TEST(BuildCinnPassTest, NoOpSupportCinn) {
   PADDLE_ENFORCE_EQ(
       pm.Run(origin_program.get()),
       true,
-      phi::errors::InvalidArgument("Origin program not run. Expected run."));
+      common::errors::InvalidArgument("Origin program not run. Expected run."));
   LOG(INFO) << "after pass: " << *origin_program;
 
-  PADDLE_ENFORCE_EQ(
-      origin_program->block()->size(),
-      3u,
-      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
-                                   "Expected 3 but received %d.",
-                                   origin_program->block()->size()));
+  PADDLE_ENFORCE_EQ(origin_program->block()->size(),
+                    3u,
+                    common::errors::InvalidArgument(
+                        "Size of block of origin program mismatch. "
+                        "Expected 3 but received %d.",
+                        origin_program->block()->size()));
 
   std::vector<std::string> op_names = {paddle::dialect::OnesOp::name(),
                                        paddle::dialect::HardswishOp::name(),
@@ -142,7 +142,7 @@ TEST(BuildCinnPassTest, NoOpSupportCinn) {
     PADDLE_ENFORCE_EQ(
         op.name(),
         op_names[index++],
-        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
+        common::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 }
 
@@ -181,21 +181,21 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
   PADDLE_ENFORCE_EQ(
       pm.Run(origin_program.get()),
       true,
-      phi::errors::InvalidArgument("Origin program not run. Expected run."));
+      common::errors::InvalidArgument("Origin program not run. Expected run."));
   LOG(INFO) << "after pass: " << *origin_program;
 
-  PADDLE_ENFORCE_EQ(
-      origin_program->block()->size(),
-      4u,
-      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
-                                   "Expected 4 but received %d.",
-                                   origin_program->block()->size()));
+  PADDLE_ENFORCE_EQ(origin_program->block()->size(),
+                    4u,
+                    common::errors::InvalidArgument(
+                        "Size of block of origin program mismatch. "
+                        "Expected 4 but received %d.",
+                        origin_program->block()->size()));
   pir::Operation& group_op = origin_program->block()->front();
   pir::Block* group_block = group_op.dyn_cast<cinn::dialect::GroupOp>().block();
   PADDLE_ENFORCE_EQ(
       group_block->size(),
       4u,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Size of group block mismatch. Expected 4 but received %d.",
           group_block->size()));
 
@@ -210,7 +210,7 @@ TEST(BuildCinnPassTest, OneCinnSubgraph) {
     PADDLE_ENFORCE_EQ(
         op.name(),
         op_names[index++],
-        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
+        common::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 }
 
@@ -252,22 +252,22 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   PADDLE_ENFORCE_EQ(
       pm.Run(origin_program.get()),
       true,
-      phi::errors::InvalidArgument("Origin program not run. Expected run."));
+      common::errors::InvalidArgument("Origin program not run. Expected run."));
   LOG(INFO) << "after pass: " << *origin_program;
 
-  PADDLE_ENFORCE_EQ(
-      origin_program->block()->size(),
-      5u,
-      phi::errors::InvalidArgument("Size of block of origin program mismatch. "
-                                   "Expected 5 but received %d.",
-                                   origin_program->block()->size()));
+  PADDLE_ENFORCE_EQ(origin_program->block()->size(),
+                    5u,
+                    common::errors::InvalidArgument(
+                        "Size of block of origin program mismatch. "
+                        "Expected 5 but received %d.",
+                        origin_program->block()->size()));
   pir::Operation* group_op = &origin_program->block()->front();
   pir::Block* group_block =
       group_op->dyn_cast<cinn::dialect::GroupOp>().block();
   PADDLE_ENFORCE_EQ(
       group_block->size(),
       3u,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Size of group block mismatch. Expected 3 but received %d.",
           group_block->size()));
 
@@ -281,7 +281,7 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
     PADDLE_ENFORCE_EQ(
         op.name(),
         op_names_front[index++],
-        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
+        common::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 
   group_op = &origin_program->block()->back();
@@ -289,7 +289,7 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   PADDLE_ENFORCE_EQ(
       group_block->size(),
       3u,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Size of group block mismatch. Expected 3 but received %d.",
           group_block->size()));
 
@@ -303,6 +303,6 @@ TEST(BuildCinnPassTest, MultiCinnSubgraph) {
     PADDLE_ENFORCE_EQ(
         op.name(),
         op_names_back[index++],
-        phi::errors::InvalidArgument("Op name mismatch. Please check!"));
+        common::errors::InvalidArgument("Op name mismatch. Please check!"));
   }
 }

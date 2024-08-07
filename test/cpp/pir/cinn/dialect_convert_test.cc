@@ -71,29 +71,29 @@ TEST(DrrTest, reduce_sum) {
 
   auto it = program.block()->begin();
 
-  PADDLE_ENFORCE_EQ(
-      it->isa<paddle::dialect::FullOp>(),
-      true,
-      phi::errors::InvalidArgument("The operation should be of type "
-                                   "paddle::dialect::FullOp, but it is not."));
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::FullOp, but it is not."));
   it++;
   PADDLE_ENFORCE_EQ(it->isa<cinn::dialect::ReduceSumOp>(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The operation should be of type "
                         "cinn::dialect::ReduceSumOp, but it is not."));
   it++;
-  PADDLE_ENFORCE_EQ(
-      it->isa<paddle::dialect::ReluOp>(),
-      true,
-      phi::errors::InvalidArgument("The operation should be of type "
-                                   "paddle::dialect::ReluOp, but it is not."));
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::ReluOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::ReluOp, but it is not."));
   it++;
-  PADDLE_ENFORCE_EQ(
-      it->isa<paddle::dialect::ExpOp>(),
-      true,
-      phi::errors::InvalidArgument("The operation should be of type "
-                                   "paddle::dialect::ExpOp, but it is not."));
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::ExpOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::ExpOp, but it is not."));
 }
 
 TEST(DrrTest, reduce_max) {
@@ -111,27 +111,27 @@ TEST(DrrTest, reduce_max) {
 
   auto it = program.block()->begin();
 
-  PADDLE_ENFORCE_EQ(
-      it->isa<paddle::dialect::FullOp>(),
-      true,
-      phi::errors::InvalidArgument("The operation should be of type "
-                                   "paddle::dialect::FullOp, but it is not."));
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::FullOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::FullOp, but it is not."));
   it++;
   PADDLE_ENFORCE_EQ(it->isa<cinn::dialect::ReduceMaxOp>(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The operation should be of type "
                         "cinn::dialect::ReduceMaxOp, but it is not."));
   it++;
-  PADDLE_ENFORCE_EQ(
-      it->isa<paddle::dialect::ReluOp>(),
-      true,
-      phi::errors::InvalidArgument("The operation should be of type "
-                                   "paddle::dialect::ReluOp, but it is not."));
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::ReluOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::ReluOp, but it is not."));
   it++;
-  PADDLE_ENFORCE_EQ(
-      it->isa<paddle::dialect::ExpOp>(),
-      true,
-      phi::errors::InvalidArgument("The operation should be of type "
-                                   "paddle::dialect::ExpOp, but it is not."));
+  PADDLE_ENFORCE_EQ(it->isa<paddle::dialect::ExpOp>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The operation should be of type "
+                        "paddle::dialect::ExpOp, but it is not."));
 }

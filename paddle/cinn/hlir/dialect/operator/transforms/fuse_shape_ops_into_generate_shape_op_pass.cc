@@ -123,7 +123,10 @@ bool MakeGenerateShapeOpAttribute(
   ExprVec data_vec =
       paddle::dialect::details::GetExprVecFromData(shape_or_data_dim_exprs);
   // CHECK(shape_or_data_dim_exprs.data().has_value());
-  CHECK(data_vec.size());
+  PADDLE_ENFORCE_GT(
+      data_vec.size(),
+      0,
+      phi::errors::PreconditionNotMet("The data_vec must not be empty."));
   // const auto& out_dim_exprs = shape_or_data_dim_exprs.data().value();
   const auto& out_dim_exprs = data_vec;
   return MakeGenerateShapeOpAttribute(ir_context,
