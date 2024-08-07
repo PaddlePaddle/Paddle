@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops
-from paddle.framework import in_dynamic_or_pir_mode
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 from paddle.nn.functional.pooling import _update_padding_nd
 from paddle.utils import convert_to_list
-
+from paddle import _C_ops
+from paddle.framework import in_dynamic_or_pir_mode
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import (
