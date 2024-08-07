@@ -28,7 +28,7 @@ from .progressbar import ProgressBar
 
 if TYPE_CHECKING:
     from typing import Any, Literal, TypedDict
-    
+
     from collection.abc import Iterator, Sequence
     from typing_extensions import TypeAlias
 
