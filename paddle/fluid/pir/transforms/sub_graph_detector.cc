@@ -321,6 +321,7 @@ struct UnionFindSet {
   SubGraphPtr GetSetFromOp(pir::Operation* op) {
     const auto& root = Find(op);
     if (!root2subgraph.count(root)) {
+      op_classifier_(*op);
       root2subgraph[root] = std::make_shared<SubGraph>(op, op_classifier_(*op));
     }
     return root2subgraph[root];
@@ -364,6 +365,21 @@ static GraphSet Intersect(const GraphSet& upstream,
     }
   }
   return intersected_set;
+}
+static inline bool CanApplyFusion(
+    const SubGraphPtr& upstream,
+    const SubGraphPtr& downstream,
+    std::unordered_map<pir::Operation*,
+                       std::unordered_map<pir::Operation*, bool>>&
+        can_apply_fusion_map) {
+  for (auto& up_op : upstream->ops) {
+    for (auto& down_op : downstream->ops) {
+      if (can_apply_fusion_map[up_op][down_op]) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 struct RecursiveOpGetter {
@@ -439,7 +455,7 @@ static bool HasLoopAfterMerge(UnionFindSet& union_find,  // NOLINT
       SetDifference(Union(DownstreamSet(union_find, upstream),
                           DownstreamSet(union_find, downstream)),
                     {upstream, downstream});
-  VLOG(4) << "Upstream set is: ";
+  VLOG(4) << "Downstream set is: ";
   for (const auto& up : downstream_set) {
     VLOG(4) << "    " << up.get();
   }
@@ -448,6 +464,7 @@ static bool HasLoopAfterMerge(UnionFindSet& union_find,  // NOLINT
   for (const auto& up : Intersect(upstream_set, downstream_set)) {
     up->Print();
   }
+  VLOG(0) << "Try HasLoopAfterMerge done";
   return !Intersect(upstream_set, downstream_set).empty();
 }
 
@@ -458,13 +475,58 @@ static void VLOG_LINES(const std::string& str) {
   }
 }
 
+void SubgraphDetector::SetCanApplyFusionMap() {
+  UnionFindSet union_find;
+  union_find.op_classifier_ = op_classifier_;
+  for (auto* op1 : sort_ops_) {
+    for (auto* op2 : sort_ops_) {
+      can_apply_fusion_map_[op1][op2] = false;
+      can_apply_fusion_map_[op2][op1] = false;
+    }
+  }
+  for (auto* op : sort_ops_) {
+    if (op_classifier_(*op)) continue;
+    const SubGraphPtr& op_set = union_find.GetSetFromOp(op);
+
+    VLOG(4) << "op_set: " << op_set.get();
+    op_set->Print();
+    const auto& upstream_set = UpstreamSet(union_find, op_set);
+    VLOG(4) << "Upstream set is: ";
+    for (const auto& up : upstream_set) {
+      VLOG(4) << "    " << up.get();
+    }
+
+    const auto& downstream_set = DownstreamSet(union_find, op_set);
+
+    VLOG(4) << "Downstream set is: ";
+    for (const auto& up : downstream_set) {
+      VLOG(4) << "    " << up.get();
+    }
+
+    for (auto& upstream_subgraph_ptr : upstream_set) {
+      for (auto& upstream_op : upstream_subgraph_ptr->ops) {
+        for (auto& downstream_subgraph_ptr : downstream_set) {
+          for (auto& downstream_op : downstream_subgraph_ptr->ops) {
+            can_apply_fusion_map_[upstream_op][downstream_op] = true;
+            can_apply_fusion_map_[downstream_op][upstream_op] = true;
+          }
+        }
+      }
+    }
+  }
+}
+
 void SubgraphDetector::DoOpFusion() {
   // do fusion
   VLOG(4) << "DoOpFusion";
+  double duration = 0.0;
   UnionFindSet union_find;
   union_find.op_classifier_ = op_classifier_;
   VLOG(4) << "Do Op Fusion with sorted_ops: " << sort_ops_.size();
   VLOG_LINES(OpsDebugStr(sort_ops_));
+  SetCanApplyFusionMap();
+  // PADDLE_THROW(::common::errors::Fatal("Dead code"));
+  VLOG(0) << "===================HasLoopAfterMerge start =================\n";
   for (auto* op : sort_ops_) {
     auto producers = GetProducerOpsReverseSort(op, op2id_);
     for (auto* producer : producers) {
@@ -476,16 +538,22 @@ void SubgraphDetector::DoOpFusion() {
         continue;
       }
       VLOG(4) << "Start Judge: " << op->id() << " vs " << producer->id();
-      if (HasLoopAfterMerge(union_find,
-                            union_find.GetSetFromOp(producer),
-                            union_find.GetSetFromOp(op))) {
+
+      // if (HasLoopAfterMerge(union_find,
+      //                       union_find.GetSetFromOp(producer),
+      //                       union_find.GetSetFromOp(op)));
+      if (!CanApplyFusion(union_find.GetSetFromOp(producer),
+                          union_find.GetSetFromOp(op),
+                          can_apply_fusion_map_)) {
         continue;
       }
       // try fuse producer to sub-graph
+      VLOG(0) << "try fuse";
       union_find.Union(op, producer);
+      VLOG(0) << "fuse done";
     }
   }
-
+  VLOG(0) << "===================HasLoopAfterMerge end =================\n";
   for (const auto& op : sort_ops_) {
     subgraph_map_[op] = union_find.GetSetFromOp(op);
   }
