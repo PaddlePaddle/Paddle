@@ -2538,6 +2538,7 @@
     func : index_select_strided
     data_type : x
   backward : index_select_strided_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon=1e-5)
@@ -2559,6 +2560,7 @@
   kernel :
     func : inverse
   backward : inverse_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : is_empty
   args : (Tensor x)
@@ -3297,6 +3299,7 @@
   kernel :
     func : mv
   backward : mv_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : nadam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor momentum_decay_pow, Tensor beta2_pow, Tensor mu_product, Tensor moment1, Tensor moment2, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, float momentum_decay = 0.004f, bool multi_precision = false)
