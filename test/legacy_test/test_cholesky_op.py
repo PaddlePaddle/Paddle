@@ -152,6 +152,122 @@ class TestCholeskyOp(OpTest):
         self._upper = True
 
 
+class TestCholeskySolveOp(OpTest):
+    def setUp(self):
+        self.op_type = "cholesky_solve"
+        self.python_api = paddle.cholesky_solve
+        self._input_shape = (2, 32, 32)
+        self._upper = True
+        self.init_config()
+        self.trans_dims = list(range(len(self._input_shape) - 2)) + [
+            len(self._input_shape) - 1,
+            len(self._input_shape) - 2,
+        ]
+        self.root_data = np.random.random(self._input_shape).astype("float64")
+        # construct symmetric positive-definite matrice
+        input_data = (
+            np.matmul(self.root_data, self.root_data.transpose(self.trans_dims))
+            + 1e-05
+        )
+        output_data = np.linalg.cholesky_solve(input_data).astype("float64")
+        if self._upper:
+            output_data = output_data.transpose(self.trans_dims)
+        self.inputs = {"X": input_data, "Y": input_data}
+        self.attrs = {"upper": self._upper}
+        self.outputs = {"Out": output_data}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+        ):
+            places.append(base.CPUPlace())
+        if core.is_compiled_with_cuda() and (not core.is_compiled_with_rocm()):
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+    @test_with_pir_api
+    @prog_scope()
+    def func(self, place):
+        # use small size since Jacobian gradients is time consuming
+        root_data = self.root_data[..., :3, :3]
+        prog = paddle.static.Program()
+        with paddle.static.program_guard(prog):
+            if paddle.framework.in_pir_mode():
+                root = paddle.static.data(
+                    dtype=root_data.dtype, shape=root_data.shape, name="root"
+                )
+            else:
+                root = paddle.create_parameter(
+                    dtype=root_data.dtype, shape=root_data.shape
+                )
+            root.stop_gradient = False
+            root.persistable = True
+            root_t = paddle.transpose(root, self.trans_dims)
+            x = paddle.matmul(x=root, y=root_t) + 1e-05
+            out = paddle.cholesky_solve(x, upper=self.attrs["upper"])
+            # check input arguments
+            root = _as_list(root)
+            out = _as_list(out)
+
+            for u in out:
+                u.stop_gradient = False
+                u.persistable = True
+
+            # init variable in startup program
+            scope = base.executor.global_scope()
+            exe = base.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+
+            x_init = _as_list(root_data)
+            # init inputs if x_init is not None
+            if x_init:
+                if len(x_init) != len(root):
+                    raise ValueError(
+                        'len(x_init) (=%d) is not the same'
+                        ' as len(x) (= %d)' % (len(x_init), len(root))
+                    )
+                # init variable in main program
+                for var, arr in zip(root, x_init):
+                    assert tuple(var.shape) == tuple(arr.shape)
+                feeds = {k.name: v for k, v in zip(root, x_init)}
+                exe.run(prog, feed=feeds, scope=scope)
+            fetch_list = None
+            if paddle.framework.in_pir_mode():
+                dys = []
+                for i in range(len(out)):
+                    yi = out[i]
+                    dy = paddle.static.data(
+                        name=f'dys_{i}',
+                        shape=yi.shape,
+                        dtype=root_data.dtype,
+                    )
+                    dy.stop_gradient = False
+                    dy.persistable = True
+                    value = np.zeros(yi.shape, dtype=root_data.dtype)
+                    feeds.update({f'dys_{i}': value})
+                    dys.append(dy)
+                fetch_list = base.gradients(out, root, dys)
+            grad_check(
+                x=root,
+                y=out,
+                fetch_list=fetch_list,
+                feeds=feeds,
+                place=place,
+                program=prog,
+            )
+
+    def init_config(self):
+        self._upper = True
+
+
 class TestCholeskyOpLower(TestCholeskyOp):
     def init_config(self):
         self._upper = False
