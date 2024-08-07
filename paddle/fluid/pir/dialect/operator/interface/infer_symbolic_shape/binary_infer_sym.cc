@@ -622,9 +622,9 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
   const auto &y_shape = y_shape_or_data.shape();
   size_t ndim_x = x_shape.size();
   size_t ndim_y = y_shape.size();
-  symbol::DimExpr m = x_shape[m - 2];
-  symbol::DimExpr n = x_shape[m - 1];
-  symbol::DimExpr nrhs = y_shape[m - 1];
+  symbol::DimExpr m = x_shape[ndim_x - 2];
+  symbol::DimExpr n = x_shape[ndim_x - 1];
+  symbol::DimExpr nrhs = y_shape[ndim_x - 1];
 
   PADDLE_ENFORCE_GE(ndim_x,
                     2,
@@ -632,7 +632,7 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
                         "Expects input tensor x to be not less than "
                         "2 dimensions, but got dimension %d",
                         ndim_x));
-  PADDLE_ENFORCE_GE(ndim_x,
+  PADDLE_ENFORCE_GE(ndim_y,
                     2,
                     common::errors::InvalidArgument(
                         "Expects input tensor y to be not less than "
