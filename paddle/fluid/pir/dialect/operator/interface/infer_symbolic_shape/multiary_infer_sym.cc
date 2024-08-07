@@ -1434,7 +1434,7 @@ bool FakeChannelWiseDequantizeMaxAbsOpInferSymbolicShape(
   return true;
 }
 
-bool UpdateLossScalingOpInferSymbolicShape(
+bool UpdateLossScaling_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
       infer_context->GetShapeOrDataForValue(op->operand_source(0))

@@ -861,14 +861,8 @@ bool TdmChildOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &tree_info_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-
-  int child_nums = op->attribute<pir::Int32Attribute>("child_nums").data();
-
-  const std::vector<symbol::DimExpr> &info_dims =
-      tree_info_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &input_dims = x_shape_or_data.shape();
+  int child_nums = op->attribute<pir::Int32Attribute>("child_nums").data();
 
   std::vector<symbol::DimExpr> output_dims = input_dims;
   output_dims.push_back(symbol::DimExpr(child_nums));
@@ -896,23 +890,19 @@ bool YoloBoxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &img_size_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const auto anchors =
       paddle::dialect::details::GetVectorAttr<int>(op, "anchors");
   int class_num = op->attribute<pir::Int32Attribute>("class_num").data();
 
   const std::vector<symbol::DimExpr> &dim_x = x_shape_or_data.shape();
-  const std::vector<symbol::DimExpr> &dim_imgsize =
-      img_size_shape_or_data.shape();
-  symbol::DimExpr anchor_num = symbol::DimExpr(anchors.size() / 2);
+  int anchor_num = static_cast<int>(anchors.size() / 2);
 
   symbol::DimExprBuilder builder;
   symbol::DimExpr box_num = symbol::DimExpr(0);
   symbol::DimExpr min_dimx2_0 = builder.Min(dim_x[2], box_num);
   symbol::DimExpr min_dimx3_0 = builder.Min(dim_x[3], box_num);
   if ((min_dimx2_0 == box_num) && (min_dimx3_0 == box_num)) {
-    box_num = dim_x[2] * dim_x[3] * anchor_num;
+    box_num = dim_x[2] * dim_x[3] * symbol::DimExpr(anchor_num);
   } else {
     box_num = symbol::DimExpr(-1);
   }
