@@ -21,15 +21,26 @@ class Test1F1BPass(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(
             num_of_devices=2,
-            timeout=300,
+            timeout=50,
         )
-        self._default_envs = {"dtype": "float32", "seed": "2024"}
-        self._changeable_envs = {"backend": ["gpu"]}
+        self._default_envs = {
+            "FLAGS_embedding_deterministic": "1",
+            "FLAGS_cudnn_deterministic": "1",
+            "FLAGS_enable_pir_api": "1",
+        }
+        self._changeable_envs = {
+            "backend": ["gpu"],
+        }
 
     def test_pp(self):
-        self.run_test_case(
-            "1F1B_pass_unittest_pir.py",
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
         )
+        for envs in envs_list:
+            self.run_test_case(
+                "1F1B_pass_unittest_pir.py",
+                user_defined_envs=envs,
+            )
 
 
 if __name__ == "__main__":

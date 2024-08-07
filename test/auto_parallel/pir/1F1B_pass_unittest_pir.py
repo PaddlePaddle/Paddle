@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import random
-import unittest
+from functools import reduce
 
 import numpy as np
 from mlp_demo import PPDemoNet
@@ -21,14 +21,12 @@ from mlp_demo import PPDemoNet
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.io import DataLoader
+from paddle.io import BatchSampler, DataLoader
 
 BATCH_SIZE = 4
 BATCH_NUM = 4
 IMAGE_SIZE = 16
 CLASS_NUM = 8
-np.random.seed(2024)
-paddle.seed(2024)
 
 
 def apply_pass(use_1f1b=False):
@@ -70,8 +68,23 @@ class RandomDataset(paddle.io.Dataset):
         return self.num_samples
 
 
-class TestSimpleNet1F1BPass(unittest.TestCase):
-    def init(self):
+class TestSimpleNet1F1BPass:
+    def init_dist_env(self):
+        order = ["dp", "pp", "mp"]
+        dp_degree = 1
+        mp_degree = 1
+        pp_degree = 2
+        degree = [dp_degree, pp_degree, mp_degree]
+        mesh_dims = list(filter(lambda x: x[1] > 1, list(zip(order, degree))))
+        if not mesh_dims:
+            mesh_dims = [("dp", 1)]
+        dim_names = [mesh_dim[0] for mesh_dim in mesh_dims]
+        mesh_shape = [mesh_dim[1] for mesh_dim in mesh_dims]
+        mesh_arr = np.arange(
+            0, reduce(lambda x, y: x * y, mesh_shape, 1)
+        ).reshape(mesh_shape)
+        global_mesh = dist.ProcessMesh(mesh_arr, dim_names)
+        dist.auto_parallel.set_mesh(global_mesh)
         paddle.seed(2024)
         np.random.seed(2024)
         random.seed(2024)
@@ -87,47 +100,60 @@ class TestSimpleNet1F1BPass(unittest.TestCase):
         images = np.random.rand(nsamples, image_size).astype('float32')
         labels = np.random.rand(nsamples, class_num).astype('float32')
         dataset = RandomDataset(images, labels, nsamples)
-        loader = DataLoader(dataset, batch_size=batch_size)
+        data_sampler = BatchSampler(
+            dataset, batch_size=batch_size, shuffle=False, drop_last=True
+        )
+        loader = DataLoader(dataset, batch_sampler=data_sampler, num_workers=0)
         return loader
 
     def test_pp_1f1b(self):
-        paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
-
+        self.init_dist_env()
         strategy_fthenb = apply_pass(use_1f1b=False)
         loss_fthenb = self.run_pipeline(strategy_fthenb)
 
+        self.init_dist_env()
         strategy_1f1b = apply_pass(use_1f1b=True)
         loss_1f1b = self.run_pipeline(strategy_1f1b)
 
         cur_rank = paddle.distributed.get_rank()
         if cur_rank == 1:
-            for loss1, loss2 in zip(loss_1f1b, loss_fthenb):
-                self.assertAlmostEqual(loss1, loss2)
+            self.check_result(loss_1f1b, loss_fthenb)
 
     def run_pipeline(self, strategy):
-        self.init()
         mesh1 = dist.ProcessMesh([0], dim_names=["pp"])
         mesh2 = dist.ProcessMesh([1], dim_names=["pp"])
-        pp_layer = PPDemoNet(mesh1, mesh2)
-        opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=pp_layer.parameters()
+        model = PPDemoNet(mesh1, mesh2)
+
+        lr_scheduler = paddle.optimizer.lr.LinearWarmup(
+            learning_rate=0.1, warmup_steps=2, start_lr=0, end_lr=0.0001
         )
-        loss_fn = nn.MSELoss()
+
+        opt = paddle.optimizer.SGD(
+            learning_rate=lr_scheduler, parameters=model.parameters()
+        )
+
         loader = self.create_data_loader()
         dist_loader = dist.shard_dataloader(loader, meshes=[mesh1, mesh2])
-        dist_model = dist.to_static(
-            pp_layer, dist_loader, loss_fn, opt, strategy
-        )
+
+        loss_fn = nn.MSELoss()
+
+        dist_model = dist.to_static(model, dist_loader, loss_fn, opt, strategy)
+
         dist_model.train()
-
-        loss_list = []
-        for _, (image, label) in enumerate(dist_loader):
+        loss = None
+        for _, (image, label) in enumerate(dist_loader()):
             loss = dist_model(image, label)
-            if loss is not None:
-                loss_list.append(np.mean(loss))
+            lr_scheduler.step()
+            if int(dist.get_rank()) == 1:
+                assert loss is not None
+            else:
+                assert loss is None
 
-        return loss_list
+        return np.array(loss)
+
+    def check_result(self, loss1, loss2):
+        return np.array_equal(loss1, loss2)
 
 
 if __name__ == '__main__':
-    unittest.main()
+    TestSimpleNet1F1BPass().test_pp_1f1b()
