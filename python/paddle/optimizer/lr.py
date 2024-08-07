@@ -16,7 +16,10 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import Any, Callable, Literal, Sequence, TypedDict
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypedDict
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 import numpy
 import numpy.typing as npt

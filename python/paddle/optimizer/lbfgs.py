@@ -16,9 +16,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import TYPE_CHECKING, NoReturn, Sequence, TypedDict
+from typing import TYPE_CHECKING, NoReturn, TypedDict
 
 from typing_extensions import NotRequired
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 import paddle
 
