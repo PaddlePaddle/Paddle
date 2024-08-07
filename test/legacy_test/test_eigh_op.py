@@ -152,7 +152,7 @@ class TestEighAPI(unittest.TestCase):
             self.dtype
         ) + 1j * np.random.random(self.x_shape).astype(self.dtype)
         self.trans_dims = [
-            *list(range(len(self.x_shape) - 2)),
+            *range(len(self.x_shape) - 2),
             len(self.x_shape) - 1,
             len(self.x_shape) - 2,
         ]
