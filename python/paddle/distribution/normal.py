@@ -14,8 +14,8 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable
-from typing import TYPE_CHECKING, Sequence, Union
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 import numpy.typing as npt
