@@ -604,7 +604,6 @@ bool IndexSelectStridedOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(output_dims)});
 
-  // No need to add any constraints here as we are simply removing a dimension.
   return true;
 }
 
