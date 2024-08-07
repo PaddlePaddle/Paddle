@@ -668,8 +668,10 @@ def inference(
                 old_optimized_params_file = os.path.join(
                     infer_engine.save_model_dir, "_optimized.pdiparams"
                 )
-                os.remove(old_optimized_model_file)
-                os.remove(old_optimized_params_file)
+                if os.path.exists(old_optimized_model_file):
+                    os.remove(old_optimized_model_file)
+                if os.path.exists(old_optimized_params_file):
+                    os.remove(old_optimized_params_file)
             else:
                 # we need register some triton ops.
                 register_triton_custom_ops(infer_engine.save_model_dir)
