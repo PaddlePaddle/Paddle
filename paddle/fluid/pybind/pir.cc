@@ -853,6 +853,11 @@ void BindOperation(py::module *m) {
                                                 phi::IntArray(val));
              self.set_attribute(attr_name, attr);
            })
+      .def("set_str_attr",
+           [](Operation &self, std::string &attr_name, std::string &val) {
+             self.set_attribute(
+                 attr_name, StrAttribute::get(pir::IrContext::Instance(), val));
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
