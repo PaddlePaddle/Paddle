@@ -26,7 +26,7 @@ def fused_layer_norm(
     x: Tensor,
     norm_weight: Tensor,
     norm_bias: Tensor,
-    epsilon: Tensor,
+    epsilon: float,
     residual_alpha: float = 1.0,
     begin_norm_axis: int = 1,
     bias: Tensor | None = None,
