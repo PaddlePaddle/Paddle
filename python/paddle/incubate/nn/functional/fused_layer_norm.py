@@ -12,26 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_mode, in_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 def fused_layer_norm(
-    x,
-    norm_weight,
-    norm_bias,
-    epsilon,
-    residual_alpha=1.0,
-    begin_norm_axis=1,
-    bias=None,
-    residual=None,
-    quant_scale=-1,
-    quant_round_type=0,
-    quant_max_bound=0,
-    quant_min_bound=0,
-):
+    x: Tensor,
+    norm_weight: Tensor,
+    norm_bias: Tensor,
+    epsilon: Tensor,
+    residual_alpha: float = 1.0,
+    begin_norm_axis: int = 1,
+    bias: Tensor | None = None,
+    residual: Tensor | None = None,
+    quant_scale: float = -1,
+    quant_round_type: float = 0,
+    quant_max_bound: float = 0,
+    quant_min_bound: float = 0,
+) -> Tensor:
     r"""
     Apply Fused LayerNorm kernel. Also support LayerNorm(bias + residual_alpha * residual + x) fused pattern.
 
