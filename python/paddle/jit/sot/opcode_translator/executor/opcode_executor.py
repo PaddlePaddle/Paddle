@@ -406,7 +406,7 @@ class OpcodeExecutorBase:
             NotImplementedError: If the method is not implemented.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def transform(self):
         """
@@ -416,7 +416,7 @@ class OpcodeExecutorBase:
             NotImplementedError: If the method is not implemented.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def find_space_of_var_name(self, name):
         code = self._graph.pycode_gen._origin_code
