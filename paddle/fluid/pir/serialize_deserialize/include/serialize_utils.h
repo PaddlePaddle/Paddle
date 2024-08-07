@@ -526,7 +526,7 @@ Json AttrTypeWriter::WritePaddleOperatorType(const pir::Type& type) {
         type.dyn_cast<paddle::dialect::SparseCsrTensorType>());
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type when write paddle.operatordialect type"));
     return Json::object();
   }

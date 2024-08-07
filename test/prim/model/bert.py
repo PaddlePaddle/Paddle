@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import functools
 import warnings
-from typing import Optional, Tuple
 
 import numpy as np
 
@@ -160,9 +161,9 @@ class BertEmbeddings(nn.Layer):
     def forward(
         self,
         input_ids: Tensor,
-        token_type_ids: Optional[Tensor] = None,
-        position_ids: Optional[Tensor] = None,
-        past_key_values_length: Optional[int] = None,
+        token_type_ids: Tensor | None = None,
+        position_ids: Tensor | None = None,
+        past_key_values_length: int | None = None,
     ):
         if position_ids is None:
             ones = paddle.ones_like(input_ids, dtype="int64")
@@ -265,14 +266,14 @@ class BertModel(nn.Layer):
     def forward(
         self,
         input_ids: Tensor,
-        token_type_ids: Optional[Tensor] = None,
-        position_ids: Optional[Tensor] = None,
-        attention_mask: Optional[Tensor] = None,
-        past_key_values: Optional[Tuple[Tuple[Tensor]]] = None,
-        use_cache: Optional[bool] = None,
-        output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        return_dict: Optional[bool] = None,
+        token_type_ids: Tensor | None = None,
+        position_ids: Tensor | None = None,
+        attention_mask: Tensor | None = None,
+        past_key_values: tuple[tuple[Tensor]] | None = None,
+        use_cache: bool | None = None,
+        output_hidden_states: bool | None = None,
+        output_attentions: bool | None = None,
+        return_dict: bool | None = None,
     ):
         return_dict = (
             return_dict
@@ -383,15 +384,15 @@ class Bert(nn.Layer):
     def forward(
         self,
         input_ids: Tensor,
-        token_type_ids: Optional[Tensor] = None,
-        position_ids: Optional[Tensor] = None,
-        attention_mask: Optional[Tensor] = None,
-        masked_positions: Optional[Tensor] = None,
-        labels: Optional[Tensor] = None,
-        next_sentence_label: Optional[Tensor] = None,
-        output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        return_dict: Optional[bool] = None,
+        token_type_ids: Tensor | None = None,
+        position_ids: Tensor | None = None,
+        attention_mask: Tensor | None = None,
+        masked_positions: Tensor | None = None,
+        labels: Tensor | None = None,
+        next_sentence_label: Tensor | None = None,
+        output_hidden_states: bool | None = None,
+        output_attentions: bool | None = None,
+        return_dict: bool | None = None,
     ):
         with paddle.static.amp.fp16_guard():
             outputs = self.bert(

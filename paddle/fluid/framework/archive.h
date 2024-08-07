@@ -110,7 +110,7 @@ class ArchiveBase {
     PADDLE_ENFORCE_LE(
         length,
         capacity,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Param length should be less than or equal to param capacity, but "
             "the length got %d, the capacity got %d.",
             length,
@@ -129,7 +129,7 @@ class ArchiveBase {
     PADDLE_ENFORCE_EQ(
         cursor >= buffer_ && cursor <= finish_,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Param cursor should be greater than or equal to buffer, and "
             "should be less than or equal to finish, but the cursor got %d, "
             "the buffer got %d, the finish got %d.",
@@ -143,7 +143,7 @@ class ArchiveBase {
     PADDLE_ENFORCE_LE(
         offset,
         size_t(finish_ - cursor_),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Param offset should be less than or equal to %d, but got %d.",
             size_t(finish_ - cursor_),
             offset));
@@ -156,7 +156,7 @@ class ArchiveBase {
     PADDLE_ENFORCE_EQ(
         finish >= cursor_ && finish <= limit_,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Param finish should be greater than or equal to cursor, and "
             "should be less than or equal to limit, but the finish got %d, "
             "the cursor got %d, the limit got %d.",
@@ -170,7 +170,7 @@ class ArchiveBase {
     PADDLE_ENFORCE_LE(
         offset,
         size_t(limit_ - finish_),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Param offset should be less than or equal to %d, but got %d.",
             size_t(limit_ - finish_),
             offset));
@@ -228,7 +228,7 @@ class ArchiveBase {
       PADDLE_ENFORCE_NE(
           newbuf,
           nullptr,
-          phi::errors::InvalidArgument("Reserve failed, out of memory."));
+          common::errors::InvalidArgument("Reserve failed, out of memory."));
       if (Length() > 0) {
         memcpy(newbuf, buffer_, Length());
       }
@@ -250,7 +250,7 @@ class ArchiveBase {
       PADDLE_ENFORCE_LE(
           size,
           size_t(finish_ - cursor_),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Param size should be less than or equal to %d, but got %d.",
               size_t(finish_ - cursor_),
               size));
@@ -280,7 +280,7 @@ class ArchiveBase {
       PADDLE_ENFORCE_LE(
           size,
           size_t(finish_ - cursor_),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Param size should be less than or equal to %d, but got %d.",
               size_t(finish_ - cursor_),
               size));
@@ -381,7 +381,7 @@ class Archive<BinaryArchiveType> : public ArchiveBase {
     PADDLE_ENFORCE_GE(
         len,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Param len should be greater than or equal to 0, but got %d.",
             len));  // NOLINT
     if (static_cast<size_t>(len) >= temp) {
@@ -389,7 +389,7 @@ class Archive<BinaryArchiveType> : public ArchiveBase {
       PADDLE_ENFORCE_EQ(
           snprintf(Finish(), static_cast<size_t>(len) + 1, fmt, args...),
           len,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The snprintf(Finish(), static_cast<size_t>(len) + 1, fmt, "
               "args...) should be equal to %d, but got %d.",
               len,

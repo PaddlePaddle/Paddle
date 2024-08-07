@@ -236,7 +236,7 @@ void Tracer::TraceOpImpl(const std::string& type,
                          const std::map<std::string, std::string>& inplace_map,
                          paddle::framework::AttributeMap* passed_default_attrs_,
                          bool use_default_attr_map) {
-  platform::RecordEvent op_type_record_event(
+  phi::RecordEvent op_type_record_event(
       type, platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(4) << "Trace Op: " << type;
@@ -354,7 +354,7 @@ void Tracer::TraceOpImpl(const std::string& type,
         common::errors::Fatal("Operator %s raises an %s exception.\n"
                               "The exception content is\n:%s.",
                               type,
-                              platform::demangle(typeid(ex).name()),
+                              common::demangle(typeid(ex).name()),
                               ex.what()));
   } catch (...) {
     // NOTE: this branch represents a very serious bug with
@@ -365,7 +365,7 @@ void Tracer::TraceOpImpl(const std::string& type,
   }
 
   {
-    platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
 
     if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {

@@ -61,19 +61,18 @@ TEST(sparse_csr_tensor, construct) {
 
   PADDLE_ENFORCE_EQ(sparse.non_zero_cols().numel(),
                     non_zero_data.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required sparse.non_zero_cols().numel() should be "
                         "equal to non_zero_data.size(). "));
   PADDLE_ENFORCE_EQ(sparse.numel(),
                     9,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required sparse.numel() should be equal to 9. "));
   CHECK(sparse.dims() == dense_dims);
   CHECK(sparse.dtype() == DataType::FLOAT32);
   CHECK(sparse.place() == phi::CPUPlace());
   CHECK(sparse.initialized() == true);
 }
-
 TEST(sparse_csr_tensor, other_function) {
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
   auto alloc = fancy_allocator.get();
@@ -93,7 +92,7 @@ TEST(sparse_csr_tensor, other_function) {
   CHECK(csr.initialized());
   PADDLE_ENFORCE_EQ(csr.dims(),
                     dense_dims,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required csr.dims() should be equal to dense_dims. "));
 
   // Test Resize
@@ -102,16 +101,24 @@ TEST(sparse_csr_tensor, other_function) {
   PADDLE_ENFORCE_EQ(
       csr.non_zero_cols().numel(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Required csr.non_zero_cols().numel() should be equal to 2. "));
 
   // Test shallow_copy
   SparseCsrTensor csr2(csr);
-  CHECK(csr.dims() == csr2.dims());
+  PADDLE_ENFORCE_EQ(
+      csr.dims(),
+      csr2.dims(),
+      common::errors::Fatal("`csr.dims()` should be equal to `csr2.dims()`, "
+                            "something wrong with shallow copy"));
 
   // Test shallow_copy_assignment
   SparseCsrTensor csr3 = csr2;
-  CHECK(csr3.dims() == csr2.dims());
+  PADDLE_ENFORCE_EQ(
+      csr3.dims(),
+      csr2.dims(),
+      common::errors::Fatal("``csr3.dims()` should be equal to `csr2.dims()`, "
+                            "something wrong with shallow copy assignment"));
 }
 
 }  // namespace tests
