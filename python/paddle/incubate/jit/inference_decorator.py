@@ -560,6 +560,9 @@ def inference(
         enable_new_ir(bool, optional): Whether to enable new IR. Default is True.
         exp_enable_use_cutlass(bool, optional): Whether to enable use cutlass. Default is False.
         delete_pass_lists(list[str], optional): The list of pass names to delete. Default is None.
+        enable_save_optim_model(bool, optional): When is True, the optimized model after pass is saved,
+            when user run in the next time, the optimized model will be loaded and used directly without optimization again.
+            This can save loading time. Default is False.
 
     Returns:
         function (callable): the decorated function which can be used for inference.
