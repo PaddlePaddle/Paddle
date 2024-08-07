@@ -47,7 +47,9 @@ TEST(AutogradMeta, MemberFunction) {
   et1.set_autograd_meta(auto_grad);
   auto* tmp_auto = static_cast<egr::AutogradMeta*>(et1.get_autograd_meta());
   VLOG(6) << "Test Grad";
-  CHECK(tmp_auto->Grad().defined() == false);
+  PADDLE_ENFORCE_EQ(tmp_auto->Grad().defined(),
+                    false,
+                    phi::errors::Fatal("grad shoule not be defined now"));
   auto* grad_t = tmp_auto->MutableGrad();
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
@@ -75,11 +77,19 @@ TEST(AutogradMeta, MemberFunction) {
           "The second element of grad tensor should be 10.0, but received %f.",
           impl_ptr->data<float>()[1]));
   VLOG(6) << "Test IsInitialized";
-  CHECK(tmp_auto->IsInitialized() == false);
+  PADDLE_ENFORCE_EQ(
+      tmp_auto->IsInitialized(),
+      false,
+      common::errors::Fatal(
+          "egr::AutogradMeta variable tmp_auto should not be initialized now"));
   VLOG(6) << "Test GradNodeSetter Getter";
   auto grad_node = std::make_shared<eager_test::GradTestNode>();
   tmp_auto->SetGradNode(grad_node);
-  CHECK(tmp_auto->IsInitialized() == true);
+  PADDLE_ENFORCE_EQ(
+      tmp_auto->IsInitialized(),
+      true,
+      common::errors::Fatal(
+          "egr::AutogradMeta variable tmp_auto should be initialized now"));
   auto tmp_grad_node = tmp_auto->GetMutableGradNode();
   std::dynamic_pointer_cast<eager_test::GradTestNode>(tmp_grad_node)->val_ =
       5.0;
@@ -123,9 +133,19 @@ TEST(AutogradMeta, MemberFunction) {
           "The NumericStopGradient value should be -1, but received %d.",
           tmp_auto->NumericStopGradient()));
   tmp_auto->SetStopGradient(true);
-  CHECK(tmp_auto->StopGradient() == true);
+  PADDLE_ENFORCE_EQ(
+      tmp_auto->StopGradient(),
+      true,
+      common::errors::Fatal("tmp_auto->StopGradient() should be true now"));
   VLOG(6) << "Test Persistable Setter Getter";
-  CHECK(tmp_auto->Persistable() == false);
+  PADDLE_ENFORCE_EQ(
+      tmp_auto->Persistable(),
+      false,
+      common::errors::Fatal("tmp_auto->Persistable() should be false now"));
   tmp_auto->SetPersistable(true);
-  CHECK(tmp_auto->Persistable() == true);
+  PADDLE_ENFORCE_EQ(
+      tmp_auto->Persistable(),
+      true,
+      common::errors::Fatal(
+          "tmp_auto->Persistable() should be true now after SetPersistable()"));
 }
