@@ -622,9 +622,9 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
   const auto &y_shape = y_shape_or_data.shape();
   size_t ndim_x = x_shape.size();
   size_t ndim_y = y_shape.size();
-  symbol::DimExpr m = x_shape[ndim_x - 2];
-  symbol::DimExpr n = x_shape[ndim_x - 1];
-  symbol::DimExpr nrhs = y_shape[ndim_x - 1];
+  const symbol::DimExpr m = x_shape[ndim_x - 2];
+  const symbol::DimExpr n = x_shape[ndim_x - 1];
+  const symbol::DimExpr nrhs = y_shape[ndim_x - 1];
 
   PADDLE_ENFORCE_GE(ndim_x,
                     2,
@@ -655,12 +655,12 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
     batch_dims.push_back(x_shape[i]);
   }
 
-  infer_context->AddEqualCstr(m, y_shape[ndim_y - 2]);
+  infer_context->AddEqualCstr(x_shape[ndim_x - 2], y_shape[ndim_y - 2]);
 
   symbol::ShapeOrDataDimExprs batch_shape_or_data{
       symbol::TensorShapeOrDataDimExprs(batch_dims)};
   infer_context->SetShapeOrDataForValue(op->result(2), batch_shape_or_data);
-
+  symbol::DimExprBuilder builder;
   if (m > n) {
     batch_dims.push_back(nrhs);
     symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
@@ -675,7 +675,7 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
                                           residuals_batch_shape_or_data);
   }
 
-  batch_dims.push_back(std::min(m, n));
+  batch_dims.push_back(builder.Min(m, n));
   symbol::ShapeOrDataDimExprs singular_batch_shape_or_data{
       symbol::TensorShapeOrDataDimExprs(batch_dims)};
   infer_context->SetShapeOrDataForValue(op->result(3),
