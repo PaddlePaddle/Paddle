@@ -661,18 +661,20 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
       symbol::TensorShapeOrDataDimExprs(batch_dims)};
   infer_context->SetShapeOrDataForValue(op->result(2), batch_shape_or_data);
   symbol::DimExprBuilder builder;
-  if (m > n) {
-    batch_dims.push_back(nrhs);
-    symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
-        symbol::TensorShapeOrDataDimExprs(batch_dims)};
-    infer_context->SetShapeOrDataForValue(op->result(1),
-                                          residuals_batch_shape_or_data);
-    batch_dims.pop_back();
-  } else {
-    symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
-        symbol::TensorShapeOrDataDimExprs({symbol::DimExpr{0}})};
-    infer_context->SetShapeOrDataForValue(op->result(1),
-                                          residuals_batch_shape_or_data);
+  if (m.isa<int64_t>() && n.isa<int64_t>()) {
+    if (m > n) {
+      batch_dims.push_back(nrhs);
+      symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
+          symbol::TensorShapeOrDataDimExprs(batch_dims)};
+      infer_context->SetShapeOrDataForValue(op->result(1),
+                                            residuals_batch_shape_or_data);
+      batch_dims.pop_back();
+    } else {
+      symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
+          symbol::TensorShapeOrDataDimExprs({symbol::DimExpr{0}})};
+      infer_context->SetShapeOrDataForValue(op->result(1),
+                                            residuals_batch_shape_or_data);
+    }
   }
 
   batch_dims.push_back(builder.Min(m, n));
