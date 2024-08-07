@@ -94,36 +94,43 @@ void IndexPutGradKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "scatter_nd");
     }
   }
-  if (value_shape != value_shape_bd) {
-    std::vector<int64_t> compress_dims;
-    std::vector<int64_t> dims_without_1;
-    funcs::CalCompressedDimsWith1AndWithout1(
-        &value_shape_bd, &value_shape, &compress_dims, &dims_without_1);
-    DenseTensor value_grad_bd(value_grad->dtype());
-    value_grad_bd.Resize(common::make_ddim(value_shape_bd));
-    dev_ctx.template Alloc<T>(&value_grad_bd);
-    ret = xpu::gather_nd<XPUType, int64_t>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-        res_indices.data<int64_t>(),
-        reinterpret_cast<XPUType*>(value_grad_bd.data<T>()),
-        xshape_param,
-        index_shape);
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather_nd");
-    IntArray v_axis(compress_dims);
-    auto pre_dims = value_grad->dims();
-    SumKernel<T>(
-        dev_ctx, value_grad_bd, v_axis, value_grad->dtype(), false, value_grad);
-    value_grad->Resize(pre_dims);
-  } else {
-    ret = xpu::gather_nd<XPUType, int64_t>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-        res_indices.data<int64_t>(),
-        reinterpret_cast<XPUType*>(value_grad->data<T>()),
-        xshape_param,
-        index_shape);
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather_nd");
+  if (value_grad) {
+    dev_ctx.template Alloc<T>(value_grad);
+    if (value_shape != value_shape_bd) {
+      std::vector<int64_t> compress_dims;
+      std::vector<int64_t> dims_without_1;
+      funcs::CalCompressedDimsWith1AndWithout1(
+          &value_shape_bd, &value_shape, &compress_dims, &dims_without_1);
+      DenseTensor value_grad_bd(value_grad->dtype());
+      value_grad_bd.Resize(common::make_ddim(value_shape_bd));
+      dev_ctx.template Alloc<T>(&value_grad_bd);
+      ret = xpu::gather_nd<XPUType, int64_t>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          res_indices.data<int64_t>(),
+          reinterpret_cast<XPUType*>(value_grad_bd.data<T>()),
+          xshape_param,
+          index_shape);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather_nd");
+      IntArray v_axis(compress_dims);
+      auto pre_dims = value_grad->dims();
+      SumKernel<T>(dev_ctx,
+                   value_grad_bd,
+                   v_axis,
+                   value_grad->dtype(),
+                   false,
+                   value_grad);
+      value_grad->Resize(pre_dims);
+    } else {
+      ret = xpu::gather_nd<XPUType, int64_t>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          res_indices.data<int64_t>(),
+          reinterpret_cast<XPUType*>(value_grad->data<T>()),
+          xshape_param,
+          index_shape);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "gather_nd");
+    }
   }
 }
 }  // namespace phi
