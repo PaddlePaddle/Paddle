@@ -1593,9 +1593,11 @@ class DistForwardAPI(ForwardAPI):
                 ] and self.need_to_generate_code_for_inplace_impl(i):
                     infer_meta_code += SET_DIMS_TEMPLATE.format(
                         dst=self.dist_output_args[i],
-                        src=self.dist_output_args[i] + '_tmp'
-                        if i > 0
-                        else self.dist_output_args[i],
+                        src=(
+                            self.dist_output_args[i] + '_tmp'
+                            if i > 0
+                            else self.dist_output_args[i]
+                        ),
                     )
 
         # TODO(GhostScreaming): kernel like reshape need calculate local_shape
