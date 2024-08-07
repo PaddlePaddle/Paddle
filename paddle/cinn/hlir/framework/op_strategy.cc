@@ -77,7 +77,7 @@ std::shared_ptr<OpImpl> OpStrategy::SelectImpl(
       }
     }
   }
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NE(
       res,
       nullptr,
       phi::errors::NotFound(
