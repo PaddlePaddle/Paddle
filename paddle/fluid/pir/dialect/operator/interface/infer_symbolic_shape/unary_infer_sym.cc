@@ -93,8 +93,6 @@ bool AffineGridOpInferSymbolicShape(
 
   int output_shape_size =
       paddle::dialect::details::GetVectorAttr<int>(op, "outputShape").size();
-  bool align_corners =
-      op->attribute<pir::BoolAttribute>("align_corners").data();
 
   std::vector<symbol::DimExpr> output_dims;
   output_dims.push_back(input_dims[0]);  // N
