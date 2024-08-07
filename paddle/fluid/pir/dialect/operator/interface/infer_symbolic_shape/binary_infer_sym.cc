@@ -16,6 +16,9 @@
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/correlation_funcs.h"
 
 COMMON_DECLARE_bool(manually_trans_conv_filter);
 
@@ -158,12 +161,69 @@ bool BceLoss_OpInferSymbolicShape(
 //   return true;
 // }
 
-// bool CholeskySolveOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool CholeskySolveOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  std::vector<symbol::DimExpr> y_dims = y_shape_or_data.shape();
+
+  auto x_dims_n = x_dims.size();
+  auto y_dims_n = y_dims.size();
+
+  infer_context->AddEqualCstr(y_dims[y_dims_n - 1], y_dims[y_dims_n - 2]);
+  infer_context->AddEqualCstr(x_dims[x_dims_n - 2], y_dims[y_dims_n - 2]);
+
+  std::vector<symbol::DimExpr> x_dims_vec = [&] {
+    std::vector<symbol::DimExpr> dims;
+    const auto &x_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
+    dims = x_shape_or_data.shape();
+    return dims;
+  }();
+
+  std::vector<symbol::DimExpr> y_dims_vec = [&] {
+    std::vector<symbol::DimExpr> dims;
+    const auto y_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    dims = y_shape_or_data.shape();
+    return dims;
+  }();
+
+  std::vector<symbol::DimExpr> x_dims_vec_cut;
+  x_dims_vec_cut.assign(x_dims_vec.begin(), x_dims_vec.end() - 2);
+  std::vector<symbol::DimExpr> y_dims_vec_cut;
+  y_dims_vec_cut.assign(y_dims_vec.begin(), y_dims_vec.end() - 2);
+
+  std::vector<int64_t> dims_x_vec_cut;
+  for (const auto &expr : x_dims_vec_cut) {
+    dims_x_vec_cut.push_back(expr.Get<std::int64_t>());
+  }
+
+  std::vector<int64_t> dims_y_vec_cut;
+  for (const auto &expr : y_dims_vec_cut) {
+    dims_y_vec_cut.push_back(expr.Get<std::int64_t>());
+  }
+
+  std::vector<int64_t> expand_batch_portion =
+      phi::funcs::MatrixGetBroadcastBatchPortion(dims_x_vec_cut,
+                                                 dims_y_vec_cut);
+
+  std::vector<symbol::DimExpr> x_broadcast_dims(expand_batch_portion.begin(),
+                                                expand_batch_portion.end());
+  x_broadcast_dims.insert(x_broadcast_dims.end(),
+                          {x_dims_vec[x_dims_n - 2], x_dims_vec[x_dims_n - 1]});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(x_broadcast_dims)});
+
+  return true;
+}
 
 bool CtcAlignOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

@@ -85,12 +85,40 @@ std::vector<symbol::DimExpr> GetRealPadding(
   return real_padding;
 }
 
-// bool AffineGridOpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   // pass
-//   return true;
-// }
+bool AffineGridOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> input_dims = input_shape_or_data.shape();
+
+  int output_shape_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "outputShape").size();
+  bool align_corners =
+      op->attribute<pir::BoolAttribute>("align_corners").data();
+
+  std::vector<symbol::DimExpr> output_dims;
+  output_dims.push_back(input_dims[0]);  // N
+
+  if (output_shape_size == 4) {
+    // N * H * W * 2
+    output_dims.push_back(symbol::DimExpr(-1));  // H
+    output_dims.push_back(symbol::DimExpr(-1));  // W
+    output_dims.push_back(symbol::DimExpr(2));   // 2
+  } else {
+    // N * D * H * W * 3
+    output_dims.push_back(symbol::DimExpr(-1));  // D
+    output_dims.push_back(symbol::DimExpr(-1));  // H
+    output_dims.push_back(symbol::DimExpr(-1));  // W
+    output_dims.push_back(symbol::DimExpr(3));   // 3
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+
+  return true;
+}
 
 symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
     pir::Operation *op,
