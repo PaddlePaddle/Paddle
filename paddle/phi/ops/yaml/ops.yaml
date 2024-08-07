@@ -4497,6 +4497,16 @@
   inplace : (mean -> mean_out), (variance -> variance_out)
   optional : reserve_space
 
+- op : sync_calc_stream
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : sync_calc_stream
+  inplace : (x -> out)
+
 - op : take_along_axis
   args : (Tensor arr, Tensor indices, int axis)
   output : Tensor
