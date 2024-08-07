@@ -139,7 +139,7 @@ def all_reduce(
             >>> else:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> task = dist.stream.all_reduce(data, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = data
             >>> print(out)
             [[5, 7, 9], [5, 7, 9]]

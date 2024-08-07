@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 import paddle.distributed as dist
@@ -25,6 +25,8 @@ from paddle.distributed.communication.group import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.base.core import task
     from paddle.distributed.communication.group import Group
@@ -181,7 +183,7 @@ def alltoall(
             ...     data1 = paddle.to_tensor([[13, 14, 15], [16, 17, 18]])
             ...     data2 = paddle.to_tensor([[19, 20, 21], [22, 23, 24]])
             >>> task = dist.stream.alltoall(out_tensor_list, [data1, data2], sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> print(out_tensor_list)
             >>> # [[[1, 2, 3], [4, 5, 6]], [[13, 14, 15], [16, 17, 18]]]    (2 GPUs, out for rank 0)
             >>> # [[[7, 8, 9], [10, 11, 12]], [[19, 20, 21], [22, 23, 24]]] (2 GPUs, out for rank 1)
@@ -317,7 +319,7 @@ def alltoall_single(
             >>> else:
             ...     data = paddle.to_tensor([2, 3])
             >>> task = dist.stream.alltoall_single(output, data, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = output.numpy()
             >>> print(out)
             >>> # [0, 2] (2 GPUs, out for rank 0)
@@ -337,7 +339,7 @@ def alltoall_single(
             ...                                 out_split_sizes,
             ...                                 in_split_sizes,
             ...                                 sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = output.numpy()
             >>> print(out)
             >>> # [[0., 0.], [1., 1.]]                     (2 GPUs, out for rank 0)
