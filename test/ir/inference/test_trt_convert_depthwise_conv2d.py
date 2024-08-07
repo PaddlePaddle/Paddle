@@ -122,7 +122,7 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             groups = attrs[0]['groups']
             self.dynamic_shape.min_input_shape = {
