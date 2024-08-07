@@ -597,7 +597,9 @@ bool IndexSelectStridedOpInferSymbolicShape(
 
   std::vector<symbol::DimExpr> output_dims(input_dims.begin(),
                                            input_dims.end());
+
   output_dims.erase(output_dims.begin() + dim);
+  // No need to add any constraints here as we are simply removing a dimension.
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
