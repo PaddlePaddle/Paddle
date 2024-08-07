@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 import numpy as np
 
 import paddle
@@ -25,19 +32,19 @@ from .utils import (
 
 
 def minimize_lbfgs(
-    objective_func,
-    initial_position,
-    history_size=100,
-    max_iters=50,
-    tolerance_grad=1e-8,
-    tolerance_change=1e-8,
-    initial_inverse_hessian_estimate=None,
-    line_search_fn='strong_wolfe',
-    max_line_search_iters=50,
-    initial_step_length=1.0,
-    dtype='float32',
-    name=None,
-):
+    objective_func: Callable[[Tensor], float],
+    initial_position: Tensor,
+    history_size: int = 100,
+    max_iters: int = 50,
+    tolerance_grad: float = 1e-8,
+    tolerance_change: float = 1e-8,
+    initial_inverse_hessian_estimate: Tensor | None = None,
+    line_search_fn: str = 'strong_wolfe',
+    max_line_search_iters: int = 50,
+    initial_step_length: int = 1.0,
+    dtype: str = 'float32',
+    name: str | None = None,
+) -> tuple[bool, int, Tensor, Tensor, Tensor]:
     r"""
     Minimizes a differentiable function `func` using the L-BFGS method.
     The L-BFGS is a quasi-Newton method for solving an unconstrained optimization problem over a differentiable function.

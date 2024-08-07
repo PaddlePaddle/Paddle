@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 from paddle.incubate.nn import functional as F
 from paddle.nn import Layer
 
@@ -57,13 +64,18 @@ class FusedDropoutAdd(Layer):
             >>> out = m(x, y)
     """
 
-    def __init__(self, p=0.5, mode="upscale_in_train", name=None):
+    def __init__(
+        self,
+        p: int = 0.5,
+        mode: str = "upscale_in_train",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.p = p
         self.mode = mode
         self.name = name
 
-    def forward(self, x, y):
+    def forward(self, x: Tensor, y: Tensor) -> None:
         out = F.fused_dropout_add(
             x,
             y,
@@ -74,6 +86,6 @@ class FusedDropoutAdd(Layer):
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'p={self.p}, mode={self.mode}{name_str}'
