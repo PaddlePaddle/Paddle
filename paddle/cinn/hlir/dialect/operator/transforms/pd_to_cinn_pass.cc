@@ -63,7 +63,7 @@ std::vector<T> GetVectorFromIntArrayAttribute(
   if (vector_attr.size() > 0) {
     PADDLE_ENFORCE_EQ(vector_attr[0].isa<::pir::Int64Attribute>(),
                       true,
-                      phi::errors::Unimplemented(
+                      ::common::errors::Unimplemented(
                           "the 0th elementwise MUST be ir::Int64Attribute"));
     for (size_t i = 0; i < vector_attr.size(); ++i) {
       result.push_back(vector_attr[i].dyn_cast<::pir::Int64Attribute>().data());
@@ -261,14 +261,22 @@ class ReshapeOpPattern
     if (out_shape_attr.size() > 0) {
       PADDLE_ENFORCE_EQ(out_shape_attr[0].isa<::pir::Int64Attribute>(),
                         true,
-                        phi::errors::Unimplemented(
+                        ::common::errors::Unimplemented(
                             "the 0th elementwise MUST be ir::Int64Attribute"));
       for (size_t i = 0; i < out_shape_attr.size(); ++i) {
         vec_out_shape.push_back(
             out_shape_attr[i].dyn_cast<::pir::Int64Attribute>().data());
       }
     }
-    ReplaceWithCinnReshapeOp(op, rewriter, vec_out_shape);
+    PADDLE_ENFORCE_EQ(
+        op->num_results(),
+        1U,
+        ::common::errors::PreconditionNotMet(
+            "The size of source op outputs must be 1, but received %d.",
+            op->num_results()));
+    auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+        op->operand_source(0), vec_out_shape);
+    rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
     rewriter.EraseOp(op);
   }
 };
@@ -538,9 +546,12 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
         ReplaceSplitSplitBySlice(
             op, downstream_op->dyn_cast<::pir::SplitOp>(), rewriter);
       } else {
-        CHECK(false) << "Currently only support pir::slice/split as downstream "
-                        "op, but got: "
-                     << downstream_op->name();
+        PADDLE_ENFORCE(
+            false,
+            phi::errors::InvalidArgument(
+                "Currently only support pir::slice/split as downstream "
+                "op, but got: %s",
+                downstream_op->name()));
       }
     }
   }
@@ -898,7 +909,7 @@ class SqueezeOpPattern
           PADDLE_ENFORCE_EQ(
               in_shape[i],
               1,
-              phi::errors::PreconditionNotMet(
+              ::common::errors::PreconditionNotMet(
                   "sequeze dim MUST be 1, but recive axis [%d] is [%d]",
                   i,
                   in_shape[i]));
@@ -1040,7 +1051,6 @@ class FlattenOpPattern
     reshape_op.result(0).set_type(op.result(0).type());
 
     rewriter.ReplaceAllUsesWith(op.result(0), reshape_op.result(0));
-    rewriter.ReplaceAllUsesWith(op.result(1), reshape_op.result(1));
 
     rewriter.EraseOp(op);
   }
@@ -1111,7 +1121,7 @@ class GatherOpPattern
       auto axis_gen_op = op.operand_source(2).defining_op();
       PADDLE_ENFORCE_EQ(axis_gen_op->isa<paddle::dialect::FullOp>(),
                         true,
-                        ::phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "Not Supported: The gather operator for CINN "
                             "only supports constant value"));
       auto full_op = axis_gen_op->dyn_cast<paddle::dialect::FullOp>();

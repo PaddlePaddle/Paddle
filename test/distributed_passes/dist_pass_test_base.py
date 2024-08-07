@@ -64,7 +64,6 @@ class DistPassTestBase(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
 
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
         seed = int(os.environ.get('SEED', -1))
         if seed <= 0:
             seed = np.random.randint(low=1, high=1000000, size=[1])[0]

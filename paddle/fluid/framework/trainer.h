@@ -378,7 +378,7 @@ class HeterPipelineTrainer : public TrainerBase {
                              std::pair<std::string, int>>>>>
       task_queue_;
 
-  platform::DeviceContext* dev_ctx_ = nullptr;
+  phi::DeviceContext* dev_ctx_ = nullptr;
 
   std::shared_ptr<std::unordered_map<int, Scope*>> mini_scopes_;
   std::shared_ptr<std::unordered_map<int, std::shared_ptr<std::vector<Scope*>>>>

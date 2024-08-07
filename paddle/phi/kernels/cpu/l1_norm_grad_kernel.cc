@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/l1_norm_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/l1_norm_kernel.h"
 namespace phi {
 // Out = sum(abs(X))
 template <typename T, typename Context>
@@ -36,7 +36,7 @@ void L1NormGradKernel(const Context& dev_ctx,
                       DenseTensor* x_grad) {
   PADDLE_ENFORCE_EQ(out_grad.numel(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(GRAD@Out) of L1NormGradOp should be a scalar."));
   dev_ctx.template Alloc<T>(x_grad);
   auto x_eigen = phi::EigenVector<T>::Flatten(x);

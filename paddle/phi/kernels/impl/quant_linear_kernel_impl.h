@@ -43,7 +43,7 @@ void QuantLinearKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       in_mat_dims[1],
       w_dims0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input's second dimension and weight's first dimension is "
           "expected to be the same. But received input's second dimension is"
           "%d, input's shape is %s; weight's first dimension is %d, weight's"
@@ -72,7 +72,7 @@ void QuantLinearKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       w.dtype(),
       phi::DataType::INT8,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The weight's datatype is expected to be int8 when use quant. But "
           "received weight's datatype is %d",
           static_cast<int>(w.dtype())));

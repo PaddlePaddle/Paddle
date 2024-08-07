@@ -146,7 +146,7 @@ void SwiGLUGradKernelImpl(const Context &ctx,
       PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL_BASE(                               \
           VecSizeS, __is_combine, __has_dx, __has_dy);                      \
       default:                                                              \
-        PADDLE_THROW(phi::errors::Unimplemented(                            \
+        PADDLE_THROW(common::errors::Unimplemented(                         \
             "Unsupported vectorized size: %d !", vec_size));                \
         break;                                                              \
     }                                                                       \
@@ -164,14 +164,14 @@ void SwiGLUGradKernelImpl(const Context &ctx,
     } else {
       PADDLE_ENFORCE_NOT_NULL(
           dy,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Both gradients of Input(X) and Input(Y) is None."));
       PD_LAUNCH_SWIGLU_GRAD_CUDA_KERNEL(false, false, true);
     }
   } else {
     PADDLE_ENFORCE_NOT_NULL(
         dx,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Both gradients of Input(X) and Input(Y) is None."));
     while (n % vec_size != 0) {
       vec_size /= 2;

@@ -22,7 +22,7 @@
 #include <unordered_set>
 
 #include "paddle/fluid/framework/new_executor/workqueue/event_count.h"
-#include "paddle/fluid/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/memory/allocation/spin_lock.h"
 
 namespace paddle {
 namespace framework {

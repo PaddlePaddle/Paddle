@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -24,15 +26,9 @@ from .utils import (
     flatten_state_dict,
 )
 
-
-def check_state_dict(state_dict, process_group):
-    local_keys = list(state_dict.keys())
-    global_keys = []
-    paddle.distributed.all_gather_object(global_keys, local_keys, process_group)
-    for keys in global_keys[1:]:
-        assert (
-            keys == global_keys[0]
-        ), f"keys:{keys} != first_keys: {global_keys[0]}"
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.distributed.collective import Group
 
 
 def check_file_name(file_name, process_group):
@@ -102,10 +98,10 @@ def dedup_tensor(
 
 
 def save_state_dict(
-    state_dict,
-    path,
-    process_group=None,
-    coordinator_rank=0,
+    state_dict: dict[str, Tensor],
+    path: str,
+    process_group: Group | None = None,
+    coordinator_rank: int = 0,
 ) -> None:
     """
     Save the state_dict of model to path.
@@ -160,8 +156,6 @@ def save_state_dict(
         logger.debug(f"file_name:{file_name}")
         if use_dist:
             check_file_name(file_name, process_group)
-            # the parameter_name and order in state_dict should be the same
-            check_state_dict(flat_state_dict, process_group)
         metadata = Metadata()
         local_state_dict = {}
         local_state_dict_metadata = {}
@@ -172,6 +166,9 @@ def save_state_dict(
                 if not val._is_initialized():
                     continue
                 if val.is_dist():
+                    local_tensor = val._local_value()
+                    # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
+                    local_tensor.name = val.name
                     # when val is scalar, the shape is []
                     (
                         local_shape,
@@ -187,9 +184,6 @@ def save_state_dict(
                     )
                     if local_shape is None or global_offset is None:
                         continue
-                    local_tensor = val._local_value()
-                    # Note: The local_tensor must keep the same name with the original tensor. Otherwise, the StructuredToParameterName@@ mapping will be wrong.
-                    local_tensor.name = val.name
                 else:
                     local_shape = tuple(val.shape)
                     global_offset = (
@@ -199,8 +193,9 @@ def save_state_dict(
                     )
                     local_tensor = val
                 local_state_dict[key] = local_tensor
+                local_tenosr_dtype = str(local_tensor.dtype).split('.')[1]
                 local_state_dict_metadata[key] = LocalTensorMetadata(
-                    global_offset, local_shape
+                    global_offset, local_shape, local_tenosr_dtype
                 )
                 local_storage_metadata[
                     LocalTensorIndex(key, tuple(global_offset))

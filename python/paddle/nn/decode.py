@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
-import collections
 import warnings
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, overload
 
 import numpy as np
 
@@ -23,6 +24,14 @@ from paddle.common_ops_import import default_main_program
 from paddle.framework import in_dynamic_mode
 
 from ..base.data_feeder import convert_dtype
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from paddle import Tensor
+    from paddle._typing import NestedStructure
+    from paddle.nn import Embedding, Layer, RNNCellBase
+
 
 __all__ = []
 
@@ -205,15 +214,22 @@ class BeamSearchDecoder(Decoder):
             ...
     """
 
+    cell: RNNCellBase
+    embedding_fn: Embedding | Callable[..., Any] | None
+    output_fn: Layer | Callable[..., Any] | None
+    start_token: int
+    end_token: int
+    beam_size: int
+
     def __init__(
         self,
-        cell,
-        start_token,
-        end_token,
-        beam_size,
-        embedding_fn=None,
-        output_fn=None,
-    ):
+        cell: RNNCellBase,
+        start_token: int,
+        end_token: int,
+        beam_size: int,
+        embedding_fn: Embedding | Callable[..., Any] | None = None,
+        output_fn: Layer | Callable[..., Any] | None = None,
+    ) -> None:
         """
         Constructor of BeamSearchDecoder.
 
@@ -238,7 +254,7 @@ class BeamSearchDecoder(Decoder):
         self.beam_size = beam_size
 
     @staticmethod
-    def tile_beam_merge_with_batch(x, beam_size):
+    def tile_beam_merge_with_batch(x: Tensor, beam_size: int) -> Tensor:
         r"""
         Tile the batch dimension of a tensor. Specifically, this function takes
         a tensor t shaped `[batch_size, s0, s1, ...]` composed of minibatch
@@ -387,31 +403,30 @@ class BeamSearchDecoder(Decoder):
         topk_coordinates.stop_gradient = True
         return paddle.gather_nd(x, topk_coordinates)
 
-    class OutputWrapper(
-        collections.namedtuple(
-            "OutputWrapper", ("scores", "predicted_ids", "parent_ids")
-        )
-    ):
+    class OutputWrapper(NamedTuple):
         """
         The structure for the returned value `outputs` of `decoder.step`.
         A namedtuple includes scores, predicted_ids, parent_ids as fields.
         """
 
-        pass
+        scores: Tensor
+        predicted_ids: Tensor
+        parent_ids: Tensor
 
-    class StateWrapper(
-        collections.namedtuple(
-            "StateWrapper", ("cell_states", "log_probs", "finished", "lengths")
-        )
-    ):
+    class StateWrapper(NamedTuple):
         """
         The structure for the argument `states` of `decoder.step`.
         A namedtuple includes cell_states, log_probs, finished, lengths as fields.
         """
 
-        pass
+        cell_states: Tensor
+        log_probs: Tensor
+        finished: Tensor
+        lengths: Tensor
 
-    def initialize(self, initial_cell_states):
+    def initialize(
+        self, initial_cell_states: Tensor
+    ) -> tuple[Tensor, StateWrapper, Tensor]:
         r"""
         Initialize the BeamSearchDecoder.
 
@@ -567,7 +582,9 @@ class BeamSearchDecoder(Decoder):
         )
         return beam_search_output, beam_search_state
 
-    def step(self, time, inputs, states, **kwargs):
+    def step(
+        self, time: Tensor, inputs: Tensor, states: Tensor, **kwargs: Any
+    ) -> tuple[OutputWrapper, StateWrapper, Tensor, Tensor]:
         r"""
         Perform a beam search decoding step, which uses `cell` to get probabilities,
         and follows a beam search step to calculate scores and select candidate
@@ -627,7 +644,9 @@ class BeamSearchDecoder(Decoder):
 
         return (beam_search_output, beam_search_state, next_inputs, finished)
 
-    def finalize(self, outputs, final_states, sequence_lengths):
+    def finalize(
+        self, outputs: Tensor, final_states: Tensor, sequence_lengths: Tensor
+    ) -> tuple[Tensor, Tensor]:
         r"""
         Use `gather_tree` to backtrace along the beam search tree and construct
         the full predicted sequences.
@@ -658,7 +677,7 @@ class BeamSearchDecoder(Decoder):
         return predicted_ids, final_states
 
     @property
-    def tracks_own_finished(self):
+    def tracks_own_finished(self) -> Literal[True]:
         """
         BeamSearchDecoder reorders its beams and their finished state. Thus it
         conflicts with `dynamic_decode` function's tracking of finished states.
@@ -679,7 +698,7 @@ def _dynamic_decode_imperative(
     impute_finished=False,
     is_test=False,
     return_length=False,
-    **kwargs
+    **kwargs,
 ):
     def _maybe_copy(state, new_state, step_mask):
         # TODO: use where_op
@@ -738,9 +757,13 @@ def _dynamic_decode_imperative(
                     next_states,
                 )
         else:
-            warnings.warn(
-                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
-            ) if not hasattr(next_states, "lengths") else None
+            (
+                warnings.warn(
+                    "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+                )
+                if not hasattr(next_states, "lengths")
+                else None
+            )
             next_sequence_lengths = getattr(
                 next_states, "lengths", sequence_lengths
             )
@@ -801,7 +824,7 @@ def _dynamic_decode_declarative(
     impute_finished=False,
     is_test=False,
     return_length=False,
-    **kwargs
+    **kwargs,
 ):
     initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
     global_inputs, global_states, global_finished = (
@@ -903,9 +926,13 @@ def _dynamic_decode_declarative(
                     next_states,
                 )
         else:
-            warnings.warn(
-                "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
-            ) if not hasattr(next_states, "lengths") else None
+            (
+                warnings.warn(
+                    "`next_states` has no `lengths` attribute, the returned `sequence_lengths` would be all zeros."
+                )
+                if not hasattr(next_states, "lengths")
+                else None
+            )
             next_sequence_lengths = getattr(
                 next_states, "lengths", sequence_lengths
             )
@@ -991,6 +1018,51 @@ def _dynamic_decode_declarative(
     )
 
 
+@overload
+def dynamic_decode(
+    decoder: Decoder,
+    inits: object | None = ...,
+    max_step_num: int | None = ...,
+    output_time_major: bool = ...,
+    impute_finished: bool = ...,
+    is_test: bool = ...,
+    return_length: Literal[False] = ...,
+    **kwargs: Any,
+) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor]]:
+    ...
+
+
+@overload
+def dynamic_decode(
+    decoder: Decoder,
+    inits: object | None = ...,
+    max_step_num: int | None = ...,
+    output_time_major: bool = ...,
+    impute_finished: bool = ...,
+    is_test: bool = ...,
+    return_length: Literal[True] = ...,
+    **kwargs: Any,
+) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor], Tensor]:
+    ...
+
+
+@overload
+def dynamic_decode(
+    decoder: Decoder,
+    inits: object | None = ...,
+    max_step_num: int | None = ...,
+    output_time_major: bool = ...,
+    impute_finished: bool = ...,
+    is_test: bool = ...,
+    return_length: bool = ...,
+    **kwargs: Any,
+) -> (
+    tuple[NestedStructure[Tensor], NestedStructure[Tensor]]
+    | tuple[NestedStructure[Tensor], NestedStructure[Tensor], Tensor]
+):
+    ...
+
+
 def dynamic_decode(
     decoder,
     inits=None,
@@ -999,7 +1071,7 @@ def dynamic_decode(
     impute_finished=False,
     is_test=False,
     return_length=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
@@ -1082,7 +1154,7 @@ def dynamic_decode(
             impute_finished,
             is_test,
             return_length,
-            **kwargs
+            **kwargs,
         )
     else:
         return _dynamic_decode_declarative(
@@ -1093,5 +1165,5 @@ def dynamic_decode(
             impute_finished,
             is_test,
             return_length,
-            **kwargs
+            **kwargs,
         )

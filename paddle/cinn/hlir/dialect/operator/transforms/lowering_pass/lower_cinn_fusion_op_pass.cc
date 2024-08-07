@@ -19,7 +19,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/pre_analysis.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/refresh_combine_pattern.h"
@@ -28,46 +27,7 @@
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-PD_DECLARE_bool(cinn_bc_branch_optimize);
-
 namespace cinn::dialect::ir::details {
-
-pir::Operation* ProcessDyShapeGroup(const OpLoweringGroupPtr& group,
-                                    pir::PatternRewriter& rewriter) {  // NOLINT
-  // NOTE(dev): Need UpdateShapeOrDataExprs firstly and the logic
-  // will be migated into BucketLower later.
-  UpdateGroupShapeOrDataExprs(const_cast<OpLoweringGroupPtr&>(group));
-  auto group_inputs = GetBlockOutsideInput(group->ops());
-  GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
-  const auto& leaves = group_dim_expr_info.all_value_dim_exprs;
-  // has multiple branch
-  if (FLAGS_cinn_bc_branch_optimize && NeedBroadcastWithCF(leaves)) {
-    const auto& value_to_dim_expr_idx =
-        group_dim_expr_info.value_to_dim_expr_idx;
-    const std::shared_ptr<BroadcastTree> broadcast_tree =
-        ConstructBroadcastTree(leaves);
-    std::vector<pir::Type> output_types;
-    auto group_output_values = group->GetGroupOutputValues();
-    for (size_t i = 0; i < group_output_values.size(); ++i) {
-      output_types.push_back(group_output_values[i].type());
-    }
-    return CompileBroadcastTreeToConditionBlock(group,
-                                                *broadcast_tree,
-                                                value_to_dim_expr_idx,
-                                                group_inputs,
-                                                output_types,
-                                                rewriter);
-  } else {  // no condition block
-    // compile group to jit_kernel_op
-    std::vector<pir::Type> output_types;
-    for (const auto& value : group->output_values()) {
-      output_types.push_back(value.type());
-    }
-    auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
-        group_inputs, GetJitKernelAttr(group), output_types);
-    return jit_kernel_op;
-  }
-}
 class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
   FusionOpPattern(::pir::IrContext* context, const GroupInfoMap& group_infos)
@@ -147,18 +107,6 @@ class LowerCinnFusionOpPass : public pir::PatternRewritePass {
   mutable GroupInfoMap group_infos_;
 };
 
-class DyShapeFusionOpPattern : public FusionOpPattern {
- public:
-  using FusionOpPattern::FusionOpPattern;
-
- protected:
-  virtual pir::Operation* ProcessGroup(
-      const OpLoweringGroupPtr& group,
-      pir::PatternRewriter& rewriter) const {  // NOLINT
-    return ProcessDyShapeGroup(group, rewriter);
-  }
-};
-
 class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
  public:
   LowerCinnDyShapeFusionOpPass()
@@ -169,7 +117,7 @@ class LowerCinnDyShapeFusionOpPass : public pir::PatternRewritePass {
     context->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
     pir::RewritePatternSet ps(context);
-    ps.Add<DyShapeFusionOpPattern>(context, group_infos_);
+    ps.Add<FusionOpPattern>(context, group_infos_);
     ps.Add<RefreshCombineOpPattern>(context);
 
     return ps;

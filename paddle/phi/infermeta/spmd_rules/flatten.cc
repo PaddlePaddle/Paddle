@@ -36,10 +36,10 @@ int PreprocessAxis(int axis, int ndim) {
   PADDLE_ENFORCE_LT(
       axis,
       ndim,
-      phi::errors::InvalidArgument("The Start_axis or Stop_axis [%d] is not "
-                                   "less than the Tensor X's rank [%d].",
-                                   axis,
-                                   ndim));
+      common::errors::InvalidArgument("The Start_axis or Stop_axis [%d] is not "
+                                      "less than the Tensor X's rank [%d].",
+                                      axis,
+                                      ndim));
 
   return axis;
 }
@@ -100,10 +100,10 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
 
   // obtain target shape and use ReshapeInferSpmdDynamic to infer
   start_axis = PreprocessAxis(start_axis, x_ndim);
@@ -144,10 +144,10 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping.size()));
 
   // Step1: Build the transformation from the output shape
   // to original shape. This function infers the dims mapping
