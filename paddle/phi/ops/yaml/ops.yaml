@@ -4211,7 +4211,7 @@
   kernel :
     func : silu
   backward : silu_grad
-  interfaces : paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
 
 - op : sin
   args : (Tensor x)
@@ -4354,6 +4354,7 @@
            sqrt_sr {selected_rows -> selected_rows}
   inplace : (x -> out)
   backward : sqrt_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : square
   args : (Tensor x)
@@ -4881,6 +4882,7 @@
     data_type : input
   backward : view_dtype_grad
   no_need_buffer : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : view_shape
   args : (Tensor input, int64_t[] dims = {})
