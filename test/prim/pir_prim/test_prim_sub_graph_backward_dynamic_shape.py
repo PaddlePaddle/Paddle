@@ -123,6 +123,14 @@ def matmul_net(x, y):
     return paddle.matmul(x, y)
 
 
+def tanh_net(x):
+    return paddle.tanh(x)
+
+
+def cumsum_net(x):
+    return paddle.cumsum(x, axis=1)
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -1447,6 +1455,30 @@ class TestPrimMatmulWithGrad5(TestPrimTwoWithGrad):
         self.net = matmul_net
         self.enable_cinn = False
         self.tol = 1e-5
+
+
+class TestPrimTanhWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = tanh_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimCumsumWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = cumsum_net
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 if __name__ == "__main__":

@@ -52,7 +52,11 @@ void cumsum_grad(const Tensor& x,
                  Tensor* x_grad) {
   if (x_grad) {
     auto grad = cumsum<T>(out_grad, axis, flatten, exclusive, !reverse);
-    grad = reshape<T>(grad, x.shape());
+    if (has_dynamic_shape(x.shape())) {
+      grad = backend::reshape<T>(grad, shape<T>(x));
+    } else {
+      grad = reshape<T>(grad, x.shape());
+    }
     set_output<T>(grad, x_grad);
   }
 }
@@ -500,7 +504,7 @@ void cos_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
   if (!grad_x) return;
-  auto grad_x_tmp = grad_out * (1 - out * out);
+  auto grad_x_tmp = grad_out * (full_scalar<T>(1.0, out.dtype()) - out * out);
   set_output<T>(grad_x_tmp, grad_x);
 }
 
@@ -997,7 +1001,8 @@ void log_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
 template <typename T>
 void square_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    Tensor x_grad_tmp = 2 * x * out_grad;
+    auto two = full_scalar<T>(2.0, x.dtype());
+    Tensor x_grad_tmp = two * x * out_grad;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
@@ -1043,6 +1048,7 @@ void silu_grad(const Tensor& x,
                const Tensor& out_grad,
                Tensor* x_grad) {
   if (x_grad) {
+    auto one = full_scalar<T>(1.0, x.dtype());
     auto org_dtype = x.dtype();
     bool need_cast = org_dtype == phi::DataType::FLOAT16 ||
                      org_dtype == phi::DataType::BFLOAT16;
@@ -1050,10 +1056,9 @@ void silu_grad(const Tensor& x,
       auto x_cast = cast<T>(x, phi::DataType::FLOAT32);
       auto out_cast = cast<T>(out, phi::DataType::FLOAT32);
       auto out_grad_cast = cast<T>(out_grad, phi::DataType::FLOAT32);
-      auto res = out_grad_cast * sigmoid<T>(x_cast) * (1.0 + x_cast - out_cast);
+      auto res = out_grad_cast * sigmoid<T>(x_cast) * (one + x_cast - out_cast);
       set_output<T>(cast<T>(res, org_dtype), x_grad);
     } else {
-      auto one = full_scalar<T>(1.0, x.dtype());
       auto res = out_grad * sigmoid<T>(x) * (one + x - out);
       set_output<T>(res, x_grad);
     }
@@ -1663,7 +1668,8 @@ void hardswish_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     auto offset = full<T>(common::vectorize(x.dims()), 3.0, x.dtype());
     auto condition = less_equal<T>(x, offset);
-    auto tmp1 = where<T>(condition, out_grad * ((x / 3.0) + 0.5), out_grad);
+    auto factor = full_scalar<T>(0.5, x.dtype());
+    auto tmp1 = where<T>(condition, out_grad * ((x / 3.0) + factor), out_grad);
     auto res = where<T>(
         less_than<T>(x, full<T>(common::vectorize(x.dims()), -3.0, x.dtype())),
         full<T>(common::vectorize(x.dims()), 0.0, x.dtype()),

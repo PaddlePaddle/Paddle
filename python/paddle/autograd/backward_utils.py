@@ -49,12 +49,12 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.split",
     "pd_op.multiply",
     "pd_op.relu",
-    "pd_op.sigmoid",
     "pd_op.divide",
     "pd_op.pow",
     "pd_op.elementwise_pow",
     "pd_op.softmax",
     "pd_op.matmul",
+    "pd_op.cumsum",
 ]
 
 
