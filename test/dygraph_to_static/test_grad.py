@@ -159,11 +159,7 @@ class UnuseGradVarLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    def forward(
-        self,
-        var_0,
-        var_1,
-    ):
+    def forward(self, var_0, var_1):
         var_1 = var_1 + 1
         return var_0, var_1
 

@@ -118,7 +118,7 @@ IfInstruction::IfInstruction(size_t id,
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
     if (value.use_count() > 0) {
-      VLOG(0) << "value " << i << " use conutn != 0";
+      VLOG(6) << "value " << i << " use conutn != 0";
       is_last_op = false;
     }
   }
