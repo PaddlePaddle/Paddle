@@ -48,14 +48,9 @@ class MyLayer(nn.Layer):
 def shard_fn(layer_name, layer, process_mesh):
     if isinstance(layer, nn.Linear):
         for name, param in layer.named_parameters():
-            if 'weight' in name:
-                dist_param = dist.shard_tensor(
-                    param, process_mesh, [dist.Replicate()]
-                )
-            else:
-                dist_param = dist.shard_tensor(
-                    param, process_mesh, [dist.Replicate()]
-                )
+            dist_param = dist.shard_tensor(
+                param, process_mesh, [dist.Replicate()]
+            )
             layer.add_parameter(name, dist_param)
 
 

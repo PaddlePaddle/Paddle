@@ -49,6 +49,15 @@ void AllReduceInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void AnchorGeneratorInferMeta(const MetaTensor& input,
+                              const std::vector<float>& anchor_sizes,
+                              const std::vector<float>& aspect_ratios,
+                              const std::vector<float>& variances,
+                              const std::vector<float>& stride,
+                              float offset,
+                              MetaTensor* anchors,
+                              MetaTensor* variances_out);
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
@@ -149,7 +158,8 @@ void CropInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
-void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
+void CScatterInferMeta(
+    const MetaTensor& x, int ring_id, int root, int nranks, MetaTensor* out);
 
 void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
@@ -851,6 +861,8 @@ void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedExceptDtypeInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out);
 void UnchangedArrayInferMeta(const MetaTensor& x, MetaTensor* out);
+void UnchangedInferMetaIncludingTensorArray(const MetaTensor& x,
+                                            MetaTensor* out);
 void UnchangedVectorInferMeta(const std::vector<const MetaTensor*>& xs,
                               std::vector<MetaTensor*> outs);
 

@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import itertools
+import os
 import weakref
 from collections import OrderedDict
+from distutils.util import strtobool
 
 import numpy as np
 
@@ -41,9 +43,9 @@ alignment = {
 }
 
 align = {
-    paddle.float16.value: 2,
-    paddle.bfloat16.value: 2,
-    paddle.float32.value: 4,
+    paddle.float16: 2,
+    paddle.bfloat16: 2,
+    paddle.float32: 4,
 }
 
 
@@ -600,6 +602,14 @@ class FusedCommBuffer:
         if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
+
+        need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
+        if need_check:
+            naninf = paddle.isfinite(self.grad_storage).all()
+            if not naninf.item():
+                raise ValueError(
+                    f"Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
+                )
 
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(

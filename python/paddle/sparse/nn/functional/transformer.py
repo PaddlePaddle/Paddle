@@ -12,22 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 __all__ = []
 
 from paddle import _C_ops
 from paddle.base.framework import dygraph_only
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 
 @dygraph_only
 def attention(
-    query,
-    key,
-    value,
-    sparse_mask,
-    key_padding_mask=None,
-    attn_mask=None,
-    name=None,
-):
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    sparse_mask: Tensor,
+    key_padding_mask: Tensor | None = None,
+    attn_mask: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Note:
         This API is only used from ``CUDA 11.8`` .
@@ -52,11 +59,11 @@ def attention(
         sparse_mask (SparseCsrTensor): The sparse layout in the Attention module. Its dense shape
             is `[batch_size*num_heads, seq_len, seq_len]`. `nnz` of each batch must be the same.
             dtype of `crows` and `cols` must be int64, dtype of `values` can be float32 or float64.
-        key_padding_mask (DenseTensor, optional): The key padding mask tensor in the Attention module.
+        key_padding_mask (DenseTensor|None, optional): The key padding mask tensor in the Attention module.
             2D tensor with shape: [batch_size, seq_len]. dtype can be float32 or float64. Default: None.
-        attn_mask (DenseTensor, optional): The attention mask tensor in the Attention module.
+        attn_mask (DenseTensor|None, optional): The attention mask tensor in the Attention module.
             2D tensor with shape: [seq_len, seq_len]. dtype can be float32 or float64. Default: None.
-        name (str, optional): The default value is None. Normally there is no need for user
+        name (str|None, optional): The default value is None. Normally there is no need for user
             to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

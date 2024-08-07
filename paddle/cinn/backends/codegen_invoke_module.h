@@ -25,7 +25,7 @@ namespace backends {
 /**
  * CINN jit instructions support two kinds of invoke function, which can be
  * represented like this:
- * InvokeFunc = HostFunc | Switch<HostFunc>
+ * InvokeFunc = HostFunc | SwitchHostFunc
  * HostFunc = X86Func | CudaHostFunc | HipHostFunc | ......
  * CodeGenInvokeModule takes a CINN invoke Module(a module that only contains
  * functions that jit instructions actually invoke) and output a LLVM module.
@@ -67,7 +67,7 @@ class CodeGenHost : public CodeGenInvokeModule {
 };
 
 /**
- * In the Switch<HostFunc> pattern, InvokeFunc is a switch statement where
+ * In the SwitchHostFunc pattern, InvokeFunc is a switch statement where
  * every case is a call of HostFunc. All the callee functions have the same
  * parameters with the caller function.
  */

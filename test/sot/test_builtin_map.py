@@ -15,13 +15,16 @@
 from __future__ import annotations
 
 import unittest
-from typing import Iterable
+from typing import TYPE_CHECKING
 
 from test_case_base import TestCaseBase
 
 from paddle.jit import sot
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def double_num(num: float):

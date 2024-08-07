@@ -35,7 +35,7 @@ namespace platform {
 
 inline void ClearMKLDNNCache(const phi::Place& place, void* ptr = nullptr) {
   // Clear mkl-dnn cache,
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
     dev_ctx->ResetBlobMap(ptr);
@@ -44,7 +44,7 @@ inline void ClearMKLDNNCache(const phi::Place& place, void* ptr = nullptr) {
 
 inline void DontClearMKLDNNCache(const phi::Place& place) {
   // Clear mkl-dnn cache,
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
     dev_ctx->BlockNextCacheClearing();
@@ -53,7 +53,7 @@ inline void DontClearMKLDNNCache(const phi::Place& place) {
 
 // If OneDNN build and CPU place then register suffix in DeviceContext
 inline void AttachPointerHashToMKLDNNKey(void* ptr, const phi::Place& place) {
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     // Static vars will remember first executor and its thread
     // so both of them need to be processed by the same thread within
     // critical section
@@ -80,7 +80,7 @@ inline void AttachPointerHashToMKLDNNKey(void* ptr, const phi::Place& place) {
 inline void RegisterModelLayout(
     std::vector<std::unique_ptr<framework::OperatorBase>>& ops,  // NOLINT
     const phi::Place& place) {
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     // If there is already registered NHWC then quit this call
     // not to overwrite setting with analysis of internal "while" op block
     if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -114,7 +114,7 @@ inline void RegisterModelLayout(
 
 inline void RegisterModelLayout(const ::pir::Block* ir_block,
                                 const phi::Place& place) {
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     // If there is already registered NHWC then quit this call
     // not to overwrite setting with analysis of internal "while" op block
     if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
@@ -184,7 +184,7 @@ inline bool FoundOneDNNKernel(const framework::OpDesc* op) {
   auto it = all_kernels.find(op_type);
   if (it != all_kernels.end()) {
     for (auto& kernel_pair : it->second) {
-      if (platform::is_cpu_place(kernel_pair.first.place_) &&
+      if (phi::is_cpu_place(kernel_pair.first.place_) &&
           (kernel_pair.first.library_type_ ==
            framework::LibraryType::kMKLDNN)) {
         return true;

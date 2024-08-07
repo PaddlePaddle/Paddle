@@ -115,6 +115,14 @@ def pow_net(x):
     return paddle.pow(x, 3.2)
 
 
+def softmax_net(x):
+    return paddle.nn.functional.softmax(x, axis=-1)
+
+
+def matmul_net(x, y):
+    return paddle.matmul(x, y)
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -1328,6 +1336,117 @@ class TestPrimPowWithGrad(TestPrimBaseWithGrad):
         self.net = pow_net
         self.enable_cinn = False
         self.tol = 1e-6
+
+
+class TestPrimSoftmaxWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = softmax_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSoftmaxWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = softmax_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSoftmaxWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [30, 200, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = softmax_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimMatmulWithGrad1(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 200]
+        self.init_x_shape = [None, None, 200]
+        self.y_shape = [30, 200, 40]
+        self.init_y_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = matmul_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimMatmulWithGrad2(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [1, 30, 40, 200]
+        self.init_x_shape = [None, None, None, 200]
+        self.y_shape = [30, 1, 200, 40]
+        self.init_y_shape = [None, None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = matmul_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimMatmulWithGrad3(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [1, 30, 40, 200]
+        self.init_x_shape = [1, None, None, 200]
+        self.y_shape = [30, 1, 200, 40]
+        self.init_y_shape = [None, 1, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = matmul_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimMatmulWithGrad4(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 1, 40, 200]
+        self.init_x_shape = [None, None, None, 200]
+        self.y_shape = [1, 30, 200, 40]
+        self.init_y_shape = [None, None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = matmul_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+
+
+class TestPrimMatmulWithGrad5(TestPrimTwoWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 1, 40, 200]
+        self.init_x_shape = [None, 1, None, 200]
+        self.y_shape = [1, 30, 200, 40]
+        self.init_y_shape = [1, None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = matmul_net
+        self.enable_cinn = False
+        self.tol = 1e-5
 
 
 if __name__ == "__main__":

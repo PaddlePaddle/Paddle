@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence, Union
+
 import numpy as np
 
 import paddle
@@ -20,6 +24,21 @@ from paddle.base.framework import Variable
 from paddle.distribution import distribution
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import multinomial
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor
+    from paddle._typing import NestedSequence
+    from paddle._typing.dtype_like import _DTypeLiteral
+
+    _CategoricalBoundary: TypeAlias = Union[
+        Sequence[float],
+        NestedSequence[float],
+        npt.NDArray[Union[np.float32, np.float64]],
+        Tensor,
+    ]
 
 
 class Categorical(distribution.Distribution):
@@ -41,7 +60,7 @@ class Categorical(distribution.Distribution):
 
     Args:
         logits(list|tuple|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
-        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name(str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -65,7 +84,7 @@ class Categorical(distribution.Distribution):
             >>> cat2 = Categorical(y)
 
             >>> paddle.seed(1000) # on CPU device
-            >>> print(cat.sample([2,3]))
+            >>> print(cat.sample([2, 3]))
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1, 5],
             [3, 4, 5]])
@@ -78,7 +97,7 @@ class Categorical(distribution.Distribution):
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.07195196])
 
-            >>> value = paddle.to_tensor([2,1,3])
+            >>> value = paddle.to_tensor([2, 1, 3])
             >>> print(cat.probs(value))
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.00608027, 0.10829761, 0.26965630])
@@ -88,7 +107,14 @@ class Categorical(distribution.Distribution):
             [-5.10270691, -2.22287226, -1.31060708])
     """
 
-    def __init__(self, logits, name=None):
+    logits: Tensor
+    dtype: _DTypeLiteral
+
+    def __init__(
+        self,
+        logits: _CategoricalBoundary,
+        name: str | None = None,
+    ) -> None:
         """
         Args:
             logits(list|tuple|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
@@ -113,14 +139,14 @@ class Categorical(distribution.Distribution):
                 'float32',
                 'float64',
             ]:
-                self.dtype = logits.dtype
+                self.dtype = convert_dtype(logits.dtype)
             self.logits = self._to_tensor(logits)[0]
             if self.dtype != convert_dtype(self.logits.dtype):
                 self.logits = paddle.cast(self.logits, dtype=self.dtype)
         dist_sum = paddle.sum(self.logits, axis=-1, keepdim=True)
         self._prob = self.logits / dist_sum
 
-    def sample(self, shape):
+    def sample(self, shape: Sequence[int]) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
@@ -141,10 +167,10 @@ class Categorical(distribution.Distribution):
                 Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.55355281, 0.20714243, 0.01162981, 0.51577556, 0.36369765, 0.26091650])
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('Random output')
                 >>> cat = Categorical(x)
                 >>> paddle.seed(1000) # on CPU device
-                >>> print(cat.sample([2,3]))
+                >>> print(cat.sample([2, 3]))
                 Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
                 [[0, 1, 5],
                 [3, 4, 5]])
@@ -177,7 +203,7 @@ class Categorical(distribution.Distribution):
 
         return paddle.reshape(sample_index, sample_shape, name=name)
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Categorical) -> Tensor:
         """The KL-divergence between two Categorical distributions.
 
         Args:
@@ -234,7 +260,7 @@ class Categorical(distribution.Distribution):
 
         return kl
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         """Shannon entropy in nats.
 
         Returns:
@@ -268,7 +294,7 @@ class Categorical(distribution.Distribution):
         entropy = paddle.scale(neg_entropy, scale=-1.0, name=name)
         return entropy
 
-    def probs(self, value):
+    def probs(self, value: Tensor) -> Tensor:
         """Probabilities of the given category (``value``).
 
         If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as
@@ -298,7 +324,7 @@ class Categorical(distribution.Distribution):
 
                 >>> cat = Categorical(x)
 
-                >>> value = paddle.to_tensor([2,1,3])
+                >>> value = paddle.to_tensor([2, 1, 3])
                 >>> print(cat.probs(value))
                 Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.00608027, 0.10829761, 0.26965630])
@@ -322,7 +348,7 @@ class Categorical(distribution.Distribution):
             else:
                 return paddle.take_along_axis(self._prob, value, axis=-1)
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probabilities of the given category. Refer to ``probs`` method.
 
         Args:
@@ -345,7 +371,7 @@ class Categorical(distribution.Distribution):
 
                 >>> cat = Categorical(x)
 
-                >>> value = paddle.to_tensor([2,1,3])
+                >>> value = paddle.to_tensor([2, 1, 3])
                 >>> print(cat.log_prob(value))
                 Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [-5.10270691, -2.22287226, -1.31060708])

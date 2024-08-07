@@ -48,13 +48,13 @@ void fp8_fp8_half_gemm(
     cublaslt_fp8_fp8_fp16_gemm<Context>(
         dev_ctx, x, y, bias, trans_x, trans_y, scale, activation_type, out);
   } else {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "fp8_fp8_half_gemm_fused only support bfloat16 and float16 output"));
   }
 
 #else
-  PADDLE_THROW(
-      phi::errors::Fatal("fp8_fp8_half_gemm_fused need CUDA 12.1+ and sm_89+"));
+  PADDLE_THROW(common::errors::Fatal(
+      "fp8_fp8_half_gemm_fused need CUDA 12.1+ and sm_89+"));
 #endif
 }
 

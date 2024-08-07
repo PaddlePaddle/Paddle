@@ -2260,6 +2260,13 @@ def hstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Stacks all the input tensors ``x`` along horizontal axis.
     All tensors must be of the same dtype.
 
+    The image below illustrates how ``hstack`` works.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/hstack.png
+        :width: 500
+        :alt: legend of hstack API
+        :align: center
+
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
@@ -4437,8 +4444,17 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.expand_as(x, None, y.shape)
+    elif in_pir_mode():
+        if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
+            raise ValueError(
+                "When the data type of input 'x' for expand_as is bool, "
+                "you must set its stop_gradient to be False by "
+                "some_var.stop_gradient = True, supporting "
+                "some_var as the input 'x'."
+            )
+        return _C_ops.expand_as(x, y, y.shape)
     else:
         check_variable_and_dtype(
             x,
@@ -6267,7 +6283,7 @@ def take_along_axis(
 def put_along_axis(
     arr: Tensor,
     indices: Tensor,
-    values: int | Tensor,
+    values: float | Tensor,
     axis: int,
     reduce: Literal[
         'assign', 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'
@@ -6282,7 +6298,7 @@ def put_along_axis(
         arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr if broadcast is 'True'. Supported data type are int and int64.
-        values (int|Tensor) : The value element(s) to put. The data types should be same as arr.
+        values (scalar|Tensor) : The value element(s) to put. The data types should be same as arr.
         axis (int) : The axis to put 1d slices along.
         reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul', 'multiply', 'mean', 'amin' and 'amax'.
         include_self (bool, optional): whether to reduce with the elements of arr, default is 'True'.
@@ -6433,12 +6449,13 @@ def put_along_axis(
 def put_along_axis_(
     arr: Tensor,
     indices: Tensor,
-    values: Tensor,
+    values: float | Tensor,
     axis: int,
     reduce: Literal[
         'assign', 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'
     ] = "assign",
     include_self: bool = True,
+    broadcast: bool = True,
 ):
     r"""
     Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
@@ -6449,15 +6466,41 @@ def put_along_axis_(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
-    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    values = (
-        paddle.to_tensor(values)
-        if not isinstance(values, paddle.Tensor)
-        else values
-    )
-    if broadcast_shape:
-        indices = paddle.broadcast_to(indices, broadcast_shape)
-    values = paddle.broadcast_to(values, indices.shape)
+    if broadcast:
+        broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+        values = (
+            paddle.to_tensor(values)
+            if not isinstance(values, paddle.Tensor)
+            else values
+        )
+        if broadcast_shape:
+            indices = paddle.broadcast_to(indices, broadcast_shape)
+        values = paddle.broadcast_to(values, indices.shape)
+    else:
+        if isinstance(values, (paddle.Tensor, paddle.pir.Value)):
+            if len(indices.shape) != len(values.shape):
+                raise ValueError(
+                    "`indices` and `values` must have the same number of dimensions!"
+                )
+            for i in range(len(arr.shape)):
+                if (
+                    i != axis and arr.shape[i] < indices.shape[i]
+                ) or indices.shape[i] > values.shape[i]:
+                    raise RuntimeError(
+                        f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis} and to be smaller size than values {values.shape}"
+                    )
+        else:
+            values = paddle.to_tensor(values).astype(arr.dtype)
+            elements = 1
+            for num in values.shape:
+                elements *= num
+            if elements == 1:  # paddle.pir.Value has no attribute 'size'
+                values = paddle.broadcast_to(values, indices.shape)
+        axis_max_size = arr.shape[axis]
+        if not (indices < axis_max_size).all():
+            raise RuntimeError(
+                f"one of element of indices is out of bounds for dimension {axis} with size {axis_max_size}"
+            )
     return _C_ops.put_along_axis_(
         arr, indices, values, axis, reduce, include_self
     )
@@ -6862,6 +6905,15 @@ def view_as(x: Tensor, other: Tensor, name: str | None = None) -> Tensor:
 
     Note that the output Tensor will share data with origin Tensor and doesn't
     have a Tensor copy in ``dygraph`` mode.
+
+    The following figure shows a view_as operation - a three-dimensional tensor with a shape of [2, 4, 6]
+    is transformed into a two-dimensional tensor with a shape of [8, 6] through the view_as operation.
+    We can clearly see the corresponding relationship between the elements before and after the transformation.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/view_as.png
+        :width: 800
+        :alt: legend of view_as API
+        :align: center
 
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``

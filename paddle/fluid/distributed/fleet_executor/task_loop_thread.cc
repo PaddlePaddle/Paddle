@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/distributed/fleet_executor/task_loop_thread.h"
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/distributed/fleet_executor/task_loop.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 
 namespace paddle::distributed {
 
@@ -33,7 +33,7 @@ TaskLoop* TaskLoopThread::StartLoop() {
   PADDLE_ENFORCE_EQ(
       start_,
       false,
-      platform::errors::PreconditionNotMet("thread is already running."));
+      common::errors::PreconditionNotMet("thread is already running."));
   start_ = true;
   thread_ = std::thread([this]() { Loop(); });
 

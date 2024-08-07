@@ -1001,7 +1001,7 @@ def conv1d_transpose(
     x = unsqueeze(x, axis=[squeeze_axis])
     weight = unsqueeze(weight, axis=[-1])
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = getattr(_C_ops, op_type)(
             x,
             weight,

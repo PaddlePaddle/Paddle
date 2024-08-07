@@ -15,19 +15,19 @@ limitations under the License. */
 #include "cuda_runtime.h"  // NOLINT
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
 TEST(Device, DeviceContextWithCUDAGraph) {
-  using paddle::platform::CUDAPlace;
-  using paddle::platform::DeviceContext;
-  using paddle::platform::DeviceContextPool;
-  using paddle::platform::Place;
+  using phi::DeviceContext;
+  using phi::DeviceContextPool;
   using phi::GPUContext;
+  using phi::GPUPlace;
+  using phi::Place;
 
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  Place place = CUDAPlace(0);
+  Place place = GPUPlace(0);
   auto* dev_ctx = pool.Get(place);
 
   paddle::platform::BeginCUDAGraphCapture(

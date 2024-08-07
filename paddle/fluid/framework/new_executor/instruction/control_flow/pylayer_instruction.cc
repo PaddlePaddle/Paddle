@@ -45,13 +45,13 @@ namespace framework {
 
 PyLayerInstruction::PyLayerInstruction(
     size_t id,
-    const platform::Place& place,
+    const phi::Place& place,
     pir::Operation* op,
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place), output_vars_(), fwd_skip_gc_names_() {
   PADDLE_ENFORCE(op->isa<paddle::dialect::PyLayerOp>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Cond instruction only support pylayer op"));
   auto pylayer_op = op->dyn_cast<paddle::dialect::PyLayerOp>();
   op_ = op;
@@ -95,7 +95,7 @@ PyLayerInstruction::PyLayerInstruction(
       PADDLE_ENFORCE_EQ(
           value_exec_info->HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "output should in name map, [%d] 'th output of [%s] op",
               i,
               "pylayer op"));

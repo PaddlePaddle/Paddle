@@ -32,7 +32,7 @@ bool CUDNNPlacementPass::IsSupport(const Node* op) const {
     return false;
   }
   for (auto& kernel_pair : it->second) {
-    if (platform::is_gpu_place(kernel_pair.first.place_) &&
+    if (phi::is_gpu_place(kernel_pair.first.place_) &&
         (kernel_pair.first.library_type_ == LibraryType::kCUDNN)) {
       return true;
     }

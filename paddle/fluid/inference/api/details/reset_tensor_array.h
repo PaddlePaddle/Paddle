@@ -65,7 +65,7 @@ struct TensorArrayBatchCleaner {
  private:
   bool flag_{true};
   bool no_tensor_flag_{true};
-  std::vector<framework::LoDTensorArray *> arrays_;
+  std::vector<phi::TensorArray *> arrays_;
 
   std::unordered_set<int> valid_types_;
   std::unordered_set<framework::Variable *> no_tensor_vars_;

@@ -341,8 +341,7 @@ TEST(TensorFromDLPack, Tensor) {
     // Copy to GPUTensor
     gpu_tensor.Resize(common::make_ddim({3, 3}));
     phi::GPUPlace gpu_place;
-    auto& gpu_ctx =
-        *paddle::platform::DeviceContextPool::Instance().GetByPlace(gpu_place);
+    auto& gpu_ctx = *phi::DeviceContextPool::Instance().GetByPlace(gpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
     gpu_ctx.Wait();
 
@@ -382,8 +381,8 @@ TEST(TensorContainsNAN, CPU) {
 
   {
     phi::DenseTensor src;
-    paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
+    phi::dtype::float16* buf =
+        src.mutable_data<phi::dtype::float16>({3}, phi::CPUPlace());
     buf[0] = 0.0;
     buf[1].x = 0x7fff;
     buf[2] = 0.0;
@@ -407,8 +406,8 @@ TEST(TensorContainsInf, CPU) {
 
   {
     phi::DenseTensor src;
-    paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
+    phi::dtype::float16* buf =
+        src.mutable_data<phi::dtype::float16>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;
@@ -447,8 +446,8 @@ TEST(TensorIsfinite, CPU) {
 
   {
     phi::DenseTensor src, out;
-    paddle::platform::float16* buf =
-        src.mutable_data<paddle::platform::float16>({3}, phi::CPUPlace());
+    phi::dtype::float16* buf =
+        src.mutable_data<phi::dtype::float16>({3}, phi::CPUPlace());
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;
@@ -506,10 +505,9 @@ TEST(Tensor, FromAndToStream) {
     TensorToStream(oss, gpu_tensor, gpu_ctx);
 
     std::istringstream iss(oss.str());
-    TensorFromStream(
-        iss,
-        &dst_tensor,
-        *platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+    TensorFromStream(iss,
+                     &dst_tensor,
+                     *phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
     int* dst_ptr = dst_tensor.mutable_data<int>(phi::CPUPlace());
     for (int i = 0; i < 6; ++i) {

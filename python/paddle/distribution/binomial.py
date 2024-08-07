@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distribution import distribution
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 
 class Binomial(distribution.Distribution):
@@ -67,7 +74,13 @@ class Binomial(distribution.Distribution):
             [2.94053698, 3.00781751, 2.51124287])
     """
 
-    def __init__(self, total_count, probs):
+    dtype: _DTypeLiteral
+    total_count: Tensor
+    probs: Tensor
+
+    def __init__(
+        self, total_count: int | Tensor, probs: float | Tensor
+    ) -> None:
         self.dtype = paddle.get_default_dtype()
         self.total_count, self.probs = self._to_tensor(total_count, probs)
 
@@ -77,11 +90,13 @@ class Binomial(distribution.Distribution):
             batch_shape = self.total_count.shape
         super().__init__(batch_shape)
 
-    def _to_tensor(self, total_count, probs):
+    def _to_tensor(
+        self, total_count: int | Tensor, probs: float | Tensor
+    ) -> list[Tensor]:
         """Convert the input parameters into Tensors if they were not and broadcast them
 
         Returns:
-            Tuple[Tensor, Tensor]: converted total_count and probs.
+            list[Tensor]: converted total_count and probs.
         """
         # convert type
         if isinstance(probs, float):
@@ -97,7 +112,7 @@ class Binomial(distribution.Distribution):
         return paddle.broadcast_tensors([total_count, probs])
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of binomial distribution.
 
         Returns:
@@ -106,7 +121,7 @@ class Binomial(distribution.Distribution):
         return self.total_count * self.probs
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of binomial distribution.
 
         Returns:
@@ -114,7 +129,7 @@ class Binomial(distribution.Distribution):
         """
         return self.total_count * self.probs * (1 - self.probs)
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate binomial samples of the specified shape. The final shape would be ``shape+batch_shape`` .
 
         Args:
@@ -139,7 +154,7 @@ class Binomial(distribution.Distribution):
             )
             return paddle.cast(sample, self.dtype)
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         r"""Shannon entropy in nats.
 
         The entropy is
@@ -159,7 +174,7 @@ class Binomial(distribution.Distribution):
         log_prob = self.log_prob(values)
         return -(paddle.exp(log_prob) * log_prob).sum(0)
 
-    def _enumerate_support(self):
+    def _enumerate_support(self) -> Tensor:
         """Return the support of binomial distribution [0, 1, ... ,n]
 
         Returns:
@@ -171,14 +186,14 @@ class Binomial(distribution.Distribution):
         values = values.reshape((-1,) + (1,) * len(self.batch_shape))
         return values
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """Log probability density/mass function.
 
         Args:
-          value (Tensor): The input tensor.
+            value (Tensor): The input tensor.
 
         Returns:
-          Tensor: log probability. The data type is the same as `probs`.
+            Tensor: log probability. The data type is the same as `probs`.
         """
         value = paddle.cast(value, dtype=self.dtype)
 
@@ -200,7 +215,7 @@ class Binomial(distribution.Distribution):
             neginf=-eps,
         )
 
-    def prob(self, value):
+    def prob(self, value: Tensor) -> Tensor:
         """Probability density/mass function.
 
         Args:
@@ -211,7 +226,7 @@ class Binomial(distribution.Distribution):
         """
         return paddle.exp(self.log_prob(value))
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Binomial) -> Tensor:
         r"""The KL-divergence between two binomial distributions with the same :attr:`total_count`.
 
         The probability density function (pdf) is

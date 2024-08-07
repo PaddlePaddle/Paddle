@@ -21,7 +21,6 @@
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/framework/pir/trivial_op_util.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
@@ -138,7 +137,7 @@ std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op);
 std::vector<FusibleOp> TransformReduceLoopRange(
     const ReduceOp& upstream,
     FusibleOp* downstream,
-    std::vector<size_t> fake_reduce_iter_idx);
+    const std::vector<size_t>& fake_reduce_iter_idx);
 
 template <typename T>
 std::vector<T> FilterWithFakeReduceIter(
@@ -166,11 +165,13 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr);
 
 struct FusionGroupInfo {
   std::vector<int64_t> loop_ranges;
+  std::vector<int64_t> loop_strides;
   std::vector<int64_t> reduce_axis;
   std::vector<std::string> reduce_var_name;
 
   std::string DebugPrint() {
     return "GroupInfo\nloop_ranges: " + cinn::utils::Join(loop_ranges, " ") +
+           "\nloop_strides: " + cinn::utils::Join(loop_strides, ", ") +
            "\nreduce_axis: " + cinn::utils::Join(reduce_axis, " ") +
            "\nreduce_var_name: " + cinn::utils::Join(reduce_var_name, " ");
   }
@@ -178,11 +179,6 @@ struct FusionGroupInfo {
 
 FusionGroupInfo GetFusionGroupInfo(
     const std::vector<ir::Expr>& op_compute_bodies);
-
-std::vector<ir::Expr> OperationFusion(
-    const std::vector<::pir::Operation*>& ops,
-    const std::vector<ir::Expr>& op_compute_bodies,
-    const std::vector<::pir::Value>& outputs);
 
 }  // namespace pir
 }  // namespace framework

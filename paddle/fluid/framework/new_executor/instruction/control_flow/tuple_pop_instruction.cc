@@ -22,7 +22,7 @@
 namespace paddle {
 namespace framework {
 TuplePopInstruction::TuplePopInstruction(size_t id,
-                                         const platform::Place& place,
+                                         const phi::Place& place,
                                          ::pir::Operation* op,
                                          ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
@@ -113,7 +113,7 @@ void ShareVarData(const Variable* src_var, Variable* dst_var) {
       ShareVarData(src_var_array.at(i), copy_var);
     }
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Output only support DenseTensorType "
         "or SelectedRowsType or TensorArrayType"));
   }

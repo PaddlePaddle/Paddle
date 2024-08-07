@@ -13,15 +13,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import logging
 import threading
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
 import paddle
 from paddle.base.log_helper import get_logger
 from paddle.incubate import asp
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    from paddle.nn import Layer
+
+    from .utils import MaskAlgo
 
 __all__ = []
 
@@ -30,7 +40,13 @@ _logger = get_logger(
 )
 
 
-def _default_pruning(weight_nparray, m, n, func_name, param_name):
+def _default_pruning(
+    weight_nparray: npt.NDArray[Any],
+    m: int,
+    n: int,
+    func_name: MaskAlgo,
+    param_name: str,
+) -> tuple[npt.NDArray[Any], npt.NDArray[Any]]:
     # if the to-be-pruned dimension's size is smaller than m, we don't prune it. This strong assertion is required by the inference from cuSparseLT.
     shape = weight_nparray.shape
     weight_pruned_nparray = copy.deepcopy(weight_nparray)
@@ -77,7 +93,16 @@ _supported_layers_and_prune_func_map_lock = threading.Lock()
 supported_layers_and_prune_func_map = {}
 
 
-def add_supported_layer(layer, pruning_func=None):
+def add_supported_layer(
+    layer: Layer | type[Layer] | str,
+    pruning_func: (
+        Callable[
+            [npt.NDArray[Any], int, int, MaskAlgo, str],
+            tuple[npt.NDArray[Any], npt.NDArray[Any]],
+        ]
+        | None
+    ) = None,
+) -> None:
     r"""
 
     Add supported layers and its corresponding pruning function.

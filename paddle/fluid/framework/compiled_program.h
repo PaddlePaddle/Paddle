@@ -45,7 +45,7 @@ class CompiledProgram {
   DISABLE_COPY_AND_ASSIGN(CompiledProgram);
 
  public:
-  TEST_API explicit CompiledProgram(const std::vector<platform::Place> &places,
+  TEST_API explicit CompiledProgram(const std::vector<phi::Place> &places,
                                     const std::vector<std::string> &bcast_vars,
                                     const std::string &loss_var_name,
                                     Scope *scope,

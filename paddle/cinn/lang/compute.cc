@@ -32,10 +32,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
                    const std::vector<Expr> &shape) {
   return Compute(
       domain,
-      [fn](const std::vector<Expr> &axis) -> Expr {
-        // CHECK_EQ(axis.size(), 0);
-        return fn();
-      },
+      [fn](const std::vector<Expr> &axis) -> Expr { return fn(); },
       name,
       shape);
 }
@@ -49,7 +46,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           1,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 1, but receive %d. ",
                               axis.size()));
@@ -68,7 +65,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           2,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 2, but receive %d. ",
                               axis.size()));
@@ -87,7 +84,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           3,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 3, but receive %d. ",
                               axis.size()));
@@ -106,7 +103,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           4,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 4, but receive %d. ",
                               axis.size()));
@@ -125,7 +122,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           5,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 5, but receive %d. ",
                               axis.size()));
@@ -144,7 +141,7 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
       [fn](const std::vector<Expr> &axis) -> Expr {
         PADDLE_ENFORCE_EQ(axis.size(),
                           6,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of axis vector is incorrect"
                               "Expected value is 6, but receive %d. ",
                               axis.size()));
@@ -202,8 +199,11 @@ ir::Tensor Compute(const std::vector<Expr> &domain,
 
   // check reduce_axis not include the reserved axis name
   for (auto &ra : reduce_axis) {
-    CHECK(!cinn::common::IsAxisNameReserved(ra->name))
-        << "reduce axis [" << ra->name << "]'s name is reserved";
+    PADDLE_ENFORCE_EQ(
+        !cinn::common::IsAxisNameReserved(ra->name),
+        true,
+        phi::errors::InvalidArgument("Reduce axis [%s]'s name is reserved.",
+                                     ra->name.c_str()));
   }
 
   VLOG(3) << "tensor " << name
@@ -257,10 +257,12 @@ Expr CallExtern(const std::string &func_name,
                 const std::map<std::string, attr_t> &attrs) {
   auto *proto =
       backends::ExternFunctionProtoRegistry::Global().Lookup(func_name);
-  CHECK(proto)
-      << "No extern function prototype " << func_name << " found\n"
-      << "existing records are:\n"
-      << backends::ExternFunctionProtoRegistry::Global().debug_string();
+  PADDLE_ENFORCE_NOT_NULL(
+      proto,
+      phi::errors::InvalidArgument(
+          "No extern function prototype %s found\nExisting records are:\n%s",
+          func_name,
+          backends::ExternFunctionProtoRegistry::Global().debug_string()));
 
   auto call = ir::Call::Make(proto->ret_type,
                              func_name,

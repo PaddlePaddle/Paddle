@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import compare_legacy_with_pt
 
 import paddle
 
@@ -63,6 +64,7 @@ class TestSparseIsnan(unittest.TestCase):
 
 
 class TestStatic(unittest.TestCase):
+    @compare_legacy_with_pt
     def test(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
