@@ -20,7 +20,7 @@ import typing
 import warnings
 import weakref
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Union
 
 import numpy as np
 from typing_extensions import Self
@@ -70,7 +70,7 @@ _ForwardPreHook = Callable[
 _ForwardPostHook = Callable[
     ["Layer", Tensor, Tensor], Tensor
 ]  # (layer, input, output) -> transformed_output
-_StateDict = Union[dict[str, Tensor], typing.OrderedDict[str, Tensor]]
+_StateDict = Union[Dict[str, Tensor], typing.OrderedDict[str, Tensor]]
 _StateDictHook = Callable[[_StateDict], None]
 
 _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
