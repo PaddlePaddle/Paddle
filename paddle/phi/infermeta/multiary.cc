@@ -1644,6 +1644,129 @@ void LSTMInferMeta(const MetaTensor& input,
   cell->set_dtype(input.dtype());
 }
 
+void DataNormInferMeta(const MetaTensor& scale_w,
+                       const MetaTensor& bias,
+                       const MetaTensor& x,
+                       const MetaTensor& batch_size,
+                       const MetaTensor& batch_sum,
+                       const MetaTensor& batch_square_sum,
+                       float epsilon,
+                       int slot_dim,
+                       float summary_decay_rate,
+                       bool enable_scale_and_shift,
+                       const std::string& data_layout_in,
+                       bool sync_stats,
+                       MetaTensor* out,
+                       MetaTensor* means,
+                       MetaTensor* scales,
+                       MetaConfig config) {
+  if (enable_scale_and_shift) {
+    PADDLE_ENFORCE_EQ(scale_w.initialized(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input(scale_w) of DataNormOp should not be null."));
+    PADDLE_ENFORCE_EQ(bias.initialized(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input(bias) of DataNormOp should not be null."));
+  }
+
+  const auto& x_dims = x.dims();
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_in);
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() >= 2 && x_dims.size() <= 5,
+      true,
+      common::errors::InvalidArgument("Input X must have 2 to 5 dimensions."));
+
+  const int64_t C =
+      (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                        : x_dims[x_dims.size() - 1]);
+
+  PADDLE_ENFORCE_EQ(batch_size.dims().size(),
+                    1UL,
+                    common::errors::InvalidArgument(
+                        "The input dim of BatchSize should be 1"));
+  PADDLE_ENFORCE_EQ(
+      batch_sum.dims().size(),
+      1UL,
+      common::errors::InvalidArgument("The input dim of BatchSum should be 1"));
+  PADDLE_ENFORCE_EQ(batch_square_sum.dims().size(),
+                    1UL,
+                    common::errors::InvalidArgument(
+                        "The input dim of BatchSquareSum should be 1"));
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(batch_size.dims()[0],
+                      C,
+                      common::errors::InvalidArgument(
+                          "The input dim[0] of BatchSize should be C"));
+    PADDLE_ENFORCE_EQ(batch_sum.dims()[0],
+                      C,
+                      common::errors::InvalidArgument(
+                          "The input dim[0] of BatchSum should be C"));
+    PADDLE_ENFORCE_EQ(batch_square_sum.dims()[0],
+                      C,
+                      common::errors::InvalidArgument(
+                          "The input dim[0] of BatchSquareSum should be C"));
+  }
+
+  if (enable_scale_and_shift) {
+    const auto& scale_dim = scale_w.dims();
+    const auto& bias_dim = bias.dims();
+
+    PADDLE_ENFORCE_EQ(
+        scale_dim.size(),
+        1UL,
+        common::errors::InvalidArgument("the dimension of scale"
+                                        "must equal to 1. But received: "
+                                        "the shape of scale is [%s], "
+                                        "the dimension of scale is [%d]",
+                                        scale_dim,
+                                        scale_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        bias_dim.size(),
+        1UL,
+        common::errors::InvalidArgument("the dimension of bias"
+                                        "must equal to 1. But received: "
+                                        "the shape of bias is [%s],"
+                                        "the dimension of bias is [%d]",
+                                        bias_dim,
+                                        bias_dim.size()));
+
+    bool check = true;
+    if ((!config.is_runtime) &&
+        (common::product(scale_dim) <= 0 || common::product(bias_dim) <= 0)) {
+      check = false;
+    }
+
+    if (check) {
+      PADDLE_ENFORCE_EQ(scale_dim[0],
+                        C,
+                        common::errors::InvalidArgument(
+                            "the shape of scale must equal to [%d]"
+                            "But received: the shape of scale is [%d]",
+                            C,
+                            scale_dim[0]));
+      PADDLE_ENFORCE_EQ(bias_dim[0],
+                        C,
+                        common::errors::InvalidArgument(
+                            "the shape of bias must equal to [%d]"
+                            "But received: the shape of bias is [%d]",
+                            C,
+                            bias_dim[0]));
+    }
+  }
+
+  out->set_dims(x_dims);
+  means->set_dims({C});
+  scales->set_dims({C});
+  out->share_lod(x);
+
+  out->set_dtype(x.dtype());
+  means->set_dtype(x.dtype());
+  scales->set_dtype(x.dtype());
+}
+
 void DecayedAdagradInferMeta(const MetaTensor& param,
                              const MetaTensor& grad,
                              const MetaTensor& moment,

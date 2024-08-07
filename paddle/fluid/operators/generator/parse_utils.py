@@ -644,7 +644,7 @@ def validate_backward_inputs(
 
 
 def validate_backward_outputs(op, forward_inputs, backward_outputs):
-    if op in ['fused_attention_grad']:
+    if op in ['fused_attention_grad', 'data_norm_grad']:
         return
     assert len(backward_outputs) <= len(
         forward_inputs

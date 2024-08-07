@@ -192,6 +192,20 @@
     data_type : dtype
   inplace: (input -> output)
 
+- op : data_norm
+  args: (Tensor scale_w, Tensor bias, Tensor x, Tensor batch_size, Tensor batch_sum,
+    Tensor batch_square_sum, float epsilon = 1e-4, int slot_dim
+    = -1, float summary_decay_rate = 0.9999999, bool enable_scale_and_shift = false,
+    str data_layout = "NCHW", bool sync_stats = false)
+  output: Tensor (out), Tensor (means), Tensor (scales)
+  infer_meta:
+    func: DataNormInferMeta
+  kernel:
+    func: data_norm
+  optional: scale_w, bias
+  intermediate: means, scales
+  backward: data_norm_grad
+
 - op : dequantize_linear
   args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int qmin = -128, int qmax = 127, int round_type = 0, bool is_test = true, bool only_observer = false)
   output : Tensor(y), Tensor(out_state), Tensor(out_accum), Tensor(out_scale)

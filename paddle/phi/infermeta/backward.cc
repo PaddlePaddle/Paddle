@@ -328,6 +328,79 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
 }
 
+void DataNormGradInferMeta(const MetaTensor& scale_w,
+                           const MetaTensor& bias,
+                           const MetaTensor& x,
+                           const MetaTensor& means,
+                           const MetaTensor& scales,
+                           const MetaTensor& out_grad,
+                           float epsilon,
+                           int slot_dim,
+                           float summary_decay_rate,
+                           bool enable_scale_and_shift,
+                           const std::string& data_layout_in,
+                           bool sync_stats,
+                           MetaTensor* batch_size,
+                           MetaTensor* batch_sum,
+                           MetaTensor* batch_square_sum,
+                           MetaTensor* scale_w_grad,
+                           MetaTensor* bias_grad,
+                           MetaTensor* x_grad,
+                           MetaTensor* batch_size_grad,
+                           MetaTensor* batch_sum_grad,
+                           MetaTensor* batch_square_sum_grad,
+                           MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      batch_size != nullptr,
+      true,
+      common::errors::NotFound(
+          "Output(BatchSize) of DataNormGradOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      batch_sum != nullptr,
+      true,
+      common::errors::NotFound(
+          "Output(BatchSum) of DataNormGradOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      batch_square_sum != nullptr,
+      true,
+      common::errors::NotFound(
+          "Output(BatchSquareSum) of DataNormGradOp should not be null."));
+  const auto& x_dims = x.dims();
+  const DataLayout data_layout = common::StringToDataLayout(data_layout_in);
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x_dims);
+    x_grad->set_dtype(x.dtype());
+  }
+  batch_size_grad->set_dims({C});
+  batch_sum_grad->set_dims({C});
+  batch_square_sum_grad->set_dims({C});
+  batch_size_grad->set_dtype(x.dtype());
+  batch_sum_grad->set_dtype(x.dtype());
+  batch_square_sum_grad->set_dtype(x.dtype());
+  if (enable_scale_and_shift) {
+    const bool has_scale_grad = scale_w_grad != nullptr;
+    const bool has_bias_grad = bias_grad != nullptr;
+
+    PADDLE_ENFORCE_EQ((has_scale_grad == has_bias_grad),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Output(Scale@GRAD) and Output(Bias@GRAD)"
+                          "must be null or not be null at same time. "
+                          "But now, has Scale@Grad=[%d], has Bias@GRAD=[%d]",
+                          has_scale_grad,
+                          has_bias_grad));
+    if (has_scale_grad) {
+      scale_w_grad->set_dims({C});
+      bias_grad->set_dims({C});
+      scale_w_grad->set_dtype(x.dtype());
+      bias_grad->set_dtype(x.dtype());
+    }
+  }
+}
+
 void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dqkv) {
   if (dqkv) {
     dqkv->share_meta(qkv);

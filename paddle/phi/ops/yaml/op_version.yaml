@@ -194,6 +194,13 @@
           comment : In order to compute the cumsum over the flattened array when the argument `axis` in python API is None.
           default : "false"
 
+- op : data_norm
+  version :
+    - checkpoint : Upgrade data_norm op by adding scale_w to support scale and shift.
+      action :
+        - add_input : scale_w
+          comment : scale_w is used to do scale during data_norm like batchnorm.
+
 - op : depthwise_conv2d
   version :
     - checkpoint : Upgrade depthwise_conv2d, add a new attribute [use_addto].

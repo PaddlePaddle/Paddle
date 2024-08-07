@@ -116,6 +116,23 @@
     func: c_softmax_with_cross_entropy_grad
     data_type: loss_grad
 
+- backward_op : data_norm_grad
+  forward: data_norm(Tensor scale_w, Tensor bias, Tensor x, Tensor batch_size, Tensor batch_sum,
+    Tensor batch_square_sum, float epsilon = 1e-4, int slot_dim
+    = -1, float summary_decay_rate = 0.9999999, bool enable_scale_and_shift = false,
+    str data_layout = "NCHW", bool sync_stats = false) -> Tensor (out), Tensor (means), Tensor (scales)
+  args: (Tensor scale_w, Tensor bias, Tensor x, Tensor means, Tensor scales, Tensor out_grad,
+    float epsilon = 1e-4, int slot_dim = -1, float summary_decay_rate = 0.9999999,
+    bool enable_scale_and_shift = false, str data_layout = "NCHW", bool sync_stats = false)
+  output: Tensor (batch_size), Tensor (batch_sum),
+    Tensor (batch_square_sum), Tensor(scale_w_grad), Tensor(bias_grad),
+    Tensor(x_grad), Tensor(batch_size_grad), Tensor(batch_sum_grad), Tensor(batch_square_sum_grad)
+  infer_meta:
+    func: DataNormGradInferMeta
+  kernel:
+    func: data_norm_grad
+  optional: scale_w, bias
+
 - backward_op : divide_double_grad
   forward : divide_grad (Tensor x, Tensor y, Tensor out, Tensor grad_out, int axis = -1) -> Tensor(grad_x), Tensor(grad_y)
   args : (Tensor y, Tensor out, Tensor grad_out, Tensor grad_x, Tensor grad_x_grad, Tensor grad_y_grad, int axis = -1)
