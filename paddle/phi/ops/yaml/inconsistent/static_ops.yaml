@@ -713,9 +713,9 @@
   output : Tensor(out)
   infer_meta :
     func : ReshapeInferMeta
-    spmd_rule : ReshapeInferSpmdDynamic
+    spmd_rule : ReshapeInferSpmd
   kernel :
-    func : reshape_infer
+    func : reshape
   inplace : (x -> out)
   view: (x -> out)
   backward: reshape_grad
