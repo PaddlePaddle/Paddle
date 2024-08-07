@@ -1031,6 +1031,25 @@ bool KthvalueOpInferSymbolicShape(
   return true;
 }
 
+bool InverseOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> input_dims = input_shape.shape();
+  int input_rank = input_dims.size();
+
+  infer_context->AddEqualCstr(input_dims[input_rank - 2],
+                              input_dims[input_rank - 1]);
+
+  std::vector<symbol::DimExpr> output_dims = input_dims;
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+  return true;
+}
+
 bool LpPool2dOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &kernel_size = [&]() -> std::vector<symbol::DimExpr> {
