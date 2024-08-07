@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import itertools
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -50,7 +52,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(batch, attrs: List[Dict[str, Any]]):
+        def generate_input1(batch, attrs: list[dict[str, Any]]):
             return (
                 np.ones([batch, attrs[0]['groups'] * 3, 64, 64]).astype(
                     np.float32
@@ -58,7 +60,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                 / 4
             )
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.random.random([9, 3, 3, 3]).astype(np.float32) - 0.5
 
         batch_options = [1, 2]
@@ -139,7 +141,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             input_groups = attrs[0]['groups'] * 3
             self.dynamic_shape.min_input_shape = {
@@ -233,13 +235,13 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return (
                 np.random.random(attrs[0]['input_shape']).astype(np.float32)
                 - 0.5
             )
 
-        def generate_data(attrs: List[Dict[str, Any]]):
+        def generate_data(attrs: list[dict[str, Any]]):
             return (
                 np.random.random(attrs[0]['weight_shape']).astype(np.float32)
                 - 0.5
@@ -330,7 +332,7 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}

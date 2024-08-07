@@ -38,7 +38,11 @@ const std::vector<symbol::DimExpr>& GetDimExprs(
     pir::Value value, const ShapeOrDataDimExprsAccessor& dim_exprs_accessor) {
   const auto& shape_or_data_dim_exprs =
       dim_exprs_accessor.GetShapeOrDataDimExprs(value);
-  CHECK(shape_or_data_dim_exprs.data().has_value());
+  PADDLE_ENFORCE_EQ(
+      shape_or_data_dim_exprs.data().has_value(),
+      true,
+      phi::errors::InvalidArgument(
+          "shape_or_data_dim_exprs has no data, it cannot be empty"));
   return shape_or_data_dim_exprs.data().value();
 }
 

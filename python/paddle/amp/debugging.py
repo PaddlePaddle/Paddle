@@ -20,7 +20,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Sequence,
     TypeVar,
 )
 
@@ -34,7 +33,7 @@ from paddle.base import core
 from ..framework import LayerHelper, in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
-    from typing import Generator
+    from collections.abc import Generator, Sequence
 
     from paddle import Tensor
 

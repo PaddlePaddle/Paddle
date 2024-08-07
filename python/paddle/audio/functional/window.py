@@ -10,8 +10,9 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+from __future__ import annotations
+
 import math
-from typing import List, Tuple, Union
 
 import numpy as np
 
@@ -39,7 +40,7 @@ window_function_register = WindowFunctionRegister()
 
 
 @window_function_register.register()
-def _cat(x: List[Tensor], data_type: str) -> Tensor:
+def _cat(x: list[Tensor], data_type: str) -> Tensor:
     l = []
     for t in x:
         if np.isscalar(t) and not isinstance(t, str):
@@ -50,7 +51,7 @@ def _cat(x: List[Tensor], data_type: str) -> Tensor:
 
 
 @window_function_register.register()
-def _acosh(x: Union[Tensor, float]) -> Tensor:
+def _acosh(x: Tensor | float) -> Tensor:
     if isinstance(x, float):
         return math.log(x + math.sqrt(x**2 - 1))
     return paddle.log(x + paddle.sqrt(paddle.square(x) - 1))
@@ -333,7 +334,7 @@ def _cosine(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
 
 
 def get_window(
-    window: Union[str, Tuple[str, float]],
+    window: str | tuple[str, float],
     win_length: int,
     fftbins: bool = True,
     dtype: str = 'float64',
