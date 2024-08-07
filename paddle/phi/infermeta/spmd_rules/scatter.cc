@@ -43,7 +43,7 @@ SpmdInfo ScatterInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_LE(
       index_ndim,
       updates_ndim,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "%s (%d): The Index's rank [%d] should be less or equal "
           "to Updates' rank [%d].",
           __FILE__,

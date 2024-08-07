@@ -27,17 +27,14 @@ void FlattenGradStridedKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   auto xshape_dims = xshape.dims();
   auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
-  ReshapeStridedKernel<Context>(dev_ctx,
-                                out_grad,
-                                IntArray(common::vectorize<int64_t>(x_dims)),
-                                x_grad,
-                                nullptr);
+  ReshapeStridedKernel<Context>(
+      dev_ctx, out_grad, IntArray(common::vectorize<int64_t>(x_dims)), x_grad);
 }
 
 }  // namespace phi

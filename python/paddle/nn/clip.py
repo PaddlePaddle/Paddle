@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import warnings
 from sqlite3 import NotSupportedError
+from typing import TYPE_CHECKING
 
 import paddle
 import paddle.autograd as imperative_base
@@ -30,6 +33,9 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -359,7 +365,9 @@ class ClipGradBase:
     def _static_clip(self, params_grads):
         raise NotImplementedError
 
-    def __call__(self, params_grads):
+    def __call__(
+        self, params_grads: list[tuple[Tensor, Tensor]]
+    ) -> list[tuple[Tensor, Tensor]]:
         if in_dynamic_mode():
             return self._dygraph_clip(params_grads)
         elif in_pir_mode():
@@ -422,7 +430,10 @@ class ClipGradByValue(ClipGradBase):
             >>> sdg.step()
     """
 
-    def __init__(self, max, min=None):
+    max: float
+    min: float
+
+    def __init__(self, max: float, min: float | None = None) -> None:
         super().__init__()
         if min is None:
             assert max > 0.0
@@ -430,7 +441,7 @@ class ClipGradByValue(ClipGradBase):
         self.max = float(max)
         self.min = float(min)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Clip Gradient By Value, min = {self.min:f}, max={self.max:f}"
 
     @imperative_base.no_grad()
@@ -527,11 +538,13 @@ class ClipGradByNorm(ClipGradBase):
             >>> sdg.step()
     """
 
-    def __init__(self, clip_norm):
+    clip_norm: float
+
+    def __init__(self, clip_norm: float) -> None:
         super().__init__()
         self.clip_norm = float(clip_norm)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Gradient Clip By Norm, clip_norm={self.clip_norm:f}"
 
     def _clip_gradients(self, params_grads):
@@ -660,9 +673,16 @@ class ClipGradByGlobalNorm(ClipGradBase):
             >>> sdg.step()
     """
 
+    clip_norm: float
+    group_name: str
+    auto_skip_clip: bool
+
     def __init__(
-        self, clip_norm, group_name="default_group", auto_skip_clip=False
-    ):
+        self,
+        clip_norm: float,
+        group_name: str = "default_group",
+        auto_skip_clip: bool = False,
+    ) -> None:
         super().__init__()
         self.clip_norm = float(clip_norm)
         self.group_name = group_name
@@ -675,7 +695,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         # manual hybrid-parallel.
         self._async_add_n = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Gradient Clip By GlobalNorm, global_norm={self.clip_norm:f}"
 
     @imperative_base.no_grad()

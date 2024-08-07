@@ -73,7 +73,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                             -1,
                             static_cast<int64_t>(start_index));
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "XPU c_embedding ids only support int32 or int64."));
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "embedding_grad");

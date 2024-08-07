@@ -346,7 +346,7 @@ int CtrDoubleAccessor::ParseFromString(const std::string& str, float* value) {
   PADDLE_ENFORCE_GE(
       str_len,
       6UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid string length. Expect more than 6. But recieved %d.",
           str_len));
   int show_index = CtrDoubleFeatureValue::ShowIndex();

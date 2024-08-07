@@ -36,4 +36,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     test_eliminate_transpose_pass MODULES test_eliminate_transpose_pass ENVS
     FLAGS_enable_pir_in_executor=1)
   py_test_modules(test_moe_api MODULES test_moe_api ENVS FLAGS_enable_pir_api=1)
+  py_test_modules(test_pir_stack_grad_spmd_rule MODULES
+                  test_stack_grad_spmd_rule ENVS FLAGS_enable_pir_api=1)
 endif()
