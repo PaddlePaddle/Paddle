@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include <stdio.h>
+#include <filesystem>
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
@@ -80,10 +81,13 @@ bool ReadModule(const std::string& file_path,
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
     if (file_version != pir_version) {
       builder.SetFileVersion(file_version);
-      std::string cur_file = std::string(__FILE__);
-      std::string patch_path =
-          cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
-      builder.BuildPatch(patch_path);
+      // std::string cur_file = std::string(__FILE__);
+      // std::string patch_path =
+      //     cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
+      std::filesystem::path path("../patch");
+      // std::filesystem::path path =
+      // std::filesystem::current_path().parent_path() / patch_path;
+      builder.BuildPatch(path);
     }
   } else {
     PADDLE_THROW(common::errors::InvalidArgument("Invalid model file."));

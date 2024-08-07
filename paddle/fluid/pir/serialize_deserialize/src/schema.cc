@@ -81,12 +81,13 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
 }
 
 uint64_t GetPirVersion() {
-  std::string cur_file = std::string(__FILE__);
-  std::string patch_path =
-      cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
+  // std::string cur_file = std::string(__FILE__);
+  // std::string patch_path =
+  //     cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
   int version = 0;
-  std::filesystem::path path(patch_path.c_str());
-  // std::filesystem::path path = std::filesystem::current_path() / patch_path;
+  std::filesystem::path path("../patch");
+  // std::filesystem::path path = std::filesystem::current_path().parent_path()
+  // / patch_path;
   VLOG(8) << "patch_path: " << path;
   for (auto& v : std::filesystem::directory_iterator(path)) {
     std::string filename = v.path().filename().string();
@@ -103,12 +104,13 @@ uint64_t GetPirVersion() {
   return version;
 }
 uint64_t GetMaxReleasePirVersion() {
-  std::string cur_file = std::string(__FILE__);
-  std::string patch_path =
-      cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
+  // std::string cur_file = std::string(__FILE__);
+  // std::string patch_path =
+  //     cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
   int version = 0;
-  std::filesystem::path path(patch_path.c_str());
-  // std::filesystem::path path = std::filesystem::current_path() / patch_path;
+  std::filesystem::path path("../patch");
+  // std::filesystem::path path = std::filesystem::current_path().parent_path()
+  // / patch_path;
   VLOG(8) << "patch_path: " << path;
   for (auto& v : std::filesystem::directory_iterator(path)) {
     std::string filename = v.path().filename().string();
