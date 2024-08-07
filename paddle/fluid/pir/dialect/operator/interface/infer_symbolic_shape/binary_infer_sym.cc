@@ -329,7 +329,7 @@ bool DotOpInferSymbolicShape(pir::Operation *op,
                         y_rank,
                         x_rank));
   bool shape_match = true;
-  for (auto i = 0; i < x_rank; ++i) {
+  for (size_t i = 0; i < x_rank; ++i) {
     if (x_dims[i] != y_dims[i]) {
       shape_match = false;
       break;
