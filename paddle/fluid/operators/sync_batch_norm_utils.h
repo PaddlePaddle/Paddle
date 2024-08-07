@@ -434,18 +434,18 @@ void SyncBatchNormGradFunctor(
 
   PADDLE_ENFORCE_GE(x_dims.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Input X dim size should be larger than 1."));
   PADDLE_ENFORCE_LE(x_dims.size(),
                     5,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Input X dim size should be less than 6."));
 
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
   PADDLE_ENFORCE_EQ(scale.dims()[0],
                     C,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected first dim for input parameter(scale) of "
                         "OP(sync_batch_norm) be (%d), but given (%d).",
                         C,
@@ -458,7 +458,7 @@ void SyncBatchNormGradFunctor(
   }
   PADDLE_ENFORCE_EQ(scale.dims().size(),
                     1UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected rank for input parameter(scale) of "
                         "OP(sync_batch_norm) be (1), but given (%d).",
                         scale.dims().size()));
@@ -587,7 +587,7 @@ void SyncBatchNormGradFunctor(
   }
 
   if (comm) {
-    int dtype = paddle::platform::ToNCCLDataType(scale.dtype());
+    int dtype = phi::ToNCCLDataType(scale.dtype());
     // In-place operation
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::ncclAllReduce(stats,

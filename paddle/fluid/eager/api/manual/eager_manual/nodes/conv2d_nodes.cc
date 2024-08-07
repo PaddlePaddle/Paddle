@@ -46,7 +46,7 @@ Conv2dGradNodeFinal::operator()(
   //    accumulation when the output(s) of corresponding forward OP are shared
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
-  paddle::platform::RecordEvent node_execution_inner(
+  phi::RecordEvent node_execution_inner(
       "Local_Conv2dGradNodeFinal",
       paddle::platform::TracerEventType::OperatorInner,
       1);
@@ -130,7 +130,7 @@ Conv2dGradNodeFinal::operator()(
 
   // Create Grad Node
   if (trace_backward) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "conv2d_grad node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);
@@ -229,7 +229,7 @@ Conv2dDoubleGradNodeFinal::operator()(
   //    accumulation when the output(s) of corresponding forward OP are shared
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
-  paddle::platform::RecordEvent node_execution_inner(
+  phi::RecordEvent node_execution_inner(
       "Local_Conv2dDoubleGradNodeFinal",
       paddle::platform::TracerEventType::OperatorInner,
       1);

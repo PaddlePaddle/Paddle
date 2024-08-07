@@ -31,9 +31,9 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
                             int64_t step,
                             DenseTensor* input_grad) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   if (axis < 0) {
     axis += input.dims().size();

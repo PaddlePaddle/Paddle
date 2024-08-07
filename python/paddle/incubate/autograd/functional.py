@@ -295,7 +295,9 @@ class Jacobian:
         else:
             self._jacobian = _JacobianBatchFirst(func, xs)
 
-    def __getitem__(self, indexes: int | slice) -> Tensor:
+    def __getitem__(
+        self, indexes: int | slice | tuple[int | slice, ...]
+    ) -> Tensor:
         return self._jacobian[indexes]
 
     @property
