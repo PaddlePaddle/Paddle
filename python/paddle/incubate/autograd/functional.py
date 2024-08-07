@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import typing
-from typing import TYPE_CHECKING, Callable, TypeVar, Tuple, overload
+from typing import TYPE_CHECKING, Callable, TypeVar, overload
 
 import paddle
 from paddle.base import framework
@@ -23,6 +23,7 @@ from paddle.incubate.autograd import primapi, utils
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Tuple
 
     from paddle import Tensor
     from paddle._typing import TensorOrTensors
