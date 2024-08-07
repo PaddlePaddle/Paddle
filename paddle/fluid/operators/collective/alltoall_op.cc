@@ -22,8 +22,14 @@ class AllToAllBaseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AllToAll");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "AllToAll");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"),
+        true,
+        phi::errors::PreconditionNotMet("Input 'X' of AllToAll must be provided."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"),
+        true,
+        phi::errors::PreconditionNotMet("Output 'Out' of AllToAll must be provided."));
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
         ring_id,
