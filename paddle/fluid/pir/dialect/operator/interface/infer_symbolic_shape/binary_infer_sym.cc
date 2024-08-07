@@ -921,6 +921,11 @@ bool GammainccOpInferSymbolicShape(
   return true;
 }
 
+bool Gammaincc_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return GammainccOpInferSymbolicShape(op, infer_context);
+}
+
 bool HeavisideOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Get the symbolic shape of the input tensors
