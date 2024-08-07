@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
+#include "paddle/cinn/hlir/framework/pir/broadcast_with_cf.h"
 #include "paddle/cinn/common/broadcast_tree.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
-using BroadcastCond = std::pair<symbol::Broadcastable<symbol::DimExpr>,
-                                OpLoweringGroup::BranchType>;
 
 PD_DECLARE_bool(cinn_bc_branch_optimize);
+
+using BroadcastCond = std::pair<symbol::Broadcastable<symbol::DimExpr>,
+                                OpLoweringGroup::BranchType>;
 
 namespace {
 void UpdateGroupShapeExprs(
@@ -190,12 +190,11 @@ ConstructBroadcastTree(const cinn::common::BroadcastLeaf& leaves) {
 
 }  // namespace
 
-namespace cinn::dialect::ir::details {
+namespace cinn::hlir::framework::pir {
 std::optional<std::vector<OpLoweringGroupPtr>> GetBroadcastGroupListForOptimize(
     const OpLoweringGroupPtr& group) {
   if (!FLAGS_cinn_bc_branch_optimize) return std::nullopt;
 
-  UpdateGroupShapeOrDataExprs(const_cast<OpLoweringGroupPtr&>(group));
   GroupDimExprInfo group_dim_expr_info = GetGroupDimExprInfo(group);
   if (!ContainBroadcastShape(group_dim_expr_info.all_value_dim_exprs))
     return std::nullopt;
@@ -223,4 +222,4 @@ std::optional<std::vector<OpLoweringGroupPtr>> GetBroadcastGroupListForOptimize(
 
   return ChangeBroadcastTreeToGroupList();
 }
-}  // namespace cinn::dialect::ir::details
+}  // namespace cinn::hlir::framework::pir
