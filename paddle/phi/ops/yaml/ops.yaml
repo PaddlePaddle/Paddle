@@ -192,6 +192,16 @@
     func : all_gather
     param: [x, nranks]
 
+- op : all_to_all
+  args : (Tensor x, int ring_id = 0)
+  output : Tensor(out)
+  infer_meta :
+    func : AllToAllInferMeta
+    param: [x]
+  kernel :
+    func : all_to_all
+    param: [x]
+
 - op : allclose
   args : (Tensor x, Tensor y, Scalar(double) rtol=1e-5, Scalar(double) atol=1e-8, bool equal_nan=false)
   output : Tensor(out)
