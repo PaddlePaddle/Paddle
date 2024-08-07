@@ -1573,6 +1573,7 @@ class TestPrimExpandAsWithGrad2(TestPrimBaseOneGradTwoInputs):
         self.net = expand_as_net
         self.enable_cinn = False
         self.tol = 1e-5
+        self.y_without_grad = True
 
 
 class TestPrimExpandAsWithGrad3(TestPrimBaseOneGradTwoInputs):
@@ -1588,6 +1589,7 @@ class TestPrimExpandAsWithGrad3(TestPrimBaseOneGradTwoInputs):
         self.net = expand_as_net
         self.enable_cinn = False
         self.tol = 1e-5
+        self.y_without_grad = True
 
 
 class TestPrimExpandAsWithGrad4(TestPrimBaseOneGradTwoInputs):
@@ -1603,6 +1605,7 @@ class TestPrimExpandAsWithGrad4(TestPrimBaseOneGradTwoInputs):
         self.net = expand_as_net
         self.enable_cinn = False
         self.tol = 1e-5
+        self.y_without_grad = True
 
 
 if __name__ == "__main__":
