@@ -1207,7 +1207,7 @@ bool MoeOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool MulticlassNMS3OpInferSymbolicShape(
+bool MulticlassNms3OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &bboxes_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
