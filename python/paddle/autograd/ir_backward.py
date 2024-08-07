@@ -61,9 +61,9 @@ from paddle.base.libpaddle.pir import (
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
 
 if TYPE_CHECKING:
-    from typing import Sequence
+    from collections.abc import Sequence
 
-    from paddle.base.libpaddle.pir import Value
+    from paddle.pir import Value
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
@@ -967,7 +967,7 @@ def calc_gradient_helper(
     inputs: Value | Sequence[Value],
     grad_outputs: Value | Sequence[Value | None] | None = None,
     no_grad_set: set[Value] | None = None,
-) -> dict[Value, list[Value]]:
+) -> ValueDict:
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
     if all_stop_gradient_true(block):
@@ -1054,7 +1054,7 @@ def calc_gradient(
     inputs: Value | Sequence[Value],
     grad_outputs: Value | Sequence[Value | None] | None = None,
     no_grad_set: set[Value] | None = None,
-) -> list[Value]:
+) -> list[Value | None]:
     """
     calculate gradient of input
 
@@ -1107,8 +1107,8 @@ def grad(
     create_graph: bool | None = False,
     only_inputs: bool | None = True,
     allow_unused: bool | None = False,
-    no_grad_vars: Value | Sequence[Value] | None = None,
-) -> list[Value]:
+    no_grad_vars: Value | Sequence[Value] | set[Value] | None = None,
+) -> list[Value | None]:
     '''
     .. note::
         **This API is ONLY available in imperative mode.**

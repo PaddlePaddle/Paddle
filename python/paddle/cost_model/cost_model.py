@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import os
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -24,12 +24,14 @@ from paddle import static
 from paddle.base import core
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle.base.compiler import CompiledProgram
     from paddle.base.framework import Program
 
 
 class CostModel:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def build_program(self) -> tuple[Program, Program]:
@@ -56,7 +58,7 @@ class CostModel:
         startup_program: Program | CompiledProgram,
         main_program: Program | CompiledProgram,
         device: str = 'gpu',
-        fetch_cost_list: Sequence = ['time'],
+        fetch_cost_list: Sequence[str] = ['time'],
     ) -> None:
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
