@@ -646,7 +646,7 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   PADDLE_ENFORCE_EQ(
       op_pattern_dict.Find(cinn_op),
       true,
-      phi::errors::PreconditionNotMet("The CINN operation pattern for %s must be found in the dictionary.", cinn_op.c_str()));
+      phi::errors::PreconditionNotMet("The CINN operation pattern for %s must be found in the dictionary.", cinn_op->c_str()));
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
     // As binary op was defined as broadcast, actually it should be
