@@ -40,9 +40,17 @@ __global__ void CheckFiniteAndUnscale(const T** xs,
   const int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
   // copy starts array from global memory to shared memory
-  extern __shared__ int64_t s_starts[];
+  extern __shared__ int64_t shm[];
+  int64_t * s_starts = shm;
+  const T ** point_xs = (const T**) (shm + size + 1);
+  T ** point_outs = (T **)(point_xs + size);
+
   for (int i = threadIdx.x; i <= size; i += blockDim.x) {
     s_starts[i] = starts[i];
+  }
+  for(int i = threadIdx.x; i < size; i += blockDim.x) {
+    point_xs[i] = xs[i];
+    point_outs[i] = outs[i];
   }
   __syncthreads();
 
@@ -62,8 +70,8 @@ __global__ void CheckFiniteAndUnscale(const T** xs,
     xs_index = next_xs_index - 1;
 
     // get in data and out data
-    const T* in = xs[xs_index];
-    T* out = outs[xs_index];
+    const T* in = point_xs[xs_index];
+    T* out = point_outs[xs_index];
     int64_t in_idx = idx - s_starts[xs_index];
 
     // Unscale
@@ -335,14 +343,19 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
                      dev_ctx.stream());
 
   // Launch Kernel
-  int threads_per_block = std::min(static_cast<int64_t>(1024), total_num);
-  int elements_per_block =
-      threads_per_block * 20;  // each thread deal with 20 number
+  int device_index = dev_ctx.GetPlace().device;
+  cudaDeviceProp deviceProp;
+  cudaGetDeviceProperties(&deviceProp, device_index);
+
+  int maxThreadAllProcessors = deviceProp.multiProcessorCount *
+                               deviceProp.maxThreadsPerMultiProcessor;
+  int threads_per_block = std::min(static_cast<int64_t>(512), total_num);
   int blocks_per_grid =
-      (total_num + elements_per_block - 1) / elements_per_block;
+      std::min(static_cast<int64_t>(maxThreadAllProcessors / threads_per_block),
+               (total_num + threads_per_block - 1) / threads_per_block);
   CheckFiniteAndUnscale<T, MPDType><<<blocks_per_grid,
                                       threads_per_block,
-                                      (xs_size + 1) * sizeof(int64_t),
+                                      (xs_size + 1) * sizeof(int64_t) + xs_size * 2 * sizeof(T*),
                                       dev_ctx.stream()>>>(
       d_xs, inverse_scale_v, xs_size, d_starts, found_inf_data, d_outs);
 }
