@@ -943,6 +943,31 @@ bool FlattenOpInferSymbolicShape(
   return true;
 }
 
+bool FakeQuantizeDequantizeAbsMaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  // Validate the bit_length attribute
+  int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+
+  // Set the shape for the output tensor 'out', same as input tensor 'x'
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+
+  // Set the shape for the output tensor 'out_scale' as a scalar {1}
+  symbol::TensorShapeOrDataDimExprs scalar_shape(
+      std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
+  infer_context->SetShapeOrDataForValue(op->result(1), scalar_shape);
+
+  return true;
+}
+
 bool Flatten_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return FlattenOpInferSymbolicShape(op, infer_context);
