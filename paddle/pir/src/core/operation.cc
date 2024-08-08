@@ -129,12 +129,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   }
   // 0. Verify
   if (op_info) {
-    try {
-      op_info.VerifySig(op);
-    } catch (const common::enforce::EnforceNotMet &e) {
-      op->Destroy();
-      throw e;
-    }
+    op_info.VerifySig(op);
   }
   return op;
 }
