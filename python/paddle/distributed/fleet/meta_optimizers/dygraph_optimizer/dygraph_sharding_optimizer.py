@@ -340,6 +340,17 @@ class DygraphShardingOptimizer:
                         g_var.scale_(1.0 / sharding_nrank)
                         reduce_op = ReduceOp.SUM
                     param_rank = self._param2rank[param.name]
+
+                    need_check = strtobool(
+                        os.getenv('FLAGS_pp_check_naninf', '0')
+                    )
+                    if need_check:
+                        naninf = paddle.isfinite(g_var).all()
+                        if not naninf.item():
+                            raise ValueError(
+                                f"Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
+                            )
+
                     paddle.distributed.reduce(
                         g_var,
                         dst=hcg.get_sharding_parallel_group().ranks[param_rank],
@@ -704,7 +715,13 @@ class DygraphShardingOptimizerV2:
     def _build_comm_buffers(self, acc_steps, group_size=256 * 1024 * 1024):
         if self.pp_overlap:
             return
-
+        # NOTE(lijin23): for XPU, we fuse all params to a single comm buffer to
+        # improve the communication bandwidth of BKCL.
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_PADDLE_FUSE_SHARDING_BUFFER") is not None
+        ):
+            group_size = 2**62
         comm_group = self._hcg.get_sharding_parallel_group()
         var_groups = assign_group_by_size(self._parameter_list, group_size)
         for group_idx, parameters in var_groups.items():
