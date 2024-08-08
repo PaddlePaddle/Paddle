@@ -916,10 +916,10 @@ bool IndexSelectOpInferSymbolicShape(
   std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
   std::vector<symbol::DimExpr> index_dims = index_shape_or_data.shape();
 
-  auto dim = op->attribute<pir::Int32Attribute>("dim").data();
+  size_t dim = op->attribute<pir::Int32Attribute>("dim").data();
 
-  auto input_rank = x_dims.size();
-  auto index_rank = index_dims.size();
+  size_t input_rank = x_dims.size();
+  size_t index_rank = index_dims.size();
   PADDLE_ENFORCE_EQ(
       dim < input_rank && dim >= (0 - input_rank),
       true,
