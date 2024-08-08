@@ -824,12 +824,7 @@ __global__ void multi_block_masked_multihead_attention_kernel(
   // Use block reduction if needed
   // static_assert(Dh_MAX / QK_VEC_SIZE <= WARP_SIZE_TMP, "");
   constexpr int QK_VECS_PER_WARP = Dh_MAX / QK_VEC_SIZE;
-  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
-      threadIdx.x == 0) {
-    // printf("QK_VEC_SIZE: %d\n", QK_VEC_SIZE);
-    // printf("Dh_MAX: %d\n", Dh_MAX);
-    // printf("QK_VECS_PER_WARP: %d\n", QK_VECS_PER_WARP);
-  }
+
   // cache_k, [B, num_head, head_dim / x, max_seq_len, x]
   // x == 4/8 for FP32/FP16, 128bit, 16Byte
   constexpr int QK_ELTS_IN_16B = 16 / sizeof(T);
@@ -879,13 +874,7 @@ __global__ void multi_block_masked_multihead_attention_kernel(
       q = add(q, q_bias);
       k = add(k, k_bias);
     }
-    if (blockIdx.x == 1 && blockIdx.y == 0 && blockIdx.z == 0 &&
-        threadIdx.x < 5) {
-      // printf("\nthe value of q after adding the bias: ");
-      // print_vec(q);
-      // printf("\nthe value of k after adding the bias: ");
-      // print_vec(k);
-    }
+
     if (!params.neox_rotary_style) {
       if (params.rotary_emb_dims != 0) {
         int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
@@ -1186,7 +1175,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
       v = add(v, v_bias);
     }
 
-    // TODO(Wanglongzhi): check the offset of v_cache here.
     *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
@@ -1374,7 +1362,6 @@ inline size_t multi_block_attn_smem_size_in_bytes(
   int rows_per_red = threads_per_block / threads_per_value;
   size_t red_sz = rows_per_red * dim_head * sizeof(T) / 2;
 
-  // TODO(Wanglongzhi): check the smem_size here
   return max(logits_table_sz, red_sz);
 }
 
@@ -1418,13 +1405,9 @@ inline size_t get_reduce_smem_size_in_bytes(
     cudaFuncSetAttribute(                                                   \
         kernel_fn, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_sz);   \
   }                                                                         \
-  VLOG(1) << "grid size: [" << params.num_head << ", " << params.batch_size \
-          << ", " << div_up(params.timestep, params.partition_size) << "]"; \
-  VLOG(1) << "block size: [" << THDS_PER_BLOCK << "]";                      \
   kernel_fn<<<grid, THDS_PER_BLOCK, smem_sz, stream>>>(                     \
       params, load_func, reduce_store_func);                                \
                                                                             \
-  VLOG(1) << "multi_block_attention_kernel finished";                       \
   dim3 reduce_kernel_grid(params.num_head, params.batch_size, 1);           \
   size_t reduce_smem_sz = get_reduce_smem_size_in_bytes<T>(params);         \
   constexpr int MBLHA_REDUCE_BLOCK_SIZE = 256;                              \
@@ -1436,8 +1419,7 @@ inline size_t get_reduce_smem_size_in_bytes(
   reduce_kernel_fn<<<reduce_kernel_grid,                                    \
                      MBLHA_REDUCE_BLOCK_SIZE,                               \
                      reduce_smem_sz,                                        \
-                     stream>>>(params, reduce_store_func);                  \
-  VLOG(1) << "multi_block_attention_reduce_kernel finished";
+                     stream>>>(params, reduce_store_func);
 
 template <typename T,
           int Dh,
@@ -1534,7 +1516,6 @@ void mbfmha(const phi::GPUContext &dev_ctx,
             const bool neox_rotary_style = false,
             const int gqa_group_size = -1,
             const float rope_theta = 10000.0f) {
-  VLOG(1) << "MMHA is using flash decoding in generation phase.";
   Masked_multihead_attention_params<T> params;
   cudaStream_t stream = dev_ctx.stream();
 
@@ -1612,7 +1593,6 @@ void mbfmha(const phi::GPUContext &dev_ctx,
       params.timestep,
       static_cast<int32_t>(FLAGS_multi_block_attention_min_partition_size));
   params.partition_size = FLAGS_multi_block_attention_min_partition_size;
-  VLOG(1) << "get into DispatchMBMMHA";
 
   DispatchMBMMHA<T>(
       dev_ctx, stream, qkv_tensor, params, num_head, dim_head, out_tensor);

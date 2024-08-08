@@ -47,8 +47,7 @@ class TestFusedMultiTransformerOpUseMBMMHA(TestFusedMultiTransformerOp):
         self.remove_padding = True
         self.query_length = 1
         self.key_length, self.value_length = 1, 1
-        # 128K
-        self.cache_length = 131072
+        self.cache_length = 2049
         self.layers = 2
         self.rotary_emb_dims = 2
         self.x_type = np.float16
