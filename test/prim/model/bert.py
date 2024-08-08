@@ -426,9 +426,7 @@ class Bert(nn.Layer):
                 total_loss = masked_lm_loss + next_sentence_loss
 
             output = (prediction_scores, seq_relationship_score) + outputs[2:]
-            return (
-                ((total_loss,) + output) if total_loss is not None else output
-            )
+            return ((total_loss, *output)) if total_loss is not None else output
 
 
 class BertPretrainingCriterion(paddle.nn.Layer):
