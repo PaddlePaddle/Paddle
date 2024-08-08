@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
@@ -37,12 +37,12 @@ def graph_sample_neighbors(
     row: Tensor,
     colptr: Tensor,
     input_nodes: Tensor,
-    eids: Tensor | None = None,
-    perm_buffer: Tensor | None = None,
-    sample_size: int = -1,
-    return_eids: bool = True,
-    flag_perm_buffer: bool = False,
-    name: str | None = None,
+    eids: Tensor | None = ...,
+    perm_buffer: Tensor | None = ...,
+    sample_size: int = ...,
+    return_eids: Literal[True] = ...,
+    flag_perm_buffer: bool = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
@@ -51,13 +51,27 @@ def graph_sample_neighbors(
     row: Tensor,
     colptr: Tensor,
     input_nodes: Tensor,
-    eids: Tensor | None = None,
-    perm_buffer: Tensor | None = None,
-    sample_size: int = -1,
-    return_eids: bool = False,
-    flag_perm_buffer: bool = False,
-    name: str | None = None,
+    eids: Tensor | None = ...,
+    perm_buffer: Tensor | None = ...,
+    sample_size: int = ...,
+    return_eids: Literal[False] = ...,
+    flag_perm_buffer: bool = ...,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor]: ...
+
+
+@overload
+def graph_sample_neighbors(
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    eids: Tensor | None = ...,
+    perm_buffer: Tensor | None = ...,
+    sample_size: int = ...,
+    return_eids: bool = ...,
+    flag_perm_buffer: bool = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]: ...
 
 
 def graph_sample_neighbors(
