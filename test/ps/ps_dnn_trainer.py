@@ -514,7 +514,9 @@ class DnnTrainer:
 
             from paddle.distributed.ps.the_one_ps import TheOnePSRuntime
 
-            _runtime_handle = TheOnePSRuntime()  # ps 目录下重构版的 TheOnePSRuntime
+            _runtime_handle = (
+                TheOnePSRuntime()
+            )  # ps 目录下重构版的 TheOnePSRuntime
             _runtime_handle._set_basic_info(ps_optimizer.pass_ctx._attrs)
             if fleet.is_worker():
                 worker_desc = (

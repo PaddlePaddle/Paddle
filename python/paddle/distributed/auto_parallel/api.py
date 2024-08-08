@@ -990,9 +990,9 @@ class _ShardOptimizer(Optimizer):
             if accumulator.is_dist():
                 continue
             if self._shard_fn is not None:
-                self._inner_opt._accumulators[key][
-                    target_name
-                ] = self._shard_fn(key, param, accumulator)
+                self._inner_opt._accumulators[key][target_name] = (
+                    self._shard_fn(key, param, accumulator)
+                )
             else:
                 if param.is_dist():
                     if 'beta' not in key:
@@ -1005,12 +1005,12 @@ class _ShardOptimizer(Optimizer):
                             dist.Replicate()
                             for _ in range(len(param.process_mesh.shape))
                         ]
-                    self._inner_opt._accumulators[key][
-                        target_name
-                    ] = shard_tensor(
-                        accumulator,
-                        mesh=param.process_mesh,
-                        placements=placements,
+                    self._inner_opt._accumulators[key][target_name] = (
+                        shard_tensor(
+                            accumulator,
+                            mesh=param.process_mesh,
+                            placements=placements,
+                        )
                     )
             if not isinstance(
                 self._inner_opt._accumulators[key][target_name], pir.Value

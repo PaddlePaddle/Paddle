@@ -117,9 +117,9 @@ class FleetTranspiler(Fleet):
 
         def sync_strategy_envs():
             kwargs = {}
-            kwargs[
-                "pserver_endpoints"
-            ] = self._role_maker.get_pserver_endpoints()
+            kwargs["pserver_endpoints"] = (
+                self._role_maker.get_pserver_endpoints()
+            )
             kwargs["trainer_id"] = self._role_maker.worker_index()
             return kwargs
 

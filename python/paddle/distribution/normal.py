@@ -131,6 +131,7 @@ class Normal(distribution.Distribution):
             Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
                 [0.34939718])
     """
+
     loc: Tensor
     scale: Tensor
     name: str

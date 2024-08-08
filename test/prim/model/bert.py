@@ -639,22 +639,30 @@ def _transformer_encoder_fwd(
                 mod,
                 output,
                 src_mask,
-                None
-                if cache is None
-                else cache[i]
-                if isinstance(cache[i], MultiHeadAttention.Cache)
-                else MultiHeadAttention.Cache(*cache[i]),
+                (
+                    None
+                    if cache is None
+                    else (
+                        cache[i]
+                        if isinstance(cache[i], MultiHeadAttention.Cache)
+                        else MultiHeadAttention.Cache(*cache[i])
+                    )
+                ),
                 output_attentions,
             )
         else:
             layer_outputs = mod(
                 output,
                 src_mask=src_mask,
-                cache=None
-                if cache is None
-                else cache[i]
-                if isinstance(cache[i], MultiHeadAttention.Cache)
-                else MultiHeadAttention.Cache(*cache[i]),
+                cache=(
+                    None
+                    if cache is None
+                    else (
+                        cache[i]
+                        if isinstance(cache[i], MultiHeadAttention.Cache)
+                        else MultiHeadAttention.Cache(*cache[i])
+                    )
+                ),
                 output_attentions=output_attentions,
             )
 
@@ -818,9 +826,11 @@ class PretrainingDataset(Dataset):
             masked_lm_ids,
             next_sentence_labels,
         ] = [
-            input[index].astype(np.int64)
-            if indice < 5
-            else np.asarray(input[index].astype(np.int64))
+            (
+                input[index].astype(np.int64)
+                if indice < 5
+                else np.asarray(input[index].astype(np.int64))
+            )
             for indice, input in enumerate(self.inputs)
         ]
         # TODO: whether to use reversed mask by changing 1s and 0s to be

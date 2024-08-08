@@ -352,9 +352,9 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
     if op_role_attr_name not in attrs:
-        attrs[
-            op_role_attr_name
-        ] = core.op_proto_and_checker_maker.OpRole.Backward
+        attrs[op_role_attr_name] = (
+            core.op_proto_and_checker_maker.OpRole.Backward
+        )
     if op_device_attr_name not in attrs:
         attrs[op_device_attr_name] = ""
     for name, val in attrs.items():
@@ -622,9 +622,9 @@ def _addup_repetitive_outputs_(
                             else:
                                 grad_var_to_var[new_name] = var_name
                         # rename original var_name
-                        topo_order_for_grad_name[
-                            new_name
-                        ] = topo_order_for_grad_name[var_name]
+                        topo_order_for_grad_name[new_name] = (
+                            topo_order_for_grad_name[var_name]
+                        )
                         renamed_vars[var_name][0] = new_name
                         # before change: _rename_arg_(op_descs, var_name,
                         #                             new_name, 0, idx)
@@ -792,9 +792,9 @@ def _remove_no_grad_branch_(
                         )
                         is not None
                     ):
-                        grad_op_id_to_fwd_op[
-                            new_op_desc.original_id()
-                        ] = grad_op_id_to_fwd_op[op_desc.original_id()]
+                        grad_op_id_to_fwd_op[new_op_desc.original_id()] = (
+                            grad_op_id_to_fwd_op[op_desc.original_id()]
+                        )
                     to_insert.append((new_op_desc, idx))
 
     [op_descs.insert(p[1], p[0]) for p in reversed(to_insert)]
@@ -1190,9 +1190,9 @@ def _append_backward_ops_with_checkpoints_(
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
                 for g_op_desc in grad_op_desc:
-                    grad_op_id_to_fwd_op[
-                        g_op_desc.original_id()
-                    ] = grad_op_id_to_fwd_op[op_desc.original_id()]
+                    grad_op_id_to_fwd_op[g_op_desc.original_id()] = (
+                        grad_op_id_to_fwd_op[op_desc.original_id()]
+                    )
 
             # Set device for grad_op according to forward Op
             if op_desc.has_attr(device_attr_name):
@@ -1381,9 +1381,9 @@ def _append_backward_ops_(
             assert (
                 op_desc.original_id() not in distop_context.grad_op_id_to_op_id
             )
-            distop_context.grad_op_id_to_op_id[
-                op_desc.original_id()
-            ] = op.desc.original_id()
+            distop_context.grad_op_id_to_op_id[op_desc.original_id()] = (
+                op.desc.original_id()
+            )
 
     if callbacks is not None:
         assert isinstance(callbacks, (list, tuple))

@@ -36,8 +36,7 @@ def vjp(
     func: Callable[..., _OutputT],
     xs: Tensor,
     v: TensorOrTensors | None = None,
-) -> tuple[_OutputT, Tensor]:
-    ...
+) -> tuple[_OutputT, Tensor]: ...
 
 
 @overload
@@ -45,8 +44,7 @@ def vjp(
     func: Callable[..., _OutputT],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
-) -> tuple[_OutputT, tuple[Tensor, ...]]:
-    ...
+) -> tuple[_OutputT, tuple[Tensor, ...]]: ...
 
 
 def vjp(func, xs, v=None):
@@ -112,8 +110,7 @@ def jvp(
     func: Callable[..., _OutputT],
     xs: Tensor,
     v: TensorOrTensors | None = None,
-) -> tuple[_OutputT, Tensor]:
-    ...
+) -> tuple[_OutputT, Tensor]: ...
 
 
 @overload
@@ -121,8 +118,7 @@ def jvp(
     func: Callable[..., _OutputT],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
-) -> tuple[_OutputT, tuple[Tensor, ...]]:
-    ...
+) -> tuple[_OutputT, tuple[Tensor, ...]]: ...
 
 
 def jvp(func, xs, v=None):

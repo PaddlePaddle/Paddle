@@ -795,9 +795,7 @@ class ASPHelper:
         return False
 
     @classmethod
-    def _get_prune_func_by_name(
-        cls, param_name: str
-    ) -> Callable[
+    def _get_prune_func_by_name(cls, param_name: str) -> Callable[
         [npt.NDArray[Any], int, int, MaskAlgo, str],
         tuple[npt.NDArray[Any], npt.NDArray[Any]],
     ]:

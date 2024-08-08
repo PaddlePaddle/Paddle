@@ -602,9 +602,9 @@ def merge_tensor_info_list(
                 tensor_info_key = tensor_info.key()
                 count = fp32_write_count.get(tensor_info_key, 0)
                 fp32_write_count[tensor_info_key] = count + 1
-                fp32_tensor_info_dict[
-                    tensor_info_key + "#" + str(count)
-                ] = tensor_info
+                fp32_tensor_info_dict[tensor_info_key + "#" + str(count)] = (
+                    tensor_info
+                )
 
         fp32_read_count = {}
         for i in range(len(fp16_tensor_info_list)):
