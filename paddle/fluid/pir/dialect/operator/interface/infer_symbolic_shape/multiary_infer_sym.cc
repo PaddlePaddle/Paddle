@@ -1182,7 +1182,7 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
     const symbol::ShapeOrDataDimExprs &c0_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
     size_t ndim_h = h0_shape_or_data.shape().size();
-    for (size_t i; i < ndim_h; ++i) {
+    for (size_t i = 0; i < ndim_h; ++i) {
       infer_context->AddEqualCstr(h0_shape_or_data.shape()[i],
                                   c0_shape_or_data.shape()[i]);
     }
