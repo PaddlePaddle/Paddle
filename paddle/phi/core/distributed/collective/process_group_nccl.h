@@ -227,7 +227,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
         paddle::memory::EraseStream(holder_ptr, allocation_stream.second);
       }
     }
-    VLOG(5) << "After task wait/synchronize, totoal "
+    VLOG(5) << "After task wait/synchronize, total "
             << allocation_stream_pairs_.size()
             << " tensor(s) allocation stream have been removed.";
     allocation_stream_pairs_.clear();
