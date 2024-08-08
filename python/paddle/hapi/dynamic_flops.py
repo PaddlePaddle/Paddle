@@ -16,8 +16,6 @@ from __future__ import annotations
 import warnings
 from typing import (
     TYPE_CHECKING,
-    Any,
-    Callable,
     TypeAlias,
 )
 
@@ -30,16 +28,19 @@ from paddle.jit.dy2static.program_translator import unwrap_decorators
 from .static_flops import Table, static_flops
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle import Tensor
     from paddle.nn import Layer
     from paddle.static import Program
-_CustomOpsAlias: TypeAlias = Callable[[Callable[..., Any]], Callable[..., Any]]
+
+    _CustomOpsAlias: TypeAlias = dict[Layer, Callable[..., None]]
 
 __all__ = []
 
 
 def flops(
-    net: Layer | Program,
+    net: Layer,
     input_size: list[int],
     custom_ops: _CustomOpsAlias | None = None,
     print_detail: bool = False,
