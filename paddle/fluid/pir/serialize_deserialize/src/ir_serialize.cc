@@ -171,8 +171,7 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
                                             "persistable",
                                             "stop_gradient",
                                             "trainable",
-                                            "op_callstack",
-                                            /*no need*/};
+                                            "op_callstack" /*no need*/};
   std::vector<std::string> DistAttrsNameList = GetOpDistAttr();
   AttrsNameList.insert(
       AttrsNameList.end(), DistAttrsNameList.begin(), DistAttrsNameList.end());
