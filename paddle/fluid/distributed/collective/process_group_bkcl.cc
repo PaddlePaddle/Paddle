@@ -19,12 +19,12 @@
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 
 namespace paddle {
 namespace distributed {

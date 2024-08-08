@@ -12,7 +12,7 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_XPU)
-#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_resource_pool.h"
 
 namespace paddle {
 namespace platform {
