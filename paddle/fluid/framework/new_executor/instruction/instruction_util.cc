@@ -22,8 +22,8 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
@@ -145,7 +145,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
               static_cast<phi::distributed::NCCLCommContext*>(comm_context)
                   ->GetDevContext());
           dev_ctx->SetCommContext(comm_context);
-          if (op_name.compare(paddle::dialect::CReducescatterOp::name()) == 0 ||
+          if (op_name.compare(paddle::dialect::ReduceScatterOp::name()) == 0 ||
               op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
             return dev_ctx;
           }

@@ -1181,8 +1181,7 @@ def distribute_fpn_proposals(
     pixel_offset: bool = ...,
     rois_num: None = ...,
     name: str | None = ...,
-) -> tuple[list[Tensor], Tensor, None]:
-    ...
+) -> tuple[list[Tensor], Tensor, None]: ...
 
 
 @overload
@@ -1195,8 +1194,7 @@ def distribute_fpn_proposals(
     pixel_offset: bool = ...,
     rois_num: Tensor = ...,
     name: str | None = ...,
-) -> tuple[list[Tensor], Tensor, list[Tensor]]:
-    ...
+) -> tuple[list[Tensor], Tensor, list[Tensor]]: ...
 
 
 def distribute_fpn_proposals(
@@ -2119,8 +2117,7 @@ def generate_proposals(
     pixel_offset: bool = ...,
     return_rois_num: Literal[True] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -2138,8 +2135,7 @@ def generate_proposals(
     pixel_offset: bool = ...,
     return_rois_num: Literal[False] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, None]:
-    ...
+) -> tuple[Tensor, Tensor, None]: ...
 
 
 @overload
@@ -2157,8 +2153,7 @@ def generate_proposals(
     pixel_offset: bool = ...,
     return_rois_num: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor | None]: ...
 
 
 def generate_proposals(
@@ -2374,8 +2369,7 @@ def matrix_nms(
     return_index: Literal[True] = ...,
     return_rois_num: Literal[False] = ...,
     name: str | None = None,
-) -> tuple[Tensor, None, Tensor]:
-    ...
+) -> tuple[Tensor, None, Tensor]: ...
 
 
 @overload
@@ -2393,8 +2387,7 @@ def matrix_nms(
     return_index: Literal[True] = ...,
     return_rois_num: Literal[True] = ...,
     name: str | None = None,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -2412,8 +2405,7 @@ def matrix_nms(
     return_index: Literal[False] = ...,
     return_rois_num: Literal[True] = ...,
     name: str | None = None,
-) -> tuple[Tensor, Tensor, None]:
-    ...
+) -> tuple[Tensor, Tensor, None]: ...
 
 
 @overload
@@ -2431,8 +2423,7 @@ def matrix_nms(
     return_index: Literal[False] = ...,
     return_rois_num: Literal[False] = ...,
     name: str | None = None,
-) -> tuple[Tensor, None, None]:
-    ...
+) -> tuple[Tensor, None, None]: ...
 
 
 @overload
@@ -2450,8 +2441,7 @@ def matrix_nms(
     return_index: bool = ...,
     return_rois_num: bool = ...,
     name: str | None = None,
-) -> tuple[Tensor, Tensor | None, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None, Tensor | None]: ...
 
 
 def matrix_nms(

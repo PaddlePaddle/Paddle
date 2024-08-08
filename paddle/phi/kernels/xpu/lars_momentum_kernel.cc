@@ -63,11 +63,11 @@ void LarsMomentumKernel(
     PADDLE_ENFORCE_EQ(
         param_list[i],
         param_out_list[i],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Param) and Output(ParamOut) must be the same Tensors."));
     PADDLE_ENFORCE_EQ(velocity_list[i],
                       velocity_out_list[i],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input(Velocity) and Output(VelocityOut) must be "
                           "the same Tensors."));
     if (multi_precision) {
@@ -77,7 +77,7 @@ void LarsMomentumKernel(
           dev_ctx.template Alloc<float>(master_param_out[i]));
       PADDLE_ENFORCE_EQ(master_param_list[i],
                         master_param_out_list[i],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Input(MasterParam) and Output(MasterParamOut) "
                             "must be the same Tensors."));
     } else {

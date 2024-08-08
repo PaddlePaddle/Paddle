@@ -28,7 +28,8 @@ set(standalone_executor_deps
     framework_io
     garbage_collector
     executor_gc_helper
-    device_event_base
+    phi
+    common
     framework_proto)
 
 if(WITH_CINN)
@@ -45,15 +46,6 @@ endif()
 
 if(TENSORRT_FOUND AND WITH_TENSORRT)
   set(standalone_executor_deps ${standalone_executor_deps} trt_engine)
-endif()
-
-if(WITH_CUSTOM_DEVICE)
-  set(standalone_executor_deps ${standalone_executor_deps}
-                               device_event_custom_device)
-endif()
-
-if(WITH_GPU)
-  set(standalone_executor_deps ${standalone_executor_deps} device_event_gpu)
 endif()
 
 cc_library(

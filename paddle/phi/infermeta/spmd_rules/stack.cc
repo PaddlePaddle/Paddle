@@ -26,7 +26,7 @@ std::string FillStackNotation(int64_t n_axis) {
   static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
   PADDLE_ENFORCE_GT(alphabet.size(),
                     static_cast<size_t>(n_axis),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "alphabet.size() [%d]; n_axis [%d] is too large",
                         alphabet.size(),
                         n_axis));
