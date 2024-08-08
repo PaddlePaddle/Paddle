@@ -802,12 +802,12 @@ bool FakeQuantizeRangeAbsMaxOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_scale)});
+          symbol::TensorShapeOrDataDimExprs({out_scale})});
   if (op->result(2)) {
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(out_scales)});
+            symbol::TensorShapeOrDataDimExprs({out_scales})});
   }
 
   return true;
