@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 from paddle.base.executor import global_scope
@@ -25,6 +25,7 @@ from .optimizer import Optimizer
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Callable
 
     from typing_extensions import NotRequired
 
