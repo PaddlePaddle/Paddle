@@ -138,9 +138,6 @@ DECLARE_FUNCTION_FOR_GPU(gpuGraphExecKernelNodeSetParams,
 DECLARE_FUNCTION_FOR_GPU(gpuGraphKernelNodeGetParams,
                          cudaGraphKernelNodeGetParams,
                          hipGraphKernelNodeGetParams);
-DECLARE_FUNCTION_FOR_GPU(gpuGraphInstantiate,
-                         cudaGraphInstantiate,
-                         hipGraphInstantiate);
 DECLARE_FUNCTION_FOR_GPU(gpuStreamCreateWithPriority,
                          cudaStreamCreateWithPriority,
                          hipStreamCreateWithPriority);

@@ -93,7 +93,11 @@ class CinnJitInstruction::FnPtrImpl {
               static_cast<void*>(func_args_.data()), func_args_.size(), stream);
         }
         phi::gpuStreamEndCapture(stream, &graph);
-        phi::gpuGraphInstantiate(&instance, graph, NULL, NULL, 0);
+#ifdef PADDLE_WITH_CUDA
+        cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+#else
+        hipGraphInstantiate(&instance, graph, NULL, NULL, 0);
+#endif
         ps.CudaStart(FLAGS_cinn_kernel_execution_label);
         phi::gpuGraphLaunch(instance, stream);
         ps.CudaEnd(FLAGS_cinn_kernel_execution_label);
