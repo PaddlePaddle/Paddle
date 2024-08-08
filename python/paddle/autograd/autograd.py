@@ -14,9 +14,13 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base import framework
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 def as_tensors(xs):
@@ -64,7 +68,12 @@ class Jacobian:
 
     """
 
-    def __init__(self, ys, xs, is_batched=False):
+    def __init__(
+        self,
+        ys: Tensor | tuple[Tensor, ...],
+        xs: Tensor | tuple[Tensor, ...],
+        is_batched: bool = False,
+    ) -> None:
         if not is_batched:
             if not 0 <= len(xs.shape) <= 1:
                 raise ValueError(
@@ -91,7 +100,7 @@ class Jacobian:
             self._jacobian = _JacobianBatchFirst(ys, xs)
 
     @property
-    def shape(self):
+    def shape(self) -> list[int]:
         """The shape of flattened Jacobian matrix."""
         return self._jacobian.shape
 
@@ -449,8 +458,8 @@ def _multi_index(indexes, shape):
 
 
 def jacobian(
-    ys: paddle.Tensor | tuple[paddle.Tensor, ...],
-    xs: paddle.Tensor | tuple[paddle.Tensor, ...],
+    ys: Tensor | tuple[Tensor, ...],
+    xs: Tensor | tuple[Tensor, ...],
     batch_axis: int | None = None,
 ) -> tuple[tuple[Jacobian, ...], ...] | tuple[Jacobian, ...] | Jacobian:
     r"""
@@ -543,8 +552,8 @@ def jacobian(
 
 
 def hessian(
-    ys: paddle.Tensor,
-    xs: paddle.Tensor | tuple[paddle.Tensor, ...],
+    ys: Tensor,
+    xs: Tensor | tuple[Tensor, ...],
     batch_axis: int | None = None,
 ) -> tuple[tuple[Hessian, ...], ...] | Hessian:
     r"""

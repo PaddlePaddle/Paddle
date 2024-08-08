@@ -11,9 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable
 
 from paddle.base import core
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 __all__ = []
 
 
@@ -103,7 +108,11 @@ class saved_tensors_hooks:
             >>> y.sum().backward()
     """
 
-    def __init__(self, pack_hook, unpack_hook):
+    def __init__(
+        self,
+        pack_hook: Callable[[Tensor], Tensor | None],
+        unpack_hook: Callable[[Tensor], Tensor | None],
+    ) -> None:
         self.pack_hook = pack_hook
         self.unpack_hook = unpack_hook
 
