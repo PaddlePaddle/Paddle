@@ -1508,7 +1508,7 @@ class Resharder:
         if is_union_process_mesh_tensor:
             assert (
                 len(set(source_dims_mapping)) == 1
-                and list(set(source_dims_mapping))[0] == -1
+                and next(iter(set(source_dims_mapping))) == -1
             )
             if set(target_process_group).intersection(
                 set(source_process_group)
