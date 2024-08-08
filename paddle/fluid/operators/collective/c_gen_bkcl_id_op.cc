@@ -75,18 +75,6 @@ class CGenBKCLIdOp : public framework::OperatorBase {
     std::vector<BKCLUniqueId> bkcl_ids;
     bkcl_ids.resize(1);
 
-    if (!FLAGS_dynamic_static_unified_comm) {
-      int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
-      if (rank == 0) {
-        GenBKCLID(&bkcl_ids);
-        std::vector<std::string> endpoint_list =
-            Attr<std::vector<std::string>>("other_endpoints");
-        platform::SendBroadCastCommID(endpoint_list, &bkcl_ids, ring_id);
-      } else {
-        platform::RecvBroadCastCommID(server_fd, endpoint, &bkcl_ids, ring_id);
-      }
-    }
-
     CopyBKCLIDToVar(bkcl_ids, func, scope);
   }
 };
