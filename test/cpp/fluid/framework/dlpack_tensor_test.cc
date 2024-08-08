@@ -58,100 +58,106 @@ void TestMain(const phi::Place &place, uint16_t lanes) {
   PADDLE_ENFORCE_EQ(
       p,
       dl_tensor.data,
-      phi::errors::InvalidArgument("Tensor data pointer should be "
-                                   "equal to DLPack "
-                                   "tensor data pointer, but got "
-                                   "tensor data pointer: %p, "
-                                   "DLPack tensor data pointer: %p",
-                                   p,
-                                   dl_tensor.data));
+      common::errors::InvalidArgument("Tensor data pointer should be "
+                                      "equal to DLPack "
+                                      "tensor data pointer, but got "
+                                      "tensor data pointer: %p, "
+                                      "DLPack tensor data pointer: %p",
+                                      p,
+                                      dl_tensor.data));
   if (phi::is_cpu_place(place)) {
     PADDLE_ENFORCE_EQ(
         kDLCPU,
         dl_tensor.device.device_type,
-        phi::errors::InvalidArgument("Device type should be kDLCPU, "
-                                     "but got %d",
-                                     dl_tensor.device.device_type));
-    PADDLE_ENFORCE_EQ(0,
-                      dl_tensor.device.device_id,
-                      phi::errors::InvalidArgument("Device ID should be 0,"
-                                                   "but got %d",
-                                                   dl_tensor.device.device_id));
-  } else if (phi::is_gpu_place(place)) {
+        common::errors::InvalidArgument("Device type should be kDLCPU, "
+                                        "but got %d",
+                                        dl_tensor.device.device_type));
     PADDLE_ENFORCE_EQ(
-        kDLGPU,
-        dl_tensor.device.device_type,
-        phi::errors::InvalidArgument("Device type should be kDLGPU, but got %d",
-                                     dl_tensor.device.device_type));
-    PADDLE_ENFORCE_EQ(place.device,
-                      dl_tensor.device.device_id,
-                      phi::errors::InvalidArgument("Device ID should be %d, "
-                                                   "but got %d",
-                                                   place.device,
-                                                   dl_tensor.device.device_id));
+        0,
+        dl_tensor.device.device_id,
+        common::errors::InvalidArgument("Device ID should be 0,"
+                                        "but got %d",
+                                        dl_tensor.device.device_id));
+  } else if (phi::is_gpu_place(place)) {
+    PADDLE_ENFORCE_EQ(kDLGPU,
+                      dl_tensor.device.device_type,
+                      common::errors::InvalidArgument(
+                          "Device type should be kDLGPU, but got %d",
+                          dl_tensor.device.device_type));
+    PADDLE_ENFORCE_EQ(
+        place.device,
+        dl_tensor.device.device_id,
+        common::errors::InvalidArgument("Device ID should be %d, "
+                                        "but got %d",
+                                        place.device,
+                                        dl_tensor.device.device_id));
   } else if (phi::is_cuda_pinned_place(place)) {
     PADDLE_ENFORCE_EQ(
         kDLCPUPinned,
         dl_tensor.device.device_type,
-        phi::errors::InvalidArgument("Device type should be kDLCPUPinned, "
-                                     "but got %d",
-                                     dl_tensor.device.device_type));
-    PADDLE_ENFORCE_EQ(0,
-                      dl_tensor.device.device_id,
-                      phi::errors::InvalidArgument("Device ID should be 0, "
-                                                   "but got %d",
-                                                   dl_tensor.device.device_id));
+        common::errors::InvalidArgument("Device type should be kDLCPUPinned, "
+                                        "but got %d",
+                                        dl_tensor.device.device_type));
+    PADDLE_ENFORCE_EQ(
+        0,
+        dl_tensor.device.device_id,
+        common::errors::InvalidArgument("Device ID should be 0, "
+                                        "but got %d",
+                                        dl_tensor.device.device_id));
   } else {
     PADDLE_ENFORCE_EQ(
-        false, true, phi::errors::InvalidArgument("Unsupported place type"));
+        false, true, common::errors::InvalidArgument("Unsupported place type"));
   }
 
   PADDLE_ENFORCE_EQ(
       dims.size(),
       dl_tensor.ndim,
-      phi::errors::InvalidArgument("Dimension size should be equal to %d,"
-                                   "but got %d",
-                                   dims.size(),
-                                   dl_tensor.ndim));
+      common::errors::InvalidArgument("Dimension size should be equal to %d,"
+                                      "but got %d",
+                                      dims.size(),
+                                      dl_tensor.ndim));
   for (auto i = 0; i < dims.size(); ++i) {
     PADDLE_ENFORCE_EQ(
         dims[i],
         dl_tensor.shape[i],
-        phi::errors::InvalidArgument("Dimension at index %d should be %d, "
-                                     "but got %d",
-                                     i,
-                                     dims[i],
-                                     dl_tensor.shape[i]));
+        common::errors::InvalidArgument("Dimension at index %d should be %d, "
+                                        "but got %d",
+                                        i,
+                                        dims[i],
+                                        dl_tensor.shape[i]));
   }
 
-  PADDLE_ENFORCE_EQ(dl_tensor.strides == nullptr,
-                    true,
-                    phi::errors::InvalidArgument("Strides should be nullptr, "
-                                                 "but got non-nullptr value"));
+  PADDLE_ENFORCE_EQ(
+      dl_tensor.strides == nullptr,
+      true,
+      common::errors::InvalidArgument("Strides should be nullptr, "
+                                      "but got non-nullptr value"));
   PADDLE_ENFORCE_EQ(static_cast<uint64_t>(0),
                     dl_tensor.byte_offset,
-                    phi::errors::InvalidArgument("Byte offset should be 0, "
-                                                 "but got %d",
-                                                 dl_tensor.byte_offset));
+                    common::errors::InvalidArgument("Byte offset should be 0, "
+                                                    "but got %d",
+                                                    dl_tensor.byte_offset));
 
   PADDLE_ENFORCE_EQ(
       lanes,
       dl_tensor.dtype.lanes,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Lanes should be %d, but got %d", lanes, dl_tensor.dtype.lanes));
-  PADDLE_ENFORCE_EQ(sizeof(T) * 8,
-                    dl_tensor.dtype.bits,
-                    phi::errors::InvalidArgument("Data type bits should be %d, "
-                                                 "but got %d",
-                                                 sizeof(T) * 8,
-                                                 dl_tensor.dtype.bits));
+  PADDLE_ENFORCE_EQ(
+      sizeof(T) * 8,
+      dl_tensor.dtype.bits,
+      common::errors::InvalidArgument("Data type bits should be %d, "
+                                      "but got %d",
+                                      sizeof(T) * 8,
+                                      dl_tensor.dtype.bits));
 
-  PADDLE_ENFORCE_EQ(GetDLDataTypeCode<T>(),
-                    dl_tensor.dtype.code,
-                    phi::errors::InvalidArgument("Data type code should be %d,"
-                                                 "but got %d",
-                                                 GetDLDataTypeCode<T>(),
-                                                 dl_tensor.dtype.code));
+  PADDLE_ENFORCE_EQ(
+      GetDLDataTypeCode<T>(),
+      dl_tensor.dtype.code,
+      common::errors::InvalidArgument("Data type code should be %d,"
+                                      "but got %d",
+                                      GetDLDataTypeCode<T>(),
+                                      dl_tensor.dtype.code));
 }
 
 template <typename T>
@@ -168,30 +174,30 @@ void TestToDLManagedTensor(const phi::Place &place, uint16_t lanes) {
   PADDLE_ENFORCE_EQ(
       dl_managed_tensor->manager_ctx == nullptr,
       true,
-      phi::errors::InvalidArgument("Manager context should be nullptr, "
-                                   "but got non-nullptr value"));
+      common::errors::InvalidArgument("Manager context should be nullptr, "
+                                      "but got non-nullptr value"));
 
   for (auto i = 0; i < dims.size(); ++i) {
     PADDLE_ENFORCE_EQ(
         dims[i],
         dl_managed_tensor->dl_tensor.shape[i],
-        phi::errors::InvalidArgument("Dimension at index %d should be %d, "
-                                     "but got %d",
-                                     i,
-                                     dims[i],
-                                     dl_managed_tensor->dl_tensor.shape[i]));
+        common::errors::InvalidArgument("Dimension at index %d should be %d, "
+                                        "but got %d",
+                                        i,
+                                        dims[i],
+                                        dl_managed_tensor->dl_tensor.shape[i]));
   }
 
-  PADDLE_ENFORCE_EQ(
-      dl_managed_tensor->dl_tensor.strides[0] == 7,
-      true,
-      phi::errors::InvalidArgument("Stride at index 0 should be 7, but got %d",
-                                   dl_managed_tensor->dl_tensor.strides[0]));
-  PADDLE_ENFORCE_EQ(
-      dl_managed_tensor->dl_tensor.strides[1] == 1,
-      true,
-      phi::errors::InvalidArgument("Stride at index 1 should be 1, but got %d",
-                                   dl_managed_tensor->dl_tensor.strides[1]));
+  PADDLE_ENFORCE_EQ(dl_managed_tensor->dl_tensor.strides[0] == 7,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Stride at index 0 should be 7, but got %d",
+                        dl_managed_tensor->dl_tensor.strides[0]));
+  PADDLE_ENFORCE_EQ(dl_managed_tensor->dl_tensor.strides[1] == 1,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Stride at index 1 should be 1, but got %d",
+                        dl_managed_tensor->dl_tensor.strides[1]));
 
   dl_managed_tensor->deleter(dl_managed_tensor);
 }

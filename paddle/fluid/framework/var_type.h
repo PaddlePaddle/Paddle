@@ -55,7 +55,7 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
       visitor(var.Get<LoDRankTable>());
       return;
     case proto::VarType::LOD_TENSOR_ARRAY:
-      visitor(var.Get<LoDTensorArray>());
+      visitor(var.Get<phi::TensorArray>());
       return;
     case proto::VarType::SELECTED_ROWS:
       visitor(var.Get<phi::SelectedRows>());

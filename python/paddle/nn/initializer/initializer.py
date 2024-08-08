@@ -73,7 +73,7 @@ class Initializer:
         self, param: paddle.Tensor, block: paddle.pir.Block | None = None
     ) -> paddle.Tensor | None:
         """Add corresponding initialization operations to the network."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _lazy_init(
         self, param: paddle.Tensor, block: paddle.pir.Block | None = None

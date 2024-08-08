@@ -116,7 +116,7 @@ class GemmEpilogueAlgoCache {
     PADDLE_ENFORCE_GT(
         returned_results,
         0,
-        phi::errors::Unavailable("No GEMM epilogue algorithm support!"));
+        common::errors::Unavailable("No GEMM epilogue algorithm support!"));
 
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cublasLtMatmulPreferenceDestroy(preference));
@@ -148,8 +148,8 @@ class GemmEpilogueAlgoCache {
         t = -1;
         warmup_algo_idx += 1;
         if (warmup_algo_idx == requested_algo_count_) {
-          PADDLE_THROW(
-              phi::errors::Unavailable("No GEMM epilogue algorithm support!"));
+          PADDLE_THROW(common::errors::Unavailable(
+              "No GEMM epilogue algorithm support!"));
         }
       }
     }
@@ -205,7 +205,7 @@ class GemmEpilogueAlgoCache {
 
     if (best_algo_idx == -1) {
       PADDLE_THROW(
-          phi::errors::Unavailable("No GEMM epilogue algorithm support!"));
+          common::errors::Unavailable("No GEMM epilogue algorithm support!"));
     }
 
     ret = heuristic_results[best_algo_idx].algo;
@@ -325,7 +325,7 @@ static cublasLtEpilogue_t GetEpilogueType(const std::string& activation,
   } else if (activation == "none") {
     return CUBLASLT_EPILOGUE_BIAS;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The activation attribute of fused_gemm_epilogue op should be"
         " one of {\"none\", \"relu\", \"gelu\"}. But received %s."
         "But received activation=%s.",
@@ -500,7 +500,7 @@ struct BwdFusedEpilogueSetter {
     } else if (activation_grad == "gelu_grad") {
       return kMatmulGeluGrad;
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Fued linear epilogue type should be one of {none, relu, gelu}."
           "But received activation is %s, please check",
           activation_grad));
@@ -603,7 +603,7 @@ static cublasLtEpilogue_t GetEpilogueGradType(
   } else if (activation_grad == "gelu_grad") {
     return CUBLASLT_EPILOGUE_DGELU;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The activation_grad attribute of fused_gemm_epilogue op should "
         "be one of {\"none\", \"relu\", \"gelu\"}. But received %s."
         "But received activation_grad=%s.",

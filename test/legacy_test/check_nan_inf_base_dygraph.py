@@ -97,7 +97,7 @@ def run_check(args):
         if use_cuda:
             try:
                 check_main(use_cuda=True, use_amp=args.use_amp)
-                raise AssertionError()
+                raise AssertionError
             except Exception as e:
                 print(e)
                 print(type(e))
@@ -107,7 +107,7 @@ def run_check(args):
         else:
             try:
                 check_main(use_cuda=False, use_amp=False)
-                raise AssertionError()
+                raise AssertionError
             except Exception as e:
                 print(e)
                 print(type(e))
