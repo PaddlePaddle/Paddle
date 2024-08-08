@@ -21,8 +21,8 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/accessor.h"
