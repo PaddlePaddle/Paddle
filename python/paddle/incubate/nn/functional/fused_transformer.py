@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base import core
@@ -23,10 +27,13 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __all__ = []
 
 
-def _verify_dropout_rate(dropout_rate):
+def _verify_dropout_rate(dropout_rate: float) -> None:
     if not isinstance(dropout_rate, (float, int)):
         raise TypeError("dropout_rate argument should be a number")
     if dropout_rate < 0 or dropout_rate > 1:
@@ -34,27 +41,27 @@ def _verify_dropout_rate(dropout_rate):
 
 
 def fused_feedforward(
-    x,
-    linear1_weight,
-    linear2_weight,
-    linear1_bias=None,
-    linear2_bias=None,
-    ln1_scale=None,
-    ln1_bias=None,
-    ln2_scale=None,
-    ln2_bias=None,
-    dropout1_rate=0.5,
-    dropout2_rate=0.5,
-    activation="relu",
-    ln1_epsilon=1e-5,
-    ln2_epsilon=1e-5,
-    pre_layer_norm=False,
-    training=True,
-    mode='upscale_in_train',
-    ring_id=-1,
-    add_residual=True,
-    name=None,
-):
+    x: Tensor,
+    linear1_weight: Tensor,
+    linear2_weight: Tensor,
+    linear1_bias: Tensor = None,
+    linear2_bias: Tensor = None,
+    ln1_scale: Tensor | None = None,
+    ln1_bias: Tensor | None = None,
+    ln2_scale: Tensor | None = None,
+    ln2_bias: Tensor | None = None,
+    dropout1_rate: float | None = 0.5,
+    dropout2_rate: float | None = 0.5,
+    activation: str | None = "relu",
+    ln1_epsilon: float | None = 1e-5,
+    ln2_epsilon: float | None = 1e-5,
+    pre_layer_norm: bool | None = False,
+    training: bool | None = True,
+    mode: str | None = 'upscale_in_train',
+    ring_id: int | None = -1,
+    add_residual: bool | None = True,
+    name: str | None = None,
+) -> Tensor:
     r"""
     This is a fusion operator to compute feed forward layer in transformer model architecture.
     This operator only supports running on GPU. The function of the operator is consistent with
@@ -321,17 +328,17 @@ def fused_feedforward(
 
 
 def fused_bias_dropout_residual_layer_norm(
-    x,
-    residual,
-    bias=None,
-    ln_scale=None,
-    ln_bias=None,
-    dropout_rate=0.5,
-    ln_epsilon=1e-5,
-    training=True,
-    mode='upscale_in_train',
-    name=None,
-):
+    x: Tensor,
+    residual: Tensor,
+    bias: Tensor | None = None,
+    ln_scale: Tensor | None = None,
+    ln_bias: Tensor | None = None,
+    dropout_rate: float | None = 0.5,
+    ln_epsilon: float | None = 1e-5,
+    training: bool | None = True,
+    mode: str | None = 'upscale_in_train',
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     The fused_bias_dropout_residual_layer_norm operator. The pseudo code is as follows:
@@ -500,30 +507,30 @@ def fused_bias_dropout_residual_layer_norm(
 
 
 def fused_multi_head_attention(
-    x,
-    qkv_weight,
-    linear_weight,
-    pre_layer_norm=False,
-    pre_ln_scale=None,
-    pre_ln_bias=None,
-    ln_scale=None,
-    ln_bias=None,
-    pre_ln_epsilon=1e-05,
-    qkv_bias=None,
-    linear_bias=None,
-    cache_kv=None,
-    attn_mask=None,
-    dropout_rate=0.5,
-    attn_dropout_rate=0.5,
-    ln_epsilon=1e-05,
-    training=True,
-    mode='upscale_in_train',
-    ring_id=-1,
-    add_residual=True,
-    num_heads=-1,
-    transpose_qkv_wb=False,
-    name=None,
-):
+    x: Tensor,
+    qkv_weight: Tensor,
+    linear_weight: Tensor,
+    pre_layer_norm: bool | None = False,
+    pre_ln_scale: Tensor | None = None,
+    pre_ln_bias: Tensor | None = None,
+    ln_scale: Tensor | None = None,
+    ln_bias: Tensor | None = None,
+    pre_ln_epsilon: float | None = 1e-05,
+    qkv_bias: Tensor | None = None,
+    linear_bias: Tensor | None = None,
+    cache_kv: Tensor | None = None,
+    attn_mask: Tensor | None = None,
+    dropout_rate: float | None = 0.5,
+    attn_dropout_rate: float | None = 0.5,
+    ln_epsilon: float | None = 1e-05,
+    training: bool | None = True,
+    mode: str | None = 'upscale_in_train',
+    ring_id: int | None = -1,
+    add_residual: bool | None = True,
+    num_heads: int | None = -1,
+    transpose_qkv_wb: bool | None = False,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Attention maps queries and a set of key-value pairs to outputs, and
     Multi-Head Attention performs multiple parallel attention to jointly attending
@@ -962,41 +969,41 @@ def fused_multi_head_attention(
 
 
 def fused_multi_transformer(
-    x,
-    ln_scales,
-    ln_biases,
-    qkv_weights,
-    qkv_biases,
-    linear_weights,
-    linear_biases,
-    ffn_ln_scales,
-    ffn_ln_biases,
-    ffn1_weights,
-    ffn1_biases,
-    ffn2_weights,
-    ffn2_biases,
-    pre_layer_norm=True,
-    epsilon=1e-05,
-    residual_alpha=1.0,
-    cache_kvs=None,
-    beam_offset=None,
-    pre_caches=None,
-    seq_lens=None,
-    rotary_embs=None,
-    time_step=None,
-    attn_mask=None,
-    dropout_rate=0.0,
-    rotary_emb_dims=0,
-    activation="gelu",
-    training=False,
-    mode='upscale_in_train',
-    trans_qkvw=True,
-    ring_id=-1,
-    norm_type="layernorm",
-    use_neox_rotary_style=False,
-    gqa_group_size=-1,
-    name=None,
-):
+    x: Tensor,
+    ln_scales: list[Tensor] | tuple[Tensor],
+    ln_biases: list[Tensor] | tuple[Tensor],
+    qkv_weights: list[Tensor] | tuple[Tensor],
+    qkv_biases: list[Tensor] | tuple[Tensor],
+    linear_weights: list[Tensor] | tuple[Tensor],
+    linear_biases: list[Tensor] | tuple[Tensor],
+    ffn_ln_scales: list[Tensor] | tuple[Tensor],
+    ffn_ln_biases: list[Tensor] | tuple[Tensor],
+    ffn1_weights: list[Tensor] | tuple[Tensor],
+    ffn1_biases: list[Tensor] | tuple[Tensor] | None,
+    ffn2_weights: list[Tensor] | tuple[Tensor],
+    ffn2_biases: list[Tensor] | tuple[Tensor] | None,
+    pre_layer_norm: bool | None = True,
+    epsilon: float | None = 1e-05,
+    residual_alpha: float = 1.0,
+    cache_kvs: list[Tensor] | tuple[Tensor] = None,
+    beam_offset: list[Tensor] | tuple[Tensor] = None,
+    pre_caches: list[Tensor] | tuple[Tensor] | None = None,
+    seq_lens: Tensor = None,
+    rotary_embs: Tensor = None,
+    time_step: Tensor | None = None,
+    attn_mask: Tensor | None = None,
+    dropout_rate: float | None = 0.0,
+    rotary_emb_dims: int | None = 0,
+    activation: str | None = "gelu",
+    training: bool | None = False,
+    mode: str | None = 'upscale_in_train',
+    trans_qkvw: bool | None = True,
+    ring_id: int | None = -1,
+    norm_type: str = "layernorm",
+    use_neox_rotary_style: bool = False,
+    gqa_group_size: int = -1,
+    name: str | None = None,
+) -> Tensor:
     r"""
     This is a fusion operator to compute multi transformer layers in transformer model architecture.
     This operator only supports running on GPU. The function of the transformer layer is consistent
