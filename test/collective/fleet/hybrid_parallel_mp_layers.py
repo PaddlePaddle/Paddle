@@ -314,6 +314,7 @@ class TestDistTraining(unittest.TestCase):
                 dtype='float32',
             )
             data.stop_gradient = False
+            data = data + data  # convert to non-leaf tensor
 
             check_group = dist.new_group(list(range(self.model_parallel_size)))
             integral_data = []
