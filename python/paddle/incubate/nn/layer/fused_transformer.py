@@ -1146,7 +1146,8 @@ class FusedMultiTransformer(Layer):
             >>> paddle.device.set_device('gpu')
 
             >>> # encoder input: [batch_size, src_len, d_model]
-            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> paddle.set_default_dtype('float16')
+            >>> enc_input = paddle.rand((2, 4, 128)).astype('float16')
             >>> # self attention mask: [batch_size, 1, src_len, src_len]
             >>> attn_mask = paddle.rand((2, 1, 4, 4))
             >>> encoder_layers = FusedMultiTransformer(128, 2, 512, num_layers=1)
