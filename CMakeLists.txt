@@ -593,13 +593,6 @@ if(WITH_RPC)
         OFF
         CACHE BOOL "Disable WITH_RPC when compiling with XPU" FORCE)
   endif()
-  if(WITH_CINN AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with CINN. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with CINN" FORCE)
-  endif()
 endif()
 
 if(WITH_MPI)
