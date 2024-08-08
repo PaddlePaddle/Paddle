@@ -20,12 +20,16 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import paddle
+
+if TYPE_CHECKING:
+    from collections.abc import Optional, Sequence
 
 
 class AttentionBias(ABC):
