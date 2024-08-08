@@ -708,19 +708,6 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : reshape
-  args : (Tensor x, IntArray shape)
-  output : Tensor(out)
-  infer_meta :
-    func : ReshapeInferMeta
-    spmd_rule : ReshapeInferSpmd
-  kernel :
-    func : reshape
-  inplace : (x -> out)
-  view: (x -> out)
-  backward: reshape_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : row_conv
   args : (Tensor x, Tensor filter)
   output : Tensor(out)
