@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export FLAGS_multi_block_attention_min_partition_size=2048
+export FLAGS_multi_block_attention_min_partition_size=1024
 
 export FLAGS_mmha_use_flash_decoding=true
 GLOG_v=1 python test_fused_multi_transformer_op.py &> test_fused_mt.log

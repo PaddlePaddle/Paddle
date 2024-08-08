@@ -854,6 +854,24 @@ inline __device__ void print_vec<uint4>(const uint4& vec) {
 }
 
 template <>
+inline __device__ void print_vec<bf16_4_t>(const bf16_4_t& vec) {
+  printf("[%f, %f, %f, %f]", vec.x.x, vec.x.y, vec.y.x, vec.y.y);
+}
+
+template <>
+inline __device__ void print_vec<bf16_8_t>(const bf16_8_t& vec) {
+  printf("[%f, %f, %f, %f, %f, %f, %f, %f]",
+         vec.x.x,
+         vec.x.y,
+         vec.y.x,
+         vec.y.y,
+         vec.z.x,
+         vec.z.y,
+         vec.w.x,
+         vec.w.y);
+}
+
+template <>
 inline __device__ void mul_pointer_v2<float4, float4, uint8_t, CacheType::INT8>(
     float4* c, float4& a, uint8_t* b) {  // NOLINT
   c->x = a.x * (static_cast<float>(b[0]) - 128.0);

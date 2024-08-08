@@ -149,7 +149,8 @@ class TestFusedMultiTransformerOp(OpTest):
         self.query_length = 128
         self.cache_length = 128
         self.pre_cache_num = 64
-        self.head_dim = 64
+        # !!!!! change the head_dim and num_heads to 128 will cause mmha test error.
+        self.head_dim = 128
         self.num_heads = 16
         self.embed_dim = self.head_dim * self.num_heads
 

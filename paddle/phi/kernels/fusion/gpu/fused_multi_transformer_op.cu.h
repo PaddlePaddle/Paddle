@@ -311,7 +311,7 @@ __global__ void masked_multihead_attention_kernel(
             k, k_right, cos_emb, sin_emb, alpha);
       }
     }
-    if (blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x == 0) {
+    if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x < 5) {
       // printf("\nthe value of q after rope: ");
       // print_vec(q);
       // printf("\nthe value of k after rope: ");
@@ -345,9 +345,8 @@ __global__ void masked_multihead_attention_kernel(
     qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
   }
   if (tid == 0) {
-    if (blockIdx.x == 0 && blockIdx.y == 0) {
+    if (blockIdx.x < 5 && blockIdx.y == 0) {
       // printf("the current qk: [%f]\n", qk);
-      // printf("params.inv_sqrt_dh: [%f]\n", params.inv_sqrt_dh);
     }
     qk *= params.inv_sqrt_dh;
     qk_max = qk;
@@ -397,7 +396,7 @@ __global__ void masked_multihead_attention_kernel(
       &params.cache_kv[bi * params.gqa_group_size * params.max_seq_length * Dh +
                        kv_hi * params.max_seq_length * Dh + ki];
 
-  // 将 act_time_step 向上取整扩展到 8 的倍数
+  // 将 act_time_step 向上取整扩展到 K_PER_WARP 的倍数
   int ti_end = div_up(act_time_step, K_PER_WARP) * K_PER_WARP;
 
   // 外层循环 time_step 维度（so 一个线程计算多个 time_step?）
@@ -420,7 +419,7 @@ __global__ void masked_multihead_attention_kernel(
                 ? *reinterpret_cast<const K_vec *>(
                       &k_cache[jj * QK_ELTS_IN_16B])
                 : k_vec_zero;
-        if (blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x == 0) {
+        if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x == 0) {
           // printf("\nk[ii]: ");
           // print_vec(k[ii]);
         }
@@ -430,7 +429,9 @@ __global__ void masked_multihead_attention_kernel(
     // NOTE(liyurui): We should multiple q with inv_sqrt_dh first, for dot(q, k)
     // may overflow with FP16 in large model.
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
-
+    if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x < 5) {
+      // printf("\nq*cache_k: %f", qk);
+    }
     // bool is_mask = false;
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
@@ -466,7 +467,9 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
-
+  if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x == 0) {
+    // printf("\nblock qk_max: %f", qk_max);
+  }
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
   // if (bi == 0 && hi == 0 && tid == 0) {
   //   printf("=======qk_out=======\n");
@@ -486,7 +489,9 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
-
+  if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x == 0) {
+    // printf("\nblock exp_sum: %f", sum);
+  }
   // FIXME(wangxi): need add 1.e-6f?
   float inv_sum = __fdividef(1.f, sum + 1.e-6f);
   for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
@@ -819,7 +824,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
   constexpr int WARPS_PER_BLOCK = THREADS_PER_BLOCK / WARP_SIZE_TMP;
 
   extern __shared__ char smem_[];
-  // TODO(Wanglongzhi): check the location of qk_smem
   float *qk_smem = reinterpret_cast<float *>(smem_);
 
   /*
@@ -928,25 +932,33 @@ __global__ void multi_block_masked_multihead_attention_kernel(
       // print_vec(q);
       // printf("\nthe value of k after adding the bias: ");
       // print_vec(k);
-
-      // printf("the value of q after adding the bias: [%f, %f]\n", q.x, q.y);
-      // printf("the value of k after adding the bias: [%f, %f]\n", k.x, k.y);
     }
-    if (params.rotary_emb_dims != 0) {
-      if (!params.neox_rotary_style) {
-        apply_rotary_embedding(q,
-                               k,
-                               tid,
-                               Dh,
-                               act_time_step,
-                               params.inv_compression_ratio,
-                               params.rope_theta);
-      } else {
+    if (!params.neox_rotary_style) {
+      if (params.rotary_emb_dims != 0) {
+        int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
+        const float *cos_base = params.rotary_emb;
+        const float *sin_base = params.rotary_emb + params.rotary_bsz * Dh;
+        Qk_vec_RoPE cos_emb, sin_emb;
+        zero(cos_emb);
+        zero(sin_emb);
+        cos_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &cos_base[rotary_offset])
+                      : cos_emb;
+        sin_emb = (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
+                      ? *reinterpret_cast<const Qk_vec_RoPE *>(
+                            &sin_base[rotary_offset])
+                      : sin_emb;
+        apply_rotary_embedding(q, k, cos_emb, sin_emb);
+      }
+    } else {
+      /* old rotary pos emb */
+      if (params.rotary_emb_dims != 0) {
         int last_dim = Dh / params.rotary_emb_dims;
         int half_lastdim = last_dim / 2;
         int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
         const float *cos_base = params.rotary_emb;
-        const float *sin_base = params.rotary_emb + params.batch_size * Dh;
+        const float *sin_base = params.rotary_emb + params.rotary_bsz * Dh;
         int stride = half_lastdim / QK_VEC_SIZE;
         int stride_all_lastdim = 2 * stride;
         int right_id = tid / stride_all_lastdim * stride_all_lastdim +
@@ -987,8 +999,8 @@ __global__ void multi_block_masked_multihead_attention_kernel(
             k, k_right, cos_emb, sin_emb, alpha);
       }
     }
-    if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
-        threadIdx.x == 0) {
+    if (blockIdx.x == 1 && blockIdx.y == 0 && blockIdx.z == 0 &&
+        threadIdx.x < 5) {
       // printf("\nthe value of q after rope: ");
       // print_vec(q);
       // printf("\nthe value of k after rope: ");
@@ -1025,9 +1037,10 @@ __global__ void multi_block_masked_multihead_attention_kernel(
       qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
     }
     if (tid == 0) {
-      if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0) {
-        printf("the current qk: [%f]\n", qk);
+      if (blockIdx.x < 5 && blockIdx.y == 0 && blockIdx.z == 0) {
+        // printf("the current qk: [%f]\n", qk);
       }
+
       qk *= params.inv_sqrt_dh;
       qk_max = qk;
       // The query and new Key matmul result will be stored in `qk_current_smem`
@@ -1038,7 +1051,8 @@ __global__ void multi_block_masked_multihead_attention_kernel(
 
   __syncthreads();
 
-  using K_vec = typename K_vec_bttn_<T>::Type;
+  // !!!!!!!! change K_vec_ to K_vec_bttn will cause accuracy error.
+  using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
   constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
@@ -1087,7 +1101,7 @@ __global__ void multi_block_masked_multihead_attention_kernel(
                 ? *reinterpret_cast<const K_vec *>(
                       &k_cache[jj * QK_ELTS_IN_16B])
                 : k_vec_zero;
-        if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
+        if (blockIdx.x == 1 && blockIdx.y == 0 && blockIdx.z == 0 &&
             threadIdx.x == 0) {
           // printf("\nk[ii]: ");
           // print_vec(k[ii]);
@@ -1098,6 +1112,10 @@ __global__ void multi_block_masked_multihead_attention_kernel(
     }
 
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
+    if (blockIdx.x == 1 && blockIdx.y == 0 && blockIdx.z == 0 &&
+        threadIdx.x < 5) {
+      // printf("\nq*cache_k: %f", qk);
+    }
 
     if (time_now < act_time_step && tid % THREADS_PER_KEY == 0) {
       qk_max = fmaxf(qk_max, qk);
@@ -1126,6 +1144,10 @@ __global__ void multi_block_masked_multihead_attention_kernel(
   }
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
+  if (blockIdx.x == 1 && blockIdx.y == 0 && blockIdx.z == 0 &&
+      threadIdx.x == 0) {
+    // printf("\nblock qk_max: %f", qk_max);
+  }
   // 截止现在计算完了一个 block 的 qk 和 qk_max
   float exp_sum = 0.f;
   for (int ti = tid; ti <= params.partition_size; ti += THREADS_PER_BLOCK) {
@@ -1149,7 +1171,9 @@ __global__ void multi_block_masked_multihead_attention_kernel(
   exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
   // 截止现在也计算完了一个 block 的 exp_sum 和 qk_max，存入指针中准备后面进行
   // online softmax
-
+  if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x == 0) {
+    // printf("\nblock exp_sum: %f", exp_sum);
+  }
   // Here store the max logit and exp_sum for rescale in reduce kernel.
   if (tid == 0) {
     float *max_logits_ptr = params.max_logits +

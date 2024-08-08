@@ -898,8 +898,8 @@ PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedMultiTransformerOpKernel,
-                          phi::dtype::float16) {}
-// phi::dtype::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}
 #else
 PD_REGISTER_STRUCT_KERNEL(fused_multi_transformer,
                           GPU,
