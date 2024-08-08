@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
-// #include "stdio.h"
 
 PD_DECLARE_bool(mmha_use_flash_decoding);
 PD_DECLARE_int32(multi_block_attention_min_partition_size);
@@ -180,12 +179,7 @@ __global__ void masked_multihead_attention_kernel(
   // Use block reduction if needed
   // static_assert(Dh_MAX / QK_VEC_SIZE <= WARP_SIZE_TMP, "");
   constexpr int QK_VECS_PER_WARP = Dh_MAX / QK_VEC_SIZE;
-  if (blockIdx.x == 0 && blockIdx.y == 0 && threadIdx.x == 0) {
-    // printf("QK_VEC_SIZE: %d\n", QK_VEC_SIZE);
-    // printf("Dh_MAX: %d\n", Dh_MAX);
-    // printf("QK_VECS_PER_WARP: %d\n", QK_VECS_PER_WARP);
-    // printf("blockDim.x: %d\n", blockDim.x);
-  }
+
   // cache_k, [B, num_head, head_dim / x, max_seq_len, x]
   // x == 4/8 for FP32/FP16, 128bit, 16Byte
   constexpr int QK_ELTS_IN_16B = 16 / sizeof(T);
@@ -239,12 +233,7 @@ __global__ void masked_multihead_attention_kernel(
       //   we may not require k_bias.
       k = add(k, k_bias);
     }
-    if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x < 5) {
-      // printf("\nthe value of q after adding bias: ");
-      // print_vec(q);
-      // printf("\nthe value of k after adding bias: ");
-      // print_vec(k);
-    }
+
     if (!params.neox_rotary_style) {
       if (params.rotary_emb_dims != 0) {
         int rotary_offset = bi * Dh + tid * QK_VEC_SIZE;
@@ -311,12 +300,7 @@ __global__ void masked_multihead_attention_kernel(
             k, k_right, cos_emb, sin_emb, alpha);
       }
     }
-    if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x < 5) {
-      // printf("\nthe value of q after rope: ");
-      // print_vec(q);
-      // printf("\nthe value of k after rope: ");
-      // print_vec(k);
-    }
+
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
 
     int co = tid / QK_VECS_IN_16B;
@@ -345,9 +329,6 @@ __global__ void masked_multihead_attention_kernel(
     qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
   }
   if (tid == 0) {
-    if (blockIdx.x < 5 && blockIdx.y == 0) {
-      // printf("the current qk: [%f]\n", qk);
-    }
     qk *= params.inv_sqrt_dh;
     qk_max = qk;
     qk_smem[act_time_step] = qk;
@@ -366,15 +347,11 @@ __global__ void masked_multihead_attention_kernel(
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
-  // So THREADS_PER_KEY 代表一个 dim_head 被多少个线程进行计算？
-  // K_ELTS_PER_THREAD 代表一个线程计算一个 dim_head 中的多少个元素？
+
   constexpr int K_ELTS_PER_THREAD = Dh_MAX / THREADS_PER_KEY;
-  // K_VECS_PER_THREAD 代表一个线程计算一个 dim_head 的多少个 vec？
   constexpr int K_VECS_PER_THREAD = K_ELTS_PER_THREAD / K_VEC_SIZE;
 
-  // ko 代表该线程计算哪个 dim_head?
   int ko = tid / THREADS_PER_KEY;
-  // ki 表示该线程计算对应 dim_head 中的哪个vec元素？
   int ki = (tid % THREADS_PER_KEY) * K_VEC_SIZE;
 
   static_assert(Dh_MAX == THREADS_PER_KEY * K_VEC_SIZE * K_VECS_PER_THREAD, "");
@@ -386,30 +363,20 @@ __global__ void masked_multihead_attention_kernel(
         &q_smem[ki + i * THREADS_PER_KEY * K_VEC_SIZE]);
   }
 
-  // 256 / 4 = 64
   constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
-  // 32/4 = 8，代表一个 WARP 计算多少个 key（dim_head）？
   constexpr int K_PER_WARP = WARP_SIZE_TMP / THREADS_PER_KEY;
 
-  // k_cache 被定位到第一个 timestep
   T *k_cache =
       &params.cache_kv[bi * params.gqa_group_size * params.max_seq_length * Dh +
                        kv_hi * params.max_seq_length * Dh + ki];
 
-  // 将 act_time_step 向上取整扩展到 K_PER_WARP 的倍数
   int ti_end = div_up(act_time_step, K_PER_WARP) * K_PER_WARP;
 
-  // 外层循环 time_step 维度（so 一个线程计算多个 time_step?）
-  // 一个线程计算 K_PER_ITER 个 key？ 0 号线程计算 0, K_PER_ITER, 2 * K_PER_ITER
-  // 个 key [0,1,..THREADS_PER_KEY-1]号线程计算第一个
-  // timestep，[THREADS_PER_KEY, THREADS_PER_KEY+1,.., 2*THREADS_PER_KEY-1]
-  // 号线程计算第二个 timestep
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
     K_vec k[K_VECS_PER_THREAD];
     K_vec k_vec_zero;
     zero(k_vec_zero);
 #pragma unroll
-    // K_VECS_PER_THREAD = 32
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       int jj = ii * params.max_seq_length + ti;
       // get k from the cache_kv, and dequant k for qk operation
@@ -419,19 +386,13 @@ __global__ void masked_multihead_attention_kernel(
                 ? *reinterpret_cast<const K_vec *>(
                       &k_cache[jj * QK_ELTS_IN_16B])
                 : k_vec_zero;
-        if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x == 0) {
-          // printf("\nk[ii]: ");
-          // print_vec(k[ii]);
-        }
       }
     }
 
     // NOTE(liyurui): We should multiple q with inv_sqrt_dh first, for dot(q, k)
     // may overflow with FP16 in large model.
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
-    if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x < 5) {
-      // printf("\nq*cache_k: %f", qk);
-    }
+
     // bool is_mask = false;
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       // qk_max = is_mask ? qk_max : fmaxf(qk_max, qk);
@@ -467,9 +428,7 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
-  if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x == 0) {
-    // printf("\nblock qk_max: %f", qk_max);
-  }
+
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
   // if (bi == 0 && hi == 0 && tid == 0) {
   //   printf("=======qk_out=======\n");
@@ -489,9 +448,7 @@ __global__ void masked_multihead_attention_kernel(
   }
 
   sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
-  if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x == 0) {
-    // printf("\nblock exp_sum: %f", sum);
-  }
+
   // FIXME(wangxi): need add 1.e-6f?
   float inv_sum = __fdividef(1.f, sum + 1.e-6f);
   for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
@@ -774,10 +731,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params,
     LoadFunc load_func,
     StoreFunc store_func) {
-  if (blockIdx.x == 0 && blockIdx.y == 0 && blockIdx.z == 0 &&
-      threadIdx.x == 0) {
-    printf("You got into multi_block_masked_multihead_attention_kernel!\n");
-  }
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.y;
   // Each Partition responsible for partial KeyCache and Value Cache Compute.
@@ -999,17 +952,10 @@ __global__ void multi_block_masked_multihead_attention_kernel(
             k, k_right, cos_emb, sin_emb, alpha);
       }
     }
-    if (blockIdx.x == 1 && blockIdx.y == 0 && blockIdx.z == 0 &&
-        threadIdx.x < 5) {
-      // printf("\nthe value of q after rope: ");
-      // print_vec(q);
-      // printf("\nthe value of k after rope: ");
-      // print_vec(k);
-    }
+
     *reinterpret_cast<Qk_vec *>(&q_smem[tid * QK_VEC_SIZE]) = q;
     if (partition_idx == num_partitions - 1) {
       if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-        // TODO(Wanglongzhi): check the offset here
         int co = tid / QK_VECS_IN_16B;
         int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
         int offset = bi * params.gqa_group_size * params.max_seq_length * Dh +
@@ -1037,10 +983,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
       qk = block_sum<WARPS_PER_RED>(&red_smem[WARPS_PER_RED], qk);
     }
     if (tid == 0) {
-      if (blockIdx.x < 5 && blockIdx.y == 0 && blockIdx.z == 0) {
-        // printf("the current qk: [%f]\n", qk);
-      }
-
       qk *= params.inv_sqrt_dh;
       qk_max = qk;
       // The query and new Key matmul result will be stored in `qk_current_smem`
@@ -1051,7 +993,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
 
   __syncthreads();
 
-  // !!!!!!!! change K_vec_ to K_vec_bttn will cause accuracy error.
   using K_vec = typename K_vec_<T, THREADS_PER_KEY>::Type;
   constexpr int K_VEC_SIZE = sizeof(K_vec) / sizeof(T);
   static_assert(Dh_MAX % K_VEC_SIZE == 0, "");
@@ -1072,8 +1013,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
         &q_smem[ki + i * THREADS_PER_KEY * K_VEC_SIZE]);
   }
 
-  // THREADS_PER_KEY 代表一个 thread 计算多少 key，所以 K_PER_ITER 用来均分
-  // thread 和 key，代表间隔
   constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
   constexpr int K_PER_WARP = WARP_SIZE_TMP / THREADS_PER_KEY;
 
@@ -1086,7 +1025,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
   for (int ti = ko; ti < ti_end; ti += K_PER_ITER) {
     // First, move each block to their start position.
     const int time_now = ti + partition_times_timesteps_per_block;
-    // TODO(Wanglongzhi): check the k_offset.
     const int k_offset =
         bi * params.gqa_group_size * params.max_seq_length * Dh +
         kv_hi * params.max_seq_length * Dh + time_now * Dh + ki;
@@ -1095,27 +1033,17 @@ __global__ void multi_block_masked_multihead_attention_kernel(
     for (int ii = 0; ii < K_VECS_PER_THREAD; ++ii) {
       int jj = ii * params.max_seq_length + time_now;
       if (time_now < act_time_step) {
-        // TODO(WAnglongzhi): check here
         k[ii] =
             (Dh == Dh_MAX || jj * QK_ELTS_IN_16B < Dh * params.max_seq_length)
                 ? *reinterpret_cast<const K_vec *>(
                       &k_cache[jj * QK_ELTS_IN_16B])
                 : k_vec_zero;
-        if (blockIdx.x == 1 && blockIdx.y == 0 && blockIdx.z == 0 &&
-            threadIdx.x == 0) {
-          // printf("\nk[ii]: ");
-          // print_vec(k[ii]);
-        }
       } else {
         k[ii] = k_vec_zero;
       }
     }
 
     float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
-    if (blockIdx.x == 1 && blockIdx.y == 0 && blockIdx.z == 0 &&
-        threadIdx.x < 5) {
-      // printf("\nq*cache_k: %f", qk);
-    }
 
     if (time_now < act_time_step && tid % THREADS_PER_KEY == 0) {
       qk_max = fmaxf(qk_max, qk);
@@ -1144,11 +1072,7 @@ __global__ void multi_block_masked_multihead_attention_kernel(
   }
 
   qk_max = __shfl_sync(uint32_t(-1), qk_max, 0);
-  if (blockIdx.x == 1 && blockIdx.y == 0 && blockIdx.z == 0 &&
-      threadIdx.x == 0) {
-    // printf("\nblock qk_max: %f", qk_max);
-  }
-  // 截止现在计算完了一个 block 的 qk 和 qk_max
+
   float exp_sum = 0.f;
   for (int ti = tid; ti <= params.partition_size; ti += THREADS_PER_BLOCK) {
     const int time_now = ti + partition_times_timesteps_per_block;
@@ -1169,8 +1093,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
   }
 
   exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
-  // 截止现在也计算完了一个 block 的 exp_sum 和 qk_max，存入指针中准备后面进行
-  // online softmax
   if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x == 0) {
     // printf("\nblock exp_sum: %f", exp_sum);
   }
@@ -1218,7 +1140,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
       const bool is_mask = local_time_idx >= act_time_step;
       if (!is_mask) {
         V_vec v;
-        // TODO(Wanglongzhi): check the offset of v_cache here.
         v = *reinterpret_cast<const V_vec *>(&v_cache[local_time_idx * Dh]);
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
@@ -1254,7 +1175,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
 
   And add a condition: (blockIdx.z == num_partitions - 1)
   */
-  // TODO(Wanglongzhi): understand the index logits here
   if ((blockIdx.z == num_partitions - 1) &&
       vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     V_vec v;
@@ -1270,8 +1190,7 @@ __global__ void multi_block_masked_multihead_attention_kernel(
     }
 
     // TODO(Wanglongzhi): check the offset of v_cache here.
-    *reinterpret_cast<V_vec *>(
-        &v_cache[partition_times_timesteps_per_block * Dh + vi]) = v;
+    *reinterpret_cast<V_vec *>(&v_cache[act_time_step * Dh]) = v;
 
 #if defined(MMHA_USE_FP32_ACUM_FOR_LOGITS)
     out = fma(qk_current_smem[0], cast_to_float(v), out);
@@ -1536,7 +1455,7 @@ void dispatch_mbmmha_impl(const Masked_multihead_attention_params<T> &params,
   MBMMHA_LAUNCH_KERNEL(T,
                        Dh,
                        Dh_MAX,
-                       4,
+                       1,
                        THREADS_PER_VALUE,
                        256,
                        stream,

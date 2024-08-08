@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
@@ -150,7 +151,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.cache_length = 128
         self.pre_cache_num = 64
         # !!!!! change the head_dim and num_heads to 128 will cause mmha test error.
-        self.head_dim = 128
+        self.head_dim = 64
         self.num_heads = 16
         self.embed_dim = self.head_dim * self.num_heads
 
@@ -1713,6 +1714,7 @@ class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
         self.x_type = np.float16
 
 
+
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda()
     or get_cuda_version() < 11030
@@ -1722,6 +1724,49 @@ class TestFusedMultiTransformerOpVariableDecoder2(TestFusedMultiTransformerOp):
 class TestFusedMultiTransformerOpVariableDecoder3(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
+        self.gqa_group_size = 8
+        self.has_cache_kv = True
+        self.gen_cache_kv = True
+        self.remove_padding = True
+        self.layers = 3  # odd layers
+        self.rotary_emb_dims = 2
+        self.x_type = np.float16
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableGQADecoder1(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.gqa_group_size = 8
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.x_type = np.float16
+        self.layers = 3  # odd layers
+        self.pre_layer_norm = False
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableGQADecoder2(
+    TestFusedMultiTransformerOp
+):
+    def config(self):
+        super().config()
+        self.gqa_group_size = 8
         self.has_cache_kv = True
         self.gen_cache_kv = False
         self.remove_padding = True
@@ -1790,7 +1835,6 @@ class TestFusedMultiTransformerOpVariableGQAGenCache3(
         self.layers = 4  # even layers
         self.rotary_emb_dims = 2
         self.x_type = np.float16
-
 
 if __name__ == "__main__":
     unittest.main()

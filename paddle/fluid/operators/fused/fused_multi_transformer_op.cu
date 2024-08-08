@@ -450,7 +450,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                      partial_out_tensor.numel() * sizeof(T));
 
     for (int i = 0; i < layers; ++i) {
-      VLOG(1) << "Compute layer " << i;
       // step1. layer_norm
       if (i == 0 && pre_layer_norm) {
         norm_helper.Norm(x_data,
@@ -493,10 +492,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         cache_bsz = cache_kv->dims()[1];
       }
 
-      VLOG(1) << "time_step: " << timestep;
       if (time_step) {  // generation decoder stage
         if (FLAGS_mmha_use_flash_decoding) {
           int max_seq_len = cache_kv->dims()[3];
+          VLOG(1) << "FLAGS_mmha_use_flash_decoding is true, use mbfmha in "
+                     "fused_multi_transformer_op";
           phi::fusion::mbfmha<T>(dev_ctx,
                                  qkv_out,
                                  *qkv_bias,
@@ -746,7 +746,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
               &seed_offset);
         }
       }
-      VLOG(1) << "Compute layernorm etc.";
       if (pre_layer_norm) {
         out_linear_compute.Compute(&fmha_out,
                                    out_linear_weights[i],
@@ -866,7 +865,6 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         std::swap(buf0, buf1);
       }
     }
-    VLOG(1) << "finished fused_multi_transformer_op";
 
     if (encoder_remove_padding) {
       if (pre_layer_norm) {
