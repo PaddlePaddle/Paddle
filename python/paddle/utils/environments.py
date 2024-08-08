@@ -41,10 +41,10 @@ class EnvironmentVariable(Generic[T]):
         self.default = default
 
     def get(self) -> T:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def set(self, value: T) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def delete(self) -> None:
         del os.environ[self.name]

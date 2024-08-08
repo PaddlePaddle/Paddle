@@ -13,7 +13,9 @@
 # limitations under the License.
 from __future__ import annotations
 
+import multiprocessing
 import os
+import time
 from typing import TYPE_CHECKING
 
 import paddle
@@ -29,6 +31,49 @@ from .utils import (
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.distributed.collective import Group
+
+async_save_queue = []
+
+
+def check_exitcode(task):
+    exitcode = task.exitcode
+    if exitcode != 0:
+        logger.error(
+            f"Error: save ckpt process failed with exitcode {exitcode}!!!"
+        )
+
+
+def clear_async_save_task_queue():
+    """
+    wait until all async save task to be done.
+    """
+    while len(async_save_queue) > 0:
+        task = async_save_queue.pop()
+        if task and task.is_alive():
+            task.join(timeout=60)
+            if task.is_alive():
+                logger.error("Error: save ckpt process timeout!!!")
+                async_save_queue.append(task)
+            else:
+                check_exitcode(task)
+        else:
+            check_exitcode(task)
+
+
+def copy_dict_to_cpu(nested_dict):
+    """
+    Copy the paddle.Tensor objects in the nested dictionary to the CPU and return a new dict.
+    """
+    new_dict = {}
+    for key, value in nested_dict.items():
+        if isinstance(value, paddle.Tensor):
+            new_dict[key] = value.cpu()
+            paddle.device.synchronize()
+        elif isinstance(value, dict):
+            new_dict[key] = copy_dict_to_cpu(value)
+        else:
+            new_dict[key] = value
+    return new_dict
 
 
 def check_file_name(file_name, process_group):
@@ -102,6 +147,7 @@ def save_state_dict(
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
+    async_save: bool = False,
 ) -> None:
     """
     Save the state_dict of model to path.
@@ -233,4 +279,32 @@ def save_state_dict(
         dedup_tensor(
             local_state_dict, local_storage_metadata, metadata.storage_metadata
         )
-        paddle.save(local_state_dict, os.path.join(path, file_name))
+
+        if async_save:
+            cpu_state_dict = copy_dict_to_cpu(local_state_dict)
+            clear_async_save_task_queue()
+
+            attempt = 0
+            ctx = multiprocessing.get_context("spawn")
+
+            def start_process():
+                nonlocal attempt
+                try:
+                    p = ctx.Process(
+                        target=paddle.save,
+                        args=(cpu_state_dict, os.path.join(path, file_name)),
+                    )
+                    p.start()
+                    return p
+                except Exception as e:
+                    logger.error(
+                        f"Attempt {attempt + 1} failed with error: {e}"
+                    )
+                    attempt += 1
+                    time.sleep(1)
+                    return start_process()
+
+            p = start_process()
+            async_save_queue.append(p)
+        else:
+            paddle.save(local_state_dict, os.path.join(path, file_name))

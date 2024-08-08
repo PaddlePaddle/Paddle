@@ -62,15 +62,12 @@ _RetT = TypeVar(
 
 class _Transform(Protocol, Generic[_InputT, _RetT]):
     @overload
-    def __call__(self, data: _InputT) -> _RetT:
-        ...
+    def __call__(self, data: _InputT) -> _RetT: ...
 
     @overload
-    def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]:
-        ...
+    def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]: ...
 
-    def __call__(self, data) -> Any:
-        ...
+    def __call__(self, data) -> Any: ...
 
 
 __all__ = []
@@ -152,12 +149,10 @@ class Compose(_Transform[_InputT, _RetT]):
         self.transforms = transforms
 
     @overload
-    def __call__(self, data: _InputT) -> _RetT:
-        ...
+    def __call__(self, data: _InputT) -> _RetT: ...
 
     @overload
-    def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]:
-        ...
+    def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]: ...
 
     def __call__(self, data) -> Any:
         for f in self.transforms:
@@ -308,12 +303,10 @@ class BaseTransform(_Transform[_InputT, _RetT]):
         pass
 
     @overload
-    def __call__(self, inputs: _InputT) -> _RetT:
-        ...
+    def __call__(self, inputs: _InputT) -> _RetT: ...
 
     @overload
-    def __call__(self, inputs: tuple[_InputT, ...]) -> tuple[_RetT, ...]:
-        ...
+    def __call__(self, inputs: tuple[_InputT, ...]) -> tuple[_RetT, ...]: ...
 
     def __call__(self, inputs) -> Any:
         """Apply transform on single input data"""

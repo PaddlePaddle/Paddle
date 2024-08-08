@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import copy
 from types import MethodType
-from typing import Callable, List, Tuple, Union
+from typing import Callable
 
 import numpy as np
 
@@ -988,9 +990,9 @@ class _ShardOptimizer(Optimizer):
             if accumulator.is_dist():
                 continue
             if self._shard_fn is not None:
-                self._inner_opt._accumulators[key][
-                    target_name
-                ] = self._shard_fn(key, param, accumulator)
+                self._inner_opt._accumulators[key][target_name] = (
+                    self._shard_fn(key, param, accumulator)
+                )
             else:
                 if param.is_dist():
                     if 'beta' not in key:
@@ -1003,12 +1005,12 @@ class _ShardOptimizer(Optimizer):
                             dist.Replicate()
                             for _ in range(len(param.process_mesh.shape))
                         ]
-                    self._inner_opt._accumulators[key][
-                        target_name
-                    ] = shard_tensor(
-                        accumulator,
-                        mesh=param.process_mesh,
-                        placements=placements,
+                    self._inner_opt._accumulators[key][target_name] = (
+                        shard_tensor(
+                            accumulator,
+                            mesh=param.process_mesh,
+                            placements=placements,
+                        )
                     )
             if not isinstance(
                 self._inner_opt._accumulators[key][target_name], pir.Value
@@ -2641,9 +2643,9 @@ class ShardDataloader:
     def __init__(
         self,
         dataloader: paddle.io.DataLoader,
-        meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
-        input_keys: Union[List[str], Tuple[str]] | None = None,
-        shard_dims: Union[list, tuple, str, int] | None = None,
+        meshes: ProcessMesh | list[ProcessMesh] | tuple[ProcessMesh],
+        input_keys: list[str] | tuple[str] | None = None,
+        shard_dims: list | tuple | str | int | None = None,
         is_dataset_splitted: bool = False,
     ):
         # do some check
@@ -2895,9 +2897,9 @@ class ShardDataloader:
 
 def shard_dataloader(
     dataloader: paddle.io.DataLoader,
-    meshes: Union[ProcessMesh, List[ProcessMesh], Tuple[ProcessMesh]],
-    input_keys: Union[List[str], Tuple[str]] | None = None,
-    shard_dims: Union[list, tuple, str, int] | None = None,
+    meshes: ProcessMesh | list[ProcessMesh] | tuple[ProcessMesh],
+    input_keys: list[str] | tuple[str] | None = None,
+    shard_dims: list | tuple | str | int | None = None,
     is_dataset_splitted: bool = False,
 ) -> ShardDataloader:
     """
