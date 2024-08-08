@@ -80,22 +80,15 @@ class DygraphShardingOptimizer:
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
 
         strategy = fleet.fleet._user_defined_strategy
-        self.tensor_fusion = strategy.hybrid_configs[
-            'sharding_configs'
-        ].tensor_fusion
+        sharding_configs = strategy.hybrid_configs['sharding_configs']
 
-        self.accumulate_steps = strategy.hybrid_configs[
-            'sharding_configs'
-        ].accumulate_steps
-        self.comm_overlap = strategy.hybrid_configs[
-            'sharding_configs'
-        ].comm_overlap
-        self.fuse_optimizer = strategy.hybrid_configs[
-            'sharding_configs'
-        ].fuse_optimizer
-        self.use_reduce_avg = strategy.hybrid_configs[
-            'sharding_configs'
-        ].use_reduce_avg
+        self.tensor_fusion = sharding_configs.tensor_fusion
+        self.accumulate_steps = sharding_configs.accumulate_steps
+        self.comm_overlap = sharding_configs.comm_overlap
+        self.comm_buffer_size_MB = sharding_configs.comm_buffer_size_MB
+        self.fuse_optimizer = sharding_configs.fuse_optimizer
+        self.use_reduce_avg = sharding_configs.use_reduce_avg
+
         if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
             self.use_reduce_avg = False
             warnings.warn(
@@ -235,6 +228,7 @@ class DygraphShardingOptimizer:
                 scale_after_comm=False,
                 apply_decay_param_fun=self.origin_decay_param_fun,
                 use_reduce_avg=self.use_reduce_avg,
+                group_size=self.comm_buffer_size_MB,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer
@@ -629,6 +623,8 @@ class DygraphShardingOptimizerV2:
         acc_steps = sharding_config.accumulate_steps
         self.comm_overlap = sharding_config.comm_overlap
 
+        comm_buffer_size_MB = sharding_config.comm_buffer_size_MB
+
         # Setting pipeline parallelism overlap
         self.pp_overlap = pp_config.sharding_comm_overlap
         self.pp_release_grads = pp_config.release_gradients
@@ -641,7 +637,7 @@ class DygraphShardingOptimizerV2:
                 "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
             )
 
-        self._build_comm_buffers(acc_steps)
+        self._build_comm_buffers(acc_steps, comm_buffer_size_MB * 1024 * 1024)
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
         # g_shard_sort_reduce_root is True.
