@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import collections
 import os
-
 from typing import Any, Literal, NamedTuple
 
 from typing_extensions import TypeAlias
