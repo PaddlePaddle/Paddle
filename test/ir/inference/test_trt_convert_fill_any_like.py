@@ -109,7 +109,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, list[int], int):
+    ) -> tuple[paddle_infer.Config, list[int], int]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
