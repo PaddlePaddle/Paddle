@@ -14,7 +14,7 @@
 
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -37,12 +37,12 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.random.uniform(
                 low=0.0, high=1.0, size=[1, 3, 64, 64]
             ).astype(np.float32)
 
-        def generate_input2(attrs: List[Dict[str, Any]]):
+        def generate_input2(attrs: list[dict[str, Any]]):
             return np.random.uniform(low=0.5, high=6.0, size=(2)).astype(
                 "float32"
             )
@@ -98,7 +98,7 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> (paddle_infer.Config, list[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -161,7 +161,7 @@ class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.workspace_size = 1 << 32
 
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.random.uniform(
                 low=0.0, high=1.0, size=[1, 18, 144, 144]
             ).astype(np.float32)
@@ -211,7 +211,7 @@ class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> (paddle_infer.Config, list[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 18, 144, 144]

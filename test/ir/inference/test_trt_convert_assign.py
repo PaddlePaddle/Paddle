@@ -14,7 +14,6 @@
 
 import unittest
 from functools import partial
-from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -93,7 +92,7 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> (paddle_infer.Config, list[int], float):
         def generate_dynamic_shape(attrs):
             if self.dims == 0:
                 self.dynamic_shape.min_input_shape = {"input_data": []}

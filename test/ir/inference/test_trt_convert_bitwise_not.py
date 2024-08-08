@@ -14,7 +14,7 @@
 
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -30,7 +30,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
+        def generate_input1(dims, batch, attrs: list[dict[str, Any]]):
             if dims == 0:
                 return np.random.random([]).astype(np.bool_)
             if dims == 1:
@@ -70,7 +70,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> (paddle_infer.Config, list[int], float):
         def generate_dynamic_shape(attrs):
             if self.dims == 0:
                 self.dynamic_shape.min_input_shape = {"input_data": []}

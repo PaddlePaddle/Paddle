@@ -14,7 +14,6 @@
 
 import unittest
 from functools import partial
-from typing import List, Tuple
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -79,7 +78,7 @@ class TrtConvertArgMinTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> Tuple[paddle_infer.Config, List[int], float]:
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.rank == 3:
                 self.dynamic_shape.min_input_shape = {
