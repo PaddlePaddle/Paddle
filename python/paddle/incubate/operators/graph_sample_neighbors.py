@@ -26,12 +26,6 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
-@deprecated(
-    since="2.4.0",
-    update_to="paddle.geometric.sample_neighbors",
-    level=1,
-    reason="paddle.incubate.graph_sample_neighbors will be removed in future",
-)
 @overload
 def graph_sample_neighbors(
     row: Tensor,
@@ -74,6 +68,12 @@ def graph_sample_neighbors(
 ) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]: ...
 
 
+@deprecated(
+    since="2.4.0",
+    update_to="paddle.geometric.sample_neighbors",
+    level=1,
+    reason="paddle.incubate.graph_sample_neighbors will be removed in future",
+)
 def graph_sample_neighbors(
     row,
     colptr,
