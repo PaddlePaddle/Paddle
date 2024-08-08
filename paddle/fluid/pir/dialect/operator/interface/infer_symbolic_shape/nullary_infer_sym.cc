@@ -346,6 +346,8 @@ bool MatrixPowerOpInferSymbolicShape(
                         n_dim));
   infer_context->AddEqualCstr(dims[n_dim - 2], dims[n_dim - 1]);
   infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs(x_shape_or_data));
+
+  return true;
 }
 
 bool RandintOpInferSymbolicShape(
