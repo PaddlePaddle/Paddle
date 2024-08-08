@@ -81,13 +81,11 @@ bool ReadModule(const std::string& file_path,
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
     if (file_version != pir_version) {
       builder.SetFileVersion(file_version);
-      // std::string cur_file = std::string(__FILE__);
-      // std::string patch_path =
-      //     cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
-      std::filesystem::path path("../patch");
-      // std::filesystem::path path =
-      // std::filesystem::current_path().parent_path() / patch_path;
-      builder.BuildPatch(path);
+      std::filesystem::path cur_file(__FILE__);
+      std::filesystem::path patch_path =
+          cur_file.parent_path().parent_path() / "patch";
+      VLOG(8) << "Patch path: " << patch_path;
+      builder.BuildPatch(patch_path.string());
     }
   } else {
     PADDLE_THROW(common::errors::InvalidArgument("Invalid model file."));

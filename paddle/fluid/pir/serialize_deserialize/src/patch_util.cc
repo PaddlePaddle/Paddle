@@ -245,6 +245,60 @@ Json GetTypeJson(const YAML::Node &action) {
   return json;
 }
 
+Json ParseOpPairPatches(const YAML::Node &root) {
+  Json json_patch = Json::array();
+  for (size_t i = 0; i < root.size(); i++) {
+    // parse op_name
+    YAML::Node node = root[i];
+    Json j_patch;
+    j_patch["op_pair"] = Json::array();
+    for (auto name : node["op_pair"]) {
+      auto op_name = name.as<std::string>();
+      if (op_name == pir::ParameterOp::name()) {
+        op_name = PARAMETEROP;
+      } else {
+        GetCompressOpName(&op_name);
+      }
+      VLOG(8) << "Op_pair_name: " << name;
+      j_patch["op_pair"].push_back(op_name);
+    }
+    j_patch["patch"] = Json::object();
+    // parse actions
+    auto actions = node["actions"];
+    for (size_t j = 0; j < actions.size(); j++) {
+      YAML::Node action = actions[j];
+      std::string default_type;
+      std::string action_name = action["action"].as<std::string>();
+      VLOG(8) << "Patch action_name: " << action_name;
+      if (action_name == "add_value") {
+        VLOG(8) << "Patch for adding values.";
+        int out_id = action["object"][0].as<int>();
+        int in_id = action["object"][1].as<int>();
+        Json j_add_out;
+        j_add_out[VALUE_ID] = out_id;
+        j_add_out[TYPE_TYPE] = BuildTypeJsonPatch(action);
+        j_patch["patch"][OPRESULTS]["ADD"].push_back(j_add_out);
+        Json j_add_in;
+        j_add_in[VALUE_ID] = in_id;
+        j_patch["patch"][OPOPERANDS]["ADD"].push_back(j_add_in);
+      } else if (action_name == "delete_value") {
+        VLOG(8) << "Patch for deleting values.";
+        int out_id = action["object"][0].as<int>();
+        int in_id = action["object"][1].as<int>();
+        Json j_del_out;
+        j_del_out[VALUE_ID] = out_id;
+        j_patch["patch"][OPRESULTS]["DELETE"].push_back(j_del_out);
+        Json j_del_in;
+        j_del_in[VALUE_ID] = in_id;
+        j_patch["patch"][OPOPERANDS]["DELETE"].push_back(j_del_in);
+      }
+    }
+    json_patch.push_back(j_patch);
+  }
+  VLOG(8) << "Op pair patches: " << json_patch;
+  return json_patch;
+}
+
 Json ParseOpPatches(const YAML::Node &root) {
   Json json_patch = Json::array();
   for (size_t i = 0; i < root.size(); i++) {
@@ -321,7 +375,7 @@ Json ParseOpPatches(const YAML::Node &root) {
     }
     json_patch.push_back(j_patch);
   }
-  VLOG(8) << json_patch;
+  VLOG(8) << "Op patches built successfully: " << json_patch;
   return json_patch;
 }
 
@@ -386,8 +440,9 @@ Json YamlParser(const std::string &yaml_file) {
   VLOG(8) << yaml_file;
   fin.open(yaml_file);
   if (!fin) {
-    PADDLE_THROW(phi::errors::Unavailable("File %s is not available.",
-                                          yaml_file.c_str()));
+    std::string file = "../patch" + yaml_file.substr(yaml_file.rfind("/"));
+    VLOG(8) << "Not Fin and create new: " << file;
+    fin.open(file);
   }
   YAML::Node root = YAML::Load(fin);
   Json json_patch;
@@ -399,6 +454,8 @@ Json YamlParser(const std::string &yaml_file) {
   if (!root["op_patches"].IsSequence()) {
     VLOG(8) << "Not a sequence";
   }
+  Yaml op_pair_patch = root["op_pair_patches"];
+  json_patch["op_pair_patches"] = ParseOpPairPatches(op_pair_patch);
   Yaml op_patch = root["op_patches"];
   json_patch["op_patches"] = ParseOpPatches(op_patch);
   VLOG(8) << "Finish op json_patch: " << json_patch;

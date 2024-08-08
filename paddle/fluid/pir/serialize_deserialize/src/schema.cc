@@ -81,14 +81,13 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
 }
 
 uint64_t GetPirVersion() {
-  // std::string cur_file = std::string(__FILE__);
-  // std::string patch_path =
-  //     cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
-  int version = 0;
-  std::filesystem::path path("../patch");
-  // std::filesystem::path path = std::filesystem::current_path().parent_path()
-  // / patch_path;
+  std::filesystem::path cur_file(__FILE__);
+  std::filesystem::path path = cur_file.parent_path().parent_path() / "patch";
+  if (!std::filesystem::exists(path)) {
+    path = "../patch";
+  }
   VLOG(8) << "patch_path: " << path;
+  int version = 0;
   for (auto& v : std::filesystem::directory_iterator(path)) {
     std::string filename = v.path().filename().string();
     std::string extension_name = v.path().extension().string();
@@ -104,18 +103,17 @@ uint64_t GetPirVersion() {
   return version;
 }
 uint64_t GetMaxReleasePirVersion() {
-  // std::string cur_file = std::string(__FILE__);
-  // std::string patch_path =
-  //     cur_file.substr(0, cur_file.rfind('/')) + "/../patch/";
-  int version = 0;
-  std::filesystem::path path("../patch");
-  // std::filesystem::path path = std::filesystem::current_path().parent_path()
-  // / patch_path;
+  std::filesystem::path cur_file(__FILE__);
+  std::filesystem::path path = cur_file.parent_path().parent_path() / "patch";
+  if (!std::filesystem::exists(path)) {
+    path = "../patch";
+  }
   VLOG(8) << "patch_path: " << path;
+  int version = 0;
   for (auto& v : std::filesystem::directory_iterator(path)) {
     std::string filename = v.path().filename().string();
     std::string extension_name = v.path().extension().string();
-    std::cout << filename << std::endl;
+    VLOG(8) << filename;
     if (extension_name == ".yaml") {
       version = stoi(filename) > version ? stoi(filename) : version;
     }

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -53,7 +54,7 @@ TEST(save_load_version_compat, op_patch_test) {
   const uint64_t pir_version = 2;
   pir::PatchBuilder builder(pir_version);
   builder.SetFileVersion(1);
-  std::string cur_file = std::string(__FILE__);
-  std::string patch_path = cur_file.substr(0, cur_file.rfind('/')) + "/patch/";
-  builder.BuildPatch(patch_path);
+  std::filesystem::path cur_file(__FILE__);
+  std::filesystem::path patch_path = cur_file.parent_path() / "patch";
+  builder.BuildPatch(patch_path.string());
 }

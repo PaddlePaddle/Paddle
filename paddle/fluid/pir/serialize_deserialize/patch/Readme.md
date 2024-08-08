@@ -148,3 +148,5 @@ type_patches:
 
 ### Python端
 - Paddle的主版本号定义在Python端，与PIR version不产生关联。Python端不再需要获取和传入pir_version，直接使用默认值即可。
+### Paddle发版要求
+- 需要确认Paddle发版时develop版本被修改为正式版本，即若Python端的版本号不为0.0.0，则pir_version不能为0。
