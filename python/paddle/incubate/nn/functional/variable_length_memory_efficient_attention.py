@@ -51,8 +51,8 @@ def variable_length_memory_efficient_attention(
         value (Tensor): The Value Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
         seq_lens (Tensor): The sequence lengths of the sequences in the batch, used to index query. Its shape is [batchsize, 1].
         kv_seq_lens (Tensor): The sequence lengths of the sequences in the batch, used to index key and value. Its shape is [batchsize, 1].
-        mask (Tensor|None, Optional): The Mask Tensor. Its shape is [batchsize, 1, query_seq_len, key_seq_len].
-        scale (Float|None, Optional): The attention matrix's scale. Default is sqrt(1.0 / head_size).
+        mask (Tensor|None, optional): The Mask Tensor. Its shape is [batchsize, 1, query_seq_len, key_seq_len].
+        scale (Float|None, optional): The attention matrix's scale. Default is sqrt(1.0 / head_size).
         causal (Bool): Whether causal masking is used or not. Default is False.
         pre_cache_length (Int): The length of the pre-cache. Default is 0.
     Returns:
