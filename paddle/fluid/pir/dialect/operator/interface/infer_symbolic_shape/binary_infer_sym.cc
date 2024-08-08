@@ -726,14 +726,14 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &vec_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  PADDLE_ENFORCE_EQ(
-      x_shape_or_data.shape().size(),
-      2,
-      phi::errors::InvalidArgument("The rank of input X should be 2, but is %d",
-                                   x_shape_or_data.shape().size()));
+  PADDLE_ENFORCE_EQ(x_shape_or_data.shape().size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The rank of input X should be 2, but is %d",
+                        x_shape_or_data.shape().size()));
   PADDLE_ENFORCE_EQ(vec_shape_or_data.shape().size(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The rank of input Vec should be 1, but is %d",
                         vec_shape_or_data.shape().size()));
   infer_context->AddEqualCstr(x_shape_or_data.shape()[1],
