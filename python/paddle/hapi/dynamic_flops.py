@@ -11,8 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import warnings
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    TypeAlias,
+)
 
 import numpy as np
 
@@ -22,10 +29,21 @@ from paddle.jit.dy2static.program_translator import unwrap_decorators
 
 from .static_flops import Table, static_flops
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn import Layer
+    from paddle.static import Program
+_CustomOpsAlias: TypeAlias = Callable[[Callable[..., Any]], Callable[..., Any]]
+
 __all__ = []
 
 
-def flops(net, input_size, custom_ops=None, print_detail=False):
+def flops(
+    net: Layer | Program,
+    input_size: list[int],
+    custom_ops: _CustomOpsAlias | None = None,
+    print_detail: bool = False,
+) -> int:
     """Print a table about the FLOPs of network.
 
     Args:
@@ -215,7 +233,12 @@ register_hooks = {
 }
 
 
-def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
+def dynamic_flops(
+    model: Layer | Program,
+    inputs: Tensor,
+    custom_ops: _CustomOpsAlias | None = None,
+    print_detail: bool = False,
+) -> int:
     handler_collection = []
     types_collection = set()
     if custom_ops is None:
