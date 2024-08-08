@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/collective/process_group_nccl.h"
 
 namespace paddle {
