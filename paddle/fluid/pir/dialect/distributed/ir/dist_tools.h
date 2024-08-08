@@ -21,6 +21,13 @@
 namespace paddle {
 namespace dialect {
 
+ProcessMeshAttribute MergeMeshes(const ProcessMeshAttribute& mesh1,
+                                 const ProcessMeshAttribute& mesh2);
+
+ProcessMeshAttribute MergeInputMeshes(const std::vector<pir::Value>& inputs);
+
+ProcessMeshAttribute CreateGlobalMesh(const std::vector<pir::Value>& inputs);
+
 bool HasDistInput(const std::vector<pir::Value>& inputs,
                   ProcessMeshAttribute* p_mesh_attr = nullptr);
 bool AllInputAreDist(const std::vector<pir::Value>& inputs);
@@ -33,6 +40,10 @@ phi::distributed::DistMetaTensor CvtToDistMetaTensor(DistDenseTensorType type);
 std::vector<phi::distributed::DistMetaTensor> CvtToDistMetaTensor(
     pir::VectorType type);
 pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr);
+
+// When the input is a vector of Value, get all its dist
+// attributes and converts them to a ''pir::Attribute'' type.
+pir::Attribute GetTensorDistAttrArray(pir::VectorType x_vec_type);
 
 pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,
                                         ProcessMeshAttribute mesh);

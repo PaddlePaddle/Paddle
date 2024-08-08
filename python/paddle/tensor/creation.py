@@ -360,7 +360,61 @@ def linspace(
     if not isinstance(num, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.linspace(
+            tensor_start,
+            tensor_stop,
+            tensor_num,
+            dtype,
+            _current_expected_place(),
+        )
+    elif in_pir_mode():
+        helper = LayerHelper("linspace", **locals())
+
+        start_dtype = convert_dtype(tensor_start.dtype)
+        stop_dtype = convert_dtype(tensor_stop.dtype)
+        out_dtype = convert_dtype(dtype)
+        if isinstance(start, paddle.pir.Value):
+            check_dtype(
+                start.dtype,
+                'start',
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+                'linspace',
+            )
+        else:
+            check_type(start, 'start', (int, float), 'linspace')
+
+        if isinstance(stop, paddle.pir.Value):
+            check_dtype(
+                stop.dtype,
+                'stop',
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+                'linspace',
+            )
+        else:
+            check_type(stop, 'stop', (int, float), 'linspace')
+        if isinstance(num, paddle.pir.Value):
+            check_dtype(num.dtype, 'num', ['int32'], 'linspace')
+        check_dtype(
+            dtype,
+            'dtype',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'linspace',
+        )
+        if (
+            (stop_dtype == "float64" or start_dtype == "float64")
+            and out_dtype in ["float32", "int32"]
+        ) or (
+            (stop_dtype == "int64" or start_dtype == "int64")
+            and out_dtype == "int32"
+        ):
+            raise ValueError(
+                f"The dtype of start/stop is {start_dtype}/{stop_dtype} but the attr(dtype) of linspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of linspace."
+            )
+        if isinstance(dtype, paddle.base.core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
+
         return _C_ops.linspace(
             tensor_start,
             tensor_stop,
@@ -720,11 +774,13 @@ def _to_tensor_static(
 
                     Thus, process nested structure in except block
                     '''
-                    data = np.array(data)
+                    array_data = np.array(data)
 
                     # for numpy version <= 1.23.5
-                    if data.dtype == 'object':
+                    if array_data.dtype == 'object':
                         raise RuntimeError("Numpy get dtype `object`.")
+
+                    data = array_data
 
                 except:
                     to_stack_list = [None] * len(data)
@@ -1639,7 +1695,31 @@ def tril(
              [5 , 0 , 0 , 0 ],
              [9 , 10, 0 , 0 ]])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.tril(x, diagonal)
+    elif in_pir_mode():
+        op_type = 'tril'
+        assert x is not None, f'x cannot be None in {op_type}'
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            op_type,
+        )
+        if len(x.shape) < 2:
+            raise ValueError(f"x shape in {op_type} must be at least 2-D")
+        if not isinstance(diagonal, (int,)):
+            raise TypeError(f"diagonal in {op_type} must be a python Int")
         return _C_ops.tril(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -1720,7 +1800,31 @@ def triu(
              [0 , 10, 11, 12]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.triu(x, diagonal)
+    elif in_pir_mode():
+        op_type = 'triu'
+        assert x is not None, f'x cannot be None in {op_type}'
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            op_type,
+        )
+        if len(x.shape) < 2:
+            raise ValueError(f"x shape in {op_type} must be at least 2-D")
+        if not isinstance(diagonal, (int,)):
+            raise TypeError(f"diagonal in {op_type} must be a python Int")
         return _C_ops.triu(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('triu', **locals()))
@@ -1742,15 +1846,13 @@ def triu_(
 @overload
 def meshgrid(
     args: Sequence[paddle.Tensor], name: str | None = None
-) -> list[paddle.Tensor]:
-    ...
+) -> list[paddle.Tensor]: ...
 
 
 @overload
 def meshgrid(
     *args: paddle.Tensor, name: str | None = None
-) -> list[paddle.Tensor]:
-    ...
+) -> list[paddle.Tensor]: ...
 
 
 def meshgrid(*args, **kwargs):
@@ -2547,6 +2649,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
                     'uint16',
                     'float32',
                     'float64',
+                    'int16',
                     'int32',
                     'int64',
                     'uint8',

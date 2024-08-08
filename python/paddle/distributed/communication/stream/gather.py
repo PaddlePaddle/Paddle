@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING
 
 import paddle
 import paddle.distributed as dist
@@ -22,6 +25,13 @@ from paddle.distributed.communication.group import (
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
 
 def _gather_in_dygraph(
@@ -49,13 +59,13 @@ def _gather_in_dygraph(
 
 
 def gather(
-    tensor,
-    gather_list=None,
-    dst=0,
-    group=None,
-    sync_op=True,
-    use_calc_stream=False,
-):
+    tensor: Tensor,
+    gather_list: Sequence[Tensor] | None = None,
+    dst: int = 0,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Gather tensors from all participators.
@@ -63,10 +73,10 @@ def gather(
     Args:
         tensor (Tensor): The input Tensor. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16.
-        gather_list (list): A list of Tensors to hold the gathered tensors. Every element in the list must be a Tensor whose data type
+        gather_list (list|None): A list of Tensors to hold the gathered tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool or bfloat16. Default value is None.
         dst (int): The dst rank id. Default value is 0.
-        group (Group, optional): The group instance return by new_group or None for global default group.
+        group (Group|None, optional): The group instance return by new_group or None for global default group.
         sync_op (bool, optional): Whether this op is a sync op. The default value is True.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
             option is designed for high performance demand, be careful to turn it on except you are clearly know its meaning.

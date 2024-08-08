@@ -222,7 +222,7 @@ class ShapeOptimizationPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ShapeOptimizationPass should run on module op."));
     PrintProgram(module_op, "Origin Program");
 

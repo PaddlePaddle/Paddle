@@ -37,7 +37,7 @@ void DeviceCodePool::Set(std::unique_ptr<DeviceCode>&& code) {
 
   auto iter = device_codes_.find(place);
   if (iter == device_codes_.end()) {
-    PADDLE_THROW(phi::errors::NotFound(
+    PADDLE_THROW(common::errors::NotFound(
         "Place %s is not supported for runtime compiling.", place));
   }
 
@@ -49,14 +49,14 @@ DeviceCode* DeviceCodePool::Get(const phi::Place& place,
                                 const std::string& name) {
   auto iter = device_codes_.find(place);
   if (iter == device_codes_.end()) {
-    PADDLE_THROW(phi::errors::NotFound(
+    PADDLE_THROW(common::errors::NotFound(
         "Place %s is not supported for runtime compiling.", place));
   }
 
   auto& codes_map = iter->second;
   auto code_iter = codes_map.find(name);
   if (code_iter == codes_map.end()) {
-    PADDLE_THROW(phi::errors::NotFound(
+    PADDLE_THROW(common::errors::NotFound(
         "Device code named %s for place %s does not exist.",
         name.c_str(),
         place));
@@ -81,7 +81,7 @@ DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       device_codes_.emplace(p, DeviceCodeMap());
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "CUDAPlace or HIPPlace is not supported, please re-compile with "
           "WITH_GPU=ON or WITH_ROCM=ON."));
 #endif
@@ -223,7 +223,7 @@ GPUDeviceCode::GPUDeviceCode(const Place& place,
                              const std::string& kernel)
     : module_(nullptr), function_(nullptr) {
   if (place.GetType() != phi::AllocationType::GPU) {
-    PADDLE_THROW(phi::errors::PermissionDenied(
+    PADDLE_THROW(common::errors::PermissionDenied(
         "GPUDeviceCode can only launch on GPU place."));
   }
 

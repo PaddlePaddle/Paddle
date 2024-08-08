@@ -26,10 +26,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/memory/memory.h"
 
 namespace paddle {
 namespace operators {
@@ -93,7 +93,7 @@ class TestElementwiseOpGradGrad {
         auto dst_place = place_;
         memory::Copy(dst_place, dst, src_place, src, bytes, nullptr);
 #else
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Check your paddle version, current version is not compiled with "
             "cuda"));
 #endif
@@ -110,11 +110,11 @@ class TestElementwiseOpGradGrad {
     op->Run(scope_, place_);
     phi::DeviceContextPool::Instance().Get(place_)->Wait();
     phi::DenseTensor cpu_out;
-    PADDLE_ENFORCE_EQ(
-        scope_.kids().empty(),
-        true,
-        phi::errors::InvalidArgument("The scope can not have the child scopes,"
-                                     "please check your code."));
+    PADDLE_ENFORCE_EQ(scope_.kids().empty(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The scope can not have the child scopes,"
+                          "please check your code."));
 
     // get outputs from scope and compare them with expected_outs
     bool all_equal = true;

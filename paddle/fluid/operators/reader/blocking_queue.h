@@ -36,7 +36,7 @@ class BlockingQueue {
       : capacity_(capacity), speed_test_mode_(speed_test_mode) {
     PADDLE_ENFORCE_GT(capacity_,
                       static_cast<size_t>(0),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The capacity of a reader::BlockingQueue must be "
                           "greater than 0, but received capacity is %d.",
                           capacity_));
@@ -59,7 +59,7 @@ class BlockingQueue {
     PADDLE_ENFORCE_LT(
         queue_.size(),
         capacity_,
-        phi::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "The queue size cannot exceed the set queue capacity. Expected "
             "queue size is less than %d. But received %d",
             capacity_,
@@ -86,7 +86,7 @@ class BlockingQueue {
     PADDLE_ENFORCE_LT(
         queue_.size(),
         capacity_,
-        phi::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "The queue size cannot exceed the set queue capacity. Expected "
             "queue size is less than %d. But received %d",
             capacity_,
@@ -104,7 +104,7 @@ class BlockingQueue {
     if (!queue_.empty()) {
       PADDLE_ENFORCE_NOT_NULL(
           elem,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The holder to receive queue data is null pointer."));
       *elem = queue_.front();
       if (LIKELY(!speed_test_mode_)) {
@@ -115,7 +115,7 @@ class BlockingQueue {
     } else {
       PADDLE_ENFORCE_EQ(closed_,
                         true,
-                        phi::errors::PermissionDenied(
+                        common::errors::PermissionDenied(
                             "Blocking queue status error, if queue is empty "
                             "when pop data, it should be closed."));
       VLOG(3) << "queue is closed! return nothing.";
@@ -168,10 +168,11 @@ class BlockingQueue {
 
  private:
   inline void EnforceNotKilled() {
-    PADDLE_ENFORCE_NE(killed_,
-                      true,
-                      phi::errors::Fatal("Blocking queue is killed because the "
-                                         "data reader raises an exception."));
+    PADDLE_ENFORCE_NE(
+        killed_,
+        true,
+        common::errors::Fatal("Blocking queue is killed because the "
+                              "data reader raises an exception."));
   }
 
  private:

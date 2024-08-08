@@ -292,7 +292,7 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
     case cinn::ir::IrNodeTy::Minus:
       return ProveDivisible(lhs.As<ir::Minus>()->v(), rhs);
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Not supported yet!"));
+      PADDLE_THROW(::common::errors::InvalidArgument("Not supported yet!"));
       break;
   }
 }

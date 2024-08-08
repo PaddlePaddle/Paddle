@@ -174,7 +174,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
                             std::vector<phi::distributed::TensorDistAttr>>(
                             spmd_info.first[0]),
                         true,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Arg must be a vector of TensorDistAttr"));
 
       auto current_process_mesh =

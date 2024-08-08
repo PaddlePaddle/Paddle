@@ -52,11 +52,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input(X) of ReshapeOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Output(Out) of ReshapeOp should not be null."));
 
     if (ctx->IsRuntime()) {
@@ -76,7 +76,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(
           ShapeTensor.size(),
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When `shape` in ReshapeOp is a list or tuple "
               "which contains Tensor, the shape's size can't be zero. "
               "But received shape's size is %d.",
@@ -89,7 +89,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
           PADDLE_ENFORCE_LT(
               static_cast<int>(i),
               in_dims.size(),
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "The index of 0 in `shape` must be less than "
                   "the input tensor X's dimensions. But received shape[%d] "
                   "= 0, X's dimensions = %d, X's shape = [%s].",
@@ -149,7 +149,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             unk_dim_idx,
             -1,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Only one dimension value of 'shape' in ReshapeOp can "
                 "be -1. But received shape = [%s], shape[%d] is also -1.",
                 common::make_ddim(shape),
@@ -170,7 +170,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
           PADDLE_ENFORCE_LT(
               static_cast<int>(i),
               in_dims.size(),
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "The index of 0 in `shape` must be less than "
                   "the input tensor X's dimensions. "
                   "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
@@ -186,7 +186,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GT(
             shape[i],
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Each dimension value of 'shape' in ReshapeOp must not "
                 "be negative except one unknown dimension. "
                 "But received  shape = [%s], shape[%d] = %d.",
@@ -201,11 +201,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
     if (capacity == 0) {
       PADDLE_ENFORCE_EQ(in_size,
                         0,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Only Zero-Size Tensor'shape can contain 0"));
       PADDLE_ENFORCE_EQ(unk_dim_idx,
                         -1,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "can not reshape %s to %s, because the unspecified "
                             "dimension %i can be any number and is ambiguous",
                             in_dims,
@@ -223,7 +223,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             output_shape[unk_dim_idx] * capacity,
             in_size,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The 'shape' attribute in ReshapeOp is invalid. "
                 "The input tensor X'size must be divisible by known "
                 "capacity of 'shape'. "
@@ -242,7 +242,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             capacity,
             in_size,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The 'shape' in ReshapeOp is invalid. "
                 "The input tensor X'size must be equal to the capacity of "
                 "'shape'. "
@@ -361,11 +361,11 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"),
         true,
-        phi::errors::InvalidArgument("Input(X) shouldn't be null."));
+        common::errors::InvalidArgument("Input(X) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")),
         true,
-        phi::errors::InvalidArgument("Input(Out@GRAD) shouldn't be null."));
+        common::errors::InvalidArgument("Input(Out@GRAD) shouldn't be null."));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
@@ -421,27 +421,27 @@ class ReshapeKernel {
     }
     if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
-      phi::ReshapeInferKernel(static_cast<const phi::CPUContext &>(dev_ctx),
-                              *in,
-                              pt_scalar_shape,
-                              out);
+      phi::ReshapeKernel(static_cast<const phi::CPUContext &>(dev_ctx),
+                         *in,
+                         pt_scalar_shape,
+                         out);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
-      phi::ReshapeInferKernel(static_cast<const phi::GPUContext &>(dev_ctx),
-                              *in,
-                              pt_scalar_shape,
-                              out);
+      phi::ReshapeKernel(static_cast<const phi::GPUContext &>(dev_ctx),
+                         *in,
+                         pt_scalar_shape,
+                         out);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
       auto &dev_ctx = ctx.device_context<phi::XPUContext>();
-      phi::ReshapeInferKernel(static_cast<const phi::XPUContext &>(dev_ctx),
-                              *in,
-                              pt_scalar_shape,
-                              out);
+      phi::ReshapeKernel(static_cast<const phi::XPUContext &>(dev_ctx),
+                         *in,
+                         pt_scalar_shape,
+                         out);
     }
 #endif
   }
@@ -450,6 +450,7 @@ class ReshapeKernel {
 class ReshapeGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
+    auto *x = ctx.Input<phi::DenseTensor>("X");
     auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
@@ -457,20 +458,20 @@ class ReshapeGradKernel {
     if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       auto &dev_ctx = ctx.device_context<phi::CPUContext>();
       phi::ReshapeGradKernel(
-          static_cast<const phi::CPUContext &>(dev_ctx), *d_out, d_x);
+          static_cast<const phi::CPUContext &>(dev_ctx), *x, *d_out, d_x);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
       auto &dev_ctx = ctx.device_context<phi::GPUContext>();
       phi::ReshapeGradKernel(
-          static_cast<const phi::GPUContext &>(dev_ctx), *d_out, d_x);
+          static_cast<const phi::GPUContext &>(dev_ctx), *x, *d_out, d_x);
     }
 #endif
 #ifdef PADDLE_WITH_XPU
     if (ctx.GetPlace().GetType() == phi::AllocationType::XPU) {
       auto &dev_ctx = ctx.device_context<phi::XPUContext>();
       phi::ReshapeGradKernel(
-          static_cast<const phi::XPUContext &>(dev_ctx), *d_out, d_x);
+          static_cast<const phi::XPUContext &>(dev_ctx), *x, *d_out, d_x);
     }
 #endif
   }
@@ -614,11 +615,11 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("XShape"),
         true,
-        phi::errors::InvalidArgument("Input(XShape) shouldn't be null."));
+        common::errors::InvalidArgument("Input(XShape) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")),
         true,
-        phi::errors::InvalidArgument("Input(Out@GRAD) shouldn't be null."));
+        common::errors::InvalidArgument("Input(Out@GRAD) shouldn't be null."));
 
     // Construct MetaTensor for InferMeta Func
     using CompatMetaTensor = framework::CompatMetaTensor;

@@ -39,7 +39,7 @@ llvm::Value* CodeGenInvokeModule::LowerInvokeFunc(
   // Set local scope table
   PADDLE_ENFORCE_EQ(ll_function_args.size(),
                     func->args.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of arguments is not equal to the number of "
                         "function arguments"));
   for (int i = 0; i < ll_function_args.size(); ++i) {
@@ -69,7 +69,7 @@ llvm::Value* CodeGenInvokeModule::LowerParseArgsValueCall(
   PADDLE_ENFORCE_EQ(
       call_ir->read_args.size(),
       2,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The number of arguments of ParseArgsValue should be 2"));
   CHECK(call_ir->read_args[0].is_var() &&
         call_ir->read_args[0].as_var()->type().is_cpp_handle());

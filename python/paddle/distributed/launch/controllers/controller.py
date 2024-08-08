@@ -325,9 +325,11 @@ class Controller(ControllerBase):
     def _save_container_env(self, container, is_init=False):
         f = os.path.join(
             self.ctx.args.log_dir,
-            f'envlog.init.{container.rank}'
-            if is_init
-            else f'envlog.{container.rank}',
+            (
+                f'envlog.init.{container.rank}'
+                if is_init
+                else f'envlog.{container.rank}'
+            ),
         )
         try:
             os.makedirs(os.path.dirname(f), exist_ok=True)

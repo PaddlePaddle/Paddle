@@ -2132,7 +2132,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
-        check_symbol_infer=False,
+        check_symbol_infer=True,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2724,15 +2724,15 @@ class OpTest(unittest.TestCase):
                     )
                     python_api_info = {
                         "api_name": self.python_api.__name__,
-                        "api_module": inspect.getmodule(
-                            self.python_api
-                        ).__name__
-                        if inspect.getmodule(
-                            self.python_api
-                        ).__name__.startswith("paddle")
-                        else pathlib.Path(
-                            inspect.getmodule(self.python_api).__file__
-                        ).stem,
+                        "api_module": (
+                            inspect.getmodule(self.python_api).__name__
+                            if inspect.getmodule(
+                                self.python_api
+                            ).__name__.startswith("paddle")
+                            else pathlib.Path(
+                                inspect.getmodule(self.python_api).__file__
+                            ).stem
+                        ),
                     }
                     # code gen for auto parallel forward test
                     gen_auto_parallel_test_file(
@@ -2745,9 +2745,9 @@ class OpTest(unittest.TestCase):
                     start_command = get_subprocess_command(
                         runtime_envs["CUDA_VISIBLE_DEVICES"],
                         generated_forward_test_path,
-                        log_dir=self.log_dir
-                        if hasattr(self, "log_dir")
-                        else None,
+                        log_dir=(
+                            self.log_dir if hasattr(self, "log_dir") else None
+                        ),
                     )
                     run_subprocess(start_command, runtime_envs, timeout=120)
 
@@ -2873,8 +2873,27 @@ class OpTest(unittest.TestCase):
                     return []
             else:
                 return []
-        places = [base.CPUPlace()]
+        places = []
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in [
+                '1',
+                'true',
+                'on',
+            ]
+            or not (
+                core.is_compiled_with_cuda()
+                and core.op_support_gpu(self.op_type)
+                and not cpu_only
+            )
+            or self.op_type
+            in [
+                'gaussian_random',
+                'lrn',
+            ]
+        ):
+            places.append(base.CPUPlace())
         if (
             core.is_compiled_with_cuda()
             and core.op_support_gpu(self.op_type)
@@ -2898,7 +2917,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
-        check_symbol_infer=False,
+        check_symbol_infer=True,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -3297,14 +3316,14 @@ class OpTest(unittest.TestCase):
                     grad_test_info_path, generated_grad_test_path
                 ):
                     backward_extra_test_info = {}
-                    backward_extra_test_info[
-                        "inputs_to_check"
-                    ] = inputs_to_check
+                    backward_extra_test_info["inputs_to_check"] = (
+                        inputs_to_check
+                    )
                     backward_extra_test_info["output_names"] = output_names
                     backward_extra_test_info["no_grad_set"] = no_grad_set
-                    backward_extra_test_info[
-                        "user_defined_grad_outputs"
-                    ] = user_defined_grad_outputs
+                    backward_extra_test_info["user_defined_grad_outputs"] = (
+                        user_defined_grad_outputs
+                    )
                     dump_test_info(
                         self,
                         place,
@@ -3314,15 +3333,15 @@ class OpTest(unittest.TestCase):
                     )
                     python_api_info = {
                         "api_name": self.python_api.__name__,
-                        "api_module": inspect.getmodule(
-                            self.python_api
-                        ).__name__
-                        if inspect.getmodule(
-                            self.python_api
-                        ).__name__.startswith("paddle")
-                        else pathlib.Path(
-                            inspect.getmodule(self.python_api).__file__
-                        ).stem,
+                        "api_module": (
+                            inspect.getmodule(self.python_api).__name__
+                            if inspect.getmodule(
+                                self.python_api
+                            ).__name__.startswith("paddle")
+                            else pathlib.Path(
+                                inspect.getmodule(self.python_api).__file__
+                            ).stem
+                        ),
                     }
                     # code gen for auto parallel grad test
                     gen_auto_parallel_test_file(
@@ -3342,9 +3361,9 @@ class OpTest(unittest.TestCase):
                     start_command = get_subprocess_command(
                         runtime_envs["CUDA_VISIBLE_DEVICES"],
                         generated_grad_test_path,
-                        log_dir=self.log_dir
-                        if hasattr(self, "log_dir")
-                        else None,
+                        log_dir=(
+                            self.log_dir if hasattr(self, "log_dir") else None
+                        ),
                     )
                     run_subprocess(start_command, runtime_envs, timeout=120)
 

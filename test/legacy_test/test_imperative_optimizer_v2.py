@@ -71,10 +71,10 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         self.batch_num = 20
 
     def get_optimizer_dygraph(self, parameter_list):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_optimizer(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def reader_decorator(self, reader):
         def _reader_simple():
