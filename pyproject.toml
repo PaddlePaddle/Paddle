@@ -95,7 +95,7 @@ select = [
     "RUF100",
 
     # Flake8-raise
-    "RSE102",
+    "RSE",
 ]
 unfixable = [
     "NPY001"
