@@ -1088,9 +1088,9 @@ def launch() -> None:
                         if single_dp_performance and step_time
                         else None
                     )
-                    cur_cfg[
-                        f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
-                    ] = multi_dp_performance
+                    cur_cfg[f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"] = (
+                        multi_dp_performance
+                    )
                     cur_cfg[
                         f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                     ] = (
@@ -1105,9 +1105,9 @@ def launch() -> None:
                         recorder.additional_metric_key = (
                             f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                         )
-                        cur_cfg[
-                            "additional_metric_key"
-                        ] = recorder.additional_metric_key
+                        cur_cfg["additional_metric_key"] = (
+                            recorder.additional_metric_key
+                        )
 
             error_info = None
             cur_cfg["has_error"] = has_error

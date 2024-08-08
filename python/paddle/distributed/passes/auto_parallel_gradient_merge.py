@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import paddle
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
@@ -156,9 +157,9 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
 def _append_gradient_merge_backward_op(
     main_program,
     startup_program,
-    params_grads: List[Tuple[Any, Any]],
+    params_grads: list[tuple[Any, Any]],
     dist_context,
-) -> Tuple[List[Tuple[Any, Any]], Dict[str, Any]]:
+) -> tuple[list[tuple[Any, Any]], dict[str, Any]]:
     main_block = main_program.global_block()
     startup_block = startup_program.global_block()
 
@@ -444,8 +445,8 @@ def _pir_remove_cast_for_master_grad(main_program):
 def _create_cond_block_and_update_optimizer(
     main_program,
     cond_var,
-    new_params_to_grads: List[Tuple[Any, Any]],
-    grad_to_gradient_merge: Dict[str, str],
+    new_params_to_grads: list[tuple[Any, Any]],
+    grad_to_gradient_merge: dict[str, str],
     optimize_ops_block,
     k_steps,
     avg,

@@ -25,7 +25,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU_KP
 #include <xpu/runtime.h>  // NOLINT
 
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #include "paddle/fluid/platform/enforce.h"

@@ -159,80 +159,56 @@ class TestBitwiseLeftShiftAPI_INT8_broadcast2(TestBitwiseLeftShiftAPI):
 
 class TestBitwiseLeftShiftAPI_INT16(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(-(2**15), 2**15, [200, 300]).astype(
-            'int16'
-        )
-        self.y = np.random.randint(-(2**15), 2**15, [200, 300]).astype(
-            'int16'
-        )
+        self.x = np.random.randint(-(2**15), 2**15, [200, 300]).astype('int16')
+        self.y = np.random.randint(-(2**15), 2**15, [200, 300]).astype('int16')
 
 
 class TestBitwiseLeftShiftAPI_INT16_broadcast1(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(-(2**15), 2**15, [200, 300]).astype(
-            'int16'
-        )
+        self.x = np.random.randint(-(2**15), 2**15, [200, 300]).astype('int16')
         self.y = np.random.randint(-(2**15), 2**15, [300]).astype('int16')
 
 
 class TestBitwiseLeftShiftAPI_INT16_broadcast2(TestBitwiseLeftShiftAPI):
     def init_input(self):
         self.x = np.random.randint(-(2**15), 2**15, [300]).astype('int16')
-        self.y = np.random.randint(-(2**15), 2**15, [200, 300]).astype(
-            'int16'
-        )
+        self.y = np.random.randint(-(2**15), 2**15, [200, 300]).astype('int16')
 
 
 class TestBitwiseLeftShiftAPI_INT32(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(-(2**31), 2**31, [200, 300]).astype(
-            'int32'
-        )
-        self.y = np.random.randint(-(2**31), 2**31, [200, 300]).astype(
-            'int32'
-        )
+        self.x = np.random.randint(-(2**31), 2**31, [200, 300]).astype('int32')
+        self.y = np.random.randint(-(2**31), 2**31, [200, 300]).astype('int32')
 
 
 class TestBitwiseLeftShiftAPI_INT32_broadcast1(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(-(2**31), 2**31, [200, 300]).astype(
-            'int32'
-        )
+        self.x = np.random.randint(-(2**31), 2**31, [200, 300]).astype('int32')
         self.y = np.random.randint(-(2**31), 2**31, [300]).astype('int32')
 
 
 class TestBitwiseLeftShiftAPI_INT32_broadcast2(TestBitwiseLeftShiftAPI):
     def init_input(self):
         self.x = np.random.randint(-(2**31), 2**31, [300]).astype('int32')
-        self.y = np.random.randint(-(2**31), 2**31, [200, 300]).astype(
-            'int32'
-        )
+        self.y = np.random.randint(-(2**31), 2**31, [200, 300]).astype('int32')
 
 
 class TestBitwiseLeftShiftAPI_INT64(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(
-            -(2**63), 2**63, [200, 300], dtype=np.int64
-        )
-        self.y = np.random.randint(
-            -(2**63), 2**63, [200, 300], dtype=np.int64
-        )
+        self.x = np.random.randint(-(2**63), 2**63, [200, 300], dtype=np.int64)
+        self.y = np.random.randint(-(2**63), 2**63, [200, 300], dtype=np.int64)
 
 
 class TestBitwiseLeftShiftAPI_INT64_broadcast1(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(
-            -(2**63), 2**63, [200, 300], dtype=np.int64
-        )
+        self.x = np.random.randint(-(2**63), 2**63, [200, 300], dtype=np.int64)
         self.y = np.random.randint(-(2**63), 2**63, [300], dtype=np.int64)
 
 
 class TestBitwiseLeftShiftAPI_INT64_broadcast2(TestBitwiseLeftShiftAPI):
     def init_input(self):
         self.x = np.random.randint(-(2**63), 2**63, [300], dtype=np.int64)
-        self.y = np.random.randint(
-            -(2**63), 2**63, [200, 300], dtype=np.int64
-        )
+        self.y = np.random.randint(-(2**63), 2**63, [200, 300], dtype=np.int64)
 
 
 class TestBitwiseLeftShiftAPI_special_case1(TestBitwiseLeftShiftAPI):
@@ -357,80 +333,56 @@ class TestBitwiseRightShiftAPI_INT8_broadcast2(TestBitwiseRightShiftAPI):
 
 class TestBitwiseRightShiftAPI_INT16(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(-(2**15), 2**15, [200, 300]).astype(
-            'int16'
-        )
-        self.y = np.random.randint(-(2**15), 2**15, [200, 300]).astype(
-            'int16'
-        )
+        self.x = np.random.randint(-(2**15), 2**15, [200, 300]).astype('int16')
+        self.y = np.random.randint(-(2**15), 2**15, [200, 300]).astype('int16')
 
 
 class TestBitwiseRightShiftAPI_INT16_broadcast1(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(-(2**15), 2**15, [200, 300]).astype(
-            'int16'
-        )
+        self.x = np.random.randint(-(2**15), 2**15, [200, 300]).astype('int16')
         self.y = np.random.randint(-(2**15), 2**15, [300]).astype('int16')
 
 
 class TestBitwiseRightShiftAPI_INT16_broadcast2(TestBitwiseRightShiftAPI):
     def init_input(self):
         self.x = np.random.randint(-(2**15), 2**15, [300]).astype('int16')
-        self.y = np.random.randint(-(2**15), 2**15, [200, 300]).astype(
-            'int16'
-        )
+        self.y = np.random.randint(-(2**15), 2**15, [200, 300]).astype('int16')
 
 
 class TestBitwiseRightShiftAPI_INT32(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(-(2**31), 2**31, [200, 300]).astype(
-            'int32'
-        )
-        self.y = np.random.randint(-(2**31), 2**31, [200, 300]).astype(
-            'int32'
-        )
+        self.x = np.random.randint(-(2**31), 2**31, [200, 300]).astype('int32')
+        self.y = np.random.randint(-(2**31), 2**31, [200, 300]).astype('int32')
 
 
 class TestBitwiseRightShiftAPI_INT32_broadcast1(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(-(2**31), 2**31, [200, 300]).astype(
-            'int32'
-        )
+        self.x = np.random.randint(-(2**31), 2**31, [200, 300]).astype('int32')
         self.y = np.random.randint(-(2**31), 2**31, [300]).astype('int32')
 
 
 class TestBitwiseRightShiftAPI_INT32_broadcast2(TestBitwiseRightShiftAPI):
     def init_input(self):
         self.x = np.random.randint(-(2**31), 2**31, [300]).astype('int32')
-        self.y = np.random.randint(-(2**31), 2**31, [200, 300]).astype(
-            'int32'
-        )
+        self.y = np.random.randint(-(2**31), 2**31, [200, 300]).astype('int32')
 
 
 class TestBitwiseRightShiftAPI_INT64(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(
-            -(2**63), 2**63, [200, 300], dtype=np.int64
-        )
-        self.y = np.random.randint(
-            -(2**63), 2**63, [200, 300], dtype=np.int64
-        )
+        self.x = np.random.randint(-(2**63), 2**63, [200, 300], dtype=np.int64)
+        self.y = np.random.randint(-(2**63), 2**63, [200, 300], dtype=np.int64)
 
 
 class TestBitwiseRightShiftAPI_INT64_broadcast1(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.random.randint(
-            -(2**63), 2**63, [200, 300], dtype=np.int64
-        )
+        self.x = np.random.randint(-(2**63), 2**63, [200, 300], dtype=np.int64)
         self.y = np.random.randint(-(2**63), 2**63, [300], dtype=np.int64)
 
 
 class TestBitwiseRightShiftAPI_INT64_broadcast2(TestBitwiseRightShiftAPI):
     def init_input(self):
         self.x = np.random.randint(-(2**63), 2**63, [300], dtype=np.int64)
-        self.y = np.random.randint(
-            -(2**63), 2**63, [200, 300], dtype=np.int64
-        )
+        self.y = np.random.randint(-(2**63), 2**63, [200, 300], dtype=np.int64)
 
 
 class TestBitwiseRightShiftAPI_special_case1(TestBitwiseRightShiftAPI):

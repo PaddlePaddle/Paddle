@@ -24,7 +24,6 @@ from multiprocessing import Manager, Process
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generator,
 )
 
 import numpy as np
@@ -67,6 +66,8 @@ from . import parallel_helper
 from .backup_env import getenv_or_backup
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from paddle import Tensor
     from paddle.nn.layer.layers import _StateDict
 __all__ = []

@@ -20,7 +20,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
@@ -28,6 +27,7 @@
 #include "paddle/phi/core/distributed/collective/process_group_with_stream.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
+#include "paddle/phi/core/platform/device_event.h"
 
 namespace phi {
 namespace distributed {

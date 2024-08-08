@@ -46,9 +46,9 @@ class LayerHelper(LayerHelperBase):
             if in_dygraph_mode():
                 self.kwargs['name'] = unique_name.generate(layer_type)
             else:
-                self.kwargs[
-                    'name'
-                ] = self.main_program._name_generator.generate(layer_type)
+                self.kwargs['name'] = (
+                    self.main_program._name_generator.generate(layer_type)
+                )
 
         super().__init__(self.kwargs['name'], layer_type=layer_type)
 
