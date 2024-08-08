@@ -84,22 +84,40 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
 
   framework::CINNCompute reciprocal_compute(
       [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of " << op_name
-                             << " compute is empty! Please check.\n";
+        PADDLE_ENFORCE_NE(
+            args.empty(),
+            true,
+            phi::errors::InvalidArgument(
+                "The input argument of %s compute is empty! Please check.",
+                op_name));
         CINNValuePack pack_args = args[0];
-        CHECK(!pack_args.empty())
-            << "at least one input tensor for " << op_name << " compute\n";
+        PADDLE_ENFORCE_NE(
+            pack_args.empty(),
+            true,
+            phi::errors::InvalidArgument(
+                "At least one input tensor for %s compute.", op_name));
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2,
                           phi::errors::InvalidArgument(
                               "The input argument's size of reciprocal op "
                               "should be 2."));
-        CHECK(pack_args[1].is_string());
+        PADDLE_ENFORCE_EQ(
+            pack_args[1].is_string(),
+            true,
+            phi::errors::InvalidArgument(
+                "Required pack_args[1] must be a string. Please check."));
         std::string tensor_name = pack_args[1].operator std::string();
 
         Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        CHECK(!output_shapes.empty());
+        PADDLE_ENFORCE_NOT_NULL(
+            A.as_tensor(),
+            phi::errors::InvalidArgument(
+                "Required Input must be a tensor. Please check."));
+        PADDLE_ENFORCE_NE(
+            output_shapes.empty(),
+            true,
+            phi::errors::InvalidArgument(
+                "The output shape of reciprocal is empty! Please check."));
         auto tensor_A = A.as_tensor_ref();
         VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
                 << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
@@ -115,8 +133,11 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
         ir::Tensor out = Reciprocal(tensor_A, tensor_name);
         std::vector<CINNValue> res;
         res.push_back(CINNValue(out));
-        CHECK(!out_type.empty())
-            << "Output type of Reciprocal is empty! Please check.\n";
+        PADDLE_ENFORCE_NE(
+            out_type.empty(),
+            true,
+            phi::errors::InvalidArgument(
+                "The output type of Reciprocal is empty! Please check."));
         *ret = CINNValuePack{res};
       });
 
@@ -136,41 +157,62 @@ std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
     const Target &target) {
   std::string op_name("reciprocal");
 
-  framework::CINNCompute reciprocal_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of " << op_name
-                             << " compute is empty! Please check.\n";
-        CINNValuePack pack_args = args[0];
-        CHECK(!pack_args.empty())
-            << "at least one input tensor for " << op_name << " compute\n";
-        PADDLE_ENFORCE_EQ(pack_args.size(),
-                          2,
-                          phi::errors::InvalidArgument(
-                              "The input argument's size of reciprocal op "
-                              "should be 2."));
-        CHECK(pack_args[1].is_string());
-        std::string tensor_name = pack_args[1].operator std::string();
+  framework::CINNCompute reciprocal_compute([=](lang::Args args,
+                                                lang::RetValue *ret) {
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of %s compute is empty! Please check.",
+            op_name));
+    CINNValuePack pack_args = args[0];
+    PADDLE_ENFORCE_NE(
+        pack_args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "At least one input tensor for %s compute.", op_name));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The input argument's size of reciprocal op "
+                          "should be 2."));
+    PADDLE_ENFORCE_EQ(
+        pack_args[1].is_string(),
+        true,
+        phi::errors::InvalidArgument(
+            "Required pack_args[1] must be a string. Please check."));
+    std::string tensor_name = pack_args[1].operator std::string();
 
-        Expr A = pack_args[0];
-        CHECK(A.as_tensor());
-        CHECK(!output_shapes.empty());
-        auto tensor_A = A.as_tensor_ref();
-        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
-                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-        PADDLE_ENFORCE_EQ(pack_args.size(),
-                          2U,
-                          phi::errors::InvalidArgument(
-                              "The input argument's size of reciprocal op "
-                              "should be 2."));
-        tensor_name = pack_args[1].operator std::string();
+    Expr A = pack_args[0];
+    PADDLE_ENFORCE_NOT_NULL(
+        A.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required Input must be a tensor. Please check."));
+    PADDLE_ENFORCE_NE(
+        output_shapes.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The output shape of reciprocal_compute is empty! Please check."));
+    auto tensor_A = A.as_tensor_ref();
+    VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+            << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "The input argument's size of reciprocal op "
+                          "should be 2."));
+    tensor_name = pack_args[1].operator std::string();
 
-        ir::Tensor out = Reciprocal(tensor_A, tensor_name);
-        std::vector<CINNValue> res;
-        res.push_back(CINNValue(out));
-        CHECK(!out_type.empty())
-            << "Output type of Reciprocal is empty! Please check.\n";
-        *ret = CINNValuePack{res};
-      });
+    ir::Tensor out = Reciprocal(tensor_A, tensor_name);
+    std::vector<CINNValue> res;
+    res.push_back(CINNValue(out));
+    PADDLE_ENFORCE_NE(
+        out_type.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The output type of Reciprocal is empty! Please check."));
+    *ret = CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(

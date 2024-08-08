@@ -35,13 +35,13 @@ namespace details {
 // Convert dims from vector to array
 template <typename T, size_t ElementCount, typename VectorLikeType>
 static inline Array<T, ElementCount> VectorToArray(const VectorLikeType& vec) {
-  PADDLE_ENFORCE_LE(
-      vec.size(),
-      ElementCount,
-      phi::errors::InvalidArgument("Vector to Array: size not match. Received "
-                                   "vec.size() %d > ElementCount %d.",
-                                   vec.size(),
-                                   ElementCount));
+  PADDLE_ENFORCE_LE(vec.size(),
+                    ElementCount,
+                    common::errors::InvalidArgument(
+                        "Vector to Array: size not match. Received "
+                        "vec.size() %d > ElementCount %d.",
+                        vec.size(),
+                        ElementCount));
   size_t n = static_cast<size_t>(vec.size());
   Array<T, ElementCount> ret;
   for (size_t i = 0; i < n; ++i) {

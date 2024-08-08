@@ -21,7 +21,7 @@ namespace phi {
 void XPUL3CacheBlock::Set(void* addr, size_t size) {
   if (addr == nullptr || size == 0) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("Set XPUL3CacheBlock Size as Zero"));
+        common::errors::InvalidArgument("Set XPUL3CacheBlock Size as Zero"));
   }
   addr_ = addr;
   size_ = size;
