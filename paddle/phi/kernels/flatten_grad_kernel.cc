@@ -28,7 +28,7 @@ void FlattenGradKernel(const Context& dev_ctx,
   // NOTE: [Why not to use x.dims() ?]
   // Because inplace strategy is different between old IR and PIR,
   // we need fix it into x.dims() after cleaning old IR system.
-  const auto& x_dims = x_grad->dims();
+  auto x_dims = x_grad->dims();
   dev_ctx.Alloc(x_grad, out_grad.dtype());
   phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x_dims);
