@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import copy
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import nn
