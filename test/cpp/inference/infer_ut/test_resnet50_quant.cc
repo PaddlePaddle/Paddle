@@ -14,8 +14,6 @@
 
 #include "test_suite.h"  // NOLINT
 
-#include "paddle/common/enforce.h"
-
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(int8dir, "", "Directory of the quant inference model.");
 DEFINE_string(datadir, "", "Directory of the infer data.");
@@ -33,9 +31,7 @@ paddle::test::Record PrepareInput(int batch_size) {
   // load from binary data
   std::ifstream fs(FLAGS_datadir, std::ifstream::binary);
   EXPECT_TRUE(fs.is_open());
-  PADDLE_ENFORCE(fs.is_open(),
-                 coomon::errors::PreconditionNotMet(
-                     "The file is closed and unable to read or write"));
+  CHECK(fs.is_open());
 
   float* input = new float[input_num];
   memset(input, 0, input_num * sizeof(float));
