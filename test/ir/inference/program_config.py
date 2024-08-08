@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import enum
 import os
@@ -49,9 +51,9 @@ class TensorConfig:
 
     def __init__(
         self,
-        lod: Optional[List[List[int]]] = None,
-        data_gen: Optional[Callable[..., np.array]] = None,
-        shape: Optional[List[List[int]]] = None,
+        lod: List[List[int]] | None = None,
+        data_gen: Callable[..., np.array] | None = None,
+        shape: List[List[int]] | None = None,
     ):
         '''
         shape: The shape of the tensor.
@@ -95,9 +97,9 @@ class OpConfig:
         type: str,
         inputs: Dict[str, List[str]],
         outputs: Dict[str, List[str]],
-        attrs: Optional[Dict[str, Any]] = None,
-        outputs_var_type: Optional[Dict[str, VarType]] = None,
-        outputs_dtype: Optional[Dict[str, np.dtype]] = None,
+        attrs: Dict[str, Any] | None = None,
+        outputs_var_type: Dict[str, VarType] | None = None,
+        outputs_dtype: Dict[str, np.dtype] | None = None,
         **kwargs,
     ):
         self.type = type
