@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import json
 import logging
 import numbers
 import os
 import random
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -26,6 +29,7 @@ import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
+from paddle.distributed.passes.pass_base import new_pass
 from paddle.framework import (
     IrGraph,
     _current_expected_place_ as _get_device,
@@ -66,6 +70,23 @@ from .pir_pass import (
 )
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from typing_extensions import TypeAlias
+
+    from paddle import Tensor
+    from paddle._typing import PlaceLike
+    from paddle.hapi.callbacks import Callback
+    from paddle.io import Dataset
+    from paddle.io.reader import _CollateFn
+    from paddle.nn import Layer
+    from paddle.optimizer import Optimizer
+    from paddle.pir import Value
+    from paddle.static import Program
+
+    _Mode: TypeAlias = Literal["train", "eval", "predict"]
 
 
 class Engine:
@@ -131,13 +152,13 @@ class Engine:
 
     def __init__(
         self,
-        model=None,
-        loss=None,
-        optimizer=None,
-        metrics=None,
-        cluster=None,
-        strategy=None,
-    ):
+        model: Layer | Callable[..., Any] | None = None,
+        loss: Layer | Callable[..., Any] | Tensor | None = None,
+        optimizer: Optimizer | None = None,
+        metrics: Metric | Sequence[Metric] | None = None,
+        cluster: Cluster | None = None,
+        strategy: Strategy | None = None,
+    ) -> None:
         if (
             model
             and not isinstance(model, paddle.nn.Layer)
@@ -300,11 +321,13 @@ class Engine:
             batch_sampler = dataloader.batch_sampler
         else:
             batch_sampler = dataloader._dataloader.batch_sampler
-        if isinstance(batch_sampler, paddle.io.DistributedBatchSampler):
+
+        if hasattr(batch_sampler, "set_epoch"):
             # Get data from DataLoader iterator directly may affect data generation randomness
             # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
             # between dynamic and to_static mode.
-            batch_sampler.epoch -= 1
+            batch_sampler.set_epoch(0)
+
         if isinstance(data, dict):
             data = tuple(data.values())
             if len(data) != 2:
@@ -807,12 +830,17 @@ class Engine:
         #     'after remove_other_rank_input_output_pass', dist_program, flush=1
         # )
 
-        remove_other_rank_op_pass(dist_program)
+        remove_other_rank_op_pass(dist_program, params_grads)
 
         # print('after remove_other_rank_op_pass', dist_program, flush=1)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
+        gradient_sync_after_accumulate = (
+            self._strategy.dp_optimization.gradient_sync_after_accumulate
+        )
+        if gradient_sync_after_accumulate:
+            global_params_grads = params_grads
 
         # TODO(xxxx) Step 4.1 DP Optimization Pass
         if self._strategy.dp_optimization.enable:
@@ -828,6 +856,24 @@ class Engine:
             # if self._strategy.sharding_optimization.enable:
             # dist_program = apply_sharding_optimization_pass(dist_program)
             pass
+
+        if mode == "train" and self._strategy.gradient_merge.enable:
+            config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
+            config[
+                "gradient_sync_after_accumulate"
+            ] = gradient_sync_after_accumulate
+            config["params_grads"] = (
+                global_params_grads
+                if gradient_sync_after_accumulate
+                else params_grads
+            )
+
+            auto_parallel_gradient_merge_pass = new_pass(
+                "auto_parallel_gradient_merge_pass", config
+            )
+            auto_parallel_gradient_merge_pass.apply(
+                [dist_program], [startup_program]
+            )
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
@@ -1368,55 +1414,55 @@ class Engine:
 
     def fit(
         self,
-        train_data,
-        train_sample_split=None,
-        batch_size=1,
-        epochs=1,
-        steps_per_epoch=None,
-        log_freq=10,
-        save_dir=None,
-        save_freq=1,
-        valid_data=None,
-        valid_sample_split=None,
-        valid_freq=1,
-        valid_steps=None,
-        collate_fn=None,
-        callbacks=None,
-        verbose=2,
-        nvprof_range=[-1, -1],
-    ):
+        train_data: Dataset,
+        train_sample_split: int | None = None,
+        batch_size: int = 1,
+        epochs: int = 1,
+        steps_per_epoch: int | None = None,
+        log_freq: int = 10,
+        save_dir: str | None = None,
+        save_freq: int = 1,
+        valid_data: Dataset | None = None,
+        valid_sample_split: int | None = None,
+        valid_freq: int = 1,
+        valid_steps: int | None = None,
+        collate_fn: _CollateFn | None = None,
+        callbacks: Sequence[Callback] | None = None,
+        verbose: int = 2,
+        nvprof_range: list[int] | tuple[int, int] = [-1, -1],
+    ) -> None:
         """
         Trains the model for a fixed number of epochs. If `valid_data` is set,
         evaluation will be done at the end of each epoch.
 
         Args:
             train_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
-            train_sample_split (int, optional): Each sample of the train dataset is assumed
+            train_sample_split (int|None, optional): Each sample of the train dataset is assumed
                 to be a (input, label) pair by default and has two items. If each sample has
                 more than two items, train_sample_split specifies how to split these items into
                 input and label. The items before it are input and the left are label. Default: None.
             batch_size (int, optional): The batch size of train_data and valid_data if provided.
                 The user's data will be used directly without batching if set to None. Default: 1.
             epochs (int, optional): The number of epochs to train the model. Default: 1.
-            steps_per_epoch (int, optional): The total number of steps (batches of samples)
+            steps_per_epoch (int|None, optional): The total number of steps (batches of samples)
                 is executed in one epoch before stating the next one. If None, it is equal to
                 the number samples in your dataset divided by the batch size. Default: None.
-            valid_data (Dataset, optional): An instance of paddle paddle.io.Dataset used for
+            valid_data (Dataset|None, optional): An instance of paddle paddle.io.Dataset used for
                 evaluation at the end of epoch. No evaluation will be done if set to None.
                 Default: None. (Unsupported for now)
             valid_freq (int, optional): Only relevant if valid_data is provided. This specifies
                 how many training epochs before a new evaluation is performed. Default: 1.
-            valid_sample_split (int, optional): Only relevant if valid_data is provided.
+            valid_sample_split (int|None, optional): Only relevant if valid_data is provided.
                 Each sample of the valid dataset is assumed to be a (input, label) pair
                 by default and has two items. If each sample has more than two items,
                 valid_sample_split specifies how to split these items into input and label.
                 The items before it are input and the left are label. Default: None.
-            valid_steps (int, optional): Only relevant if valid_data is provided.
+            valid_steps (int|None, optional): Only relevant if valid_data is provided.
                 It is the total number of steps (batches of samples) to draw before
                 stopping validation at the end of every epoch. If None, validation will run until the
                 `valid_data` dataset is exhausted. The validation will start from the
                 beginning of the dataset at each epoch. Default: None.
-            collate_fn(callable, optional): function to generate mini-batch data by merging
+            collate_fn(callable|None, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
                 0. Default None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
@@ -1505,9 +1551,9 @@ class Engine:
             save_dir=save_dir,
             verbose=verbose,
             metrics=self._metrics_name(),
-            acc_step=1
-            if self._strategy.pipeline.enable
-            else self._acc_steps,  # lr update once every local batch
+            acc_step=(
+                1 if self._strategy.pipeline.enable else self._acc_steps
+            ),  # lr update once every local batch
         )
 
         cbks.on_begin('train')
@@ -1582,30 +1628,30 @@ class Engine:
 
     def evaluate(
         self,
-        valid_data,
-        valid_sample_split=None,
-        batch_size=1,
-        steps=None,
-        log_freq=10,
-        collate_fn=None,
-        callbacks=None,
-        verbose=2,
-    ):
+        valid_data: Dataset,
+        valid_sample_split: int | None = None,
+        batch_size: int = 1,
+        steps: int | None = None,
+        log_freq: int = 10,
+        collate_fn: _CollateFn | None = None,
+        callbacks: Sequence[Callback] | None = None,
+        verbose: int = 2,
+    ) -> dict[str, Any]:
         """
         Evaluate the loss and metrics of the model on evaluation data.
 
         Args:
             valid_data (Dataset): An instance of paddle paddle.io.Dataset. Default: None.
-            valid_sample_split (int, optional): Each sample of the eval dataset is assumed
+            valid_sample_split (int|None, optional): Each sample of the eval dataset is assumed
                 to be a (input, label) pair by default and has two items. If each sample has
                 more than two items, valid_sample_split specifies how to split these items into
                 input and label. The items before it are input and the left are label. Default: None.
             batch_size (int, optional): The batch size of valid_data. The user's data will
                 be used directly without batching if set to None. Default: 1.
-            steps (int, optional): It is the total number of steps (batches of samples) to draw before
+            steps (int|None, optional): It is the total number of steps (batches of samples) to draw before
                 stopping evaluation. If None, evaluation will run until the `valid_data` dataset is exhausted.
                 The evaluation will start from the beginning of the dataset in each run. Default: None.
-            collate_fn(callable, optional): function to generate mini-batch data by merging
+            collate_fn(callable|None, optional): function to generate mini-batch data by merging
                 the sample list, None for only stack each fields of sample in axis
                 0. Default None.
             callbacks (Callback|None, optional): A list of `Callback` instances to apply
@@ -1720,14 +1766,14 @@ class Engine:
 
     def predict(
         self,
-        test_data,
-        test_sample_split=None,
-        batch_size=1,
-        steps=None,
-        collate_fn=None,
-        callbacks=None,
-        verbose=2,
-    ):
+        test_data: Dataset,
+        test_sample_split: int | None = None,
+        batch_size: int = 1,
+        steps: int = None,
+        collate_fn: _CollateFn | None = None,
+        callbacks: Sequence[Callback] = None,
+        verbose: int = 2,
+    ) -> list[Any]:
         """
         Compute the output predictions on testing data.
 
@@ -1842,22 +1888,22 @@ class Engine:
 
     def dataloader(
         self,
-        dataset,
-        batch_size=1,
-        shuffle=False,
-        drop_last=True,
-        collate_fn=None,
-        num_workers=0,
-        use_buffer_reader=True,
-        use_shared_memory=True,
-        timeout=0,
-        worker_init_fn=None,
-        epochs=1,
-        steps_per_epoch=None,
-        sample_split=1,
-        mode=None,
-        places=None,
-    ):
+        dataset: Dataset,
+        batch_size: int = 1,
+        shuffle: bool = False,
+        drop_last: bool = True,
+        collate_fn: _CollateFn | None = None,
+        num_workers: int = 0,
+        use_buffer_reader: bool = True,
+        use_shared_memory: bool = True,
+        timeout: int = 0,
+        worker_init_fn: Callable[[int], None] = None,
+        epochs: int = 1,
+        steps_per_epoch: int | None = None,
+        sample_split: int = 1,
+        mode: _Mode | None = None,
+        places: PlaceLike | Sequence[PlaceLike] | None = None,
+    ) -> DistributedDataLoader:
         if mode is not None:
             self.to_mode(mode)
 
@@ -1890,19 +1936,19 @@ class Engine:
 
     def dataloader_from_generator(
         self,
-        dataset,
-        capacity=70,
-        use_double_buffer=True,
-        iterable=True,
-        use_multiprocess=False,
-        drop_last=True,
-        batch_size=1,
-        epochs=1,
-        steps_per_epoch=None,
-        collate_fn=None,
-        sample_split=1,
-        mode=None,
-    ):
+        dataset: Dataset,
+        capacity: int = 70,
+        use_double_buffer: bool = True,
+        iterable: bool = True,
+        use_multiprocess: bool = False,
+        drop_last: bool = True,
+        batch_size: int = 1,
+        epochs: int = 1,
+        steps_per_epoch: int | None = None,
+        collate_fn: _CollateFn | None = None,
+        sample_split: int = 1,
+        mode: _Mode | None = None,
+    ) -> DistributedDataLoaderFromGenerator:
         if mode is not None:
             self.to_mode(mode)
 
@@ -1932,15 +1978,15 @@ class Engine:
 
     def prepare(
         self,
-        inputs_spec=None,
-        labels_spec=None,
-        inputs=None,
-        labels=None,
-        main_program=None,
-        startup_program=None,
-        mode=None,
-        init_parameters=True,
-    ):
+        inputs_spec: InputSpec | None = None,
+        labels_spec: InputSpec | None = None,
+        inputs: Sequence[Tensor] | None = None,
+        labels: Sequence[Tensor] | None = None,
+        main_program: Program | None = None,
+        startup_program: Program | None = None,
+        mode: _Mode | None = None,
+        init_parameters: bool = True,
+    ) -> None:
         if mode is not None:
             self.to_mode(mode)
 
@@ -1986,7 +2032,15 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-    def run(self, data=None, feed=None, fetch_list=None, mode=None):
+    def run(
+        self,
+        data: (
+            list[dict[str, Any]] | tuple[dict[str, Any]] | dict[str, Any] | None
+        ) = None,
+        feed: dict[str, Any] | None = None,
+        fetch_list: list[Tensor | str | Operator | Value] | None = None,
+        mode: _Mode | None = None,
+    ) -> dict[str, Any]:
         if mode is not None:
             self.to_mode(mode)
         feed_dict = self._prepare_feed(data, feed, self._mode)
@@ -2050,7 +2104,7 @@ class Engine:
         )
         return logs
 
-    def get_feed_list(self):
+    def get_feed_list(self) -> list[Tensor]:
         dist_context = self._dist_contexts[self._mode]
         dist_main_prog = dist_context.dist_main_programs[self._cur_rank]
         dist_startup_prog = dist_context.dist_startup_programs[self._cur_rank]
@@ -2188,9 +2242,9 @@ class Engine:
                 split_data=self._strategy.split_data,
                 data_parallel_world_size=self._dp_world_sizes,
                 data_parallel_rank=self._dp_ranks,
-                acc_steps=1
-                if not self._strategy.pipeline.enable
-                else self._acc_steps,
+                acc_steps=(
+                    1 if not self._strategy.pipeline.enable else self._acc_steps
+                ),
             )
         self._prepare_reader(feed_list)
         return dataloader
@@ -2293,7 +2347,7 @@ class Engine:
         ), f"{mode} model is not ready, please call `prepare()` first."
         self.to_mode(mode)
 
-    def to_mode(self, mode):
+    def to_mode(self, mode: _Mode) -> None:
         assert mode in [
             "train",
             "eval",
@@ -2318,7 +2372,7 @@ class Engine:
                 state_dict[name] = state_dict[name].astype(param_array.dtype)
         program.set_state_dict(state_dict)
 
-    def save(self, path, training=True):
+    def save(self, path: str, training: bool = True) -> None:
         """
         Saves the model, parameters, optimizer state to path.
         If `training` is set to False, only inference model will be saved.
@@ -2403,7 +2457,9 @@ class Engine:
                 program=dist_main_prog,
             )
 
-    def load(self, path, strict=True, load_optimizer=True):
+    def load(
+        self, path: str, strict: bool = True, load_optimizer: bool = True
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Load the stored model, parameters and optimizer states.
 
@@ -2456,7 +2512,12 @@ class Engine:
         )
         return self._state_dict, self._dist_attr
 
-    def cost(self, inputs_spec=None, labels_spec=None, mode=None):
+    def cost(
+        self,
+        inputs_spec: InputSpec | None = None,
+        labels_spec: InputSpec | None = None,
+        mode: _Mode | None = None,
+    ) -> tuple[int, int] | None:
         """
         Get and Print cost, including memory of every rank,
         max memory among all ranks, and the global cost of one step based on
@@ -2517,65 +2578,65 @@ class Engine:
 
         return global_cost.time, max_memory
 
-    def get_dist_main_program(self, mode):
+    def get_dist_main_program(self, mode: _Mode) -> Program:
         return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
 
-    def get_dist_startup_program(self, mode):
+    def get_dist_startup_program(self, mode: _Mode) -> Program:
         return self._dist_contexts[mode].dist_startup_programs[self._cur_rank]
 
-    def get_serial_main_program(self, mode):
+    def get_serial_main_program(self, mode: _Mode) -> Program:
         return self._dist_contexts[mode].serial_main_program
 
-    def get_serial_startup_program(self, mode):
+    def get_serial_startup_program(self, mode: _Mode) -> Program:
         return self._dist_contexts[mode].serial_startup_program
 
     @property
-    def main_program(self):
+    def main_program(self) -> Program:
         if self._in_pir_mode:
             return self._pir_dense_main_progs[self._mode]
         dist_context = self._dist_contexts[self._mode]
         return dist_context.dist_main_programs[self._cur_rank]
 
     @property
-    def startup_program(self):
+    def startup_program(self) -> Program:
         dist_context = self._dist_contexts[self._mode]
         return dist_context.dist_startup_programs[self._cur_rank]
 
     @property
-    def dist_context(self):
+    def dist_context(self) -> DistributedContext:
         return self._dist_contexts[self._mode]
 
     @property
-    def serial_main_program(self):
+    def serial_main_program(self) -> Program:
         dist_context = self._dist_contexts[self._mode]
         return dist_context.serial_main_program
 
     @property
-    def serial_startup_program(self):
+    def serial_startup_program(self) -> Program:
         dist_context = self._dist_contexts[self._mode]
         return dist_context.serial_startup_program
 
     @property
-    def feed_vars(self):
+    def feed_vars(self) -> dict[str, list[Tensor]]:
         dist_context = self._dist_contexts[self._mode]
         return dist_context.serial_feed_vars
 
     @property
-    def fetch_vars(self):
+    def fetch_vars(self) -> dict[str, list[Tensor]]:
         dist_context = self._dist_contexts[self._mode]
         return dist_context.serial_fetch_vars
 
     @property
-    def optimizer(self):
+    def optimizer(self) -> Optimizer:
         dist_context = self._dist_contexts[self._mode]
         if dist_context._serial_optimizer:
             return dist_context._serial_optimizer
         return self._optimizer
 
     @property
-    def inputs(self):
+    def inputs(self) -> list[Tensor]:
         return self._inputs
 
     @property
-    def labels(self):
+    def labels(self) -> list[Tensor]:
         return self._labels

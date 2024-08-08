@@ -43,7 +43,7 @@ fused_feedforward_dygraph_function(
     const paddle::Tensor& Ln2Scale,
     const paddle::Tensor& Ln2Bias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "fused_feedforward dygraph",
       paddle::platform::TracerEventType::Operator,
       1);
@@ -270,7 +270,7 @@ fused_feedforward_dygraph_function(
   egr::EagerUtils::GetOutput(outs["Dropout2Out"][0], &Dropout2Out);
 
   {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "fused_feedforward node_creation",
         paddle::platform::TracerEventType::Operator,
         1);

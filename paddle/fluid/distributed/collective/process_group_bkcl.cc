@@ -267,7 +267,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
 
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(comm_ctx.get(),
-                            phi::errors::Fatal("comm context is nullptr."));
+                            common::errors::Fatal("comm context is nullptr."));
     if (!is_coalescing_) {
       task->comm_event_->Record(*comm_ctx.get());
     } else {
@@ -321,7 +321,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
 
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(comm_ctx.get(),
-                            phi::errors::Fatal("comm context is nullptr."));
+                            common::errors::Fatal("comm context is nullptr."));
     if (!is_coalescing_) {
       task->comm_event_->Record(*comm_ctx.get());
     } else {
@@ -506,7 +506,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
     const BarrierOptions& opts) {
   PADDLE_ENFORCE_GE(opts.device_id,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
   phi::XPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
@@ -545,7 +545,7 @@ phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const auto& iter = place_to_comm_ctx_.find(key);
     PADDLE_ENFORCE_NE(iter,
                       place_to_comm_ctx_.end(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Cannot find device context in process group."));
     return iter->second.get();
   }
@@ -569,14 +569,14 @@ phi::distributed::BKCLCommContext* ProcessGroupBKCL::GetCommContext() {
       comm_context_manager.Get(std::to_string(this->gid_)));
   PADDLE_ENFORCE_NE(comm_context,
                     nullptr,
-                    phi::errors::Unavailable("BKCLCommContext is nullptr"));
+                    common::errors::Unavailable("BKCLCommContext is nullptr"));
   return comm_context;
 }
 
 void ProcessGroupBKCL::StartCoalescing() {
   PADDLE_ENFORCE_EQ(is_coalescing_,
                     false,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Coalescing is on, please call EndCoalesce."));
   is_coalescing_ = true;
   GroupStart();
@@ -598,7 +598,7 @@ void ProcessGroupBKCL::EndCoalescing(
   PADDLE_ENFORCE_EQ(
       tasks.size(),
       colaescing_place_keys_.size(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Number of tasks[%d] do not match number of collectives[%d].",
           tasks.size(),
           colaescing_place_keys_.size()));

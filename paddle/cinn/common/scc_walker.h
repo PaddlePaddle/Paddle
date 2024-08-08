@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "paddle/cinn/common/dfs_walker.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -81,7 +81,11 @@ class SccWalker final {
       SccHandler(scc);
       // Update node2root outside dfs visitor.
       for (NodeType node : scc) {
-        CHECK(node2root.emplace(node, root).second);
+        PADDLE_ENFORCE_EQ(node2root.emplace(node, root).second,
+                          true,
+                          ::common::errors::AlreadyExists(
+                              "Failed to insert the node into node2root. The "
+                              "node may already exist."));
       }
     }
   }

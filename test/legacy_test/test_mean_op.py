@@ -65,6 +65,30 @@ class TestMeanOp(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
+class TestMeanAllOp(OpTest):
+    def setUp(self):
+        self.op_type = "mean_all"
+        self.python_api = paddle.mean_all
+        self.public_python_api = paddle.mean_all
+        self.dtype = np.float64
+        self.init_dtype_type()
+        self.init_prim_type()
+        self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
 class TestMeanOpPrim(TestMeanOp):
     def init_prim_type(self):
         self.prim_op_type = "prim"
@@ -76,6 +100,26 @@ class TestMeanOp_ZeroDim(OpTest):
         self.python_api = paddle.mean
         self.dtype = np.float64
         self.public_python_api = paddle.mean
+        self.init_prim_type()
+        self.inputs = {'X': np.random.random([]).astype(self.dtype)}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+
+
+class TestMeanAllOp_ZeroDim(OpTest):
+    def setUp(self):
+        self.op_type = "mean_all"
+        self.python_api = paddle.mean_all
+        self.dtype = np.float64
+        self.public_python_api = paddle.mean_all
         self.init_prim_type()
         self.inputs = {'X': np.random.random([]).astype(self.dtype)}
         self.outputs = {'Out': np.mean(self.inputs["X"])}

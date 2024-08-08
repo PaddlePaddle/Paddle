@@ -92,7 +92,10 @@ class IGroup final {
   }
 
   const List<Iterator>& loop_iterators() const {
-    CHECK(anchor_sd_equation_ctx_.has_value());
+    PADDLE_ENFORCE_EQ(anchor_sd_equation_ctx_.has_value(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The anchor_sd_equation_ctx_ has no value."));
     return anchor_sd_equation_ctx_.value().sd_iterators();
   }
 
@@ -122,13 +125,21 @@ class IGroup final {
       for (std::size_t idx = 0; idx < op_inputs.value()->size(); ++idx) {
         const auto& index = ctx->GetInIndex(idx);
         const auto& tensor = op_inputs.value()->at(idx);
-        CHECK(index2tensor->emplace(index, tensor).second);
+        PADDLE_ENFORCE_EQ(
+            index2tensor->emplace(index, tensor).second,
+            true,
+            phi::errors::InvalidArgument(
+                "The index2tensor map has already contained the index."));
         (*tensor2indexes)[tensor].emplace_back(index);
       }
       for (std::size_t idx = 0; idx < op_outputs.value()->size(); ++idx) {
         const auto& index = ctx->GetOutIndex(idx);
         const auto& tensor = op_outputs.value()->at(idx);
-        CHECK(index2tensor->emplace(index, tensor).second);
+        PADDLE_ENFORCE_EQ(
+            index2tensor->emplace(index, tensor).second,
+            true,
+            phi::errors::InvalidArgument(
+                "The index2tensor map has already contained the index."));
         (*tensor2indexes)[tensor].emplace_back(index);
       }
     }

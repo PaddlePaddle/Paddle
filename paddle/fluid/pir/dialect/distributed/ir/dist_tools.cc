@@ -297,6 +297,19 @@ pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {
   }
 }
 
+pir::Attribute GetTensorDistAttrArray(pir::VectorType x_vec_type) {
+  std::vector<pir::Attribute> x_arr_attr;
+  for (size_t i = 0; i < x_vec_type.size(); i++) {
+    auto dist_type = x_vec_type[i].dyn_cast<DistTypeInterface>();
+    if (!dist_type) {
+      x_arr_attr.push_back(nullptr);
+    } else {
+      x_arr_attr.push_back(dist_type.tensor_dist_attr());
+    }
+  }
+  return pir::ArrayAttribute::get(pir::IrContext::Instance(), x_arr_attr);
+}
+
 pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,
                                         ProcessMeshAttribute mesh) {
   auto ctx = pir::IrContext::Instance();

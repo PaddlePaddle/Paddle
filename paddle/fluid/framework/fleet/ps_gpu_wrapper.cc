@@ -313,7 +313,12 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
       VLOG(0) << "GpuPs build task cost " << timeline.ElapsedSec()
               << " seconds.";
     } else {
-      CHECK_NE(data_set_name.find("MultiSlotDataset"), std::string::npos);
+      PADDLE_ENFORCE_NE(
+          data_set_name.find("MultiSlotDataset"),
+          std::string::npos,
+          common::errors::InvalidArgument(
+              "The name of Data set '%s' can not contain 'MultiSlotDataset'.",
+              data_set_name.c_str()));
       VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
       MultiSlotDataset* dataset = reinterpret_cast<MultiSlotDataset*>(dataset_);
       auto input_channel = dataset->GetInputChannel();
@@ -387,9 +392,15 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
             keys2rank_maps[id].reserve(pred_size);
             for (size_t i = 0; i < keys_vec.size(); ++i) {
               if (!infer_mode_ || sage_mode_) {
-                CHECK_EQ(keys_vec[i]->size(), ranks_vec[i]->size())
-                    << keys_vec[i]->size() << " should be equal to "
-                    << ranks_vec[i]->size();
+                PADDLE_ENFORCE_EQ(
+                    keys_vec[i]->size(),
+                    ranks_vec[i]->size(),
+                    common::errors::InvalidArgument(
+                        "keys_vec[i]->size() should be equal to "
+                        "ranks_vec[i]->size(), but recieved "
+                        "keys_vec[i]->size() is %d, ranks_vec[i]->size() is %d",
+                        keys_vec[i]->size(),
+                        ranks_vec[i]->size()));
                 for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
                   auto& key = (*keys_vec[i])[j];
                   auto& rank = (*ranks_vec[i])[j];
@@ -399,8 +410,13 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
                   }
                 }
               } else {
-                CHECK_EQ(ranks_vec[i]->size(), 0UL)
-                    << ranks_vec[i]->size() << " should be equal to 0";
+                PADDLE_ENFORCE_EQ(
+                    ranks_vec[i]->size(),
+                    0UL,
+                    common::errors::InvalidArgument(
+                        "ranks_vec[i]->size() should be equal to 0, "
+                        "but recieved %d.",
+                        ranks_vec[i]->size()));
                 for (size_t j = 0; j < keys_vec[i]->size(); ++j) {
                   auto& key = (*keys_vec[i])[j];
                   int shard_idx = key % thread_keys_thread_num_;
@@ -435,7 +451,15 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
               << " seconds"
               << ", total input keys=" << total_keys
               << ", total uniq keys=" << total_shard_keys;
-      CHECK_LE(total_shard_keys, total_keys);
+      PADDLE_ENFORCE_LE(
+          total_shard_keys,
+          total_keys,
+          common::errors::InvalidArgument(
+              "Total shard keys number should be less than or equal to total "
+              "keys number, but recieved %d as total shard keys number and %d "
+              "as total keys number.",
+              total_shard_keys,
+              total_keys));
     }
   }
 
@@ -1037,8 +1061,11 @@ void PSGPUWrapper::FilterPull(std::shared_ptr<HeterContext> gpu_task,
     if (shard_num > 0) {
       auto shard = key % shard_num;
       auto it = keys2rank_vec[shard].find(key);
-      CHECK_EQ(it != keys2rank_vec[shard].end(), true)
-          << "can't find key " << key << " in keys2rank_vec[" << shard << "]";
+      PADDLE_ENFORCE_NE(
+          it,
+          keys2rank_vec[shard].end(),
+          common::errors::InvalidArgument(
+              "Can not find the key in the shard of keys to rank vector."));
       if (static_cast<int>(it->second) != rank_id_) {
         continue;
       }
@@ -1048,16 +1075,24 @@ void PSGPUWrapper::FilterPull(std::shared_ptr<HeterContext> gpu_task,
       }
     }
     if (dedup_size == pos) {
-      CHECK_EQ(shard_values[dedup_size] != 0, true)
-          << "shard_values[" << dedup_size << "] shouldn't be 0, but got"
-          << shard_values[dedup_size];
+      PADDLE_ENFORCE_NE(shard_values[dedup_size],
+                        nullptr,
+                        common::errors::InvalidArgument(
+                            "The shard values after deduplication should not "
+                            "be nullptr, but got %d at position %d.",
+                            shard_values[dedup_size],
+                            dedup_size));
       ++dedup_size;
       continue;
     }
     shard_keys[dedup_size] = shard_keys[pos];
-    CHECK_EQ(shard_values[dedup_size] != 0, true)
-        << "shard_values[" << dedup_size << "] shouldn't be 0, but got"
-        << shard_values[dedup_size];
+    PADDLE_ENFORCE_NE(shard_values[dedup_size],
+                      nullptr,
+                      common::errors::InvalidArgument(
+                          "The shard values after deduplication should not "
+                          "be nullptr, but got %d at positon %d.",
+                          shard_values[dedup_size],
+                          dedup_size));
     ++dedup_size;
   }
   shard_keys.resize(dedup_size);
@@ -1082,8 +1117,11 @@ void PSGPUWrapper::FilterKey(std::shared_ptr<HeterContext> gpu_task,
     if (shard_num > 0) {
       auto shard = key % shard_num;
       auto it = keys2rank_vec[shard].find(key);
-      CHECK_EQ(it != keys2rank_vec[shard].end(), true)
-          << "can't find key " << key << " in keys2rank_vec[" << shard << "]";
+      PADDLE_ENFORCE_NE(
+          it,
+          keys2rank_vec[shard].end(),
+          common::errors::InvalidArgument(
+              "Can not find the key in the shard of keys to rank vector."));
       if (static_cast<int>(it->second) != rank_id_) {
         continue;
       }
@@ -1191,8 +1229,14 @@ void PSGPUWrapper::MergePull(std::shared_ptr<HeterContext> gpu_task) {
               }
             } else {
               merge_values.offsets.push_back(merge_num);
-              CHECK_EQ(merge_values.offsets.size(),
-                       static_cast<size_t>(node_size_));
+              PADDLE_ENFORCE_EQ(
+                  merge_values.offsets.size(),
+                  static_cast<size_t>(node_size_),
+                  common::errors::InvalidArgument(
+                      "Size dismatch in merge_values.offsets.size()(size = "
+                      "%zu) and static_cast<size_t>(node_size_)(size = %zu).",
+                      merge_values.offsets.size(),
+                      static_cast<size_t>(node_size_)));
               std::vector<size_t> ranks_pos(num_ranks);
               for (int rank = 0; rank < num_ranks; ++rank) {
                 ranks_pos[rank] = merge_values.offsets[rank];
@@ -1395,8 +1439,14 @@ void PSGPUWrapper::MergeKeys(std::shared_ptr<HeterContext> gpu_task) {
               }
             } else {
               merge_values.offsets.push_back(merge_num);
-              CHECK_EQ(merge_values.offsets.size(),
-                       static_cast<size_t>(node_size_));
+              PADDLE_ENFORCE_EQ(
+                  merge_values.offsets.size(),
+                  static_cast<size_t>(node_size_),
+                  common::errors::InvalidArgument(
+                      "Size dismatch in merge_values.offsets.size()(size = "
+                      "%zu) and static_cast<size_t>(node_size_)(size = %zu).",
+                      merge_values.offsets.size(),
+                      static_cast<size_t>(node_size_)));
               std::vector<size_t> ranks_pos(num_ranks);
               for (int rank = 0; rank < num_ranks; ++rank) {
                 ranks_pos[rank] = merge_values.offsets[rank];
@@ -1571,9 +1621,13 @@ void PSGPUWrapper::divide_to_device(std::shared_ptr<HeterContext> gpu_task) {
       for (size_t k = 0; k < len; ++k) {
         auto& pos = dev_pos[k];
         d_dim_keys[cur + k] = h_dim_keys[pos];
-        CHECK_EQ(h_dim_ptrs[pos] != 0, true)
-            << "total=" << total_keys_len << ", pos=" << pos << ", k=" << k
-            << ", len=" << len;
+        PADDLE_ENFORCE_NE(h_dim_ptrs[pos],
+                          nullptr,
+                          common::errors::InvalidArgument(
+                              "The value of local dimension pointer should not "
+                              "be nullptr but recieved %d at position %d.",
+                              h_dim_ptrs[pos],
+                              pos));
         d_dim_ptr[cur + k] = h_dim_ptrs[pos];
       }
       device_dim_mutex[dev][j]->unlock();
