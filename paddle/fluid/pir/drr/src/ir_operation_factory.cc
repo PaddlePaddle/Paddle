@@ -673,6 +673,43 @@ void OperationFactory::RegisterManualOpCreator() {
                                                                 attrs);
       });
 
+  RegisterOperationCreator(
+      "onednn_op.scale",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        if (inputs.size() == 2) {
+          // Add after scale add this attr
+          // PADDLE_ENFORCE_EQ(attrs.find("mkldnn_data_type") != attrs.end(),
+          //                   true,
+          //                   phi::errors::InvalidArgument(
+          //                       "'mkldnn_data_type' Attribute is expected "
+          //                       "for ScaleOp. "));
+          // std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
+          //                                    .dyn_cast<pir::StrAttribute>()
+          //                                    .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("bias_after_scale") != attrs.end(),
+                            true,
+                            phi::errors::InvalidArgument(
+                                "'bias_after_scale' Attribute is expected "
+                                "for ScaleOp. "));
+          bool bias_after_scale = attrs.at("bias_after_scale")
+                                      .dyn_cast<pir::BoolAttribute>()
+                                      .data();
+
+          PADDLE_ENFORCE_EQ(
+              attrs.find("bias") != attrs.end(),
+              true,
+              phi::errors::InvalidArgument("'bias' Attribute is expected "
+                                           "for ScaleOp. "));
+          bool bias = attrs.at("bias").dyn_cast<pir::FloatAttribute>().data();
+
+          return rewriter.Build<paddle::onednn::dialect::ScaleOp>(
+              inputs[0], inputs[1], bias, bias_after_scale);
+        }
+        return rewriter.Build<paddle::onednn::dialect::ScaleOp>(inputs[0],
+                                                                attrs);
+      });
 #endif
 
   RegisterOperationCreator(
