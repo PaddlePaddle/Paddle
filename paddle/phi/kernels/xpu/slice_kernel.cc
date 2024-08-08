@@ -37,11 +37,11 @@ void SliceKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       starts.size(),
       axes.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of starts must be equal to the size of axes."));
   PADDLE_ENFORCE_EQ(ends.size(),
                     axes.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of ends must be equal to the size of axes."));
 
   // Step 2: Compute output

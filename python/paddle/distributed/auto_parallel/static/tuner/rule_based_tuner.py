@@ -1180,9 +1180,9 @@ class RuleBasedTuner:
 
             for grad_op_original_id in grad_op_id_to_op_id:
                 op_id = grad_op_id_to_op_id[grad_op_original_id]
-                self.op_original_id_to_grad_op_original_id[
-                    op_id
-                ] = grad_op_original_id
+                self.op_original_id_to_grad_op_original_id[op_id] = (
+                    grad_op_original_id
+                )
 
     def cluster_operators(self):
         """Group operators to layers."""
@@ -1279,9 +1279,9 @@ class RuleBasedTuner:
                             ]
                             if var_desc_id not in self.tensor_dist_attrs:
                                 self.tensor_dist_attrs[var_desc_id] = {}
-                            self.tensor_dist_attrs[var_desc_id][
-                                parallelism
-                            ] = shard_spec[pattern_node_id]
+                            self.tensor_dist_attrs[var_desc_id][parallelism] = (
+                                shard_spec[pattern_node_id]
+                            )
                             tensor_name = graph.attrs["id_to_var_name"][var_id]
                             self._logger.info(
                                 f"{tensor_name}'s shard_spec may be {shard_spec[pattern_node_id]} when under {parallelism} parallelism."
@@ -1315,13 +1315,13 @@ class RuleBasedTuner:
                             src_var = vars[var_name]
                             copied_kwargs = {}
                             copied_kwargs['trainable'] = src_var.trainable
-                            copied_kwargs[
-                                'optimize_attr'
-                            ] = src_var.optimize_attr
+                            copied_kwargs['optimize_attr'] = (
+                                src_var.optimize_attr
+                            )
                             copied_kwargs['regularizer'] = src_var.regularizer
-                            copied_kwargs[
-                                'do_model_average'
-                            ] = src_var.do_model_average
+                            copied_kwargs['do_model_average'] = (
+                                src_var.do_model_average
+                            )
                             copied_kwargs['need_clip'] = src_var.need_clip
 
                             param = Parameter(
@@ -1959,9 +1959,9 @@ class RuleBasedTuner:
                         index = idx
                         break
                 if index == 0:
-                    self.stage_best_cost_of_pm[start][end][key]["cost"][
-                        1
-                    ] = self.stage_best_cost_of_pm[start][end][key]["cost"][0]
+                    self.stage_best_cost_of_pm[start][end][key]["cost"][1] = (
+                        self.stage_best_cost_of_pm[start][end][key]["cost"][0]
+                    )
                     self.stage_best_cost_of_pm[start][end][key]["dist_context"][
                         1
                     ] = self.stage_best_cost_of_pm[start][end][key][
@@ -1989,19 +1989,19 @@ class RuleBasedTuner:
             self.stage_best_cost_of_pm[start][end][key]["cost"][1]
             < self.stage_best_cost_of_pm[start][end][key]["cost"][0]
         ):
-            self.stage_best_cost_of_pm[start][end][key][
-                "best_cost"
-            ] = self.stage_best_cost_of_pm[start][end][key]["cost"][1]
-            self.stage_best_cost_of_pm[start][end][key][
-                "best_dist_context"
-            ] = self.stage_best_cost_of_pm[start][end][key]["dist_context"][1]
+            self.stage_best_cost_of_pm[start][end][key]["best_cost"] = (
+                self.stage_best_cost_of_pm[start][end][key]["cost"][1]
+            )
+            self.stage_best_cost_of_pm[start][end][key]["best_dist_context"] = (
+                self.stage_best_cost_of_pm[start][end][key]["dist_context"][1]
+            )
         else:
-            self.stage_best_cost_of_pm[start][end][key][
-                "best_cost"
-            ] = self.stage_best_cost_of_pm[start][end][key]["cost"][0]
-            self.stage_best_cost_of_pm[start][end][key][
-                "best_dist_context"
-            ] = self.stage_best_cost_of_pm[start][end][key]["dist_context"][0]
+            self.stage_best_cost_of_pm[start][end][key]["best_cost"] = (
+                self.stage_best_cost_of_pm[start][end][key]["cost"][0]
+            )
+            self.stage_best_cost_of_pm[start][end][key]["best_dist_context"] = (
+                self.stage_best_cost_of_pm[start][end][key]["dist_context"][0]
+            )
 
         return self.stage_best_cost_of_pm[start][end][key]["best_cost"]
 
@@ -2764,14 +2764,14 @@ class RuleBasedTuner:
 
         for key in best_dist_context._dist_tensors_for_program:
             if key in self._dist_context._dist_tensors_for_program:
-                self._dist_context._dist_tensors_for_program[
-                    key
-                ] = best_dist_context._dist_tensors_for_program[key]
+                self._dist_context._dist_tensors_for_program[key] = (
+                    best_dist_context._dist_tensors_for_program[key]
+                )
         for key in best_dist_context._dist_ops_for_program:
             if key in self._dist_context._dist_ops_for_program:
-                self._dist_context._dist_ops_for_program[
-                    key
-                ] = best_dist_context._dist_ops_for_program[key]
+                self._dist_context._dist_ops_for_program[key] = (
+                    best_dist_context._dist_ops_for_program[key]
+                )
         self._dist_context._process_meshes = best_dist_context._process_meshes
 
         end = time.time()

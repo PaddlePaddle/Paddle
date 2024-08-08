@@ -22,13 +22,13 @@
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_resource_pool.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_resource_pool.h"
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/event.h"
@@ -39,7 +39,7 @@ namespace operators {
 namespace reader {
 
 class BufferedReader : public framework::DecoratedReader {
-  using TensorVec = paddle::framework::LoDTensorArray;
+  using TensorVec = phi::TensorArray;
   using VecFuture = std::future<TensorVec>;
 
  public:
@@ -60,7 +60,7 @@ class BufferedReader : public framework::DecoratedReader {
  protected:
   void ShutdownImpl() override;
   void StartImpl() override;
-  void ReadNextImpl(paddle::framework::LoDTensorArray* out) override;
+  void ReadNextImpl(phi::TensorArray* out) override;
 
  private:
   ThreadPool thread_pool_;

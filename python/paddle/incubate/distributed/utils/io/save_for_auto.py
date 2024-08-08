@@ -183,9 +183,11 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
         attr_d = {
             "process_shape": [dp_degree, mp_degree] if hcg else [1],
             "process_group": process_group,
-            "dims_mapping": v.dims_mapping
-            if hasattr(v, "dims_mapping")
-            else [-1 for _ in v.shape],
+            "dims_mapping": (
+                v.dims_mapping
+                if hasattr(v, "dims_mapping")
+                else [-1 for _ in v.shape]
+            ),
         }
         attr_dict[k] = attr_d
 

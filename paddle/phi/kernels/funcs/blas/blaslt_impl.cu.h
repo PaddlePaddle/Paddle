@@ -574,9 +574,10 @@ struct CublasLtBase {
                                                 requested_algo_count,
                                                 heuristic_results.data(),
                                                 &returned_results));
-    PADDLE_ENFORCE_GT(returned_results,
-                      0,
-                      phi::errors::Unavailable("No GEMM algorithm available."));
+    PADDLE_ENFORCE_GT(
+        returned_results,
+        0,
+        common::errors::Unavailable("No GEMM algorithm available."));
     int best_algo_idx = -1;
     if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
       best_algo_idx = 0;
@@ -689,9 +690,9 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
     size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace = nullptr;
 
-    PADDLE_ENFORCE_NOT_NULL(
-        planner,
-        phi::errors::InvalidArgument("matmul planner should be initialized!"));
+    PADDLE_ENFORCE_NOT_NULL(planner,
+                            common::errors::InvalidArgument(
+                                "matmul planner should be initialized!"));
 
     if (FLAGS_enable_blaslt_global_search && !desc->is_cached) {
       SearchBestAlgoGlobal(ctx,
@@ -857,9 +858,10 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                                                 requested_algo_count,
                                                 heuristic_results.data(),
                                                 &returned_results));
-    PADDLE_ENFORCE_GT(returned_results,
-                      0,
-                      phi::errors::Unavailable("No GEMM algorithm available."));
+    PADDLE_ENFORCE_GT(
+        returned_results,
+        0,
+        common::errors::Unavailable("No GEMM algorithm available."));
     int best_algo_idx = -1;
     if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
       best_algo_idx = 0;
@@ -975,7 +977,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (N % 4 == 0 || N == 1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size N used in int8 matmul must be 1 or a "
                 "multiple of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -983,7 +985,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (K % 4 == 0),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size K used in int8 matmul must be a multiple "
                 "of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -992,7 +994,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (K % 4 == 0),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size K used in int8 matmul must be a multiple "
                 "of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -1001,7 +1003,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (M % 4 == 0 || M == 1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size M used in int8 matmul must be 1 or a "
                 "multiple of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -1009,7 +1011,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (N % 4 == 0 || N == 1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size N used in int8 matmul must be 1 or a "
                 "multiple of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -1018,7 +1020,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (M % 4 == 0 || M == 1),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size M used in int8 matmul must be 1 or a "
                 "multiple of 4 does not "
                 "match the size (%d) currently contained in the container.",
@@ -1026,7 +1028,7 @@ struct DescriptorSetter {
         PADDLE_ENFORCE_EQ(
             (K % 4 == 0),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The dimension size K used in int8 matmul must be a multiple "
                 "of 4 does not "
                 "match the size (%d) currently contained in the container.",

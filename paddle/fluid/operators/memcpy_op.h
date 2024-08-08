@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace phi {
 class DenseTensor;
@@ -66,7 +66,7 @@ class MemcpyFunctor {
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
 #endif
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "memcpy dst_place_type: %d is not supported yet.", dst_place_type_));
     }
     out_tensor.set_lod(lod_tensor.lod());
@@ -74,7 +74,7 @@ class MemcpyFunctor {
 
   void operator()(const phi::SelectedRows &rows) const {
     // (JZ-LIANG) to support SelectedRows
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Memcpy for SelectedRows is NOT support yet."));
   }
 
@@ -83,7 +83,7 @@ class MemcpyFunctor {
     PADDLE_ENFORCE_EQ(
         true,
         false,
-        phi::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "Not support type for Memcpy op with type %s", typeid(T).name()));
   }
 

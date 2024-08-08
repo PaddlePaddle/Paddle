@@ -23,9 +23,8 @@ import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
+    List,
     Literal,
-    Sequence,
     Union,
     overload,
 )
@@ -58,6 +57,8 @@ from .callbacks import EarlyStopping, config_callbacks
 from .model_summary import summary
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     import numpy.typing as npt
 
     from paddle import Tensor
@@ -69,8 +70,8 @@ if TYPE_CHECKING:
     _InputBatch: TypeAlias = Union[
         Tensor,
         npt.NDArray[Any],
-        list[Tensor],
-        list[npt.NDArray[Any]],
+        List[Tensor],
+        List[npt.NDArray[Any]],
     ]
 
 
@@ -525,9 +526,9 @@ class StaticGraphAdapter:
                                 + accum_name
                                 + "_0"
                             )
-                            converted_state[
-                                state_var.name
-                            ] = converted_state.pop(dy_state_name)
+                            converted_state[state_var.name] = (
+                                converted_state.pop(dy_state_name)
+                            )
 
             assert (
                 var.name in converted_state
@@ -2173,8 +2174,7 @@ class Model:
         stack_outputs: Literal[True] = ...,
         verbose: int = ...,
         callbacks: Sequence[Callback] | Callback | None = ...,
-    ) -> list[npt.NDArray[Any]]:
-        ...
+    ) -> list[npt.NDArray[Any]]: ...
 
     @overload
     def predict(
@@ -2185,8 +2185,7 @@ class Model:
         stack_outputs: Literal[False] = ...,
         verbose: int = ...,
         callbacks: Sequence[Callback] | Callback | None = ...,
-    ) -> list[tuple[npt.NDArray[Any], ...]]:
-        ...
+    ) -> list[tuple[npt.NDArray[Any], ...]]: ...
 
     @overload
     def predict(
@@ -2197,8 +2196,7 @@ class Model:
         stack_outputs: bool = ...,
         verbose: int = ...,
         callbacks: Sequence[Callback] | Callback | None = ...,
-    ) -> list[npt.NDArray[Any] | tuple[npt.NDArray[Any], ...]]:
-        ...
+    ) -> list[npt.NDArray[Any] | tuple[npt.NDArray[Any], ...]]: ...
 
     def predict(
         self,

@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/partial_allgather_op.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -29,11 +31,11 @@ class PartialAllGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         nranks,
         2,
-        phi::errors::InvalidArgument("The value of nranks should be >=2."));
+        common::errors::InvalidArgument("The value of nranks should be >=2."));
     PADDLE_ENFORCE_EQ(
         (rank >= 0 && rank < nranks),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The rank (%d) for partial_allgather op must >=0 and <nranks (%d)",
             rank,
             nranks));
@@ -83,13 +85,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::PartialAllGatherOpInplaceInferer)
-
-PD_REGISTER_STRUCT_KERNEL(partial_allgather,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::PartialAllGatherOpCPUKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t,
-                          phi::dtype::float16) {}
