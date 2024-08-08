@@ -16,7 +16,7 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Sequence
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 
 from ..base import core, framework
 from ..base.dygraph import no_grad
@@ -241,7 +241,7 @@ class Adamax(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
@@ -315,7 +315,7 @@ class Adamax(Optimizer):
 
     def _finish_update(self, block, parameters_and_grads):
         """Update Beta1 Power accumulator"""
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(parameters_and_grads, list):
             for param, grad in parameters_and_grads:
                 if grad is None or param.stop_gradient is True:

@@ -474,9 +474,11 @@ class ForNodeVisitor:
             # i > min
             return gast.Compare(
                 left=gast.Name(
-                    id=self.iter_var_name
-                    if self.is_for_range_iter()
-                    else self.iter_idx_name,
+                    id=(
+                        self.iter_var_name
+                        if self.is_for_range_iter()
+                        else self.iter_idx_name
+                    ),
                     ctx=gast.Load(),
                     annotation=None,
                     type_comment=None,
@@ -491,9 +493,11 @@ class ForNodeVisitor:
             # i < max
             return gast.Compare(
                 left=gast.Name(
-                    id=self.iter_var_name
-                    if self.is_for_range_iter()
-                    else self.iter_idx_name,
+                    id=(
+                        self.iter_var_name
+                        if self.is_for_range_iter()
+                        else self.iter_idx_name
+                    ),
                     ctx=gast.Load(),
                     annotation=None,
                     type_comment=None,
@@ -505,9 +509,11 @@ class ForNodeVisitor:
     def _build_index_increase_node(self, step_node):
         return gast.AugAssign(
             target=gast.Name(
-                id=self.iter_var_name
-                if self.is_for_range_iter()
-                else self.iter_idx_name,
+                id=(
+                    self.iter_var_name
+                    if self.is_for_range_iter()
+                    else self.iter_idx_name
+                ),
                 ctx=gast.Store(),
                 annotation=None,
                 type_comment=None,

@@ -512,9 +512,11 @@ def gen(
         for api in revs + ir_revs + fused_revs + sparse_revs
     ]
     apis = [
-        {**api, **{'is_prim': True}}
-        if api['name'] in prims
-        else {**api, **{'is_prim': False}}
+        (
+            {**api, **{'is_prim': True}}
+            if api['name'] in prims
+            else {**api, **{'is_prim': False}}
+        )
         for api in apis
     ]
 

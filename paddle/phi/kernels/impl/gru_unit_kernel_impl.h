@@ -40,7 +40,7 @@ void ActCompute(
     else
       phi::funcs::ReluCUDAFunctor<T>()(d, x, y);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported activation type, only supports identity, sigmoid, tanh "
         "and relu."));
   }
@@ -170,7 +170,7 @@ void ActGradCompute(
   else if (act_type == relu)
     phi::funcs::ReluGradFunctor<T>()(d, x, y, dy, dx);
   else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported activation type, only supports identity, sigmoid, tanh "
         "and relu."));
 }

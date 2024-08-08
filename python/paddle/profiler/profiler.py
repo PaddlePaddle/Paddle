@@ -65,6 +65,7 @@ class SummaryView(Enum):
 
     - **SummaryView.UDFView** : The user defined summary view.
     """
+
     DeviceView = 0
     OverView = 1
     ModelView = 2
@@ -90,6 +91,7 @@ class ProfilerState(Enum):
 
     - **ProfilerState.RECORD_AND_RETURN** : The profiler is open, and this state stands for the last batch of "RECORD" state in current profiling period. The collected data will be returned in this state.
     """
+
     CLOSED = 0
     READY = 1
     RECORD = 2
@@ -108,6 +110,7 @@ class ProfilerTarget(Enum):
 
     - **ProfilerTarget.XPU** : Profile events on XPU.
     """
+
     CPU = 0
     GPU = 1
     XPU = 2

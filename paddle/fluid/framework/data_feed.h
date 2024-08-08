@@ -235,7 +235,7 @@ class SlotObjAllocator {
     }
     PADDLE_ENFORCE_EQ(capacity_,
                       static_cast<size_t>(0),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "There still are some nodes are not deleted"));
   }
   T* acquire(void) {
@@ -319,7 +319,7 @@ class SlotObjPool {
   void put(SlotRecord* input, size_t size) {
     PADDLE_ENFORCE_EQ(ins_chan_->WriteMove(size, input),
                       size,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Incompatible size of input with given size"));
   }
   void run(void) {
@@ -495,7 +495,7 @@ struct HostBuffer {
                              buf_size * sizeof(T),
                              cudaHostAllocDefault));
     PADDLE_ENFORCE_NOT_NULL(host_buffer,
-                            phi::errors::ResourceExhausted(
+                            common::errors::ResourceExhausted(
                                 "Alloc memory failed on CUDA, please Check"));
   }
   void free() {

@@ -30,7 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/jit/function.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
@@ -46,6 +45,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/attribute.h"
 
@@ -711,7 +711,7 @@ std::vector<phi::distributed::ProcessMesh> CastPyArg2VectorOfProcessMesh(
               item, reinterpret_cast<PyObject*>(g_process_mesh_pytype))) {
         result.emplace_back(::pybind11::handle(item).cast<ProcessMesh>());
       } else {
-        PADDLE_THROW(phi::errors::InvalidType(
+        PADDLE_THROW(common::errors::InvalidType(
             "argument (position %d) must be "
             "list of ProcessMesh, but got %s at pos %d",
             arg_pos + 1,
@@ -722,7 +722,7 @@ std::vector<phi::distributed::ProcessMesh> CastPyArg2VectorOfProcessMesh(
   } else if (obj == Py_None) {
     return {};
   } else {
-    PADDLE_THROW(phi::errors::InvalidType(
+    PADDLE_THROW(common::errors::InvalidType(
         "argument (position %d) must be list or "
         "tuple of ProcessMesh, but got %s",
         arg_pos + 1,
@@ -730,7 +730,7 @@ std::vector<phi::distributed::ProcessMesh> CastPyArg2VectorOfProcessMesh(
   }
   return result;
 #else
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "The parsing of `ProcessMesh` is not supported in the current "
       "PaddlePaddle, please recompile and installPaddlePaddle with the option "
       "of `WITH_DISTRIBUTE=ON`."));
@@ -786,8 +786,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     }
   } else if (PyObject_TypeCheck(obj,
                                 g_framework_lodtensorarray_pytype)) {  // NOLINT
-    for (auto& tensor :
-         (::pybind11::handle(obj).cast<framework::LoDTensorArray>())) {
+    for (auto& tensor : (::pybind11::handle(obj).cast<phi::TensorArray>())) {
       result.emplace_back(tensor);
     }
   } else if (obj == Py_None) {

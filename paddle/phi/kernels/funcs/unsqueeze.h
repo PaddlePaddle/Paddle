@@ -40,14 +40,14 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
         PADDLE_ENFORCE_GE(
             squeeze_dims[i],
             -1,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "For 0D Tensor, Each axis in Attr(axes) should be in the range "
                 "of [-1, 0]"
                 "But current axis is:%d, input tensor's shape = [%s]."));
         PADDLE_ENFORCE_LE(
             squeeze_dims[i],
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "For 0D Tensor, Each axis in Attr(axes) should be in the range "
                 "of [-1, 0]"
                 "But current axis is:%d, input tensor's shape = [%s]."));
@@ -60,7 +60,7 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
       PADDLE_ENFORCE_GE(
           current,
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Each axis in Attr(axes) should be in the range of [%d, %d]"
               "But current axis is:%d, input tensor's shape = [%s].",
               -in_dims.size(),
@@ -70,7 +70,7 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
       PADDLE_ENFORCE_LT(
           current,
           in_dims.size(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Each axis in Attr(axes) should be in the range of [%d, %d]"
               "But current axis is:%d, input tensor's shape = [%s].",
               -in_dims.size(),
@@ -113,9 +113,9 @@ inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
   PADDLE_ENFORCE_LE(
       output_rank,
       UNSQUEEZE_MAX_RANK_SUPPORTED,
-      phi::errors::InvalidArgument("The output "
-                                   "tensor's rank should be less than %d.",
-                                   UNSQUEEZE_MAX_RANK_SUPPORTED));
+      common::errors::InvalidArgument("The output "
+                                      "tensor's rank should be less than %d.",
+                                      UNSQUEEZE_MAX_RANK_SUPPORTED));
 
   for (int axis : unsqz_dims) {
     int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
@@ -123,11 +123,11 @@ inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
     PADDLE_ENFORCE_GE(
         cur,
         0,
-        phi::errors::InvalidArgument("The insert dimension value should "
-                                     "not be less than 0"));
+        common::errors::InvalidArgument("The insert dimension value should "
+                                        "not be less than 0"));
     PADDLE_ENFORCE_LE(cur,
                       cur_output_rank,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The insert dimension value shoule not be larger "
                           "than the dimension size of input tensor"));
     // Move old axis, and insert new axis

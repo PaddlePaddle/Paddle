@@ -171,7 +171,7 @@ void SpatialTransformerResblockXPUKernel(
       resblock_param_);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "st_resblock_fusion");
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "spatial_transformer_resblock_xpu is not supported since it's not "
       "compiled with XPU_XFT"));
 #endif
