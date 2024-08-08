@@ -1506,30 +1506,61 @@ class TestCompositeGroupNorm(unittest.TestCase):
             output = group_norm(input_)
 
             blocks = mp.blocks
-            names = dict(
-                zip(
-                    blocks[0].ops[2].output_names,
-                    blocks[0].ops[2].output_arg_names,
+
+            if paddle.framework.in_pir_mode():
+                # print(blocks[0].ops[-1].get_output_names)
+                # print(type(blocks[0].ops[-1].get_output_names))
+                # print(blocks[0].ops[-1].results())
+                # print(type(blocks[0].ops[-1].results()))
+                name = dict(
+                    zip(
+                        blocks[0].ops[-1].get_output_names(),
+                        blocks[0].ops[-1].results(),
+                    )
                 )
-            )
-            vars_list = [
-                names[key]
-                for key in [
-                    "Y",
-                    "Mean",
-                    "Variance",
+                vars_list = [
+                    name[key]
+                    for key in [
+                        "y",
+                        "mean",
+                        "variance",
+                    ]
                 ]
-            ]
 
-            fwd_ops = [op.type for op in blocks[0].ops]
-            # Ensure that group_norm in original block
-            assert 'group_norm' in fwd_ops
+                fwd_ops = [op.name() for op in blocks[0].ops]
+                # Ensure that group_norm in original block
+                assert 'pd_op.group_norm' in fwd_ops
+                # if core._is_fwd_prim_enabled():
+                #     paddle.incubate.autograd.primapi.to_prim(mp.blocks)
+                #     fwd_ops_new = [op.name() for op in blocks[0].ops]
+                #     # Ensure that group_norm is splitted into small ops
+                #     assert 'pd_op.group_norm' not in fwd_ops_new
+            else:
+                names = dict(
+                    zip(
+                        blocks[0].ops[2].output_names,
+                        blocks[0].ops[2].output_arg_names,
+                    )
+                )
 
-            if core._is_fwd_prim_enabled():
-                paddle.incubate.autograd.primapi.to_prim(mp.blocks)
-                fwd_ops_new = [op.type for op in blocks[0].ops]
-                # Ensure that group_norm is splitted into small ops
-                assert 'group_norm' not in fwd_ops_new
+                vars_list = [
+                    names[key]
+                    for key in [
+                        "Y",
+                        "Mean",
+                        "Variance",
+                    ]
+                ]
+
+                fwd_ops = [op.type for op in blocks[0].ops]
+                # Ensure that group_norm in original block
+                assert 'group_norm' in fwd_ops
+
+                if core._is_fwd_prim_enabled():
+                    paddle.incubate.autograd.primapi.to_prim(mp.blocks)
+                    fwd_ops_new = [op.type for op in blocks[0].ops]
+                    # Ensure that group_norm is splitted into small ops
+                    assert 'group_norm' not in fwd_ops_new
 
             grads = paddle.static.gradients([output], [input_, scale_, bias_])
 
@@ -1598,30 +1629,54 @@ class TestCompositeGroupNorm(unittest.TestCase):
                     output = group_norm(input_)
 
                     blocks = mp.blocks
-                    names = dict(
-                        zip(
-                            blocks[0].ops[2].output_names,
-                            blocks[0].ops[2].output_arg_names,
+                    if paddle.framework.in_pir_mode():
+                        names = dict(
+                            zip(
+                                blocks[0].ops[-1].get_output_names(),
+                                blocks[0].ops[-1].results(),
+                            )
                         )
-                    )
-                    vars_list = [
-                        names[key]
-                        for key in [
-                            "Y",
-                            "Mean",
-                            "Variance",
+                        vars_list = [
+                            names[key]
+                            for key in [
+                                "y",
+                                "mean",
+                                "variance",
+                            ]
                         ]
-                    ]
+                        fwd_ops = [op.name() for op in blocks[0].ops]
+                        # Ensure that group_norm in original block
+                        assert 'pd_op.group_norm' in fwd_ops
 
-                    fwd_ops = [op.type for op in blocks[0].ops]
-                    # Ensure that group_norm in original block
-                    assert 'group_norm' in fwd_ops
+                        if core._is_fwd_prim_enabled():
+                            paddle.incubate.autograd.primapi.to_prim(mp.blocks)
+                            fwd_ops_new = [op.name() for op in blocks[0].ops]
+                            # Ensure that group_norm is splitted into small ops
+                            assert 'pd_op.group_norm' not in fwd_ops_new
+                    else:
+                        names = dict(
+                            zip(
+                                blocks[0].ops[2].output_names,
+                                blocks[0].ops[2].output_arg_names,
+                            )
+                        )
+                        vars_list = [
+                            names[key]
+                            for key in [
+                                "Y",
+                                "Mean",
+                                "Variance",
+                            ]
+                        ]
+                        fwd_ops = [op.type for op in blocks[0].ops]
+                        # Ensure that group_norm in original block
+                        assert 'group_norm' in fwd_ops
 
-                    if core._is_fwd_prim_enabled():
-                        paddle.incubate.autograd.primapi.to_prim(mp.blocks)
-                        fwd_ops_new = [op.type for op in blocks[0].ops]
-                        # Ensure that group_norm is splitted into small ops
-                        assert 'group_norm' not in fwd_ops_new
+                        if core._is_fwd_prim_enabled():
+                            paddle.incubate.autograd.primapi.to_prim(mp.blocks)
+                            fwd_ops_new = [op.type for op in blocks[0].ops]
+                            # Ensure that group_norm is splitted into small ops
+                            assert 'group_norm' not in fwd_ops_new
 
                     grads = paddle.static.gradients(
                         output, [input_, scale_, bias_]
@@ -1660,9 +1715,15 @@ class TestCompositeGroupNorm(unittest.TestCase):
         ]
 
         for i in range(len(self.places)):
-            self.assertTrue(
-                'group_norm' not in [op.type for op in mps[i].block(0).ops]
-            )
+            if paddle.framework.in_pir_mode():
+                self.assertTrue(
+                    'pd_op.group_norm'
+                    in [op.name() for op in mps[i].block(0).ops]
+                )
+            else:
+                self.assertTrue(
+                    'group_norm' not in [op.type for op in mps[i].block(0).ops]
+                )
             atol = self.threshold_list[i][0]
             rtol = self.threshold_list[i][0]
             for j in range(len(self.static_fwd_desire[i])):

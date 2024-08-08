@@ -86,27 +86,30 @@ class DotOp(OpTest):
 
 class DotOpEmptyInput(unittest.TestCase):
     def test_1d_input(self):
-        data = np.array([], dtype=np.float32)
-        x = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
-        y = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
-        np_out = np.dot(data, data)
-        pd_out = paddle.dot(x, y)
+        with base.dygraph.guard():
+            data = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
+            y = paddle.to_tensor(np.reshape(data, [0]), dtype='float32')
+            np_out = np.dot(data, data)
+            pd_out = paddle.dot(x, y)
 
-        self.assertEqual(np_out, pd_out)
+            self.assertEqual(np_out, pd_out.numpy())
 
     def test_2d_input(self):
-        data = np.array([], dtype=np.float32)
-        x = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
-        y = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
-        pd_out = paddle.dot(x, y)
-        self.assertEqual(pd_out.shape, (0,))
+        with base.dygraph.guard():
+            data = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
+            y = paddle.to_tensor(np.reshape(data, [0, 0]), dtype='float32')
+            pd_out = paddle.dot(x, y)
+            self.assertEqual(pd_out.shape, [0])
 
     def test_3d_input_error(self):
-        data = np.array([], dtype=np.float32)
-        x = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
-        y = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
+        with base.dygraph.guard():
+            data = np.array([], dtype=np.float32)
+            x = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
+            y = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
 
-        self.assertRaises(Exception, paddle.dot, x, y)
+            self.assertRaises(Exception, paddle.dot, x, y)
 
 
 class DotOpBatch(DotOp):
