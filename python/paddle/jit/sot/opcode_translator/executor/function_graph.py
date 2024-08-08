@@ -22,7 +22,7 @@ import inspect
 from collections import namedtuple
 from copy import deepcopy
 from functools import cached_property
-from typing import Any, Callable, Union
+from typing import Any, Callable, Tuple, Union
 
 from typing_extensions import TypeAlias, TypeGuard
 
@@ -81,9 +81,9 @@ from .variables import (
     map_variables,
 )
 
-CompileGraphResult: TypeAlias = tuple[
+CompileGraphResult: TypeAlias = Tuple[
     Callable[..., Any],
-    tuple[
+    Tuple[
         StatementIR,
         OrderedSet[Union[TensorVariable, SymbolicVariable]],
         OrderedSet[Union[TensorVariable, SymbolicVariable]],
