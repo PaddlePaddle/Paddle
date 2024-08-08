@@ -72,7 +72,7 @@ TEST(OperatorDialectTest, MainProgram) {
   // ops.size() = op size in BlockDesc + parameter_op + combine op + int
   // array op + full op (Note: p already has a full)
   EXPECT_EQ(program->block()->size(),
-            p.Block(0).OpSize() + program->parameters_num() + 20 + 5 + 8);
+            p.Block(0).OpSize() + program->parameters_num() + 20 + 5 + 9);
   EXPECT_GT(ss.str().size(), 0u);
 }
 

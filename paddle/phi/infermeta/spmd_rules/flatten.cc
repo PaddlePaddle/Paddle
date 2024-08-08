@@ -105,7 +105,7 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
                                       x_ndim,
                                       x_dims_mapping.size()));
 
-  // obtain target shape and use ReshapeInferSpmdDynamic to infer
+  // obtain target shape and use ReshapeInferSpmd to infer
   start_axis = PreprocessAxis(start_axis, x_ndim);
   stop_axis = PreprocessAxis(stop_axis, x_ndim);
   std::vector<int64_t> dst_shape;
@@ -125,8 +125,8 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
   VLOG(4) << "Start_axis: " << start_axis;
   VLOG(4) << "Stop_axis: " << stop_axis;
   VLOG(4) << "FlattenInferSpmd: output shape: [" << str_join(dst_shape) << "]";
-  VLOG(4) << "use ReshapeInferSpmdDynamic to infer distributed attribute";
-  return ReshapeInferSpmdDynamic(x, dst_shape);
+  VLOG(4) << "use ReshapeInferSpmd to infer distributed attribute";
+  return ReshapeInferSpmd(x, dst_shape);
 }
 
 // TODO(jeff41404): consider xshape and use ReshapeInferSpmdReverse in future
