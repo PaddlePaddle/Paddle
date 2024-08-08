@@ -61,7 +61,7 @@ struct Mutator : public ir::IRMutator<> {
             PADDLE_ENFORCE_EQ(
                 new_shape.is_constant(),
                 true,
-                phi::errors::InvalidArgument("new_shape is not constant"));
+                ::common::errors::InvalidArgument("new_shape is not constant"));
             e = new_shape;
           }
           if (!buf_e.is_constant()) {
@@ -70,7 +70,7 @@ struct Mutator : public ir::IRMutator<> {
             PADDLE_ENFORCE_EQ(
                 new_shape.is_constant(),
                 true,
-                phi::errors::InvalidArgument("new_shape is not constant"));
+                ::common::errors::InvalidArgument("new_shape is not constant"));
             buf_e = new_shape;
           }
         }
@@ -87,7 +87,7 @@ struct Mutator : public ir::IRMutator<> {
             PADDLE_ENFORCE_EQ(
                 new_shape.is_constant(),
                 true,
-                phi::errors::InvalidArgument("new_shape is not constant"));
+                ::common::errors::InvalidArgument("new_shape is not constant"));
             e = new_shape;
           }
         }
@@ -99,7 +99,7 @@ struct Mutator : public ir::IRMutator<> {
         PADDLE_ENFORCE_EQ(
             buf_size.is_constant(),
             true,
-            phi::errors::InvalidArgument("buf_size is not constant"));
+            ::common::errors::InvalidArgument("buf_size is not constant"));
         shared_mem_size_used_ += static_cast<size_t>(buf_size.get_constant()) *
                                  static_cast<size_t>(buf->dtype.bits()) / 8;
       }
@@ -130,7 +130,7 @@ void CudaTransBufferWithDynamicShape(ir::Expr* e) {
           PADDLE_ENFORCE_EQ(
               (mutator.shared_mem_size_used_ <= max_shm_per_block),
               true,
-              phi::errors::InvalidArgument(
+              ::common::errors::InvalidArgument(
                   "The shared memory size used by current kernel is greater "
                   "than the max shared memory per block"));
         }

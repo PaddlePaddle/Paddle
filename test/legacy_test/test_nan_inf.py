@@ -206,7 +206,7 @@ class TestNanInfCheckResult(TestNanInfBase):
             out = paddle.log(x)
             sys.stdout.flush()
             if add_assert:
-                raise AssertionError()
+                raise AssertionError
         except Exception as e:
             # Cannot catch the log in CUDA kernel.
             err_str_list = (

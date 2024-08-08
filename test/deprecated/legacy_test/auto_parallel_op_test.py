@@ -222,16 +222,20 @@ def dump_test_info(
         if isinstance(place, paddle.base.libpaddle.CUDAPlace):
             test_info["place"] = "gpu"
         eager_auto_parallel_threshold = {
-            "atol": op_test.eager_auto_parallel_atol
-            if hasattr(op_test, "eager_auto_parallel_atol")
-            else None,
-            "rtol": op_test.eager_auto_parallel_atol
-            if hasattr(op_test, "eager_auto_parallel_atol")
-            else None,
+            "atol": (
+                op_test.eager_auto_parallel_atol
+                if hasattr(op_test, "eager_auto_parallel_atol")
+                else None
+            ),
+            "rtol": (
+                op_test.eager_auto_parallel_atol
+                if hasattr(op_test, "eager_auto_parallel_atol")
+                else None
+            ),
         }
-        test_info[
-            "eager_auto_parallel_threshold"
-        ] = eager_auto_parallel_threshold
+        test_info["eager_auto_parallel_threshold"] = (
+            eager_auto_parallel_threshold
+        )
         test_info["python_out_sig"] = (
             op_test.python_out_sig
             if hasattr(op_test, "python_out_sig")
@@ -773,9 +777,11 @@ class AutoParallelGradChecker(AutoParallelForwardChecker):
                 paddle.to_tensor(
                     data=np_v,
                     place=self.place,
-                    dtype="bfloat16"
-                    if OpTestUtils.is_bfloat16_type(np_v.dtype)
-                    else np_v.dtype,
+                    dtype=(
+                        "bfloat16"
+                        if OpTestUtils.is_bfloat16_type(np_v.dtype)
+                        else np_v.dtype
+                    ),
                 )
             )
         return eager_vs

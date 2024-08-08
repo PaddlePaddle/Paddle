@@ -49,7 +49,7 @@ _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 
 if TYPE_CHECKING:
-    from typing import Generator, Sequence
+    from collections.abc import Generator, Sequence
 
     from paddle.static.amp.fp16_utils import AmpOptions
 
@@ -463,15 +463,13 @@ def ipu_shard_guard(
 @overload
 def set_ipu_shard(
     call_func: Callable[_InputT, _RetT], index: int = ..., stage: int = ...
-) -> Callable[_InputT, _RetT]:
-    ...
+) -> Callable[_InputT, _RetT]: ...
 
 
 @overload
 def set_ipu_shard(
     call_func: paddle.nn.Layer, index: int = ..., stage: int = ...
-) -> paddle.nn.Layer:
-    ...
+) -> paddle.nn.Layer: ...
 
 
 def set_ipu_shard(call_func, index=-1, stage=-1):
@@ -3173,9 +3171,9 @@ class Operator:
             op_maker = core.op_proto_and_checker_maker
 
             if op_maker.kOpRoleAttrName() not in op_attrs:
-                op_attrs[
-                    op_maker.kOpRoleAttrName()
-                ] = self.block.program._op_role
+                op_attrs[op_maker.kOpRoleAttrName()] = (
+                    self.block.program._op_role
+                )
 
             role_var_name = op_maker.kOpRoleVarAttrName()
             if (
