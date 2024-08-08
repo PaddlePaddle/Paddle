@@ -608,12 +608,12 @@ bool LuUnpackOpInferSymbolicShape(
       common::errors::InvalidArgument(
           "The rank of input must be greater than or equal to 2."));
 
-  const auto &m = x_dims[x_rank - 1];
-  const auto &n = x_dims[x_rank - 2];
+  const auto &m = x_shape[x_rank - 1];
+  const auto &n = x_shape[x_rank - 2];
 
   if (unpack_pivots) {
     std::vector<symbol::DimExpr> p_shape = x_shape;
-    pdims[x_rank - 1] = n;
+    p_shape[x_rank - 1] = n;
     infer_context->SetShapeOrDataForValue(
         op->result(0),
         symbol::ShapeOrDataDimExprs{
@@ -627,9 +627,9 @@ bool LuUnpackOpInferSymbolicShape(
       int m_value = static_cast<int>(m.Get<std::int64_t>());
       int n_value = static_cast<int>(n.Get<std::int64_t>());
       if (m_value >= n_value) {
-        ldims[x_rank - 1] = n;
+        l_shape[x_rank - 1] = n;
       } else {
-        udims[x_rank - 2] = m;
+        u_shape[x_rank - 2] = m;
       }
     }
     infer_context->SetShapeOrDataForValue(
