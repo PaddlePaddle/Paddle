@@ -14,6 +14,7 @@
 """Define some layers used to export quantization model with ONNX style."""
 import abc
 import builtins
+from typing import Tuple
 
 import paddle
 from paddle import _legacy_C_ops as _C_ops
@@ -307,7 +308,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         self.converted = False
 
     @abc.abstractmethod
-    def weights_to_quanters(self) -> builtins.list[tuple[str, str]]:
+    def weights_to_quanters(self) -> builtins.list[Tuple[str, str]]:
         r"""Get the name pairs of weights to be quantized and their corresponding
         quantizers. In the convert function of this abstract class, it will call
         the ‘weights_to_quanters’ function and do something as follows:
