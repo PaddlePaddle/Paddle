@@ -682,8 +682,7 @@ bool CrfDecodingOpInferSymbolicShape(
                         transition_dims));
   infer_context->AddEqualCstr(transition_dims[0] - 2, transition_dims[1]);
 
-  if (config.is_runtime || (emission_dims[emission_dims.size() - 1] > 0 &&
-                            transition_dims[transition_dims.size() - 1] > 0)) {
+  if (config.is_runtime) {
     infer_context->AddEqualCstr(emission_dims[emission_dims.size() - 1],
                                 transition_dims[transition_dims.size() - 1]);
   }
@@ -718,7 +717,7 @@ bool CrfDecodingOpInferSymbolicShape(
                 label_dims));
       }
     }
-    if (config.is_runtime || (emission_dims[0] > 0 && label_dims[0] > 0)) {
+    if (config.is_runtime) {
       infer_context->AddEqualCstr(emission_dims[0], label_dims[0]);
     }
   }
