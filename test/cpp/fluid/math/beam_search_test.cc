@@ -156,14 +156,14 @@ void TestBeamSearch() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template <>
-void TestBeamSearch<phi::GPUContext, phi::GPUPlace>() {
+void TestBeamSearch<phi::XPUContext, phi::XPUPlace>() {
   phi::DenseTensor ids;
   phi::DenseTensor scores;
   phi::DenseTensor pre_ids;
   phi::DenseTensor pre_scores;
 
-  auto* place = new phi::GPUPlace();
-  auto* context = new phi::GPUContext(*place);
+  auto* place = new phi::XPUPlace();
+  auto* context = new phi::XPUContext(*place);
   context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(*place, context->stream())
                             .get());
@@ -196,7 +196,7 @@ void TestBeamSearch<phi::GPUContext, phi::GPUPlace>() {
   size_t level = 0;
   size_t beam_size = 2;
   int end_id = 0;
-  phi::math::BeamSearchFunctor<phi::GPUContext, float> beamsearch;
+  phi::math::BeamSearchFunctor<phi::XPUContext, float> beamsearch;
   beamsearch(*context,
              &pre_ids,
              &pre_scores,
@@ -241,5 +241,5 @@ void TestBeamSearch<phi::GPUContext, phi::GPUPlace>() {
 TEST(BeamSearch, CPU) { TestBeamSearch<phi::CPUContext, phi::CPUPlace>(); }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-TEST(BeamSearch, GPU) { TestBeamSearch<phi::GPUContext, phi::GPUPlace>(); }
+TEST(BeamSearch, XPU) { TestBeamSearch<phi::XPUContext, phi::XPUPlace>(); }
 #endif
