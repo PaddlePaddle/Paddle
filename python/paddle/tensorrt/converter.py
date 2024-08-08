@@ -16,8 +16,6 @@ import hashlib
 import logging
 
 import numpy as np
-from custom_plugin import GENERAL_PLUGIN_OPS_LIST
-from impls.core import *  # noqa: F403
 from register import converter_registry
 from util import map_dtype
 
@@ -25,6 +23,8 @@ import paddle
 from paddle import pir
 from paddle.base.core import get_value_shape_range_info
 from paddle.base.log_helper import get_logger
+
+from .impls.core import *  # noqa: F403
 
 
 def get_cache_path():
@@ -111,8 +111,6 @@ class PaddleToTensorRTConverter:
         )
         profile = builder.create_optimization_profile()
 
-        # weights = {}
-
         # Mapping from Value id to TensorRT ITensor
         value_to_trt_tensor = {}
         min_shape_map = {}
@@ -120,22 +118,24 @@ class PaddleToTensorRTConverter:
         max_shape_map = {}
         input_names = []
 
-        input_value2 = []
+        # Because one of the inputs to pd_op.concat is builtin.combine,
+        # during the conversion process using the converter,
+        # it is necessary to obtain the input of builtin.combine.
+        origin_input_value = []
         for value in input_values:
             defining_op = value.get_defining_op()
             if defining_op.name() == "builtin.combine":
                 for operand in defining_op.operands():
                     source = operand.source()
-                    input_value2.append(source)
+                    origin_input_value.append(source)
             else:
-                input_value2.append(value)
+                origin_input_value.append(value)
 
-        for value in input_value2:
+        for value in origin_input_value:
             defining_op = value.get_defining_op()
             if defining_op.name() == "builtin.parameter":
                 param_name = defining_op.attrs()["parameter_name"]
                 weight = trt.Weights(self.param_dict[param_name])
-                # weights[value.id] = weight
                 value_to_trt_tensor[value.id] = weight
                 input_names.append("")
             else:
@@ -205,7 +205,6 @@ class PaddleToTensorRTConverter:
 
             layer = self.convert(network, op, operands)
 
-            # _logger.info(f"start convert {op}")
             for idx, result in enumerate(op.results()):
                 # TODO In some cases, the output index (idx) of a Paddle OP may not necessarily be the same as the output index of TensorRT
                 if idx < layer.num_outputs:
@@ -216,7 +215,6 @@ class PaddleToTensorRTConverter:
         out_names = []
         out_types = []
         for result_value in output_values:
-            # identity_out = network.add_identity(value_to_trt_tensor[result_value.id]).get_output(0)
             output_tensor = value_to_trt_tensor[result_value.id]
             network.mark_output(output_tensor)
             out_names.append(output_tensor.name)
@@ -263,7 +261,7 @@ class PaddleToTensorRTConverter:
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(program):
             pir.set_insertion_point(group_op)
             out = paddle._C_ops.tensorrt_engine(
-                input_value2,
+                origin_input_value,
                 trt_params,
                 input_names,
                 out_names,
@@ -291,8 +289,6 @@ class PaddleToTensorRTConverter:
         op_name = paddle_op.name()
         if op_name in ["cf.yield"]:
             return
-        elif op_name in GENERAL_PLUGIN_OPS_LIST:
-            out = network.add_plugin_v2(inputs)
         else:
             converter_func = converter_registry.get(op_name, trt_version)
             if converter_func is None:

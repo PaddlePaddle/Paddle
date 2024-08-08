@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/trt_sub_graph_extract_pass.h"
+#include "paddle/fluid/pir/transforms/tensorrt/trt_sub_graph_extract_pass.h"
 
 #include <queue>
 #include <regex>

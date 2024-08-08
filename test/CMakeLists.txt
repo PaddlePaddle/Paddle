@@ -169,6 +169,7 @@ if(WITH_TESTING)
   add_subdirectory(quantization)
   add_subdirectory(rnn)
   add_subdirectory(sequence)
+  add_subdirectory(tensorrt)
   # add_subdirectory(white_list)
 
   if(WITH_DISTRIBUTE)
