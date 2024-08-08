@@ -38,7 +38,7 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
   auto* call_ir = body.As<ir::Call>();
   PADDLE_ENFORCE_EQ(
       call_ir,
-      true,
+      nullptr,
       phi::errors::InvalidArgument("The 'call_ir' must be true."));
 
   // Create the function
