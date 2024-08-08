@@ -275,7 +275,7 @@ void ExecutionEngine::RegisterGlobalRuntimeSymbols() {
 
 template void ExecutionEngine::Link<CodeGenLLVM>(const ir::Module &module);
 template void ExecutionEngine::Link<CodeGenX86>(const ir::Module &module);
-template void ExecutionEngine::Link<CodeGenCUDA_Host>(const ir::Module &module);
+template void ExecutionEngine::Link<CodeGenCudaHost>(const ir::Module &module);
 template void ExecutionEngine::Link<CodeGenSwitchHost>(
     const ir::Module &module);
 

@@ -65,7 +65,7 @@ TEST(Analyzer, save_model) {
   PADDLE_ENFORCE_LE(
       fused_num_ops,
       origin_num_ops,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of fused operations (fused_num_ops) should be less than "
           "or equal to the original number of operations (origin_num_ops). "
           "Received fused_num_ops = %d, origin_num_ops = %d.",

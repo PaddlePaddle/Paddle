@@ -29,6 +29,7 @@
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/poly/stage.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(cinn_runtime_display_debug_info);
 
@@ -66,7 +67,11 @@ bool TensorContainsGPUInfo(ir::Tensor t, poly::Stage* stage) {
 const char* CompuGraphNode::__type_info__ = "ComputeGraphNode";
 const char* CompuGraphNode::type_info() const { return __type_info__; }
 std::string CompuGraphNode::id() const {
-  CHECK(tensor.defined());
+  PADDLE_ENFORCE_EQ(
+      tensor.defined(),
+      true,
+      ::common::errors::InvalidArgument("Tensor is not defined. Please ensure "
+                                        "tensor is properly initialized."));
   return tensor->name;
 }
 
@@ -89,9 +94,18 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(
   std::set<std::string> arg_names;
 
   for (auto& scalar : scalar_args_) {
-    CHECK(!arg_names.count(scalar->name));
+    PADDLE_ENFORCE_EQ(
+        arg_names.count(scalar->name),
+        0,
+        ::common::errors::InvalidArgument(
+            "Argument name '%s' already exists in the argument names set.",
+            scalar->name));
     auto* scalar_node = scalar.As<ir::_Var_>();
-    CHECK(scalar_node->type().valid());
+    PADDLE_ENFORCE_EQ(
+        scalar_node->type().valid(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The type of scalar node '%s' is not valid.", scalar->name));
     arg_names.insert(scalar->name);
 
     args.emplace_back(scalar, ir::Argument::IO::kInput);
@@ -112,7 +126,12 @@ std::vector<ir::Argument> LowerImpl::GenerateFunctionArgumentList(
           std::find_if(args.begin(), args.end(), [&](const ir::Argument& x) {
             return x.name() == tensor_node->buffer->name;
           });
-      CHECK(it != args.end());
+      PADDLE_ENFORCE_EQ(
+          it != args.end(),
+          true,
+          ::common::errors::InvalidArgument(
+              "Argument with name '%s' not found in the argument list.",
+              tensor_node->buffer->name));
       if (it->is_input()) {
         args.erase(it);
       } else if (it->is_output()) {
@@ -142,9 +161,18 @@ std::vector<ir::Argument> LowerImpl::GenFuncArgForSplitKernel(
   std::set<std::string> all_tensor_names;
 
   for (auto& scalar : scalar_args_) {
-    CHECK(!arg_names.count(scalar->name));
+    PADDLE_ENFORCE_EQ(
+        arg_names.count(scalar->name),
+        0,
+        ::common::errors::InvalidArgument(
+            "Argument name '%s' already exists in the argument names set.",
+            scalar->name));
     auto* scalar_node = scalar.As<ir::_Var_>();
-    CHECK(scalar_node->type().valid());
+    PADDLE_ENFORCE_EQ(
+        scalar_node->type().valid(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The type of scalar node '%s' is not valid.", scalar->name));
     arg_names.insert(scalar->name);
 
     in_args.emplace_back(scalar, ir::Argument::IO::kInput);
@@ -238,7 +266,10 @@ std::vector<Tensor> LowerImpl::CollectTemporaryTensors() {
 
   for (auto* node : compu_graph_->nodes()) {
     auto* cnode = node->safe_as<CompuGraphNode>();
-    CHECK(cnode);
+    PADDLE_ENFORCE_NOT_NULL(
+        cnode,
+        ::common::errors::InvalidArgument(
+            "Node could not be safely cast to CompuGraphNode."));
     if (!tensor_arg_map.count(cnode->tensor->name)) {
       temp_tensor_map[cnode->tensor->name] = cnode->tensor;
     }
@@ -302,11 +333,22 @@ std::vector<ir::LoweredFunc> LowerImpl::operator()() {
     std::vector<ir::Tensor> new_temp_tensors;
     for (auto& expr : store_exprs) {
       auto* store_node = expr.As<ir::Store>();
-      CHECK(store_node);
+      PADDLE_ENFORCE_NOT_NULL(
+          store_node,
+          ::common::errors::InvalidArgument(
+              "Expression could not be cast to ir::Store."));
       auto* tensor = store_node->tensor.As<ir::_Tensor_>();
-      CHECK(tensor);
+      PADDLE_ENFORCE_NOT_NULL(
+          tensor,
+          ::common::errors::InvalidArgument(
+              "Store node's tensor could not be cast to ir::_Tensor_."));
       VLOG(3) << "In store_exprs, its name is : " << tensor->name;
-      CHECK(tensor->buffer.defined());
+      PADDLE_ENFORCE_EQ(
+          tensor->buffer.defined(),
+          true,
+          ::common::errors::InvalidArgument(
+              "Tensor buffer is not defined for tensor with name '%s'.",
+              tensor->name));
       if (tensor->buffer->memory_type != ir::MemoryType::Heap) {
         new_temp_tensors.push_back(store_node->tensor.as_tensor_ref());
       }
@@ -371,7 +413,10 @@ std::vector<Tensor> LowerImpl::CollectAllTensors() {
   auto& edges = std::get<1>(topo_order);
   for (auto* node : nodes) {
     auto* cnode = node->safe_as<CompuGraphNode>();
-    CHECK(cnode);
+    PADDLE_ENFORCE_NOT_NULL(
+        cnode,
+        ::common::errors::InvalidArgument(
+            "Node could not be safely cast to CompuGraphNode."));
     tensors.push_back(cnode->tensor);
   }
   return tensors;
@@ -382,7 +427,10 @@ LowerImpl::CollectExtraDependencies() const {
   std::set<std::pair<std::string, std::string>> deps;
   for (auto* node : compu_graph_->nodes()) {
     auto* cnode = node->safe_as<CompuGraphNode>();
-    CHECK(cnode);
+    PADDLE_ENFORCE_NOT_NULL(
+        cnode,
+        ::common::errors::InvalidArgument(
+            "Node could not be safely cast to CompuGraphNode."));
   }
   return deps;
 }
@@ -394,7 +442,10 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
   std::vector<Expr> result;
   auto tensor_map = GenAllTensorMap();
   std::map<std::string, Expr> tuple_to_expr;
-  CHECK(!schedule->groups.empty()) << "no group is generated";
+  PADDLE_ENFORCE_NE(
+      schedule->groups.empty(),
+      true,
+      ::common::errors::NotFound("No group is generated in the schedule."));
 
   std::map<std::string, ir::Tensor> global_tensor_map;
   std::unordered_map<std::string, std::vector<Expr>> resized_buffer_cache;
@@ -428,14 +479,35 @@ std::vector<Expr> LowerImpl::GenerateFunctionBody(
         VLOG(3) << "Tensor " << tensor->name
                 << "'s shape is : " << utils::Join(tensor->shape, ",");
         for (auto& expr : tensor->shape) {
-          CHECK(expr.is_constant());
+          PADDLE_ENFORCE_EQ(expr.is_constant(),
+                            true,
+                            ::common::errors::InvalidArgument(
+                                "Expected constant expression for tensor "
+                                "shape, but got non-constant expression."));
           int_shape.push_back(static_cast<int>(expr.get_constant()));
         }
         for (auto& var : tensor->reduce_axis) {
-          CHECK(var->lower_bound.defined());
-          CHECK(var->upper_bound.defined());
-          CHECK(cinn::common::is_zero(var->lower_bound));
-          CHECK(var->upper_bound.is_constant());
+          PADDLE_ENFORCE_EQ(
+              var->lower_bound.defined(),
+              true,
+              ::common::errors::InvalidArgument(
+                  "Lower bound of reduce axis variable is not defined."));
+          PADDLE_ENFORCE_EQ(
+              var->upper_bound.defined(),
+              true,
+              ::common::errors::InvalidArgument(
+                  "Upper bound of reduce axis variable is not defined."));
+          PADDLE_ENFORCE_EQ(cinn::common::is_zero(var->lower_bound),
+                            true,
+                            ::common::errors::InvalidArgument(
+                                "Expected lower bound of reduce axis variable "
+                                "to be zero, but got non-zero."));
+          PADDLE_ENFORCE_EQ(
+              var->upper_bound.is_constant(),
+              true,
+              ::common::errors::InvalidArgument(
+                  "Expected constant expression for upper bound of reduce axis "
+                  "variable, but got non-constant expression."));
           int_shape.push_back(
               static_cast<int>(var->upper_bound.get_constant()));
         }

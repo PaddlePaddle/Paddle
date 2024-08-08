@@ -100,8 +100,7 @@ class Dataset(Generic[_T]):
 
     if TYPE_CHECKING:
         # A virtual method for type checking only
-        def __iter__(self) -> Iterator[_T]:
-            ...
+        def __iter__(self) -> Iterator[_T]: ...
 
 
 class IterableDataset(Dataset[_T]):

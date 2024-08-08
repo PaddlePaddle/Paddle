@@ -277,7 +277,7 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
                        bsz_seq * dim_feedforward);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu_grad");
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Currently only supports gelu or relu activation functions!"));
   }
 

@@ -38,12 +38,12 @@ void BCELossKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_GE(
         x_data[i],
         static_cast<T>(0),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Illegal input, input must be greater than  or equal to 0"));
     PADDLE_ENFORCE_LE(
         x_data[i],
         static_cast<T>(1),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Illegal input, input must be less than or equal to 1"));
     out_data[i] =
         (label_data[i] - static_cast<T>(1)) *

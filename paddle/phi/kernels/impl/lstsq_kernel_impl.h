@@ -162,7 +162,7 @@ inline void BatchedOrmqr<GPUContext, float>(const GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver info is not zero but [%d]", i, info_h));
   }
 }
@@ -231,7 +231,7 @@ inline void BatchedOrmqr<GPUContext, double>(const GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         info_h,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver info is not zero but [%d]", i, info_h));
   }
 }

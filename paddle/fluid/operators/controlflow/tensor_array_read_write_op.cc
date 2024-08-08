@@ -41,8 +41,7 @@ class WriteToArrayOp : public ArrayOp {
     if (x == nullptr) return;
     auto &x_tensor = x->Get<phi::DenseTensor>();
     size_t offset = GetOffset(scope, place);
-    auto *out =
-        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
+    auto *out = scope.FindVar(Output("Out"))->GetMutable<phi::TensorArray>();
     if (offset >= out->size()) {
       VLOG(10) << "Resize " << Output("Out") << " from " << out->size()
                << " to " << offset + 1;
@@ -150,7 +149,7 @@ class ReadFromArrayOp : public ArrayOp {
     PADDLE_ENFORCE_NOT_NULL(
         x,
         common::errors::NotFound("Input(X) of ReadFromArrayOp is not found."));
-    auto &x_array = x->Get<framework::LoDTensorArray>();
+    auto &x_array = x->Get<phi::TensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE_NOT_NULL(
         out,
