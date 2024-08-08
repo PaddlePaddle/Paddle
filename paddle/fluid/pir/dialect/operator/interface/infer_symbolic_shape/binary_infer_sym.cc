@@ -802,6 +802,31 @@ bool IscloseOpInferSymbolicShape(
   return true;
 }
 
+bool IndexSelectStridedOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> input_dims = x_shape_or_data.shape();
+
+  int dim = op->attribute<pir::Int32Attribute>("dim").data();
+
+  if (dim < 0) {
+    dim += input_dims.size();
+  }
+
+  std::vector<symbol::DimExpr> output_dims(input_dims.begin(),
+                                           input_dims.end());
+  output_dims.erase(output_dims.begin() + dim);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+
+  // No need to add any constraints here as we are simply removing a dimension.
+  return true;
+}
+
 bool AccuracyCheckOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // The shape of output is the same as input `values` (op->operand_source(1))

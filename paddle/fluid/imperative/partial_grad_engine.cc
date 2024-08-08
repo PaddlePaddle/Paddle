@@ -31,8 +31,8 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/string/string_helper.h"
 

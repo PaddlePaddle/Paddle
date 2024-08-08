@@ -1028,8 +1028,7 @@ def dynamic_decode(
     is_test: bool = ...,
     return_length: Literal[False] = ...,
     **kwargs: Any,
-) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor]]:
-    ...
+) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor]]: ...
 
 
 @overload
@@ -1042,8 +1041,7 @@ def dynamic_decode(
     is_test: bool = ...,
     return_length: Literal[True] = ...,
     **kwargs: Any,
-) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor], Tensor]:
-    ...
+) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor], Tensor]: ...
 
 
 @overload
@@ -1059,8 +1057,7 @@ def dynamic_decode(
 ) -> (
     tuple[NestedStructure[Tensor], NestedStructure[Tensor]]
     | tuple[NestedStructure[Tensor], NestedStructure[Tensor], Tensor]
-):
-    ...
+): ...
 
 
 def dynamic_decode(

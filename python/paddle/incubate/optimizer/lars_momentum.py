@@ -125,8 +125,8 @@ class LarsMomentumOptimizer(Optimizer):
         self._master_weights = {}
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
-
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         for p in parameters:
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
@@ -143,7 +143,8 @@ class LarsMomentumOptimizer(Optimizer):
             self._add_accumulator(self._velocity_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         _lars_weight_decay = self._lars_weight_decay
         param_name = param_and_grad[0].name
         if len(self._exclude_from_weight_decay) > 0:

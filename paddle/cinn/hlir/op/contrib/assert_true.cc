@@ -27,6 +27,8 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
 
+#include "paddle/common/errors.h"
+
 namespace cinn {
 namespace hlir {
 namespace op {

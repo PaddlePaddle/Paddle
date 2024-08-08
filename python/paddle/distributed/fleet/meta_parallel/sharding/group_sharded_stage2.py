@@ -327,12 +327,12 @@ class GroupShardedStage2(nn.Layer):
             ):  # all the params from all ranks
                 for params in per_rank_params:
                     for param in filter(lambda x: x.trainable, params):
-                        self._trainable_param2rank[
-                            param.name
-                        ] = optim.param2rank[param.name]
-                        self._trainable_param2align[
-                            param.name
-                        ] = optim._param2align[param.name]
+                        self._trainable_param2rank[param.name] = (
+                            optim.param2rank[param.name]
+                        )
+                        self._trainable_param2align[param.name] = (
+                            optim._param2align[param.name]
+                        )
 
         # Create grad_storage
         self._setup_use_grad_storage()
@@ -450,9 +450,11 @@ class GroupShardedStage2(nn.Layer):
                     # Synchronize the reduce parameter gradient asynchronize
                     self._sharding_optimizers[0]._update_task(
                         dist.reduce(
-                            tensor=param.grad
-                            if not self.use_main_grad
-                            else param.main_grad,
+                            tensor=(
+                                param.grad
+                                if not self.use_main_grad
+                                else param.main_grad
+                            ),
                             dst=self._group.ranks[dst_rank],
                             group=self._group,
                             sync_op=not self._reduce_overlap,
@@ -568,9 +570,11 @@ class GroupShardedStage2(nn.Layer):
             if dst_rank not in self._grad_storages[param.dtype].keys():
                 self._grad_storages[param.dtype][dst_rank] = GradStorage(
                     self._buffer_max_size[param.dtype],
-                    dtype=param.dtype
-                    if not self.use_main_grad
-                    else paddle.float32,
+                    dtype=(
+                        param.dtype
+                        if not self.use_main_grad
+                        else paddle.float32
+                    ),
                     device=self._default_device,
                     destination=dst_rank,
                     parm2align=self._trainable_param2align,
@@ -679,9 +683,11 @@ class GroupShardedStage2(nn.Layer):
                     dst_rank = self._trainable_param2rank[param.name]
                     if dst_rank == self._rank:
                         dist.all_reduce(
-                            tensor=param.grad
-                            if not self.use_main_grad
-                            else param.main_grad,
+                            tensor=(
+                                param.grad
+                                if not self.use_main_grad
+                                else param.main_grad
+                            ),
                             group=self._dp_group,
                             sync_op=True,
                         )

@@ -30,13 +30,11 @@ T = TypeVar("T")
 
 
 @overload
-def array_length(array: list[Any]) -> int:
-    ...
+def array_length(array: list[Any]) -> int: ...
 
 
 @overload
-def array_length(array: paddle.Tensor) -> paddle.Tensor:
-    ...
+def array_length(array: paddle.Tensor) -> paddle.Tensor: ...
 
 
 def array_length(array):
@@ -99,13 +97,11 @@ def array_length(array):
 
 
 @overload
-def array_read(array: list[T], i: paddle.Tensor) -> T:
-    ...
+def array_read(array: list[T], i: paddle.Tensor) -> T: ...
 
 
 @overload
-def array_read(array: paddle.Tensor, i: paddle.Tensor) -> paddle.Tensor:
-    ...
+def array_read(array: paddle.Tensor, i: paddle.Tensor) -> paddle.Tensor: ...
 
 
 def array_read(array, i):
@@ -189,22 +185,19 @@ def array_read(array, i):
 @overload
 def array_write(
     x: paddle.Tensor, i: paddle.Tensor, array: None = None
-) -> list[Any] | paddle.Tensor:
-    ...
+) -> list[Any] | paddle.Tensor: ...
 
 
 @overload
 def array_write(
     x: paddle.Tensor, i: paddle.Tensor, array: list[paddle.Tensor]
-) -> list[paddle.Tensor]:
-    ...
+) -> list[paddle.Tensor]: ...
 
 
 @overload
 def array_write(
     x: paddle.Tensor, i: paddle.Tensor, array: paddle.Tensor
-) -> paddle.Tensor:
-    ...
+) -> paddle.Tensor: ...
 
 
 def array_write(

@@ -593,12 +593,12 @@ class RecomputeOptimizer(Optimizer):
                 pinned_var_name, fetch_var_name = self._create_vars(
                     checkpoint_varname
                 )
-                self.checkpoint_name2pinned_name[
-                    checkpoint_varname
-                ] = pinned_var_name
-                self.checkpoint_name2fetch_name[
-                    checkpoint_varname
-                ] = fetch_var_name
+                self.checkpoint_name2pinned_name[checkpoint_varname] = (
+                    pinned_var_name
+                )
+                self.checkpoint_name2fetch_name[checkpoint_varname] = (
+                    fetch_var_name
+                )
             self._append_fill_constant_ops(startup_program)
             # TODO (JZ-LIANG) to provide two offload strategy in future
             # step 2. parse & update FW: rename, offload, sync

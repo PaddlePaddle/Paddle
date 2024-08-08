@@ -14,7 +14,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -28,6 +29,8 @@ from .tensor.attribute import is_floating_point, is_integer
 from .tensor.creation import _complex_to_real_dtype, _real_to_complex_dtype
 
 if TYPE_CHECKING:
+    from typing import Literal
+
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
