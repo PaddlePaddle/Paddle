@@ -1508,10 +1508,6 @@ class TestCompositeGroupNorm(unittest.TestCase):
             blocks = mp.blocks
 
             if paddle.framework.in_pir_mode():
-                # print(blocks[0].ops[-1].get_output_names)
-                # print(type(blocks[0].ops[-1].get_output_names))
-                # print(blocks[0].ops[-1].results())
-                # print(type(blocks[0].ops[-1].results()))
                 name = dict(
                     zip(
                         blocks[0].ops[-1].get_output_names(),
@@ -1530,11 +1526,11 @@ class TestCompositeGroupNorm(unittest.TestCase):
                 fwd_ops = [op.name() for op in blocks[0].ops]
                 # Ensure that group_norm in original block
                 assert 'pd_op.group_norm' in fwd_ops
-                # if core._is_fwd_prim_enabled():
-                #     paddle.incubate.autograd.primapi.to_prim(mp.blocks)
-                #     fwd_ops_new = [op.name() for op in blocks[0].ops]
-                #     # Ensure that group_norm is splitted into small ops
-                #     assert 'pd_op.group_norm' not in fwd_ops_new
+                if core._is_fwd_prim_enabled():
+                    paddle.incubate.autograd.primapi.to_prim(mp.blocks)
+                    fwd_ops_new = [op.name() for op in blocks[0].ops]
+                    # Ensure that group_norm is splitted into small ops
+                    assert 'pd_op.group_norm' not in fwd_ops_new
             else:
                 names = dict(
                     zip(
