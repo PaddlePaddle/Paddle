@@ -102,7 +102,7 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+        tuple[paddle_infer.Config, list[int], float] | None, Any, Any
     ]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
