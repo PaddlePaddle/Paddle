@@ -83,7 +83,9 @@ int PSCore::InitServer(
       ::paddle::distributed::PSServerFactory::Create(_ps_param));
   ret = _server_ptr->Configure(_ps_param, _ps_env, index, server_sub_program);
   PADDLE_ENFORCE_EQ(
-      ret, 0UL, phi::errors::PreconditionNotMet("Failed to configure server."));
+      ret,
+      0UL,
+      common::errors::PreconditionNotMet("Failed to configure server."));
   return ret;
 }
 

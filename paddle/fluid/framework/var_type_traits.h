@@ -182,7 +182,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     std::vector<Scope *>,
     LoDRankTable,
     Strings,
-    LoDTensorArray,
+    phi::TensorArray,
     phi::PlaceList,
     ReaderHolder,
     String,
@@ -241,7 +241,7 @@ REG_PROTO_VAR_TYPE_TRAIT(phi::DenseTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(phi::SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
 REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
-REG_PROTO_VAR_TYPE_TRAIT(LoDTensorArray, proto::VarType::LOD_TENSOR_ARRAY);
+REG_PROTO_VAR_TYPE_TRAIT(phi::TensorArray, proto::VarType::LOD_TENSOR_ARRAY);
 REG_PROTO_VAR_TYPE_TRAIT(phi::PlaceList, proto::VarType::PLACE_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(ReaderHolder, proto::VarType::READER);
 REG_PROTO_VAR_TYPE_TRAIT(FeedList, proto::VarType::FEED_LIST);

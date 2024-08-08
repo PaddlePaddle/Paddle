@@ -143,7 +143,7 @@ inline void axpy(const T* x, T* y, size_t len, const T alpha) {
   }
 #elif defined(PADDLE_WITH_ARM) || defined(PADDLE_WITH_SW) || \
     defined(PADDLE_WITH_MIPS) || defined(PADDLE_WITH_LOONGARCH)
-  PADDLE_THROW(phi::errors::Unimplemented("axpy is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("axpy is not supported"));
 #else
   lll = len & ~SSE_CUT_LEN_MASK;
   __m128x mm_alpha = _mm_load1_px(&alpha);
@@ -173,7 +173,7 @@ inline void axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
   }
 #elif defined(PADDLE_WITH_ARM) || defined(PADDLE_WITH_SW) || \
     defined(PADDLE_WITH_MIPS) || defined(PADDLE_WITH_LOONGARCH)
-  PADDLE_THROW(phi::errors::Unimplemented("axpy_noadd is not supported"));
+  PADDLE_THROW(common::errors::Unimplemented("axpy_noadd is not supported"));
 #else
   lll = len & ~SSE_CUT_LEN_MASK;
   __m128x mm_alpha = _mm_load1_px(&alpha);
@@ -192,7 +192,7 @@ inline void axpy_noadd(const int8_t* x,
                        int8_t* y,
                        size_t len,
                        const float alpha) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "int8_t input of axpy_noadd is not supported"));
 }
 

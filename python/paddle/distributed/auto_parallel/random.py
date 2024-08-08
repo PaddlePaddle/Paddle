@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import contextlib
 import logging
 
@@ -44,7 +46,7 @@ def enable_auto_rand_ctrl():
     _enable_random_control = True
 
 
-def parallel_manual_seed(seed, name=""):
+def parallel_manual_seed(seed: int, name: str = "") -> None:
     """Enable auto parallel random control.
     Random control maintain the randomness when tensor is distributed across devices on a Mesh(any order).
         * Independency: If tensor is **Sharded** on a Mesh dimension, Devices along that Mesh dimension should have Different randomness.

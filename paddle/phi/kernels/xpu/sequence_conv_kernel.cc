@@ -33,13 +33,13 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(in->lod().empty(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(X) phi::DenseTensor of SequenceConvOp "
                         "does not contain LoD information."));
   PADDLE_ENFORCE_EQ(
       in->lod().size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Only support input sequence with lod level equal to 1 at "
           "present. But received: lod level %u.",
           in->lod().size()));
@@ -47,17 +47,19 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       padding_trainable,
       false,
-      phi::errors::InvalidArgument("Only support padding_trainable "
-                                   "equal false."));
+      common::errors::InvalidArgument("Only support padding_trainable "
+                                      "equal false."));
 
   int up_pad = std::max(0, -context_start);
   int down_pad = std::max(0, context_start + context_length - 1);
   PADDLE_ENFORCE_EQ(
-      up_pad, 2, phi::errors::InvalidArgument("Only support up_pad equal 2."));
+      up_pad,
+      2,
+      common::errors::InvalidArgument("Only support up_pad equal 2."));
   PADDLE_ENFORCE_EQ(
       down_pad,
       2,
-      phi::errors::InvalidArgument("Only support down_pad equal 2."));
+      common::errors::InvalidArgument("Only support down_pad equal 2."));
 
   auto* xpu_context = dev_ctx.x_context();
   auto sequence_width = static_cast<int64_t>(in->dims()[1]);
@@ -66,7 +68,7 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
   int col_numel = col_shape[0] * col_shape[1];
   T* col_data = RAII_GUARD.alloc_l3_or_gm<T>(col_numel);
   PADDLE_ENFORCE_NOT_NULL(col_data,
-                          phi::errors::Fatal("XPU memory is not enough"));
+                          common::errors::Fatal("XPU memory is not enough"));
 
   auto lod_level_0 = in->lod()[0];
   int lod_size = lod_level_0.size();
@@ -76,7 +78,7 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(
       lod_size,
       257,
-      phi::errors::InvalidArgument("Only support batch size <= 256."));
+      common::errors::InvalidArgument("Only support batch size <= 256."));
 
   std::vector<int> cpu_lodx(lod_size);
   for (int i = 0; i < lod_size; i++) {
@@ -105,7 +107,7 @@ void SequenceConvXPUKernel(const Context& dev_ctx,
   int n = filter.dims()[1];
   PADDLE_ENFORCE_EQ(k,
                     k1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The shape of FC in SequenceConvOp is invalid."
                         "The k of matrix A is %d, k1 of matrix B is %d."
                         "But expect k == k1",

@@ -102,7 +102,7 @@ void CVMGradCUDAKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         batch_size,
         lod[lod.size() - 1],
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Output(X@GRAD)'s dim[0] must be equal to last element of lod"));
     phi::MixVector<size_t> mixv_lod(&lod);
     CvmGradComputeKernel<<<(dx_numel + PADDLE_CUDA_NUM_THREADS - 1) /

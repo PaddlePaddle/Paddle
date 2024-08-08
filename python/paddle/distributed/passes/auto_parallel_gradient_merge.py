@@ -264,12 +264,65 @@ def _append_gradient_merge_backward_op(
     return new_params_grads, grad_to_gradient_merge
 
 
+def _pir_append_gradient_merge_backward_op(
+    main_program,
+    startup_program,
+    params_grads,
+):
+    main_block = main_program.global_block()
+    startup_block = startup_program.global_block()
+
+    # {param: gradient_merge_var} to insert scale op and fill_constant op
+    new_params_grads = []
+
+    for param, grad in params_grads:
+        assert (
+            not param.is_selected_row_type()
+        ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
+
+        # step1: create gradient_merge var and init with 0
+        # Add persistable gradient variables in startup_program
+        with startup_block:
+            paddle.pir.set_insertion_point_to_block_end(startup_block)
+            gradient_merge_var = paddle.full(
+                shape=grad.shape, fill_value=float(0), dtype=grad.dtype
+            )
+            gradient_merge_var.persistable = True
+
+            paddle._C_ops.set_persistable_value(
+                gradient_merge_var, param.name + "@GRAD@MERGE"
+            )
+
+        # step2: Accumulate persistable gradient variables in main_program
+        # NOTE(zhaoyingli): inplace operation must be 'a = a + b', cannot be 'a = b + a'
+        with main_block:
+            gard_defining_op = grad.get_defining_op()
+            paddle.pir.set_insertion_point_after(gard_defining_op)
+
+            new_gradient_merge_var = main_block.add_kwarg(
+                param.name + "@GRAD@MERGE", grad.type()
+            )
+            new_gradient_merge_var.persistable = True
+
+            grad.replace_all_uses_with(new_gradient_merge_var)
+            new_gradient_merge_var_add = paddle._C_ops.add_(
+                new_gradient_merge_var, grad
+            )
+            new_gradient_merge_var_add.get_defining_op().op_role = (
+                gard_defining_op.op_role
+            )
+
+        # step3: Construct new_params_grads and grad_to_gradient_merge
+        new_params_grads.append((param, new_gradient_merge_var))
+
+    return new_params_grads
+
+
 def _move_reduce_to_optimizer_ops_block(
     main_program, optimize_ops_block, params_grads
 ):
     main_block = main_program.global_block()
     removed_op_idx = []
-    params_grads_name = [grad.name for _, grad in params_grads]
 
     for idx, op in list(enumerate(main_block.ops)):
         if is_data_parallel_reduce_op(op):
@@ -307,6 +360,38 @@ def _move_reduce_to_optimizer_ops_block(
 
     main_block._sync_with_cpp()
     return optimize_ops_block
+
+
+def _pir_move_reduce_to_optimizer_stage(main_program):
+    main_block = main_program.global_block()
+
+    for idx, op in list(enumerate(main_block.ops)):
+        if op.name() in [
+            "pd_op.c_allreduce_sum",
+            "pd_op.c_allreduce_avg",
+            "pd_op.c_reduce_sum",
+            "pd_op.c_reduce_avg",
+        ]:
+            op_input_names = op.get_input_names()
+            # NOTE(sonder): When "@RENAME@" is in the input name, it means that the op has been renamed.
+            # Such types input names are caused by shared parameter policy.
+            # Gradient merge should accumulate the gradient of ops without renaming.
+            if "@RENAME" in op_input_names[0]:
+                continue
+
+            op.op_role = OpRole.Optimize
+            main_block.move_op_to_block_end(op)
+
+            if op.name() in ["pd_op.c_allreduce_sum", "pd_op.c_reduce_sum"]:
+                scale_index = idx + 1
+                while scale_index < len(main_block.ops):
+                    if is_data_parallel_scale_op(main_block.ops[scale_index]):
+                        main_block.ops[scale_index].op_role = OpRole.Optimize
+                        main_block.move_op_to_block_end(
+                            main_block.ops[scale_index]
+                        )
+                        break
+                    scale_index += 1
 
 
 def _remove_cast_for_master_grad(main_program, dist_context):
@@ -347,6 +432,13 @@ def _remove_cast_for_master_grad(main_program, dist_context):
             len(rename_var_map) == 0
         ), f"rename_var_map must be empty, but it is: {rename_var_map}"
     main_block._sync_with_cpp()
+
+
+def _pir_remove_cast_for_master_grad(main_program):
+    main_block = main_program.global_block()
+    for op in main_block.ops:
+        if _is_master_grad_cast_op(main_block, op):
+            main_program.remove_op(op)
 
 
 def _create_cond_block_and_update_optimizer(
@@ -526,12 +618,48 @@ def parse_program(
     return grad_to_gradient_merge
 
 
+def _pir_parse_program(
+    main_program,
+    startup_program,
+    params_grads,
+    k_steps,
+    avg,
+    gradient_sync_after_accumulate,
+):
+    # step1: append gradient merge backward op to main_program
+    new_params_to_grads = _pir_append_gradient_merge_backward_op(
+        main_program, startup_program, params_grads
+    )
+
+    # step2: move reduce op to optimizer_ops_block
+    if gradient_sync_after_accumulate:
+        _pir_move_reduce_to_optimizer_stage(main_program, params_grads)
+
+    _pir_remove_cast_for_master_grad(main_program)
+
+    # step3: append scale op
+    if avg:
+        main_block = main_program.global_block()
+        for op in reversed(main_block.ops):
+            if op.op_role == int(OpRole.Backward):
+                paddle.pir.set_insertion_point_after(op)
+                break
+        for _, new_grad in new_params_to_grads:
+            scale = paddle.full([], 1.0 / k_steps)
+            new_grad = paddle._C_ops.scale_(new_grad, scale, 0.0, False)
+            new_grad.get_defining_op().op_role = int(OpRole.Backward)
+            scale.get_defining_op().op_role = int(OpRole.Backward)
+
+
 @register_pass("auto_parallel_gradient_merge_pass")
 class GradientMergePass(PassBase):
     def __init__(self):
         super().__init__()
         self.set_attr("k_steps", -1)
         self.set_attr("avg", True)
+        self._in_pir_mode = paddle.base.framework.get_flags(
+            "FLAGS_enable_pir_api"
+        )["FLAGS_enable_pir_api"]
 
     def _check_self(self):
         if self.get_attr("k_steps") < 1:
@@ -547,23 +675,35 @@ class GradientMergePass(PassBase):
     def _apply_single_impl(self, main_program, startup_program, context):
         k_steps = self.get_attr("k_steps", -1)
         avg = self.get_attr("avg", False)
-        dist_context = self.get_attr("dist_context")
         params_grads = self.get_attr("params_grads")
         gradient_sync_after_accumulate = self.get_attr(
             "gradient_sync_after_accumulate", False
         )
-        grad_to_global_grad = self.get_attr("grad_to_global_grad", {})
-        with paddle.static.program_guard(main_program, startup_program):
-            grad_to_merge_grad = parse_program(
-                main_program,
-                startup_program,
-                params_grads,
-                k_steps,
-                avg,
-                dist_context,
-                gradient_sync_after_accumulate,
-            )
 
-        main_program._sync_with_cpp()
-        for k, v in grad_to_merge_grad.items():
-            grad_to_global_grad[k] = v
+        if self._in_pir_mode:
+            with paddle.static.program_guard(main_program, startup_program):
+                _pir_parse_program(
+                    main_program,
+                    startup_program,
+                    params_grads,
+                    k_steps,
+                    avg,
+                    gradient_sync_after_accumulate,
+                )
+        else:
+            dist_context = self.get_attr("dist_context")
+            grad_to_global_grad = self.get_attr("grad_to_global_grad", {})
+            with paddle.static.program_guard(main_program, startup_program):
+                grad_to_merge_grad = parse_program(
+                    main_program,
+                    startup_program,
+                    params_grads,
+                    k_steps,
+                    avg,
+                    dist_context,
+                    gradient_sync_after_accumulate,
+                )
+
+            main_program._sync_with_cpp()
+            for k, v in grad_to_merge_grad.items():
+                grad_to_global_grad[k] = v

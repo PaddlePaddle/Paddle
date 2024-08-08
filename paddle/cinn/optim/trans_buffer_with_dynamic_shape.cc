@@ -58,13 +58,19 @@ struct Mutator : public ir::IRMutator<> {
           if (!e.is_constant()) {
             auto new_shape = ir::ir_utils::IRCopy(e);
             new_shape = analyzer.UpperBound(new_shape);
-            CHECK(new_shape.is_constant());
+            PADDLE_ENFORCE_EQ(
+                new_shape.is_constant(),
+                true,
+                phi::errors::InvalidArgument("new_shape is not constant"));
             e = new_shape;
           }
           if (!buf_e.is_constant()) {
             auto new_shape = ir::ir_utils::IRCopy(buf_e);
             new_shape = analyzer.UpperBound(new_shape);
-            CHECK(new_shape.is_constant());
+            PADDLE_ENFORCE_EQ(
+                new_shape.is_constant(),
+                true,
+                phi::errors::InvalidArgument("new_shape is not constant"));
             buf_e = new_shape;
           }
         }
@@ -78,7 +84,10 @@ struct Mutator : public ir::IRMutator<> {
           if (!e.is_constant()) {
             auto new_shape = ir::ir_utils::IRCopy(e);
             new_shape = analyzer.UpperBound(new_shape);
-            CHECK(new_shape.is_constant());
+            PADDLE_ENFORCE_EQ(
+                new_shape.is_constant(),
+                true,
+                phi::errors::InvalidArgument("new_shape is not constant"));
             e = new_shape;
           }
         }
@@ -87,7 +96,10 @@ struct Mutator : public ir::IRMutator<> {
       }
       if (buf->memory_type == ir::MemoryType::GPUShared) {
         buf_size = analyzer.UpperBound(buf_size);
-        CHECK(buf_size.is_constant());
+        PADDLE_ENFORCE_EQ(
+            buf_size.is_constant(),
+            true,
+            phi::errors::InvalidArgument("buf_size is not constant"));
         shared_mem_size_used_ += static_cast<size_t>(buf_size.get_constant()) *
                                  static_cast<size_t>(buf->dtype.bits()) / 8;
       }
@@ -115,9 +127,12 @@ void CudaTransBufferWithDynamicShape(ir::Expr* e) {
             common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
         if (cur_dev_info->IsValid()) {
           size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
-          CHECK(mutator.shared_mem_size_used_ <= max_shm_per_block)
-              << "The shared memory size used by current kernel "
-              << "is greater than the max shared memory per block";
+          PADDLE_ENFORCE_EQ(
+              (mutator.shared_mem_size_used_ <= max_shm_per_block),
+              true,
+              phi::errors::InvalidArgument(
+                  "The shared memory size used by current kernel is greater "
+                  "than the max shared memory per block"));
         }
 #endif
       },

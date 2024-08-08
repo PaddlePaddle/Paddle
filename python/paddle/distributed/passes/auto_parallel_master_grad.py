@@ -53,11 +53,27 @@ logger = get_logger(logging.INFO, "MasterGradPass")
 
 
 def _is_master_grad_cast_op(block, op):
-    if op.type != "cast":
-        return False
-    assert len(op.input_arg_names) == 1
-    assert len(op.output_arg_names) == 1
-    input_var_name = op.input_arg_names[0]
+    in_pir_mode = paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
+        "FLAGS_enable_pir_api"
+    ]
+    if in_pir_mode:
+        op_name = op.name()
+        if op_name != "pd_op.cast":
+            return False
+        input_names = op.get_input_names()
+        output_names = op.get_output_names()
+    else:
+        op_name = op.type
+        if op_name != "cast":
+            return False
+        input_names = op.input_arg_names
+        output_names = op.output_arg_names
+
+    assert len(input_names) == 1
+    assert len(output_names) == 1
+
+    input_var_name = input_names[0]
+
     return (
         "@master_grad_fp16" in input_var_name
         or "@master_grad_bf16" in input_var_name
