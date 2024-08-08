@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol, overload
+from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle import base
@@ -22,6 +22,7 @@ from paddle.base import core
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Literal, Protocol
 
     from paddle._typing import PlaceLike
 
