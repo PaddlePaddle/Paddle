@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import gc
 import traceback
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Tuple
 
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
@@ -37,8 +37,8 @@ from .opcode_executor import OpcodeExecutor, OpcodeExecutorBase
 if TYPE_CHECKING:
     import types
 
-GuardedFunction = tuple[CustomCode, Guard]
-GuardedFunctions = list[GuardedFunction]
+GuardedFunction = Tuple[CustomCode, Guard]
+GuardedFunctions = List[GuardedFunction]
 
 dummy_guard: Guard = lambda frame: True
 dummy_guard.expr = "lambda frame: True"
