@@ -172,12 +172,12 @@ class LlamaAttentionAuto(nn.Layer):
     def forward(
         self,
         hidden_states,
-        position_ids: Optional[tuple[paddle.Tensor]] = None,
-        past_key_value: Optional[tuple[paddle.Tensor]] = None,
-        attention_mask: Optional[paddle.Tensor] = None,
+        position_ids: tuple[paddle.Tensor] | None = None,
+        past_key_value: tuple[paddle.Tensor] | None = None,
+        attention_mask: paddle.Tensor | None = None,
         output_attentions: bool = False,
         use_cache: bool = False,
-        alibi: Optional[paddle.Tensor] = None,
+        alibi: paddle.Tensor | None = None,
     ) -> tuple[
         paddle.Tensor, Optional[paddle.Tensor], Optional[tuple[paddle.Tensor]]
     ]:
@@ -303,7 +303,7 @@ class LlamaAttentionAuto(nn.Layer):
 
 
 class LlamaMLPAuto(nn.Layer):
-    def __init__(self, config, ipp: Optional[int] = None):
+    def __init__(self, config, ipp: int | None = None):
         super().__init__()
         self.hidden_size = config.hidden_size
         self.intermediate_size = config.intermediate_size
@@ -371,7 +371,7 @@ class LlamaDecoderLayerAuto(nn.Layer):
         self,
         config,
         layerwise_recompute: bool = False,
-        ipp: Optional[int] = None,
+        ipp: int | None = None,
     ):
         super().__init__()
         self.config = config
@@ -385,12 +385,12 @@ class LlamaDecoderLayerAuto(nn.Layer):
     def forward(
         self,
         hidden_states: paddle.Tensor,
-        position_ids: Optional[tuple[paddle.Tensor]] = None,
-        attention_mask: Optional[paddle.Tensor] = None,
-        output_attentions: Optional[bool] = False,
-        past_key_value: Optional[tuple[paddle.Tensor]] = None,
-        use_cache: Optional[bool] = False,
-        alibi: Optional[paddle.Tensor] = None,
+        position_ids: tuple[paddle.Tensor] | None = None,
+        attention_mask: paddle.Tensor | None = None,
+        output_attentions: bool = False,
+        past_key_value: tuple[paddle.Tensor] | None = None,
+        use_cache: bool = False,
+        alibi: paddle.Tensor | None = None,
     ):
         # [bs * seq_len, embed_dim] -> [seq_len * bs / n, embed_dim] (sequence_parallel)
         residual = hidden_states
