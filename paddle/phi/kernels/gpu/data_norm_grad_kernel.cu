@@ -131,7 +131,7 @@ void DataNormGradKernel(const Context &dev_ctx,
         C,
         d_y->data<T>(),
         scales->data<T>(),
-        d_x->mutable_data<T>(dev_ctx.GetPlace()));
+        dev_ctx.template Alloc<T>(d_x));
   }
 
   KernelDataNormBPStat<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
