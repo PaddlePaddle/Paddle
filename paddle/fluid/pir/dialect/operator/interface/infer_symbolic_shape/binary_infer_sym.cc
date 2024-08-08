@@ -734,7 +734,7 @@ bool MarginCrossEntropyOpInferSymbolicShape(
   auto axis = logits_rank - 1;
 
   for (size_t i = 0; i < logits_rank; i++) {
-    if (i != axis && op->attribute<pir::BoolAttribute>("is_runtime").data()) {
+    if (i != axis) {
       infer_context->AddBroadcastableCstr(logits_dims[i], labels_dims[i]);
     }
   }
