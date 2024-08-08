@@ -13,11 +13,13 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any
 
 from paddle.base import core
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle import Tensor
 __all__ = []
 
@@ -110,16 +112,16 @@ class saved_tensors_hooks:
 
     def __init__(
         self,
-        pack_hook: Callable[[Tensor], Tensor | None],
-        unpack_hook: Callable[[Tensor], Tensor | None],
+        pack_hook: Callable[[Tensor], Any | None],
+        unpack_hook: Callable[[Any], Tensor | None],
     ) -> None:
         self.pack_hook = pack_hook
         self.unpack_hook = unpack_hook
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         core.eager.register_saved_tensors_hooks(
             self.pack_hook, self.unpack_hook
         )
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
         core.eager.reset_saved_tensors_hooks()
