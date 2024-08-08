@@ -758,7 +758,7 @@ bool SegmentPoolOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &input_shape = input_shape_or_data.shape();
   const auto &ids_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const std::vector<symbol::DimExpr> &ids_shape = ids_shape_or_data.shape();
   const std::string pool_type =
       op->attribute<pir::StrAttribute>("pooltype").AsString();
