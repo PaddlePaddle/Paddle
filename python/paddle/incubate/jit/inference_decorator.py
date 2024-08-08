@@ -388,15 +388,15 @@ class InferenceEngine:
             else:
                 for i in range(len(input_tensor_lists)):
                     if input_tensor_lists[i] is not None:
-                        min_input_shape[
-                            self.d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
-                        max_input_shape[
-                            self.d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
-                        opt_input_shape[
-                            self.d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
+                        min_input_shape[self.d2s_input_names[i]] = (
+                            input_tensor_lists[i].shape
+                        )
+                        max_input_shape[self.d2s_input_names[i]] = (
+                            input_tensor_lists[i].shape
+                        )
+                        opt_input_shape[self.d2s_input_names[i]] = (
+                            input_tensor_lists[i].shape
+                        )
 
                 config.set_trt_dynamic_shape_info(
                     min_input_shape, max_input_shape, opt_input_shape
@@ -421,14 +421,12 @@ class InferenceEngine:
 
 class _InferenceDecorator(Protocol):
     @overload
-    def __call__(self, function: _LayerT) -> _LayerT:
-        ...
+    def __call__(self, function: _LayerT) -> _LayerT: ...
 
     @overload
     def __call__(
         self, function: Callable[_InputT, _RetT]
-    ) -> Callable[_InputT, _RetT]:
-        ...
+    ) -> Callable[_InputT, _RetT]: ...
 
 
 @overload
@@ -448,8 +446,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
-) -> _InferenceDecorator:
-    ...
+) -> _InferenceDecorator: ...
 
 
 @overload
@@ -469,8 +466,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
-) -> _LayerT:
-    ...
+) -> _LayerT: ...
 
 
 @overload
@@ -490,8 +486,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
-) -> Callable[_InputT, _RetT]:
-    ...
+) -> Callable[_InputT, _RetT]: ...
 
 
 def inference(

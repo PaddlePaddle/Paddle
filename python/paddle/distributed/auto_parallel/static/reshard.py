@@ -14,6 +14,7 @@
 
 
 import copy
+import operator
 from collections import OrderedDict
 from functools import reduce
 
@@ -976,7 +977,9 @@ class Remover:
         )
         # 'feed_var_names' cannot be removed from auto_parallel_main_prog
         feed_var_names = []
-        for var in sum(list(dist_context.serial_feed_vars.values()), []):
+        for var in reduce(
+            operator.iadd, list(dist_context.serial_feed_vars.values()), []
+        ):
             feed_var_names.append(var.name)
         Remover.remove_no_need_vars(
             auto_parallel_main_prog, dist_params_grads, feed_var_names

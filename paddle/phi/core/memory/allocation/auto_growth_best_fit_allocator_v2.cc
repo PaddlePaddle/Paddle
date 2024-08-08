@@ -18,11 +18,11 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 PD_DECLARE_bool(free_idle_chunk);
 PD_DECLARE_bool(free_when_no_cache_hit);
@@ -45,9 +45,9 @@ AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
 
 phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
     size_t unaligned_size) {
-  platform::RecordEvent record("AutoGrowthBestFitAllocatorV2::Allocate",
-                               platform::TracerEventType::UserDefined,
-                               9 /*level*/);
+  phi::RecordEvent record("AutoGrowthBestFitAllocatorV2::Allocate",
+                          platform::TracerEventType::UserDefined,
+                          9 /*level*/);
 
   size_t size = AlignedSize(unaligned_size + extra_padding_size_, alignment_);
 

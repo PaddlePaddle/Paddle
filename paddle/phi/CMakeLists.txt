@@ -195,7 +195,7 @@ endif()
 # when phi is built to dynamic library, it's fine. But when phi
 # is built to static library, phi_gpu should be linked to phi_core.
 # By the way, cyclic dependency is allowed in static library.
-if(WITH_ROCM AND NOT WITH_SHARED_PHI)
+if(NOT WIN32 AND NOT WITH_SHARED_PHI)
   target_link_libraries(phi_core phi_gpu)
 endif()
 
