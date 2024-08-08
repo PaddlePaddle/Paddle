@@ -314,7 +314,6 @@ class TestDistTraining(unittest.TestCase):
                 dtype='float32',
             )
             data.stop_gradient = False
-            data = data + data  # convert to non-leaf tensor
 
             check_group = dist.new_group(list(range(self.model_parallel_size)))
             integral_data = []
@@ -326,8 +325,7 @@ class TestDistTraining(unittest.TestCase):
             integral_data = integral_data.detach().clone()
             integral_data.stop_gradient = False
 
-            func = model_a if idx % 2 == 0 else model_a_inplace
-            loss_a = func(data, label).sum() / batch_size
+            loss_a = model_a(data, label).sum() / batch_size
 
             loss_b = model_b(integral_data, label).sum() / batch_size
             print("loss_a: ", loss_a.numpy(), "loss_b: ", loss_b.numpy())
@@ -350,6 +348,39 @@ class TestDistTraining(unittest.TestCase):
                 integral_data.grad.numpy(False),
                 integral_grad.numpy(False),
                 rtol=1e-6,
+            )
+
+        # check inplace
+        for idx in range(5):
+            np_label = np.random.randint(
+                0, vocab_size, (batch_size, seq_length)
+            )
+            label = paddle.to_tensor(np_label, dtype="int64")
+
+            data = paddle.randn(
+                shape=[batch_size, seq_length, class_size_per_card],
+                dtype='float32',
+            )
+            data.stop_gradient = False
+            data = data + data  # convert to non-leaf tensor
+
+            check_group = dist.new_group(list(range(self.model_parallel_size)))
+            integral_data = []
+            partial_data = data.clone().detach()
+            paddle.distributed.all_gather(
+                integral_data, partial_data, group=check_group
+            )
+            integral_data = paddle.concat(integral_data, axis=-1)
+            integral_data = integral_data.detach().clone()
+            integral_data.stop_gradient = False
+
+            loss_a = model_a_inplace(data, label).sum() / batch_size
+
+            loss_b = model_b(integral_data, label).sum() / batch_size
+            print("loss_a: ", loss_a.numpy(), "loss_b: ", loss_b.numpy())
+
+            np.testing.assert_allclose(
+                loss_a.numpy(), loss_b.numpy(), rtol=1e-6
             )
 
 
