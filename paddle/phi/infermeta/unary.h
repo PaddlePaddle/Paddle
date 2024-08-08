@@ -313,6 +313,12 @@ void Flatten2InferMeta(const MetaTensor& x,
                        MetaTensor* out,
                        MetaTensor* x_shape);
 
+void FlattenWithXShapeInferMeta(const MetaTensor& x,
+                                int start_axis,
+                                int stop_axis,
+                                MetaTensor* out,
+                                MetaTensor* xshape);
+
 void FlipInferMeta(const MetaTensor& x,
                    const std::vector<int>& axis,
                    MetaTensor* out);
