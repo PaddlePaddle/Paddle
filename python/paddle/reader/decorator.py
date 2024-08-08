@@ -119,8 +119,7 @@ def cache(reader: _Reader[_T]) -> _Reader[_T]:
 @overload
 def map_readers(
     func: Callable[[_T1], _U], reader1: _Reader[_T1], /
-) -> _Reader[_U]:
-    ...
+) -> _Reader[_U]: ...
 
 
 @overload
@@ -129,8 +128,7 @@ def map_readers(
     reader1: _Reader[_T1],
     reader2: _Reader[_T2],
     /,
-) -> _Reader[_U]:
-    ...
+) -> _Reader[_U]: ...
 
 
 @overload
@@ -140,8 +138,7 @@ def map_readers(
     reader2: _Reader[_T2],
     reader3: _Reader[_T3],
     /,
-) -> _Reader[_U]:
-    ...
+) -> _Reader[_U]: ...
 
 
 @overload
@@ -152,13 +149,13 @@ def map_readers(
     reader3: _Reader[_T3],
     reader4: _Reader[_T4],
     /,
-) -> _Reader[_U]:
-    ...
+) -> _Reader[_U]: ...
 
 
 @overload
-def map_readers(func: Callable[..., _U], *readers: _Reader[Any]) -> _Reader[_U]:
-    ...
+def map_readers(
+    func: Callable[..., _U], *readers: _Reader[Any]
+) -> _Reader[_U]: ...
 
 
 def map_readers(func, *readers):

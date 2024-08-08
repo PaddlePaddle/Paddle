@@ -75,7 +75,7 @@ class SequenceIterVariable(IterVariable):
             self.idx += 1
             return val
         else:
-            raise StopIteration()
+            raise StopIteration
 
     def to_list(self) -> list:
         if self.has_side_effect():

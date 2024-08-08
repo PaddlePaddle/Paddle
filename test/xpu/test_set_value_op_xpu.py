@@ -836,9 +836,9 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             return x
 
         def _get_answer(self):
-            self.data[
-                np.array([[False, True, False], [True, True, False]])
-            ] = self.value
+            self.data[np.array([[False, True, False], [True, True, False]])] = (
+                self.value
+            )
 
     class XPUTestSetValueItemBool6(XPUTestSetValueApi):
         def set_dtype(self):

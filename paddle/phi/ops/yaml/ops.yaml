@@ -3823,6 +3823,21 @@
     data_type : x
   backward: repeat_interleave_with_tensor_index_grad
 
+- op : reshape
+  args : (Tensor x, IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+    spmd_rule : ReshapeInferSpmd
+    local_shape: shape
+    global_shape: out
+  kernel :
+    func : reshape
+  inplace : (x -> out)
+  view: (x -> out)
+  backward: reshape_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : reverse
   args : (Tensor x, IntArray axis)
   output : Tensor
@@ -4211,7 +4226,7 @@
   kernel :
     func : silu
   backward : silu_grad
-  interfaces : paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
 
 - op : sin
   args : (Tensor x)
@@ -4354,6 +4369,7 @@
            sqrt_sr {selected_rows -> selected_rows}
   inplace : (x -> out)
   backward : sqrt_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : square
   args : (Tensor x)
@@ -4495,6 +4511,16 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
   optional : reserve_space
+
+- op : sync_calc_stream
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : sync_calc_stream
+  inplace : (x -> out)
 
 - op : take_along_axis
   args : (Tensor arr, Tensor indices, int axis)
@@ -4881,6 +4907,7 @@
     data_type : input
   backward : view_dtype_grad
   no_need_buffer : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : view_shape
   args : (Tensor input, int64_t[] dims = {})

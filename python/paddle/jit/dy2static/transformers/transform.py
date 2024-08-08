@@ -42,6 +42,7 @@ from .name_load_transformer import (
     NameloadJstTransformer,
 )
 from .return_transformer import ReturnTransformer
+from .super_transformer import SuperTransformer
 from .tensor_shape_transformer import TensorShapeTransformer
 from .tensorhook_transformer import RegisterHookTransformer
 from .typehint_transformer import TypeHintTransformer
@@ -95,6 +96,7 @@ class DygraphToStaticAst(BaseTransformer):
 
         transformers = [
             TypeHintTransformer,  # remove all typehint
+            SuperTransformer,  # super() -> super(__class__, <first argument>)
             RegisterHookTransformer,
             EarlyReturnTransformer,
             AttributeJstTransformer,  # Tensor.size -> Tensor.size(), it's unnecessary in PIR mode
