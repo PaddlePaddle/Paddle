@@ -15,8 +15,6 @@
 #include "test_helper.h"  // NOLINT
 #include "test_suite.h"   // NOLINT
 
-#include "paddle/common/enforce.h"
-
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(datadir, "", "dataset.");
 DEFINE_string(truth_data, "", "Directory of the inference data truth result");
@@ -93,9 +91,7 @@ std::vector<T> ParseTensor(const std::string &field) {
 void run(Predictor *predictor, std::vector<float> *out_data) {
   clock_t start, end;
   start = clock();
-  PADDLE_ENFORCE(
-      predictor->Run(),
-      coomon::errors::PreconditionNotMet("Predictor is not runnable"));
+  CHECK(predictor->Run());
   end = clock();
 
   auto output_names = predictor->GetOutputNames();
