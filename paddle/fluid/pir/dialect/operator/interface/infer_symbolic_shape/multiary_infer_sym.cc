@@ -745,9 +745,8 @@ bool CrfDecodingOpInferSymbolicShape(
 
     infer_context->SetShapeOrDataForValue(
         op->result(0), symbol::TensorShapeOrDataDimExprs(viterbi_path_dims));
-
-    return true;
   }
+  return true;
 }
 
 // bool CoalesceTensorOpInferSymbolicShape(pir::Operation *op,
