@@ -313,6 +313,7 @@ class Optimizer:
         self._master_weights = {}
         # create master gradients' states
         self._create_master_grad_states()
+        self.first_zero_grad = True
 
     def _create_master_grad_states(self):
         # master gradients states
@@ -1738,7 +1739,9 @@ class Optimizer:
             return no_grad_set
 
     @framework.non_static_only
-    def clear_grad(self, set_to_zero: bool = True) -> None:
+    def clear_grad(
+        self, set_to_zero: bool = True, realloc_grad_first_step: bool = True
+    ) -> None:
         """
         Clear the gradients of all optimized parameters for model.
 
@@ -1748,6 +1751,7 @@ class Optimizer:
 
         Args:
             set_to_zero (bool, optional): If set grads to zero or not, default is True.
+            realloc_grad_first_step (bool, optional): If realloc memory for grad at fisrt clear_grad be called, when set_to_zero=True, default is True. This is beneficial for reducing video memory fragmentation.
 
         Returns:
             None
@@ -1781,8 +1785,28 @@ class Optimizer:
                     if not p.stop_gradient:
                         param_list.append(p)
 
-        for p in param_list:
-            p.clear_gradient(set_to_zero)
+        if set_to_zero and self.first_zero_grad and realloc_grad_first_step:
+            shape_map = {}
+            dtype_map = {}
+            tensor_map = {}
+
+            for i, p in enumerate(param_list):
+                shape_map[i] = p.shape
+                dtype_map[i] = p.dtype
+                p.clear_gradient(False)
+
+            for i, p in enumerate(param_list):
+                tensor_map[i] = paddle.zeros(shape_map[i], dtype_map[i])
+
+            for i, p in enumerate(param_list):
+                p.grad = tensor_map[i]
+
+            del tensor_map
+
+            self.first_zero_grad = False
+        else:
+            for p in param_list:
+                p.clear_gradient(set_to_zero)
 
     @imperative_base.no_grad()
     def minimize(
