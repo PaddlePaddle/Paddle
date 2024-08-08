@@ -20,7 +20,7 @@ from functools import reduce
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
+from paddle.distributed.utils.stream_utils import ExecutionStreamType
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
 
@@ -702,7 +702,7 @@ class Inserter:
         )
         allgather_op._set_attr('op_namescope', "/auto_parallel/reshard")
         allgather_op.dist_attr.execution_stream = (
-            AutoParallelStreamType.CALC_STREAM.value
+            ExecutionStreamType.DefaultStream.value
         )
         idx_offset += 1
 

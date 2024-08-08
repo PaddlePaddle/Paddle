@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
+from paddle.distributed.utils.stream_utils import ExecutionStreamType
 
 from ..process_group import new_process_group
 from .base_reshard_func import (
@@ -81,7 +81,7 @@ class PToSReshardFunction(ReshardFunction):
             src_value, group.id, num_of_process
         )
         dst_value.get_defining_op().set_execution_stream(
-            AutoParallelStreamType.CALC_STREAM.value
+            ExecutionStreamType.DefaultStream.value
         )
 
         # set dist type and dist attr
