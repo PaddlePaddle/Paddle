@@ -1579,7 +1579,11 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
   const auto &x_dims_sym = x_shape_or_data.shape();
 
   // axis
-  CHECK(op->operand_source(2).defining_op()->isa<paddle::dialect::FullOp>());
+  PADDLE_ENFORCE_EQ(
+      op->operand_source(2).defining_op()->isa<paddle::dialect::FullOp>(),
+      true,
+      common::errors::InvalidArgument(
+          "Invalid input args : axis, pleace check"));
 
   int64_t axis = op->operand_source(2)
                      .defining_op<paddle::dialect::FullOp>()
