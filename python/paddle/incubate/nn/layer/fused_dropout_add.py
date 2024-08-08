@@ -75,7 +75,7 @@ class FusedDropoutAdd(Layer):
         self.mode = mode
         self.name = name
 
-    def forward(self, x: Tensor, y: Tensor) -> None:
+    def forward(self, x: Tensor, y: Tensor) -> Tensor:
         out = F.fused_dropout_add(
             x,
             y,
