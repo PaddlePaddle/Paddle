@@ -149,11 +149,17 @@ class MergeParallelMatmulPattern
         rewriter.Build<paddle::dialect::MatmulOp>(input_x, concat_out)
             .result(0);
 
+    const auto& matmul_out_rank =
+        matmul_out.type()
+            .dyn_cast<paddle::dialect::DenseTensorType>()
+            .dims()
+            .size();
+
     for (size_t i = 0; i < merge_ops.size(); ++i) {
       auto split_out = rewriter
                            .Build<paddle::dialect::SliceOp>(
                                matmul_out,
-                               std::vector<std::int64_t>{-1},
+                               std::vector<std::int64_t>{matmul_out_rank - 1},
                                std::vector<std::int64_t>{combine_shapes[i]},
                                std::vector<int64_t>{combine_shapes[i + 1]},
                                std::vector<std::int64_t>{},
