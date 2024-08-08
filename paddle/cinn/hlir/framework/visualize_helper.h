@@ -27,6 +27,8 @@
 
 #include "paddle/cinn/utils/dot_lang.h"
 
+#include "paddle/common/errors.h"
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -55,7 +57,8 @@ inline void WriteToFile(const std::string& filepath,
                         const std::string& content) {
   VLOG(4) << "Write to " << filepath;
   std::ofstream of(filepath);
-  CHECK(of.is_open()) << "Failed to open " << filepath;
+  PADDLE_ENFORCE(of.is_open(),
+                 phi::errors::Unavailable("Failed to open %s", filepath));
   of << content;
   of.close();
 }

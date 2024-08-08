@@ -990,8 +990,7 @@ def normalize(
     std: list[float] | tuple[float, float, float],
     data_format: DataLayoutImage = ...,
     to_rgb: bool = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -1001,8 +1000,7 @@ def normalize(
     std: list[float] | tuple[float, float, float],
     data_format: DataLayoutImage = ...,
     to_rgb: bool = ...,
-) -> npt.NDArray[Any]:
-    ...
+) -> npt.NDArray[Any]: ...
 
 
 def normalize(

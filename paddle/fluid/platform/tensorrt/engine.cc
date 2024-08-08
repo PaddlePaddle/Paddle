@@ -20,7 +20,7 @@ limitations under the License. */
 #include "NvInferRuntimeCommon.h"
 #include "cuda_runtime_api.h"  // NOLINT
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace platform {
