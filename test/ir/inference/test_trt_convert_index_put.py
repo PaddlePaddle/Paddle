@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from functools import partial
 from typing import List
@@ -167,7 +168,9 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
         ), 1e-3
 
     def test(self):
-        self.run_test()
+        # TensorRT version is v8.0.1.6 in windows env.
+        if os.name != 'nt':
+            self.run_test()
 
 
 if __name__ == "__main__":
