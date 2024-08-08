@@ -58,7 +58,7 @@ def tensor_copy_from_cpu(self, data: np.ndarray) -> None:
 
 
 def tensor_share_external_data(
-    self, data: core.LoDTensor | paddle.Tensor | paddle.base.framework.Variable
+    self, data: core.LoDTensor | paddle.base.framework.Variable
 ) -> None:
     '''
     Support input type check based on tensor.share_external_data.

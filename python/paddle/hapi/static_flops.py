@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 from collections import OrderedDict
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from paddle.static import Program, Variable
+
+if TYPE_CHECKING:
+    from paddle.autograd.backward_utils import ValueDict
 
 __all__ = []
 
@@ -89,9 +95,9 @@ class GraphWrapper:
     def __init__(
         self,
         program: Program = None,
-        in_nodes: dict[str, Variable] = [],
-        out_nodes: dict[str, Variable] = [],
-    ):
+        in_nodes: ValueDict = [],
+        out_nodes: ValueDict = [],
+    ) -> None:
         """ """
         super().__init__()
         self.program = Program() if program is None else program
@@ -107,7 +113,7 @@ class GraphWrapper:
         self.out_nodes = OrderedDict(out_nodes)
         self._attrs = OrderedDict()
 
-    def ops(self):
+    def ops(self) -> list[OpWrapper]:
         """
         Return all operator nodes included in the graph as a set.
         """
@@ -117,7 +123,7 @@ class GraphWrapper:
                 ops.append(OpWrapper(op, self))
         return ops
 
-    def var(self, name):
+    def var(self, name: str) -> VarWrapper:
         """
         Get the variable by variable name.
         """
@@ -127,7 +133,7 @@ class GraphWrapper:
         return None
 
 
-def count_convNd(op):
+def count_convNd(op: OpWrapper) -> int:
     filter_shape = op.inputs("Filter")[0].shape()
     filter_ops = np.prod(filter_shape[1:])
     bias_ops = 1 if len(op.inputs("Bias")) > 0 else 0
@@ -137,19 +143,19 @@ def count_convNd(op):
     return total_ops
 
 
-def count_leaky_relu(op):
+def count_leaky_relu(op: OpWrapper) -> int:
     total_ops = np.prod(op.outputs("Output")[0].shape()[1:])
     return total_ops
 
 
-def count_bn(op):
+def count_bn(op: OpWrapper) -> int:
     output_numel = np.prod(op.outputs("Y")[0].shape()[1:])
     total_ops = 2 * output_numel
     total_ops = abs(total_ops)
     return total_ops
 
 
-def count_linear(op):
+def count_linear(op: OpWrapper) -> int:
     total_mul = op.inputs("Y")[0].shape()[0]
     numel = np.prod(op.outputs("Out")[0].shape()[1:])
     total_ops = total_mul * numel
@@ -157,7 +163,7 @@ def count_linear(op):
     return total_ops
 
 
-def count_pool2d(op):
+def count_pool2d(op: OpWrapper) -> int:
     input_shape = op.inputs("X")[0].shape()
     output_shape = op.outputs('Out')[0].shape()
     kernel = np.array(input_shape[2:]) // np.array(output_shape[2:])
@@ -170,14 +176,14 @@ def count_pool2d(op):
     return total_ops
 
 
-def count_element_op(op):
+def count_element_op(op: OpWrapper) -> int:
     input_shape = op.inputs("X")[0].shape()
     total_ops = np.prod(input_shape[1:])
     total_ops = abs(total_ops)
     return total_ops
 
 
-def _graph_flops(graph, detail=False):
+def _graph_flops(graph: GraphWrapper, detail: bool = False) -> int:
     assert isinstance(graph, GraphWrapper)
     flops = 0
     op_flops = 0
@@ -210,13 +216,13 @@ def _graph_flops(graph, detail=False):
     return flops
 
 
-def static_flops(program, print_detail=False):
+def static_flops(program: Program, print_detail: bool = False) -> int:
     graph = GraphWrapper(program)
     return _graph_flops(graph, detail=print_detail)
 
 
 class Table:
-    def __init__(self, table_heads):
+    def __init__(self, table_heads: list) -> None:
         self.table_heads = table_heads
         self.table_len = []
         self.data = []
@@ -224,7 +230,7 @@ class Table:
         for head in table_heads:
             self.table_len.append(len(head))
 
-    def add_row(self, row_str):
+    def add_row(self, row_str: list) -> None:
         if not isinstance(row_str, list):
             print('The row_str should be a list')
         if len(row_str) != self.col_num:
@@ -236,14 +242,14 @@ class Table:
                 self.table_len[i] = len(str(row_str[i]))
         self.data.append(row_str)
 
-    def print_row(self, row):
+    def print_row(self, row: list) -> None:
         string = ''
         for i in range(self.col_num):
             string += '|' + str(row[i]).center(self.table_len[i] + 2)
         string += '|'
         print(string)
 
-    def print_shelf(self):
+    def print_shelf(self: None) -> None:
         string = ''
         for length in self.table_len:
             string += '+'
@@ -251,7 +257,7 @@ class Table:
         string += '+'
         print(string)
 
-    def print_table(self):
+    def print_table(self: None) -> None:
         self.print_shelf()
         self.print_row(self.table_heads)
         self.print_shelf()
