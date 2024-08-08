@@ -668,7 +668,7 @@ class PretrainedTokenizer:
             overflowing_tokens = []
             for _ in range(num_tokens_to_remove):
                 if pair_ids is None or len(ids) > len(pair_ids):
-                    overflowing_tokens = [ids[-1]] + overflowing_tokens
+                    overflowing_tokens = [ids[-1], *overflowing_tokens]
                     ids = ids[:-1]
                 else:
                     pair_ids = pair_ids[:-1]
