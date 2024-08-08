@@ -303,11 +303,11 @@ struct UnionFindSet {
     return parent[x];
   }
 
-  void Union(pir::Operation* x, pir::Operation* y) {
+  SubGraphPtr Union(pir::Operation* x, pir::Operation* y) {
     auto root_x = Find(x);
     auto root_y = Find(y);
     if (root_x == root_y) {
-      return;
+      return GetSetFromOp(root_y);
     }
     auto subgraph_x = GetSetFromOp(root_x);
     auto subgraph_y = GetSetFromOp(root_y);
@@ -316,6 +316,7 @@ struct UnionFindSet {
     for (auto& op : subgraph_x->ops) {
       subgraph_y->Insert(op);
     }
+    return subgraph_y;
   }
 
   SubGraphPtr GetSetFromOp(pir::Operation* op) {
@@ -353,6 +354,52 @@ struct UnionFindSet {
       results.erase(graph);
     }
     return results;
+  }
+};
+
+struct LoopDetectionMapping {
+  std::unordered_map<SubGraphPtr, std::unordered_map<SubGraphPtr, int>>
+      has_loop;
+  std::set<SubGraphPtr> all_nodes;
+  LoopDetectionMapping(
+      const std::unordered_map<pir::Operation*,
+                               std::unordered_map<pir::Operation*, bool>>&
+          exist_loop,
+      const UnionFindSet& uf_set) {
+    for (auto& item : exist_loop) {
+      all_nodes.insert(uf_set.GetSetFromOp(item.first));
+    }
+    for (auto& item : exist_loop) {
+      for (auto& inner_item : item.second) {
+        SubGraphPtr first = uf_set.GetSetFromOp(item.first);
+        SubGraphPtr second = uf_set.GetSetFromOp(inner_item.first);
+        has_loop[first][second] = inner_item.second;
+        has_loop[second][first] = inner_item.second;
+      }
+    }
+  }
+  void MergeNodes(SubGraphPtr first, SubGraphPtr second, SubGraphPtr merged) {
+    Substitude(first, merged);
+    Substitude(second, merged);
+    if (first != merged) Remove(first);
+    if (second != merged) Remove(second);
+  }
+  void Substitude(SubGraphPtr old_node, SubGraphPtr new_node) {
+    VLOG(4) << "Start Substitude: " << old_node.get() << " to "
+            << new_node.get();
+    if (old_node == new_node) return;
+    VLOG(4) << "Do Substitude: " << old_node.get() << " to " << new_node.get();
+    for (auto& item : all_nodes) {
+      has_loop[new_node][item] =
+          has_loop[new_node][item] || has_loop[old_node][item];
+      has_loop[item][new_node] =
+          has_loop[item][new_node] || has_loop[item][old_node];
+    }
+  }
+  void Remove(SubGraphPtr node) { all_nodes.erase(node); }
+
+  bool CanFuse(SubGraphPtr first, SubGraphPtr second) {
+    return has_loop[first][second] == 0;
   }
 };
 
@@ -464,7 +511,6 @@ static bool HasLoopAfterMerge(UnionFindSet& union_find,  // NOLINT
   for (const auto& up : Intersect(upstream_set, downstream_set)) {
     up->Print();
   }
-  VLOG(0) << "Try HasLoopAfterMerge done";
   return !Intersect(upstream_set, downstream_set).empty();
 }
 
@@ -525,8 +571,7 @@ void SubgraphDetector::DoOpFusion() {
   VLOG(4) << "Do Op Fusion with sorted_ops: " << sort_ops_.size();
   VLOG_LINES(OpsDebugStr(sort_ops_));
   SetCanApplyFusionMap();
-  // PADDLE_THROW(::common::errors::Fatal("Dead code"));
-  VLOG(0) << "===================HasLoopAfterMerge start =================\n";
+  LoopDetectionMapping loop_detector(can_apply_fusion_map_, union_find);
   for (auto* op : sort_ops_) {
     auto producers = GetProducerOpsReverseSort(op, op2id_);
     for (auto* producer : producers) {
@@ -539,21 +584,17 @@ void SubgraphDetector::DoOpFusion() {
       }
       VLOG(4) << "Start Judge: " << op->id() << " vs " << producer->id();
 
-      // if (HasLoopAfterMerge(union_find,
-      //                       union_find.GetSetFromOp(producer),
-      //                       union_find.GetSetFromOp(op)));
-      if (!CanApplyFusion(union_find.GetSetFromOp(producer),
-                          union_find.GetSetFromOp(op),
-                          can_apply_fusion_map_)) {
+      if (!loop_detector.CanFuse(union_find.GetSetFromOp(producer),
+                                 union_find.GetSetFromOp(op))) {
         continue;
       }
       // try fuse producer to sub-graph
-      VLOG(0) << "try fuse";
-      union_find.Union(op, producer);
-      VLOG(0) << "fuse done";
+      auto op_graph_ptr = union_find.GetSetFromOp(op);
+      auto producer_graph_ptr = union_find.GetSetFromOp(producer);
+      SubGraphPtr merged = union_find.Union(op, producer);
+      loop_detector.MergeNodes(op_graph_ptr, producer_graph_ptr, merged);
     }
   }
-  VLOG(0) << "===================HasLoopAfterMerge end =================\n";
   for (const auto& op : sort_ops_) {
     subgraph_map_[op] = union_find.GetSetFromOp(op);
   }
