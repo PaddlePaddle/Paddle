@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import sys
 
 __all__ = []
@@ -130,7 +132,7 @@ class DataGenerator:
             for sample in batch_iter():
                 sys.stdout.write(self._gen_str(sample))
 
-    def _gen_str(self, line):
+    def _gen_str(self, line: str) -> str:
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the datafeed,and
@@ -146,7 +148,7 @@ class DataGenerator:
             "pls use MultiSlotDataGenerator or PairWiseDataGenerator"
         )
 
-    def generate_sample(self, line):
+    def generate_sample(self, line: str) -> list | tuple:
         '''
         This function needs to be overridden by the user to process the
         original data row into a list or tuple.
@@ -186,7 +188,7 @@ class DataGenerator:
             + "[(name, [feasign, ...]), ...] or ((name, [feasign, ...]), ...)"
         )
 
-    def generate_batch(self, samples):
+    def generate_batch(self, samples: list | tuple) -> DataGenerator:
         '''
         This function needs to be overridden by the user to process the
         generated samples from generate_sample(self, str) function
@@ -230,7 +232,7 @@ class DataGenerator:
 # add more generalized DataGenerator that can adapt user-defined slot
 # for example, [(name, float_list), (name, str_list), (name, int_list)]
 class MultiSlotStringDataGenerator(DataGenerator):
-    def _gen_str(self, line):
+    def _gen_str(self, line: str) -> str:
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,
@@ -275,7 +277,7 @@ class MultiSlotStringDataGenerator(DataGenerator):
 
 
 class MultiSlotDataGenerator(DataGenerator):
-    def _gen_str(self, line):
+    def _gen_str(self, line: str) -> str:
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,

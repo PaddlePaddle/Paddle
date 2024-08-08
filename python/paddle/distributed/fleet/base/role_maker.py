@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Definition of Role Makers."""
+from __future__ import annotations
+
 import os
 import re
 import time
 import warnings
 from multiprocessing import Manager, Process
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -27,6 +30,9 @@ from paddle.distributed.fleet.base.private_helper_function import (
 )
 
 from ...backup_env import getenv_or_backup
+
+if TYPE_CHECKING:
+    from paddle.base.core import task
 
 __all__ = []
 
@@ -78,14 +84,14 @@ class Gloo:
 
     def init(
         self,
-        rendezvous,
-        role,
-        role_id,
-        worker_num,
-        server_num,
-        need_init_all=False,
-        kwargs=None,
-    ):
+        rendezvous: Literal[1, 2, 3] | None,
+        role: Role | None,
+        role_id: int,
+        worker_num: int,
+        server_num: int,
+        need_init_all: bool = False,
+        kwargs: Any = None,
+    ) -> None:
         self._rendezvous = rendezvous
         self._role = role
         self._role_id = role_id
@@ -129,8 +135,8 @@ class Gloo:
         self._is_initialized = True
         self._http_server = http_server
 
-    def _init_fs(self, fs_path, prefix):
-        def init(rank, nodes, role):
+    def _init_fs(self, fs_path: str, prefix: str) -> None:
+        def init(rank: int, nodes: int, role: Literal[1, 2, 3, 4, 5]) -> Gloo:
             gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
@@ -157,8 +163,10 @@ class Gloo:
             gloo = init(rank, nodes, "ALL")
             self._nodes_comm = gloo
 
-    def _init_dfs(self, dfs_name, dfs_ugi, dfs_path, prefix):
-        def init(rank, nodes, role):
+    def _init_dfs(
+        self, dfs_name: str, dfs_ugi: str, dfs_path: str, prefix: str
+    ) -> None:
+        def init(rank: int, nodes: int, role: Literal[1, 2, 3, 4, 5]) -> Gloo:
             gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
@@ -185,7 +193,9 @@ class Gloo:
             gloo = init(rank, nodes, "ALL")
             self._nodes_comm = gloo
 
-    def _init_http(self, ip, port, prefix, start_http_server, http_server_d):
+    def _init_http(
+        self, ip: str, port: Any | int, prefix, start_http_server, http_server_d
+    ):
         def __start_kv_server(http_server_d, size_d):
             print(f"start http_server: {port}, {size_d}")
             from paddle.distributed.fleet.utils.http_server import KVServer
@@ -218,7 +228,7 @@ class Gloo:
             _http_server.start()
             return _http_server
 
-        def init(rank, nodes, role):
+        def init(rank: int, nodes: int, role: Literal[1, 2, 3, 4, 5]):
             gloo = core.Gloo()
             gloo.set_rank(rank)
             gloo.set_size(nodes)
@@ -253,7 +263,7 @@ class Gloo:
             http_server_d["running"] = False
             http_server.join()
 
-    def _get_rank_nodes(self, role):
+    def _get_rank_nodes(self, role: Literal[1, 2, 3, 4, 5]) -> tuple[int, int]:
         nodes = 0
         rank = -1
 
@@ -321,7 +331,7 @@ class Gloo:
                 return item.split(":")[1].strip()
         return "lo"
 
-    def barrier(self, comm_world):
+    def barrier(self, comm_world: str) -> None:
         """
         dummy barrier, do nothing
         """
@@ -339,7 +349,9 @@ class Gloo:
         else:
             self._nodes_comm.barrier()
 
-    def all_reduce(self, input, mode="sum", comm_world="worker"):
+    def all_reduce(
+        self, input: Any, mode: str = "sum", comm_world: str = "worker"
+    ) -> None | Any:
         if not self._is_initialized:
             warnings.warn(self._err_init)
             return input
@@ -363,7 +375,7 @@ class Gloo:
         output = np.array(ans).reshape(input_shape)
         return output
 
-    def all_gather(self, input, comm_world="worker"):
+    def all_gather(self, input: Any, comm_world: str = "worker") -> None | Any:
         """
         dummy all gather, do nothing
         Args:
@@ -402,19 +414,19 @@ class RoleMakerBase:
         self._role = None
         self._current_id = -1
 
-    def _is_worker(self):
+    def _is_worker(self) -> None:
         """
         return is_worker() of current process
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _is_server(self):
+    def _is_server(self) -> None:
         """
         return is_server() of current process
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _is_first_worker(self):
+    def _is_first_worker(self) -> None:
         """
         Check whether the node is the first instance of worker.
         Returns:
@@ -423,7 +435,7 @@ class RoleMakerBase:
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _worker_num(self):
+    def _worker_num(self) -> None:
         """
         Get current total worker number.
 
@@ -432,7 +444,7 @@ class RoleMakerBase:
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _server_num(self):
+    def _server_num(self) -> None:
         """
         Get current total server number.
 
@@ -441,7 +453,7 @@ class RoleMakerBase:
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _worker_index(self):
+    def _worker_index(self) -> None:
         """
         Get current worker id.
 
@@ -450,7 +462,7 @@ class RoleMakerBase:
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _server_index(self):
+    def _server_index(self) -> None:
         """
         Get current server id.
 
@@ -459,7 +471,7 @@ class RoleMakerBase:
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _role_id(self):
+    def _role_id(self) -> None:
         """
         Get current id.
 
@@ -468,7 +480,7 @@ class RoleMakerBase:
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _node_num(self):
+    def _node_num(self) -> None:
         """
         Get the training node number
         Returns:
@@ -476,25 +488,30 @@ class RoleMakerBase:
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def _get_trainer_endpoints(self):
+    def _get_trainer_endpoints(self) -> list:
         """
         return trainer endpoints
         """
         return self._worker_endpoints
 
-    def _get_pserver_endpoints(self):
+    def _get_pserver_endpoints(self) -> list:
         """
         return pserver endpoints
         """
         return self._server_endpoints
 
-    def to_string(self):
+    def to_string(self) -> str:
         return f"role: {self._role}, current_id: {self._current_id}, worker_endpoints: {self._worker_endpoints}, server_endpoints: {self._server_endpoints}"
 
-    def _all_gather(self, input, comm_world="worker"):
+    def _all_gather(self, input: list | np.array, comm_world: str = "worker"):
         print("warning: RoleMakerBase does not have all gather worker.")
 
-    def _all_reduce(self, input, mode="sum", comm_world="worker"):
+    def _all_reduce(
+        self,
+        input: list | np.array,
+        mode: str = "sum",
+        comm_world: str = "worker",
+    ) -> None:
         """
         Args:
             input(list/numpy.array): array of one dim
@@ -503,7 +520,7 @@ class RoleMakerBase:
         """
         print("warning: RoleMakerBase does not have all reduce worker.")
 
-    def _barrier(self, comm_world):
+    def _barrier(self, comm_world: str):
         """
         barrier between trainers if current role is TRAINER
         """
@@ -564,7 +581,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     """
 
-    def __init__(self, is_collective=False, **kwargs):
+    def __init__(self, is_collective: bool = False, **kwargs):
         super().__init__()
         self._is_collective = is_collective
         self._non_distributed = False
@@ -590,13 +607,15 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
         self._gloo = Gloo()  # gloo instance
 
-    def _barrier(self, comm_world):
+    def _barrier(self, comm_world: str) -> None:
         self._gloo.barrier(comm_world)
 
-    def _all_gather(self, input, comm_world="worker"):
+    def _all_gather(self, input: Any, comm_world: str = "worker") -> task:
         return self._gloo.all_gather(input, comm_world)
 
-    def _all_reduce(self, input, mode="sum", comm_world="worker"):
+    def _all_reduce(
+        self, input: Any, mode: str = "sum", comm_world: str = "worker"
+    ) -> task:
         return self._gloo.all_reduce(input, mode, comm_world)
 
     def _heter_device(self):
@@ -1219,7 +1238,9 @@ class UserDefinedRoleMaker(PaddleCloudRoleMaker):
             ...     server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
     """
 
-    def __init__(self, is_collective=False, init_gloo=False, **kwargs):
+    def __init__(
+        self, is_collective: bool = False, init_gloo: bool = False, **kwargs
+    ) -> None:
         super().__init__(
             is_collective=is_collective, init_gloo=init_gloo, **kwargs
         )

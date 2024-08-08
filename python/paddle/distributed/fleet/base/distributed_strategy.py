@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
+from typing import TYPE_CHECKING, Any
 
 import google.protobuf
 import google.protobuf.text_format
@@ -23,6 +26,9 @@ from paddle.base.framework import _global_flags
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.distributed.fleet.utils.log_util import logger
+
+if TYPE_CHECKING:
+    from paddle.static import BuildStrategy
 
 __all__ = []
 
@@ -41,7 +47,7 @@ def __non_auto_func_called__(func):
 is_strict_auto = wrap_decorator(__non_auto_func_called__)
 
 
-def get_repeated_msg_dict(msg):
+def get_repeated_msg_dict(msg: object) -> list:
     res_list = []
     for item in msg:
         fields = item.DESCRIPTOR.fields
@@ -58,7 +64,7 @@ def get_repeated_msg_dict(msg):
     return res_list
 
 
-def get_msg_dict(msg):
+def get_msg_dict(msg: object) -> dict:
     res_dict = {}
     fields = msg.DESCRIPTOR.fields
     for f in fields:
@@ -80,7 +86,7 @@ def get_msg_dict(msg):
     return res_dict
 
 
-def assign_repeated_msg(msg, config):
+def assign_repeated_msg(msg: object, config) -> None:
     for key in config:
         new_item = msg.add()
         fields = new_item.DESCRIPTOR.fields
@@ -103,7 +109,7 @@ def assign_repeated_msg(msg, config):
                     setattr(msg, f.name, config[f.name])
 
 
-def assign_configs_value(msg, config):
+def assign_configs_value(msg: object, config):
     fields = msg.DESCRIPTOR.fields
     for key in config:
         for f in fields:
@@ -126,7 +132,7 @@ def assign_configs_value(msg, config):
                     setattr(msg, f.name, config[f.name])
 
 
-def check_configs_key(msg, config, field_name):
+def check_configs_key(msg: object, config, field_name: str) -> None:
     key_list = msg.DESCRIPTOR.fields_by_name.keys()
     for key in config:
         assert key in key_list, f"key:{key} not in {field_name}"
@@ -213,14 +219,14 @@ class DistributedStrategy:
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: object, value: str) -> None:
         if self.__lock_attr and not hasattr(self, key):
             raise TypeError(
                 f"{key} is not a attribute of {self.__class__.__name__}"
             )
         object.__setattr__(self, key, value)
 
-    def save_to_prototxt(self, output):
+    def save_to_prototxt(self, output: Any) -> None:
         """
 
         Serialize current DistributedStrategy to string and save to output file
@@ -239,7 +245,7 @@ class DistributedStrategy:
         with open(output, "w") as fout:
             fout.write(str(self.strategy))
 
-    def load_from_prototxt(self, pb_file):
+    def load_from_prototxt(self, pb_file: Any) -> None:
         """
 
         Load from prototxt file for DistributedStrategy initialization
@@ -263,7 +269,7 @@ class DistributedStrategy:
             )
 
     @property
-    def build_strategy(self):
+    def build_strategy(self) -> BuildStrategy:
         """
 
         Configure BuildStrategy for DistributedStrategy
@@ -299,7 +305,7 @@ class DistributedStrategy:
 
     @build_strategy.setter
     @is_strict_auto
-    def build_strategy(self, strategy):
+    def build_strategy(self, strategy: object) -> None:
         fields = self.strategy.build_strategy.DESCRIPTOR.fields
         for f in fields:
             if f.label == 1 or f.label == 2:  # optional and required field
@@ -313,7 +319,7 @@ class DistributedStrategy:
                 )
 
     @property
-    def gradient_scale_configs(self):
+    def gradient_scale_configs(self) -> dict:
         """
 
         Set the strategy of gradient scale
@@ -332,7 +338,7 @@ class DistributedStrategy:
 
     @gradient_scale_configs.setter
     @is_strict_auto
-    def gradient_scale_configs(self, config):
+    def gradient_scale_configs(self, config: Any) -> None:
         check_configs_key(
             self.strategy.gradient_scale_configs,
             config,

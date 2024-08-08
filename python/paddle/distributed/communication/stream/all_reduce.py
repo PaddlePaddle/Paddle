@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops, framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
@@ -25,8 +29,20 @@ from paddle.distributed.communication.reduce import (
 )
 from paddle.framework import in_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
+    from paddle.distributed.communication.reduce import _ReduceOp
 
-def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
+
+def _all_reduce_in_dygraph(
+    tensor: Tensor,
+    op: _ReduceOp,
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+):
     op_type = _get_reduce_op(op, "allreduce")
 
     if use_calc_stream:
@@ -39,7 +55,13 @@ def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
     return task
 
 
-def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
+def _all_reduce_in_static_mode(
+    tensor: Tensor,
+    op: _ReduceOp,
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+):
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',
@@ -80,8 +102,12 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
 
 
 def all_reduce(
-    tensor, op=ReduceOp.SUM, group=None, sync_op=True, use_calc_stream=False
-):
+    tensor: Tensor,
+    op: _ReduceOp = ReduceOp.SUM,
+    group: Group = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Perform specific reduction (for example, sum, max) on inputs across devices.

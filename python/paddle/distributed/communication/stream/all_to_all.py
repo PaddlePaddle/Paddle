@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 import paddle.distributed as dist
 from paddle import framework
@@ -21,10 +25,19 @@ from paddle.distributed.communication.group import (
     _warn_cur_rank_not_in_group,
 )
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
+
 
 def _all_to_all_tensor_in_dygraph(
-    out_tensor, in_tensor, group, sync_op, use_calc_stream
-):
+    out_tensor: Tensor,
+    in_tensor: Tensor,
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+) -> task:
     if use_calc_stream:
         return group.process_group.all_to_all_tensor_on_calc_stream(
             in_tensor, out_tensor
@@ -38,8 +51,12 @@ def _all_to_all_tensor_in_dygraph(
 
 
 def _all_to_all_in_dygraph(
-    out_tensor_list, in_tensor_list, group, sync_op, use_calc_stream
-):
+    out_tensor_list: list[Tensor],
+    in_tensor_list: list[Tensor],
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+) -> task:
     if len(in_tensor_list) == 0:
         raise RuntimeError("The input tensor_list should not be empty.")
 
@@ -63,12 +80,12 @@ def _all_to_all_in_dygraph(
 
 
 def _all_to_all_in_static_mode(
-    out_tensor_or_tensor_list,
-    in_tensor_or_tensor_list,
-    group,
-    sync_op,
-    use_calc_stream,
-):
+    out_tensor_or_tensor_list: list[Tensor],
+    in_tensor_or_tensor_list: list[Tensor],
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+) -> task | None:
     op_type = 'alltoall'
     ring_id = 0 if group is None else group.id
     nranks = dist.get_world_size()
@@ -125,12 +142,12 @@ def _all_to_all_in_static_mode(
 
 
 def alltoall(
-    out_tensor_or_tensor_list,
-    in_tensor_or_tensor_list,
-    group=None,
-    sync_op=True,
-    use_calc_stream=False,
-):
+    out_tensor_or_tensor_list: list[Tensor],
+    in_tensor_or_tensor_list: list[Tensor],
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Scatter a tensor (or a tensor list) across devices and gather outputs to another tensor (or a tensor list, respectively).
@@ -221,14 +238,14 @@ def alltoall(
 
 
 def _alltoall_single_in_dygraph(
-    out_tensor,
-    in_tensor,
-    out_split_sizes,
-    in_split_sizes,
-    group,
-    sync_op,
-    use_calc_stream,
-):
+    out_tensor: Tensor,
+    in_tensor: Tensor,
+    out_split_sizes: list[int] | None,
+    in_split_sizes: list[int] | None,
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+) -> task:
     world_size = dist.get_world_size(group)
     if out_split_sizes is None:
         out_split_sizes = [
@@ -254,14 +271,14 @@ def _alltoall_single_in_dygraph(
 
 
 def alltoall_single(
-    out_tensor,
-    in_tensor,
-    out_split_sizes=None,
-    in_split_sizes=None,
-    group=None,
-    sync_op=True,
-    use_calc_stream=False,
-):
+    out_tensor: Tensor,
+    in_tensor: Tensor,
+    out_split_sizes: list[int] | None = None,
+    in_split_sizes: list[int] | None = None,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Split and Scatter the splitted input tensor to the out tensor across devices.

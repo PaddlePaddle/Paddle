@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle.incubate.nn import functional as F
 from paddle.nn import Layer
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base import ParamAttr
 
 
 class FusedEcMoe(Layer):
@@ -61,13 +69,13 @@ class FusedEcMoe(Layer):
 
     def __init__(
         self,
-        hidden_size,
-        inter_size,
-        num_experts,
-        act_type,
-        weight_attr=None,
-        bias_attr=None,
-    ):
+        hidden_size: int,
+        inter_size: int,
+        num_experts: int,
+        act_type: str,
+        weight_attr: ParamAttr | None = None,
+        bias_attr: ParamAttr | bool | None = None,
+    ) -> None:
         super().__init__()
         weight0_shape = [num_experts, hidden_size, inter_size]
         bias0_shape = [num_experts, 1, inter_size]
@@ -91,7 +99,7 @@ class FusedEcMoe(Layer):
         if self.act_type not in ["gelu", "relu"]:
             raise NotImplementedError("Currently only support `gelu`, `relu`. ")
 
-    def forward(self, x, gate):
+    def forward(self, x: Tensor, gate: Tensor) -> Tensor:
         return F.fused_ec_moe(
             x,
             gate,
