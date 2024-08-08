@@ -17,9 +17,9 @@ import importlib
 import json
 import os
 import socket
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 from warnings import warn
 
 import paddle
