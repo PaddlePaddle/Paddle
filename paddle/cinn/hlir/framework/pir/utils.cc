@@ -34,7 +34,6 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
-#include "paddle/common/enforce.h"
 
 PD_DECLARE_string(allow_cinn_ops);
 PD_DECLARE_string(deny_cinn_ops);
@@ -646,7 +645,9 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
   PADDLE_ENFORCE_EQ(
       op_pattern_dict.Find(cinn_op),
       true,
-      phi::errors::PreconditionNotMet("The CINN operation pattern for %s must be found in the dictionary.", cinn_op->c_str()));
+      phi::errors::PreconditionNotMet(
+          "The CINN operation pattern for %s must be found in the dictionary.",
+          cinn_op->c_str()));
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
     // As binary op was defined as broadcast, actually it should be
