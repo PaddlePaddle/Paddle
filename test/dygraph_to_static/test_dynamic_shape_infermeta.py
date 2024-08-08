@@ -15,7 +15,10 @@
 from __future__ import annotations
 
 import unittest
-from typing import Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 import numpy as np
 from dygraph_to_static_utils import (

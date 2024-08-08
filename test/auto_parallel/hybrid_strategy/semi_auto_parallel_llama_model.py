@@ -14,7 +14,7 @@
 
 
 import math
-from typing import Optional, Tuple
+from typing import Optional
 
 import paddle
 import paddle.distributed as dist
@@ -172,14 +172,14 @@ class LlamaAttentionAuto(nn.Layer):
     def forward(
         self,
         hidden_states,
-        position_ids: Optional[Tuple[paddle.Tensor]] = None,
-        past_key_value: Optional[Tuple[paddle.Tensor]] = None,
+        position_ids: Optional[tuple[paddle.Tensor]] = None,
+        past_key_value: Optional[tuple[paddle.Tensor]] = None,
         attention_mask: Optional[paddle.Tensor] = None,
         output_attentions: bool = False,
         use_cache: bool = False,
         alibi: Optional[paddle.Tensor] = None,
-    ) -> Tuple[
-        paddle.Tensor, Optional[paddle.Tensor], Optional[Tuple[paddle.Tensor]]
+    ) -> tuple[
+        paddle.Tensor, Optional[paddle.Tensor], Optional[tuple[paddle.Tensor]]
     ]:
         """Input shape: Batch x Time x Channel"""
         # [bs, seq_len, num_head * head_dim] -> [seq_len / n, bs, num_head * head_dim] (n is model parallelism)
@@ -385,10 +385,10 @@ class LlamaDecoderLayerAuto(nn.Layer):
     def forward(
         self,
         hidden_states: paddle.Tensor,
-        position_ids: Optional[Tuple[paddle.Tensor]] = None,
+        position_ids: Optional[tuple[paddle.Tensor]] = None,
         attention_mask: Optional[paddle.Tensor] = None,
         output_attentions: Optional[bool] = False,
-        past_key_value: Optional[Tuple[paddle.Tensor]] = None,
+        past_key_value: Optional[tuple[paddle.Tensor]] = None,
         use_cache: Optional[bool] = False,
         alibi: Optional[paddle.Tensor] = None,
     ):

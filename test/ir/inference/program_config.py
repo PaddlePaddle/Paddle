@@ -15,7 +15,7 @@
 import copy
 import enum
 import os
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 
@@ -49,9 +49,9 @@ class TensorConfig:
 
     def __init__(
         self,
-        lod: Optional[List[List[int]]] = None,
+        lod: Optional[list[list[int]]] = None,
         data_gen: Optional[Callable[..., np.array]] = None,
-        shape: Optional[List[List[int]]] = None,
+        shape: Optional[list[list[int]]] = None,
     ):
         '''
         shape: The shape of the tensor.
@@ -93,11 +93,11 @@ class OpConfig:
     def __init__(
         self,
         type: str,
-        inputs: Dict[str, List[str]],
-        outputs: Dict[str, List[str]],
-        attrs: Dict[str, Any] = None,
-        outputs_var_type: Dict[str, VarType] = None,
-        outputs_dtype: Dict[str, np.dtype] = None,
+        inputs: dict[str, list[str]],
+        outputs: dict[str, list[str]],
+        attrs: dict[str, Any] = None,
+        outputs_var_type: dict[str, VarType] = None,
+        outputs_dtype: dict[str, np.dtype] = None,
         **kwargs,
     ):
         self.type = type
@@ -152,11 +152,11 @@ class BlockConfig:
 
     def __init__(
         self,
-        ops: List[OpConfig],
-        vars: List[str],
-        vars_dtype: Dict[str, np.dtype] = None,
-        vars_var_type: Dict[str, VarType] = None,
-        vars_lod_level: Dict[str, int] = None,
+        ops: list[OpConfig],
+        vars: list[str],
+        vars_dtype: dict[str, np.dtype] = None,
+        vars_var_type: dict[str, VarType] = None,
+        vars_lod_level: dict[str, int] = None,
     ):
         self.ops = ops
         self.vars = vars
@@ -248,17 +248,17 @@ class ProgramConfig:
     '''A config builder for generating a Program.
     input_type : (np.dtype, default=None), the inputs will be casted to input_type before
                 fed into TRT engine. If set to None, no casting will be performed.
-    no_cast_list : (List[str], default=None), specify the tensors that will skip the casting
+    no_cast_list : (list[str], default=None), specify the tensors that will skip the casting
     '''
 
     def __init__(
         self,
-        ops: List[OpConfig],
-        weights: Dict[str, TensorConfig],
-        inputs: Dict[str, TensorConfig],
-        outputs: List[str],
+        ops: list[OpConfig],
+        weights: dict[str, TensorConfig],
+        inputs: dict[str, TensorConfig],
+        outputs: list[str],
         input_type: Optional[np.dtype] = None,
-        no_cast_list: Optional[List[str]] = None,
+        no_cast_list: Optional[list[str]] = None,
     ):
         self.ops = ops
         # if no weight need to save, we create a place_holder to help serialize params.
@@ -306,7 +306,7 @@ class ProgramConfig:
 
         self.input_type = _type
 
-    def get_feed_data(self) -> Dict[str, Dict[str, Any]]:
+    def get_feed_data(self) -> dict[str, dict[str, Any]]:
         feed_data = {}
         for name, tensor_config in self.inputs.items():
             data = tensor_config.data

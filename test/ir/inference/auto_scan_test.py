@@ -19,7 +19,7 @@ import os
 import shutil
 import time
 import unittest
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import hypothesis
 import hypothesis.strategies as st
@@ -128,7 +128,7 @@ class AutoScanTest(unittest.TestCase):
 
     def run_test_config(
         self, model, params, prog_config, pred_config, feed_data
-    ) -> Dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:
         """
         Test a single case.
         """
@@ -157,8 +157,8 @@ class AutoScanTest(unittest.TestCase):
         self,
         atol: float,
         rtol: float,
-        tensor: Dict[str, np.array],
-        baseline: Dict[str, np.array],
+        tensor: dict[str, np.array],
+        baseline: dict[str, np.array],
     ):
         for key, arr in tensor.items():
             self.assertTrue(
@@ -179,8 +179,8 @@ class AutoScanTest(unittest.TestCase):
         raise NotImplementedError
 
     def generate_op_config(
-        self, ops_config: List[Dict[str, Any]]
-    ) -> List[OpConfig]:
+        self, ops_config: list[dict[str, Any]]
+    ) -> list[OpConfig]:
         ops = []
         for i in range(len(ops_config)):
             op_config = ops_config[i]
@@ -224,7 +224,7 @@ class AutoScanTest(unittest.TestCase):
     @abc.abstractmethod
     def create_inference_config(
         self,
-        passes: Optional[List[str]] = None,
+        passes: Optional[list[str]] = None,
         use_gpu: bool = False,
         use_mkldnn: bool = False,
         use_xpu: bool = False,
@@ -270,7 +270,7 @@ class MkldnnAutoScanTest(AutoScanTest):
                     "data": tensor_config.data,
                     "lod": tensor_config.lod,
                 }
-            results: List[Dict[str, np.ndarray]] = []
+            results: list[dict[str, np.ndarray]] = []
 
             # baseline: cpu no ir_optim run
             base_config = self.create_inference_config(ir_optim=False)
@@ -349,7 +349,7 @@ class PirMkldnnAutoScanTest(MkldnnAutoScanTest):
 
     def run_test_config(
         self, model, params, prog_config, pred_config, feed_data
-    ) -> Dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:
         """
         Test a single case.
         """
@@ -693,8 +693,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
         self,
         atol: float,
         rtol: float,
-        tensor: Dict[str, np.array],
-        baseline: Dict[str, np.array],
+        tensor: dict[str, np.array],
+        baseline: dict[str, np.array],
     ):
         for key, arr in tensor.items():
             self.assertEqual(
@@ -900,7 +900,7 @@ class CutlassAutoScanTest(AutoScanTest):
                     'data': tensor_config.data,
                     'lod': tensor_config.lod,
                 }
-            results: List[Dict[str, np.ndarray]] = []
+            results: list[dict[str, np.ndarray]] = []
 
             # baseline: gpu no ir_optim run
             base_config = self.create_inference_config(
