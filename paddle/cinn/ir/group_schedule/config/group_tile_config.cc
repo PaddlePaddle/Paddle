@@ -97,7 +97,7 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
   base_info->shared_var_names = group_info->shared_var_names;
   base_info->direct_output_var_names = group_info->direct_output_var_names;
   base_info->data_rank = group_info->data_space.size();
-  base_info->loop_transform_map = group_info->loop_transform_map;
+  base_info->loop_strides = group_info->loop_strides;
 
   std::set<int64_t> reduce_dim_loc;
   for (int64_t dim : group_info->reduce_axis) {

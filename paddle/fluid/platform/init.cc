@@ -53,10 +53,10 @@ limitations under the License. */
 
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/memory.h"
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))

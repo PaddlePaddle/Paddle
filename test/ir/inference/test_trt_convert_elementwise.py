@@ -81,9 +81,11 @@ class TrtConvertElementwiseTestOneInputSpecialCase0(TrtLayerAutoScanTest):
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
                                 "outputs_dtype": {
-                                    "output_data": np.float32
-                                    if op_type != "elementwise_floordiv"
-                                    else np.int32
+                                    "output_data": (
+                                        np.float32
+                                        if op_type != "elementwise_floordiv"
+                                        else np.int32
+                                    )
                                 },
                             }
                         ]
@@ -224,9 +226,11 @@ class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
                             "outputs_dtype": {
-                                "output_data": np.float32
-                                if op_type != "elementwise_floordiv"
-                                else np.int32
+                                "output_data": (
+                                    np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                )
                             },
                         }
                     ]
@@ -367,9 +371,11 @@ class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
                                 "outputs_dtype": {
-                                    "output_data": np.float32
-                                    if op_type != "elementwise_floordiv"
-                                    else np.int32
+                                    "output_data": (
+                                        np.float32
+                                        if op_type != "elementwise_floordiv"
+                                        else np.int32
+                                    )
                                 },
                             }
                         ]
@@ -513,9 +519,11 @@ class TrtConvertElementwiseTestTwoInputWithoutBroadcast(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
                             "outputs_dtype": {
-                                "output_data": np.float32
-                                if op_type != "elementwise_floordiv"
-                                else np.int32
+                                "output_data": (
+                                    np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                )
                             },
                         }
                     ]
@@ -719,9 +727,11 @@ class TrtConvertElementwiseTestTwoInputWithBroadcast(TrtLayerAutoScanTest):
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
                                 "outputs_dtype": {
-                                    "output_data": np.float32
-                                    if op_type != "elementwise_floordiv"
-                                    else np.int32
+                                    "output_data": (
+                                        np.float32
+                                        if op_type != "elementwise_floordiv"
+                                        else np.int32
+                                    )
                                 },
                             }
                         ]
@@ -872,9 +882,11 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
                                 "outputs_dtype": {
-                                    "output_data": np.float32
-                                    if op_type != "elementwise_floordiv"
-                                    else np.int32
+                                    "output_data": (
+                                        np.float32
+                                        if op_type != "elementwise_floordiv"
+                                        else np.int32
+                                    )
                                 },
                             }
                         ]
@@ -997,9 +1009,11 @@ class TrtConvertElementwiseTestTwoInputSkipCase(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
                             "outputs_dtype": {
-                                "output_data": np.int32
-                                if op_type == "elementwise_pow"
-                                else np.bool_
+                                "output_data": (
+                                    np.int32
+                                    if op_type == "elementwise_pow"
+                                    else np.bool_
+                                )
                             },
                         }
                     ]
@@ -1301,9 +1315,11 @@ class TrtConvertElementwise0D(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
                             "outputs_dtype": {
-                                "output_data": np.float32
-                                if op_type != "elementwise_floordiv"
-                                else np.int32
+                                "output_data": (
+                                    np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                )
                             },
                         }
                     ]

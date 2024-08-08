@@ -28,9 +28,9 @@ limitations under the License. */
 #include "paddle/phi/core/generator.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/memory/allocation/cuda_device_context_allocator.h"
 #endif
 
 namespace paddle {

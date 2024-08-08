@@ -1651,18 +1651,22 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
 std::pair<std::vector<pir::Value>, std::unordered_set<pir::Value>>
 AnalysisMiddleVariable(const Program &program,
                        const std::vector<pir::Value> &forward_inputs,
+                       const std::vector<pir::Value> &backward_outputs,
                        const std::vector<int> &forward_range,
                        const std::vector<int> &backward_range) {
   std::vector<pir::Value> middle_values;
 
-  std::unordered_set<pir::Value> backward_inputs;
+  std::unordered_set<pir::Value> backward_used_values;
   std::unordered_set<pir::Value> x_or_param(forward_inputs.begin(),
                                             forward_inputs.end());
+  for (const auto &value : backward_outputs) {
+    backward_used_values.insert(value);
+  }
   range_block_do(
-      program.block(), backward_range, [&backward_inputs](Operation *op) {
+      program.block(), backward_range, [&backward_used_values](Operation *op) {
         pir::Walk(op, [&](Operation *inner_op) {
           for (auto &t : inner_op->operands()) {
-            backward_inputs.insert(t.source());
+            backward_used_values.insert(t.source());
           }
         });
       });
@@ -1670,17 +1674,17 @@ AnalysisMiddleVariable(const Program &program,
   range_block_do(
       program.block(),
       forward_range,
-      [&middle_values, &backward_inputs, &x_or_param](Operation *op) {
+      [&middle_values, &backward_used_values, &x_or_param](Operation *op) {
         pir::Walk(op, [&](Operation *inner_op) {
           for (auto &t : inner_op->results()) {
             auto v = Value(t.Value::impl());
-            if (backward_inputs.count(v) && !x_or_param.count(v)) {
+            if (backward_used_values.count(v) && !x_or_param.count(v)) {
               middle_values.push_back(v);
             }
           }
         });
       });
-  return std::make_pair(middle_values, backward_inputs);
+  return std::make_pair(middle_values, backward_used_values);
 }
 
 void mapping_value(const std::vector<pir::Value> &origin,
@@ -1828,6 +1832,10 @@ SplitedResult SplitForwardBackward(
     forward_in_out_values.insert(
         forward_in_out_values.end(), v->begin(), v->end());
   }
+  std::vector<pir::Value> backward_out_values;
+  for (auto &v : std::vector({&forward_inputs_grads, &forward_params_grads})) {
+    backward_out_values.insert(backward_out_values.end(), v->begin(), v->end());
+  }
 
   std::vector<pir::Value> fx, fp, fm, fo, bx, bp, bm, bo_g, bx_g, bp_g, bo;
   std::vector<pir::Value> no_need_buffer_values;
@@ -1835,9 +1843,13 @@ SplitedResult SplitForwardBackward(
   auto forward_program = std::make_shared<Program>(ctx);
   auto backward_program = std::make_shared<Program>(ctx);
   std::vector<pir::Value> middle_values;
-  std::unordered_set<pir::Value> backward_inputs;
-  std::tie(middle_values, backward_inputs) = AnalysisMiddleVariable(
-      program, forward_in_out_values, forward_range, backward_range);
+  std::unordered_set<pir::Value> backward_used_values;
+  std::tie(middle_values, backward_used_values) =
+      AnalysisMiddleVariable(program,
+                             forward_in_out_values,
+                             backward_out_values,
+                             forward_range,
+                             backward_range);
 
   pir::Block &backward_block = *backward_program->block();
   bool has_backward = (backward_range[1] > backward_range[0]);
@@ -1897,19 +1909,20 @@ SplitedResult SplitForwardBackward(
       create_output_fn(forward_value_map, forward_program, "output_"));
 
   auto create_kwarg_fn = [&backward_block,
-                          &backward_inputs,
+                          &backward_used_values,
                           &backward_value_map,
                           &forward_value_map](const std::string &prefix) {
     auto counter = std::make_shared<size_t>(0);
     return [&backward_block,
-            &backward_inputs,
+            &backward_used_values,
             &backward_value_map,
             &forward_value_map,
             &prefix,
             counter](const pir::Value &v) {
       // NOTE(SigureMo): Ensure counter++ executed in each iteration.
       auto default_name = prefix + std::to_string((*counter)++);
-      if (v && !backward_value_map.count(v) && (backward_inputs.count(v))) {
+      if (v && !backward_value_map.count(v) &&
+          (backward_used_values.count(v))) {
         backward_value_map[v] = backward_block.AddKwarg(
             name_analysis::TryGetValueFirstName(forward_value_map[v])
                 .value_or(default_name),

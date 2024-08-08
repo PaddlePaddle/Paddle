@@ -68,9 +68,11 @@ class TestReshardRToSCrossMesh:
 
         np.testing.assert_equal(
             out._local_value().numpy(),
-            out_expected_local_tensor_list[0].numpy()
-            if dist.get_rank() == 1
-            else out_expected_local_tensor_list[1].numpy(),
+            (
+                out_expected_local_tensor_list[0].numpy()
+                if dist.get_rank() == 1
+                else out_expected_local_tensor_list[1].numpy()
+            ),
         )
 
         assert np.equal(out.shape, input_tensor.shape).all()
