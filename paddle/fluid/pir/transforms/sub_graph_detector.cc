@@ -360,31 +360,33 @@ struct UnionFindSet {
 struct LoopDetectionMapping {
   std::unordered_map<SubGraphPtr, std::unordered_map<SubGraphPtr, int>>
       has_loop;
-  std::set<SubGraphPtr> all_nodes;
+  std::unordered_set<SubGraphPtr> all_nodes;
   LoopDetectionMapping(
       const std::unordered_map<pir::Operation*,
                                std::unordered_map<pir::Operation*, bool>>&
           exist_loop,
-      const UnionFindSet& uf_set) {
+      UnionFindSet* uf_set) {
     for (auto& item : exist_loop) {
-      all_nodes.insert(uf_set.GetSetFromOp(item.first));
+      all_nodes.insert(uf_set->GetSetFromOp(item.first));
     }
     for (auto& item : exist_loop) {
       for (auto& inner_item : item.second) {
-        SubGraphPtr first = uf_set.GetSetFromOp(item.first);
-        SubGraphPtr second = uf_set.GetSetFromOp(inner_item.first);
+        SubGraphPtr first = uf_set->GetSetFromOp(item.first);
+        SubGraphPtr second = uf_set->GetSetFromOp(inner_item.first);
         has_loop[first][second] = inner_item.second;
         has_loop[second][first] = inner_item.second;
       }
     }
   }
-  void MergeNodes(SubGraphPtr first, SubGraphPtr second, SubGraphPtr merged) {
+  void MergeNodes(const SubGraphPtr& first,
+                  const SubGraphPtr& second,
+                  const SubGraphPtr& merged) {
     Substitude(first, merged);
     Substitude(second, merged);
     if (first != merged) Remove(first);
     if (second != merged) Remove(second);
   }
-  void Substitude(SubGraphPtr old_node, SubGraphPtr new_node) {
+  void Substitude(const SubGraphPtr& old_node, const SubGraphPtr& new_node) {
     VLOG(4) << "Start Substitude: " << old_node.get() << " to "
             << new_node.get();
     if (old_node == new_node) return;
@@ -396,9 +398,9 @@ struct LoopDetectionMapping {
           has_loop[item][new_node] || has_loop[item][old_node];
     }
   }
-  void Remove(SubGraphPtr node) { all_nodes.erase(node); }
+  void Remove(const SubGraphPtr& node) { all_nodes.erase(node); }
 
-  bool CanFuse(SubGraphPtr first, SubGraphPtr second) {
+  bool CanFuse(const SubGraphPtr& first, const SubGraphPtr& second) {
     return has_loop[first][second] == 0;
   }
 };
@@ -484,36 +486,6 @@ static GraphSet DownstreamSet(UnionFindSet& union_set,  // NOLINT
   return GetConsumerOpsRecursive(graph);
 }
 
-static bool HasLoopAfterMerge(UnionFindSet& union_find,  // NOLINT
-                              const SubGraphPtr& upstream,
-                              const SubGraphPtr& downstream) {
-  VLOG(4) << "Try Merge: " << upstream.get() << " + " << downstream.get();
-  upstream->Print();
-  downstream->Print();
-  const auto& upstream_set =
-      SetDifference(Union(UpstreamSet(union_find, upstream),
-                          UpstreamSet(union_find, downstream)),
-                    {upstream, downstream});
-  VLOG(4) << "Upstream set is: ";
-  for (const auto& up : upstream_set) {
-    VLOG(4) << "    " << up.get();
-  }
-  const auto& downstream_set =
-      SetDifference(Union(DownstreamSet(union_find, upstream),
-                          DownstreamSet(union_find, downstream)),
-                    {upstream, downstream});
-  VLOG(4) << "Downstream set is: ";
-  for (const auto& up : downstream_set) {
-    VLOG(4) << "    " << up.get();
-  }
-
-  VLOG(4) << "Interset set is: ";
-  for (const auto& up : Intersect(upstream_set, downstream_set)) {
-    up->Print();
-  }
-  return !Intersect(upstream_set, downstream_set).empty();
-}
-
 static void VLOG_LINES(const std::string& str) {
   const auto& lines = cinn::utils::Split(str, "\n");
   for (const auto& line : lines) {
@@ -571,7 +543,7 @@ void SubgraphDetector::DoOpFusion() {
   VLOG(4) << "Do Op Fusion with sorted_ops: " << sort_ops_.size();
   VLOG_LINES(OpsDebugStr(sort_ops_));
   SetCanApplyFusionMap();
-  LoopDetectionMapping loop_detector(can_apply_fusion_map_, union_find);
+  LoopDetectionMapping loop_detector(can_apply_fusion_map_, &union_find);
   for (auto* op : sort_ops_) {
     auto producers = GetProducerOpsReverseSort(op, op2id_);
     for (auto* producer : producers) {
