@@ -259,9 +259,7 @@ class LKJCholesky(distribution.Distribution):
 
         # Fill diagonal elements; clamp for numerical stability
         eps = paddle.finfo(w.dtype).tiny
-        diag_elems = paddle.clip(
-            1 - paddle.sum(w**2, axis=-1), min=eps
-        ).sqrt()
+        diag_elems = paddle.clip(1 - paddle.sum(w**2, axis=-1), min=eps).sqrt()
 
         w += paddle.diag_embed(diag_elems)
         return w

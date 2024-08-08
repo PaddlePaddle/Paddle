@@ -45,8 +45,8 @@ struct LowerFunctionCallBindVarsMutator : public ir::IRMutator<> {
       PADDLE_ENFORCE_NE(
           it,
           m_->functions.end(),
-          phi::errors::NotFound("The called function [%s] does not exist.",
-                                target));
+          ::common::errors::NotFound("The called function [%s] does not exist.",
+                                     target));
 
       std::vector<Expr> extra_var_args;
 
@@ -73,9 +73,9 @@ struct LowerFunctionCallBindVarsMutator : public ir::IRMutator<> {
 }  // namespace
 
 void LowerFunctionCallBindVars(Expr* m) {
-  PADDLE_ENFORCE_NOT_NULL(
-      m->as_module(),
-      phi::errors::InvalidArgument("The provided expression is not a module."));
+  PADDLE_ENFORCE_NOT_NULL(m->as_module(),
+                          ::common::errors::InvalidArgument(
+                              "The provided expression is not a module."));
   LowerFunctionCallBindVarsMutator()(m);
 }
 

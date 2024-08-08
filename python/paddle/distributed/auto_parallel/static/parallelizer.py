@@ -350,16 +350,16 @@ class AutoParallelizer:
                     tensors_dist_attr[key] = dist_tensor.dist_attr
                 saved_dist_context["ops_dist_attr"] = ops_dist_attr
                 saved_dist_context["tensors_dist_attr"] = tensors_dist_attr
-                saved_dist_context[
-                    "process_meshes"
-                ] = dist_context._process_meshes
+                saved_dist_context["process_meshes"] = (
+                    dist_context._process_meshes
+                )
                 with open(
                     searched_dist_context_path, "wb"
                 ) as dist_context_file:
                     pickle.dump(saved_dist_context, dist_context_file)
-                    os.environ[
-                        'PADDLE_SEARCHED_DIST_CONTEXT_PATH'
-                    ] = searched_dist_context_path
+                    os.environ['PADDLE_SEARCHED_DIST_CONTEXT_PATH'] = (
+                        searched_dist_context_path
+                    )
                     logging.info(
                         f"End serialize searched dist attr to {searched_dist_context_path}"
                     )

@@ -358,7 +358,7 @@ class VariableBase:
         """
         Abstract method to get the value of the variable
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_py_type(self):
         """
