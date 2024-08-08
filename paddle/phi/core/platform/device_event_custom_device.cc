@@ -14,9 +14,9 @@
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 
-#include "paddle/fluid/platform/device/custom/custom_device_resource_pool.h"
-#include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/core/platform/device/custom/custom_device_resource_pool.h"
+#include "paddle/phi/core/platform/device_event_base.h"
 namespace paddle {
 namespace platform {
 struct CustomDeviceEventWrapper {
