@@ -1076,8 +1076,8 @@ bool LuOpInferSymbolicShape(pir::Operation *op,
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
-  const auto &m = x_dims[x_rank - 1];
-  const auto &n = x_dims[x_rank - 2];
+  const auto &m = x_shape[x_rank - 1];
+  const auto &n = x_shape[x_rank - 2];
   symbol::DimExprBuilder builder;
   symbol::DimExpr min_mn = builder.Min(m, n);
 
@@ -1099,7 +1099,7 @@ bool LuOpInferSymbolicShape(pir::Operation *op,
   if (pivot) {
     std::vector<symbol::DimExpr> pivots_shape(x_shape.begin(),
                                               x_shape.begin() + x_rank - 1);
-    pivots_dims[x_rank - 2] = min_mn;
+    pivots_shape[x_rank - 2] = min_mn;
     infer_context->SetShapeOrDataForValue(
         op->result(1),
         symbol::ShapeOrDataDimExprs{
