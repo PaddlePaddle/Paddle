@@ -360,6 +360,11 @@ class InferenceEngine:
             self.save_model_dir, "_optimized.pdiparams"
         )
 
+        if self.enable_new_ir:
+            optimized_model_file = os.path.join(
+                self.save_model_dir, "_optimized.json"
+            )
+
         if self.enable_save_optim_model and os.path.exists(
             optimized_model_file
         ):
@@ -555,8 +560,8 @@ def inference(
         enable_new_ir(bool, optional): Whether to enable new IR. Default is True.
         exp_enable_use_cutlass(bool, optional): Whether to enable use cutlass. Default is False.
         delete_pass_lists(list[str], optional): The list of pass names to delete. Default is None.
-        enable_save_optim_model(bool, optional): When is True, the optimized model after pass is saved,
-            when user run in the next time, the optimized model will be loaded and used directly without optimization again.
+        enable_save_optim_model(bool, optional): When is True, the optimized model after running pass is saved,
+            when user run program in the next time, the optimized model will be loaded and used directly without running pass again.
             This can save loading time. Default is False.
 
     Returns:
@@ -663,13 +668,21 @@ def inference(
                 old_optimized_model_file = os.path.join(
                     infer_engine.save_model_dir, "_optimized.pdmodel"
                 )
+                old_new_ir_optimized_model_file = os.path.join(
+                    infer_engine.save_model_dir, "_optimized.json"
+                )
+
                 old_optimized_params_file = os.path.join(
                     infer_engine.save_model_dir, "_optimized.pdiparams"
                 )
+
                 if os.path.exists(old_optimized_model_file):
                     os.remove(old_optimized_model_file)
                 if os.path.exists(old_optimized_params_file):
                     os.remove(old_optimized_params_file)
+                if os.path.exists(old_new_ir_optimized_model_file):
+                    os.remove(old_new_ir_optimized_model_file)
+
             else:
                 # we need register some triton ops.
                 register_triton_custom_ops(infer_engine.save_model_dir)
