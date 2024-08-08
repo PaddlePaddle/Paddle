@@ -32,6 +32,7 @@ from ..base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from ..base.layer_helper import LayerHelper
 from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
@@ -263,7 +264,7 @@ class AdamW(Optimizer):
         # to train. These tensors are called accumulators.
         # {accum_name : { parameter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: {})
-        self.helper = None
+        self.helper = LayerHelper(self.__class__.__name__)
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = {}
@@ -305,6 +306,23 @@ class AdamW(Optimizer):
         self._already_create_accumulator = set()
 
         self._create_master_grad_states()
+
+        global_block = framework.default_main_program().global_block()
+        if not isinstance(self._param_groups[0], dict):
+            params = []
+            for param in self._param_groups:
+                if param.stop_gradient:
+                    continue
+                params.append(param)
+            self._create_accumulators(global_block, params)
+        else:
+            for idx, param_group in enumerate(self._param_groups):
+                params = []
+                for param in param_group['params']:
+                    if param.stop_gradient:
+                        continue
+                    params.append(param)
+                self._create_accumulators(global_block, params)
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
