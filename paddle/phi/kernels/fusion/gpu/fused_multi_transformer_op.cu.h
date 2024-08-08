@@ -1093,9 +1093,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
   }
 
   exp_sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], exp_sum);
-  if (blockIdx.x == 1 && blockIdx.y == 0 && threadIdx.x == 0) {
-    // printf("\nblock exp_sum: %f", exp_sum);
-  }
   // Here store the max logit and exp_sum for rescale in reduce kernel.
   if (tid == 0) {
     float *max_logits_ptr = params.max_logits +
