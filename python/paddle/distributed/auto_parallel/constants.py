@@ -80,6 +80,7 @@ set_field_default_config(AMP, "custom_black_varnames", [])
 set_field_default_config(AMP, "use_fp16_guard", False)
 set_field_default_config(AMP, "use_bf16_guard", False)
 set_field_default_config(AMP, "use_master_grad", False)
+set_field_default_config(AMP, "use_promote", False)
 
 #########################################
 # sharding configuration
@@ -112,6 +113,7 @@ set_field_default_config(GRADIENT_MERGE, "avg", True)
 PIPELINE = "pipeline"
 set_field_default_config(PIPELINE, "enable", False)
 set_field_default_config(PIPELINE, "schedule_mode", "1F1B")
+set_field_default_config(PIPELINE, "pp_degree", 1)
 set_field_default_config(PIPELINE, "vpp_degree", 1)
 set_field_default_config(PIPELINE, "vpp_seg_method", "")
 set_field_default_config(PIPELINE, "micro_batch_size", 1)

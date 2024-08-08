@@ -182,8 +182,8 @@ fi
 
 HAS_MODIFIED_API_FW_BW_YAML=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi/ops/yaml/ops.yaml|paddle/phi/ops/yaml/backward.yaml" || true`
 if [ "${HAS_MODIFIED_API_FW_BW_YAML}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must be approved by zyfncg or heavyrain-lzy for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the begining of this two file.\n"
-    check_approval 1 zyfncg heavyrain-lzy
+    echo_line="You must be approved by zyfncg or heavyrain-lzy for paddle/phi/ops/yaml/ops.yaml or paddle/phi/ops/yaml/backward.yaml changes, which manage the generated code for the C++ OP. You can only change them according to the specification at the begining of this two file.\n Recommend you obtain approval from gongshaotian or Hongqing-work, if only modified the InferSymbolicShapeInterface interfaces in the YAML file.\n"
+    check_approval 1 zyfncg heavyrain-lzy gongshaotian Hongqing-work
 fi
 
 HAS_MODIFIED_PRIMITIVE_YAML=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/primitive/primitive.yaml" || true`
@@ -254,9 +254,9 @@ if [ "${HAS_MODIFIED_STATIC_BUILD}" != "" ] && [ "${GIT_PR_ID}" != ""]; then
 fi
 
 
-HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --diff-filter=A upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
+HAS_MODIFIED_ENFORCE_SYNTAX=`git diff --diff-filter=A upstream/$BRANCH | grep -E "IR_ENFORCE|CHECK|CHECK_EQ|CHECK_NE|CHECK_LT|CHECK_LE|CHECK_GE|CHECK_GT|LOG\(FATAL\)" || true`
 if [ "${HAS_MODIFIED_ENFORCE_SYNTAX}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, LOG(FATAL)', it is recommended to use PADDLE_ENFORCE as a replacement,see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\n"
+    echo_line="You must have one RD (rismeup1 or winter-wang) approval for using 'IR_ENFORCE, CHECK, CHECK_EQ, CHECK_NE, CHECK_LT, CHECK_LE, CHECK_GE, CHECK_GT, LOG(FATAL)', it is recommended to use PADDLE_ENFORCE as a replacement,see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\n"
     check_approval 1 risemeup1 winter-wang
 fi
 

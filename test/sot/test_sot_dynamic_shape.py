@@ -32,7 +32,7 @@ def dynamic_shape_input_func1(x):
 
 def dynamic_int_input_func1(x, n):
     x = paddle.reshape(x, [n, -1])
-    return (x + n) * 2 - 1, (-n + 1) * 2 - 1
+    return (x + n) * 2 - 1, (-n + 1) * 2 - 1, type(n) is int
 
 
 def dynamic_int_input_func2(x, n):

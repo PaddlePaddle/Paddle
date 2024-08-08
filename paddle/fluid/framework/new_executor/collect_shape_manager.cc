@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
 namespace paddle {
@@ -46,7 +46,7 @@ void CollectShapeManager::CollectShapeInfo(
 #endif
 #endif
 
-    framework::DDim dim = tensor.dims();
+    phi::DDim dim = tensor.dims();
     std::vector<int32_t> shape(dim.size());
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
@@ -56,7 +56,7 @@ void CollectShapeManager::CollectShapeInfo(
       // This must be a zero dimension tensor.
       PADDLE_ENFORCE_EQ(tensor.numel(),
                         1UL,
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "This tensor must have one element, but got %ld.",
                             tensor.numel()));
       std::vector<int32_t> zero_shape(1, 1);
@@ -224,7 +224,7 @@ std::vector<int32_t> CollectShapeManager::GetValueShapeRangeInfo(
       return opt_shapes_[kernel_val];
     }
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "We only support ShapeMode::kMIN, ShapeMode::kMax and ShapeMode::kOpt "
         "when GetValueShapeRangeInfo"));
   }

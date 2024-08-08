@@ -23,9 +23,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
 
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -51,7 +51,7 @@ PyLayerInstruction::PyLayerInstruction(
     interpreter::ExecutionConfig execution_config)
     : InstructionBase(id, place), output_vars_(), fwd_skip_gc_names_() {
   PADDLE_ENFORCE(op->isa<paddle::dialect::PyLayerOp>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "Cond instruction only support pylayer op"));
   auto pylayer_op = op->dyn_cast<paddle::dialect::PyLayerOp>();
   op_ = op;
@@ -95,7 +95,7 @@ PyLayerInstruction::PyLayerInstruction(
       PADDLE_ENFORCE_EQ(
           value_exec_info->HasValue(value),
           true,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "output should in name map, [%d] 'th output of [%s] op",
               i,
               "pylayer op"));

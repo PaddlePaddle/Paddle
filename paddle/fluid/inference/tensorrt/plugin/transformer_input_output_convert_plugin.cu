@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #include "cub/cub.cuh"
 #include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
@@ -116,13 +116,13 @@ bool TransformerInputConvertPlugin::supportsFormatCombination(
     int nbOutputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     2,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TransformerInputConvertPlugin must have 2 inputs, "
                         "but got %d input(s). ",
                         nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     4,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TransformerInputConvertPlugin must have 4 outputs, "
                         "but got %d output(s). ",
                         nbOutputs));
@@ -256,13 +256,13 @@ bool TransformerOutputConvertPlugin::supportsFormatCombination(
     int nbOutputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     3,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TransformerOutputConvertPlugin must have 3 inputs, "
                         "but got %d input(s). ",
                         nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     1,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TransformerOutputConvertPlugin must have 1 output, "
                         "but got %d output(s). ",
                         nbOutputs));

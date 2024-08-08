@@ -1,4 +1,3 @@
-add_subdirectory(memory)
 add_subdirectory(platform)
 add_subdirectory(distributed)
 add_subdirectory(framework)

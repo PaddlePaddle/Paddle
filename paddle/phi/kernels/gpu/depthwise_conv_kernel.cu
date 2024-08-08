@@ -54,7 +54,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
         output->dims()[output->dims().size() - 1] %
             input.dims()[input.dims().size() - 1],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ShapeError: The output channels must be a multiple of the "
             "input channels. But receivced output channel number is %d "
             "and input channel number is %d",
@@ -64,7 +64,7 @@ void DepthwiseConvKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         output->dims()[1] % input.dims()[1],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ShapeError: The output channels must be a multiple of the "
             "input channels. But receivced output channel number is %d "
             "and input channel number is %d",

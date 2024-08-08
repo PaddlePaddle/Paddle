@@ -74,23 +74,23 @@ void FlashAttnUnpaddedBaseKernel(
   PADDLE_ENFORCE_EQ(
       dims.size(),
       3,
-      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
-                                   "[total_seq_len, num_heads, head_dim]"));
+      common::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                      "[total_seq_len, num_heads, head_dim]"));
   PADDLE_ENFORCE_EQ(
       k.dims().size(),
       3,
-      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
-                                   "[total_seq_len, num_heads, head_dim]"));
+      common::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                      "[total_seq_len, num_heads, head_dim]"));
   PADDLE_ENFORCE_EQ(
       v.dims().size(),
       3,
-      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
-                                   "[total_seq_len, num_heads, head_dim]"));
+      common::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                      "[total_seq_len, num_heads, head_dim]"));
   PADDLE_ENFORCE_EQ(
       out->dims().size(),
       3,
-      phi::errors::InvalidArgument("flash_attn_raw receive input with dim "
-                                   "[total_seq_len, num_heads, head_dim]"));
+      common::errors::InvalidArgument("flash_attn_raw receive input with dim "
+                                      "[total_seq_len, num_heads, head_dim]"));
 
   const int64_t batch_size = cu_seqlens_q.numel() - 1;
   const int64_t num_heads = dims[1];
@@ -263,7 +263,7 @@ static void sliceFlattenView(const DenseTensor& in,
   PADDLE_ENFORCE_LT(
       axis,
       in.dims().size(),
-      phi::errors::InvalidArgument("sliceView receive axis out of bound"));
+      common::errors::InvalidArgument("sliceView receive axis out of bound"));
   std::array<int64_t, DDim::kMaxRank> dimArr;
   std::array<int64_t, DDim::kMaxRank> strideArr;
   auto id = dimArr.begin(), is = strideArr.begin();
@@ -362,22 +362,22 @@ void FlashAttnBaseKernel(
   const auto& dims = q.dims();
   PADDLE_ENFORCE_EQ(dims.size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
   PADDLE_ENFORCE_EQ(k.dims().size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
   PADDLE_ENFORCE_EQ(v.dims().size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
   PADDLE_ENFORCE_EQ(out->dims().size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
   const int64_t batch_size = dims[0];

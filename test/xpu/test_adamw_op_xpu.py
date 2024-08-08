@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from functools import partial
 
@@ -25,6 +26,7 @@ from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
+import paddle.nn
 from paddle import base
 
 
@@ -209,7 +211,11 @@ class XPUTestAdamwOp2(XPUOpTestWrapper):
             with base.program_guard(train_prog, startup):
                 with base.unique_name.guard():
                     data = paddle.static.data(name="data", shape=shape)
-                    conv = paddle.static.nn.conv2d(data, 8, 3)
+                    conv = paddle.nn.Conv2D(
+                        in_channels=3,
+                        out_channels=8,
+                        kernel_size=3,
+                    )(data)
                     loss = paddle.mean(conv)
 
                     beta1 = paddle.static.create_global_var(
@@ -832,7 +838,13 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
                 optimizer.clear_grad()
 
     def _get_places(self):
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_xpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_xpu()
+        ):
+            places.append('cpu')
         if paddle.is_compiled_with_xpu():
             places.append('xpu')
         return places

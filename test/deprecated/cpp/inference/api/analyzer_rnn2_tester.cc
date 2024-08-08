@@ -45,7 +45,11 @@ struct DataRecord {
                                      link_step_data_all.begin() + batch_end);
       // Prepare LoDs
       data.lod.push_back(0);
-      CHECK(!data.link_step_data_all.empty()) << "empty";
+      PADDLE_ENFORCE_EQ(
+          !data.link_step_data_all.empty(),
+          true,
+          common::errors::InvalidArgument(
+              "`data.link_step_data_all` is empty, please check"));
       for (size_t j = 0; j < data.link_step_data_all.size(); j++) {
         for (const auto &d : data.link_step_data_all[j]) {
           data.rnn_link_data.push_back(d);
@@ -146,17 +150,17 @@ TEST(Analyzer_rnn2, profile) {
     PADDLE_ENFORCE_GT(
         outputs.size(),
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     auto output = outputs.back();
     PADDLE_ENFORCE_GT(
         output.size(),
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(
         size,
         0,
-        phi::errors::Fatal("The size of output should be greater than 0."));
+        common::errors::Fatal("The size of output should be greater than 0."));
     float *result = static_cast<float *>(output[0].data.data());
     for (size_t i = 0; i < size; i++) {
       EXPECT_NEAR(result[i], result_data[i], 1e-3);

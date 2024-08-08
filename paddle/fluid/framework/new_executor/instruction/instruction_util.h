@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
@@ -33,12 +33,11 @@ class ValueExecutionInfo;
 std::vector<int> GetValueIds(pir::Value value,
                              const ValueExecutionInfo& value_exec_info);
 
-platform::DeviceContext* ParseDeviceContext(
-    pir::Operation* op,
-    platform::DeviceContext* origin_dev_ctx,
-    const phi::Place& place,
-    const std::string& execution_stream,
-    const int stream_priority);
+phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
+                                       phi::DeviceContext* origin_dev_ctx,
+                                       const phi::Place& place,
+                                       const std::string& execution_stream,
+                                       const int stream_priority);
 
 OpFuncType AnalyseOpFuncType(::pir::Operation* op, const phi::Place& place);
 

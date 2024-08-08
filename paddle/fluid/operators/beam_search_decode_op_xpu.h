@@ -46,7 +46,7 @@ int CopyTensorByXPU(const phi::DenseTensor& srcTensor,
   PADDLE_ENFORCE_EQ(
       r,
       xpu::Error_t::SUCCESS,
-      phi::errors::External("Execute function SetMeta failed by [%d]", r));
+      common::errors::External("Execute function SetMeta failed by [%d]", r));
 
   if (flag == 0) {
     T* dstData = dstTensor->template mutable_data<T>(phi::CPUPlace());
@@ -87,15 +87,15 @@ const int CopyTensorByType(const phi::DenseTensor& srcTensor,
 
   PADDLE_ENFORCE_EQ(r,
                     xpu::Error_t::SUCCESS,
-                    phi::errors::External(
+                    common::errors::External(
                         "Execute function CopyTensorByXPU failed by [%d]", r));
 
   return xpu::Error_t::SUCCESS;
 }
 
 struct BeamSearchDecodeXPUFunctor {
-  BeamSearchDecodeXPUFunctor(const LoDTensorArray& step_ids,
-                             const LoDTensorArray& step_scores,
+  BeamSearchDecodeXPUFunctor(const phi::TensorArray& step_ids,
+                             const phi::TensorArray& step_scores,
                              phi::DenseTensor* id_tensor,
                              phi::DenseTensor* score_tensor,
                              size_t beam_size,
@@ -116,7 +116,7 @@ struct BeamSearchDecodeXPUFunctor {
           PADDLE_ENFORCE_EQ(
               r,
               xpu::Error_t::SUCCESS,
-              phi::errors::External(
+              common::errors::External(
                   "Execute function CopyTensorByXPU failed by [%d]", r));
         }
 
@@ -134,7 +134,7 @@ struct BeamSearchDecodeXPUFunctor {
           PADDLE_ENFORCE_EQ(
               r,
               xpu::Error_t::SUCCESS,
-              phi::errors::External(
+              common::errors::External(
                   "Execute function CopyTensorByType failed by [%d]", r));
         }
 
@@ -147,7 +147,7 @@ struct BeamSearchDecodeXPUFunctor {
   template <typename T>
   void apply_xpu() const {
     if (std::is_same<bool, T>::value) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "beam search decode op does not support bool!"));
     } else {
       BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
@@ -161,8 +161,8 @@ struct BeamSearchDecodeXPUFunctor {
   // TODO(Superjomn) Here might result serious performance issue in the
   // concurrency
   // scenarios.
-  LoDTensorArray step_ids_ = LoDTensorArray();
-  LoDTensorArray step_scores_ = LoDTensorArray();
+  phi::TensorArray step_ids_ = phi::TensorArray();
+  phi::TensorArray step_scores_ = phi::TensorArray();
   phi::DenseTensor* id_tensor_;
   phi::DenseTensor* score_tensor_;
 };

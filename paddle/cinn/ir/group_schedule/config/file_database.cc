@@ -21,6 +21,7 @@
 #include <fstream>
 
 #include "paddle/cinn/utils/multi_threading.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_string(cinn_tile_config_filename_label);
 
@@ -91,7 +92,8 @@ std::string IterSpaceTypeToDir(const common::Target target,
     filename += i.first + i.second;
     filename += "_";
   }
-  dirname = dirname.substr(0, dirname.size() - 1);
+  const std::string kDirSuffix = "_EREBE";
+  dirname = dirname.substr(0, dirname.size() - 1) + kDirSuffix;
   filename = filename.substr(0, filename.size() - 1);
 
   auto checkexist = [](std::string test_path) {
@@ -179,7 +181,12 @@ void JsonStringToMessageOfTileConfig(
     group_schedule::config::proto::TileData tile_data;
     auto status = google::protobuf::util::JsonStringToMessage(json_lines[index],
                                                               &tile_data);
-    CHECK(status.ok()) << "Failed to parse JSON: " << json_lines[index];
+    PADDLE_ENFORCE_EQ(
+        status.ok(),
+        true,
+        ::common::errors::InvalidArgument(
+            "Failed to parse JSON: %s. Please check the JSON content.",
+            json_lines[index]));
     (*tile_database)[index] = tile_data;
   };
   utils::parallel_run(

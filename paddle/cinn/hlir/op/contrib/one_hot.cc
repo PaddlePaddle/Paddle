@@ -49,16 +49,34 @@ ir::Tensor OneHot(const ir::Tensor& indices,
                   const Type& dtype,
                   const std::string& output_name) {
   int ndim = static_cast<int>(indices->shape.size());
-  CHECK(axis == -1 || (0 <= axis && axis <= ndim))
-      << "one_hot only accepts `axis` in [-1, data.ndim]"
-      << ", but got axis = " << axis << ", and data.ndim = " << ndim;
-  CHECK(depth > 0) << "one_hot only accepts `depth > 0`"
-                   << ", but got depth = " << depth;
+  PADDLE_ENFORCE_EQ(axis == -1 || (0 <= axis && axis <= ndim),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The one_hot op only accepts `axis` in [-1, "
+                        "data.ndim], but got axis = %d, and data.ndim = %d",
+                        axis,
+                        ndim));
+  PADDLE_ENFORCE_EQ(
+      depth > 0,
+      true,
+      phi::errors::InvalidArgument(
+          "The one_hot op only accepts `depth` > 0, but got depth = %d.",
+          depth));
 
-  CHECK(on_value->shape.size() == 1U && on_value->shape[0].as_int32() == 1U)
-      << "The shape of on_value must be [1]";
-  CHECK(off_value->shape.size() == 1U && off_value->shape[0].as_int32() == 1U)
-      << "The shape of off_value must be [1]";
+  PADDLE_ENFORCE_EQ(
+      on_value->shape.size() == 1U && on_value->shape[0].as_int32() == 1U,
+      true,
+      phi::errors::InvalidArgument("The shape of on_value must be [1], but got "
+                                   "shape = %d, and shape[0] = %d.",
+                                   on_value->shape.size(),
+                                   on_value->shape[0].as_int32()));
+  PADDLE_ENFORCE_EQ(
+      off_value->shape.size() == 1U && off_value->shape[0].as_int32() == 1U,
+      true,
+      phi::errors::InvalidArgument("The shape of off_value must be [1], but "
+                                   "got shape = %d, and shape[0] = %d.",
+                                   off_value->shape.size(),
+                                   off_value->shape[0].as_int32()));
 
   int true_axis = (axis == -1) ? ndim : axis;
   std::vector<Expr> new_shape;
@@ -117,29 +135,55 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
     }
   }
 
-  CHECK(depth > 0) << "one_hot only accepts `depth > 0`"
-                   << ", but got depth = " << depth;
+  PADDLE_ENFORCE_EQ(
+      depth > 0,
+      true,
+      phi::errors::InvalidArgument(
+          "The one_hot op only accepts `depth` > 0, but got depth = %d.",
+          depth));
 
   framework::CINNCompute one_hot_compute([=](lang::Args args,
                                              lang::RetValue* ret) {
-    CHECK(!args.empty())
-        << "The input argument of one_hot compute is empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input argument of one_hot compute is empty! Please check."));
     cinn::common::CINNValuePack pack_args = args[0];
-    CHECK(!pack_args.empty())
-        << "at least one input tensor for transpose compute\n";
-    CHECK_GE(pack_args.size(), 3U);
+    PADDLE_ENFORCE_NE(
+        pack_args.empty(),
+        true,
+        phi::errors::InvalidArgument(
+            "The input tensors for one_hot compute is empty! Please check."));
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      3U,
+                      phi::errors::InvalidArgument(
+                          "At least 3 input tensors for one_hot compute\n"));
     Expr indices_expr = pack_args[0];
     Expr on_value_expr = pack_args[1];
     Expr off_value_expr = pack_args[2];
-    CHECK(indices_expr.as_tensor());
-    CHECK(on_value_expr.as_tensor());
-    CHECK(off_value_expr.as_tensor());
+    PADDLE_ENFORCE_NOT_NULL(
+        indices_expr.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required indixes must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        on_value_expr.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required on_value must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        off_value_expr.as_tensor(),
+        phi::errors::InvalidArgument(
+            "Required off_value must be a tensor. Please check."));
 
     ir::Tensor indices = indices_expr.as_tensor_ref();
     ir::Tensor on_value = on_value_expr.as_tensor_ref();
     ir::Tensor off_value = off_value_expr.as_tensor_ref();
 
-    CHECK_EQ(pack_args.size(), 4U);
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        4U,
+        phi::errors::InvalidArgument(
+            "The number of input tensors for one_hot compute should be 4."));
     std::string tensor_name = pack_args[3].operator std::string();
 
     ir::Tensor out = OneHot(indices,

@@ -15,7 +15,6 @@
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -28,6 +27,7 @@
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/utils/data_type.h"
 
 COMMON_DECLARE_bool(benchmark);
@@ -181,7 +181,7 @@ phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
     PADDLE_ENFORCE_NE(
         iter,
         place_to_comm_ctx_.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Cannot find the device context in this process group."));
     return iter->second.get();
   }
@@ -193,7 +193,7 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
   PADDLE_ENFORCE_NE(
       iter,
       place_to_comm_ctx_.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Cannot find the NCCL communicator in this process group."));
   return iter->second->nccl_comm();
 }
@@ -348,7 +348,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Barrier(
     const BarrierOptions& opts) {
   PADDLE_ENFORCE_GE(opts.device_id,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The barrier device id must greater or equal than 0."));
   phi::GPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
@@ -564,7 +564,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
   auto& gather_tensors = *gather_tensors_ptr;
   PADDLE_ENFORCE_GT(size_,
                     opts.root_rank,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "root world size [%d]  is less than root rank [%d]",
                         size_,
                         opts.root_rank));
@@ -1060,14 +1060,14 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
       comm_context_manager.Get(store_key));
   PADDLE_ENFORCE_NE(comm_context,
                     nullptr,
-                    phi::errors::Unavailable("NCCLCommContext is nullptr"));
+                    common::errors::Unavailable("NCCLCommContext is nullptr"));
   return comm_context;
 }
 
 void ProcessGroupNCCL::StartCoalescing() {
   PADDLE_ENFORCE_EQ(is_coalescing_,
                     false,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Coalescing is on, please call EndCoalesce."));
   is_coalescing_ = true;
   GroupStart();
@@ -1089,7 +1089,7 @@ void ProcessGroupNCCL::EndCoalescing(
   PADDLE_ENFORCE_EQ(
       tasks.size(),
       colaescing_tensors_.size(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Number of tasks[%d] do not match number of collectives[%d].",
           tasks.size(),
           colaescing_tensors_.size()));

@@ -11,10 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import typing
+from typing import TYPE_CHECKING, Sequence
 
 from paddle.distribution import distribution, independent, transform
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.distribution.distribution import Distribution
+    from paddle.distribution.transform import Transform
 
 
 class TransformedDistribution(distribution.Distribution):
@@ -49,7 +56,12 @@ class TransformedDistribution(distribution.Distribution):
             >>> # doctest: -SKIP
     """
 
-    def __init__(self, base, transforms):
+    base: Distribution
+    transforms: Sequence[Transform]
+
+    def __init__(
+        self, base: Distribution, transforms: Sequence[Transform]
+    ) -> None:
         if not isinstance(base, distribution.Distribution):
             raise TypeError(
                 f"Expected type of 'base' is Distribution, but got {type(base)}."
@@ -92,7 +104,7 @@ class TransformedDistribution(distribution.Distribution):
             ],
         )
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Sample from ``TransformedDistribution``.
 
         Args:
@@ -106,7 +118,7 @@ class TransformedDistribution(distribution.Distribution):
             x = t.forward(x)
         return x
 
-    def rsample(self, shape=()):
+    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
         """Reparameterized sample from ``TransformedDistribution``.
 
         Args:
@@ -120,7 +132,7 @@ class TransformedDistribution(distribution.Distribution):
             x = t.forward(x)
         return x
 
-    def log_prob(self, value):
+    def log_prob(self, value: Tensor) -> Tensor:
         """The log probability evaluated at value.
 
         Args:
@@ -145,5 +157,5 @@ class TransformedDistribution(distribution.Distribution):
         return log_prob
 
 
-def _sum_rightmost(value, n):
+def _sum_rightmost(value: Tensor, n: int) -> Tensor:
     return value.sum(list(range(-n, 0))) if n > 0 else value
