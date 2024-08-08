@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from typing import Dict
 
 import paddle
 from paddle import nn
@@ -72,10 +71,10 @@ class IntermediateLayerGetter(nn.LayerDict):
     """
 
     __annotations__ = {
-        "return_layers": Dict[str, str],
+        "return_layers": dict[str, str],
     }
 
-    def __init__(self, model: nn.Layer, return_layers: Dict[str, str]) -> None:
+    def __init__(self, model: nn.Layer, return_layers: dict[str, str]) -> None:
         if not set(return_layers).issubset(
             [name for name, _ in model.named_children()]
         ):
