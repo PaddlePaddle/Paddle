@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import numpy as np
 
@@ -443,11 +443,8 @@ class FusedMultiHeadAttention(Layer):
         key: Tensor | None = None,
         value: Tensor | None = None,
         attn_mask: Tensor | None = None,
-        cache: tuple[MultiHeadAttention.Cache, MultiHeadAttention.StaticCache]
-        | None = None,
-    ) -> tuple[
-        Tensor, tuple[MultiHeadAttention.Cache, MultiHeadAttention.StaticCache]
-    ]:
+        cache: None = None,
+    ) -> Tensor:
         """
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.
@@ -883,6 +880,24 @@ class FusedTransformerEncoderLayer(Layer):
             linear2_bias_attr=bias_attrs[1],
         )
 
+    @overload
+    def forward(
+        self,
+        src: Tensor,
+        src_mask: Tensor | None = ...,
+        cache: Tensor | None = ...,
+    ) -> Tensor:
+        ...
+
+    @overload
+    def forward(
+        self,
+        src: Tensor,
+        src_mask: Tensor | None = ...,
+        cache: MultiHeadAttention.Cache = ...,
+    ) -> tuple[MultiHeadAttention.Cache]:
+        ...
+
     def forward(
         self,
         src: Tensor,
@@ -1227,22 +1242,22 @@ class FusedMultiTransformer(Layer):
     embed_dim: int
     num_heads: int
     head_dim: int
-    ln_biases: list[Tensor] | None
-    ln_scales: list[Tensor] | None
-    qkv_biases: list[Tensor] | None
-    qkv_weights: list[Tensor] | None
-    linear_biases: list[Tensor] | None
-    linear_weights: list[Tensor] | None
-    ffn_ln_biases: list[Tensor] | None
-    ffn_ln_scales: list[Tensor] | None
-    ffn1_biases: list[Tensor] | None
-    ffn1_weights: list[Tensor] | None
-    ffn2_biases: list[Tensor] | None
-    ffn2_weights: list[Tensor] | None
-    qkv_weights_scales: list[Tensor] | None
-    linear_weights_scales: list[Tensor] | None
-    ffn1_weights_scales: list[Tensor] | None
-    ffn2_weights_scales: list[Tensor] | None
+    ln_biases: list[Tensor]
+    ln_scales: list[Tensor]
+    qkv_biases: list[Tensor]
+    qkv_weights: list[Tensor]
+    linear_biases: list[Tensor]
+    linear_weights: list[Tensor]
+    ffn_ln_biases: list[Tensor]
+    ffn_ln_scales: list[Tensor]
+    ffn1_biases: list[Tensor]
+    ffn1_weights: list[Tensor]
+    ffn2_biases: list[Tensor]
+    ffn2_weights: list[Tensor]
+    qkv_weights_scales: list[Tensor]
+    linear_weights_scales: list[Tensor]
+    ffn1_weights_scales: list[Tensor]
+    ffn2_weights_scales: list[Tensor]
     dropout_rate: float
     activation: str
     name: str | None
@@ -1255,30 +1270,36 @@ class FusedMultiTransformer(Layer):
         dropout_rate: float = 0.0,
         activation: str = "gelu",
         normalize_before: bool = True,
-        ln_scale_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
-        ln_bias_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
-        qkv_weight_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
-        qkv_bias_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
-        linear_weight_attrs: ParamAttrLike
-        | Sequence[ParamAttrLike]
-        | None = None,
-        linear_bias_attrs: ParamAttrLike
-        | Sequence[ParamAttrLike]
-        | None = None,
-        ffn_ln_scale_attrs: ParamAttrLike
-        | Sequence[ParamAttrLike]
-        | None = None,
-        ffn_ln_bias_attrs: ParamAttrLike
-        | Sequence[ParamAttrLike]
-        | None = None,
-        ffn1_weight_attrs: ParamAttrLike
-        | Sequence[ParamAttrLike]
-        | None = None,
-        ffn1_bias_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
-        ffn2_weight_attrs: ParamAttrLike
-        | Sequence[ParamAttrLike]
-        | None = None,
-        ffn2_bias_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
+        ln_scale_attrs: (ParamAttrLike | Sequence[ParamAttrLike] | None) = None,
+        ln_bias_attrs: (ParamAttrLike | Sequence[ParamAttrLike] | None) = None,
+        qkv_weight_attrs: (
+            ParamAttrLike | Sequence[ParamAttrLike] | None
+        ) = None,
+        qkv_bias_attrs: (ParamAttrLike | Sequence[ParamAttrLike] | None) = None,
+        linear_weight_attrs: (
+            ParamAttrLike | Sequence[ParamAttrLike] | None
+        ) = None,
+        linear_bias_attrs: (
+            ParamAttrLike | Sequence[ParamAttrLike] | None
+        ) = None,
+        ffn_ln_scale_attrs: (
+            ParamAttrLike | Sequence[ParamAttrLike] | None
+        ) = None,
+        ffn_ln_bias_attrs: (
+            ParamAttrLike | Sequence[ParamAttrLike] | None
+        ) = None,
+        ffn1_weight_attrs: (
+            ParamAttrLike | Sequence[ParamAttrLike] | None
+        ) = None,
+        ffn1_bias_attrs: (
+            ParamAttrLike | Sequence[ParamAttrLike] | None
+        ) = None,
+        ffn2_weight_attrs: (
+            ParamAttrLike | Sequence[ParamAttrLike] | None
+        ) = None,
+        ffn2_bias_attrs: (
+            ParamAttrLike | Sequence[ParamAttrLike] | None
+        ) = None,
         epsilon: float = 1e-5,
         residual_alpha: float = 1.0,
         num_layers: int = -1,
@@ -1532,6 +1553,36 @@ class FusedMultiTransformer(Layer):
         self.activation = activation
         self.name = name
 
+    @overload
+    def forward(
+        self,
+        src: Tensor,
+        attn_mask: Tensor | None = ...,
+        caches: None = ...,
+        pre_caches: Sequence[Tensor] | None = ...,
+        rotary_embs: Tensor | None = ...,
+        rotary_emb_dims: int = ...,
+        beam_offset: Tensor | None = ...,
+        seq_lens: Tensor | None = ...,
+        time_step: Tensor | None = ...,
+    ) -> Tensor:
+        ...
+
+    @overload
+    def forward(
+        self,
+        src: Tensor,
+        attn_mask: Tensor | None = ...,
+        caches: Sequence[Tensor] = ...,
+        pre_caches: Sequence[Tensor] | None = ...,
+        rotary_embs: Tensor | None = ...,
+        rotary_emb_dims: int = ...,
+        beam_offset: Tensor | None = ...,
+        seq_lens: Tensor | None = ...,
+        time_step: Tensor | None = ...,
+    ) -> tuple[Layer, Sequence[Tensor]]:
+        ...
+
     def forward(
         self,
         src: Tensor,
@@ -1543,7 +1594,7 @@ class FusedMultiTransformer(Layer):
         beam_offset: Tensor | None = None,
         seq_lens: Tensor | None = None,
         time_step: Tensor | None = None,
-    ) -> tuple[Tensor, MultiHeadAttention.Cache]:
+    ) -> Tensor | tuple[Layer, Sequence[Tensor]]:
         r"""
         Applies multi transformer layers on the input.
 
