@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import collections
 import os
-
 from typing import Any
 
 from paddle.dataset.common import DATA_HOME
