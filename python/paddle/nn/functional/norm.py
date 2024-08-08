@@ -738,7 +738,7 @@ def group_norm(
     data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
 
     if in_dynamic_or_pir_mode():
-        res = _C_ops.group_norm(
+        return _C_ops.group_norm(
             x,
             weight,
             bias,
@@ -746,7 +746,6 @@ def group_norm(
             num_groups,
             data_format,
         )
-        return res
     else:
         helper = LayerHelper('group_norm', **locals())
         mean_out = helper.create_variable_for_type_inference(
