@@ -17,8 +17,6 @@ import logging
 
 import numpy as np
 import tensorrt as trt
-from register import converter_registry
-from util import map_dtype
 
 import paddle
 from paddle import pir
@@ -26,6 +24,8 @@ from paddle.base.core import get_value_shape_range_info
 from paddle.base.log_helper import get_logger
 
 from .impls.core import *  # noqa: F403
+from .register import converter_registry
+from .util import map_dtype
 
 
 def get_cache_path():
