@@ -11,10 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
-
 import math
-from typing import Sequence
+from typing import List, Optional, Sequence, Tuple
 
 import paddle
 from paddle import pir
@@ -39,7 +37,7 @@ _PADDLE_DTYPE_2_NBYTES = {
 }
 
 # define the default recompute ops that can be fused between pairs
-DEFAULT_RECOMPUTABLE_OPS: list[str] = [
+DEFAULT_RECOMPUTABLE_OPS: List[str] = [
     "pd_op.full_int_array",
     "pd_op.full",
     "pd_op.sum",
@@ -127,11 +125,11 @@ DEFAULT_RECOMPUTABLE_OPS: list[str] = [
     "pd_op.isnan",
 ]
 
-VIEW_OPS: list[str] = []
+VIEW_OPS: List[str] = []
 
-RANDOM_OPS: list[str] = ["pd_op.randint", "pd_op.uniform", "pd_op.dropout"]
+RANDOM_OPS: List[str] = ["pd_op.randint", "pd_op.uniform", "pd_op.dropout"]
 
-COMPUTE_INTENSIVE_OPS: list[str] = [
+COMPUTE_INTENSIVE_OPS: List[str] = [
     "pd_op.matmul",
     "pd_op.conv2d",
     "pd_op.layer_norm",
@@ -152,8 +150,8 @@ def auto_recompute(
     grad_outputs: Sequence[pir.Value],
     fwd_op_end_idx: int,
     backward_op_start_idx: int,
-    recomputable_ops: Sequence[str] | None = None,
-) -> tuple[paddle.static.Program, int]:
+    recomputable_ops: Optional[Sequence[str]] = None,
+) -> Tuple[paddle.static.Program, int]:
     '''
     Considering the compiler fuse strategy, we model the pir graph.
     Convert the pir calculation graph into a networkx calculation
@@ -442,12 +440,12 @@ def auto_recompute(
 
 def partition_joint_graph(
     program: paddle.static.Program,
-    saved_values: list[pir.Value],
-    inputs: list[pir.Value],
-    outputs: list[pir.Value],
+    saved_values: List[pir.Value],
+    inputs: List[pir.Value],
+    outputs: List[pir.Value],
     fwd_op_end_idx: int,
     backward_op_start_idx: int,
-) -> tuple[paddle.static.Program, int]:
+) -> Tuple[paddle.static.Program, int]:
     """
     Partition the joint graph, recompute the intermediate values
     by saved values to save memory.

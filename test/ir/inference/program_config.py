@@ -15,7 +15,7 @@
 import copy
 import enum
 import os
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -49,9 +49,9 @@ class TensorConfig:
 
     def __init__(
         self,
-        lod: List[List[int]] | None = None,
-        data_gen: Callable[..., np.array] | None = None,
-        shape: List[List[int]] | None = None,
+        lod: Optional[List[List[int]]] = None,
+        data_gen: Optional[Callable[..., np.array]] = None,
+        shape: Optional[List[List[int]]] = None,
     ):
         '''
         shape: The shape of the tensor.
@@ -95,9 +95,9 @@ class OpConfig:
         type: str,
         inputs: Dict[str, List[str]],
         outputs: Dict[str, List[str]],
-        attrs: Dict[str, Any] | None = None,
-        outputs_var_type: Dict[str, VarType] | None = None,
-        outputs_dtype: Dict[str, np.dtype] | None = None,
+        attrs: Optional[Dict[str, Any]] = None,
+        outputs_var_type: Optional[Dict[str, VarType]] = None,
+        outputs_dtype: Optional[Dict[str, np.dtype]] = None,
         **kwargs,
     ):
         self.type = type
@@ -154,9 +154,9 @@ class BlockConfig:
         self,
         ops: List[OpConfig],
         vars: List[str],
-        vars_dtype: Dict[str, np.dtype] | None = None,
-        vars_var_type: Dict[str, VarType] | None = None,
-        vars_lod_level: Dict[str, int] | None = None,
+        vars_dtype: Optional[Dict[str, np.dtype]] = None,
+        vars_var_type: Optional[Dict[str, VarType]] = None,
+        vars_lod_level: Optional[Dict[str, int]] = None,
     ):
         self.ops = ops
         self.vars = vars
@@ -257,8 +257,8 @@ class ProgramConfig:
         weights: Dict[str, TensorConfig],
         inputs: Dict[str, TensorConfig],
         outputs: List[str],
-        input_type: np.dtype | None = None,
-        no_cast_list: List[str] | None = None,
+        input_type: Optional[np.dtype] = None,
+        no_cast_list: Optional[List[str]] = None,
     ):
         self.ops = ops
         # if no weight need to save, we create a place_holder to help serialize params.
