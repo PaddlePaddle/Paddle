@@ -60,6 +60,7 @@ namespace pir {
 // which is json array with json object(NAME and ATTR_TYPE)
 #define ATTRS "A"
 #define OPRESULTS_ATTRS "OA"
+#define DIST_ATTRS "DA"
 
 // value's key:
 //  value's type which should be pir::Type's json object(ID or ID and DATA).

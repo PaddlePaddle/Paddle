@@ -218,11 +218,14 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
   }
   op_json[ATTRS] = attrs_json;
 
+  Json dist_attrs_json = Json::array();
   for (auto key : GetOpDistAttr()) {
     if (op.attributes().count(key) > 0) {
-      op_json[key] = pir::writeAttr(op.attributes().at(key));
+      dist_attrs_json.emplace_back(
+          WriteAttribute(key, op.attributes().at(key)));
     }
   }
+  op_json[DIST_ATTRS] = dist_attrs_json;
 
   Json other_attrs_json = Json::array();
   OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
