@@ -682,10 +682,17 @@ bool CrfDecodingOpInferSymbolicShape(
                         transition_dims));
   infer_context->AddEqualCstr(transition_dims[0] - 2, transition_dims[1]);
 
-  if (config.is_runtime) {
-    infer_context->AddEqualCstr(emission_dims[emission_dims.size() - 1],
-                                transition_dims[transition_dims.size() - 1]);
+  const symbol::DimExpr m = emission_dims[emission_dims.size() - 1];
+  const symbol::DimExpr n = transition_dims[transition_dims.size() - 1];
+  if (m.isa<int64_t>() && n.isa<int64_t>()) {
+    int m_value = static_cast<int>(m.Get<std::int64_t>());
+    int n_value = static_cast<int>(n.Get<std::int64_t>());
+    if (m_value > 0 && n_value > 0) {
+      infer_context->AddEqualCstr(emission_dims[emission_dims.size() - 1],
+                                  transition_dims[transition_dims.size() - 1]);
+    }
   }
+
   if (!label_dims.empty()) {
     if (has_length) {
       if (label_dims.size() == 3UL) {
@@ -717,23 +724,30 @@ bool CrfDecodingOpInferSymbolicShape(
                 label_dims));
       }
     }
-    if (config.is_runtime) {
-      infer_context->AddEqualCstr(emission_dims[0], label_dims[0]);
+
+    const symbol::DimExpr m1 = emission_dims[0];
+    const symbol::DimExpr n1 = label_dims[0];
+    if (m1.isa<int64_t>() && n1.isa<int64_t>()) {
+      int m1_value = static_cast<int>(m1.Get<std::int64_t>());
+      int n1_value = static_cast<int>(n1.Get<std::int64_t>());
+      if (m1_value > 0 && n1_value > 0) {
+        infer_context->AddEqualCstr(emission_dims[0], label_dims[0]);
+      }
     }
+
+    std::vector<symbol::DimExpr> viterbi_path_dims;
+    viterbi_path_dims.push_back(emission_dims[0]);
+    if (has_length) {
+      viterbi_path_dims.push_back(emission_dims[1]);
+    } else {
+      viterbi_path_dims.push_back(symbol::DimExpr(1));
+    }
+
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs(viterbi_path_dims));
+
+    return true;
   }
-
-  std::vector<symbol::DimExpr> viterbi_path_dims;
-  viterbi_path_dims.push_back(emission_dims[0]);
-  if (has_length) {
-    viterbi_path_dims.push_back(emission_dims[1]);
-  } else {
-    viterbi_path_dims.push_back(symbol::DimExpr(1));
-  }
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs(viterbi_path_dims));
-
-  return true;
 }
 
 // bool CoalesceTensorOpInferSymbolicShape(pir::Operation *op,
@@ -991,7 +1005,8 @@ bool FlashAttnOpInferSymbolicShape(
 // }
 
 // bool GruOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
+//                              pir::InferSymbolicShapeContext *infer_context)
+//                              {
 //   // pass
 //   return true;
 // }
@@ -1262,7 +1277,8 @@ bool RoiAlignOpInferSymbolicShape(
 }
 
 // bool LstmOpInferSymbolicShape(pir::Operation *op,
-//                               pir::InferSymbolicShapeContext *infer_context)
+//                               pir::InferSymbolicShapeContext
+//                               *infer_context)
 //                               {
 //   // pass
 //   return true;
@@ -1295,7 +1311,8 @@ bool RoiAlignOpInferSymbolicShape(
 // }
 
 // bool MoeOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
+//                              pir::InferSymbolicShapeContext *infer_context)
+//                              {
 //   // pass
 //   return true;
 // }
@@ -1340,7 +1357,8 @@ bool MeshgridOpInferSymbolicShape(
 }
 
 // bool NceOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
+//                              pir::InferSymbolicShapeContext *infer_context)
+//                              {
 //   // pass
 //   return true;
 // }
