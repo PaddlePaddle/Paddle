@@ -1081,6 +1081,7 @@
     func: crf_decoding
     data_type: emission
   optional: label, length
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : crop
   args : (Tensor x, IntArray shape = {}, IntArray offsets = {})

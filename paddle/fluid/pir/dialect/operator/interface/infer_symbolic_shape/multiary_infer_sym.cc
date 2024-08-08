@@ -634,12 +634,108 @@ bool BilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
-// bool CrfDecodingOpInferSymbolicShape(pir::Operation *op,
-//                                      pir::InferSymbolicShapeContext
-//                                      *infer_context) {
-//   // pass
-//   return true;
-// }
+bool CrfDecodingOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &emission_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> emission_dims = emission_shape_or_data.shape();
+
+  const auto &transition_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  std::vector<symbol::DimExpr> transition_dims =
+      transition_shape_or_data.shape();
+
+  const auto &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  std::vector<symbol::DimExpr> label_dims = label_shape_or_data.shape();
+
+  const auto &length_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  bool has_length = !length_shape_or_data.shape().empty();
+
+  const auto one = symbol::DimExpr{1};
+
+  if (has_length) {
+    PADDLE_ENFORCE_EQ(emission_dims.size(),
+                      3,
+                      common::errors::InvalidArgument(
+                          "The Input(Emission) should be a 3-D tensor. But "
+                          "received: input rank %u, input shape [%s]. ",
+                          emission_dims.size(),
+                          emission_dims));
+  } else {
+    PADDLE_ENFORCE_EQ(emission_dims.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "The Input(Emission) should be a 2-D tensor. But "
+                          "received: input rank %u, input shape [%s].",
+                          emission_dims.size(),
+                          emission_dims));
+  }
+
+  PADDLE_ENFORCE_EQ(transition_dims.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "The Input(Transition) should be a 2-D tensor. But "
+                        "received: input rank %u, input shape [%s].",
+                        transition_dims.size(),
+                        transition_dims));
+  infer_context->AddEqualCstr(transition_dims[0] - 2, transition_dims[1]);
+
+  if (config.is_runtime || (emission_dims[emission_dims.size() - 1] > 0 &&
+                            transition_dims[transition_dims.size() - 1] > 0)) {
+    infer_context->AddEqualCstr(emission_dims[emission_dims.size() - 1],
+                                transition_dims[transition_dims.size() - 1]);
+  }
+  if (!label_dims.empty()) {
+    if (has_length) {
+      if (label_dims.size() == 3UL) {
+        infer_context->AddEqualCstr(label_dims[2], one);
+      } else {
+        PADDLE_ENFORCE_EQ(
+            label_dims.size(),
+            2UL,
+            common::errors::InvalidArgument(
+                "The Input(Label) should be a 3-D tensor with last dimension "
+                "fixed to 1 or a 2-D tensor in padding mode. But received: "
+                "input "
+                "rank %u, input shape [%s].",
+                label_dims.size(),
+                label_dims));
+      }
+    } else {
+      if (label_dims.size() == 2UL) {
+        infer_context->AddEqualCstr(label_dims[2], one);
+      } else {
+        PADDLE_ENFORCE_EQ(
+            label_dims.size(),
+            1UL,
+            common::errors::InvalidArgument(
+                "The Input(Label) should be a 2-D tensor with last "
+                "dimension fixed to 1 or a 1-D tensor. But received: "
+                "input rank %u, input shape [%s].",
+                label_dims.size(),
+                label_dims));
+      }
+    }
+    if (config.is_runtime || (emission_dims[0] > 0 && label_dims[0] > 0)) {
+      infer_context->AddEqualCstr(emission_dims[0], label_dims[0]);
+    }
+  }
+
+  std::vector<symbol::DimExpr> viterbi_path_dims;
+  viterbi_path_dims.push_back(emission_dims[0]);
+  if (has_length) {
+    viterbi_path_dims.push_back(emission_dims[1]);
+  } else {
+    viterbi_path_dims.push_back(symbol::DimExpr(1));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(viterbi_path_dims));
+
+  return true;
+}
 
 // bool CoalesceTensorOpInferSymbolicShape(pir::Operation *op,
 //                                         pir::InferSymbolicShapeContext
