@@ -773,9 +773,11 @@ bool SwigluOpInferSymbolicShape(pir::Operation *op,
     }
     infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
   } else {
-    const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-    infer_context->AddEqualCstr(x_shape[rank - 1].Get<int32_t>() % 2, 0);
-    x_shape[rank - 1] = symbol::DimExpr{x_shape[rank - 1].Get<int32_t>() / 2};
+    std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+    static_cast<int>(m.Get<std::int64_t>());
+    infer_context->AddEqualCstr(x_shape[rank - 1] % symbol::DimExpr{2},
+                                symbol::DimExpr{0});
+    x_shape[rank - 1] = x_shape[rank - 1] / symbol::DimExpr{2};
     infer_context->SetShapeOrDataForValue(
         op->result(0),
         symbol::ShapeOrDataDimExprs{
