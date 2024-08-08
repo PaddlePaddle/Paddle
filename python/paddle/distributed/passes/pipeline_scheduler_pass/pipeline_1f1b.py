@@ -22,8 +22,8 @@ from ..pass_base import register_pass
 from ..pass_utils import (
     AutoParallelStreamType,
     _add_event_dependency,
-    _pir_program_for_fthenb_and_1f1b,
     _program_for_fthenb_and_1f1b,
+    _split_program_into_forward_backward_optimize,
     split_program,
 )
 from .pipeline_pass_base import PipelinePassBase
@@ -344,7 +344,7 @@ class Pipeline1F1BPass(PipelinePassBase):
         ), "PIR does not support 1F1B with enable_send_recv_overlap yet."
 
         types = [FORWARD, BACKWARD, OPT]
-        sub_program_list = _pir_program_for_fthenb_and_1f1b(
+        sub_program_list = _split_program_into_forward_backward_optimize(
             program, enable_send_recv_overlap
         )
 
