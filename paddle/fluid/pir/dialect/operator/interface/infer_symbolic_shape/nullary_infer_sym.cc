@@ -103,7 +103,7 @@ bool AssignValue_OpInferSymbolicShape(
   return AssignValueOpInferSymbolicShape(op, infer_context);
 }
 
-bool CreateOpInferSymbolicShape(pir::Operation *op,
+bool Full_OpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &shape_attr = op->attribute<pir::IntArrayAttribute>("shape");
   const std::vector<int64_t> &shape_data = shape_attr.GetData();
