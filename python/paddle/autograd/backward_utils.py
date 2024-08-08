@@ -55,6 +55,15 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.softmax",
     "pd_op.matmul",
     "pd_op.cumsum",
+    "pd_op.erf",
+    "pd_op.floor",
+    "pd_op.reshape",
+    "pd_op.leaky_relu",
+    "pd_op.softsign",
+    "pd_op.maximum",
+    "pd_op.minimum",
+    "pd_op.gelu",
+    "pd_op.hardswish",
 ]
 
 

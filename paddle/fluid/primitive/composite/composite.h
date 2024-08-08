@@ -200,9 +200,10 @@ std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
   }
   auto val = label - input;
   auto abs_val = abs<T>(val);
+  auto factor = full_scalar<T>(0.5, input.dtype());
   auto ans = where<T>(abs_val <= delta_full,
-                      0.5 * val * val,
-                      delta_full * (abs_val - 0.5 * delta_full));
+                      factor * val * val,
+                      delta_full * (abs_val - factor * delta_full));
   return std::make_tuple(ans, val);
 }
 
@@ -1406,7 +1407,10 @@ Tensor mean_all_decomp(const Tensor& x) {
   Tensor ans;
   if (has_dynamic_shape(x_shape)) {
     Tensor x_shape_tensor = shape<T>(x_cast);
-    Tensor value = prod<T>(x_shape_tensor, {0}, false, true);
+    Tensor value = get_slice<T>(x_shape_tensor, 0);
+    for (size_t i = 1; i < x_shape.size(); i++) {
+      value = value * get_slice<T>(x_shape_tensor, i);
+    }
     value = reshape<T>(value, {});
     ans = sum<T>(x_cast) / cast<T>(value, x_cast.dtype());
   } else {
