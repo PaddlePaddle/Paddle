@@ -25,7 +25,6 @@ from paddle.nn import TransformerEncoder, TransformerEncoderLayer
 
 def get_r50_program():
     paddle.enable_static()
-    # static_resnet50 = StaticResNet50()
     from paddle.vision.models import wide_resnet50_2
 
     with paddle.pir_utils.IrGuard():
@@ -42,8 +41,6 @@ def get_r50_program():
         place = paddle.CUDAPlace(0)
         exe = static.Executor(place)
         exe.run(startup_program)
-
-    # paddle.static.io.save(infer_program, "./resnet")
 
     params = infer_program.global_block().all_parameters()
     param_dict = {}
@@ -82,7 +79,6 @@ def get_dummy_program():
                     initializer=paddle.nn.initializer.Assign(bias_numpy)
                 ),
             )
-            # shape = paddle._C_ops.full_int_array(value=0)
             x = paddle.matmul(input, weight)
             x_1 = paddle.add(x, bias)
             x_1 = paddle.unsqueeze(x_1, axis=0)

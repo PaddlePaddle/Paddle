@@ -16,6 +16,7 @@ import hashlib
 import logging
 
 import numpy as np
+import tensorrt as trt
 from register import converter_registry
 from util import map_dtype
 
@@ -48,12 +49,6 @@ def get_trt_version():
 
 class PaddleToTensorRTConverter:
     def __init__(self, paddle_program, scope):
-        try:
-            pass
-        except Exception:
-            _logger.info(
-                "import tensorrt failed, you may install it via `python3 -m pip install --upgrade tensorrt` according to https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html"
-            )
         self.scope = scope
         self.program = paddle_program
         params = paddle_program.global_block().all_parameters()
