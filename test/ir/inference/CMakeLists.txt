@@ -10,6 +10,8 @@ file(
   "test_trt_*.py")
 string(REPLACE ".py" "" TEST_TRT_IR_PASSES "${TEST_TRT_IR_PASSES}")
 
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_clip")
+
 file(
   GLOB TEST_TRT_CONVERTER
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
