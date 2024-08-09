@@ -70,12 +70,11 @@ std::vector<Expr> GetLoops(const std::vector<Expr>& exprs, const Expr& block) {
       block.As<ir::ScheduleBlockRealize>(),
       phi::errors::InvalidArgument(
           "The block must be convertible to ir::ScheduleBlockRealize."));
-  PADDLE_ENFORCE_EQ(
-      block.As<ir::ScheduleBlockRealize>()
-            ->schedule_block.As<ir::ScheduleBlock>()),
-      true,
-      phi::errors::InvalidArgument(
-          "Cannot cast block to ir::ScheduleBlockRealize."));
+  PADDLE_ENFORCE_EQ(block.As<ir::ScheduleBlockRealize>()
+                        ->schedule_block.As<ir::ScheduleBlock>(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Cannot cast block to ir::ScheduleBlockRealize."));
   std::string block_name = block.As<ir::ScheduleBlockRealize>()
                                ->schedule_block.As<ir::ScheduleBlock>()
                                ->name;
