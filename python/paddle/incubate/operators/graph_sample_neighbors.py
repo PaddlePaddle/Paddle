@@ -144,7 +144,7 @@ def graph_sample_neighbors(
             ...     colptr,
             ...     nodes,
             ...     sample_size=sample_size
-            ... )
+            ... ) # type: ignore[operator]
 
     """
 
