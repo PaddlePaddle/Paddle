@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 import abc
 import enum
@@ -19,7 +19,7 @@ import os
 import shutil
 import time
 import unittest
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import hypothesis
 import hypothesis.strategies as st
@@ -117,7 +117,7 @@ class AutoScanTest(unittest.TestCase):
     @abc.abstractmethod
     def add_ignore_check_case(
         self,
-        teller: [Callable[[ProgramConfig, paddle_infer.Config], bool]],
+        teller: list[Callable[[ProgramConfig, paddle_infer.Config], bool]],
         reason: IgnoreReasons,
         note: str,
     ):
@@ -224,11 +224,11 @@ class AutoScanTest(unittest.TestCase):
     @abc.abstractmethod
     def create_inference_config(
         self,
-        passes: Optional[list[str]] = None,
+        passes: list[str] | None = None,
         use_gpu: bool = False,
         use_mkldnn: bool = False,
         use_xpu: bool = False,
-        ir_optim: Optional[bool] = None,
+        ir_optim: bool | None = None,
     ):
         config = paddle_infer.Config()
         config.switch_ir_debug(True)
@@ -874,7 +874,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
     # TODO(wilber): just for backward compatible
     def add_skip_case(
         self,
-        teller: [Callable[[ProgramConfig, paddle_infer.Config], bool]],
+        teller: list[Callable[[ProgramConfig, paddle_infer.Config], bool]],
         reason: IgnoreReasons,
         note: str,
     ):

@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 import math
-from typing import Optional
 
 import paddle
 import paddle.distributed as dist
@@ -179,7 +178,7 @@ class LlamaAttentionAuto(nn.Layer):
         use_cache: bool = False,
         alibi: paddle.Tensor | None = None,
     ) -> tuple[
-        paddle.Tensor, Optional[paddle.Tensor], Optional[tuple[paddle.Tensor]]
+        paddle.Tensor, paddle.Tensor | None, tuple[paddle.Tensor] | None
     ]:
         """Input shape: Batch x Time x Channel"""
         # [bs, seq_len, num_head * head_dim] -> [seq_len / n, bs, num_head * head_dim] (n is model parallelism)

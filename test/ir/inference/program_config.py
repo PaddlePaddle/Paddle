@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
 import enum
 import os
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import numpy as np
 
@@ -49,9 +50,9 @@ class TensorConfig:
 
     def __init__(
         self,
-        lod: Optional[list[list[int]]] = None,
-        data_gen: Optional[Callable[..., np.array]] = None,
-        shape: Optional[list[list[int]]] = None,
+        lod: list[list[int]] | None = None,
+        data_gen: Callable[..., np.array] | None = None,
+        shape: list[list[int]] | None = None,
     ):
         '''
         shape: The shape of the tensor.
@@ -257,8 +258,8 @@ class ProgramConfig:
         weights: dict[str, TensorConfig],
         inputs: dict[str, TensorConfig],
         outputs: list[str],
-        input_type: Optional[np.dtype] = None,
-        no_cast_list: Optional[list[str]] = None,
+        input_type: np.dtype | None = None,
+        no_cast_list: list[str] | None = None,
     ):
         self.ops = ops
         # if no weight need to save, we create a place_holder to help serialize params.
