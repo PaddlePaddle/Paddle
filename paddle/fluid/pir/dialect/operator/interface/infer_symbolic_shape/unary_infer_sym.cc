@@ -1561,7 +1561,7 @@ bool SetValue_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return SetValueOpInferSymbolicShape(op, infer_context);
 }
-  
+
 bool RreluOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   float lower = op->attribute<pir::FloatAttribute>("lower").data();
