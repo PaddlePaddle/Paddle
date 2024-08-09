@@ -102,9 +102,10 @@ llvm::Value* CodeGenSwitchHost::LowerInnerCaseCall(const ir::Call* op) {
                  [](auto& arg) { return std::addressof(arg); });
   // TODO(Hongqing-work): Add check for parameter type
   llvm::Function* call_func = m_->getFunction(op->name);
-  PADDLE_ENFORCE_NOT_NULL(call_func,
-                        phi::errors::InvalidArgument(
-                            "Unknown function referenced. [%s]", op->name.c_str()));
+  PADDLE_ENFORCE_NOT_NULL(
+      call_func,
+      phi::errors::InvalidArgument("Unknown function referenced. [%s]",
+                                   op->name.c_str()));
   b_->CreateCall(call_func, ll_function_args);
   return nullptr;
 }
