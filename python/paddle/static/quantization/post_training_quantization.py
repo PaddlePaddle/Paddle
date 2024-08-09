@@ -702,9 +702,9 @@ class PostTrainingQuantization:
                     for out_var_name in utils._get_op_output_var_names(op):
                         for in_var_name in utils._get_op_input_var_names(op):
                             if in_var_name in persistable_var_names:
-                                self._quantized_op_pairs[
-                                    in_var_name
-                                ] = out_var_name
+                                self._quantized_op_pairs[in_var_name] = (
+                                    out_var_name
+                                )
                 # For other op, only sample output scale
                 elif op_type in self.quant_config.observer_operation_types:
                     collect_var_name(
@@ -1155,9 +1155,9 @@ class PostTrainingQuantization:
                     hist, bin_width, self._activation_bits
                 )
             elif self._algo == "hist":
-                self._quantized_var_threshold[
-                    var_name
-                ] = self._get_hist_scaling_factor(hist, hist_edges)
+                self._quantized_var_threshold[var_name] = (
+                    self._get_hist_scaling_factor(hist, hist_edges)
+                )
 
     def _update_program(self):
         '''
@@ -1263,13 +1263,13 @@ class PostTrainingQuantization:
                             if real_tensor_name not in scale_dict.keys():
                                 continue
                             if opera == '*':
-                                scale_dict[
-                                    real_tensor_name
-                                ] = max_scale / float(scalar)
+                                scale_dict[real_tensor_name] = (
+                                    max_scale / float(scalar)
+                                )
                             elif opera == '/':
-                                scale_dict[
-                                    real_tensor_name
-                                ] = max_scale * float(scalar)
+                                scale_dict[real_tensor_name] = (
+                                    max_scale * float(scalar)
+                                )
                         else:
                             if tensor_name not in scale_dict.keys():
                                 continue

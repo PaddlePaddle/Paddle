@@ -81,9 +81,11 @@ class TrtConvertIndexSelectTest(TrtLayerAutoScanTest):
                                         ),
                                         "index_data": TensorConfig(
                                             data_gen=partial(
-                                                generate_input2
-                                                if index_type_int32
-                                                else generate_input4,
+                                                (
+                                                    generate_input2
+                                                    if index_type_int32
+                                                    else generate_input4
+                                                ),
                                                 index,
                                             )
                                         ),

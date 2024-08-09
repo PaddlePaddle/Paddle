@@ -33,9 +33,9 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/platform/device_event.h"
 
 COMMON_DECLARE_bool(new_executor_serial_run);
 PD_DECLARE_bool(new_executor_static_build);

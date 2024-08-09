@@ -1390,7 +1390,7 @@ def AutoCodeGen(
                     and dialect_name != "onednn_op"
                 ):
                     if decomp_interface_str not in op_interfaces:
-                        op_interfaces = op_interfaces + [decomp_interface_str]
+                        op_interfaces = [*op_interfaces, decomp_interface_str]
                     if (
                         decomp_interface_declare_str
                         not in exclusive_interface_str
@@ -1403,8 +1403,9 @@ def AutoCodeGen(
                     and dialect_name != "onednn_op"
                 ):
                     if decomp_vjp_interface_str not in op_interfaces:
-                        op_interfaces = op_interfaces + [
-                            decomp_vjp_interface_str
+                        op_interfaces = [
+                            *op_interfaces,
+                            decomp_vjp_interface_str,
                         ]
                     if (
                         decomp_vjp_interface_declare_str

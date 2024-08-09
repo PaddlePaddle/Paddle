@@ -259,7 +259,7 @@ class BaseTestCases:
             )
 
         def input_and_attrs(self):
-            raise NotImplementedError()
+            raise NotImplementedError
 
 
 class TestLogcumsumexpOp1(BaseTestCases.BaseOpTest):

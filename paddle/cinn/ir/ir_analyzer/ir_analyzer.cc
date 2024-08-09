@@ -477,7 +477,8 @@ bool IsBroadcastSBlock(ir::Expr block) {
   };
   int num_load_index_zero = 0;
   for (size_t i = 0; i < load->indices.size(); ++i) {
-    if (IsIndexZero(load->indices[i]) && !IsIndexZero(store->indices[i])) {
+    if (IsIndexZero(load->indices[i]) && i < store->indices.size() &&
+        !IsIndexZero(store->indices[i])) {
       ++num_load_index_zero;
       continue;
     }

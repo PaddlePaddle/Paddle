@@ -303,8 +303,7 @@ def nanmedian(
     keepdim: bool = ...,
     mode: Literal['min'] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -314,8 +313,7 @@ def nanmedian(
     keepdim: bool = ...,
     mode: Literal['avg', 'min'] = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 def nanmedian(
@@ -448,8 +446,7 @@ def median(
     keepdim: bool = ...,
     mode: Literal['min'] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -459,8 +456,7 @@ def median(
     keepdim: bool = ...,
     mode: Literal['avg', 'min'] = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 def median(
