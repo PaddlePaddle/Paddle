@@ -16,9 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
 import numpy as np
 
 from paddle.nn import Layer
@@ -29,6 +26,8 @@ from paddle.utils import convert_to_list
 from .. import functional as F
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         ParamAttrLike,

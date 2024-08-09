@@ -16,9 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
 __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
@@ -30,6 +27,8 @@ from paddle.utils import convert_to_list
 from ...binary import add
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         DataLayout2D,

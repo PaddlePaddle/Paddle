@@ -33,14 +33,12 @@ from typing import (
     overload,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
 from typing_extensions import NotRequired, TypeAlias, Unpack
 
 from paddle.base.reader import QUEUE_GET_TIMEOUT
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
 
     class _ComposeOptions(TypedDict):
         check_alignment: NotRequired[bool]

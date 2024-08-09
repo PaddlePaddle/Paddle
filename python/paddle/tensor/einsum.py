@@ -19,9 +19,6 @@ import re
 import string
 from typing import TYPE_CHECKING, NamedTuple
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
 import numpy as np
 import opt_einsum
 
@@ -38,6 +35,8 @@ from .math import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
 __all__ = []

@@ -17,9 +17,6 @@ from __future__ import annotations
 import math
 from typing import TYPE_CHECKING, Any, Literal, overload
 
-if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
-
 import numpy as np
 
 import paddle
@@ -46,6 +43,8 @@ from ..framework import (
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         DTypeLike,
