@@ -20,15 +20,14 @@ from typing import TYPE_CHECKING, NoReturn, TypedDict
 
 from typing_extensions import NotRequired
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
 import paddle
 
 from ..base import framework
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
     from paddle.regularizer import WeightDecayRegularizer

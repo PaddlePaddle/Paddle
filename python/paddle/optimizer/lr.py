@@ -18,9 +18,6 @@ import math
 import warnings
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypedDict
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
 import numpy
 import numpy.typing as npt
 from typing_extensions import NotRequired
@@ -35,6 +32,9 @@ from paddle.base.framework import (
     in_dygraph_mode,
 )
 from paddle.base.layer_helper import LayerHelper
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 __all__ = [
     'LRScheduler',

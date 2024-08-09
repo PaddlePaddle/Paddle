@@ -23,9 +23,6 @@ import os
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
-
 import numpy as np
 
 import paddle
@@ -57,6 +54,8 @@ from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from typing_extensions import NotRequired, TypedDict
 
     from paddle import Tensor

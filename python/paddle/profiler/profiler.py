@@ -22,9 +22,6 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable
 from warnings import warn
 
-if TYPE_CHECKING:
-    from collections.abc import Iterable
-
 import paddle
 from paddle.base.core import (
     ProfilerOptions,
@@ -45,6 +42,9 @@ from .profiler_statistic import (
 )
 from .timer import benchmark
 from .utils import RecordEvent, wrap_optimizers
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 class SummaryView(Enum):

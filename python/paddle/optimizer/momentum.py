@@ -17,9 +17,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
 import paddle
 from paddle import _C_ops, pir
 from paddle.framework import in_dynamic_or_pir_mode
@@ -29,6 +26,8 @@ from ..base import core, framework
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
