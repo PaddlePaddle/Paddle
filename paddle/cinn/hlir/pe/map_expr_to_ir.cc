@@ -79,7 +79,7 @@ class MapExprToIrTranslator {
         node2lowered_funcs_->find(const_cast<::pir::Operation*>(op));
     PADDLE_ENFORCE_NE(iter,
                       node2lowered_funcs_->end(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Iterator reached the end, which indicates the node "
                           "was not found in node2lowered_funcs_."));
 
@@ -93,14 +93,14 @@ class MapExprToIrTranslator {
       PADDLE_ENFORCE_EQ(
           ret.has_value(),
           false,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "ret already has a value. Expected it to be uninitialized."));
       ret = expr;
     });
     PADDLE_ENFORCE_EQ(
         ret.has_value(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "ret does not have a value after VisitEachStoreExpr execution."));
 
     return ret.value();
@@ -112,7 +112,7 @@ class MapExprToIrTranslator {
         node2lowered_funcs_->find(const_cast<::pir::Operation*>(op.value()));
     PADDLE_ENFORCE_NE(iter,
                       node2lowered_funcs_->end(),
-                      phi::errors::NotFound(
+                      ::common::errors::NotFound(
                           "The node was not found in node2lowered_funcs_."));
 
     const auto& lowered_funcs = iter->second;
@@ -137,7 +137,7 @@ class MapExprToIrTranslator {
         node2lowered_funcs_->find(const_cast<::pir::Operation*>(op.value()));
     PADDLE_ENFORCE_NE(iter,
                       node2lowered_funcs_->end(),
-                      phi::errors::NotFound(
+                      ::common::errors::NotFound(
                           "The node was not found in node2lowered_funcs_."));
 
     const auto& lowered_funcs = iter->second;
@@ -331,8 +331,8 @@ class MapExprToIrTranslator {
     PADDLE_ENFORCE_EQ(
         op_expr_children->empty(),
         false,
-        phi::errors::InvalidArgument("The op_expr_children list is empty. "
-                                     "Expected it to contain elements."));
+        ::common::errors::InvalidArgument("The op_expr_children list is empty. "
+                                          "Expected it to contain elements."));
 
     PADDLE_ENFORCE_EQ(
         (store_rvalue.As<ir::Call>()->read_args.size()),
@@ -429,7 +429,7 @@ class MapExprToIrTranslator {
     const auto& iter = MakeStoreRvalueExpr4Op.find(op_name);
     PADDLE_ENFORCE_NE(iter,
                       MakeStoreRvalueExpr4Op.end(),
-                      phi::errors::Unimplemented(
+                      ::common::errors::Unimplemented(
                           "Operation %s is not supported yet! store_expr: %s",
                           op_name,
                           store_expr));
@@ -449,7 +449,7 @@ class MapExprToIrTranslator {
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     PADDLE_ENFORCE_EQ(store_expr.has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Expected store_expr to have a value, but it is "
                           "currently uninitialized or empty. Ensure that the "
                           "store_expr is correctly set before this check."));
@@ -476,7 +476,7 @@ class MapExprToIrTranslator {
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     PADDLE_ENFORCE_EQ(store_expr.has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Expected store_expr to have a value, but it is "
                           "currently uninitialized or empty. Ensure that the "
                           "store_expr is correctly set before this check."));
@@ -504,7 +504,7 @@ class MapExprToIrTranslator {
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     PADDLE_ENFORCE_EQ(store_expr.has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Expected store_expr to have a value, but it is "
                           "currently uninitialized or empty. Ensure that the "
                           "store_expr is correctly set before this check."));
@@ -523,7 +523,7 @@ class MapExprToIrTranslator {
     PADDLE_ENFORCE_EQ(
         opt_output_tensor.has_value(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Expected opt_output_tensor to have a value, but it is currently "
             "uninitialized or empty. Ensure that the opt_output_tensor is "
             "correctly set before this check."));
@@ -627,7 +627,7 @@ class MapExprToIrTranslator {
         PADDLE_ENFORCE_EQ(
             value2var_expr.emplace(value, std::make_pair(var, expr)).second,
             true,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "Failed to insert the value-var-expr pair into value2var_expr. "
                 "This indicates that the value already exists in the map. "
                 "Ensure that each value is unique before inserting."));
@@ -648,7 +648,7 @@ class MapExprToIrTranslator {
         PADDLE_ENFORCE_NE(
             it,
             value2var_expr.end(),
-            phi::errors::NotFound(
+            ::common::errors::NotFound(
                 "The iterator reached the end of value2var_expr, indicating "
                 "that the value was not found in the map. Ensure that the "
                 "value exists in the map before attempting to access it."));
@@ -685,7 +685,7 @@ class MapExprToIrTranslator {
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     PADDLE_ENFORCE_EQ(store_expr.has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Expected store_expr to have a value, but it is "
                           "currently uninitialized or empty. Ensure that the "
                           "store_expr is correctly set before this check."));
@@ -700,7 +700,7 @@ class MapExprToIrTranslator {
         TranslateOpExpr(op_expr, opt_output_tensor, IterExprs4Tensor);
     PADDLE_ENFORCE_EQ(opt_rvalue.has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Expected opt_rvalue to have a value, but it is "
                           "currently uninitialized or empty. Ensure that "
                           "opt_rvalue is correctly set before this check."));

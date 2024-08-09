@@ -3367,8 +3367,8 @@ class Operator:
                     if type in special_op_attrs:
                         attrs = special_op_attrs.get(type, [])
                         for attr in attrs:
-                            a_name = list(attr.keys())[0]
-                            default_value = list(attr.values())[0]
+                            a_name = next(iter(attr.keys()))
+                            default_value = next(iter(attr.values()))
                             if (
                                 a_name in op_attrs.keys()
                                 and default_value != op_attrs[a_name]

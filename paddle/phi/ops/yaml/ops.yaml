@@ -553,6 +553,7 @@
     func : BinomialInferMeta
   kernel :
     func : binomial
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bipartite_match
   args: (Tensor dist_mat, str match_type = "bipartite", float dist_threshold = 0.5)
@@ -855,6 +856,7 @@
     param : [x, scale]
     data_type : x
   inplace : (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : check_numerics
   args : (Tensor tensor, str op_type = "", str var_name = "", int check_nan_inf_level = 0, int stack_height_limit = -1, str output_dir = "")
@@ -1715,6 +1717,7 @@
     func : fake_quantize_dequantize_abs_max
     data_type : x
   backward : fake_quantize_dequantize_abs_max_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_dequantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1727,6 +1730,7 @@
   optional : in_accum, in_state, out_state, out_accum
   backward : fake_quantize_dequantize_moving_average_abs_max_grad
   inplace: (in_scale -> out_scale)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1738,6 +1742,7 @@
     data_type : x
   optional : in_accum, in_state, out_state, out_accum
   inplace: (in_scale -> out_scale)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_range_abs_max
   args : (Tensor x, Tensor in_scale, Tensor iter, int window_size = 10000,  int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -2642,6 +2647,7 @@
     data_type : x
   inplace: (x -> out)
   backward : l1_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : label_smooth
   args : (Tensor label, Tensor prior_dist, float epsilon = 0.0f)
@@ -3960,6 +3966,7 @@
     data_type : x
   intermediate : noise
   backward : rrelu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rsqrt
   args : (Tensor x)

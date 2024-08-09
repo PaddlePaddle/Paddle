@@ -56,7 +56,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu(
         PADDLE_ENFORCE_EQ(
             pack_args.size(),
             2,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The pack_args's dimensions should be 2, but got %d.",
                 pack_args.size()));
         CHECK(pack_args[1].is_string());
@@ -92,7 +92,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6Symbolic(
         PADDLE_ENFORCE_EQ(
             pack_args.size(),
             2,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The pack_args's dimensions should be 2, but got %d.",
                 pack_args.size()));
         CHECK(pack_args[1].is_string());
@@ -125,7 +125,7 @@ std::shared_ptr<OpStrategy> StrategyForReluSymbolic(
         PADDLE_ENFORCE_EQ(
             pack_args.size(),
             2,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The pack_args's dimensions should be 2, but got %d.",
                 pack_args.size()));
         CHECK(pack_args[1].is_string());
@@ -158,7 +158,7 @@ std::shared_ptr<OpStrategy> StrategyForRelu6(
         PADDLE_ENFORCE_EQ(
             pack_args.size(),
             2,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The pack_args's dimensions should be 2, but got %d.",
                 pack_args.size()));
         CHECK(pack_args[1].is_string());
@@ -221,7 +221,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
 #ifndef CINN_WITH_CUDNN
   PADDLE_ENFORCE_EQ(conv_type,
                     "forward",
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "conv type should be 'forward', but got %s."
                         "cudnn is not found, backward_data/backward_filter is "
                         "not supported!",
@@ -236,7 +236,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         CINNValuePack pack_args = args[0];
         PADDLE_ENFORCE_GE(pack_args.size(),
                           2U,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of pack_args in conv2d is incorrect. "
                               "Expected size should be greater than or equal "
                               "to 2, but receive %d. ",
@@ -248,19 +248,19 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
         PADDLE_ENFORCE_EQ(
             padding.size(),
             2,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The size of padding in conv2d op should be 2, but got %d.",
                 padding.size()));
         PADDLE_ENFORCE_EQ(
             stride.size(),
             2,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The size of stride in conv2d op should be 2, but got %d.",
                 stride.size()));
         PADDLE_ENFORCE_EQ(
             dilation.size(),
             2,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The size of dilation in conv2d op should be 2, but got %d.",
                 dilation.size()));
         std::vector<ir::Tensor> out;
@@ -270,7 +270,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                 << utils::Join(B.as_tensor_ref()->shape, ", ");
         PADDLE_ENFORCE_GE(pack_args.size(),
                           3,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The size of pack_args in conv2d op should be "
                               "greater than or equal to 3, but got %d.",
                               pack_args.size()));
@@ -417,7 +417,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
             PADDLE_ENFORCE_EQ(
                 vec_ast.size(),
                 1,
-                phi::errors::InvalidArgument(
+                ::common::errors::InvalidArgument(
                     "The size of vec_ast should be 1, but got %d.",
                     vec_ast.size()));
             pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
@@ -487,7 +487,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     PADDLE_ENFORCE_GE(
         pack_args.size(),
         2U,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of pack_args in depthwise_conv is incorrect. "
             "Expected size should be greater than or equal "
             "to 2, but receive %d. ",
@@ -499,13 +499,13 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     PADDLE_ENFORCE_EQ(
         padding.size(),
         2,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of padding in depthwise_conv op should be 2, but got %d.",
             padding.size()));
     PADDLE_ENFORCE_EQ(
         stride.size(),
         2,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of stride in depthwise_conv op should be 2, but got %d.",
             stride.size()));
     CHECK(data_format == "NCHW" || data_format == "NHWC")
@@ -513,7 +513,7 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     std::vector<ir::Tensor> out;
     PADDLE_ENFORCE_GE(pack_args.size(),
                       3,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of pack_args in depthwise_conv op should "
                           "be greater than or equal to 3, but got %d.",
                           pack_args.size()));
@@ -645,7 +645,7 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
     CINNValuePack arg_pack = args[0];
     PADDLE_ENFORCE_GE(arg_pack.size(),
                       5U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of arg_pack in batchnorm compute should be "
                           "greater than or equal to 5, but got %d.",
                           arg_pack.size()));
@@ -657,9 +657,9 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
     PADDLE_ENFORCE_EQ(
         arg_pack.size(),
         6U,
-        phi::errors::InvalidArgument("The size of arg_pack in batchnorm "
-                                     "compute should be 6, but got %d.",
-                                     arg_pack.size()));
+        ::common::errors::InvalidArgument("The size of arg_pack in batchnorm "
+                                          "compute should be 6, but got %d.",
+                                          arg_pack.size()));
     CHECK(arg_pack[5].is_string());
     std::string out_name = arg_pack[5];
     CHECK(A.as_tensor());
@@ -674,26 +674,26 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
       PADDLE_ENFORCE_EQ(
           input_layouts.size(),
           5U,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "batch_norm_NCHWc's input layouts should be 5, but got %d.",
               input_layouts.size()));
       std::string input_layout = input_layouts[0];
       PADDLE_ENFORCE_GE(
           input_layout.size(),
           5U,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "batch_norm_NCHWc's input layout should be 5, but got %d.",
               input_layout.size()));
-      PADDLE_ENFORCE_EQ(
-          input_layout.substr(0, 4),
-          "NCHW",
-          phi::errors::InvalidArgument("batch_norm_NCHWc's input layout substr "
-                                       "should be 'NCHW', but got %s.",
-                                       input_layout.substr(0, 4)));
+      PADDLE_ENFORCE_EQ(input_layout.substr(0, 4),
+                        "NCHW",
+                        ::common::errors::InvalidArgument(
+                            "batch_norm_NCHWc's input layout substr "
+                            "should be 'NCHW', but got %s.",
+                            input_layout.substr(0, 4)));
       PADDLE_ENFORCE_EQ(
           tensor_input->shape.size(),
           5U,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "batch_norm_NCHWc's input shape's size should be 5, but got %d.",
               tensor_input->shape.size()));
       out = pe::BatchNorm_NCHWc(tensor_input,
@@ -782,7 +782,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
 
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "the size of pack_args should be 2, but got %d.",
                               pack_args.size()));
         CHECK(pack_args[1].is_string());
@@ -833,7 +833,7 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
       PADDLE_ENFORCE_EQ(
           vec_tensor.size(),
           2,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "the size of vector tensor should be 2, but got %d.",
               vec_tensor.size()));
       Expr input_pad = vec_tensor[1];
@@ -976,7 +976,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
 
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "the size of pack_args should be 2, but got %d.",
                               pack_args.size()));
         CHECK(pack_args[1].is_string());
@@ -1033,7 +1033,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
 
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "the size of pack_args should be 2, but got %d.",
                               pack_args.size()));
         CHECK(pack_args[1].is_string());
@@ -1088,7 +1088,7 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       PADDLE_ENFORCE_EQ(
           vec_tensor.size(),
           2,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "the size of vector tensor should be 2, but got %d.",
               vec_tensor.size()));
       Expr input_pad = vec_tensor[1];
@@ -1199,7 +1199,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
 
         PADDLE_ENFORCE_EQ(pack_args.size(),
                           2,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "the size of pack_args should be 2, but got %d.",
                               pack_args.size()));
         CHECK(pack_args[1].is_string());
@@ -1251,7 +1251,7 @@ std::shared_ptr<OpStrategy> StrategyForPool3d(
       PADDLE_ENFORCE_EQ(
           vec_tensor.size(),
           2,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "the size of vector tensor should be 2, but got %d.",
               vec_tensor.size()));
       Expr input_pad = vec_tensor[1];
@@ -1324,7 +1324,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
 
         PADDLE_ENFORCE_GE(pack_args.size(),
                           2,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "the size of pack_args should be greater than or "
                               "equal to 2, but got %d.",
                               pack_args.size()));
@@ -1348,7 +1348,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         PADDLE_ENFORCE_EQ(
             out.size(),
             2U,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The size of pe::Softmax's output should be 2, but got %d.",
                 out.size()));
         CHECK(!out_type.empty())
@@ -1378,7 +1378,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         auto all_blocks = ir_sch.GetAllBlocks();
         PADDLE_ENFORCE_EQ(all_blocks.size(),
                           3,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "the size of all blocks should be 3, but got %d.",
                               all_blocks.size()));
         auto loops = ir_sch.GetLoops(all_blocks[2]);
@@ -1391,13 +1391,13 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         loops = ir_sch.GetLoops(all_blocks[2]);
         int loop_index = 1;
         if (output_shapes[0][0] == 1) loop_index--;
-        PADDLE_ENFORCE_GE(
-            loops.size(),
-            loop_index + 1,
-            phi::errors::InvalidArgument("the size of loops should be greater "
-                                         "than or equal to %d, but got %d.",
-                                         loop_index + 1,
-                                         loops.size()));
+        PADDLE_ENFORCE_GE(loops.size(),
+                          loop_index + 1,
+                          ::common::errors::InvalidArgument(
+                              "the size of loops should be greater "
+                              "than or equal to %d, but got %d.",
+                              loop_index + 1,
+                              loops.size()));
         auto splited_loops = ir_sch.Split(loops[loop_index], {-1, 5});
 
         all_blocks = ir_sch.GetAllBlocks();
@@ -1458,7 +1458,7 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
 
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "the size of pack_args should be 2, but got %d.",
                           pack_args.size()));
     CHECK(pack_args[1].is_string());
@@ -1492,10 +1492,10 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
     PADDLE_ENFORCE_GE(
         pack_args.size(),
         3U,
-        phi::errors::InvalidArgument("the size of pack_args for select "
-                                     "compute should be greater than or "
-                                     "equal to 3, but got %d.",
-                                     pack_args.size()));
+        ::common::errors::InvalidArgument("the size of pack_args for select "
+                                          "compute should be greater than or "
+                                          "equal to 3, but got %d.",
+                                          pack_args.size()));
     Expr condition = pack_args[0];
     Expr true_value = pack_args[1];
     Expr false_value = pack_args[2];
@@ -1506,7 +1506,7 @@ std::shared_ptr<OpStrategy> StrategyForSelect(
     PADDLE_ENFORCE_EQ(
         pack_args.size(),
         4U,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "the size of pack_args for select compute should be 4, but got %d.",
             pack_args.size()));
     CHECK(pack_args[3].is_string());
