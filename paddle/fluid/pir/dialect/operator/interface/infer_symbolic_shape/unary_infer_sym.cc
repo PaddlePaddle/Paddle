@@ -1174,7 +1174,6 @@ bool NormOpInferSymbolicShape(pir::Operation *op,
   if (!is_test) {
     if (axis < 0) axis += x_shape.size();
 
-    // Directly modify x_shape at the specified axis.
     infer_context->SetShapeOrDataForValue(
         op->result(1),
         symbol::ShapeOrDataDimExprs{
