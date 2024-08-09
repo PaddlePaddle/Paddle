@@ -39,9 +39,11 @@ class TrilTriuOpDefaultTest(OpTest):
             'lower': True if self.real_op_type == 'tril' else False,
         }
         self.outputs = {
-            'Out': self.real_np_op(self.X, self.diagonal)
-            if self.diagonal
-            else self.real_np_op(self.X)
+            'Out': (
+                self.real_np_op(self.X, self.diagonal)
+                if self.diagonal
+                else self.real_np_op(self.X)
+            )
         }
 
     def test_check_output(self):

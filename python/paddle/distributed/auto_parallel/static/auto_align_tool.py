@@ -100,7 +100,7 @@ class AutoAlignTool:
         elif level == 5:
             return self.get_backward_tmp_var()
         else:
-            raise ValueError()
+            raise ValueError
 
     def set_program(self, program: Program):
         assert isinstance(program, Program)

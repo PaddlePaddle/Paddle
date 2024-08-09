@@ -25,8 +25,8 @@
 #include "paddle/fluid/platform/profiler/host_event_recorder.h"
 #include "paddle/fluid/platform/profiler/host_tracer.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
-#include "paddle/fluid/platform/profiler_helper.h"
 #include "paddle/phi/api/profiler/device_tracer.h"
+#include "paddle/phi/core/platform/profiler_helper.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/nvtx.h"
 #endif
