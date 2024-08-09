@@ -71,12 +71,13 @@ llvm::Value* CodeGenInvokeModule::LowerParseArgsValueCall(
       2,
       ::common::errors::InvalidArgument(
           "The number of arguments of ParseArgsValue should be 2"));
-  PADDLE_ENFORCE_EQ(call_ir->read_args[0].is_var() &&
-                    call_ir->read_args[0].as_var()->type().is_cpp_handle(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The first read argument must be a variable with a C++ handle type."));
-  
+  PADDLE_ENFORCE_EQ(
+      call_ir->read_args[0].is_var() &&
+          call_ir->read_args[0].as_var()->type().is_cpp_handle(),
+      true,
+      phi::errors::InvalidArgument("The first read argument must be a variable "
+                                   "with a C++ handle type."));
+
   PADDLE_ENFORCE_EQ(call_ir->read_args[1].type().is_int(32),
                     true,
                     phi::errors::InvalidArgument(
@@ -104,8 +105,7 @@ llvm::Value* CodeGenSwitchHost::LowerInnerCaseCall(const ir::Call* op) {
   PADDLE_ENFORCE_EQ(call_func,
                     true,
                     phi::errors::InvalidArgument(
-                        "Unknown function referenced. [%s]",
-                        op->name.c_str()));
+                        "Unknown function referenced. [%s]", op->name.c_str()));
   b_->CreateCall(call_func, ll_function_args);
   return nullptr;
 }
