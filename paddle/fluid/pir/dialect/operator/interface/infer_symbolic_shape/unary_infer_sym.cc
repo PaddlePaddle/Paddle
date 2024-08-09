@@ -453,7 +453,9 @@ bool ClassCenterSampleOpInferSymbolicShape(
                                       "equal to 1, but the value given is %d.",
                                       label_dims.size()));
 
-  int num_samples = op->attribute<pir::Int32Attribute>("num_samples").data();
+  const auto &attributes = op->arrtibutes();
+  int64_t num_samples =
+      attributes.at("num_samples").dyn_cast<pir::Int64Attribute>().data();
 
   infer_context->SetShapeOrDataForValue(op->result(0), label_shape_or_data);
 
