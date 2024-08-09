@@ -819,7 +819,7 @@ class OperatorClusteringUtil:
         for i in range(1, len(seq)):
             x = seq[suffixes[i - 1] :]
             y = seq[suffixes[i] :]
-            max_len = len(x) if len(x) > len(y) else len(y)
+            max_len = max(len(y), len(x))
             same_count = 0
             for j in range(max_len):
                 if j >= len(x) or j >= len(y):
@@ -2380,9 +2380,7 @@ class RuleBasedTuner:
                         )
                         cost, _ = self._get_sub_program_cost(dist_context)
                         max_stage_cost = (
-                            min_max_stage_costs[s - 1][j]
-                            if local_stage_cost < min_max_stage_costs[s - 1][j]
-                            else local_stage_cost
+                            max(local_stage_cost, min_max_stage_costs[s - 1][j])
                         )
 
                         if cost <= min_cost:
@@ -2487,9 +2485,7 @@ class RuleBasedTuner:
                         memory_strategies[s][i][j] = memory
 
                         max_stage_cost = (
-                            min_max_stage_costs[s - 1][j]
-                            if local_stage_cost < min_max_stage_costs[s - 1][j]
-                            else local_stage_cost
+                            max(local_stage_cost, min_max_stage_costs[s - 1][j])
                         )
                         if memory > sum(max_mem):
                             cost = sys.maxsize
