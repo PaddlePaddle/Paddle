@@ -224,8 +224,9 @@ bool Expr::is_constant() const {
 }
 
 double Expr::get_constant() const {
-  PADDLE_ENFORCE_NOT_NULL(
+  PADDLE_ENFORCE_EQ(
       is_constant(),
+      true,
       phi::errors::InvalidArgument("%s is not constant! Please check.", *this));
   auto *vi = As<IntImm>();
   auto *vf = As<FloatImm>();
@@ -310,8 +311,9 @@ void IrNode::replace(Expr old_op, Expr new_op) {
 void IrNode::convert_int32_to_int64() {
   if (type_ != Int(64))
     if (type_ != Int(32))
-      PADDLE_ENFORCE_NOT_NULL(
+      PADDLE_ENFORCE_EQ(
           type_.is_unk(),
+          true,
           phi::errors::InvalidArgument("Current only support convert int32_t "
                                        "to int64_t, but get type is: %s",
                                        type_));
@@ -337,8 +339,9 @@ void TryElevateInt32ToInt64(const std::vector<Expr> &expr_vec) {
   for (const Expr &expr : expr_vec) {
     if (expr->type() != Int(64))
       if (expr->type() != Int(32))
-        PADDLE_ENFORCE_NOT_NULL(
+        PADDLE_ENFORCE_EQ(
             expr->type().is_unk(),
+            true,
             phi::errors::InvalidArgument("Current only support convert int32_t "
                                          "to int64_t, but get type is: %s",
                                          expr->type()));
