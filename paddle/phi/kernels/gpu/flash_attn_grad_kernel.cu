@@ -194,7 +194,13 @@ void FlashAttnGradKernel(const Context& ctx,
     VLOG(10) << "[FlashAttn Backward] attn_mask.shape=["
              << (attn_mask.get_ptr())->dims() << "]";
   }
-  mcflashattnStatus_t succ = phi::dynload::mha_bwd(params.dout,
+  mcflashattnStatus_t succ = phi::dynload::mha_bwd(params.batch_size,
+                                                   params.seqlen_q,
+                                                   params.num_heads,
+                                                   params.seqlen_k,
+                                                   params.num_heads_k,
+                                                   params.head_size,
+                                                   params.dout,
                                                    params.q,
                                                    params.k,
                                                    params.v,
