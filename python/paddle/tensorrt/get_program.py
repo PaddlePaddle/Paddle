@@ -145,7 +145,6 @@ def get_r50_v2_program(model_dir, prefix):
 
         with paddle.static.program_guard(pir_program, startup_program):
             x = np.ones([2, 3, 224, 224]).astype("float32")
-            print("feed_target_names:", feed_target_names)
             fetches = exe.run(
                 pir_program,
                 feed={"_jst.0.inputs.0": x},
