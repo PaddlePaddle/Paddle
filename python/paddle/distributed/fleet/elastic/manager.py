@@ -387,7 +387,7 @@ class ElasticManager:
             min_np = int(np_dict[0])
             max_np = int(np_dict[1])
             min_np = 1 if min_np <= 0 else min_np
-            max_np = min_np if min_np > max_np else max_np
+            max_np = max(max_np, min_np)
         else:
             raise ValueError(
                 f'the np={np} needs to be in "MIN" or "MIN:MAX" format'

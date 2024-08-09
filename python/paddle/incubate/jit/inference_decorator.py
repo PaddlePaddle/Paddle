@@ -164,7 +164,7 @@ class InferenceEngine:
         # get old d2s shapes!
         if os.path.exists(d2s_input_info_path) and self.cache_static_model:
             with open(d2s_input_info_path, "r") as f:
-                for line in f.readlines():
+                for line in f:
                     line = line.strip()
                     name_shape = line.split(":")
                     assert len(name_shape) == 2

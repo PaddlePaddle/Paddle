@@ -696,5 +696,5 @@ def compare_accuracy(
 
     print(f"-- Write to {output_filename}")
 
-    print("")
+    print()
     excel_writer.close()
