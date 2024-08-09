@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import collections
 import os
-from typing import Any
+from typing import Any, NamedTuple
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils import download
@@ -91,6 +91,16 @@ class TESS(AudioClassificationDataset):
     )
     audio_path = 'TESS_Toronto_emotional_speech_set'
 
+    archive: dict[str, str] = ...
+    label_list: list[str] = ...
+
+    class meta_info(NamedTuple):  # noqa: F811
+        speaker: str
+        word: str
+        emotion: str
+
+    audio_path: str = ...
+
     def __init__(
         self,
         mode: str = 'train',
@@ -113,7 +123,7 @@ class TESS(AudioClassificationDataset):
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 
-    def _get_meta_info(self, files) -> list[collections.namedtuple]:
+    def _get_meta_info(self, files) -> list[meta_info]:
         ret = []
         for file in files:
             basename_without_extend = os.path.basename(file)[:-4]
