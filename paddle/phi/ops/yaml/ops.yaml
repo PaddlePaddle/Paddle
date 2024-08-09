@@ -2344,6 +2344,7 @@
     func : hardtanh
   inplace: (x -> out)
   backward : hardtanh_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : heaviside
   args : (Tensor x, Tensor y)
@@ -2383,6 +2384,7 @@
     func : hsigmoid_loss
     data_type : x
   backward : hsigmoid_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : huber_loss
   args : (Tensor input, Tensor label, float delta)
@@ -2393,6 +2395,7 @@
     func : huber_loss
   intermediate : residual
   backward : huber_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : i0
   args : (Tensor x)
