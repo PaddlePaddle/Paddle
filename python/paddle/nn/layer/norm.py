@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import numbers
 import warnings
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -53,6 +53,7 @@ from .layers import Layer
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Literal
 
     from paddle import Tensor
     from paddle._typing import (
