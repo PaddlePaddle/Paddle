@@ -1223,6 +1223,7 @@ class FusedMultiTransformer(Layer):
 
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Need compile flash attention')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> from paddle.incubate.nn import FusedMultiTransformer
