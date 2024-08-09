@@ -87,7 +87,7 @@ class TestArgsortOpCPU(unittest.TestCase):
 
         with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
-                name="x", shape=[-1, *list(self.input_shape)], dtype=self.dtype
+                name="x", shape=[-1, *self.input_shape], dtype=self.dtype
             )
             x.stop_gradient = False
             x.desc.set_need_check_feed(False)
