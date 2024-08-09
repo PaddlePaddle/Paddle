@@ -15,7 +15,6 @@ set(PYBIND_DEPS
     generate_pass
     pass_builder
     compiled_program
-    profiler
     layer
     tracer
     engine
@@ -33,7 +32,6 @@ set(PYBIND_DEPS
     ps_gpu_wrapper
     custom_operator
     cost_model
-    cuda_graph_with_memory_pool
     fleet_executor
     global_utils
     phi_utils

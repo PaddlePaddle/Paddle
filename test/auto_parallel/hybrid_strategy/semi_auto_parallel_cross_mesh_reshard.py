@@ -64,9 +64,11 @@ class TestSemiAutoParallelCrossMeshReshard:
             assert np.equal(out._local_shape, expect_out_shape).all()
             np.testing.assert_equal(
                 out._local_value().numpy(),
-                expect_out[0].numpy()
-                if dist.get_rank() == 2
-                else expect_out[1].numpy(),
+                (
+                    expect_out[0].numpy()
+                    if dist.get_rank() == 2
+                    else expect_out[1].numpy()
+                ),
             )
 
     def test_r_to_p(self):
@@ -103,9 +105,11 @@ class TestSemiAutoParallelCrossMeshReshard:
             assert np.equal(out._local_shape, expect_out_shape).all()
             np.testing.assert_equal(
                 out._local_value().numpy(),
-                expect_out[0].numpy()
-                if dist.get_rank() == 2
-                else expect_out[1].numpy(),
+                (
+                    expect_out[0].numpy()
+                    if dist.get_rank() == 2
+                    else expect_out[1].numpy()
+                ),
             )
 
     def test_s_to_p(self):
@@ -158,9 +162,11 @@ class TestSemiAutoParallelCrossMeshReshard:
             assert np.equal(out._local_shape, expect_out_shape).all()
             np.testing.assert_equal(
                 out._local_value().numpy(),
-                expect_out[0].numpy()
-                if dist.get_rank() == 2
-                else expect_out[1].numpy(),
+                (
+                    expect_out[0].numpy()
+                    if dist.get_rank() == 2
+                    else expect_out[1].numpy()
+                ),
             )
 
     def run_test_case(self):

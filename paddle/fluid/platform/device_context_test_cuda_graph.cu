@@ -15,9 +15,9 @@ limitations under the License. */
 #include "cuda_runtime.h"  // NOLINT
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 TEST(Device, DeviceContextWithCUDAGraph) {
   using phi::DeviceContext;

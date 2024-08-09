@@ -473,13 +473,13 @@ class PassAutoScanTest(AutoScanTest):
             self.fail_log(
                 f"At least {min_success_num} programs need to ran successfully, but now only about {successful_ran_programs} programs satisfied."
             )
-            raise AssertionError()
+            raise AssertionError
         used_time = time.time() - start_time
         if max_duration > 0 and used_time > max_duration:
             self.fail_log(
                 f"The duration exceeds {max_duration} seconds, if this is necessary, try to set a larger number for parameter `max_duration`."
             )
-            raise AssertionError()
+            raise AssertionError
 
     def run_test(self, quant=False, prog_configs=None):
         status = True

@@ -70,9 +70,11 @@ class RandomDataset(paddle.io.Dataset):
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     optimizer = paddle.optimizer.AdamW(
-        parameters=[{"params": model.parameters()}]
-        if opt_group
-        else model.parameters(),
+        parameters=(
+            [{"params": model.parameters()}]
+            if opt_group
+            else model.parameters()
+        ),
         learning_rate=0.001,
         weight_decay=0.00001,
         grad_clip=clip,

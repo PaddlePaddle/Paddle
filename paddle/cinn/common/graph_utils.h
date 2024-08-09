@@ -86,7 +86,7 @@ class GraphNode : public Object {
   std::tuple<EdgeT*, EdgeT*> LinkTo(GraphNode* other) {
     EdgeT *a, *b;
     PADDLE_ENFORCE_NOT_NULL(
-        other, phi::errors::InvalidArgument("The input node is null."));
+        other, ::common::errors::InvalidArgument("The input node is null."));
     PADDLE_ENFORCE_NE(
         other,
         this,
@@ -112,10 +112,10 @@ class GraphNode : public Object {
       }
     }
     PADDLE_ENFORCE_NOT_NULL(
-        a, phi::errors::InvalidArgument("Sorry,but outlinks is nullptr"));
-    PADDLE_ENFORCE_NOT_NULL(
-        b,
-        phi::errors::InvalidArgument("Sorry, but other->inlinks_ is nullptr"));
+        a, ::common::errors::InvalidArgument("Sorry,but outlinks is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(b,
+                            ::common::errors::InvalidArgument(
+                                "Sorry, but other->inlinks_ is nullptr"));
     return std::make_tuple(a, b);
   }
 

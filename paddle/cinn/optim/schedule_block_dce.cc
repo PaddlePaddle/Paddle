@@ -38,9 +38,9 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::Block* op, Expr* expr) override {
     auto* node = expr->As<ir::Block>();
-    PADDLE_ENFORCE_NOT_NULL(
-        node,
-        phi::errors::InvalidArgument("Sorry, but expr->As node is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            ::common::errors::InvalidArgument(
+                                "Sorry, but expr->As node is nullptr"));
     for (auto& stmt : node->stmts) {
       IRMutator::Visit(&stmt, &stmt);
     }
@@ -66,9 +66,9 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::IfThenElse* op, Expr* expr) override {
     auto* node = expr->As<ir::IfThenElse>();
-    PADDLE_ENFORCE_NOT_NULL(
-        node,
-        phi::errors::InvalidArgument("Sorry, but node expr->As is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            ::common::errors::InvalidArgument(
+                                "Sorry, but node expr->As is nullptr"));
     IRMutator::Visit(&node->true_case, &node->true_case);
     if (node->false_case.defined()) {
       IRMutator::Visit(&node->false_case, &node->false_case);
@@ -80,9 +80,9 @@ struct ScheduleBlockDCE : public ir::IRMutator<Expr*> {
 
   void Visit(const ir::For* op, Expr* expr) override {
     auto* node = expr->As<ir::For>();
-    PADDLE_ENFORCE_NOT_NULL(
-        node,
-        phi::errors::InvalidArgument("Sorry, but node expr->As is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            ::common::errors::InvalidArgument(
+                                "Sorry, but node expr->As is nullptr"));
     IRMutator::Visit(&(node->body), &(node->body));
     if (IsEmptyBlock(op->body)) {
       *expr = ir::Block::Make({});

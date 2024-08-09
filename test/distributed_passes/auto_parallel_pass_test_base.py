@@ -53,10 +53,10 @@ class AutoParallelPassTestBase(DistPassTestBase):
         pass
 
     def get_model(self, place, **kwargs):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def apply_passes(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def apply_no_passes(self):
         dist_strategy = fleet.DistributedStrategy()

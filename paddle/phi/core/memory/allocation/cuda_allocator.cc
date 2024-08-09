@@ -25,9 +25,9 @@
 
 #include <string>
 
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle::memory::allocation {
 bool CUDAAllocator::IsAllocThreadSafe() const { return true; }
