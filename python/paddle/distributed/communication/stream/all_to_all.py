@@ -80,9 +80,9 @@ def _all_to_all_in_dygraph(
 
 
 def _all_to_all_in_static_mode(
-    out_tensor_or_tensor_list: list[Tensor],
-    in_tensor_or_tensor_list: list[Tensor],
-    group: Group | None,
+    out_tensor_or_tensor_list: Tensor | list[Tensor] | None,
+    in_tensor_or_tensor_list: Tensor | list[Tensor] | None,
+    group: Group,
     sync_op: bool,
     use_calc_stream: bool,
 ) -> task | None:
@@ -276,8 +276,8 @@ def alltoall_single(
     out_split_sizes: list[int] | None = None,
     in_split_sizes: list[int] | None = None,
     group: Group | None = None,
-    sync_op: bool = True,
-    use_calc_stream: bool = False,
+    sync_op: bool | None = True,
+    use_calc_stream: bool | None = False,
 ) -> task | None:
     """
 
