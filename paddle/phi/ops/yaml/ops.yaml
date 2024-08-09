@@ -460,6 +460,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    param : [x]
   kernel :
     func : barrier
     data_type : x
