@@ -435,16 +435,20 @@ class DataLoader:
     use_buffer_reader: bool
     prefetch_factor: int
     worker_init_fn: Callable[[int], None] | None
-    dataset: Dataset
+    dataset: Dataset[Any]
     feed_list: Sequence[Tensor] | None
     places: list[_Place]
     num_workers: int
     dataset_kind: _DatasetKind
     use_shared_memory: bool
+    timeout: int
+    batch_sampler: BatchSampler | _InfiniteIterableSampler | None
+    drop_last: bool
+    auto_collate_batch: bool
 
     def __init__(
         self,
-        dataset: Dataset,
+        dataset: Dataset[Any],
         feed_list: Sequence[Tensor] | None = None,
         places: PlaceLike | Sequence[PlaceLike] | None = None,
         return_list: bool = True,
