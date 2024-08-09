@@ -369,9 +369,9 @@ class Optimizer:
                             "xpu_adamw_moment_dtype", default="fp32"
                         )
                         if xpu_adamw_moment_dtype == "fp16":
-                            state_dict[
-                                var_tmp.name + ".SCALE_VALUE"
-                            ] = var_tmp.get_tensor().get_xpu_scale_value()
+                            state_dict[var_tmp.name + ".SCALE_VALUE"] = (
+                                var_tmp.get_tensor().get_xpu_scale_value()
+                            )
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:

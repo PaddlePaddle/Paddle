@@ -175,18 +175,20 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 conv_layer._use_cudnn = use_cudnn
                 conv = conv_layer(data)
                 bn = paddle.nn.BatchNorm(
-                    num_channels=conv.shape[1]
-                    if layout == "NCHW"
-                    else conv.shape[3],
+                    num_channels=(
+                        conv.shape[1] if layout == "NCHW" else conv.shape[3]
+                    ),
                     param_attr=base.ParamAttr(name='bn_scale'),
                     bias_attr=base.ParamAttr(name='bn_bias'),
                     moving_mean_name='bn_moving_mean',
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
                     is_test=only_forward,
-                    dtype=convert_dtype(self.dtype)
-                    if self.dtype != np.uint16
-                    else "bfloat16",
+                    dtype=(
+                        convert_dtype(self.dtype)
+                        if self.dtype != np.uint16
+                        else "bfloat16"
+                    ),
                 )(conv)
                 if core.is_compiled_with_rocm():
                     bn = paddle.cast(bn, 'float32')

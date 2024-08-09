@@ -384,6 +384,6 @@ def get_window(
     except KeyError as e:
         raise ValueError("Unknown window type.") from e
 
-    params = (win_length,) + args
+    params = (win_length, *args)
     kwargs = {'sym': sym}
     return winfunc(*params, dtype=dtype, **kwargs)

@@ -57,6 +57,7 @@ class Laplace(distribution.Distribution):
                 1.31554604)
 
     """
+
     loc: Tensor
     scale: Tensor
 

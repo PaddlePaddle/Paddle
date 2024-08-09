@@ -165,7 +165,7 @@ def embedding(
     x: Tensor,
     weight: Tensor,
     padding_idx: int | None = None,
-    max_norm: float = None,
+    max_norm: float | None = None,
     norm_type: float = 2.0,
     sparse: bool = False,
     name: str | None = None,

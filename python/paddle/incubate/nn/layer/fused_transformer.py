@@ -985,10 +985,10 @@ class FusedTransformer(Layer):
         custom_decoder=None,
     ):
         super().__init__()
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None, memory_mask=None):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class FusedMultiTransformer(Layer):
@@ -1290,9 +1290,11 @@ class FusedMultiTransformer(Layer):
                 else [num_heads + 2 * self._gqa_group_size]
             )
             qkv_weight = self.create_parameter(
-                shape=qkv_head_shape + [self.head_dim, embed_dim]
-                if trans_qkvw
-                else [embed_dim] + qkv_head_shape + [self.head_dim],
+                shape=(
+                    qkv_head_shape + [self.head_dim, embed_dim]
+                    if trans_qkvw
+                    else [embed_dim] + qkv_head_shape + [self.head_dim]
+                ),
                 attr=qkv_weight_attr,
                 dtype=self._dtype,
                 is_bias=False,
@@ -1336,9 +1338,11 @@ class FusedMultiTransformer(Layer):
                     dtype=self._norm_weight_dtype,
                 )
             ffn1_weight = self.create_parameter(
-                shape=[embed_dim, dim_feedforward * 2]
-                if activation.endswith("glu")
-                else [embed_dim, dim_feedforward],
+                shape=(
+                    [embed_dim, dim_feedforward * 2]
+                    if activation.endswith("glu")
+                    else [embed_dim, dim_feedforward]
+                ),
                 attr=ffn1_weight_attr,
                 dtype=self._dtype,
                 is_bias=False,
@@ -1346,9 +1350,11 @@ class FusedMultiTransformer(Layer):
             ffn1_bias = None
             if ffn1_bias_attr:
                 ffn1_bias = self.create_parameter(
-                    shape=[dim_feedforward * 2]
-                    if activation.endswith("glu")
-                    else [dim_feedforward],
+                    shape=(
+                        [dim_feedforward * 2]
+                        if activation.endswith("glu")
+                        else [dim_feedforward]
+                    ),
                     attr=ffn1_bias_attr,
                     dtype=self._dtype,
                     is_bias=True,

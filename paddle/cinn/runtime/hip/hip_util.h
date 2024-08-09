@@ -14,12 +14,11 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
 #include <hip/hip_runtime.h>
 #include <hip/hiprtc.h>
 
-#include "paddle/cinn/common/type.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
@@ -38,7 +37,7 @@ namespace hip {
   {                                                                    \
     auto status = expr;                                                \
     if (status != hipSuccess) {                                        \
-      const char* msg;                                                 \
+      const char *msg;                                                 \
       hipDrvGetErrorString(status, &msg);                              \
       PADDLE_THROW(::common::errors::Fatal(                            \
           "HIP Driver Error in Paddle CINN: %s failed with error: %s", \
@@ -55,6 +54,21 @@ namespace hip {
                                            hiprtcGetErrorString(status)));    \
     }                                                                         \
   }
+
+void cinn_call_hip_kernel(void *kernel_fn,
+                          void *v_args,
+                          int num_args,
+                          int grid_x,
+                          int grid_y,
+                          int grid_z,
+                          int block_x,
+                          int block_y,
+                          int block_z,
+                          int shared_memory_bytes,
+                          void *stream);
+
+void infer_shape_set_value(int row, int col, int64_t value, int64_t **v);
+
 }  // namespace hip
 }  // namespace runtime
 }  // namespace cinn
