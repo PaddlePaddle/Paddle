@@ -14,12 +14,10 @@
 from __future__ import annotations
 
 import warnings
-from typing import (
-    TYPE_CHECKING,
-    TypeAlias,
-)
+from typing import TYPE_CHECKING
 
 import numpy as np
+from typing_extensions import TypeAlias
 
 import paddle
 from paddle import nn
