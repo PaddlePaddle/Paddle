@@ -1478,6 +1478,7 @@
   kernel:
     func: eig
   backward: eig_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : eigh
   args : (Tensor x, str UPLO = "L")
