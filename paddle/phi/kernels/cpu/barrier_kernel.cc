@@ -48,4 +48,4 @@ void BarrierKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    barrier, CPU, ALL_LAYOUT, phi::BarrierKernel, float, double) {}
+    barrier, CPU, ALL_LAYOUT, phi::BarrierKernel, int) {}
