@@ -89,6 +89,7 @@ COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_in_executor_trace_run);
 COMMON_DECLARE_bool(enable_collect_shape);
 COMMON_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_bool(use_mkldnn);
 
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
@@ -300,7 +301,9 @@ PirInterpreter::~PirInterpreter() {
 #ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
-  platform::ClearMKLDNNCache(place_, this);
+  if (FLAGS_use_mkldnn) {
+    platform::ClearMKLDNNCache(place_, this);
+  }
 #endif
 }
 
@@ -1445,8 +1448,10 @@ paddle::framework::FetchList PirInterpreter::Run(
   CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
-  platform::RegisterModelLayout(ir_block_, place_);
+  if (FLAGS_use_mkldnn) {
+    platform::AttachPointerHashToMKLDNNKey(this, place_);
+    platform::RegisterModelLayout(ir_block_, place_);
+  }
 #endif
 
   FeedInput();
@@ -1531,8 +1536,10 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   CheckCUDAGraphBeforeRun(feed_names);
 
 #ifdef PADDLE_WITH_DNNL
-  platform::AttachPointerHashToMKLDNNKey(this, place_);
-  platform::RegisterModelLayout(ir_block_, place_);
+  if (FLAGS_use_mkldnn) {
+    platform::AttachPointerHashToMKLDNNKey(this, place_);
+    platform::RegisterModelLayout(ir_block_, place_);
+  }
 #endif
 
   if (!is_build_ || switch_stream) {
