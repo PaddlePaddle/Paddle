@@ -72,7 +72,4 @@ def test_paddle_to_tensorrt_conversion_bert():
 
 
 if __name__ == "__main__":
-    try:
-        test_paddle_to_tensorrt_conversion_bert()
-    except AssertionError as e:
-        raise AssertionError("Assertion failed") from e
+    test_paddle_to_tensorrt_conversion_bert()
