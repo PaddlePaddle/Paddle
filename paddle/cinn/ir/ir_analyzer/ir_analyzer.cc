@@ -361,7 +361,7 @@ std::vector<std::pair<Expr, Expr>> GetConsumerLoadsAndSBlocks(
                           phi::errors::InvalidArgument(
                               "Failed to cast block to ScheduleBlockRealize."));
   PADDLE_ENFORCE_NOT_NULL(
-      broot.As<ScheduleBlockRealize>(),
+      root.As<ScheduleBlockRealize>(),
       ::common::errors::InvalidArgument(
           "Failed to cast 'root' to ScheduleBlockRealize."));
 
