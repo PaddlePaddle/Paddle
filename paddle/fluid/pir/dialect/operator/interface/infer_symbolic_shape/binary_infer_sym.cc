@@ -998,27 +998,6 @@ bool TopPSamplingOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool GammainccOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
-
-// bool HeavisideOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
-
-// bool NextafterOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
-
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {
