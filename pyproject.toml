@@ -92,7 +92,14 @@ select = [
 
     # Ruff-specific rules
     "RUF010",
+    "RUF017",
     "RUF100",
+
+    # Flake8-raise
+    "RSE",
+
+    # Flake8-quotes
+    "Q004",
 ]
 unfixable = [
     "NPY001"

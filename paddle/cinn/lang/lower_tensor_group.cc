@@ -98,16 +98,17 @@ std::vector<ir::LoweredFunc> LowerTensorGroup::operator()() {
     for (auto& expr : store_exprs) {
       auto* store_node = expr.As<ir::Store>();
       PADDLE_ENFORCE_NOT_NULL(
-          store_node, phi::errors::InvalidArgument("store_node is nullptr"));
+          store_node,
+          ::common::errors::InvalidArgument("store_node is nullptr"));
       auto* tensor = store_node->tensor.As<ir::_Tensor_>();
       PADDLE_ENFORCE_NOT_NULL(
           tensor,
-          phi::errors::InvalidArgument("Sorry,but store_node is nullptr"));
+          ::common::errors::InvalidArgument("Sorry,but store_node is nullptr"));
       VLOG(3) << "In store_exprs, its name is : " << tensor->name;
       PADDLE_ENFORCE_EQ(
           tensor->buffer.defined(),
           true,
-          phi::errors::InvalidArgument("tensor->buffer is nullptr"));
+          ::common::errors::InvalidArgument("tensor->buffer is nullptr"));
       if (tensor->buffer->memory_type != ir::MemoryType::Heap) {
         temp_tensor_names.insert(store_node->tensor.as_tensor_ref()->name);
       }
@@ -162,15 +163,15 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
   std::set<std::string> arg_names;
 
   for (auto& scalar : scalar_args_) {
-    PADDLE_ENFORCE_EQ(
-        !arg_names.count(scalar->name),
-        true,
-        phi::errors::InvalidArgument("arg_names.count(scalar->name) is true"));
+    PADDLE_ENFORCE_EQ(!arg_names.count(scalar->name),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "arg_names.count(scalar->name) is true"));
     auto* scalar_node = scalar.As<ir::_Var_>();
-    PADDLE_ENFORCE_EQ(
-        scalar_node->type().valid(),
-        true,
-        phi::errors::InvalidArgument("scalar_node->type().valid() is false"));
+    PADDLE_ENFORCE_EQ(scalar_node->type().valid(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "scalar_node->type().valid() is false"));
     arg_names.insert(scalar->name);
 
     args.emplace_back(scalar, ir::Argument::IO::kInput);
@@ -195,7 +196,7 @@ std::vector<ir::Argument> LowerTensorGroup::GenerateFunctionArgumentList(
           });
       PADDLE_ENFORCE_EQ(it != args.end(),
                         true,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "it which refers to first element should be end"));
       if (it->is_input()) {
         args.erase(it);

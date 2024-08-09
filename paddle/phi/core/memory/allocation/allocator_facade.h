@@ -17,10 +17,10 @@
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/stream.h"
@@ -54,6 +54,9 @@ class AllocatorFacade {
   AllocatorFacadePrivate* GetPrivate() const;
 
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
+      const phi::Place& place);
+
+  TEST_API const std::shared_ptr<Allocator>& GetAutoGrowthAllocator(
       const phi::Place& place);
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);

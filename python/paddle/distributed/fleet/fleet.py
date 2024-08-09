@@ -1598,15 +1598,15 @@ class Fleet:
             # add distributed attr
             if not hasattr(self.origin_main_program, "distributed_info_"):
                 self.origin_main_program.distributed_info_ = {}
-                self.origin_main_program.distributed_info_[
-                    "dp_degree"
-                ] = self._user_defined_strategy.sharding_configs["dp_degree"]
-                self.origin_main_program.distributed_info_[
-                    "mp_degree"
-                ] = self._user_defined_strategy.sharding_configs["mp_degree"]
-                self.origin_main_program.distributed_info_[
-                    "pp_degree"
-                ] = self._user_defined_strategy.sharding_configs["pp_degree"]
+                self.origin_main_program.distributed_info_["dp_degree"] = (
+                    self._user_defined_strategy.sharding_configs["dp_degree"]
+                )
+                self.origin_main_program.distributed_info_["mp_degree"] = (
+                    self._user_defined_strategy.sharding_configs["mp_degree"]
+                )
+                self.origin_main_program.distributed_info_["pp_degree"] = (
+                    self._user_defined_strategy.sharding_configs["pp_degree"]
+                )
                 self.origin_main_program.distributed_info_[
                     "sharding_degree"
                 ] = self._user_defined_strategy.sharding_configs[

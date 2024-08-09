@@ -19,11 +19,11 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/utils.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 namespace eager_test {

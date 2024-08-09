@@ -1219,7 +1219,7 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         Currently, backward function can not be called through DistributedOptimizer
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _remove_collective_ops(self, program, name):
         """
@@ -1235,7 +1235,7 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         Currently, apply_gradients function can not be called through DistributedOptimizer
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_dist_env(self):
         trainer_id = int(os.getenv('PADDLE_TRAINER_ID', '0'))

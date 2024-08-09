@@ -48,13 +48,11 @@ __all__ = []
 
 
 @overload
-def _npairs(x: _T_Padding, n: int) -> _T_Padding:
-    ...
+def _npairs(x: _T_Padding, n: int) -> _T_Padding: ...
 
 
 @overload
-def _npairs(x: int, n: int) -> int:
-    ...
+def _npairs(x: int, n: int) -> int: ...
 
 
 def _npairs(x, n):

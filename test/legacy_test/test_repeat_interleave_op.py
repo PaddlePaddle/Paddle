@@ -36,7 +36,7 @@ class TestRepeatInterleaveOp(OpTest):
         self.attrs = {'dim': self.dim}
 
         outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_reshape = [outer_loop, *self.x_shape[self.dim :]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -75,7 +75,7 @@ class TestRepeatInterleaveOp2(OpTest):
         self.attrs = {'dim': self.dim, 'Repeats': index_np}
 
         outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_reshape = [outer_loop, *self.x_shape[self.dim :]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
