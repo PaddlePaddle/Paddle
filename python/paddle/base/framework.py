@@ -1257,9 +1257,25 @@ def name_struct(prefix=None):
         assert prefix, "namescope prefix can not be empty."
         global _name_struct
         _name_struct = _name_struct.child(prefix)
+        if in_pir_mode():
+            op_num_before = len(
+                paddle.static.default_main_program().global_block().ops
+            )
         try:
             yield
         finally:
+            if in_pir_mode():
+                all_ops = (
+                    paddle.static.default_main_program().global_block().ops
+                )
+                op_num = len(all_ops)
+
+                for idx in reversed(range(op_num_before, op_num)):
+                    op = all_ops[idx]
+                    if op.has_attr("struct_name"):
+                        break
+                    op.set_str_attr("struct_name", _full_name_struct())
+
             _name_struct = _name_struct.parent()
 
 
@@ -3367,8 +3383,8 @@ class Operator:
                     if type in special_op_attrs:
                         attrs = special_op_attrs.get(type, [])
                         for attr in attrs:
-                            a_name = list(attr.keys())[0]
-                            default_value = list(attr.values())[0]
+                            a_name = next(iter(attr.keys()))
+                            default_value = next(iter(attr.values()))
                             if (
                                 a_name in op_attrs.keys()
                                 and default_value != op_attrs[a_name]

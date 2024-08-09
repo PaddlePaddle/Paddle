@@ -119,6 +119,43 @@ class TestLlamaAuto:
         np.random.seed(1024)
         random.seed(1024)
 
+    def check_program_equal(self, program_a, program_b):
+        assert (
+            program_a.num_ops() == program_b.num_ops()
+        ), f'The number of ops between two programs is different: {program_a.num_ops()} vs {program_b.num_ops()}.'
+        for i in range(program_a.num_ops()):
+            a_op = program_a.global_block().ops[i]
+            b_op = program_a.global_block().ops[i]
+            # check op name
+            assert (
+                a_op.name() == b_op.name()
+            ), f'The name of {i} op in program is different: {a_op.name()} vs {b_op.name()}.'
+            # check op inputs
+            for index in range(a_op.num_operands()):
+                assert (
+                    a_op.operand(index)
+                    .source()
+                    .is_same(b_op.operand(index).source())
+                ), f'The type of {index} operand is different: {a_op.operand(index).source()} vs {b_op.operand(index).source()}'
+            # check op outputs
+            for index in range(a_op.num_results()):
+                assert a_op.result(index).is_same(
+                    b_op.result(index)
+                ), f'The type of {index} result is different: {a_op.result(index)} vs {b_op.result(index)}'
+            # check op attrs
+            for k, v in a_op.attrs().items():
+                assert (
+                    k in b_op.attrs()
+                ), f'Can not find key of {k} attribute in other progmam'
+                if k == 'place':
+                    assert type(v) == type(
+                        b_op.attrs()[k]
+                    ), f'The attribute of {k} is different: {type(v)} vs {type(b_op.attrs()[k])}'
+                else:
+                    assert (
+                        v == b_op.attrs()[k]
+                    ), f'The attribute of {k} is different: {v} vs {b_op.attrs()[k]}'
+
     def run_dy2static(self, tmp_ckpt_path):
         model = LlamaForCausalLMAuto(self.config)
         criterion = LlamaPretrainingCriterionAuto(self.config)
@@ -183,6 +220,20 @@ class TestLlamaAuto:
             if step >= 9:
                 break
 
+        # check pir dist_model save&load
+        paddle.enable_static()
+        model_file_path = os.path.join(
+            tmp_ckpt_path,
+            "rank_" + str(paddle.distributed.get_rank()) + ".pd_dist_model",
+        )
+        paddle.save(
+            dist_model._engine._pir_dist_main_progs["train"], model_file_path
+        )
+        loaded_model = paddle.load(model_file_path)
+        paddle.disable_static()
+        self.check_program_equal(
+            dist_model._engine._pir_dist_main_progs["train"], loaded_model
+        )
         time.sleep(10)
 
         loss_after_load = []

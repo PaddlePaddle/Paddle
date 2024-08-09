@@ -822,7 +822,6 @@ class Engine:
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
         apply_reshard_pass(dist_program)
-
         # print('after reshard', dist_program, flush=1)
 
         remove_other_rank_input_output_pass(dist_program)
@@ -856,6 +855,13 @@ class Engine:
             # if self._strategy.sharding_optimization.enable:
             # dist_program = apply_sharding_optimization_pass(dist_program)
             pass
+
+        if mode == "train" and self._strategy.pipeline.enable:
+            self._strategy.gradient_merge.enable = True
+            self._strategy.gradient_merge.k_steps = (
+                self._strategy.pipeline.accumulate_steps
+            )
+            self._strategy.gradient_merge.avg = True
 
         if mode == "train" and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
@@ -1767,9 +1773,9 @@ class Engine:
         test_data: Dataset,
         test_sample_split: int | None = None,
         batch_size: int = 1,
-        steps: int = None,
+        steps: int | None = None,
         collate_fn: _CollateFn | None = None,
-        callbacks: Sequence[Callback] = None,
+        callbacks: Sequence[Callback] | None = None,
         verbose: int = 2,
     ) -> list[Any]:
         """
@@ -1895,7 +1901,7 @@ class Engine:
         use_buffer_reader: bool = True,
         use_shared_memory: bool = True,
         timeout: int = 0,
-        worker_init_fn: Callable[[int], None] = None,
+        worker_init_fn: Callable[[int], None] | None = None,
         epochs: int = 1,
         steps_per_epoch: int | None = None,
         sample_split: int = 1,
