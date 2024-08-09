@@ -68,69 +68,107 @@ __global__ void ContiguousCaseOneFunc(
         dims[0], dims[1], dims[2], dims[3], dims[4], dims[5]};
     int64_t coordinate[phi::DDim::kMaxRank + 1];
 
+    int64_t bidx = blockIdx.x;
+    int64_t bidy = blockIdx.y;
+    int64_t bidz = blockIdx.z;
+    int64_t tmp_1, tmp_2;
+
     switch (N) {
       case 1:
-        coordinate[0] = x % reg_dims[0];
+        tmp_1 = x / reg_dims[0];
+        coordinate[0] = x - tmp_1 * reg_dims[0];
         break;
       case 2:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
+        tmp_1 = x / reg_dims[0];
+        coordinate[0] = x - tmp_1 * reg_dims[0];
+        tmp_2 = tmp_1 / reg_dims[1];
+        coordinate[1] = tmp_1 - tmp_2 * reg_dims[1];
         break;
       case 3:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
+        tmp_1 = x / reg_dims[0];
+        coordinate[0] = x - tmp_1 * reg_dims[0];
+        tmp_2 = tmp_1 / reg_dims[1];
+        coordinate[1] = tmp_1 - tmp_2 * reg_dims[1];
+        coordinate[2] = tmp_2;
         break;
       case 4:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
+        tmp_1 = x / reg_dims[0];
+        coordinate[0] = x - tmp_1 * reg_dims[0];
+        tmp_2 = tmp_1 / reg_dims[1];
+        coordinate[1] = tmp_1 - tmp_2 * reg_dims[1];
+        coordinate[2] = tmp_2;
+        tmp_1 = bidy / reg_dims[2];
+        coordinate[3] = bidy - tmp_1 * reg_dims[2];
         break;
       case 5:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
+        tmp_1 = x / reg_dims[0];
+        coordinate[0] = x - tmp_1 * reg_dims[0];
+        tmp_2 = tmp_1 / reg_dims[1];
+        coordinate[1] = tmp_1 - tmp_2 * reg_dims[1];
+        coordinate[2] = tmp_2;
+        tmp_1 = bidy / reg_dims[2];
+        coordinate[3] = bidy - tmp_1 * reg_dims[2];
+        tmp_2 = tmp_1 / reg_dims[3];
+        coordinate[4] = tmp_1 - tmp_2 * reg_dims[3];
         break;
       case 6:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
-        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
+        tmp_1 = x / reg_dims[0];
+        coordinate[0] = x - tmp_1 * reg_dims[0];
+        tmp_2 = tmp_1 / reg_dims[1];
+        coordinate[1] = tmp_1 - tmp_2 * reg_dims[1];
+        coordinate[2] = tmp_2;
+        tmp_1 = bidy / reg_dims[2];
+        coordinate[3] = bidy - tmp_1 * reg_dims[2];
+        tmp_2 = tmp_1 / reg_dims[3];
+        coordinate[4] = tmp_1 - tmp_2 * reg_dims[3];
+        coordinate[5] = tmp_2;
         break;
       case 7:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
-        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
-        coordinate[6] = blockIdx.z % reg_dims[4];
+        tmp_1 = x / reg_dims[0];
+        coordinate[0] = x - tmp_1 * reg_dims[0];
+        tmp_2 = tmp_1 / reg_dims[1];
+        coordinate[1] = tmp_1 - tmp_2 * reg_dims[1];
+        coordinate[2] = tmp_2;
+        tmp_1 = bidy / reg_dims[2];
+        coordinate[3] = bidy - tmp_1 * reg_dims[2];
+        tmp_2 = tmp_1 / reg_dims[3];
+        coordinate[4] = tmp_1 - tmp_2 * reg_dims[3];
+        coordinate[5] = tmp_2;
+        tmp_1 = bidz / reg_dims[4];
+        coordinate[6] = bidz - tmp_1 * reg_dims[4];
         break;
       case 8:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
-        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
-        coordinate[6] = blockIdx.z % reg_dims[4];
-        coordinate[7] = blockIdx.z / reg_dims[4] % reg_dims[5];
+        tmp_1 = x / reg_dims[0];
+        coordinate[0] = x - tmp_1 * reg_dims[0];
+        tmp_2 = tmp_1 / reg_dims[1];
+        coordinate[1] = tmp_1 - tmp_2 * reg_dims[1];
+        coordinate[2] = tmp_2;
+        tmp_1 = bidy / reg_dims[2];
+        coordinate[3] = bidy - tmp_1 * reg_dims[2];
+        tmp_2 = tmp_1 / reg_dims[3];
+        coordinate[4] = tmp_1 - tmp_2 * reg_dims[3];
+        coordinate[5] = tmp_2;
+        tmp_1 = bidz / reg_dims[4];
+        coordinate[6] = bidz - tmp_1 * reg_dims[4];
+        tmp_2 = tmp_1 / reg_dims[5];
+        coordinate[7] = tmp_1 - tmp_2 * reg_dims[5];
         break;
       case 9:
-        coordinate[0] = x % reg_dims[0];
-        coordinate[1] = x / reg_dims[0] % reg_dims[1];
-        coordinate[2] = x / (reg_dims[0] * reg_dims[1]);
-        coordinate[3] = blockIdx.y % reg_dims[2];
-        coordinate[4] = blockIdx.y / reg_dims[2] % reg_dims[3];
-        coordinate[5] = blockIdx.y / (reg_dims[2] * reg_dims[3]);
-        coordinate[6] = blockIdx.z % reg_dims[4];
-        coordinate[7] = blockIdx.z / reg_dims[4] % reg_dims[5];
-        coordinate[8] = blockIdx.z / (reg_dims[4] * reg_dims[5]);
+        tmp_1 = x / reg_dims[0];
+        coordinate[0] = x - tmp_1 * reg_dims[0];
+        tmp_2 = tmp_1 / reg_dims[1];
+        coordinate[1] = tmp_1 - tmp_2 * reg_dims[1];
+        coordinate[2] = tmp_2;
+        tmp_1 = bidy / reg_dims[2];
+        coordinate[3] = bidy - tmp_1 * reg_dims[2];
+        tmp_2 = tmp_1 / reg_dims[3];
+        coordinate[4] = tmp_1 - tmp_2 * reg_dims[3];
+        coordinate[5] = tmp_2;
+        tmp_1 = bidz / reg_dims[4];
+        coordinate[6] = bidz - tmp_1 * reg_dims[4];
+        tmp_2 = tmp_1 / reg_dims[5];
+        coordinate[7] = tmp_1 - tmp_2 * reg_dims[5];
+        coordinate[8] = tmp_2;
         break;
     }
 
