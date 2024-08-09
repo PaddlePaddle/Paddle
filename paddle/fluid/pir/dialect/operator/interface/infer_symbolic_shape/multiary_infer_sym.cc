@@ -1370,7 +1370,35 @@ bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
 //   // pass
 //   return true;
 // }
+bool MultiplexOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &ids_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &ids_dims = ids_shape_or_data.shape();
 
+  const auto &ins_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &ins_dims = ins_shape_or_data.shape();
+  auto num_ins = ins_dims.size();
+
+  PADDLE_ENFORCE_GT(
+      num_ins,
+      1,
+      phi::errors::InvalidArgument("multiplex operator should have more than "
+                                   "one candidate input tensors."));
+
+  for (size_t i = 1; i < num_ins; i++) {
+    infer_context->AddEqualCstr(ins_dims[i], ins_dims[0]);
+  }
+
+  std::vector<symbol::DimExpr> out_dims = ins_dims;
+  out_dims[0] = ids_dims[0];
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 bool StackOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
