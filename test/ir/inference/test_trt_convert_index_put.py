@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 from functools import partial
 from typing import List
@@ -26,6 +25,9 @@ import paddle.inference as paddle_infer
 
 class TrtConvertIndexPut(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        ver = paddle_infer.get_trt_compile_version()
+        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8200:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -168,9 +170,7 @@ class TrtConvertIndexPut(TrtLayerAutoScanTest):
         ), 1e-3
 
     def test(self):
-        # TensorRT version is v8.0.1.6 in windows env.
-        if os.name != 'nt':
-            self.run_test()
+        self.run_test()
 
 
 if __name__ == "__main__":

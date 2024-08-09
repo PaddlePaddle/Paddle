@@ -24,8 +24,8 @@ class IndexPutOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_GE(8200)
     VLOG(3) << "convert a index_put op to tensorrt layer";
-
     framework::OpDesc op_desc(op, nullptr);
     std::string input_name = op_desc.Input("x").front();
     std::string indices_name = op_desc.Input("indices").front();
@@ -117,6 +117,7 @@ class IndexPutOpConverter : public OpConverter {
                                        nvinfer1::ScatterMode::kND);
     ReplenishLayerAndOutput(layer, "index_put", {output_name}, test_mode);
   }
+#endif
 };
 
 }  // namespace paddle::inference::tensorrt
