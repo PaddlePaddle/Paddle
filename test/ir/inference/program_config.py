@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 import copy
@@ -96,9 +97,9 @@ class OpConfig:
         type: str,
         inputs: dict[str, list[str]],
         outputs: dict[str, list[str]],
-        attrs: dict[str, Any] = None,
-        outputs_var_type: dict[str, VarType] = None,
-        outputs_dtype: dict[str, np.dtype] = None,
+        attrs: dict[str, Any] | None = None,
+        outputs_var_type: dict[str, VarType] | None = None,
+        outputs_dtype: dict[str, np.dtype] | None = None,
         **kwargs,
     ):
         self.type = type
@@ -155,9 +156,9 @@ class BlockConfig:
         self,
         ops: list[OpConfig],
         vars: list[str],
-        vars_dtype: dict[str, np.dtype] = None,
-        vars_var_type: dict[str, VarType] = None,
-        vars_lod_level: dict[str, int] = None,
+        vars_dtype: dict[str, np.dtype] | None = None,
+        vars_var_type: dict[str, VarType] | None = None,
+        vars_lod_level: dict[str, int] | None = None,
     ):
         self.ops = ops
         self.vars = vars

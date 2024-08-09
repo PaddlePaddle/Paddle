@@ -210,7 +210,7 @@ class DynamicGRU(paddle.nn.Layer):
             hidden, reset = self.gru_unit(input_, hidden)
             hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
             if self.is_reverse:
-                res = [hidden_] + res
+                res = [hidden_, *res]
             else:
                 res.append(hidden_)
         res = paddle.concat(res, axis=1)
@@ -572,7 +572,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
             optimizer = paddle.optimizer.SGD(learning_rate=0.001)
 
             images = paddle.static.data(
-                name='pixel', shape=[-1] + Config.DATA_SHAPE, dtype='float32'
+                name='pixel', shape=[-1, *Config.DATA_SHAPE], dtype='float32'
             )
             if not paddle.framework.use_pir_api():
                 images.desc.set_need_check_feed(False)

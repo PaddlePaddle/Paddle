@@ -1102,7 +1102,7 @@ TEST(FlashAtt, Ctor) {
   check_dim_mapping(spmd1.second[0], {0, -1, -1, -1});
   check_dim_mapping(spmd1.second[1], {0, -1, -1, -1});
   check_dim_mapping(spmd1.second[2], {0, -1, -1});
-  check_dim_mapping(spmd1.second[3], {});
+  check_dim_mapping(spmd1.second[3], {-1});
 
   auto out = build_input(qkv_shape, {0, -1, 1, -1});
   auto softmax_lse = build_input({2, 2, 256}, {0, 1, -1});

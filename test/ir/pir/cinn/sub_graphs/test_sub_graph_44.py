@@ -144,7 +144,6 @@ class TestLayer(TestBase):
         )
         self.net = LayerCase
         self.atol = 1e-8
-        self.with_cinn = False
 
     # NOTE prim + cinn lead to error
 

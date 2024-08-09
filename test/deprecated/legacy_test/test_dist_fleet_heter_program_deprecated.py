@@ -78,7 +78,7 @@ class TestDistFleetHeterProgram(unittest.TestCase):
 
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="float32")
 
-        inputs = [dense_input] + sparse_input_ids + [label]
+        inputs = [dense_input, *sparse_input_ids, label]
         return inputs
 
     def build_net(self, inputs):

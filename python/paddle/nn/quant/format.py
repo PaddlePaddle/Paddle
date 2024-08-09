@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Define some layers used to export quantization model with ONNX style."""
+from __future__ import annotations
+
 import abc
-from typing import List, Tuple
 
 import paddle
 from paddle import _legacy_C_ops as _C_ops
@@ -307,7 +308,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         self.converted = False
 
     @abc.abstractmethod
-    def weights_to_quanters(self) -> List[Tuple[str, str]]:
+    def weights_to_quanters(self) -> list[tuple[str, str]]:
         r"""Get the name pairs of weights to be quantized and their corresponding
         quantizers. In the convert function of this abstract class, it will call
         the ‘weights_to_quanters’ function and do something as follows:
@@ -322,7 +323,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def activation_quanters(self) -> List[str]:
+    def activation_quanters(self) -> list[str]:
         r"""Get the names of quanters used to quantize activations.
         All the quanters or observers returned by this function will be converted to quantize
         and dequantize operators for deployment.
