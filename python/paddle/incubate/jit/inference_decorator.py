@@ -131,6 +131,8 @@ class InferenceEngine:
         self.trt_use_static = kwargs.get("trt_use_static")
         self.collect_shape = kwargs.get("collect_shape")
 
+        self.exp_disable_tensorrt_ops = kwargs.get("exp_disable_tensorrt_ops")
+
         default_delete_pass_lists = [
             "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",
             "add_support_int8_pass",
@@ -409,12 +411,16 @@ class InferenceEngine:
                 use_static=self.trt_use_static,
                 use_calib_mode=False,
             )
+            if self.exp_disable_tensorrt_ops is not None:
+                config.exp_disable_tensorrt_ops(self.exp_disable_tensorrt_ops)
 
         if self.predictor is not None:
             self.predictor = None
 
         for pass_name in self.delete_pass_lists:
             config.delete_pass(pass_name)
+
+        # config.switch_ir_debug(True, ["remove_shadow_feed_pass"])
 
         self.predictor = create_predictor(config)
 
@@ -443,6 +449,7 @@ def inference(
     trt_precision_mode: str = ...,
     trt_use_static: bool = ...,
     collect_shape: bool = ...,
+    exp_disable_tensorrt_ops: list[str] | None = ...,
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
@@ -463,6 +470,7 @@ def inference(
     trt_precision_mode: str = ...,
     trt_use_static: bool = ...,
     collect_shape: bool = ...,
+    exp_disable_tensorrt_ops: list[str] | None = ...,
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
@@ -483,6 +491,7 @@ def inference(
     trt_precision_mode: str = ...,
     trt_use_static: bool = ...,
     collect_shape: bool = ...,
+    exp_disable_tensorrt_ops: list[str] | None = ...,
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
@@ -502,6 +511,7 @@ def inference(
     trt_precision_mode="float32",
     trt_use_static=False,
     collect_shape=False,
+    exp_disable_tensorrt_ops=None,
     enable_new_ir=False,
     exp_enable_use_cutlass=False,
     delete_pass_lists=None,
@@ -526,6 +536,7 @@ def inference(
         trt_precision_mode(str, optional): The precision mode of TensorRT. Default is "float32".
         trt_use_static(bool, optional): Whether to use static shape in TensorRT. Default is False.
         collect_shape(bool, optional): Whether to collect shape. Default is False.
+        exp_disable_tensorrt_ops(list[str], optional): The list of ops to disable enter into TensorRT. Default is None.
         enable_new_ir(bool, optional): Whether to enable new IR. Default is True.
         exp_enable_use_cutlass(bool, optional): Whether to enable use cutlass. Default is False.
         delete_pass_lists(list[str], optional): The list of pass names to delete. Default is None.
@@ -592,6 +603,7 @@ def inference(
             trt_precision_mode=trt_precision_mode,
             trt_use_static=trt_use_static,
             collect_shape=collect_shape,
+            exp_disable_tensorrt_ops=exp_disable_tensorrt_ops,
             enable_new_ir=enable_new_ir,
             exp_enable_use_cutlass=exp_enable_use_cutlass,
             delete_pass_lists=delete_pass_lists,
