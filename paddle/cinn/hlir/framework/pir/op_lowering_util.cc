@@ -49,7 +49,10 @@ std::vector<::pir::Operation*> GetConsumersInSet(
     for (auto use_iter = out.use_begin(); use_iter != out.use_end();
          ++use_iter) {
       ::pir::Operation* consumer = use_iter->owner();
-      CHECK(consumer);
+      PADDLE_ENFORCE_EQ(
+          consumer,
+          true,
+          phi::errors::InvalidArgument("The 'consumer' must not be null."));
       if (ops_set.count(consumer)) {
         consumers.push_back(consumer);
       }
@@ -62,7 +65,10 @@ std::vector<::pir::Operation*> GetProducers(::pir::Operation* op) {
   std::vector<::pir::Operation*> producers;
   for (auto& source : op->operands_source()) {
     auto* producer_op = source.defining_op();
-    CHECK(producer_op);
+    PADDLE_ENFORCE_EQ(
+        producer_op,
+        true,
+        phi::errors::InvalidArgument("The 'producer_op' must not be null."));
     producers.push_back(producer_op);
   }
   return producers;
@@ -73,7 +79,10 @@ std::vector<::pir::Operation*> GetProducersInSet(
     const std::unordered_set<::pir::Operation*>& ops_set) {
   std::vector<::pir::Operation*> producers;
   for (auto& producer_op : GetProducers(op)) {
-    CHECK(producer_op);
+    PADDLE_ENFORCE_EQ(
+        producer_op,
+        true,
+        phi::errors::InvalidArgument("The 'producer_op' must not be null."));
     if (ops_set.count(producer_op)) {
       producers.push_back(producer_op);
     }
@@ -466,12 +475,18 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
   int tail = 0;
   bool bound = true;
   auto shape = pe::GetFirstStepReduceShape(inshape, axes, bound, tail);
-  CHECK(bound) << std::accumulate(inshape.begin(),
-                                  inshape.end(),
-                                  std::string(""),
-                                  [](const std::string& left, const int right) {
-                                    return left + std::to_string(right) + " ";
-                                  });
+  PADDLE_ENFORCE_EQ(
+      bound,
+      true,
+      phi::errors::InvalidArgument(
+          "The 'bound' must not be null. inshape: %s",
+          std::accumulate(inshape.begin(),
+                          inshape.end(),
+                          std::string(""),
+                          [](const std::string& left, const int right) {
+                            return left + std::to_string(right) + " ";
+                          })
+              .c_str()));
 
   VLOG(4) << "LoopAssignReduceWithoutLast: The input shape=["
           << cinn::utils::Join(inshape, ", ") << "], first step reduce shape=["

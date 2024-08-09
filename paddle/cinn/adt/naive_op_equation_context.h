@@ -27,6 +27,7 @@
 #include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/op_arg_pos.h"
 #include "paddle/cinn/adt/op_equation_context.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::adt::config {
 
@@ -85,7 +86,13 @@ class NaiveOpEquationContext final : public OpEquationContext {
   }
 
   void Equal(const IteratorTuple& lhs, const IteratorTuple& rhs) override {
-    CHECK(lhs->size() == rhs->size());
+    PADDLE_ENFORCE_EQ(
+        lhs->size(),
+        rhs->size(),
+        phi::errors::InvalidArgument("The sizes of lhs and rhs must be equal. "
+                                     "lhs size: %d, rhs size: %d",
+                                     lhs->size(),
+                                     rhs->size()));
     for (std::size_t i = 0; i < lhs->size(); ++i) {
       this->Equal(lhs->at(i), rhs->at(i));
     }
@@ -250,7 +257,10 @@ class NaiveOpEquationContext final : public OpEquationContext {
       vec->push_back(DimTuple{});
       for (std::size_t j = 0; j < tensors_ranks.at(i); ++j) {
         const auto& opt_expr = GetSymbolicInDim_(i, j);
-        CHECK(opt_expr.has_value());
+        PADDLE_ENFORCE_EQ(opt_expr.has_value(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The optional expression must have a value."));
         vec->at(i)->emplace_back(opt_expr.value());
       }
     }
@@ -262,7 +272,13 @@ class NaiveOpEquationContext final : public OpEquationContext {
       vec->push_back(DimTuple{});
       for (std::size_t j = 0; j < tensors_ranks.at(i); ++j) {
         const auto& opt_expr = GetSymbolicOutDim_(i, j);
-        CHECK(opt_expr.has_value());
+        PADDLE_ENFORCE_EQ(opt_expr.has_value(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The optional expression must have a value at "
+                              "tensor index %d and dimension index %d.",
+                              i,
+                              j));
         vec->at(i)->emplace_back(opt_expr.value());
       }
     }
@@ -270,7 +286,13 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   Index IndexDot(const IteratorTuple& iterator_tuple,
                  const DimTuple& dim_tuple) {
-    CHECK(iterator_tuple->size() == dim_tuple->size());
+    PADDLE_ENFORCE_EQ(iterator_tuple->size(),
+                      dim_tuple->size(),
+                      phi::errors::InvalidArgument(
+                          "The sizes of iterator_tuple and dim_tuple must be "
+                          "equal. iterator_tuple size: %d, dim_tuple size: %d",
+                          iterator_tuple->size(),
+                          dim_tuple->size()));
     Index index{UniqueId::New()};
     equations_->emplace_back(
         adt::IndexDot<List<DimExpr>, tOut<Index>, tIn<List<Iterator>>>{
@@ -318,8 +340,11 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   const utils::Attribute& GetAttribute(const std::string& name) const {
     const auto& iter = attr_map_type_.find(name);
-    CHECK(iter != attr_map_type_.end())
-        << "Can't find Attribute with this name";
+    PADDLE_ENFORCE_EQ(
+        iter != attr_map_type_.end(),
+        true,
+        phi::errors::InvalidArgument("Can't find Attribute with this name: %s",
+                                     name.c_str()));
     return iter->second;
   }
 
