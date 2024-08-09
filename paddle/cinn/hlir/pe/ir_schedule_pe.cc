@@ -218,7 +218,10 @@ std::vector<cinn::common::CINNValue> IRGpuScheduleMatMul(
       vec_ast.emplace_back(temp);
     }
   }
-  CHECK(!vec_ast.empty());
+  PADDLE_ENFORCE_EQ(vec_ast.empty(),
+                    false,
+                    phi::errors::InvalidArgument(
+                        "The vector 'vec_ast' should not be empty."));
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();
@@ -311,9 +314,15 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
 
   // collect block names
   auto get_block_name = [](ir::Expr expr) {
-    CHECK(expr.As<ir::ScheduleBlockRealize>());
-    CHECK(expr.As<ir::ScheduleBlockRealize>()
-              ->schedule_block.As<ir::ScheduleBlock>());
+    PADDLE_ENFORCE_NOT_NULL(
+        expr.As<ir::ScheduleBlockRealize>(),
+        phi::errors::InvalidArgument(
+            "The expression must be convertible to ir::ScheduleBlockRealize."));
+    PADDLE_ENFORCE_NOT_NULL(expr.As<ir::ScheduleBlockRealize>()
+                                ->schedule_block.As<ir::ScheduleBlock>(),
+                            phi::errors::InvalidArgument(
+                                "Failed to convert ir::ScheduleBlockRealize to "
+                                "ir::ScheduleBlock."));
     return expr.As<ir::ScheduleBlockRealize>()
         ->schedule_block.As<ir::ScheduleBlock>()
         ->name;
@@ -488,9 +497,16 @@ void IRGpuScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,  // NOLINT
     auto out_block = ir_sch.GetBlock(out->name);
     auto root_block = ir_sch.GetRootBlock(out_block);
 
-    CHECK(out_block->as<ir::ScheduleBlockRealize>());
-    CHECK(out_block->as<ir::ScheduleBlockRealize>()
-              ->schedule_block->as<ir::ScheduleBlock>());
+    PADDLE_ENFORCE_NOT_NULL(
+        out_block->as<ir::ScheduleBlockRealize>(),
+        phi::errors::InvalidArgument(
+            "The out_block must be convertible to ir::ScheduleBlockRealize."));
+    PADDLE_ENFORCE_NOT_NULL(
+        out_block->as<ir::ScheduleBlockRealize>()
+            ->schedule_block->as<ir::ScheduleBlock>(),
+        phi::errors::InvalidArgument(
+            "The schedule_block within ir::ScheduleBlockRealize must be "
+            "convertible to ir::ScheduleBlock."));
 
     // create var
     auto var = ir::Var(ir::Expr(0), ir::Expr(1), cinn::common::UniqName("i"));
@@ -499,9 +515,16 @@ void IRGpuScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,  // NOLINT
         ->schedule_block->as<ir::ScheduleBlock>()
         ->iter_vars.push_back(var);
 
-    CHECK(root_block->as<ir::ScheduleBlockRealize>());
-    CHECK(root_block->as<ir::ScheduleBlockRealize>()
-              ->schedule_block->as<ir::ScheduleBlock>());
+    PADDLE_ENFORCE_NOT_NULL(
+        root_block->as<ir::ScheduleBlockRealize>(),
+        phi::errors::InvalidArgument(
+            "The root_block must be convertible to ir::ScheduleBlockRealize."));
+    PADDLE_ENFORCE_NOT_NULL(
+        root_block->as<ir::ScheduleBlockRealize>()
+            ->schedule_block->as<ir::ScheduleBlock>(),
+        phi::errors::InvalidArgument(
+            "The schedule_block within ir::ScheduleBlockRealize must be "
+            "convertible to ir::ScheduleBlock."));
 
     // create for and block node
     auto for_node = ir::For::Make(var,
@@ -572,14 +595,20 @@ void IRGpuScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
           << ir_sch.GetModule().GetExprs().at(0);
   int tmp_put_shape_size_without_reduce = 0;
   for (auto i : tmp_out->shape) {
-    CHECK(i.is_constant());
+    PADDLE_ENFORCE_EQ(i.is_constant(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The value must be a constant but it is not."));
     if (i.as_int32() != 1) tmp_put_shape_size_without_reduce++;
   }
   tmp_put_shape_size_without_reduce--;
   // fuse last parallel dimension
   int reduce_temp_out_shape_size = 0;
   for (auto i : reduce_tmp_out->shape) {
-    CHECK(i.is_constant());
+    PADDLE_ENFORCE_EQ(i.is_constant(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The value must be a constant but it is not."));
     if (i.as_int32() != 1) reduce_temp_out_shape_size++;
   }
 
@@ -623,9 +652,16 @@ void IRGpuScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
     auto out_block = ir_sch.GetBlock(out->name);
     auto root_block = ir_sch.GetRootBlock(out_block);
 
-    CHECK(out_block->as<ir::ScheduleBlockRealize>());
-    CHECK(out_block->as<ir::ScheduleBlockRealize>()
-              ->schedule_block->as<ir::ScheduleBlock>());
+    PADDLE_ENFORCE_NOT_NULL(
+        out_block->as<ir::ScheduleBlockRealize>(),
+        phi::errors::InvalidArgument(
+            "The out_block must be convertible to ir::ScheduleBlockRealize."));
+    PADDLE_ENFORCE_NOT_NULL(
+        out_block->as<ir::ScheduleBlockRealize>()
+            ->schedule_block->as<ir::ScheduleBlock>(),
+        phi::errors::InvalidArgument(
+            "The schedule_block within ir::ScheduleBlockRealize must be "
+            "convertible to ir::ScheduleBlock."));
 
     // create var
     auto var = ir::Var(ir::Expr(0), ir::Expr(1), cinn::UniqName("i"));
@@ -634,9 +670,16 @@ void IRGpuScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
         ->schedule_block->as<ir::ScheduleBlock>()
         ->iter_vars.push_back(var);
 
-    CHECK(root_block->as<ir::ScheduleBlockRealize>());
-    CHECK(root_block->as<ir::ScheduleBlockRealize>()
-              ->schedule_block->as<ir::ScheduleBlock>());
+    PADDLE_ENFORCE_NOT_NULL(
+        root_block->as<ir::ScheduleBlockRealize>(),
+        phi::errors::InvalidArgument(
+            "The root_block must be convertible to ir::ScheduleBlockRealize."));
+    PADDLE_ENFORCE_NOT_NULL(
+        root_block->as<ir::ScheduleBlockRealize>()
+            ->schedule_block->as<ir::ScheduleBlock>(),
+        phi::errors::InvalidArgument(
+            "The schedule_block within ir::ScheduleBlockRealize must be "
+            "convertible to ir::ScheduleBlock."));
 
     // create for and block node
     auto for_node = ir::For::Make(var,
@@ -1010,9 +1053,16 @@ void IRGpuTwoStepReduceSchedule(ir::IRSchedule &ir_sch,  // NOLINT
     auto out_block = ir_sch.GetBlock(out->name);
     auto root_block = ir_sch.GetRootBlock(out_block);
 
-    CHECK(out_block->as<ir::ScheduleBlockRealize>());
-    CHECK(out_block->as<ir::ScheduleBlockRealize>()
-              ->schedule_block->as<ir::ScheduleBlock>());
+    PADDLE_ENFORCE_NOT_NULL(
+        out_block->as<ir::ScheduleBlockRealize>(),
+        phi::errors::InvalidArgument(
+            "The out_block must be convertible to ir::ScheduleBlockRealize."));
+    PADDLE_ENFORCE_NOT_NULL(
+        out_block->as<ir::ScheduleBlockRealize>()
+            ->schedule_block->as<ir::ScheduleBlock>(),
+        phi::errors::InvalidArgument(
+            "The schedule_block within ir::ScheduleBlockRealize must be "
+            "convertible to ir::ScheduleBlock."));
 
     // create var
     // auto var = ir::Var(ir::Expr(0), ir::Expr(1), "i_0");
@@ -1022,9 +1072,16 @@ void IRGpuTwoStepReduceSchedule(ir::IRSchedule &ir_sch,  // NOLINT
         ->schedule_block->as<ir::ScheduleBlock>()
         ->iter_vars.push_back(var);
 
-    CHECK(root_block->as<ir::ScheduleBlockRealize>());
-    CHECK(root_block->as<ir::ScheduleBlockRealize>()
-              ->schedule_block->as<ir::ScheduleBlock>());
+    PADDLE_ENFORCE_NOT_NULL(
+        root_block->as<ir::ScheduleBlockRealize>(),
+        phi::errors::InvalidArgument(
+            "The root_block must be convertible to ir::ScheduleBlockRealize."));
+    PADDLE_ENFORCE_NOT_NULL(
+        root_block->as<ir::ScheduleBlockRealize>()
+            ->schedule_block->as<ir::ScheduleBlock>(),
+        phi::errors::InvalidArgument(
+            "The schedule_block within ir::ScheduleBlockRealize must be "
+            "convertible to ir::ScheduleBlock."));
 
     // create for and block node
     auto for_node = ir::For::Make(var,
@@ -1205,7 +1262,9 @@ void IRGlobalPoolScheduleGPU(ir::IRSchedule &ir_sch,  // NOLINT
 void IRCudaScheduleDepthwiseConv(ir::IRSchedule &ir_sch,  // NOLINT
                                  const std::vector<ir::Expr> &tensors) {
   if (tensors.size() == 3U) {
-    CHECK(tensors[1].as_tensor());
+    PADDLE_ENFORCE_NOT_NULL(tensors[1].as_tensor(),
+                            phi::errors::InvalidArgument(
+                                "The tensor at index 1 must not be null."));
     auto input_pad = ir_sch.GetBlock(tensors[1].as_tensor_ref()->name);
     ir_sch.ComputeInline(input_pad);
   }
