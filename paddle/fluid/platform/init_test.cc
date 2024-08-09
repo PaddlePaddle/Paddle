@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 TEST(InitDevices, CPU) {
   using paddle::framework::InitDevices;

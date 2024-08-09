@@ -187,7 +187,7 @@ pir::Operation* FindUserOp(const std::vector<pir::Operation*>& candidates,
   }
   PADDLE_ENFORCE_EQ(results.size(),
                     1,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Zero or multiple user operations found in candidates! "
                         "Expected exactly one, but found %d.",
                         results.size()));

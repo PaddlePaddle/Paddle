@@ -78,39 +78,43 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                                 program_config = ProgramConfig(
                                     ops=ops,
                                     weights={},
-                                    inputs={
-                                        "input_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input1, shape
-                                            )
-                                        ),
-                                        "index_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input2
-                                                if index_type_int32
-                                                else generate_input4,
-                                                index,
-                                            )
-                                        ),
-                                    }
-                                    if len(input) == 2
-                                    else {
-                                        "input_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input1, shape
-                                            )
-                                        ),
-                                        "index_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input2, index
-                                            )
-                                        ),
-                                        "axis_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input3, axis
-                                            )
-                                        ),
-                                    },
+                                    inputs=(
+                                        {
+                                            "input_data": TensorConfig(
+                                                data_gen=partial(
+                                                    generate_input1, shape
+                                                )
+                                            ),
+                                            "index_data": TensorConfig(
+                                                data_gen=partial(
+                                                    (
+                                                        generate_input2
+                                                        if index_type_int32
+                                                        else generate_input4
+                                                    ),
+                                                    index,
+                                                )
+                                            ),
+                                        }
+                                        if len(input) == 2
+                                        else {
+                                            "input_data": TensorConfig(
+                                                data_gen=partial(
+                                                    generate_input1, shape
+                                                )
+                                            ),
+                                            "index_data": TensorConfig(
+                                                data_gen=partial(
+                                                    generate_input2, index
+                                                )
+                                            ),
+                                            "axis_data": TensorConfig(
+                                                data_gen=partial(
+                                                    generate_input3, axis
+                                                )
+                                            ),
+                                        }
+                                    ),
                                     outputs=["output_data"],
                                 )
 

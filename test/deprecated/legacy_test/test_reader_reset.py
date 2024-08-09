@@ -47,7 +47,7 @@ class TestReaderReset(unittest.TestCase):
 
         with base.program_guard(main_prog, startup_prog):
             image = paddle.static.data(
-                name='image', shape=[-1] + self.ins_shape, dtype='float32'
+                name='image', shape=[-1, *self.ins_shape], dtype='float32'
             )
             label = paddle.static.data(
                 name='label', shape=[-1, 1], dtype='int64'
@@ -81,7 +81,10 @@ class TestReaderReset(unittest.TestCase):
                     )
                     ins_num = data_val.shape[0]
                     broadcasted_label = np.ones(
-                        (ins_num,) + tuple(self.ins_shape)
+                        (
+                            ins_num,
+                            *tuple(self.ins_shape),
+                        )
                     ) * label_val.reshape((ins_num, 1))
                     self.assertEqual(data_val.all(), broadcasted_label.all())
                     batch_id += 1

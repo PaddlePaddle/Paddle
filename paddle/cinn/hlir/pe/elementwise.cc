@@ -19,6 +19,8 @@
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
+#include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/hlir/framework/pir/trivial_op_util.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/utils/functional.h"
@@ -198,54 +200,72 @@ ir::Tensor ExpandDims(const ir::Tensor& A,
       UniqName(output_name));
 }
 
+Expr ReshapeHandler(const ir::Tensor& A,
+                    const std::vector<Expr>& out_shape,
+                    const std::vector<Expr>& indice) {
+  using framework::pir::trivial_fusion_detail::ComposeUtils::ConcatVector;
+  common::cas_intervals_t var_intervals =
+      common::CollectVarIntervalsOfExprs(ConcatVector(A->shape, out_shape));
+  common::SymbolicExprAnalyzer symbolic_expr_analyzer(var_intervals);
+
+  std::vector<Expr> A_strides(A->shape.size());
+  std::vector<Expr> B_strides(out_shape.size());
+  std::vector<Expr> A_indice(A->shape.size(), Expr(0));
+
+  const auto UpdateIndice = [&](int A_s, int A_e, int B_s, int B_e) {
+    Expr offset = indice[B_s] * B_strides[B_s];
+    for (int i = B_s + 1; i < B_e; i++) {
+      offset = offset + indice[i] * B_strides[i];
+    }
+    for (int i = A_s; i < A_e; i++) {
+      Expr temp = offset / A_strides[i];
+      if (i > A_s) {
+        temp = temp % A->shape[i];
+      }
+      A_indice[i] = common::AutoSimplify(temp);
+    }
+  };
+
+  Expr A_size{1}, B_size;
+  int A_s, A_e = A->shape.size();
+  int B_s, B_e = out_shape.size();
+
+  for (A_s = A_e - 1; A_s >= 0; A_s--) {
+    A_strides[A_s] = A_size;
+    A_size = A_size * A->shape[A_s];
+    B_size = Expr(1);
+    for (B_s = B_e - 1; B_s >= 0; B_s--) {
+      B_strides[B_s] = B_size;
+      B_size = B_size * out_shape[B_s];
+      std::optional<bool> eq = symbolic_expr_analyzer.ProveEQ(A_size, B_size);
+      if (eq.value_or(false)) {
+        UpdateIndice(A_s, A_e, B_s, B_e);
+        A_e = A_s;
+        B_e = B_s;
+        A_size = Expr(1);
+        break;
+      }
+    }
+  }
+
+  if (A_e > 0 && B_e > 0) {
+    UpdateIndice(0, A_e, 0, B_e);
+  }
+
+  return A(A_indice);
+}
+
 ir::Tensor Reshape(const ir::Tensor& A,
                    const std::vector<int>& new_shape,
                    const std::string& name) {
   std::vector<Expr> new_expr_shape;
-  const std::vector<Expr>& A_expr_shape = A->shape;
-  int input_total_size = 1;
-  int output_total_size = 1;
-  std::vector<Expr> A_stride_info;
-  int stride_base = 1;
-  A_stride_info.push_back(Expr(stride_base));
-
-  for (int i = A_expr_shape.size() - 1; i > 0; i--) {
-    stride_base *= static_cast<int>(A_expr_shape[i].get_constant());
-    A_stride_info.insert(A_stride_info.begin(), Expr(stride_base));
-  }
-
-  std::vector<Expr> new_stride_info;
-  stride_base = 1;
-  new_stride_info.push_back(Expr(stride_base));
-
-  for (int i = new_shape.size() - 1; i > 0; --i) {
-    stride_base *= new_shape[i];
-
-    new_stride_info.insert(new_stride_info.begin(), Expr(stride_base));
-  }
-
-  for (auto& i : new_shape) {
-    output_total_size *= i;
+  for (int i : new_shape) {
     new_expr_shape.push_back(Expr(i));
   }
-
   auto res = Compute(
       new_expr_shape,
       [=](const std::vector<Expr>& indice) {
-        Expr offset = indice[0] * new_stride_info[0];
-        for (int i = 1; i < indice.size(); i++) {
-          offset = offset + indice[i] * new_stride_info[i];
-        }
-        std::vector<Expr> indice_a;
-        for (int i = A_expr_shape.size() - 1; i >= 0; i--) {
-          auto inner_offset = offset;
-          if (i != (A_expr_shape.size() - 1)) {
-            inner_offset = inner_offset / A_stride_info[i];
-          }
-          auto temp = inner_offset % A_expr_shape[i];
-          indice_a.insert(indice_a.begin(), temp);
-        }
-        return A(indice_a);
+        return ReshapeHandler(A, new_expr_shape, indice);
       },
       name);
   return res;
@@ -255,48 +275,13 @@ ir::Tensor Reshape(const ir::Tensor& A,
                    const std::vector<ir::Dim>& new_shape,
                    const std::string& name) {
   std::vector<Expr> new_expr_shape;
-  const std::vector<Expr>& A_expr_shape = A->shape;
-  Expr input_total_size(1);
-  Expr output_total_size(1);
-
-  std::vector<Expr> A_stride_info;
-  Expr stride_base(1);
-  A_stride_info.push_back(stride_base);
-  for (int i = A_expr_shape.size() - 1; i > 0; i--) {
-    stride_base = stride_base * A_expr_shape[i];
-    A_stride_info.insert(A_stride_info.begin(), Expr(stride_base));
-  }
-
-  std::vector<Expr> new_stride_info;
-  stride_base = Expr(1);
-  new_stride_info.push_back(Expr(stride_base));
-  for (int i = new_shape.size() - 1; i > 0; --i) {
-    stride_base = stride_base * new_shape[i]->dim_expr;
-    new_stride_info.insert(new_stride_info.begin(), Expr(stride_base));
-  }
-
   for (auto& i : new_shape) {
-    output_total_size = output_total_size * i->dim_expr;
     new_expr_shape.push_back(i->dim_expr);
   }
-
   auto res = Compute(
       new_expr_shape,
       [=](const std::vector<Expr>& indice) {
-        Expr offset = indice[0] * new_stride_info[0];
-        for (int i = 1; i < indice.size(); i++) {
-          offset = offset + indice[i] * new_stride_info[i];
-        }
-        std::vector<Expr> indice_a;
-        for (int i = A_expr_shape.size() - 1; i >= 0; i--) {
-          auto inner_offset = offset;
-          if (i != (A_expr_shape.size() - 1)) {
-            inner_offset = inner_offset / A_stride_info[i];
-          }
-          auto temp = inner_offset % A_expr_shape[i];
-          indice_a.insert(indice_a.begin(), temp);
-        }
-        return A(indice_a);
+        return ReshapeHandler(A, new_expr_shape, indice);
       },
       name);
   return res;

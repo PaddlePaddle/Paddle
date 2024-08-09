@@ -187,7 +187,7 @@ ir::Expr ExtractSymbolicFromExpr(const ir::Expr& expr) {
     VLOG(6) << "Not supported for calculating symbolic, expr = " << expr;
     return ir::Expr(0);
   }
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "Dead code. Fail to extract symbolic from expression."));
 }
 
@@ -280,7 +280,7 @@ std::vector<ir::Expr> CalculateIndexCommonFactor(
   PADDLE_ENFORCE_GE(
       indexes.size(),
       2,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "We should guarantee indexes.size() >= 2, because local variable "
           "should at least load and store once. "));
   for (std::size_t i = 1; i < indexes.size(); ++i) {

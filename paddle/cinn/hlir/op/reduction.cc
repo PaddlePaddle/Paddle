@@ -213,7 +213,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                                                  lang::RetValue *ret) {
     PADDLE_ENFORCE_EQ(!args.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input argument of schedule is empty! Please "
                           "check."));
 
@@ -240,7 +240,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     }
     PADDLE_ENFORCE_EQ(!vec_ast.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input argument of schedule is empty! Please "
                           "check."));
     ir::ModuleExpr mod_expr(vec_ast);
@@ -448,19 +448,19 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
     PADDLE_ENFORCE_EQ(
         !args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input argument of compute is empty! Please check."));
     CINNValuePack arg_packs = args[0];
     CHECK_EQ(arg_packs.size(), 2U)
         << "There should be 2 input args for " << op_name << " compute";
     PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The arg_packs[1] is not empty! Please check."));
     std::string tensor_name = arg_packs[1].operator std::string();
     Expr x_expr = arg_packs[0];
     PADDLE_ENFORCE_NOT_NULL(x_expr.as_tensor(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "The x_expr can not as tensor! Please check."));
 
     ir::Tensor x = x_expr.as_tensor_ref();
@@ -469,7 +469,7 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
                                                       "reduce_any"};
     PADDLE_ENFORCE_EQ(!bool_reduce_op.count(op_name) || x->type().is_bool(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The type of input argument should be bool, "
                           "Please check."));
 
