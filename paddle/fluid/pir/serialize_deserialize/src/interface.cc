@@ -81,9 +81,9 @@ bool ReadModule(const std::string& file_path,
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
     if (file_version != pir_version) {
       builder.SetFileVersion(file_version);
-      std::filesystem::path cur_file(__FILE__);
       std::filesystem::path patch_path =
-          cur_file.parent_path().parent_path() / "patch";
+          std::filesystem::absolute(__FILE__).parent_path().parent_path() /
+          "patch";
       VLOG(8) << "Patch path: " << patch_path;
       builder.BuildPatch(patch_path.string());
     }
