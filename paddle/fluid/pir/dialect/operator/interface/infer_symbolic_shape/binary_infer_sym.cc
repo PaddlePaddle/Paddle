@@ -94,25 +94,21 @@ bool AllcloseOpInferSymbolicShape(
 bool BoxClipOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto &im_info_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
   // Check rank and dimensions of input tensors
-  if (op->attribute<pir::BoolAttribute>("is_runtime").data()) {
-    const auto &input_dims = input_shape.shape();
-    const auto &im_info_dims = im_info_shape.shape();
-    const auto three = symbol::DimExpr{3};
-    const auto four = symbol::DimExpr{4};
-    infer_context->AddEqualCstr(input_dims[input_dims.size() - 1], four);
-    PADDLE_ENFORCE_EQ(im_info_dims.size(),
-                      2,
-                      common::errors::InvalidArgument(
-                          "The rank of Input(im_info) in BoxClipOp must be 2. "
-                          "But received rank = %d",
-                          im_info_dims.size()));
-    infer_context->AddEqualCstr(im_info_dims[1], three);
-  }
+  const auto &three = symbol::DimExpr{3};
+  const auto &four = symbol::DimExpr{4};
+  infer_context->AddEqualCstr(input_shape[input_shape.size() - 1], four);
+  PADDLE_ENFORCE_EQ(im_info_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(im_info) in BoxClipOp must be 2. "
+                        "But received rank = %d",
+                        im_info_shape.size()));
+  infer_context->AddEqualCstr(im_info_shape[1], three);
 
   std::vector<symbol::DimExpr> output_shape = input_shape.shape();
   infer_context->SetShapeOrDataForValue(
