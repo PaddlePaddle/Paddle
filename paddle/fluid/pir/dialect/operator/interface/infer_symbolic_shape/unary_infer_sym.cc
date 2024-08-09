@@ -990,12 +990,49 @@ bool IdentityLossOpInferSymbolicShape(
 
   return true;
 }
-// bool GumbelSoftmaxOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool GumbelSoftmaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return UnchangedOpInferSymbolicShapeCheckAxis(op, infer_context);
+}
+
+bool UnchangedOpInferSymbolicShapeCheckAxis(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+  size_t rank = x_dims.size();
+
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+
+  if (rank > 0) {
+    PADDLE_ENFORCE_GE(axis,
+                      -static_cast<int>(rank),
+                      common::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+    PADDLE_ENFORCE_LT(axis,
+                      static_cast<int>(rank),
+                      common::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(X)."));
+  } else if (rank == 0) {
+    PADDLE_ENFORCE_GE(axis,
+                      -1,
+                      common::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-1, "
+                          "0] when input is 0D Tensor "));
+    PADDLE_ENFORCE_LE(axis,
+                      0,
+                      common::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-1, "
+                          "0] when input is 0D Tensor "));
+  }
+
+  // Set output shape to be the same as input shape
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  return true;
+}
 
 bool IdentityLoss_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

@@ -2311,6 +2311,7 @@
   kernel :
     func : gumbel_softmax
   backward : gumbel_softmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hardshrink
   args : (Tensor x, float threshold = 0.5)
