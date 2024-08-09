@@ -37,15 +37,19 @@ class TestPad3dOp(OpTest):
         self.op_type = "pad3d"
         self.python_api = paddle.nn.functional.pad
         self.inputs = {
-            'X': np.random.uniform(-1.0, 1.0, self.shape).astype("float32")
-            if self.dtype == np.uint16
-            else (
-                (
-                    np.random.uniform(-1.0, 1.0, self.shape)
-                    + 1j * np.random.uniform(-1.0, 1.0, self.shape)
-                ).astype(self.dtype)
-                if self.dtype == np.complex64 or self.dtype == np.complex128
-                else np.random.uniform(-1.0, 1.0, self.shape).astype(self.dtype)
+            'X': (
+                np.random.uniform(-1.0, 1.0, self.shape).astype("float32")
+                if self.dtype == np.uint16
+                else (
+                    (
+                        np.random.uniform(-1.0, 1.0, self.shape)
+                        + 1j * np.random.uniform(-1.0, 1.0, self.shape)
+                    ).astype(self.dtype)
+                    if self.dtype == np.complex64 or self.dtype == np.complex128
+                    else np.random.uniform(-1.0, 1.0, self.shape).astype(
+                        self.dtype
+                    )
+                )
             )
         }
         self.attrs = {}

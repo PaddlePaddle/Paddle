@@ -942,9 +942,9 @@ class PretrainedTokenizer:
         if return_token_type_ids:
             encoded_inputs["token_type_ids"] = token_type_ids
         if return_special_tokens_mask:
-            encoded_inputs[
-                "special_tokens_mask"
-            ] = self.get_special_tokens_mask(ids, pair_ids)
+            encoded_inputs["special_tokens_mask"] = (
+                self.get_special_tokens_mask(ids, pair_ids)
+            )
         if return_length:
             encoded_inputs["seq_len"] = len(encoded_inputs["input_ids"])
 
@@ -1193,9 +1193,9 @@ class PretrainedTokenizer:
                     if return_token_type_ids:
                         encoded_inputs["token_type_ids"] = token_type_ids
                     if return_special_tokens_mask:
-                        encoded_inputs[
-                            "special_tokens_mask"
-                        ] = self.get_special_tokens_mask(ids, pair_ids)
+                        encoded_inputs["special_tokens_mask"] = (
+                            self.get_special_tokens_mask(ids, pair_ids)
+                        )
                     if return_length:
                         encoded_inputs["seq_len"] = len(
                             encoded_inputs["input_ids"]

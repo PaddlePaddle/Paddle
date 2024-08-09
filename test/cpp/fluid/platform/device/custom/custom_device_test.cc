@@ -18,12 +18,12 @@
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/backends/custom/fake_cpu_device.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 void RegisterDevice() {
   CustomRuntimeParams runtime_params;
@@ -124,7 +124,7 @@ void TestTensorUtils(const phi::Place& place) {
   memcpy(src_ptr, arr.data(), 9 * sizeof(int));
 
   // CPU Tensor to GPU Tensor
-  paddle::platform::CustomDeviceContext gpu_ctx(place);
+  phi::CustomContext gpu_ctx(place);
   paddle::framework::TensorCopy(src_tensor, place, gpu_ctx, &gpu_tensor);
 #if 0
   // GPU Tensor to CPU Tensor

@@ -14,11 +14,13 @@
 
 
 import copy
+import operator
 from collections import OrderedDict
 from functools import reduce
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
+from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
 
@@ -667,8 +669,8 @@ class Inserter:
         group = new_process_group(ranks)
         idx_offset = 0
 
-        # insert c_allgather op
-        op_type = 'c_allgather'
+        # insert all_gather op
+        op_type = 'all_gather'
         # to avoid name conflict with framework
         helper = LayerHelper(op_type + "@RESHARD", **locals())
         insert_operation = (
@@ -690,16 +692,18 @@ class Inserter:
         allgather_op = insert_operation(
             idx + idx_offset,
             type=op_type,
-            inputs={'X': [tensor]},
-            outputs={'Out': [allgather_out]},
+            inputs={'x': [tensor]},
+            outputs={'out': [allgather_out]},
             attrs={
                 'ring_id': group.id,
-                'use_calc_stream': True,
                 'nranks': group.nranks,
                 'op_role': op_role,
             },
         )
         allgather_op._set_attr('op_namescope', "/auto_parallel/reshard")
+        allgather_op.dist_attr.execution_stream = (
+            AutoParallelStreamType.CALC_STREAM.value
+        )
         idx_offset += 1
 
         # insert split op
@@ -973,7 +977,9 @@ class Remover:
         )
         # 'feed_var_names' cannot be removed from auto_parallel_main_prog
         feed_var_names = []
-        for var in sum(list(dist_context.serial_feed_vars.values()), []):
+        for var in reduce(
+            operator.iadd, list(dist_context.serial_feed_vars.values()), []
+        ):
             feed_var_names.append(var.name)
         Remover.remove_no_need_vars(
             auto_parallel_main_prog, dist_params_grads, feed_var_names
@@ -1505,7 +1511,7 @@ class Resharder:
         if is_union_process_mesh_tensor:
             assert (
                 len(set(source_dims_mapping)) == 1
-                and list(set(source_dims_mapping))[0] == -1
+                and next(iter(set(source_dims_mapping))) == -1
             )
             if set(target_process_group).intersection(
                 set(source_process_group)
@@ -3122,8 +3128,11 @@ class Resharder:
                     partition_tensor_list.pop(i)
                     if rank_id not in local_rank_comp_cost:
                         local_rank_comp_cost[rank_id] = []
+                    concat_desc["dtype"] = dtype
                     local_rank_comp_cost[rank_id].append(
-                        ConcatOpCost(op_desc=concat_desc, cluster=cluster)
+                        ConcatOpCost(
+                            op_desc=concat_desc, cluster=cluster, rank=rank_id
+                        )
                     )
                     self._concat_partitions_for_cost(
                         partition_tensor_list,
@@ -3202,7 +3211,7 @@ class Resharder:
                     group_ranks = op_desc.group
                     shape = op_desc.shape
                     allgather_desc = build_comm_desc(
-                        "c_allgather", group_ranks, dtype, shape
+                        "all_gather", group_ranks, dtype, shape
                     )
                     split_inputs_shape = []
                     for idx, dim in enumerate(shape):
@@ -3244,8 +3253,11 @@ class Resharder:
                         "inputs": [(dtype, split_inputs_shape)]
                     }
                     split_desc["attrs"] = {"num": len(group_ranks), "axis": 0}
+                    split_desc["dtype"] = dtype
                     local_rank_comp_cost[key].append(
-                        SplitOpCost(op_desc=split_desc, cluster=cluster)
+                        SplitOpCost(
+                            op_desc=split_desc, cluster=cluster, rank=key
+                        )
                     )
                 elif isinstance(op_desc, ConcatOpDesc):
                     partition_index_list = op_desc._partition_index_list
@@ -3284,8 +3296,11 @@ class Resharder:
                     slice_desc["inputs"] = {
                         "Input": [(dtype, to_slice_tensor_shape)]
                     }
+                    slice_desc["dtype"] = dtype
                     local_rank_comp_cost[key].append(
-                        SliceOpCost(op_desc=slice_desc, cluster=cluster)
+                        SliceOpCost(
+                            op_desc=slice_desc, cluster=cluster, rank=key
+                        )
                     )
 
         res = (comm_costs, local_rank_comp_cost)

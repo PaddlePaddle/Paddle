@@ -72,23 +72,23 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         3,
-        phi::errors::InvalidArgument("The dimensions of x must be 3"
-                                     "(batch_size, seq_len, dim_embed),"
-                                     "but received dimensions of"
-                                     "Input is [%d]",
-                                     x_dim.size()));
+        common::errors::InvalidArgument("The dimensions of x must be 3"
+                                        "(batch_size, seq_len, dim_embed),"
+                                        "but received dimensions of"
+                                        "Input is [%d]",
+                                        x_dim.size()));
     PADDLE_ENFORCE_EQ(
         y_dim.size(),
         4,
-        phi::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
-                                     "(3, num_head, dim_head, dim_embed),"
-                                     "but received dimensions of"
-                                     "Input is [%d]",
-                                     y_dim.size()));
+        common::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
+                                        "(3, num_head, dim_head, dim_embed),"
+                                        "but received dimensions of"
+                                        "Input is [%d]",
+                                        y_dim.size()));
     PADDLE_ENFORCE_EQ(
         x_dim[2],
         trans_qkvw ? y_dim[3] : y_dim[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ShapeError: the dimension of x_dim[2] and y_dim[3](trans_qkvw is "
             "true) or y_dim[0](trans_qkvw is false)"
             "must be equal. But received: the shape "
@@ -101,7 +101,7 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
       if (trans_qkvw) {
         PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
                           y_dim[3],
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The dimensions of qkv_weight must be 4"
                               "(3, num_head, dim_head, dim_embed),"
                               "and must satisfy the limitations: "
@@ -110,7 +110,7 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
       } else {
         PADDLE_ENFORCE_EQ(y_dim[2] * y_dim[3],
                           y_dim[0],
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The dimensions of qkv_weight must be 4"
                               "(dim_embed, 3, num_head, dim_head),"
                               "and must satisfy the limitations: "
@@ -126,23 +126,23 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           c_dim.size(),
           5,
-          phi::errors::InvalidArgument("The CacheKV must be 5 dims, but got %d",
-                                       c_dim.size()));
+          common::errors::InvalidArgument(
+              "The CacheKV must be 5 dims, but got %d", c_dim.size()));
       PADDLE_ENFORCE_EQ(c_dim[0],
                         2,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The first dim of CacheKV must be 2, but got %d",
                             c_dim[0]));  // 2
       PADDLE_ENFORCE_EQ(c_dim[1],
                         x_dim[0],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The second dim of CacheKV must be equal with "
                             "batch size %d, but got %d",
                             x_dim[0],
                             c_dim[1]));  // batch_size
       PADDLE_ENFORCE_EQ(c_dim[2],
                         trans_qkvw ? y_dim[1] : y_dim[2],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
                             trans_qkvw ? y_dim[1] : y_dim[2],
@@ -150,12 +150,12 @@ class FusedMultiTransformerINT8Op : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(
           c_dim[3],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The forth dim of CacheKV must be greater than 0, but got %d",
               c_dim[3]));  // cache_seq_len
       PADDLE_ENFORCE_EQ(c_dim[4],
                         trans_qkvw ? y_dim[2] : y_dim[3],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The fifth dim of CacheKV must be equal with head "
                             "size %d, but got %d",
                             trans_qkvw ? y_dim[2] : y_dim[3],
@@ -273,7 +273,7 @@ class FusedMultiTransformerINT8OpMaker
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'epsilon' in Op(LayerNorm) should be between"
                                 "0.0 and 0.001, But received [%s].",
                                 epsilon));
@@ -284,7 +284,7 @@ class FusedMultiTransformerINT8OpMaker
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
 
@@ -301,7 +301,7 @@ class FusedMultiTransformerINT8OpMaker
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train",
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });

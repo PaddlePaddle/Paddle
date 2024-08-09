@@ -44,6 +44,16 @@ def get_inference_precision(precision_str):
         raise AssertionError(f"unsupported precision {precision_str}")
 
 
+def register_triton_custom_ops(model_dir):
+    for root, dirs, files in os.walk(model_dir):
+        for file in files:
+            if file.endswith("_package.so"):
+                so_full_path = os.path.join(root, file)
+                paddle.utils.cpp_extension.load_op_meta_info_and_register_op(
+                    so_full_path
+                )
+
+
 # get paddle.Tensor for paddle inference use.
 def get_tensor(run_time_args, arg_name):
     if isinstance(run_time_args, paddle.Tensor):
@@ -236,6 +246,14 @@ class InferenceEngine:
                     )
                 input_specs.append(None)
 
+        for i in range(len(input_specs)):
+            if input_specs[i] is not None:
+                if isinstance(input_specs[i], list):
+                    for j in range(len(input_specs[i])):
+                        input_specs[i][j].stop_gradient = True
+                else:
+                    input_specs[i].stop_gradient = True
+
         # update the input_spec's shape for doing d2s
         d2s_shapes_id = 0
         # initial the self.d2s_input_names!
@@ -259,6 +277,8 @@ class InferenceEngine:
                 else:
                     self.d2s_input_names[d2s_shapes_id] = arg_names[i]
                 d2s_shapes_id += 1
+
+        os.environ["TRITON_KERNEL_CACHE_DIR"] = self.save_model_dir
 
         print(
             f"now will use paddle.jit.save to save the {func.__name__} function to {self.save_path}.pdmodel"
@@ -368,15 +388,15 @@ class InferenceEngine:
             else:
                 for i in range(len(input_tensor_lists)):
                     if input_tensor_lists[i] is not None:
-                        min_input_shape[
-                            self.d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
-                        max_input_shape[
-                            self.d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
-                        opt_input_shape[
-                            self.d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
+                        min_input_shape[self.d2s_input_names[i]] = (
+                            input_tensor_lists[i].shape
+                        )
+                        max_input_shape[self.d2s_input_names[i]] = (
+                            input_tensor_lists[i].shape
+                        )
+                        opt_input_shape[self.d2s_input_names[i]] = (
+                            input_tensor_lists[i].shape
+                        )
 
                 config.set_trt_dynamic_shape_info(
                     min_input_shape, max_input_shape, opt_input_shape
@@ -393,25 +413,20 @@ class InferenceEngine:
         if self.predictor is not None:
             self.predictor = None
 
-        if self.enable_new_ir:
-            config.delete_pass(self.delete_pass_lists)
-        else:
-            for pass_name in self.delete_pass_lists:
-                config.delete_pass(pass_name)
+        for pass_name in self.delete_pass_lists:
+            config.delete_pass(pass_name)
 
         self.predictor = create_predictor(config)
 
 
 class _InferenceDecorator(Protocol):
     @overload
-    def __call__(self, function: _LayerT) -> _LayerT:
-        ...
+    def __call__(self, function: _LayerT) -> _LayerT: ...
 
     @overload
     def __call__(
         self, function: Callable[_InputT, _RetT]
-    ) -> Callable[_InputT, _RetT]:
-        ...
+    ) -> Callable[_InputT, _RetT]: ...
 
 
 @overload
@@ -431,8 +446,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
-) -> _InferenceDecorator:
-    ...
+) -> _InferenceDecorator: ...
 
 
 @overload
@@ -452,8 +466,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
-) -> _LayerT:
-    ...
+) -> _LayerT: ...
 
 
 @overload
@@ -473,8 +486,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
-) -> Callable[_InputT, _RetT]:
-    ...
+) -> Callable[_InputT, _RetT]: ...
 
 
 def inference(
@@ -550,6 +562,15 @@ def inference(
             >>> decorator_result = mylayer(x)
 
     """
+    # if function has already been decorated by @paddle.incubate.jit.inference(), then we just return it.
+    if (
+        hasattr(function, "__name__")
+        and function.__name__ == "innermost_decorator"
+    ):
+        return function
+    elif isinstance(function, Layer):
+        if function.forward.__name__ == "innermost_decorator":
+            return function
 
     used_as_at_decorator = function is None
 
@@ -608,6 +629,9 @@ def inference(
                 infer_engine.to_static_model(
                     func, input_tensor_lists, *args, **kwargs
                 )
+            else:
+                # we need register some triton ops.
+                register_triton_custom_ops(infer_engine.save_model_dir)
 
             infer_engine.create_predictor(input_tensor_lists)
 

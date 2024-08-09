@@ -22,7 +22,7 @@ static inline int64_t ComputeStartIndex(int64_t start_index, int64_t size) {
   PADDLE_ENFORCE_EQ(
       start_index >= -size && start_index < size,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The start_index is expected to be in range of [%d, %d), but got %d",
           -size,
           size,

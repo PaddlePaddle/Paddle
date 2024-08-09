@@ -38,7 +38,11 @@ const std::vector<symbol::DimExpr>& GetDimExprs(
     pir::Value value, const ShapeOrDataDimExprsAccessor& dim_exprs_accessor) {
   const auto& shape_or_data_dim_exprs =
       dim_exprs_accessor.GetShapeOrDataDimExprs(value);
-  CHECK(shape_or_data_dim_exprs.data().has_value());
+  PADDLE_ENFORCE_EQ(
+      shape_or_data_dim_exprs.data().has_value(),
+      true,
+      phi::errors::InvalidArgument(
+          "shape_or_data_dim_exprs has no data, it cannot be empty"));
   return shape_or_data_dim_exprs.data().value();
 }
 
@@ -53,6 +57,7 @@ std::vector<pir::Value> GetBlockArgs(pir::Block* block) {
   for (auto op = block->begin(); op != block->end(); ++op) {
     for (int i = 0; i < op->num_operands(); ++i) {
       pir::Value input = op->operand_source(i);
+      if (!input.type().isa<pir::DenseTensorType>()) continue;
       if (values_produced_by_block_op.count(input) == 0) {
         if (std::find(ret.begin(), ret.end(), input) == ret.end()) {
           ret.push_back(input);

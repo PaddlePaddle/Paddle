@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
 import csv
 import os
-from typing import Tuple
 
 import pandas as pd
 
@@ -38,22 +38,26 @@ class HistoryRecorder:
     def sort_metric(self, direction, metric_name) -> None:
         if direction == 'Maximize':
             self.history.sort(
-                key=lambda x: x[metric_name]
-                if x[metric_name] is not None
-                else float('-inf'),
+                key=lambda x: (
+                    x[metric_name]
+                    if x[metric_name] is not None
+                    else float('-inf')
+                ),
                 reverse=True,
             )
         else:
             self.history.sort(
-                key=lambda x: x[metric_name]
-                if x[metric_name] is not None
-                else float('inf'),
+                key=lambda x: (
+                    x[metric_name]
+                    if x[metric_name] is not None
+                    else float('inf')
+                ),
                 reverse=False,
             )
 
     def get_best(
         self, metric, direction, buffer=None, max_mem_usage=None
-    ) -> Tuple[dict, bool]:
+    ) -> tuple[dict, bool]:
         self.sort_metric(direction=direction, metric_name=metric)
         if len(self.history) == 0:
             return (None, True)
@@ -129,9 +133,11 @@ class HistoryRecorder:
                     ) and cfg["error_info"] is None:
                         _history.append(copy.deepcopy(cfg))
                 _history.sort(
-                    key=lambda x: x[self.additional_metric_key]
-                    if x[self.additional_metric_key] is not None
-                    else float('-inf'),
+                    key=lambda x: (
+                        x[self.additional_metric_key]
+                        if x[self.additional_metric_key] is not None
+                        else float('-inf')
+                    ),
                     reverse=True,
                 )
                 self._store_history_impl(
@@ -142,7 +148,7 @@ class HistoryRecorder:
         self.store_path = path
         self._store_history_impl(data=self.history, path=path)
 
-    def load_history(self, path="./history.csv") -> Tuple[list, bool]:
+    def load_history(self, path="./history.csv") -> tuple[list, bool]:
         """Load history from csv file."""
         err = False
         if self.store_path is None:

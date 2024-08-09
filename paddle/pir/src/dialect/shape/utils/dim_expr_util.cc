@@ -46,7 +46,7 @@ struct SimplifyOneOperand {
     } else {
       return Op<DimExpr>{ret_operand};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code."));
+    PADDLE_THROW(common::errors::Fatal("Dead code."));
   }
 };
 
@@ -71,7 +71,7 @@ struct SimplifyUnitOneOperand {
     } else {
       return expr;
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code."));
+    PADDLE_THROW(common::errors::Fatal("Dead code."));
   }
 };
 
@@ -126,7 +126,7 @@ struct SimplifyOperands {
     } else {
       return Op<DimExpr>{mut_operands};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code."));
+    PADDLE_THROW(common::errors::Fatal("Dead code."));
   }
 };
 
@@ -289,7 +289,10 @@ struct SortOperands {
   }
 
   bool IsSorted(const List<DimExpr>& operands) {
-    CHECK(!operands->empty());
+    PADDLE_ENFORCE_EQ(
+        !operands->empty(),
+        true,
+        common::errors::InvalidArgument("input op is empty, pleace check!"));
     for (std::size_t i = 0; i < operands->size() - 1; ++i) {
       if (IsLhsBeforeRhs(operands->at(i + 1), operands->at(i))) {
         return false;
@@ -302,10 +305,18 @@ struct SortOperands {
 std::int64_t GetInteger(const DimExpr& expr) {
   if (expr.Has<Negative<DimExpr>>()) {
     const auto& integer = expr.Get<Negative<DimExpr>>()->data;
-    CHECK(integer.Has<std::int64_t>());
+    PADDLE_ENFORCE_EQ(integer.Has<std::int64_t>(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "input expression's member `data` has no attribution "
+                          "`int64_t`, maybe input dim is empty"));
     return -integer.Get<std::int64_t>();
   }
-  CHECK(expr.Has<std::int64_t>());
+  PADDLE_ENFORCE_EQ(
+      expr.Has<std::int64_t>(),
+      true,
+      common::errors::InvalidArgument(
+          "input has no attribution `int64_t`, maybe input dim is empty"));
   return expr.Get<std::int64_t>();
 }
 
@@ -395,7 +406,7 @@ struct GetInversed<Mul> {
 template <>
 struct GetInversed<Broadcast> {
   static DimExpr Call(const DimExpr& expr) {
-    PADDLE_THROW(phi::errors::Fatal("Broadcast is not a group in math."));
+    PADDLE_THROW(common::errors::Fatal("Broadcast is not a group in math."));
   }
 };
 
@@ -468,7 +479,7 @@ struct FoldUnitConstant {
     } else {
       return Op<DimExpr>{ret_operands};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code."));
+    PADDLE_THROW(common::errors::Fatal("Dead code."));
   }
 };
 
@@ -507,7 +518,7 @@ struct FoldConstants {
     } else {
       return Op<DimExpr>{ret_operands};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code."));
+    PADDLE_THROW(common::errors::Fatal("Dead code."));
   }
 };
 
@@ -640,7 +651,7 @@ ConstRational SimplifiedConstRational(int64_t num, int64_t dem) {
 
 template <typename T>
 std::optional<ConstRational> GetConstRationalImpl(const T& expr) {
-  PADDLE_THROW(phi::errors::Fatal("not supported."));
+  PADDLE_THROW(common::errors::Fatal("not supported."));
   return std::nullopt;
 }
 
@@ -658,7 +669,10 @@ ConstRational GetConstRational(const DimExpr& expr) {
   return std::visit(
       [&](const auto& impl) {
         std::optional<ConstRational> opt_ret = GetConstRationalImpl(impl);
-        CHECK(opt_ret.has_value());
+        PADDLE_ENFORCE_EQ(
+            opt_ret.has_value(),
+            true,
+            common::errors::InvalidArgument("Input is empty, please check"));
         return opt_ret.value();
       },
       expr.variant());
@@ -711,7 +725,7 @@ struct FoldOperandTrait<Mul> {
     (*ret)->emplace_back(num);
     PADDLE_ENFORCE_NE(dem,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The denominator of rational can not be zero."));
     if (dem != 1) {
       (*ret)->emplace_back(Reciprocal<DimExpr>{DimExpr{dem}});
@@ -743,18 +757,22 @@ struct FoldOperandTrait<Broadcast> {
 
   static const_value_type MakeUnit() { return 1; }
   static void Accumulate(const_value_type* value, const DimExpr& expr) {
-    CHECK(expr.Has<std::int64_t>());
+    PADDLE_ENFORCE_EQ(expr.Has<std::int64_t>(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input constant `expr`(second argument) has no "
+                          "attribution `int64_T`, please check"));
     std::int64_t expr_value = expr.Get<std::int64_t>();
     if (*value == 1) {
       *value = expr_value;
     } else if (expr_value != 1) {
-      PADDLE_ENFORCE_EQ(
-          *value,
-          expr_value,
-          phi::errors::InvalidArgument("The value (%d) should be equal to expr "
-                                       "(%d) when they are both not 1.",
-                                       *value,
-                                       expr_value));
+      PADDLE_ENFORCE_EQ(*value,
+                        expr_value,
+                        common::errors::InvalidArgument(
+                            "The value (%d) should be equal to expr "
+                            "(%d) when they are both not 1.",
+                            *value,
+                            expr_value));
     } else {
       // do nothing.
     }
@@ -814,7 +832,7 @@ struct FoldInversedPairToUnit {
     } else {
       return Op<DimExpr>{ret_operands};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code."));
+    PADDLE_THROW(common::errors::Fatal("Dead code."));
   }
 
   std::optional<SearchResult> SearchInversedPair(
@@ -868,7 +886,7 @@ struct FoldRedundantSymbolicBroadcast {
     } else {
       return Broadcast<DimExpr>{ret_operands};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code."));
+    PADDLE_THROW(common::errors::Fatal("Dead code."));
   }
 
   std::optional<MaxInt64> SearchMaxInt64(const List<DimExpr>& operands) {
@@ -886,7 +904,7 @@ struct FoldRedundantSymbolicBroadcast {
             PADDLE_ENFORCE_EQ(
                 ret.value().value,
                 int64_value,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "The value of return (%d) should be equal to expr (%d) of "
                     "operands at index (%d) when they are both > 1.",
                     ret.value().value,
@@ -935,7 +953,7 @@ struct FoldRedundantBroadcast {
     } else {
       return Broadcast<DimExpr>{ret_operands};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code."));
+    PADDLE_THROW(common::errors::Fatal("Dead code."));
   }
 
   std::optional<SearchResult> SearchInversedPair(

@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/allocation/buddy_allocator.h"
+#include "paddle/phi/core/memory/allocation/buddy_allocator.h"
 
 #include <memory>
 
@@ -24,7 +24,7 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);

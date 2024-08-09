@@ -28,7 +28,7 @@ void IncrementKernel(const Context& ctx,
   // check input
   PADDLE_ENFORCE_EQ(x.numel(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "input tensor x's numel should be EXACTLY 1."));
 
   const T* x_data = x.data<T>();

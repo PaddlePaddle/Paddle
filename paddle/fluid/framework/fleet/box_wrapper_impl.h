@@ -41,7 +41,7 @@ void BoxWrapper::PullSparseCase(const phi::Place& place,
           buf->ptr());
 
   if (phi::is_cpu_place(place)) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (phi::is_gpu_place(place)) {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
@@ -96,7 +96,7 @@ void BoxWrapper::PullSparseCase(const phi::Place& place,
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        phi::errors::PreconditionNotMet("PullSparseGPU failed in BoxPS."));
+        common::errors::PreconditionNotMet("PullSparseGPU failed in BoxPS."));
     pull_boxps_timer.Pause();
 
     VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
@@ -111,12 +111,12 @@ void BoxWrapper::PullSparseCase(const phi::Place& place,
                       expand_embed_dim,
                       total_length);
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Please compile WITH_GPU option, because NCCL doesn't support "
         "windows."));
 #endif
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddleBox: PullSparse Only Support CPUPlace or CUDAPlace Now."));
   }
   all_timer.Pause();
@@ -150,7 +150,7 @@ void BoxWrapper::PushSparseGradCase(
           boxps::FeaturePushValueGpu<EMBEDX_DIM, EXPAND_EMBED_DIM>*>(
           buf->ptr());
   if (phi::is_cpu_place(place)) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (phi::is_gpu_place(place)) {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && !defined(_WIN32)
@@ -178,15 +178,15 @@ void BoxWrapper::PushSparseGradCase(
     PADDLE_ENFORCE_EQ(
         ret,
         0,
-        phi::errors::PreconditionNotMet("PushSparseGPU failed in BoxPS."));
+        common::errors::PreconditionNotMet("PushSparseGPU failed in BoxPS."));
     push_boxps_timer.Pause();
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Please compile WITH_GPU option, because NCCL doesn't support "
         "windows."));
 #endif
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddleBox: PushSparseGrad Only Support CPUPlace or CUDAPlace Now."));
   }
   all_timer.Pause();

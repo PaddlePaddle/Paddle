@@ -540,7 +540,6 @@ class RoleMakerBase:
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
-
     """
     PaddleCloudRoleMaker is an interface for distributed configuration initialization based on obtaining distributed related information from environment variables.
 
@@ -1202,7 +1201,6 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
-
     """
     UserDefinedRoleMaker is an interface for distributed configuration initialization based on obtaining distributed related information from user-defined parameters.
 

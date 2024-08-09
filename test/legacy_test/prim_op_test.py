@@ -646,9 +646,11 @@ class PrimForwardChecker:
                     static_inputs,
                     attrs,
                     self.kernel_sig,
-                    target_dtype=paddle.pir.core.DataType
-                    if in_pir_mode()
-                    else paddle.core.VarDesc.VarType,
+                    target_dtype=(
+                        paddle.pir.core.DataType
+                        if in_pir_mode()
+                        else paddle.core.VarDesc.VarType
+                    ),
                 )
                 if "one_hot" in self.op_type:
                     args = patch_for_one_hot(self.inputs, self.attrs, args)
@@ -740,9 +742,11 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
-                target_dtype=paddle.pir.core.DataType
-                if use_pir_api()
-                else paddle.core.VarDesc.VarType,
+                target_dtype=(
+                    paddle.pir.core.DataType
+                    if use_pir_api()
+                    else paddle.core.VarDesc.VarType
+                ),
             )
             if "one_hot" in self.op_type:
                 args = patch_for_one_hot(self.inputs, self.attrs, args)
@@ -834,9 +838,11 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
-                target_dtype=paddle.pir.core.DataType
-                if use_pir_api()
-                else paddle.core.VarDesc.VarType,
+                target_dtype=(
+                    paddle.pir.core.DataType
+                    if use_pir_api()
+                    else paddle.core.VarDesc.VarType
+                ),
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -961,9 +967,11 @@ class PrimGradChecker(PrimForwardChecker):
                 paddle.to_tensor(
                     data=np_v,
                     place=self.place,
-                    dtype="bfloat16"
-                    if OpTestUtils.is_bfloat16_type(np_v.dtype)
-                    else np_v.dtype,
+                    dtype=(
+                        "bfloat16"
+                        if OpTestUtils.is_bfloat16_type(np_v.dtype)
+                        else np_v.dtype
+                    ),
                 )
             )
         return eager_vs
@@ -978,9 +986,11 @@ class PrimGradChecker(PrimForwardChecker):
                 paddle.static.data(
                     name='v_' + str(i),
                     shape=np_v.shape,
-                    dtype="bfloat16"
-                    if OpTestUtils.is_bfloat16_type(np_v.dtype)
-                    else np_v.dtype,
+                    dtype=(
+                        "bfloat16"
+                        if OpTestUtils.is_bfloat16_type(np_v.dtype)
+                        else np_v.dtype
+                    ),
                 )
             )
             feed.update({'v_' + str(i): np_v})
@@ -1114,9 +1124,11 @@ class PrimGradChecker(PrimForwardChecker):
                     static_inputs,
                     attrs,
                     self.kernel_sig,
-                    target_dtype=paddle.pir.core.DataType
-                    if in_pir_mode()
-                    else paddle.core.VarDesc.VarType,
+                    target_dtype=(
+                        paddle.pir.core.DataType
+                        if in_pir_mode()
+                        else paddle.core.VarDesc.VarType
+                    ),
                 )
                 inputs_sig, _, outputs_sig = self.kernel_sig
                 if hasattr(self.op_test, "python_out_sig"):
@@ -1240,9 +1252,11 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
-                target_dtype=paddle.pir.core.DataType
-                if use_pir_api()
-                else paddle.core.VarDesc.VarType,
+                target_dtype=(
+                    paddle.pir.core.DataType
+                    if use_pir_api()
+                    else paddle.core.VarDesc.VarType
+                ),
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -1366,9 +1380,11 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
-                target_dtype=paddle.pir.core.DataType
-                if use_pir_api()
-                else paddle.core.VarDesc.VarType,
+                target_dtype=(
+                    paddle.pir.core.DataType
+                    if use_pir_api()
+                    else paddle.core.VarDesc.VarType
+                ),
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(

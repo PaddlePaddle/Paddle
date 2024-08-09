@@ -28,7 +28,7 @@ class TestSemiAutoParallelLlama3DAMPTest(test_base.CommunicationTestDistBase):
             "recompute": ["true"],
             "recompute_granularity": ["full"],
             "amp": ["true"],
-            "amp_level": ["O1", "O2"],
+            "amp_level": ["O1"],
             "amp_dtype": [
                 "float16",
             ],
