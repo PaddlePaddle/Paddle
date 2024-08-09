@@ -429,19 +429,19 @@ class Layer:
         self._op_recorder = LayerOpsRecorder(ops=[], hooks=[])
         self._customized_attrs = {}
 
-        self._forward_pre_hooks: typing.OrderedDict[
-            int, _ForwardPreHook
-        ] = OrderedDict()
-        self._forward_post_hooks: typing.OrderedDict[
-            int, _ForwardPostHook
-        ] = OrderedDict()
+        self._forward_pre_hooks: typing.OrderedDict[int, _ForwardPreHook] = (
+            OrderedDict()
+        )
+        self._forward_post_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
+            OrderedDict()
+        )
 
         # only used in AMP Training
         self._cast_to_low_precision = True
 
-        self._state_dict_hooks: typing.OrderedDict[
-            int, _StateDictHook
-        ] = OrderedDict()
+        self._state_dict_hooks: typing.OrderedDict[int, _StateDictHook] = (
+            OrderedDict()
+        )
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 

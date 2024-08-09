@@ -55,23 +55,26 @@ void RemoveDir(const cinn::common::Target target,
     filename += i.first + i.second;
     filename += "_";
   }
-  dirname = dirname.substr(0, dirname.size() - 1);
+  const std::string kDirSuffix = "_EREBE";
+  dirname = dirname.substr(0, dirname.size() - 1) + kDirSuffix;
   filename = filename.substr(0, filename.size() - 1);
 
-  auto removedir = [](const std::string& test_path) {
+  auto removedir = [](const std::string& test_path,
+                      const std::string& file_name) {
     if (PathExists(test_path)) {
-      std::remove(test_path.c_str());
+      std::string full_test_name = test_path + file_name;
+      std::remove(full_test_name.c_str());
       LOG(INFO) << "File exsit.";
     } else {
       LOG(INFO) << "File doesn't exsit.";
     }
   };
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
-  dirname += "/" + filename + ".json";
-  removedir(root_path + target.arch_str() + "/" + dirname);
-  LOG(INFO) << "Dump_file "
-            << root_path + target.arch_str() + "/" + dirname +
-                   " has been removed";
+  std::string target_str = target.arch_str() + "_" + target.device_name_str();
+  std::string file_name = "/" + filename + ".json";
+  removedir(root_path + target_str + "/" + dirname, file_name);
+  LOG(INFO) << "Dump_path "
+            << root_path + target_str + "/" + dirname + " has been removed";
 }
 
 TEST(ConfigSearcher, TestReduceDemo) {
@@ -104,11 +107,17 @@ TEST(ConfigSearcher, TestReduceDemo) {
   tile_config.spatial_inner_num = 9;
   tile_config.warp_num = 14;
   tile_config.tree_reduce_num = 512;
+  // Use kTestFileDir in this test.
+  const std::string prev_flag = FLAGS_cinn_tile_config_filename_label;
+  const std::string kTestFileDir = "./tile_file_test/";
+  FLAGS_cinn_tile_config_filename_label = kTestFileDir;
   std::vector<std::pair<std::string, std::string>> iter_space_type = {
       std::make_pair(s_dimension_type,
                      s_dimension_is_dynamic == true ? "dynamic" : "static"),
       std::make_pair(r_dimension_type,
                      r_dimension_is_dynamic == true ? "dynamic" : "static")};
+  // If test file has been created, remove it.
+  RemoveDir(cinn::common::DefaultTarget(), iter_space_type);
   // Step 2: Add to json / Read from json
   cinn::ir::FileTileConfigDatabase file_database;
   file_database.AddConfig(
@@ -128,8 +137,6 @@ TEST(ConfigSearcher, TestReduceDemo) {
                 << " 's upper_bound is: " << it.first.space[i].upper_bound;
       auto dimension_lower = i == 0 ? s_dimension_lower : r_dimension_lower;
       auto dimension_upper = i == 0 ? s_dimension_upper : r_dimension_upper;
-      // TODO(xia zichao): remove check because the pieces of read data are more
-      // than the written data.
       PADDLE_ENFORCE_EQ(it.first.space[i].lower_bound,
                         dimension_lower,
                         ::common::errors::InvalidArgument(
@@ -154,4 +161,6 @@ TEST(ConfigSearcher, TestReduceDemo) {
                       ::common::errors::InvalidArgument(
                           "GetConfigs function gets wrong tree_reduce_num"));
   }
+  // Restore the previous flag
+  FLAGS_cinn_tile_config_filename_label = prev_flag;
 }

@@ -90,13 +90,13 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
   void Visit(const ir::Store *expr, const Expr *op) override {
     auto *node = op->As<ir::Store>();
     PADDLE_ENFORCE_NOT_NULL(node,
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "Expected Store node, but received nullptr."));
     IRMutator::Visit(&node->value, &node->value);
     auto *tensor = node->tensor.As<ir::_Tensor_>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Expected _Tensor_ node in Store, but received nullptr."));
 
     // a tensor should pass all check of pre-conditions in every time it appears
@@ -109,12 +109,12 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
   void Visit(const ir::Load *expr, const Expr *op) override {
     auto *node = op->As<ir::Load>();
     PADDLE_ENFORCE_NOT_NULL(node,
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "Expected Load node, but received nullptr."));
     auto *tensor = node->tensor.As<ir::_Tensor_>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Expected _Tensor_ node in Load, but received nullptr."));
 
     // a tensor should pass all check of pre-conditions in every time it appears
@@ -222,7 +222,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
     PADDLE_ENFORCE_EQ(
         factor <= CudaVectorTypeMaxLanes,
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The maximum lanes of valid CUDA vector types: %d, but factor: %d.",
             CudaVectorTypeMaxLanes,
             factor));
@@ -256,7 +256,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
     auto *tensor = node->tensor.As<ir::_Tensor_>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Expected _Tensor_ node in Store, but received nullptr."));
     if (vectorized_teller_.CanBeVectorized(tensor->name)) {
       TensorVectorized(node, &node->indices, true);
@@ -403,7 +403,7 @@ class Vectorizer : public IRMutator<Expr *> {
     PADDLE_ENFORCE_EQ(
         !need_scalarize_,
         true,
-        phi::errors::InvalidArgument("Expression needs scalarization."));
+        ::common::errors::InvalidArgument("Expression needs scalarization."));
     IRMutator<Expr *>::Visit(expr, expr);
 
     if (need_scalarize_) {
@@ -567,10 +567,10 @@ class Vectorizer : public IRMutator<Expr *> {
       node->write_args[i] = Widen(node->write_args[i], lanes);
     }
 
-    PADDLE_ENFORCE_EQ(
-        !read_args.empty(),
-        true,
-        phi::errors::InvalidArgument("The argument is empty, please check."));
+    PADDLE_ENFORCE_EQ(!read_args.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The argument is empty, please check."));
     Type type = op->type().with_lanes(lanes);
     *expr = Call::Make(type,
                        node->name,
@@ -779,7 +779,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       PADDLE_ENFORCE_EQ(
           is_zero(forloop->min),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The minimum of forloop should be zero, please check."));
       Expr for_extent = cinn::common::AutoSimplify(forloop->extent);
       Simplify(&for_extent);
@@ -910,11 +910,11 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
   bool UnrollCmpFor(For *outer_for, For *inner_for, Expr *expr) {
     PADDLE_ENFORCE_NOT_NULL(
         outer_for,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Outer_for is nullptr in UnrollCmpFor function."));
     PADDLE_ENFORCE_NOT_NULL(
         inner_for,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Inner_for is nullptr in UnrollCmpFor function."));
     Expr inner_for_extent = cinn::common::AutoSimplify(inner_for->extent);
     Simplify(&inner_for_extent);
@@ -923,7 +923,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       PADDLE_ENFORCE_EQ(
           is_zero(inner_for->min),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The minimum of inner_for should be zero, please check."));
       // simplify the complicated indices of load/store from poly
       IRMutator::Visit(&inner_for->body, &inner_for->body);
@@ -1004,7 +1004,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     auto *for_min_i = forloop->min.As<IntImm>();
     PADDLE_ENFORCE_NOT_NULL(
         forloop,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The forloop is nullptr in SplitForLoop function."));
     if (!for_min_i) return Expr();
     if (for_min_i->value != 0) return Expr();

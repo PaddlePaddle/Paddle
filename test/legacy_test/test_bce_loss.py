@@ -49,9 +49,11 @@ def test_static_layer(
         exe = paddle.static.Executor(place)
         (static_result,) = exe.run(
             prog,
-            feed={"input": input_np, "label": label_np}
-            if weight_np is None
-            else {"input": input_np, "label": label_np, "weight": weight_np},
+            feed=(
+                {"input": input_np, "label": label_np}
+                if weight_np is None
+                else {"input": input_np, "label": label_np, "weight": weight_np}
+            ),
             fetch_list=[res],
         )
     return static_result
@@ -83,9 +85,11 @@ def test_static_functional(
         exe = paddle.static.Executor(place)
         (static_result,) = exe.run(
             prog,
-            feed={"input": input_np, "label": label_np}
-            if weight_np is None
-            else {"input": input_np, "label": label_np, "weight": weight_np},
+            feed=(
+                {"input": input_np, "label": label_np}
+                if weight_np is None
+                else {"input": input_np, "label": label_np, "weight": weight_np}
+            ),
             fetch_list=[res],
         )
     return static_result

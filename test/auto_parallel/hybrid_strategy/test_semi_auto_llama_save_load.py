@@ -29,6 +29,7 @@ class TestSemiAutoParallelLlamaSaveLoadTest(
             "acc_step": "1",
             "FLAGS_embedding_deterministic": "1",
             "FLAGS_cudnn_deterministic": "1",
+            "FLAGS_enable_pir_api": "1",
         }
         self._changeable_envs = {
             "backend": ["gpu"],

@@ -18,7 +18,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/collect_sym_expr.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
@@ -68,17 +67,8 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
       return CompilationCache::Instance().GetKernelInfo(fusion_info);
     };
     const auto& CreateFromNewCompile = [&]() {
-      const auto& optional_broadcast_group_list =
-          GetBroadcastGroupListForOptimize(group);
-      if (optional_broadcast_group_list.has_value()) {
-        std::vector<OpLoweringGroupPtr> group_list =
-            optional_broadcast_group_list.value();
-        PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
-        return pir_compiler.BuildBroadcastTree(group_list, group);
-      } else {
-        PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
-        return pir_compiler.Build({group})[0];
-      }
+      PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
+      return pir_compiler.Build({group})[0];
     };
 
     if (FLAGS_enable_cinn_compile_cache) {
@@ -147,7 +137,6 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
   // Because the group is rebuilt, the order of group.output_values generated
   // by BuildCUDAJITInfo may not be same with the order bound in the yield op,
   // so a mapping is required.
-  UpdateGroupShapeOrDataExprs(group);
   if (FLAGS_cinn_enable_map_expr) {
     cinn::adt::TryGenerateMapExprFromGroup(group);
   }

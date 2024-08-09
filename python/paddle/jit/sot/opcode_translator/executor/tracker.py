@@ -57,7 +57,7 @@ class Tracker:
         Args:
             codegen (PyCodeGen): An instance of PyCodeGen to generate instructions.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     # TODO(xiongkun): trace_value_from_frame is not a good name, it should be more related to guard but not tracable.
     def trace_value_from_frame(self) -> StringifiedExpression:
@@ -67,7 +67,7 @@ class Tracker:
         Returns:
             The value of the tracked variables.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def is_traceable(self) -> bool:
         """
