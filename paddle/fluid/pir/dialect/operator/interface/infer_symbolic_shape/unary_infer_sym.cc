@@ -465,7 +465,7 @@ bool ClassCenterSampleOpInferSymbolicShape(
   sampled_local_class_center_shape.emplace_back(symbol::DimExpr(num_samples));
   infer_context->SetShapeOrDataForValue(
       op->result(1),
-      symbol::ShapeOrDataDimExprs({sampled_local_class_center_shape}));
+      symbol::ShapeOrDataDimExprs{sampled_local_class_center_shape});
 
   return true;
 }
