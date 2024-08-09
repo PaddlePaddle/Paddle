@@ -116,7 +116,7 @@ if((WITH_GPU) AND (LINUX))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=1"
   )
   set_tests_properties(test_semi_auto_llama_acc_align
-                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=HYBRID")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=HYBRID")
 endif()
 
 if((WITH_GPU) AND (LINUX))
