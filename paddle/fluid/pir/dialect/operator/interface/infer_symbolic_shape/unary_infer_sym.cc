@@ -1197,12 +1197,25 @@ bool MeanAllOpInferSymbolicShape(
   return true;
 }
 
-// bool MatrixPowerOpInferSymbolicShape(pir::Operation *op,
-//                                      pir::InferSymbolicShapeContext
-//                                      *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MatrixPowerOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &dims = x_shape_or_data.shape();
+  const int n_dim = dims.size();
+
+  PADDLE_ENFORCE_GE(n_dim,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The Input(X) should have at least 2 dimensions. But "
+                        "received a %d dimension tensor.",
+                        n_dim));
+  infer_context->AddEqualCstr(dims[n_dim - 2], dims[n_dim - 1]);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs(x_shape_or_data));
+
+  return true;
+}
 
 // bool MatrixRankOpInferSymbolicShape(pir::Operation *op,
 //                                     pir::InferSymbolicShapeContext
