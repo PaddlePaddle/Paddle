@@ -293,7 +293,7 @@ class TestDistRunnerBase:
         eprint("feed_var_list:", feed_var_list)
 
         if feed_var_list[0].name == 'label':
-            feed_var_list = feed_var_list[::-1]
+            feed_var_list.reverse()
 
         feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
@@ -391,7 +391,7 @@ class TestDistRunnerBase:
         # tmp add this code to pass python35 gcc8 CI
         # Fixme(gongweibao, wangxi), need fix fleet api program order
         if feed_var_list[0].name == 'label':
-            feed_var_list = feed_var_list[::-1]
+            feed_var_list.reverse()
 
         feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
