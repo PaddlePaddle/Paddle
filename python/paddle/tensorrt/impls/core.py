@@ -24,14 +24,14 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 import tensorrt as trt
-from register import converter_registry
 
 from paddle.base.log_helper import get_logger
+from paddle.tensorrt.register import converter_registry
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
-from converter_utils import (
+from paddle.tensorrt.converter_utils import (
     append_ones,
     broadcast,
     get_axes_for_reduce_op,
