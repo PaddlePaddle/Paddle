@@ -63,8 +63,6 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       return Output("Out");
     };
 
-    std::string endpoint = Attr<std::string>("endpoint");
-
     std::vector<ncclUniqueId> nccl_ids;
     nccl_ids.resize(1);
 

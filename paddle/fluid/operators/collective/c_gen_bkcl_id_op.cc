@@ -67,8 +67,6 @@ class CGenBKCLIdOp : public framework::OperatorBase {
       return Output("Out");
     };
 
-    std::string endpoint = Attr<std::string>("endpoint");
-
     std::vector<BKCLUniqueId> bkcl_ids;
     bkcl_ids.resize(1);
 
