@@ -72,7 +72,7 @@ isl::union_set AstGen::domain() const { return impl_->domain(); }
 isl::union_set AstGen::Impl::domain() const {
   PADDLE_ENFORCE_NE(stages_.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Stages vector is empty in AstGen::Impl::domain()."));
   auto sets = utils::Map<std::vector<Shared<Stage>>, isl::set>(
       stages_, [](const Shared<Stage>& e) { return e->domain(); });
@@ -84,7 +84,7 @@ isl::ctx AstGen::ctx() const { return impl_->ctx(); }
 isl::ctx AstGen::Impl::ctx() const {
   PADDLE_ENFORCE_NE(stages_.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Stages vector is empty in AstGen::Impl::ctx()."));
   return stages_.front()->domain().ctx();
 }
@@ -161,7 +161,7 @@ isl::ast_node AstGen::Build() {
     auto it = schedule_map.find(stage->id());
     PADDLE_ENFORCE_EQ(it != std::end(schedule_map),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Stage %s not found in the map.", stage->id()));
     maps.push_back(it->second);
   }
@@ -199,7 +199,7 @@ isl::ast_node AstGen::Build() {
     PADDLE_ENFORCE_EQ(
         ele_it != std::end(impl_->stages_),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Stage with name %s not found in the stages vector.", name));
     return (*ele_it)->domain();
   };
@@ -269,7 +269,7 @@ const std::map<std::string, isl::ast_expr>& AstGen::axis2ast(
   auto it = impl_->transformed_indice_map_.find(tuple_name);
   PADDLE_ENFORCE_EQ(it != impl_->transformed_indice_map_.end(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "No id named %s, please check.", tuple_name));
   return it->second;
 }
@@ -290,7 +290,7 @@ isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build,
                                           const isl::map& access) {
   PADDLE_ENFORCE_NOT_NULL(
       build,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The isl_ast_build pointer is null in CreateIslAstIndexExpression."));
   isl::map schedule =
       isl::manage(isl_map_from_union_map(isl_ast_build_get_schedule(build)));
@@ -355,11 +355,11 @@ void EatMark(const isl::ast_node& node, ir::Expr* expr);
 void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
   PADDLE_ENFORCE_EQ(!node.is_null(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The isl::ast_node is null in IslAstNodeToCinnExpr."));
   PADDLE_ENFORCE_NOT_NULL(
       expr,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The ir::Expr pointer is null in IslAstNodeToCinnExpr."));
 
   switch (isl_ast_node_get_type(node.get())) {
@@ -386,7 +386,7 @@ void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
     default:
       std::stringstream ss;
       ss << "Unexpected ISL node type " << isl_ast_node_get_type(node.get());
-      PADDLE_THROW(::phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
       break;
   }
 }
@@ -394,16 +394,16 @@ void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
 // Eat an isl block node.
 void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
   VLOG(2) << "get isl ast body node";
-  PADDLE_ENFORCE_EQ(
-      !node.is_null(),
-      true,
-      phi::errors::InvalidArgument("The isl::ast_node is null in EatBlock."));
+  PADDLE_ENFORCE_EQ(!node.is_null(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The isl::ast_node is null in EatBlock."));
   PADDLE_ENFORCE_NOT_NULL(expr,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The ir::Expr pointer is null in EatBlock."));
   PADDLE_ENFORCE_EQ(isl_ast_node_get_type(node.get()),
                     isl_ast_node_block,
-                    ::phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The node type should be isl_ast_node_block"));
   isl::ast_node_list list =
       isl::manage(isl_ast_node_block_get_children(node.get()));
@@ -422,7 +422,7 @@ void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
 void EatUser(const isl::ast_node& node, ir::Expr* expr) {
   PADDLE_ENFORCE_EQ(isl_ast_node_get_type(node.get()),
                     isl_ast_node_user,
-                    ::phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The node type should be isl_ast_node_user"));
   isl::ast_expr isl_expr = isl::manage(isl_ast_node_user_get_expr(node.get()));
   IslAstExprToCinnExpr(isl_expr, expr);
@@ -431,7 +431,7 @@ void EatUser(const isl::ast_node& node, ir::Expr* expr) {
 void EatFor(const isl::ast_node& node, ir::Expr* expr) {
   PADDLE_ENFORCE_EQ(isl_ast_node_get_type(node.get()),
                     isl_ast_node_for,
-                    ::phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The node type should be isl_ast_node_for"));
 
   // iter name
@@ -477,7 +477,7 @@ void EatFor(const isl::ast_node& node, ir::Expr* expr) {
 void EatIf(const isl::ast_node& node, ir::Expr* expr) {
   PADDLE_ENFORCE_EQ(isl_ast_node_get_type(node.get()),
                     isl_ast_node_if,
-                    ::phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The node type should be isl_ast_node_if."));
   isl::ast_node then_body = isl::manage(isl_ast_node_if_get_then(node.get()));
   isl::ast_expr condition = isl::manage(isl_ast_node_if_get_cond(node.get()));
@@ -590,7 +590,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
           PADDLE_ENFORCE_EQ(
               caller_expr.node_type() == ir::IrNodeTy::_Var_,
               true,
-              phi::errors::InvalidArgument(
+              ::common::errors::InvalidArgument(
                   "Expected caller_expr to be of type _Var_, but got %s.",
                   caller_expr.node_type()));
           std::string caller = caller_expr.As<ir::_Var_>()->name;
@@ -610,7 +610,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
         case isl_ast_op_select:
           PADDLE_ENFORCE_EQ(ops.size(),
                             3UL,
-                            ::phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "In ir::Select, the ops size should be 3"));
           ops[0]->set_type(Bool());
           *expr = ir::Select::Make(ops[0], ops[1], ops[2]);
@@ -618,7 +618,7 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
         default:
           std::stringstream ss;
           ss << "unsupported op " << op_type;
-          PADDLE_THROW(::phi::errors::InvalidArgument(ss.str()));
+          PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
       }
     } break;
     default:

@@ -320,7 +320,6 @@ if(WITH_XPU)
          shape_inference
          data_transform
          lod_tensor
-         profiler
          transfer_scope_cache
          op_kernel_type
          op_call_stack
@@ -347,7 +346,6 @@ else()
          shape_inference
          data_transform
          lod_tensor
-         profiler
          transfer_scope_cache
          op_kernel_type
          op_call_stack

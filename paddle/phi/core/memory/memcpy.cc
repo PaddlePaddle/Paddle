@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/phi/core/memory/memcpy.h"
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_XPU

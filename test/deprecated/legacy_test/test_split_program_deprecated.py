@@ -122,7 +122,7 @@ class TestSplitProgram(unittest.TestCase):
         programs, input_vars, output_vars = split_program(
             main_prog, split_op_indices
         )
-        op_nums = [0] + split_op_indices + [op_num]
+        op_nums = [0, *split_op_indices, op_num]
         op_nums = [op_nums[i + 1] - op_nums[i] for i in range(len(op_nums) - 1)]
         num_split = len(split_op_indices) + 1
         self.assertEqual(len(programs), num_split)

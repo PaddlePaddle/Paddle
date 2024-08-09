@@ -30,8 +30,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 namespace paddle {
 
