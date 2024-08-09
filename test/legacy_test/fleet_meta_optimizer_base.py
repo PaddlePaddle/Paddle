@@ -25,9 +25,9 @@ from paddle.distributed.fleet.base import role_maker
 class TestFleetMetaOptimizer(unittest.TestCase):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "1"
-        os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"
-        ] = "127.0.0.1:36001,127.0.0.1:36002"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = (
+            "127.0.0.1:36001,127.0.0.1:36002"
+        )
         self._debug = False
 
     def debug_program(self, main_prog, startup_prog):
@@ -259,4 +259,4 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         elif name == 'asp':
             strategy.asp = True
         else:
-            raise NotImplementedError()
+            raise NotImplementedError

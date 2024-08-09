@@ -14,7 +14,10 @@
 
 from __future__ import annotations
 
-from typing import Callable, Generator, TypeVar
+from typing import TYPE_CHECKING, Callable, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 _T = TypeVar('_T')
 __all__ = []

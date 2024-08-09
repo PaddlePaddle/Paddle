@@ -194,7 +194,7 @@ llvm::Value* CodeGenCudaHost::LowerGPUKernelLauncher(
   return function;
 }
 
-llvm::Value* CodeGenCudaHost::LowerCUDAKernelCall(const ir::Call* call_ir) {
+llvm::Value* CodeGenCudaHost::LowerGPUKernelCall(const ir::Call* call_ir) {
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
                  f_->arg_end(),

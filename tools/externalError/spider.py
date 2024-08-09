@@ -52,7 +52,7 @@ def parsing(externalErrorDesc):
             m_message = m_message.replace(list_a[idx], list_shape[idx])
 
         m_message = m_message.replace(
-            '<h6 class=\"deprecated_header\">Deprecated</h6>', ''
+            '<h6 class="deprecated_header">Deprecated</h6>', ''
         )
 
         res_span = r'(<span class=.*?</span>)'

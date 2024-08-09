@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/operators/isfinite_op.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
