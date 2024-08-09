@@ -36,6 +36,8 @@ class DistDenseTensorType
   using Base::Base;
   using LoD = pir::DenseTensorTypeStorage::LoD;
 
+  static std::string name() { return "t_dist_dtensor"; }
+
   pir::DenseTensorType dense_tensor_type() const;
   TensorDistAttribute tensor_dist_attr() const;
   const common::DDim& global_ddim() const { return dense_tensor_type().dims(); }

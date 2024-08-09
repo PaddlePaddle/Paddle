@@ -172,7 +172,9 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
                                             "stop_gradient",
                                             "trainable",
                                             "op_callstack" /*no need*/};
-
+  std::vector<std::string> DistAttrsNameList = GetOpDistAttr();
+  AttrsNameList.insert(
+      AttrsNameList.end(), DistAttrsNameList.begin(), DistAttrsNameList.end());
   for (auto attr : op.attributes()) {
     auto attr_name = attr.first;
     auto it = std::find(AttrsNameList.begin(), AttrsNameList.end(), attr_name);
@@ -215,6 +217,15 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
                        "parameter_name not found in ParameterOp"));
   }
   op_json[ATTRS] = attrs_json;
+
+  Json dist_attrs_json = Json::array();
+  for (auto key : GetOpDistAttr()) {
+    if (op.attributes().count(key) > 0) {
+      dist_attrs_json.emplace_back(
+          WriteAttribute(key, op.attributes().at(key)));
+    }
+  }
+  op_json[DIST_ATTRS] = dist_attrs_json;
 
   Json other_attrs_json = Json::array();
   OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
@@ -264,6 +275,7 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
   // serialize attributes
   op_json[ATTRS] = WriteAttributesMapOpinfo(const_cast<pir::Operation*>(&op),
                                             op.attributes());
+
   if (trainable_) {
     op_json[OPRESULTS_ATTRS] = WriteAttributesMapOther(op.attributes());
   }
@@ -300,6 +312,11 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
           attrs_json.emplace_back(
               WriteAttribute(val.name, attr_map.at(val.name)));
         }
+      }
+    }
+    for (auto key : GetOpDistAttr()) {
+      if (attr_map.count(key) > 0) {
+        attrs_json.emplace_back(WriteAttribute(key, attr_map.at(key)));
       }
     }
   } else {
