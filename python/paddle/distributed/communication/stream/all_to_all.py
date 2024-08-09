@@ -56,7 +56,7 @@ def _all_to_all_in_dygraph(
     group: Group,
     sync_op: bool,
     use_calc_stream: bool,
-) -> task:
+) -> task | None:
     if len(in_tensor_list) == 0:
         raise RuntimeError("The input tensor_list should not be empty.")
 

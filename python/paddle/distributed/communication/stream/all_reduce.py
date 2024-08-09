@@ -42,7 +42,7 @@ def _all_reduce_in_dygraph(
     group: Group,
     sync_op: bool,
     use_calc_stream: bool,
-):
+) -> task:
     op_type = _get_reduce_op(op, "allreduce")
 
     if use_calc_stream:
@@ -61,7 +61,7 @@ def _all_reduce_in_static_mode(
     group: Group,
     sync_op: bool,
     use_calc_stream: bool,
-):
+) -> None:
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',
