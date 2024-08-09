@@ -13,28 +13,28 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
-
-if TYPE_CHECKING:
-    import numpy.typing as npt
-
-    from paddle._typing.dtype_like import _DTypeLiteral
-    from paddle.vision.transforms.transforms import _Transform
-
-    from ..image import _ImageBackend, _ImageDataType
-
-    _DatasetMode = Literal["train", "test"]
-
-
 import pickle
 import tarfile
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+import numpy.typing as npt
 from PIL import Image
 
 import paddle
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
+
+from ..image import _ImageDataType
+
+if TYPE_CHECKING:
+
+    from paddle._typing.dtype_like import _DTypeLiteral
+    from paddle.vision.transforms.transforms import _Transform
+
+    from ..image import _ImageBackend
+
+    _DatasetMode = Literal["train", "test"]
 
 __all__ = []
 
@@ -52,7 +52,7 @@ MODE_FLAG_MAP = {
 }
 
 
-class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
+class Cifar10(Dataset[tuple[_ImageDataType, npt.NDArray[Any]]]):
     """
     Implementation of `Cifar-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
     dataset, which has 10 categories.
