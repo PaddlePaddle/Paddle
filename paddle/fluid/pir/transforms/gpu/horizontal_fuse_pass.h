@@ -12,8 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/profiler.h"
+#pragma once
 
-namespace paddle {
-namespace platform {}
-}  // namespace paddle
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
+
+namespace pir {
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateHorizontalFusePass();
+
+}  // namespace pir
