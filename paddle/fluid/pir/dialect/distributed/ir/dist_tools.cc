@@ -203,52 +203,116 @@ bool HasDistInput(const std::vector<pir::Value>& inputs,
   return false;
 }
 
-// return the tensor dist attribute of converted value.
-pir::Attribute CvtValueToDist(pir::Value value,
-                              ProcessMeshAttribute mesh_attr) {
-  if (!value || !value.type()) return nullptr;
-  PADDLE_ENFORCE_EQ(
-      value.type().isa<DistTypeInterface>(),
-      false,
-      common::errors::InvalidArgument("Can't convert value type to dist. "
-                                      "Because it is already a dist type"));
-  auto dense_type = value.type().dyn_cast<pir::DenseTensorType>();
-  if (!dense_type) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "Currently only support convert dense_tensor_type to dist type."));
-  }
-  auto ctx = pir::IrContext::Instance();
-  auto dist_type = DistDenseTensorType::get(ctx, dense_type, mesh_attr);
-  value.set_type(dist_type);
-  if (auto op = value.defining_op()) {
-    PADDLE_ENFORCE_EQ(
-        op->num_results(),
-        1u,
-        common::errors::InvalidArgument(
-            "Currently only allowed add dist attribue for operation with "
-            "single output. The current op is %s",
-            op->name()));
-    std::vector<pir::Attribute> dist_operand_attrs;
-    for (auto pre_value : op->operands_source()) {
-      dist_operand_attrs.push_back(CvtValueToDist(pre_value, mesh_attr));
+void GetConnectedSubgraph(pir::Operation* op,
+                          std::unordered_set<pir::Operation*>& ops,  // NOLINT
+                          std::unordered_set<pir::Value>& args) {    // NOLINT
+  if (ops.find(op) != ops.end()) return;
+  ops.insert(op);
+  for (auto prev_var : op->operands_source()) {
+    if (auto prev_op = prev_var.defining_op()) {
+      GetConnectedSubgraph(prev_op, ops, args);
+    } else {
+      args.insert(prev_var);
     }
-    op->set_attribute(
-        kAttrOpDistAttr,
-        OperationDistAttribute::get(ctx,
-                                    mesh_attr,
-                                    dist_operand_attrs,
-                                    {dist_type.tensor_dist_attr()}));
   }
-  return dist_type.tensor_dist_attr();
+  for (auto result : op->results()) {
+    for (auto iter = result.use_begin(); iter != result.use_end(); ++iter) {
+      GetConnectedSubgraph(iter->owner(), ops, args);
+    }
+  }
+}
+
+// convert a singe value type to dist type.
+pir::Type CvtTypeToDist(pir::Type type, ProcessMeshAttribute mesh_attr) {
+  if (!type) return nullptr;
+  auto ctx = pir::IrContext::Instance();
+  PADDLE_ENFORCE_EQ(
+      type.isa<DistTypeInterface>(),
+      false,
+      common::errors::InvalidArgument(
+          "Can't convert type to dist. Because it is already a dist type"));
+  if (auto dense_type = type.dyn_cast<pir::DenseTensorType>()) {
+    return DistDenseTensorType::get(ctx, dense_type, mesh_attr);
+  } else if (auto vec_type = type.dyn_cast<pir::VectorType>()) {
+    std::vector<pir::Type> vec_dist_types;
+    for (size_t idx = 0; idx < vec_type.size(); ++idx) {
+      vec_dist_types.push_back(CvtTypeToDist(vec_type[idx], mesh_attr));
+    }
+    return pir::VectorType::get(ctx, vec_dist_types);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Currently only support convert dense_tensor_type or vector type to "
+        "dist type."));
+  }
+}
+
+pir::Attribute GetTensorDistAttr(pir::Type type) {
+  if (!type) return nullptr;
+  if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
+    return dist_type.tensor_dist_attr();
+  } else if (auto vec_type = type.dyn_cast<pir::VectorType>()) {
+    std::vector<pir::Attribute> arr_attr;
+    for (size_t idx = 0; idx < vec_type.size(); ++idx) {
+      arr_attr.push_back(GetTensorDistAttr(vec_type[idx]));
+    }
+    return pir::ArrayAttribute::get(pir::IrContext::Instance(), arr_attr);
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Can't get tensor dist attribute with a non-dist type."));
+  }
+}
+// return the tensor dist attribute of converted value.
+void CvtValueToDist(pir::Value value, ProcessMeshAttribute mesh_attr) {
+  std::unordered_set<pir::Operation*> ops;
+  std::unordered_set<pir::Value> args;
+  if (auto op = value.defining_op()) {
+    GetConnectedSubgraph(op, ops, args);
+  } else {
+    args.insert(value);
+  }
+  args.erase(pir::Value());
+  for (auto arg : args) {
+    arg.set_type(CvtTypeToDist(arg.type(), mesh_attr));
+  }
+  for (auto op : ops) {
+    for (auto result : op->results()) {
+      result.set_type(CvtTypeToDist(result.type(), mesh_attr));
+    }
+  }
+  std::vector<pir::Attribute> operand_dist_attrs, result_dist_attrs;
+  for (auto op : ops) {
+    for (auto pre_value : op->operands_source()) {
+      operand_dist_attrs.push_back(GetTensorDistAttr(pre_value.type()));
+    }
+    for (auto result : op->results()) {
+      result_dist_attrs.push_back(GetTensorDistAttr(result.type()));
+    }
+    op->set_attribute(kAttrOpDistAttr,
+                      OperationDistAttribute::get(pir::IrContext::Instance(),
+                                                  mesh_attr,
+                                                  operand_dist_attrs,
+                                                  result_dist_attrs));
+    operand_dist_attrs.clear();
+    result_dist_attrs.clear();
+  }
 }
 
 void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
                         ProcessMeshAttribute mesh_attr) {
   for (auto value : inputs) {
     if (auto type = value.type()) {
-      if (type.isa<DistTypeInterface>() || type.isa<pir::VectorType>())
-        continue;
-      CvtValueToDist(value, mesh_attr);
+      if (type.isa<DistTypeInterface>()) continue;
+      if (auto vec_type = type.dyn_cast<pir::VectorType>()) {
+        for (size_t idx = 0; idx < vec_type.size(); ++idx) {
+          auto inner_type = vec_type[idx];
+          if (!inner_type && !vec_type[idx].isa<DistTypeInterface>()) {
+            CvtValueToDist(value, mesh_attr);
+            break;
+          }
+        }
+      } else {
+        CvtValueToDist(value, mesh_attr);
+      }
     }
   }
 }
@@ -295,19 +359,6 @@ pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {
     }
     return pir::ArrayAttribute::get(ctx, array);
   }
-}
-
-pir::Attribute GetTensorDistAttrArray(pir::VectorType x_vec_type) {
-  std::vector<pir::Attribute> x_arr_attr;
-  for (size_t i = 0; i < x_vec_type.size(); i++) {
-    auto dist_type = x_vec_type[i].dyn_cast<DistTypeInterface>();
-    if (!dist_type) {
-      x_arr_attr.push_back(nullptr);
-    } else {
-      x_arr_attr.push_back(dist_type.tensor_dist_attr());
-    }
-  }
-  return pir::ArrayAttribute::get(pir::IrContext::Instance(), x_arr_attr);
 }
 
 pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,

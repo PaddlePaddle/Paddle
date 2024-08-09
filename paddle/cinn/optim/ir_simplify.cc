@@ -199,11 +199,11 @@ struct SimplifyRampMutator : public ir::IRMutator<Expr*> {
     PADDLE_ENFORCE_EQ(
         cinn::common::IsPureMath(node->base),
         true,
-        phi::errors::InvalidArgument("node->base is not a pure math!"));
+        ::common::errors::InvalidArgument("node->base is not a pure math!"));
     PADDLE_ENFORCE_EQ(
         cinn::common::IsPureMath(node->stride),
         true,
-        phi::errors::InvalidArgument("node->stride is not a pure math!"));
+        ::common::errors::InvalidArgument("node->stride is not a pure math!"));
     PartialSimplify(&node->base);
     PartialSimplify(&node->stride);
   }
@@ -311,7 +311,7 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
   void Visit(const ScheduleBlock* op, Expr* expr) override {
     auto* node = expr->As<ScheduleBlock>();
     PADDLE_ENFORCE_NOT_NULL(node,
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "The node expr->As<ScheduleBlock>() is null"));
     for (auto& var : node->iter_vars) {
       if (var->lower_bound.defined()) {
@@ -339,7 +339,7 @@ struct SimplifyBlocksMutator : public ir::IRMutator<> {
 };
 
 struct SimplifyForLoopsMutator : public ir::IRMutator<> {
-  absl::flat_hash_map<std::string, cinn::common::CasInterval> var_intervals;
+  absl::flat_hash_map<std::string, Expr> var_mins;
   SimplifyForLoopsMutator() {}
 
   void operator()(Expr* x) { ir::IRMutator<ir::Expr*>::Visit(x, x); }
@@ -355,14 +355,12 @@ struct SimplifyForLoopsMutator : public ir::IRMutator<> {
     if (min_i && extent_i && extent_i->value - min_i->value == 1) {
       VLOG(6) << "Simplify current For Loop";
       std::string var_name = node->loop_var->name;
-      var_intervals.emplace(
-          var_name,
-          cinn::common::CasInterval{min_i->value, extent_i->value - 1});
+      var_mins.emplace(var_name, node->min);
 
       *expr = node->body;
 
       Visit(expr, expr);
-      var_intervals.erase(var_name);
+      var_mins.erase(var_name);
     } else {
       Visit(&node->body, &node->body);
     }
@@ -371,9 +369,8 @@ struct SimplifyForLoopsMutator : public ir::IRMutator<> {
   void Visit(const _Var_* op, Expr* expr) override {
     auto* node = expr->As<ir::_Var_>();
 
-    if (var_intervals.count(node->name)) {
-      auto loop_range = var_intervals.at(node->name);
-      *expr = Expr(loop_range.l);
+    if (var_mins.count(node->name)) {
+      *expr = var_mins.at(node->name);
     }
   }
 };

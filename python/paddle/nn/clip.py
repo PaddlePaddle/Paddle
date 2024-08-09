@@ -265,10 +265,10 @@ def _squared_l2_norm(x):
 
 class BaseErrorClipAttr:
     def __str__(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _append_clip_op(self, block, grad_name):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class ErrorClipByValue(BaseErrorClipAttr):
@@ -353,7 +353,7 @@ class ClipGradBase:
         super().__init__()
 
     def __str__(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
@@ -384,10 +384,10 @@ class ClipGradBase:
             return self._static_clip(params_grads)
 
     def _process_context(self, context, param, grad):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _create_operators(self, param, grad):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class ClipGradByValue(ClipGradBase):

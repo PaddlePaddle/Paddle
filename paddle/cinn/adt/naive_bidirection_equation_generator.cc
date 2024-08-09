@@ -53,7 +53,7 @@ OpArgIndexes<std::optional<Index>> MakeOutMsgOpArgIndexes(
   for (const auto& out_msg_in_index : *opt_out_msg_in_indexes) {
     PADDLE_ENFORCE_EQ(out_msg_in_index.has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The out_msg_in_index should have value."));
     out_msg_in_indexes->emplace_back(out_msg_in_index.value());
   }
@@ -118,7 +118,7 @@ void NaiveBidirectionEquationGenerator::InitInMsgIndex2OutMsgIndex() {
                   this->in_msg_index2out_msg_index_.emplace(in_index, out_index)
                       .second,
                   true,
-                  phi::errors::InvalidArgument(
+                  ::common::errors::InvalidArgument(
                       "The out_msg_index2in_msg_index_ map has already "
                       "contained the out_index."));
             });
@@ -172,7 +172,7 @@ NaiveBidirectionEquationGenerator::MakeGetterOpStmt4OpPlaceHolder() const {
             ->emplace(fake_op_placeholders_->at(i), op_stmts_->at(i))
             .second,
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The fake_op_placeholder2op_stmt map has already contained the "
             "fake_op_placeholder."));
   }
