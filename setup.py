@@ -1161,8 +1161,14 @@ def get_package_data_and_package_dir():
             + '/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
             libs_path,
         )
+        shutil.copy(
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h',
+            libs_path,
+        )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+        package_data['paddle.libs'] += ['cinn_hip_runtime_source.h']
 
         cinn_fp16_file = (
             env_dict.get("CINN_INCLUDE_DIR")
@@ -1501,6 +1507,14 @@ def get_headers():
             find_files(
                 'general_functions.h',
                 paddle_source_dir + '/paddle/fluid/pir/utils',
+                recursive=True,
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'interface.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/serialize_deserialize/include',
                 recursive=True,
             )
         )

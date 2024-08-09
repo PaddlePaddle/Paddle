@@ -32,7 +32,7 @@ using cinn::common::float16;
 
 const int kArgsArrayMaxLen = 20;
 
-llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
+llvm::Value* CodeGenCudaHost::LowerGPUKernelLauncher(
     const ir::_LoweredFunc_* func) {
   auto body = func->body;
   auto* call_ir = body.As<ir::Call>();
@@ -68,18 +68,18 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
     PADDLE_ENFORCE_EQ(
         kernel_stream->getType(),
         ll_void_p_ty(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The type of kernel_stream should be void*"));  // void* stream
   }
   PADDLE_ENFORCE_EQ(
       kernel_args->getType(),
       ll_void_p_ty(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of kernel_args should be void*"));  // void* args
   PADDLE_ENFORCE_EQ(
       kernel_args_count->getType(),
       ll_int32_ty(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of kernel_args_count should be int32"));  // int32
 
   std::unordered_map<std::string, llvm::Value*> global_args = {
@@ -194,7 +194,7 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
   return function;
 }
 
-llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
+llvm::Value* CodeGenCudaHost::LowerGPUKernelCall(const ir::Call* call_ir) {
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
                  f_->arg_end(),
@@ -208,18 +208,18 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
     PADDLE_ENFORCE_EQ(
         kernel_stream->getType(),
         ll_void_p_ty(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The type of kernel_stream should be void*"));  // void* stream
   }
   PADDLE_ENFORCE_EQ(
       kernel_args->getType(),
       ll_void_p_ty(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of kernel_args should be void*"));  // void* args
   PADDLE_ENFORCE_EQ(
       kernel_args_count->getType(),
       ll_int32_ty(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of kernel_args_count should be int32"));  // int32
 
   std::unordered_map<std::string, llvm::Value*> global_args = {

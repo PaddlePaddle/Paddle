@@ -106,7 +106,7 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
   PADDLE_ENFORCE_EQ(
       ret.size() % 2,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of attribute %s must be an even number, but got %d",
           OpProtoAndCheckerMaker::OpRoleVarAttrName(),
           ret.size()));

@@ -126,7 +126,7 @@ OP_DISPATCH_TEMPLATE = """
     }}"""
 
 OP_DISPATCH_ERROR_TEMPLATE = """
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The kernel of ({op_name}) for input Value is unimplemented, please check the type of input Value."));"""
 
 
@@ -906,7 +906,7 @@ class CodeGen:
             )
 
             kernel_name = (
-                list(dispatch_kernel.keys())[0]
+                next(iter(dispatch_kernel.keys()))
                 if dispatch_kernel and len(dispatch_kernel.keys()) == 1
                 else op_name
             )

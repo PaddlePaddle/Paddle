@@ -71,7 +71,7 @@ SigmoidElementmulFusePass::SigmoidElementmulFusePass() = default;
 
 void SigmoidElementmulFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   GraphPatternDetector gpd;

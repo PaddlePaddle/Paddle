@@ -20,14 +20,13 @@
 
 namespace cinn::fusion {
 
-template <typename T>
 struct PatternNode {
-  using PatternNodePtr = std::shared_ptr<PatternNode<T>>;
-  using MergePatternFn = std::function<StmtPattern<T>(const StmtPattern<T>&,
-                                                      const StmtPattern<T>&)>;
+  using PatternNodePtr = std::shared_ptr<PatternNode>;
+  using MergePatternFn =
+      std::function<StmtPattern(const StmtPattern&, const StmtPattern&)>;
 
-  explicit PatternNode(const PatternContent<T>& content)
-      : sink_op_(content.op), stmt_pattern_(ConvertToStmtPattern<T>(content)) {}
+  explicit PatternNode(const PatternContent& content)
+      : sink_op_(content.op), stmt_pattern_(ConvertToStmtPattern(content)) {}
 
   explicit PatternNode(PatternNodePtr fused_up_node,
                        PatternNodePtr fused_down_node,
@@ -47,8 +46,8 @@ struct PatternNode {
 
   std::string DebugStr() const {
     std::stringstream ss;
-    ss << "Node: " << this << ", Pattern: " << GetPatternName(stmt_pattern_)
-       << "\n    -u>:  ";
+    ss << "Node: " << this << ", Pattern: " << GetPatternName(stmt_pattern())
+       << ", ID: " << GetPatternId(stmt_pattern()) << "\n    -u>:  ";
     for (const auto& u : upstream_) {
       ss << u << ", ";
     }
@@ -56,16 +55,27 @@ struct PatternNode {
     for (const auto& d : downstream_) {
       ss << d << ", ";
     }
+    pir::IrPrinter printer(ss);
+    if (GetPatternName(stmt_pattern_) == AnchorPattern::name()) {
+      ss << "\n anchor: ";
+      auto anchor_op =
+          std::get<AnchorPattern>(stmt_pattern_).anchor().defining_op();
+      printer.PrintOperation(const_cast<pir::Operation*>(anchor_op));
+    }
+    ss << "\nOps in pattern: \n################" << std::endl;
+    ss << OpsDebugStr(GetOpsInPattern(this->stmt_pattern()));
+    ss << "################" << std::endl;
     return ss.str();
   }
 
   pir::Operation* sink_op() const { return sink_op_; }
-  const StmtPattern<T>& stmt_pattern() const { return stmt_pattern_; }
-  void set_stmt_pattern(const StmtPattern<T>& pattern) {
-    stmt_pattern_ = pattern;
-  }
+  const StmtPattern& stmt_pattern() const { return stmt_pattern_; }
+  void set_stmt_pattern(const StmtPattern& pattern) { stmt_pattern_ = pattern; }
   const std::vector<PatternNodePtr>& upstream() const { return upstream_; }
   const std::vector<PatternNodePtr>& downstream() const { return downstream_; }
+  std::string name() const { return GetPatternName(stmt_pattern_); }
+  std::string id() const { return GetPatternId(stmt_pattern_); }
+  void set_return() const { SetReturnInstr(stmt_pattern_); }
   void AddNodeToUpstream(PatternNodePtr node) { upstream_.push_back(node); }
   void AddNodeToDownstream(PatternNodePtr node) { downstream_.push_back(node); }
   void RemoveNodeFromUpstream(PatternNodePtr node) {
@@ -78,15 +88,18 @@ struct PatternNode {
   void ClearDownstream() { downstream_.clear(); }
   void UniqueUpstream() { upstream_ = UniqueVectorBySet(upstream_); }
   void UniqueDownstream() { downstream_ = UniqueVectorBySet(downstream_); }
+  void AppendInstr(FusionInstrPtr instr) {
+    GetFusionTracker(stmt_pattern_)->append(instr);
+  }
+  void UpdateTracker() { PatternUpdateTracker(stmt_pattern_); }
 
  private:
-  StmtPattern<T> stmt_pattern_;
+  StmtPattern stmt_pattern_;
   pir::Operation* sink_op_;
 
   std::vector<PatternNodePtr> upstream_;
   std::vector<PatternNodePtr> downstream_;
 };
 
-template <typename T>
-using PatternNodePtr = std::shared_ptr<PatternNode<T>>;
+using PatternNodePtr = std::shared_ptr<PatternNode>;
 }  // namespace cinn::fusion

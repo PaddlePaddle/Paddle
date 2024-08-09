@@ -63,7 +63,7 @@ inline void VisitDataType(phi::DataType type, Visitor visitor) {
 
   _PhiForEachDataType_(PhiVisitDataTypeCallback);
 #undef PhiVisitDataTypeCallback
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
 }
 
@@ -79,7 +79,7 @@ inline void VisitDataTypeTiny(phi::DataType type, Visitor visitor) {
 
   _PhiForEachDataTypeTiny_(PhiVisitDataTypeCallbackTiny);
 #undef PhiVisitDataTypeCallbackTiny
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not supported phi::DataType(%d) as data type.", static_cast<int>(type)));
 }
 
@@ -218,7 +218,7 @@ inline int TransToProtoVarType(const DataType& dtype) {
     case DataType::UNDEFINED:
       return ProtoDataType::RAW;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported data type `%s` when casting it into "
           "paddle data type.",
           dtype));

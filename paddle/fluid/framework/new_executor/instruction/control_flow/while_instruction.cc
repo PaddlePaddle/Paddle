@@ -24,9 +24,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
 
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -57,7 +57,7 @@ WhileInstruction::WhileInstruction(
       body_inter_(nullptr),
       external_input_names_() {
   PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "While instruction only support While op"));
   op_ = op;
   auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
@@ -103,7 +103,7 @@ WhileInstruction::WhileInstruction(
       PADDLE_ENFORCE_NE(
           parent_exe_info->GetValue2VarName().find(value),
           parent_exe_info->GetValue2VarName().end(),
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "output should in name map, [%d] 'th output of [%s] op",
               i,
               "while op"));
@@ -164,8 +164,8 @@ void WhileInstruction::ShareInputsToOutputs() {
       auto* output_array = outputs_[i]->GetMutable<phi::TensorArray>();
       *output_array = input_array;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented("unsupported type %d",
-                                              inputs_[i]->Type()));
+      PADDLE_THROW(common::errors::Unimplemented("unsupported type %d",
+                                                 inputs_[i]->Type()));
     }
   }
 }
@@ -186,8 +186,8 @@ void WhileInstruction::ShareOutputsToBlockArgs() {
       VLOG(10) << inner_var
                << " should be created: " << inner_var->IsInitialized();
     } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
+      PADDLE_THROW(common::errors::Unimplemented("unsupported type %d",
+                                                 inner_var->Type()));
     }
   }
 }

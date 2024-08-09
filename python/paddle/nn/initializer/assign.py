@@ -77,7 +77,11 @@ class NumpyArrayInitializer(Initializer):
         assert isinstance(block, (framework.Block, paddle.pir.Block))
 
         # to be compatible of fp16 initializers
-        if var.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
+        origin_dtype = var.dtype
+        if origin_dtype in [
+            core.VarDesc.VarType.FP16,
+            core.VarDesc.VarType.BF16,
+        ]:
             out_dtype = core.VarDesc.VarType.FP32
             np_value = self._value.astype("float32")
             out_var = block.create_var(
@@ -89,13 +93,13 @@ class NumpyArrayInitializer(Initializer):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
             )
-        elif var.dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
+        elif origin_dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
             out_var = var
             out_dtype = core.DataType.FLOAT32
             np_value = self._value.astype("float32")
         else:
             out_var = var
-            out_dtype = var.dtype
+            out_dtype = origin_dtype
             np_value = self._value
 
         if out_dtype in (core.VarDesc.VarType.FP32, core.DataType.FLOAT32):
@@ -131,11 +135,13 @@ class NumpyArrayInitializer(Initializer):
                 values,
                 _current_expected_place(),
             )
-            if var.dtype in [
+            if origin_dtype in [
                 core.VarDesc.VarType.FP16,
                 core.VarDesc.VarType.BF16,
+                core.DataType.FLOAT16,
+                core.DataType.BFLOAT16,
             ]:
-                var_tmp = _C_ops.cast(out_var, var.dtype)
+                var_tmp = _C_ops.cast(out_var, origin_dtype)
                 var_tmp._share_underline_tensor_to(var)
             else:
                 out_var._share_underline_tensor_to(var)
@@ -147,8 +153,8 @@ class NumpyArrayInitializer(Initializer):
                 values,
                 _current_expected_place(),
             )
-            if var.dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
-                out_var = _C_ops.cast(out_var, var.dtype)
+            if origin_dtype in [core.DataType.FLOAT16, core.DataType.BFLOAT16]:
+                out_var = _C_ops.cast(out_var, origin_dtype)
             return out_var
         else:
             op = block.append_op(
@@ -162,7 +168,7 @@ class NumpyArrayInitializer(Initializer):
                 stop_gradient=True,
             )
 
-            if var.dtype in [
+            if origin_dtype in [
                 core.VarDesc.VarType.FP16,
                 core.VarDesc.VarType.BF16,
             ]:
@@ -170,7 +176,10 @@ class NumpyArrayInitializer(Initializer):
                     type="cast",
                     inputs={"X": out_var},
                     outputs={"Out": var},
-                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
+                    attrs={
+                        "in_dtype": out_var.dtype,
+                        "out_dtype": origin_dtype,
+                    },
                 )
 
             var.op = op

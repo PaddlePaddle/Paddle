@@ -40,7 +40,7 @@ Region::Iterator Region::erase(ConstIterator position) {
   PADDLE_ENFORCE_EQ(
       position->GetParent(),
       this,
-      phi::errors::InvalidArgument("iterator not own this region."));
+      common::errors::InvalidArgument("iterator not own this region."));
   delete position;
   return blocks_.erase(position);
 }
@@ -145,9 +145,9 @@ Program *Region::parent_program() const {
   return parent_ ? parent_->GetParentProgram() : nullptr;
 }
 IrContext *Region::ir_context() const {
-  PADDLE_ENFORCE_NOT_NULL(
-      parent_,
-      phi::errors::InvalidArgument("Region is not attached to a operation."));
+  PADDLE_ENFORCE_NOT_NULL(parent_,
+                          common::errors::InvalidArgument(
+                              "Region is not attached to a operation."));
   return parent_->ir_context();
 }
 }  // namespace pir

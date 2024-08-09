@@ -46,7 +46,7 @@ void RollKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         dims[i] < input_dim.size() && dims[i] >= (0 - input_dim.size()),
         true,
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "Attr(axis[%d]) is out of range, It's expected "
             "to be in range of [-%d, %d]. But received Attr(axis[%d]) = %d.",
             i,

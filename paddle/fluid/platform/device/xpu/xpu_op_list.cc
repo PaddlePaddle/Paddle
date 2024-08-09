@@ -18,9 +18,9 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_op_kpfirst_list.h"
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 
 namespace paddle {
 namespace platform {

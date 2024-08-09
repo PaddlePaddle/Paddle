@@ -14,9 +14,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.base.executor import global_scope
 
 from ..base import core, framework
@@ -24,6 +24,9 @@ from ..base.framework import Variable
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Callable
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -190,7 +193,8 @@ class Lamb(Optimizer):
         return p_t, master_p_t
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
@@ -237,7 +241,8 @@ class Lamb(Optimizer):
         )
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 

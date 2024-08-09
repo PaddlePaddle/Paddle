@@ -29,7 +29,7 @@ namespace phi {
 static inline void ValidCheck(const MetaTensor& meta_tensor) {
   PADDLE_ENFORCE_EQ(meta_tensor.initialized(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The current MetaTensor is not initialized."));
 }
 
@@ -52,7 +52,7 @@ size_t MetaTensor::size() const {
   PADDLE_ENFORCE_EQ(
       phi::TensorArray::classof(tensor_),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The current MetaTensor is not initialized by TensorArray."));
   phi::TensorArray* tensor_array = static_cast<phi::TensorArray*>(tensor_);
   return tensor_array->size();
@@ -63,7 +63,7 @@ DDim MetaTensor::dims(int64_t index) const {
   PADDLE_ENFORCE_EQ(
       phi::TensorArray::classof(tensor_),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The current MetaTensor is not initialized by TensorArray."));
   phi::TensorArray* tensor_array = static_cast<phi::TensorArray*>(tensor_);
   return tensor_array->at(index).dims();
@@ -110,7 +110,7 @@ void MetaTensor::set_dims(const DDim& dims) {
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
     static_cast<distributed::DistTensor*>(tensor_)->unsafe_set_dims(dims);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported setting dims for `%s`.", tensor_->type_info().name()));
   }
 }
@@ -151,7 +151,7 @@ void MetaTensor::set_dtype(DataType dtype) {
             ->unsafe_mutable_value())
         ->dtype = dtype;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
   }
 }
@@ -189,7 +189,7 @@ void MetaTensor::set_layout(DataLayout layout) {
             ->unsafe_mutable_value())
         ->layout = layout;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));
   }
 }
@@ -214,9 +214,9 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor) {
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->lod = meta_tensor.lod();
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Unsupported sharing lod inplace for `%s`.",
-                                   tensor_->type_info().name()));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Unsupported sharing lod inplace for `%s`.",
+        tensor_->type_info().name()));
   }
 }
 
@@ -239,9 +239,9 @@ void MetaTensor::share_lod(const LoD& lod) {
         static_cast<SelectedRows*>(tensor_)->mutable_value())
         ->lod = lod;
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Unsupported sharing lod inplace for `%s`.",
-                                   tensor_->type_info().name()));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Unsupported sharing lod inplace for `%s`.",
+        tensor_->type_info().name()));
   }
 }
 
@@ -250,7 +250,7 @@ void MetaTensor::share_lod(const MetaTensor& meta_tensor, int64_t index) {
   PADDLE_ENFORCE_EQ(
       meta_tensor.is_tensor_array(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The current MetaTensor is not initialized by TensorArray."));
   if (meta_tensor.lod(index).empty()) {
     // no need share
@@ -271,7 +271,7 @@ void MetaTensor::share_meta(const MetaTensor& meta_tensor) {
     set_layout(meta_tensor.layout());
     share_lod(meta_tensor);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported sharing meta for `%s`.", tensor_->type_info().name()));
   }
 }
@@ -323,7 +323,7 @@ void MetaTensor::share_dims(const MetaTensor& meta_tensor) {
       set_dims(meta_tensor.dims());
     }
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported sharing dims for `%s`.", tensor_->type_info().name()));
   }
 }
@@ -349,8 +349,8 @@ const LoD& MetaTensor::lod() const {
   } else if (phi::SparseCsrTensor::classof(tensor_)) {
     return static_cast<SparseCsrTensor*>(tensor_)->non_zero_elements().lod();
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented("Unsupported getting lod of `%s`.",
-                                            tensor_->type_info().name()));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Unsupported getting lod of `%s`.", tensor_->type_info().name()));
   }
 }
 
@@ -359,7 +359,7 @@ const LoD& MetaTensor::lod(int64_t index) const {
   PADDLE_ENFORCE_EQ(
       is_tensor_array(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The current MetaTensor is not initialized by TensorArray."));
   phi::TensorArray* tensor_array = static_cast<phi::TensorArray*>(tensor_);
   return tensor_array->at(index).lod();

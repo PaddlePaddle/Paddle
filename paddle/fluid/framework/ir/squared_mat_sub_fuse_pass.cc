@@ -310,13 +310,13 @@ static int BuildFusion(Graph* graph,
   auto retrieve_node = [](const std::string& name,
                           const GraphPatternDetector::subgraph_t& subgraph,
                           const PDPattern& pat) -> Node* {
-    PADDLE_ENFORCE_GT(
-        subgraph.count(pat.RetrieveNode(name)),
-        0,
-        phi::errors::NotFound("Pattern has no node called %s.", name.c_str()));
+    PADDLE_ENFORCE_GT(subgraph.count(pat.RetrieveNode(name)),
+                      0,
+                      common::errors::NotFound("Pattern has no node called %s.",
+                                               name.c_str()));
     Node* p = subgraph.at(pat.RetrieveNode(name));
     PADDLE_ENFORCE_NOT_NULL(
-        p, phi::errors::NotFound("Subgraph has no node %s.", name.c_str()));
+        p, common::errors::NotFound("Subgraph has no node %s.", name.c_str()));
     return p;
   };
 

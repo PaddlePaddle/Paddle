@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/enforce.h"
 #include "paddle/extension.h"
 
-#define CHECK_GPU_INPUT(x) PD_CHECK(x.is_gpu(), #x " must be a GPU Tensor.")
+#define CHECK_GPU_INPUT(x) \
+  PADDLE_ENFORCE_EQ(       \
+      x.is_gpu(), true, common::errors::Fatal(#x " must be a GPU Tensor."))
 
 template <typename data_t>
 __global__ void relu_cuda_forward_kernel(const data_t* x,
@@ -30,7 +33,10 @@ paddle::Tensor relu_cuda_forward(const paddle::Tensor& x) {
   CHECK_GPU_INPUT(x);
   auto out = paddle::empty_like(x);
 
-  PD_CHECK(x.place() == paddle::DefaultGPUPlace());
+  PADDLE_ENFORCE_EQ(
+      x.place() == paddle::DefaultGPUPlace(),
+      true,
+      common::errors::InvalidArgument("Input tensor `x` should be on GPU"));
 
   int64_t numel = x.numel();
   int64_t block = 512;
