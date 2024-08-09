@@ -70,9 +70,6 @@ def test_paddle_to_tensorrt_conversion_bert():
         err_msg="Outputs are not within the 1e-2 tolerance",
     )
 
-    print(output_expected)
-    print(output_converted)
-
 
 if __name__ == "__main__":
     try:

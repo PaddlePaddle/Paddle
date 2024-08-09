@@ -72,9 +72,6 @@ def test_paddle_to_tensorrt_conversion_dummy():
         err_msg="Outputs are not within the 1e-2 tolerance",
     )
 
-    print(output_original)
-    print(output_converted)
-
 
 if __name__ == "__main__":
     test_paddle_to_tensorrt_conversion_dummy()

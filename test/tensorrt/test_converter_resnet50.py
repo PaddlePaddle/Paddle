@@ -69,9 +69,6 @@ def test_paddle_to_tensorrt_conversion_r50():
         err_msg="Outputs are not within the 0.1 tolerance",
     )
 
-    print("output_expected", output_expected)
-    print("output_converted", output_converted)
-
 
 if __name__ == "__main__":
     test_paddle_to_tensorrt_conversion_r50()
