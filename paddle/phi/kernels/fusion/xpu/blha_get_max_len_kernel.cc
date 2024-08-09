@@ -37,7 +37,8 @@ void GetMaxLenTensor(const Context& dev_ctx,
                                            max_len_tensor_data,
                                            {bsz},
                                            {0});
-  PD_CHECK(r == 0, "baidu::xpu::api::reduce_max failed.");
+  PADDLE_ENFORCE_EQ(
+      r, 0, common::errors::Fatal("baidu::xpu::api::reduce_max failed."));
   MemcpyD2HKernel(dev_ctx, max_len_tensor, 0, out);
 }
 

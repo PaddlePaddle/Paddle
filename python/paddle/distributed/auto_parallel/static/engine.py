@@ -822,7 +822,6 @@ class Engine:
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
         apply_reshard_pass(dist_program)
-
         # print('after reshard', dist_program, flush=1)
 
         remove_other_rank_input_output_pass(dist_program)
@@ -857,11 +856,18 @@ class Engine:
             # dist_program = apply_sharding_optimization_pass(dist_program)
             pass
 
+        if mode == "train" and self._strategy.pipeline.enable:
+            self._strategy.gradient_merge.enable = True
+            self._strategy.gradient_merge.k_steps = (
+                self._strategy.pipeline.accumulate_steps
+            )
+            self._strategy.gradient_merge.avg = True
+
         if mode == "train" and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
-            config[
-                "gradient_sync_after_accumulate"
-            ] = gradient_sync_after_accumulate
+            config["gradient_sync_after_accumulate"] = (
+                gradient_sync_after_accumulate
+            )
             config["params_grads"] = (
                 global_params_grads
                 if gradient_sync_after_accumulate
@@ -1091,9 +1097,7 @@ class Engine:
             self._json_config,
         )
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
-        self._dist_contexts[
-            mode
-        ].gradient_scale_using_allreduce_avg = (
+        self._dist_contexts[mode].gradient_scale_using_allreduce_avg = (
             self._strategy.gradient_scale_using_allreduce_avg
         )
         self._fwd_main_progs[mode] = serial_main_prog.clone()
@@ -1126,9 +1130,9 @@ class Engine:
 
         if self._tuning.run_after_tuning:
             # update the strategy
-            self._dist_contexts[
-                mode
-            ]._strategy = self._optimization_tuner.get_best_config()
+            self._dist_contexts[mode]._strategy = (
+                self._optimization_tuner.get_best_config()
+            )
 
     def _plan(self, mode):
         if self._planned_mode is None:

@@ -33,10 +33,10 @@
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 namespace paddle {
 

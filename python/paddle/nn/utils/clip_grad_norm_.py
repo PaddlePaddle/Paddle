@@ -14,11 +14,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 import paddle
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from paddle import Tensor
 
 __all__ = []

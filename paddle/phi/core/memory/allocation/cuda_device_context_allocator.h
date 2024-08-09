@@ -21,10 +21,10 @@
 
 #include "glog/logging.h"
 
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace memory {

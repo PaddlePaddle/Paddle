@@ -21,13 +21,13 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/memory/malloc.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/phi/backends/dynload/cublas.h"
@@ -39,7 +39,7 @@ limitations under the License. */
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_HIP
@@ -50,7 +50,7 @@ limitations under the License. */
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"  // NOLINT
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"  // NOLINT
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -82,9 +82,9 @@ struct GpuDevice;
 }  // namespace Eigen
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 namespace paddle {

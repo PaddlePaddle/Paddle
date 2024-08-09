@@ -55,6 +55,7 @@ class TransformedDistribution(distribution.Distribution):
                 -1.64333570)
             >>> # doctest: -SKIP
     """
+
     base: Distribution
     transforms: Sequence[Transform]
 

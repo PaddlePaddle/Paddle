@@ -33,7 +33,7 @@ Expr logic_and(const std::vector<Expr>& conds) {
   PADDLE_ENFORCE_EQ(
       !conds.empty(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The input conditions vector for logic_and should not be empty."));
   auto start = ir::And::Make(conds[0], conds[1]);
   for (int i = 2; i < conds.size(); i++) {
@@ -46,7 +46,7 @@ Expr logic_or(const std::vector<Expr>& conds) {
   PADDLE_ENFORCE_EQ(
       !conds.empty(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The input conditions vector for logic_or should not be empty."));
   auto start = ir::Or::Make(conds[0], conds[1]);
   for (int i = 2; i < conds.size(); i++) {
