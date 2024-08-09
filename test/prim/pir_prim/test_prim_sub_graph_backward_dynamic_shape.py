@@ -1791,13 +1791,19 @@ class TestPrimGeluWithGrad3(TestPrimBaseWithGrad):
         self.dtype = "float16"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, None]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
         self.net = gelu_net1
         self.enable_cinn = False
         self.rtol = 1e-5
         self.atol = 0.0005
 
     def test_prim_all_dynamic(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        place = core.CUDAPlace(0)
+        if not core.is_float16_supported(place):
+            return
+
         res_ref, grad_ref = self.base_net()
         res, grad = self.base_net("prim")
 
@@ -1816,13 +1822,19 @@ class TestPrimGeluWithGrad4(TestPrimBaseWithGrad):
         self.dtype = "float16"
         self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, None, None]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
         self.net = gelu_net2
         self.enable_cinn = False
         self.rtol = 1e-5
         self.atol = 0.0005
 
     def test_prim_all_dynamic(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        place = core.CUDAPlace(0)
+        if not core.is_float16_supported(place):
+            return
+
         res_ref, grad_ref = self.base_net()
         res, grad = self.base_net("prim")
 
