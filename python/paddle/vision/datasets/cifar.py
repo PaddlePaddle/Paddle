@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from paddle._typing.dtype_like import _DTypeLiteral
     from paddle.vision.transforms.transforms import _Transform
 
-    from ..image import _ImageBackend
+    from ..image import _ImageBackend, _ImageDataType
 
     _DatasetMode = Literal["train", "test"]
 
@@ -51,9 +51,7 @@ MODE_FLAG_MAP = {
 }
 
 
-class Cifar10(
-    Dataset[tuple[Tensor | Image | npt.NDArray[Any], npt.NDArray[Any]]]
-):
+class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
     """
     Implementation of `Cifar-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
     dataset, which has 10 categories.
