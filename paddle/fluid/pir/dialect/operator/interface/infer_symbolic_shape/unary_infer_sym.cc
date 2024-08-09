@@ -1174,12 +1174,12 @@ bool NormOpInferSymbolicShape(pir::Operation *op,
   if (!is_test) {
     if (axis < 0) axis += x_shape.size();
 
-    auto norm_shape = x_shape;
-    norm_shape[axis] = symbol::DimExpr(1);
+    // Directly modify x_shape at the specified axis.
     infer_context->SetShapeOrDataForValue(
         op->result(1),
         symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(norm_shape)});
+            symbol::TensorShapeOrDataDimExprs(x_shape).SetDim(
+                axis, symbol::DimExpr(1))});
   }
 
   return true;
@@ -1221,59 +1221,64 @@ bool NumelOpInferSymbolicShape(pir::Operation *op,
 
 bool PNormOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
-  auto x_shape_or_data =
+  const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
-  auto x_rank = x_shape.size();
+  int x_rank = x_shape.size();
 
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
   bool keepdim = op->attribute<pir::BoolAttribute>("keepdim").data();
   bool asvector = op->attribute<pir::BoolAttribute>("asvector").data();
 
-  PADDLE_ENFORCE_GE(axis,
-                    -x_rank,
-                    common::errors::InvalidArgument(
-                        "Attr(axis) value should be in range [-R, R-1], R is "
-                        "the rank of Input(X). But received axis: %d, R: %d. "
-                        "Current Input(X)'s shape is=[%s].",
-                        axis,
-                        x_rank,
-                        x_shape));
-  PADDLE_ENFORCE_LT(axis,
-                    x_rank,
-                    common::errors::InvalidArgument(
-                        "Attr(axis) value should be in range [-R, R-1], R is "
-                        "the rank of Input(X). But received axis: %d, R: %d. "
-                        "Current Input(X)'s shape is=[%s].",
-                        axis,
-                        x_rank,
-                        x_shape));
+  if (axis < 0) {
+    axis += x_rank;
+  }
 
-  std::vector<symbol::DimExpr> out_dim_vector;
+  PADDLE_ENFORCE_GE(
+      axis,
+      0,
+      common::errors::InvalidArgument(
+          "Attr(axis) value should be in range [-R, R-1], R is the rank of "
+          "Input(X). "
+          "But received axis: %d, R: %d. Current Input(X)'s shape is=[%s].",
+          axis,
+          x_rank,
+          x_shape));
+
+  PADDLE_ENFORCE_LT(
+      axis,
+      x_rank,
+      common::errors::InvalidArgument(
+          "Attr(axis) value should be in range [-R, R-1], R is the rank of "
+          "Input(X). "
+          "But received axis: %d, R: %d. Current Input(X)'s shape is=[%s].",
+          axis,
+          x_rank,
+          x_shape));
+
+  std::vector<symbol::DimExpr> out_shape;
 
   if (asvector) {
     if (keepdim) {
-      for (size_t i = 0; i < x_rank; ++i) {
-        out_dim_vector.emplace_back(symbol::DimExpr(1));
+      for (int i = 0; i < x_rank; ++i) {
+        out_shape.emplace_back(symbol::DimExpr(1));
       }
     } else {
-      out_dim_vector = {};
+      out_shape = {};
     }
   } else {
-    if (axis < 0) axis += x_rank;
-
     if (keepdim) {
-      for (size_t i = 0; i < x_rank; ++i) {
-        if (static_cast<int>(i) == axis) {
-          out_dim_vector.emplace_back(symbol::DimExpr(1));
+      for (int i = 0; i < x_rank; ++i) {
+        if (i == axis) {
+          out_shape.emplace_back(symbol::DimExpr(1));
         } else {
-          out_dim_vector.emplace_back(x_shape[i]);
+          out_shape.emplace_back(x_shape[i]);
         }
       }
     } else {
-      for (size_t i = 0; i < x_rank; ++i) {
-        if (static_cast<int>(i) != axis) {
-          out_dim_vector.emplace_back(x_shape[i]);
+      for (int i = 0; i < x_rank; ++i) {
+        if (i != axis) {
+          out_shape.emplace_back(x_shape[i]);
         }
       }
     }
@@ -1282,7 +1287,7 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_dim_vector)});
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
 
   return true;
 }
