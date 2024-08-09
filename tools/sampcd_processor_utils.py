@@ -634,7 +634,7 @@ def get_docstring(
             get_incrementapi()
 
         with open(API_DIFF_SPEC_FN) as f:
-            apis = ((line, line.replace('\n', '')) for line in f)
+            apis = ((line, line.replace('\n', '')) for line in f.readlines())
 
     for line, api in apis:
         if filter_api is not None and filter_api(api.strip()):
