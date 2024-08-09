@@ -116,8 +116,8 @@ class IndexPutOpConverter : public OpConverter {
                                        *value_tensor,
                                        nvinfer1::ScatterMode::kND);
     ReplenishLayerAndOutput(layer, "index_put", {output_name}, test_mode);
-  }
 #endif
+  }
 };
 
 }  // namespace paddle::inference::tensorrt
