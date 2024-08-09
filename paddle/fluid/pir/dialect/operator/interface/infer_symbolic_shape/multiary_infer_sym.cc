@@ -1241,7 +1241,7 @@ bool RoiPoolOpInferSymbolicShape(
       phi::errors::InvalidArgument(
           "The input data should be a four-dimensional tensor with [N,C,H,W], "
           "but received input data with %d dimension",
-          x_shpae.size()));
+          input_dims.size()));
   PADDLE_ENFORCE_EQ(rois_dim.size(),
                     2,
                     phi::errors::InvalidArgument(
@@ -1253,14 +1253,13 @@ bool RoiPoolOpInferSymbolicShape(
   infer_context->AddEqualCstr(rois_dim[1], four);
 
   if (rois_num.size() > 0) {
-    auto &rois_num_dim = rois_num.shape();
     PADDLE_ENFORCE_EQ(
-        rois_num_dim.size(),
+        rois_num.size(),
         1,
         phi::errors::InvalidArgument(
             "The number of rois should be a 1-D tensor with shape (num_rois), "
             "but received the number of rois with %d dimension",
-            rois_num_dim.size()));
+            rois_num.size()));
   }
 
   infer_context->AddEqualCstr(input_dims[1],
