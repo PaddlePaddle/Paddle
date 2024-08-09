@@ -443,7 +443,7 @@ bool CholeskyOpInferSymbolicShape(
 bool ClassCenterSampleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // 获取输入张量的符号形状或数据
-  const symbol::DimExpr &label_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &label_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
   // 确保输入张量的rank为1
