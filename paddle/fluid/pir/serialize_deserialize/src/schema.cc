@@ -86,12 +86,9 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
 uint64_t GetPirVersion() {
   std::filesystem::path cur_file(__FILE__);
   std::filesystem::path path = cur_file.parent_path().parent_path() / "patch";
-  if (!std::filesystem::is_directory(path)) {
-    path = "..\\patch";
-  }
   VLOG(8) << "patch_path: " << path;
   int version = 0;
-  for (auto& v : std::filesystem::directory_iterator(path)) {
+  for (auto& v : std::filesystem::directory_iterator(path.relative_path())) {
     std::string filename = v.path().filename().string();
     std::string extension_name = v.path().extension().string();
     // 0.yaml for develop version
@@ -108,12 +105,9 @@ uint64_t GetPirVersion() {
 uint64_t GetMaxReleasePirVersion() {
   std::filesystem::path cur_file(__FILE__);
   std::filesystem::path path = cur_file.parent_path().parent_path() / "patch";
-  if (!std::filesystem::is_directory(path)) {
-    path = "..\\patch";
-  }
   VLOG(8) << "patch_path: " << path;
   int version = 0;
-  for (auto& v : std::filesystem::directory_iterator(path)) {
+  for (auto& v : std::filesystem::directory_iterator(path.relative_path())) {
     std::string filename = v.path().filename().string();
     std::string extension_name = v.path().extension().string();
     VLOG(8) << filename;

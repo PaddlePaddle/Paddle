@@ -54,7 +54,7 @@ link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
-if(NOT WIN32)
+if(NOT WIN32 AND NOT APPLE)
   link_libraries(stdc++fs)
 endif()
 if(WITH_ONNXRUNTIME)
@@ -214,6 +214,9 @@ if(NOT WIN32)
       utf8proc
       ${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib/libyaml-cpp.a
       ${EXTERNAL_LIB})
+  if(NOT APPLE)
+    set(DEPS stdc++fs)
+  endif()
   if(WITH_SHARED_PHI)
     set(DEPS
         ${DEPS} ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX}
