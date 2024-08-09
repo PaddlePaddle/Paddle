@@ -619,6 +619,7 @@ void ReplaceWithGroupOp(pir::Block* block,
 
 // step 2: Replace the old op with GroupOp.
 #ifdef PADDLE_WITH_CINN
+
   auto new_group_op = [&]() -> cinn::dialect::GroupOp {
     std::vector<pir::Type> output_types;
     for (auto& value : outputs) output_types.emplace_back(value.type());

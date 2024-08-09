@@ -23,7 +23,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#endif
 #include "paddle/pir/include/core/builder.h"
 
 namespace pir {
