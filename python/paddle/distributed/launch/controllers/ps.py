@@ -111,7 +111,7 @@ class PSController(Controller):
                 "POD_IP": self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_file = f"workerlog.{i + trainer_rank_offset}"
+            log_file = f"workerlog.{i}"
             self.add_container(envs=e, log_file=log_file)
 
     def _build_pod_with_master(self):
@@ -214,7 +214,7 @@ class PSController(Controller):
                 "POD_IP": self.ctx.node.ip,
             }
             e.update(_gloo_envs)
-            log_file = f"workerlog.{i + trainer_rank_offset}"
+            log_file = f"workerlog.{i}"
             self.add_container(envs=e, log_file=log_file)
         ''' NEW VERSION
         for i in range(server_num):

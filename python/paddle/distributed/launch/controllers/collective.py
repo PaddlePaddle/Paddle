@@ -149,7 +149,7 @@ class CollectiveController(Controller):
             else:
                 e.update({'PADDLE_DISTRI_BACKEND': 'gloo'})
 
-            log_file = f"workerlog.{i + rank_offset}"
+            log_file = f"workerlog.{i}"
             self.add_container(envs=e, log_file=log_file)
 
         return True
@@ -253,7 +253,7 @@ class CollectiveController(Controller):
                 e.update({'PADDLE_DISTRI_BACKEND': 'gloo'})
 
             # log_file = "{}.{}.{}.log".format(self.job.id, self.pod.name, i)
-            log_file = f"workerlog.{i + rank_offset}"
+            log_file = f"workerlog.{i}"
             self.add_container(envs=e, log_file=log_file)
 
         return True
