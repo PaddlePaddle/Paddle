@@ -74,6 +74,7 @@ class FusedLinear(Layer):
             >>> print(y.shape)
             [3, 5]
     """
+
     weight: Tensor
     bias: Tensor
     transpose_weight: bool
