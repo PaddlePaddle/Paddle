@@ -2905,6 +2905,7 @@ void MatmulInferMeta(const MetaTensor& x,
     out->set_dtype(x.dtype());
   }
   out->set_layout(x.layout());
+  out->share_lod(x);
 }
 
 void MatmulWithFlattenInferMeta(const MetaTensor& x,
