@@ -457,12 +457,12 @@ bool ClassCenterSampleOpInferSymbolicShape(
 
   infer_context->SetShapeOrDataForValue(op->result(0), label_shape_or_data);
 
-  // 设置 sampled_local_class_center 的符号形状
   std::vector<symbol::DimExpr> sampled_local_class_center_shape = {
       symbol::DimExpr(num_samples)};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
-      symbol::ShapeOrDataDimExprs{sampled_local_class_center_shape});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(sampled_local_class_center_shape)});
 
   return true;
 }
