@@ -22,10 +22,9 @@ import numpy.typing as npt
 from PIL import Image
 
 import paddle
+from paddle import Tensor
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
-
-from ..image import _ImageDataType
 
 if TYPE_CHECKING:
 
@@ -52,7 +51,9 @@ MODE_FLAG_MAP = {
 }
 
 
-class Cifar10(Dataset[tuple[_ImageDataType, npt.NDArray[Any]]]):
+class Cifar10(
+    Dataset[tuple[Tensor | Image | npt.NDArray[Any], npt.NDArray[Any]]]
+):
     """
     Implementation of `Cifar-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
     dataset, which has 10 categories.
@@ -186,7 +187,9 @@ class Cifar10(Dataset[tuple[_ImageDataType, npt.NDArray[Any]]]):
                 for sample, label in zip(data, labels):
                     self.data.append((sample, label))
 
-    def __getitem__(self, idx: int) -> tuple[_ImageDataType, npt.NDArray[Any]]:
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[Tensor | Image | npt.NDArray[Any], npt.NDArray[Any]]:
         image, label = self.data[idx]
         image = np.reshape(image, [3, 32, 32])
         image = image.transpose([1, 2, 0])
