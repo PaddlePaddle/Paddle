@@ -156,9 +156,9 @@ class BlockConfig:
         self,
         ops: List[OpConfig],
         vars: List[str],
-        vars_dtype: Optional[Dict[str, np.dtype]] = None,
-        vars_var_type: Optional[Dict[str, VarType]] = None,
-        vars_lod_level: Optional[Dict[str, int]] = None,
+        vars_dtype: Dict[str, np.dtype] ｜ None = None,
+        vars_var_type: Dict[str, VarType] | None = None,
+        vars_lod_level: Dict[str, int] | None = None,
     ):
         self.ops = ops
         self.vars = vars
