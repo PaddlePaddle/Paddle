@@ -1630,6 +1630,8 @@ class OpTest(unittest.TestCase):
                                 or var.is_selected_row_type()
                             ):
                                 print(i)
+                                print(var.is_dense_tensor_type())
+                                print(var.is_selected_row_type())
                                 shape_or_data = (
                                     shape_analysis.get_shape_or_data_for_var(
                                         var
