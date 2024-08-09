@@ -118,11 +118,10 @@ std::vector<Expr> GetAllBlocks(const std::vector<Expr>& exprs) {
 
 std::vector<Expr> GetChildBlocks(const Expr& expr) {
   if (!expr.As<ir::ScheduleBlockRealize>()) {
-    PADDLE_ENFORCE_EQ(expr.As<ir::For>(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The expression must be convertible to either "
-                          "ir::ScheduleBlockRealize or ir::For."));
+    PADDLE_ENFORCE_NOT_NULL(expr.As<ir::For>(),
+                            phi::errors::InvalidArgument(
+                                "The expression must be convertible to either "
+                                "ir::ScheduleBlockRealize or ir::For."));
   }
   FindBlocksVisitor visitor;
   std::vector<Expr> result = visitor(&expr);
@@ -202,7 +201,7 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
       block.As<ir::ScheduleBlockRealize>()
           ->schedule_block.As<ir::ScheduleBlock>(),
       phi::errors::InvalidArgument(
-          "The schedule_block must be convertible to ir::ScheduleBlock."))
+          "The schedule_block must be convertible to ir::ScheduleBlock."));
   std::string block_name = block.As<ir::ScheduleBlockRealize>()
                                ->schedule_block.As<ir::ScheduleBlock>()
                                ->name;
