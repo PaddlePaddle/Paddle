@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1647,9 +1647,8 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
-                          MetaTensor* out,
-                          MetaConfig config) {
-  return ElementwiseRawInferMeta(x, y, -1, out, config);
+                          MetaTensor* out) {
+  return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
 void BitwiseShiftInferMeta(const MetaTensor& x,

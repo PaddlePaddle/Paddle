@@ -955,7 +955,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                             'x1': self.data,
                             'x2': self.data,
                         },
-                        fetch_list=[output] + g_vars,
+                        fetch_list=[output, *g_vars],
                     )
 
         def test_case_1(self):

@@ -16,6 +16,8 @@
 
 #include <glog/logging.h>
 
+#include "paddle/common/enforce.h"
+
 namespace cinn {
 namespace hlir {
 namespace pe {
@@ -26,7 +28,9 @@ void InputX86Param(
         *model_data,
     const std::string &key,
     const absl::flat_hash_map<std::string, std::vector<int>> &schedule_data) {
-  CHECK(model_data);
+  PADDLE_ENFORCE_NOT_NULL(
+      model_data,
+      phi::errors::PreconditionNotMet("model_data should not be null."));
   (*model_data)[key] = schedule_data;
 }
 
@@ -34,7 +38,9 @@ void LoadX86DefaultParams(
     absl::flat_hash_map<std::string,
                         absl::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
-  CHECK(model_data);
+  PADDLE_ENFORCE_NOT_NULL(
+      model_data,
+      phi::errors::PreconditionNotMet("model_data should not be null."));
   // resnet 1
   InputX86Param(model_data,
                 "X86ScheduleConv input 1 3 224 224 weight 64 3 7 7 stride 2 2 "
@@ -304,7 +310,9 @@ void LoadResNet18Params(
     absl::flat_hash_map<std::string,
                         absl::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
-  CHECK(model_data);
+  PADDLE_ENFORCE_NOT_NULL(
+      model_data,
+      phi::errors::PreconditionNotMet("model_data should not be null."));
   InputX86Param(model_data,
                 "resnet18 index 0 X86ScheduleConv input 1 3 224 224 weight 64 "
                 "3 7 7 stride 2 2 padding 3 3 dilation 1 1",
@@ -458,7 +466,9 @@ void LoadResNet50Params(
     absl::flat_hash_map<std::string,
                         absl::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
-  CHECK(model_data);
+  PADDLE_ENFORCE_NOT_NULL(
+      model_data,
+      phi::errors::PreconditionNotMet("model_data should not be null."));
   InputX86Param(model_data,
                 "resnet50 index 0 X86ScheduleConv input 1 3 224 224 weight 64 "
                 "3 7 7 stride 2 2 padding 3 3 dilation 1 1",
@@ -836,7 +846,9 @@ void LoadMobileNetV1Params(
     absl::flat_hash_map<std::string,
                         absl::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
-  CHECK(model_data);
+  PADDLE_ENFORCE_NOT_NULL(
+      model_data,
+      phi::errors::PreconditionNotMet("model_data should not be null."));
   InputX86Param(model_data,
                 "mobilenetv1 index 0 X86ScheduleConv input 1 3 224 224 weight "
                 "32 3 3 3 stride 2 2 padding 1 1 dilation 1 1",
@@ -1032,7 +1044,9 @@ void LoadMobileNetV2Params(
     absl::flat_hash_map<std::string,
                         absl::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
-  CHECK(model_data);
+  PADDLE_ENFORCE_NOT_NULL(
+      model_data,
+      phi::errors::PreconditionNotMet("model_data should not be null."));
   InputX86Param(model_data,
                 "mobilenetv2 index 0 X86ScheduleConv input 1 3 224 224 weight "
                 "32 3 3 3 stride 2 2 padding 1 1 dilation 1 1",
@@ -1416,7 +1430,9 @@ void LoadSqueezeNetParams(
     absl::flat_hash_map<std::string,
                         absl::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
-  CHECK(model_data);
+  PADDLE_ENFORCE_NOT_NULL(
+      model_data,
+      phi::errors::PreconditionNotMet("model_data should not be null."));
   InputX86Param(model_data,
                 "squeezenet index 0 X86ScheduleConv input 1 3 227 227 weight "
                 "64 3 3 3 stride 2 2 padding 0 0 dilation 1 1",
@@ -1605,7 +1621,9 @@ void LoadFaceDetParams(
     absl::flat_hash_map<std::string,
                         absl::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
-  CHECK(model_data);
+  PADDLE_ENFORCE_NOT_NULL(
+      model_data,
+      phi::errors::PreconditionNotMet("model_data should not be null."));
   InputX86Param(model_data,
                 "facedet index 0 X86ScheduleConv input 1 3 240 320 weight 16 3 "
                 "3 3 stride 2 2 padding 1 1 dilation 1 1",
@@ -1976,7 +1994,9 @@ void LoadEfficientNetParams(
     absl::flat_hash_map<std::string,
                         absl::flat_hash_map<std::string, std::vector<int>>>
         *model_data) {
-  CHECK(model_data);
+  PADDLE_ENFORCE_NOT_NULL(
+      model_data,
+      phi::errors::PreconditionNotMet("model_data should not be null."));
   InputX86Param(model_data,
                 "efficientnet index 0 X86ScheduleConv input 1 3 224 224 weight "
                 "32 3 3 3 stride 2 2 padding 2 2 dilation 1 1",

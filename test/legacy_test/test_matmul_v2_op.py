@@ -113,9 +113,9 @@ class TestMatMulV2Op(OpTest):
                 ['X', 'Y'],
                 'Out',
                 max_relative_error=1e-2,
-                check_cinn=self.check_cinn
-                if hasattr(self, 'check_cinn')
-                else True,
+                check_cinn=(
+                    self.check_cinn if hasattr(self, 'check_cinn') else True
+                ),
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -123,9 +123,9 @@ class TestMatMulV2Op(OpTest):
             self.check_grad(
                 ['X', 'Y'],
                 'Out',
-                check_cinn=self.check_cinn
-                if hasattr(self, 'check_cinn')
-                else True,
+                check_cinn=(
+                    self.check_cinn if hasattr(self, 'check_cinn') else True
+                ),
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -164,9 +164,9 @@ class TestMatMulOp3(TestMatMulV2Op):
                 ['X', 'Y'],
                 'Out',
                 max_relative_error=1e-2,
-                check_cinn=self.check_cinn
-                if hasattr(self, 'check_cinn')
-                else True,
+                check_cinn=(
+                    self.check_cinn if hasattr(self, 'check_cinn') else True
+                ),
                 check_pir=True,
                 check_auto_parallel=True,
                 check_prim_pir=True,
@@ -175,9 +175,9 @@ class TestMatMulOp3(TestMatMulV2Op):
             self.check_grad(
                 ['X', 'Y'],
                 'Out',
-                check_cinn=self.check_cinn
-                if hasattr(self, 'check_cinn')
-                else True,
+                check_cinn=(
+                    self.check_cinn if hasattr(self, 'check_cinn') else True
+                ),
                 check_pir=True,
                 check_auto_parallel=True,
                 check_prim_pir=True,
@@ -446,9 +446,11 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     self.check_output_with_place(
                         place,
                         atol=atol,
-                        check_cinn=self.check_cinn
-                        if hasattr(self, 'check_cinn')
-                        else True,
+                        check_cinn=(
+                            self.check_cinn
+                            if hasattr(self, 'check_cinn')
+                            else True
+                        ),
                         check_pir=True,
                     )
 
@@ -460,9 +462,9 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     ['X', 'Y'],
                     'Out',
                     max_relative_error=max_relative_error,
-                    check_cinn=self.check_cinn
-                    if hasattr(self, 'check_cinn')
-                    else True,
+                    check_cinn=(
+                        self.check_cinn if hasattr(self, 'check_cinn') else True
+                    ),
                     check_pir=True,
                     check_prim_pir=True,
                 )
@@ -521,9 +523,9 @@ def create_test_bf16_class(parent, atol=0.01):
             self.check_output_with_place(
                 place,
                 atol=atol,
-                check_cinn=self.check_cinn
-                if hasattr(self, 'check_cinn')
-                else True,
+                check_cinn=(
+                    self.check_cinn if hasattr(self, 'check_cinn') else True
+                ),
                 check_pir=True,
             )
 
@@ -538,9 +540,9 @@ def create_test_bf16_class(parent, atol=0.01):
                 max_relative_error=3e-2,
                 atol=3e-2,
                 user_defined_grads=[numeric_grads],
-                check_cinn=self.check_cinn
-                if hasattr(self, 'check_cinn')
-                else True,
+                check_cinn=(
+                    self.check_cinn if hasattr(self, 'check_cinn') else True
+                ),
                 check_pir=True,
                 check_prim_pir=True,
             )
@@ -556,9 +558,9 @@ def create_test_bf16_class(parent, atol=0.01):
                 max_relative_error=3e-2,
                 atol=3e-2,
                 user_defined_grads=[numeric_grads],
-                check_cinn=self.check_cinn
-                if hasattr(self, 'check_cinn')
-                else True,
+                check_cinn=(
+                    self.check_cinn if hasattr(self, 'check_cinn') else True
+                ),
                 check_pir=True,
                 check_prim_pir=True,
             )

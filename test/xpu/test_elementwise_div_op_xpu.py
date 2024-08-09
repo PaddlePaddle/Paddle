@@ -84,9 +84,11 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
                 }
                 reshaped_y.astype(self.dtype)
                 self.outputs = {
-                    'Out': self.inputs['X'] // reshaped_y
-                    if self.dtype in INT_GROUP
-                    else np.divide(self.inputs['X'], reshaped_y)
+                    'Out': (
+                        self.inputs['X'] // reshaped_y
+                        if self.dtype in INT_GROUP
+                        else np.divide(self.inputs['X'], reshaped_y)
+                    )
                 }
 
         def test_check_output(self):

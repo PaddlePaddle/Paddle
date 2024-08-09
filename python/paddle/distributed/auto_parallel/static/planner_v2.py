@@ -126,9 +126,9 @@ class Planner:
                     # clear dist attr
                     serial_op.dist_attr = OperatorDistAttr(serial_op.desc)
                     serial_op.dist_attr.parse_from_string(op_dist_attrs[key])
-                    self._dist_context._dist_ops_for_program[
-                        key
-                    ] = DistributedOperator(serial_op)
+                    self._dist_context._dist_ops_for_program[key] = (
+                        DistributedOperator(serial_op)
+                    )
 
                 for key in tensor_dist_attrs:
                     serial_tensor = (
@@ -141,9 +141,9 @@ class Planner:
                     serial_tensor.dist_attr.parse_from_string(
                         tensor_dist_attrs[key]
                     )
-                    self._dist_context._dist_tensors_for_program[
-                        key
-                    ] = DistributedTensor(serial_tensor)
+                    self._dist_context._dist_tensors_for_program[key] = (
+                        DistributedTensor(serial_tensor)
+                    )
 
                 process_meshes = []
                 for item in dist_attrs["process_meshes"]:
