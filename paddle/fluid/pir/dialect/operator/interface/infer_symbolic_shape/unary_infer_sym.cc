@@ -458,20 +458,12 @@ bool ClassCenterSampleOpInferSymbolicShape(
   int num_samples = op->attribute<pir::Int32Attribute>("num_samples").data();
 
   // 设置输出张量 remapped_label 的符号形状
-  std::vector<symbol::DimExpr> remapped_label_shape =
-      label_shape_or_data.shape();
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(remapped_label_shape)});
+  infer_context->SetShapeOrDataForValue(op->result(0), label_shape_or_data);
 
   // 设置输出张量 sampled_local_class_center 的符号形状
   std::vector<symbol::DimExpr> sampled_local_class_center_shape;
   sampled_local_class_center_shape.emplace_back(symbol::DimExpr(num_samples));
-  infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(sampled_local_class_center_shape)});
+  infer_context->SetShapeOrDataForValue(op->result(1), label_shape_or_data);
 
   return true;
 }
