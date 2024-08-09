@@ -17,16 +17,13 @@
 #include <future>
 #include <memory>
 #include <mutex>
-
-#include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/process_group_without_stream.h"
+#include "glog/logging.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
+#include "paddle/phi/core/distributed/collective/process_group_without_stream.h"
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
-
-#ifdef PADDLE_WITH_GLOO
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
 
 namespace paddle {
 namespace distributed {

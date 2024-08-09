@@ -18,7 +18,7 @@
 #include "gloo/common/logging.h"
 #include "gloo/math.h"
 #include "gloo/types.h"
-#include "paddle/fluid/distributed/collective/gloo_send_recv.h"
+#include "paddle/phi/core/distributed/collective/gloo_send_recv.h"
 
 namespace paddle::distributed {
 

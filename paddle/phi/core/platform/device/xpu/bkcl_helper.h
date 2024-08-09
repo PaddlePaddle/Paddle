@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,31 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef _WIN32
+#if defined(PADDLE_WITH_XPU_BKCL)
 #pragma once
 
-#if defined(__APPLE__)
-#include <mach/error.h>
-#else
-#include <error.h>
-#endif
+#include <stdio.h>
 
+#include <memory>
 #include <string>
+#include <thread>  // NOLINT
+#include <typeindex>
+#include <unordered_map>
+#include <vector>
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/backends/device_guard.h"
-#include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/core/distributed/types.h"
+#include "glog/logging.h"
+
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "xpu/bkcl.h"
+#include "xpu/runtime.h"
 
 namespace paddle {
-namespace distributed {
-
-using phi::distributed::ReduceOp;
-
-phi::ccl::CCLReduceOp ToXCCLRedType(ReduceOp reduction);
-
-}  // namespace distributed
+namespace platform {}  // namespace platform
 }  // namespace paddle
+
+#endif  // PADDLE_WITH_XPU_BKCL
+#endif

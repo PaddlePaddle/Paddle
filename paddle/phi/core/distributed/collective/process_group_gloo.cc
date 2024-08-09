@@ -26,10 +26,10 @@
 
 #include <gloo/reduce.h>
 
-#include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/fluid/distributed/collective/process_group_gloo.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/distributed/collective/common.h"
+#include "paddle/phi/core/distributed/collective/process_group_gloo.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle::distributed {
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/bkcl_tools.h"
+#include "paddle/phi/core/distributed/collective/bkcl_tools.h"
 
 namespace paddle {
 namespace distributed {

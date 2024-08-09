@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,30 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include <stdio.h>
+
+#include <memory>
+#include <string>
+#include <thread>  // NOLINT
+#include <typeindex>
+#include <unordered_map>
+#include <vector>
+
 #include "paddle/phi/core/platform/collective_helper.h"
+#ifdef PADDLE_WITH_NCCL
+#include "paddle/phi/backends/dynload/nccl.h"
+#endif
+#ifdef PADDLE_WITH_RCCL
+#include "paddle/phi/backends/dynload/rccl.h"
+#endif
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace platform {}  // namespace platform
 }  // namespace paddle
+#endif

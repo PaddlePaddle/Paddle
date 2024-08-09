@@ -20,12 +20,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
+#include "paddle/phi/core/distributed/collective/process_group_with_stream.h"
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 

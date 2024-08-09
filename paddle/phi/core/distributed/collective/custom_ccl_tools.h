@@ -12,6 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/process_group.h"
+#pragma once
 
-namespace paddle::distributed {}  // namespace paddle::distributed
+#if defined(__APPLE__)
+#include <mach/error.h>
+#else
+#include <error.h>
+#endif
+
+#include <string>
+
+#include "paddle/phi/backends/device_guard.h"
+#include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/distributed/types.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/collective_helper.h"
+#include "paddle/phi/core/platform/device_context.h"
+
+namespace paddle {
+namespace distributed {
+
+using phi::distributed::ReduceOp;
+
+phi::ccl::CCLReduceOp ToXCCLRedType(ReduceOp reduction);
+
+}  // namespace distributed
+}  // namespace paddle

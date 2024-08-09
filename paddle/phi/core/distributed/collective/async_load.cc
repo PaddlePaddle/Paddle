@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/async_load.h"
+#include "paddle/phi/core/distributed/collective/async_load.h"
 #include "paddle/phi/common/memory_utils.h"
 
 namespace paddle {

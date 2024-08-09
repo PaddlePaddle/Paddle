@@ -25,13 +25,13 @@
 #include <exception>
 #include <mutex>
 
-#include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/process_group_without_stream.h"
-#include "paddle/fluid/distributed/collective/types.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
+#include "paddle/phi/core/distributed/collective/process_group_without_stream.h"
+#include "paddle/phi/core/distributed/collective/types.h"
 #include "paddle/phi/core/platform/device_context.h"
 
 #if defined(PADDLE_WITH_MPI)
-#include "paddle/fluid/distributed/collective/mpi_tools.h"
+#include "paddle/phi/core/distributed/collective/mpi_tools.h"
 #endif
 
 namespace paddle {
