@@ -1749,6 +1749,16 @@ bool SetValue_OpInferSymbolicShape(
   return SetValueOpInferSymbolicShape(op, infer_context);
 }
 
+bool SetValueWithTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return SetValueOpInferSymbolicShape(op, infer_context);
+}
+
+bool SetValueWithTensor_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return SetValueOpInferSymbolicShape(op, infer_context);
+}
+
 // bool TraceOpInferSymbolicShape(pir::Operation *op,
 //                                pir::InferSymbolicShapeContext *infer_context)
 //                                {
