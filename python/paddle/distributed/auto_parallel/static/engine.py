@@ -825,7 +825,13 @@ class Engine:
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        apply_reshard_pass(dist_program)
+        gradient_sync_after_accumulate = (
+            self._strategy.dp_optimization.gradient_sync_after_accumulate
+        )
+        if gradient_sync_after_accumulate:
+            global_params_grads = params_grads
+
+        apply_reshard_pass(dist_program, params_grads)
         # print('after reshard', dist_program, flush=1)
 
         remove_other_rank_input_output_pass(dist_program)
@@ -839,11 +845,6 @@ class Engine:
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
-        gradient_sync_after_accumulate = (
-            self._strategy.dp_optimization.gradient_sync_after_accumulate
-        )
-        if gradient_sync_after_accumulate:
-            global_params_grads = params_grads
 
         # TODO(xxxx) Step 4.1 DP Optimization Pass
         if self._strategy.dp_optimization.enable:
@@ -884,7 +885,6 @@ class Engine:
             auto_parallel_gradient_merge_pass.apply(
                 [dist_program], [startup_program]
             )
-        # print("after grad merge:", dist_program)
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.

@@ -49,25 +49,30 @@ def reshard_single_value(program, op, operand, attr):
                 return reshard_var
             # insert reshard
             reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
-        return reshard_var
+            return reshard_var
     return prev_var
 
 
 def reshard_combine_value(program, op, operand, attr):
     prev_var = operand.source()
+
     assert (
         prev_var.get_defining_op().name() == 'builtin.combine'
     ), "TensorList must be defined by builtin.combine op."
+
     combine_op = prev_var.get_defining_op()
     array_attr = attr.as_array_attr()
+
     assert len(combine_op.operands()) == len(
         array_attr
     ), "The number of combine op operands and the number of dist array_attr are not equal in op"
+
     reshard_vars = []
     for inner_operand, inner_attr in zip(combine_op.operands(), array_attr):
         reshard_vars.append(
             reshard_single_value(program, op, inner_operand, inner_attr)
         )
+
     paddle.pir.set_insertion_point(op)
     with auto_complete_op_role(
         program, op.op_role, get_current_insertion_point()
@@ -103,9 +108,9 @@ def apply_partition_pass(program):
             ), f"The current partition pass not support inplace value of {op} is tensor list."
 
             operand_attr = operand_attr.as_tensor_dist_attr()
+
             # reshard input
             paddle.pir.set_insertion_point(op)
-
             with auto_complete_op_role(
                 program, ref_op_role, get_current_insertion_point()
             ):
@@ -134,6 +139,10 @@ def apply_partition_pass(program):
 
             if old_dist_attr == result.dist_attr():
                 continue
+
+            if ref_op_role is not None:
+                paddle.pir.set_insertion_point_after(op)
+
             reshard_var_2 = reshard_var_1
             if old_dist_attr != reshard_var_1.dist_attr():
                 with auto_complete_op_role(
@@ -166,6 +175,7 @@ def apply_partition_pass(program):
                 paddle.pir.set_insertion_point_after(op)
                 old_dist_attr = var.dist_attr()
                 var.update_dist_attr(attr.as_tensor_dist_attr())
+
                 # insert reshard
                 with auto_complete_op_role(
                     program, op.op_role, get_current_insertion_point()
@@ -173,6 +183,9 @@ def apply_partition_pass(program):
                     reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
                     var.replace_all_uses_with(reshard_var)
                     reshard_var.get_defining_op().operand(0).set_source(var)
+                    var.get_defining_op().set_bool_attr(
+                        "replace_all_uses_with_reshard_var", True
+                    )
 
 
 def fold_reshard_pass(dist_program):
@@ -203,11 +216,17 @@ def fold_reshard_pass(dist_program):
         op.erase()
 
 
-def apply_reshard_pass(dist_program):
+def apply_reshard_pass(dist_program, params_grads):
     fold_reshard_pass(dist_program)
+
+    # {grad.id: grad}
+    sharded_grad = {}
+    grad_ids = [grad.id for _, grad in params_grads if grad is not None]
+
     for op in dist_program.global_block().ops:
         if op.name() == 'dist_op.reshard':
             var = op.operand_source(0)
+
             op_dist_attr = op.dist_attr
             src_dist_attr = op_dist_attr.operand(0).as_tensor_dist_attr()
             dst_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
@@ -241,8 +260,26 @@ def apply_reshard_pass(dist_program):
 
             if out_value is not None:
                 op.result(0).replace_all_uses_with(out_value)
+                if var.id in grad_ids:
+                    if var.get_defining_op().has_attr(
+                        "replace_all_uses_with_reshard_var"
+                    ):
+                        sharded_grad[var.id] = out_value
+
             if op.result(0).use_empty():
                 op.erase()
+
+            if out_value is not None and var.use_empty():
+                if var.id in grad_ids:
+                    sharded_grad[var.id] = out_value
+
+    # update params_grads with sharded grad
+    for idx, (param, grad) in enumerate(params_grads):
+        if grad is None:
+            continue
+
+        if grad.id in sharded_grad:
+            params_grads[idx] = (param, sharded_grad[grad.id])
 
 
 def _remove_other_rank_params_grads(dist_params_grads):
