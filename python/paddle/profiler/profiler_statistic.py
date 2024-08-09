@@ -11,6 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle.profiler import SummaryView
+
 import collections
 import re
 from enum import Enum
@@ -79,7 +88,7 @@ class SortedKeys(Enum):
     GPUMin = 7
 
 
-def _nodename2opname(name):
+def _nodename2opname(name: str) -> str:
     r'''
     convert static host node name to operator name
     '''
@@ -94,7 +103,7 @@ class HostStatisticNode:
     Wrap original node for calculating statistic metrics.
     '''
 
-    def __init__(self, hostnode):
+    def __init__(self, hostnode: TracerEventType) -> None:
         self.hostnode = hostnode
         self.children_node = []
         self.runtime_node = []
@@ -106,7 +115,7 @@ class HostStatisticNode:
         self.self_general_gpu_time = 0
         self.flops = 0
 
-    def cal_flops(self):
+    def cal_flops(self) -> None:
         if self.hostnode.type == TracerEventType.Operator:
             if hasattr(self.hostnode, 'input_shapes'):
                 op_name = _nodename2opname(self.hostnode.name)
@@ -116,7 +125,7 @@ class HostStatisticNode:
                     self.hostnode.attributes,
                 )
 
-    def cal_statistic(self):
+    def cal_statistic(self) -> None:
         self.cpu_time = self.hostnode.end_ns - self.hostnode.start_ns
         self.self_cpu_time = self.cpu_time
         self.cal_flops()
@@ -144,18 +153,20 @@ class HostStatisticNode:
             self.self_general_gpu_time += device.end_ns - device.start_ns
 
     @property
-    def end_ns(self):
+    def end_ns(self) -> int:
         return self.hostnode.end_ns
 
     @property
-    def start_ns(self):
+    def start_ns(self) -> int:
         return self.hostnode.start_ns
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> any:
         return getattr(self.hostnode, name)
 
 
-def traverse_tree(nodetrees):
+def traverse_tree(
+    nodetrees: dict[int, TracerEventType]
+) -> dict[int, list[HostStatisticNode]]:
     results = collections.defaultdict(list)
     for thread_id, rootnode in nodetrees.items():
         stack = []
@@ -169,7 +180,7 @@ def traverse_tree(nodetrees):
     return results
 
 
-def get_device_nodes(hostnode):
+def get_device_nodes(hostnode: HostStatisticNode) -> list[HostStatisticNode]:
     '''
     Get all device nodes called in the time range of hostnode.
     '''
@@ -186,7 +197,9 @@ def get_device_nodes(hostnode):
     return device_nodes
 
 
-def _build_layer_from_tree(nodetrees):
+def _build_layer_from_tree(
+    nodetrees: dict[int, TracerEventType]
+) -> list[HostStatisticNode]:
     def build_layer(node, depth=0):
         if "GradNode" in node.name:
             return [], 0
@@ -226,7 +239,7 @@ def _build_layer_from_tree(nodetrees):
     return ret
 
 
-def _format_large_number(n, precision=2):
+def _format_large_number(n: float, precision: int = 2) -> str:
     if n // 1e12 > 0:
         return f"{round(n / 1e12, precision)} T"
     if n // 1e9 > 0:
@@ -238,7 +251,7 @@ def _format_large_number(n, precision=2):
     return f"{round(n, precision)}"
 
 
-def _format_time(n, precision=2):
+def _format_time(n: float, precision: int = 2) -> str:
     if n // 1e9 > 0:
         return f"{round(n / 1e9, precision)} s"
     if n // 1e6 > 0:
@@ -248,7 +261,7 @@ def _format_time(n, precision=2):
     return f"{round(n, precision)} ns"
 
 
-def _gen_layer_flops(node, repeat=1):
+def _gen_layer_flops(node: list[HostStatisticNode], repeat: int = 1) -> str:
     ret = []
     offset = []
     loop = []
@@ -286,7 +299,9 @@ def _gen_layer_flops(node, repeat=1):
     return "".join(ret)
 
 
-def gen_layer_flops(nodetrees, repeat=1):
+def gen_layer_flows(
+    nodetrees: dict[int, TracerEventType], repeat: int = 1
+) -> str:
     r'''
     gen_layer_flops generate flops/runtime information depend on layer/operator.
     '''
@@ -294,7 +309,9 @@ def gen_layer_flops(nodetrees, repeat=1):
     return _gen_layer_flops(layer_tree, repeat)
 
 
-def wrap_tree(nodetrees):
+def wrap_tree(
+    nodetrees: dict[int, TracerEventType]
+) -> tuple[dict[int, HostStatisticNode], dict[int, list[HostStatisticNode]]]:
     '''
     Using HostStatisticNode to wrap original profiler result tree, and calculate node statistic metrics.
     '''
@@ -339,7 +356,7 @@ class TimeRangeSummary:
     Analyse time ranges for each TracerEventType, and summarize the time.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.CPUTimeRange = collections.defaultdict(list)
         self.GPUTimeRange = collections.defaultdict(
             lambda: collections.defaultdict(list)
@@ -350,7 +367,7 @@ class TimeRangeSummary:
         )
         self.call_times = collections.defaultdict(int)
 
-    def parse(self, nodetrees):
+    def parse(self, nodetrees: dict[int, TracerEventType]) -> None:
         r"""
         Analysis node trees in profiler result, and get time range for different tracer event type.
         """
@@ -403,13 +420,17 @@ class TimeRangeSummary:
                     time_ranges
                 )
 
-    def get_gpu_devices(self):
+    def get_gpu_devices(self) -> list[int]:
         return self.GPUTimeRange.keys()
 
-    def get_gpu_range_sum(self, device_id, event_type):
+    def get_gpu_event_sum(
+        self, device_id: int, event_type: TracerEventType
+    ) -> dict[int, dict[int, TracerEventType]]:
         return self.GPUTimeRangeSum[device_id][event_type]
 
-    def get_cpu_range_sum(self, event_type):
+    def get_cpu_range_sum(
+        self, event_type: TracerEventType
+    ) -> dict[int, TracerEventType]:
         return self.CPUTimeRangeSum[event_type]
 
 
@@ -419,7 +440,7 @@ class DistributedSummary:
     The computation time is all kernel except kernels for communication like nccl.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.cpu_communication_range = []
         self.gpu_communication_range = []
         self.communication_range = []
@@ -428,7 +449,7 @@ class DistributedSummary:
         self.cpu_calls = 0
         self.gpu_calls = 0
 
-    def parse(self, nodetrees):
+    def parse(self, nodetrees: dict[int, TracerEventType]) -> None:
         '''
         Collect all communication and computation time ranges.
         '''
@@ -506,7 +527,7 @@ class EventSummary:
     """
 
     class ItemBase:
-        def __init__(self, name):
+        def __init__(self, name: str) -> None:
             self.name = name
             self.call = 0
             self.cpu_time = 0
@@ -523,58 +544,58 @@ class EventSummary:
             self._flops = 0
 
         @property
-        def flops(self):
+        def flops(self) -> int:
             return self._flops
 
         @property
-        def avg_cpu_time(self):
+        def avg_cpu_time(self) -> float:
             return self.cpu_time / self.call
 
         @property
-        def avg_gpu_time(self):
+        def avg_gpu_time(self) -> float:
             return self.gpu_time / self.call
 
         @property
-        def avg_general_gpu_time(self):
+        def avg_general_gpu_time(self) -> float:
             return self.general_gpu_time / self.call
 
-        def add_cpu_time(self, time):
+        def add_cpu_time(self, time: float) -> None:
             if time > self.max_cpu_time:
                 self.max_cpu_time = time
             if time < self.min_cpu_time:
                 self.min_cpu_time = time
             self.cpu_time += time
 
-        def add_gpu_time(self, time):
+        def add_gpu_time(self, time: float) -> None:
             if time > self.max_gpu_time:
                 self.max_gpu_time = time
             if time < self.min_gpu_time:
                 self.min_gpu_time = time
             self.gpu_time += time
 
-        def add_general_gpu_time(self, time):
+        def add_general_gpu_time(self, time: float) -> None:
             if time > self.max_general_gpu_time:
                 self.max_general_gpu_time = time
             if time < self.min_general_gpu_time:
                 self.min_general_gpu_time = time
             self.general_gpu_time += time
 
-        def add_call(self):
+        def add_call(self) -> None:
             self.call += 1
 
-        def add_flops(self, flops):
+        def add_flops(self, flops: int) -> None:
             self._flops += flops
 
-        def add_item(self, node):
+        def add_item(self, node: HostStatisticNode) -> None:
             raise NotImplementedError
 
     class DeviceItem(ItemBase):
-        def add_item(self, node):
+        def add_item(self, node: HostStatisticNode) -> None:
             self.call += 1
             self.add_gpu_time(node.end_ns - node.start_ns)
 
     class OperatorItem(ItemBase):
-        def add_item(self, node):
+        def add_item(self, node: HostStatisticNode) -> None:
             self.add_call()
             self.add_cpu_time(node.cpu_time)
             self.add_gpu_time(node.gpu_time)
@@ -596,7 +617,7 @@ class EventSummary:
                     self.devices[name].add_item(devicenode)
 
     class ForwardItem(ItemBase):
-        def add_item(self, node):
+        def add_item(self, node: HostStatisticNode) -> None:
             self.add_call()
             self.add_cpu_time(node.cpu_time)
             self.add_gpu_time(node.gpu_time)
@@ -611,13 +632,13 @@ class EventSummary:
                     self.operator_inners[child.name].add_item(child)
 
     class GeneralItem(ItemBase):
-        def add_item(self, node):
+        def add_item(self, node: HostStatisticNode) -> None:
             self.add_call()
             self.add_cpu_time(node.cpu_time)
             self.add_gpu_time(node.gpu_time)
             self.add_general_gpu_time(node.general_gpu_time)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.items = {}  # for operator summary
         self.thread_items = collections.defaultdict(
             dict
@@ -630,7 +651,7 @@ class EventSummary:
         self.memory_manipulation_items = {}  # for memory manipulation summary
         self.kernel_items = {}  # for kernel summary
 
-    def parse(self, nodetrees):
+    def parse(self, nodetrees: dict[int, TracerEventType]) -> None:
         r"""
         Analysis operator event in the nodetress.
         """
@@ -686,7 +707,7 @@ class EventSummary:
     def add_forward_item(self, operator_node):
         pass
 
-    def add_operator_item(self, operator_node):
+    def add_operator_item(self, operator_node: HostStatisticNode) -> None:
         if operator_node.name not in self.items:
             self.items[operator_node.name] = EventSummary.OperatorItem(
                 operator_node.name
@@ -702,7 +723,7 @@ class EventSummary:
             operator_node
         )
 
-    def add_userdefined_item(self, userdefined_node):
+    def add_userdefined_item(self, userdefined_node: HostStatisticNode) -> None:
         if userdefined_node.name not in self.userdefined_items:
             self.userdefined_items[userdefined_node.name] = (
                 EventSummary.GeneralItem(userdefined_node.name)
@@ -721,7 +742,9 @@ class EventSummary:
             userdefined_node.name
         ].add_item(userdefined_node)
 
-    def add_memory_manipulation_item(self, memory_manipulation_node):
+    def add_memory_manipulation_item(
+        self, memory_manipulation_node: HostStatisticNode
+    ) -> None:
         if memory_manipulation_node.name not in self.memory_manipulation_items:
             self.memory_manipulation_items[memory_manipulation_node.name] = (
                 EventSummary.GeneralItem(memory_manipulation_node.name)
@@ -730,7 +753,9 @@ class EventSummary:
             memory_manipulation_node
         )
 
-    def add_model_perspective_item(self, model_perspective_node):
+    def add_model_perspective_item(
+        self, model_perspective_node: HostStatisticNode
+    ) -> None:
         if model_perspective_node.type == TracerEventType.Forward:
             name = 'Forward'
         elif model_perspective_node.type == TracerEventType.Backward:
@@ -747,7 +772,7 @@ class EventSummary:
             self.model_perspective_items[name] = EventSummary.GeneralItem(name)
         self.model_perspective_items[name].add_item(model_perspective_node)
 
-    def add_kernel_item(self, root_node):
+    def add_kernel_item(self, root_node: HostStatisticNode) -> None:
         device_nodes = get_device_nodes(root_node)
         for device_node in device_nodes:
             if device_node.type == TracerEventType.Kernel:
@@ -763,7 +788,9 @@ class MemorySummary:
     """
 
     class MemoryItem:
-        def __init__(self, event_name, place, memory_type='Allocated'):
+        def __init__(
+            self, event_name: str, place: str, memory_type: str = 'Allocated'
+        ) -> None:
             self.event_name = event_name
             self.place = place
             self.allocation_count = 0
@@ -773,7 +800,9 @@ class MemorySummary:
             self.increase_size = 0
             self.memory_type = memory_type
 
-        def add_memory_record(self, size, allocation_type):
+        def add_memory_record(
+            self, size: int, allocation_type: TracerMemEventType
+        ) -> None:
             if (
                 allocation_type == TracerMemEventType.Allocate
                 or allocation_type == TracerMemEventType.ReservedAllocate
@@ -792,7 +821,7 @@ class MemorySummary:
                 print("No corresponding type.")
             self.increase_size = self.allocation_size - self.free_size
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.allocated_items = collections.defaultdict(
             dict
         )  # for memory summary, device type: event
@@ -802,7 +831,9 @@ class MemorySummary:
         self.peak_allocation_values = collections.defaultdict(int)
         self.peak_reserved_values = collections.defaultdict(int)
 
-    def _analyse_node_memory(self, event_name, node):
+    def _analyse_node_memory(
+        self, event_name: str, node: HostStatisticNode
+    ) -> None:
         for memnode in node.mem_node:  # self mem node
             if (
                 memnode.type == TracerMemEventType.Allocate
@@ -838,7 +869,7 @@ class MemorySummary:
                 self.peak_reserved_values[memnode.place], memnode.peak_reserved
             )
 
-    def parse(self, nodetrees):
+    def parse(self, nodetrees: dict[int, TracerEventType]) -> None:
         r"""
         Analyse memory event in the nodetress.
         """
@@ -858,7 +889,9 @@ class StatisticData:
     Hold all analysed results.
     """
 
-    def __init__(self, node_trees, extra_info):
+    def __init__(
+        self, node_trees: dict[int, TracerEventType], extra_info: dict
+    ) -> None:
         self.node_trees = node_trees
         self.extra_info = extra_info
         self.time_range_summary = TimeRangeSummary()
@@ -872,14 +905,14 @@ class StatisticData:
 
 
 def _build_table(
-    statistic_data,
-    sorted_by=SortedKeys.CPUTotal,
-    op_detail=True,
-    thread_sep=False,
-    time_unit='ms',
-    row_limit=100,
-    max_src_column_width=75,
-    views=None,
+    statistic_data: StatisticData,
+    sorted_by: SortedKeys = SortedKeys.CPUTotal,
+    op_detail: bool = True,
+    thread_sep: bool = False,
+    time_unit: str = 'ms',
+    row_limit: int = 100,
+    max_src_column_width: int = 75,
+    views: SummaryView | Sequence[SummaryView] | None = None,
 ):
     from .profiler import SummaryView
 
