@@ -12,11 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "paddle/cinn/backends/extern_func_jit_register.h"
+#include "paddle/cinn/backends/hip/codegen_hip_dev.h"
 
-#ifdef CINN_WITH_HIP
-CINN_USE_REGISTER(cinn_hip_host_api)
-CINN_USE_REGISTER(hip_intrinsics)
-CINN_USE_REGISTER(hip_intrinsics_reduce)
-#endif
+namespace cinn {
+namespace backends {
+namespace hip {
+
+const std::string CodeGenHipDevice::source_header_ =  // NOLINT
+    R"(#include "cinn_hip_runtime_source.h"
+)";
+
+const std::string &CodeGenHipDevice::GetSourceHeader() {
+  return source_header_;
+}
+
+CodeGenHipDevice::CodeGenHipDevice(Target target) : CodeGenGpuDev(target) {}
+
+void CodeGenHipDevice::PrintIncludes() { str_ += GetSourceHeader(); }
+
+}  // namespace hip
+}  // namespace backends
+}  // namespace cinn
