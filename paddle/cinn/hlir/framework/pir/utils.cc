@@ -157,10 +157,7 @@ std::string OpNameAfterStripDialect(const ::pir::Operation& op) {
   }
   auto op_name = name.substr(pos + 1);
   VLOG(7) << "GetOpName: " << name << " -> " << op_name;
-  PADDLE_ENFORCE_NE(
-      op_name,
-      "",
-      phi::errors::PreconditionNotMet("Not Allow op name is empty"));
+  CHECK(op_name != "") << "Not Allow op name is empty";
   return op_name;
 }
 
@@ -642,12 +639,7 @@ OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
     return hlir::framework::kElementWise;
   }
   const hlir::framework::Operator* cinn_op = Operator::Get(op_name);
-  PADDLE_ENFORCE_EQ(
-      op_pattern_dict.Find(cinn_op),
-      true,
-      phi::errors::PreconditionNotMet(
-          "The CINN operation pattern for %s must be found in the dictionary.",
-          cinn_op->c_str()));
+  CHECK(op_pattern_dict.Find(cinn_op));
   auto kind = op_pattern_dict[cinn_op];
   if (kind == hlir::framework::kBroadcast) {
     // As binary op was defined as broadcast, actually it should be
