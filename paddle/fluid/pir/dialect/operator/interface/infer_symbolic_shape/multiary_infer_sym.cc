@@ -668,24 +668,24 @@ bool CrfDecodingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &emission_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  std::vector<symbol::DimExpr> emission_dims = emission_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> emission_dims =
+      emission_shape_or_data.shape();
 
   const auto &transition_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  std::vector<symbol::DimExpr> transition_dims =
+  const std::vector<symbol::DimExpr> transition_dims =
       transition_shape_or_data.shape();
 
   const auto &label_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  std::vector<symbol::DimExpr> label_dims = label_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> label_dims = label_shape_or_data.shape();
 
   const auto &length_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
-  bool has_length = !length_shape_or_data.shape().empty();
 
   const auto one = symbol::DimExpr{1};
 
-  if (has_length) {
+  if (!length_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
     PADDLE_ENFORCE_EQ(emission_dims.size(),
                       3,
                       common::errors::InvalidArgument(
@@ -712,19 +712,11 @@ bool CrfDecodingOpInferSymbolicShape(
                         transition_dims));
   infer_context->AddEqualCstr(transition_dims[0] - 2, transition_dims[1]);
 
-  const symbol::DimExpr m = emission_dims[emission_dims.size() - 1];
-  const symbol::DimExpr n = transition_dims[transition_dims.size() - 1];
-  if (m.isa<int64_t>() && n.isa<int64_t>()) {
-    int m_value = static_cast<int>(m.Get<std::int64_t>());
-    int n_value = static_cast<int>(n.Get<std::int64_t>());
-    if (m_value > 0 && n_value > 0) {
-      infer_context->AddEqualCstr(emission_dims[emission_dims.size() - 1],
-                                  transition_dims[transition_dims.size() - 1]);
-    }
-  }
+  infer_context->AddEqualCstr(emission_dims[emission_dims.size() - 1],
+                              transition_dims[transition_dims.size() - 1]);
 
   if (!label_dims.empty()) {
-    if (has_length) {
+    if (!length_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
       if (label_dims.size() == 3UL) {
         infer_context->AddEqualCstr(label_dims[2], one);
       } else {
@@ -755,19 +747,11 @@ bool CrfDecodingOpInferSymbolicShape(
       }
     }
 
-    const symbol::DimExpr m1 = emission_dims[0];
-    const symbol::DimExpr n1 = label_dims[0];
-    if (m1.isa<int64_t>() && n1.isa<int64_t>()) {
-      int m1_value = static_cast<int>(m1.Get<std::int64_t>());
-      int n1_value = static_cast<int>(n1.Get<std::int64_t>());
-      if (m1_value > 0 && n1_value > 0) {
-        infer_context->AddEqualCstr(emission_dims[0], label_dims[0]);
-      }
-    }
+    infer_context->AddEqualCstr(emission_dims[0], label_dims[0]);
 
     std::vector<symbol::DimExpr> viterbi_path_dims;
     viterbi_path_dims.push_back(emission_dims[0]);
-    if (has_length) {
+    if (!length_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
       viterbi_path_dims.push_back(emission_dims[1]);
     } else {
       viterbi_path_dims.push_back(symbol::DimExpr(1));
