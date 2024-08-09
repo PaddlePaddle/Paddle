@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <hip/hip_runtime.h>
 #include "paddle/cinn/runtime/backend_api.h"
 
 namespace cinn {
@@ -39,6 +38,10 @@ class HIPBackendAPI final : public BackendAPI {
               MemcpyType type) final;
   void device_sync() final;
   void stream_sync(void* stream) final;
+  std::array<int, 3> get_max_grid_dims(
+      std::optional<int> device_id = std::nullopt) final;
+  std::array<int, 3> get_max_block_dims(
+      std::optional<int> device_id = std::nullopt) final;
 };
 }  // namespace hip
 }  // namespace runtime

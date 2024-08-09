@@ -130,8 +130,19 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
       return AllIndiceAndExtentEqual(indice_and_extent);
     };
 
-    const auto GetIterVarNames =
-        [](const std::vector<ir::Expr>& indices) -> std::set<std::string> {
+    auto BufferSizeContainsSymbolic = [&](const ir::Expr& buffer_size) -> bool {
+      bool has_symbolic = false;
+      ir::ir_utils::CollectIRNodes(buffer_size, [&](const ir::Expr* x) {
+        if (x->as_var() && x->as_var()->is_symbolic_constant) {
+          has_symbolic = true;
+        }
+        return false;
+      });
+      return has_symbolic;
+    };
+
+    auto GetIterVarNames =
+        [&](const std::vector<ir::Expr>& indices) -> std::set<std::string> {
       std::set<std::string> iter_var_names;
       for (const ir::Expr& e : indices) {
         ir::ir_utils::CollectIRNodes(e, [&](const ir::Expr* x) {
@@ -173,6 +184,10 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
                 << " with size: " << buffer_size;
         size = cinn::common::AutoSimplify(ir::Add::Make(size, buffer_size));
       }
+      if (BufferSizeContainsSymbolic(size)) {
+        VLOG(6) << "Local buffer size contains symbolic: " << size;
+        return true;
+      }
       VLOG(6) << "Total buffer size: " << size;
       common::cas_intervals_t var_intervals;
       common::SymbolicExprAnalyzer analyzer(var_intervals);
@@ -196,7 +211,8 @@ struct GlobalTensorInfoCollector : public ir::IRMutator<Expr*> {
     // out of memory error, use global buffer instead.
     // Fuse for loop will relax this constraints.
     if (LocalBufferSizeLimit(global_buffer_name)) {
-      VLOG(6) << "Local buffer size too large, use global instead.\n";
+      VLOG(6) << "Local buffer size too large or contains symbolic var, use "
+                 "global buffer instead.\n";
       global_buffer_name.clear();
     }
     return global_buffer_name;

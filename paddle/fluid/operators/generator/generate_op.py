@@ -106,10 +106,7 @@ def process_scalar(op_item, scalar_configs):
 
                 scalar_config = scalar_configs[attr_item['name']]
                 attr_item['is_support_tensor'] = (
-                    True
-                    if 'support_tensor' in scalar_config
-                    and scalar_config['support_tensor']
-                    else False
+                    True if scalar_config.get('support_tensor') else False
                 )
                 attr_item['data_type'] = (
                     scalar_config['data_type']
@@ -144,10 +141,7 @@ def process_int_array(op_item, int_array_configs):
 
                 int_array_config = int_array_configs[attr_item['name']]
                 attr_item['is_support_tensor'] = (
-                    True
-                    if 'support_tensor' in int_array_config
-                    and int_array_config['support_tensor']
-                    else False
+                    True if int_array_config.get('support_tensor') else False
                 )
                 attr_item['data_type'] = (
                     data_type_map[int_array_config['data_type']]
@@ -235,7 +229,7 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
     def update_common_params_name(
         op_item, args_name_map, scalar_configs, int_array_configs
     ):
-        if 'inplace' in op_item and op_item['inplace']:
+        if op_item.get('inplace'):
             inplace_map = {}
             for key, val in op_item['inplace'].items():
                 if key in args_map:
@@ -244,11 +238,11 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                     val = args_map[val]
                 inplace_map[key] = val
             op_item['inplace'] = inplace_map
-        if 'no_need_buffer' in op_item and op_item['no_need_buffer']:
+        if op_item.get('no_need_buffer'):
             op_item['no_need_buffer'] = get_param_list_alias(
                 op_item['no_need_buffer'], args_map
             )
-        if 'data_transform' in op_item and op_item['data_transform']:
+        if op_item.get('data_transform'):
             data_trans_item = op_item['data_transform']
             if 'skip_transform' in data_trans_item:
                 data_trans_item['skip_transform'] = get_param_list_alias(

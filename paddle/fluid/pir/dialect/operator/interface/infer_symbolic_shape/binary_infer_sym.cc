@@ -145,6 +145,34 @@ bool BceLoss_OpInferSymbolicShape(
   return BceLossOpInferSymbolicShape(op, infer_context);
 }
 
+bool BinomialOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &count_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &prob_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  PADDLE_ENFORCE_EQ(count_shape.size(),
+                    prob_shape.size(),
+                    common::errors::PreconditionNotMet(
+                        "Input(count) and Input(prob) must have the same "
+                        "dimension size. but got %d vs %d",
+                        count_shape.size(),
+                        prob_shape.size()));
+  for (size_t i = 0; i < count_shape.size(); ++i) {
+    infer_context->AddEqualCstr(count_shape[i], prob_shape[i]);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(count_shape)});
+  return true;
+}
+
+bool Binomial_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BinomialOpInferSymbolicShape(op, infer_context);
+}
+
 // bool BincountOpInferSymbolicShape(pir::Operation *op,
 //                                   pir::InferSymbolicShapeContext
 //                                   *infer_context) {
@@ -726,14 +754,14 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &vec_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  PADDLE_ENFORCE_EQ(
-      x_shape_or_data.shape().size(),
-      2,
-      phi::errors::InvalidArgument("The rank of input X should be 2, but is %d",
-                                   x_shape_or_data.shape().size()));
+  PADDLE_ENFORCE_EQ(x_shape_or_data.shape().size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The rank of input X should be 2, but is %d",
+                        x_shape_or_data.shape().size()));
   PADDLE_ENFORCE_EQ(vec_shape_or_data.shape().size(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The rank of input Vec should be 1, but is %d",
                         vec_shape_or_data.shape().size()));
   infer_context->AddEqualCstr(x_shape_or_data.shape()[1],

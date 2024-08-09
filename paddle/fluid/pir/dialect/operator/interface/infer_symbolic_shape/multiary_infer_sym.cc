@@ -634,6 +634,36 @@ bool BilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
+bool CheckFiniteAndUnscaleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Retrieve the shape information of the input list
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::TensorListShapeOrDataDimExprs &xs_shapes =
+      infer_context->GetShapeOrDataForValue(operand_source)
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+  // Set the shapes for the output tensor list
+  symbol::TensorListShapeOrDataDimExprs outs_shapes;
+  outs_shapes.reserve(xs_shapes.size());
+  for (const auto &input_shape : xs_shapes) {
+    outs_shapes.emplace_back(input_shape.shape());
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{outs_shapes});
+
+  // Set the shape for the found_infinite output
+  symbol::TensorShapeOrDataDimExprs found_infinite_shape({symbol::DimExpr(1)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1), symbol::ShapeOrDataDimExprs{found_infinite_shape});
+
+  return true;
+}
+
+bool CheckFiniteAndUnscale_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return CheckFiniteAndUnscaleOpInferSymbolicShape(op, infer_context);
+}
+
 // bool CrfDecodingOpInferSymbolicShape(pir::Operation *op,
 //                                      pir::InferSymbolicShapeContext
 //                                      *infer_context) {
@@ -1287,6 +1317,31 @@ bool MeshgridOpInferSymbolicShape(
   pir::Value res = op->result(0);
   infer_context->SetShapeOrDataForValue(res, sym_shape_dim_exprs);
   return true;
+}
+
+bool MovingAverageAbsMaxScaleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Get shapes of input tensors
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &in_state_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const auto &in_accum_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  // Set shapes for output tensors
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+  infer_context->SetShapeOrDataForValue(
+      op->result(1), symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(1)}));
+  infer_context->SetShapeOrDataForValue(op->result(2), in_state_shape);
+  infer_context->SetShapeOrDataForValue(op->result(3), in_accum_shape);
+
+  return true;
+}
+
+bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return MovingAverageAbsMaxScaleOpInferSymbolicShape(op, infer_context);
 }
 
 // bool NceOpInferSymbolicShape(pir::Operation *op,
