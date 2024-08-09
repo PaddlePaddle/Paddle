@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -66,8 +66,10 @@ class FusedDropoutAdd(Layer):
 
     def __init__(
         self,
-        p: int = 0.5,
-        mode: str = "upscale_in_train",
+        p: float = 0.5,
+        mode: Literal[
+            'upscale_in_train', 'downscale_in_infer'
+        ] = "upscale_in_train",
         name: str | None = None,
     ) -> None:
         super().__init__()

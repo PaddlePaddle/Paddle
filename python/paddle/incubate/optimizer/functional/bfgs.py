@@ -14,13 +14,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
 import paddle
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle import Tensor
 
 from .line_search import strong_wolfe
@@ -32,16 +34,16 @@ from .utils import (
 
 
 def minimize_bfgs(
-    objective_func: Callable[[Tensor], float],
+    objective_func: Callable[[Tensor], Tensor],
     initial_position: Tensor,
     max_iters: int = 50,
     tolerance_grad: float = 1e-7,
     tolerance_change: float = 1e-9,
     initial_inverse_hessian_estimate: Tensor | None = None,
-    line_search_fn: str = 'strong_wolfe',
+    line_search_fn: Literal['strong wolfe', 'Hager Zhang'] = 'strong_wolfe',
     max_line_search_iters: int = 50,
     initial_step_length: float = 1.0,
-    dtype: str = 'float32',
+    dtype: Literal['float32', 'float64'] = 'float32',
     name: str | None = None,
 ) -> tuple[bool, int, Tensor, Tensor, Tensor, Tensor]:
     r"""
