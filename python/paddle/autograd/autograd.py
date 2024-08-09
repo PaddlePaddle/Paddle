@@ -471,7 +471,25 @@ def jacobian(
     ys: Sequence[Tensor],
     xs: Sequence[Tensor],
     batch_axis: int | None = ...,
-) -> tuple[tuple[Jacobian, ...], ...] | tuple[Jacobian, ...]:
+) -> tuple[tuple[Jacobian, ...], ...]:
+    ...
+
+
+@overload
+def jacobian(
+    ys: Tensor,
+    xs: Sequence[Tensor],
+    batch_axis: int | None = ...,
+) -> tuple[Jacobian, ...]:
+    ...
+
+
+@overload
+def jacobian(
+    ys: Sequence[Tensor],
+    xs: Tensor,
+    batch_axis: int | None = ...,
+) -> tuple[Jacobian, ...]:
     ...
 
 
