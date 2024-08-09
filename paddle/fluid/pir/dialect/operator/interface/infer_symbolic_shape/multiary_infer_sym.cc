@@ -1226,18 +1226,15 @@ bool RoiPoolOpInferSymbolicShape(
   const auto &input_dims =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto &rois_dim =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1).shape());
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
   const auto &rois_num =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
 
   int pooled_height =
       op->attribute<pir::Int32Attribute>("pooled_height").data();
   int pooled_width = op->attribute<pir::Int32Attribute>("pooled_width").data();
   int output_channels =
       op->attribute<pir::Int32Attribute>("output_channels").data();
-  float spatial_scale =
-      op->attribute<pir::FloatAttribute>("spatial_scale").data();
-
   PADDLE_ENFORCE_EQ(
       input_dims.size(),
       4,
@@ -1255,7 +1252,7 @@ bool RoiPoolOpInferSymbolicShape(
   const auto &four = symbol::DimExpr(4);
   infer_context->AddEqualCstr(rois_dim[1], four);
 
-  if (!rois_num.data().isa<symbol::NullShapeOrDataDimExpr>()) {
+  if (rois_num.size() > 0) {
     auto &rois_num_dim = rois_num.shape();
     PADDLE_ENFORCE_EQ(
         rois_num_dim.size(),
@@ -1271,7 +1268,7 @@ bool RoiPoolOpInferSymbolicShape(
 
   auto out_dims = input_dims;
 
-  out_dims[0] = rois_dims[0];
+  out_dims[0] = rois_num[0];
   out_dims[1] = symbol::DimExpr(output_channels);
   out_dims[2] = symbol::DimExpr(pooled_height);
   out_dims[3] = symbol::DimExpr(pooled_width);
