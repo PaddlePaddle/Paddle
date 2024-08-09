@@ -885,7 +885,7 @@ class FusedTransformerEncoderLayer(Layer):
         self,
         src: Tensor,
         src_mask: Tensor | None = ...,
-        cache: Tensor | None = ...,
+        cache: None = ...,
     ) -> Tensor:
         ...
 
@@ -895,15 +895,15 @@ class FusedTransformerEncoderLayer(Layer):
         src: Tensor,
         src_mask: Tensor | None = ...,
         cache: MultiHeadAttention.Cache = ...,
-    ) -> tuple[MultiHeadAttention.Cache]:
+    ) -> tuple[Tensor, MultiHeadAttention.Cache]:
         ...
 
     def forward(
         self,
-        src: Tensor,
-        src_mask: Tensor | None = None,
-        cache: Tensor | MultiHeadAttention.Cache | None = None,
-    ) -> tuple[Tensor, MultiHeadAttention.Cache]:
+        src,
+        src_mask=None,
+        cache=None,
+    ):
         """
 
         Applies a Transformer encoder layer on the input.
@@ -1581,21 +1581,21 @@ class FusedMultiTransformer(Layer):
         beam_offset: Tensor | None = ...,
         seq_lens: Tensor | None = ...,
         time_step: Tensor | None = ...,
-    ) -> tuple[Layer, Sequence[Tensor]]:
+    ) -> tuple[Tensor, Sequence[Tensor]]:
         ...
 
     def forward(
         self,
-        src: Tensor,
-        attn_mask: Tensor | None = None,
-        caches: Sequence[Tensor] | None = None,
-        pre_caches: Sequence[Tensor] | None = None,
-        rotary_embs: Tensor | None = None,
-        rotary_emb_dims: int = 0,
-        beam_offset: Tensor | None = None,
-        seq_lens: Tensor | None = None,
-        time_step: Tensor | None = None,
-    ) -> Tensor | tuple[Layer, Sequence[Tensor]]:
+        src,
+        attn_mask=None,
+        caches=None,
+        pre_caches=None,
+        rotary_embs=None,
+        rotary_emb_dims=0,
+        beam_offset=None,
+        seq_lens=None,
+        time_step=None,
+    ):
         r"""
         Applies multi transformer layers on the input.
 
