@@ -708,10 +708,7 @@ def launch() -> None:
                     logger.info(
                         "Get best config failed. Currently no config can be run."
                     )
-                if (
-                    "sharding_overlap" in cur_cfg
-                    and cur_cfg["sharding_overlap"]
-                ):
+                if cur_cfg.get("sharding_overlap"):
                     add_overlap_performance(
                         cur_cfg, tuner_cfg, recorder.history
                     )
@@ -811,10 +808,7 @@ def launch() -> None:
                         logger.info(
                             "Get best config failed. Currently no config can be run."
                         )
-                    if (
-                        "sharding_overlap" in cur_cfg
-                        and cur_cfg["sharding_overlap"]
-                    ):
+                    if cur_cfg.get("sharding_overlap"):
                         add_overlap_performance(
                             cur_cfg, tuner_cfg, recorder.history
                         )
@@ -1221,7 +1215,7 @@ def launch() -> None:
                 logger.info("Get best config failed, no config can be run.")
 
             # record history
-            if "sharding_overlap" in cur_cfg and cur_cfg["sharding_overlap"]:
+            if cur_cfg.get("sharding_overlap"):
                 add_overlap_performance(cur_cfg, tuner_cfg, recorder.history)
 
             recorder.store_history(history_file_path)

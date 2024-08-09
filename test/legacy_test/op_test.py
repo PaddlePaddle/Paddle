@@ -3394,7 +3394,7 @@ class OpTest(unittest.TestCase):
 
         # oneDNN numeric gradient should use CPU kernel
         use_onednn = False
-        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
+        if op_attrs.get("use_mkldnn"):
             op_attrs["use_mkldnn"] = False
             use_onednn = True
         if hasattr(self, "attrs"):
