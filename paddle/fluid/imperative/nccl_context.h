@@ -18,7 +18,7 @@
 #include <vector>
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_resource_pool.h"
 #endif
 
 #ifdef PADDLE_WITH_NCCL

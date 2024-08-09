@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from functools import reduce
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops
@@ -27,6 +27,8 @@ from paddle.base.framework import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from paddle import Tensor
     from paddle._typing import ShapeLike
 

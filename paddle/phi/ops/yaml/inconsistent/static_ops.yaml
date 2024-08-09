@@ -940,6 +940,7 @@
     param: [x, in_accum, in_state, moving_rate, is_test]
   optional : in_accum, in_state, out, out_state, out_accum
   inplace : (in_accum -> out_accum), (in_state -> out_state)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op: nce
   args: (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)

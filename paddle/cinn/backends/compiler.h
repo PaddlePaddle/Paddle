@@ -29,6 +29,9 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #endif
+#ifdef CINN_WITH_HIP
+#include "paddle/cinn/runtime/hip/hip_module.h"
+#endif
 
 namespace cinn {
 namespace backends {
@@ -131,6 +134,8 @@ class Compiler final {
 
   void RegisterCudaModuleSymbol();
 
+  void RegisterHipModuleSymbol();
+
   void CompileCudaModule(const ir::Module& module,
                          const std::string& code = "");
 
@@ -153,6 +158,9 @@ class Compiler final {
   std::string device_fn_code_;
 #ifdef CINN_WITH_CUDA
   std::unique_ptr<runtime::cuda::CUDAModule> cuda_module_;
+#endif
+#ifdef CINN_WITH_HIP
+  std::unique_ptr<runtime::hip::HIPModule> hip_module_;
 #endif
 };
 

@@ -78,7 +78,7 @@ if(WITH_GPU)
   nv_test(
     stream_safe_cuda_alloc_test
     SRCS stream_safe_cuda_alloc_test.cu
-    DEPS cuda_graph_with_memory_pool)
+    DEPS phi common)
   nv_test(
     cuda_managed_memory_test
     SRCS cuda_managed_memory_test.cu
@@ -86,7 +86,7 @@ if(WITH_GPU)
   nv_test(
     cuda_malloc_async_allocator_test
     SRCS cuda_malloc_async_allocator_test.cu
-    DEPS cuda_graph_with_memory_pool)
+    DEPS phi common)
   if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
     set_tests_properties(
       stream_safe_cuda_alloc_test

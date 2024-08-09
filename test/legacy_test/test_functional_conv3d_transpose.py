@@ -54,7 +54,8 @@ class TestFunctionalConv3DTransposeError(TestCase):
         self.weight_shape = (
             self.in_channels,
             self.out_channels // self.groups,
-        ) + filter_shape
+            *filter_shape,
+        )
         self.bias_shape = (self.out_channels,)
 
     def static_graph_case(self):

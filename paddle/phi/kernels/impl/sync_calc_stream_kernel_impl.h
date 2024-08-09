@@ -31,12 +31,12 @@ void SyncCalcStreamKernel(const Context &dev_ctx,
   auto place = dev_ctx.GetPlace();
   PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::XPU,
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Sync stream op can run on xpu place only for now."));
   dev_ctx.Wait();
 #else
-  PADDLE_THROW(
-      phi::errors::PreconditionNotMet("PaddlePaddle should compile with GPU."));
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle should compile with GPU."));
 #endif
 }
 }  // namespace phi

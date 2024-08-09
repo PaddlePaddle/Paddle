@@ -17,10 +17,10 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/buddy_allocator.h"
 #include "paddle/phi/core/memory/allocation/system_allocator.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace memory {

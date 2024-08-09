@@ -18,8 +18,8 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 

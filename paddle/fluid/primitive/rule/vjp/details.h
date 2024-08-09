@@ -369,36 +369,41 @@ void reduce_as_grad(const Tensor& x,
   if (!x_grad) {
     return;
   }
-  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
-  std::vector<int64_t> axis = common::vectorize<int64_t>(
-      get_reduce_dims_from_out(x.dims(), target.dims()));
-  int64_t axis_size = axis.size();
-  if (axis_size == 0) {
-    by_pass<T>(out_grad, x_grad);
-    return;
-  }
-  int64_t x_dim_size = x_dim.size();
-
-  auto x_grad_tmp = Tensor();
-  if (x_dim_size == 1) {
-    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+  if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+    auto x_grad_tmp = backend::expand_with_tensor<T>(out_grad, shape<T>(x));
+    set_output<T>(x_grad_tmp, x_grad);
   } else {
-    auto axis_ = std::vector<int64_t>();
-    for (int64_t i = 0; i < axis_size; i++) {
-      axis_.push_back(axis[i]);
-      if (axis[i] < 0) {
-        axis_[i] += x_dim_size;
-      }
+    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+    std::vector<int64_t> axis = common::vectorize<int64_t>(
+        get_reduce_dims_from_out(x.dims(), target.dims()));
+    int64_t axis_size = axis.size();
+    if (axis_size == 0) {
+      by_pass<T>(out_grad, x_grad);
+      return;
     }
-    Tensor out_grad_ = out_grad;
-    if (out_grad.shape().size() != x.shape().size()) {
-      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
-      out_grad_ = reshape<T>(out_grad, out_grad_shape);
-    }
-    x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
-  }
+    int64_t x_dim_size = x_dim.size();
 
-  set_output<T>(x_grad_tmp, x_grad);
+    auto x_grad_tmp = Tensor();
+    if (x_dim_size == 1) {
+      x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+    } else {
+      auto axis_ = std::vector<int64_t>();
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis_.push_back(axis[i]);
+        if (axis[i] < 0) {
+          axis_[i] += x_dim_size;
+        }
+      }
+      Tensor out_grad_ = out_grad;
+      if (out_grad.shape().size() != x.shape().size()) {
+        auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+        out_grad_ = reshape<T>(out_grad, out_grad_shape);
+      }
+      x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
+    }
+
+    set_output<T>(x_grad_tmp, x_grad);
+  }
 }
 
 template <typename T>
