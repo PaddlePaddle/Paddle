@@ -11,19 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 import copy
-from typing import List, Tuple, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.framework import core
+
+if TYPE_CHECKING:
+    from paddle.framework import core
 
 
-def get_coordinator(mesh: Union[np.array, List[List[int]]], rank: int):
+def get_coordinator(mesh: np.array | list[list[int]], rank: int):
     mesh = paddle.to_tensor(mesh)
     rand_coordinator = (mesh == rank).nonzero()
     assert rand_coordinator.shape[0] in (
@@ -46,10 +48,10 @@ def balanced_split(total_nums, num_of_pieces):
 
 
 def compute_local_shape_and_global_offset(
-    global_shape: List[int],
+    global_shape: list[int],
     process_mesh: core.ProcessMesh,
-    placements: List[core.Placement],
-) -> Tuple[Tuple[int], Tuple[int]]:
+    placements: list[core.Placement],
+) -> tuple[tuple[int], tuple[int]]:
     mesh = np.array(process_mesh.process_ids).reshape(process_mesh.shape)
     # deal with cross mesh case
     if paddle.distributed.get_rank() not in mesh:

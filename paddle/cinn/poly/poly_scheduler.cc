@@ -82,7 +82,7 @@ std::vector<Group> PartitionGraphByIterationDomain(cinn::common::Graph* graph) {
     for (auto& compute_at : node->stage->compute_ats()) {
       PADDLE_ENFORCE_EQ(compute_at.IsCompatible(node->stage.get()),
                         true,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The registered ComputeAt is not compatible."));
       // check the endpoints of compute_at has data dependency.
       auto* node0 = node;
@@ -133,7 +133,7 @@ std::vector<Group> PartitionGraphByIterationDomain(cinn::common::Graph* graph) {
   for (auto& group : groups) num_node_in_groups += group.nodes.size();
   PADDLE_ENFORCE_EQ(num_node_in_groups,
                     graph->num_nodes(),
-                    ::phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of nodes in groups should be the same as "
                         "the number of nodes in the graph"));
   // @}
@@ -231,7 +231,7 @@ std::vector<Group> TopoSortGroups(std::vector<Group>& groups) {  // NOLINT
         PADDLE_ENFORCE_EQ(
             edge->source()->id(),
             node->id(),
-            ::phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The edge source should be the same as the node"));
         auto* sink = edge->sink();
         if (all_nodes.count(sink->id()) == 0 &&
@@ -272,7 +272,7 @@ std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
     for (ComputeAtRelation& compute_at : node->stage->compute_ats()) {
       PADDLE_ENFORCE_EQ(compute_at.IsCompatible(node->stage.get()),
                         true,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The registered ComputeAt is not compatible."));
       // check the endpoints of compute_at has data dependency.
       auto* node0 = node;
@@ -280,7 +280,7 @@ std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
         continue;
         std::stringstream ss;
         ss << "Didn't find node with name " << compute_at.stage->id() << " !";
-        PADDLE_THROW(::phi::errors::InvalidArgument(ss.str()));
+        PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
       }
       auto* node1 = name2node[compute_at.stage->id()];
       VLOG(3) << "a -> b: " << node0->id() << " -> " << node1->id();
@@ -329,7 +329,7 @@ std::vector<Group> NaivePartitionGraph(cinn::common::Graph* graph) {
   PADDLE_ENFORCE_EQ(
       graph_node_count,
       graph->nodes().size(),
-      ::phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "the groups should contain all the nodes in the graph"));
 #endif
 
@@ -346,17 +346,17 @@ std::unique_ptr<Schedule> PolyScheduler::BuildSchedule() {
   PADDLE_ENFORCE_NE(
       dfg_groups.empty(),
       true,
-      phi::errors::InvalidArgument("DFG graph is empty! Please check."));
+      ::common::errors::InvalidArgument("DFG graph is empty! Please check."));
 
   // transform the DFG groups to schedule groups.
-  PADDLE_ENFORCE_NE(
-      schedule_graph_.nodes().empty(),
-      true,
-      phi::errors::InvalidArgument("Schedule graph is empty! Please check."));
-  PADDLE_ENFORCE_EQ(
-      schedule_graph_.nodes().size(),
-      dfg_->nodes().size(),
-      ::phi::errors::InvalidArgument("DFG graph is not match schedule graph"));
+  PADDLE_ENFORCE_NE(schedule_graph_.nodes().empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Schedule graph is empty! Please check."));
+  PADDLE_ENFORCE_EQ(schedule_graph_.nodes().size(),
+                    dfg_->nodes().size(),
+                    ::common::errors::InvalidArgument(
+                        "DFG graph is not match schedule graph"));
   schedule_groups_.clear();
   for (auto& dfg_group : dfg_groups) {
     ScheduleGroup group;
@@ -364,15 +364,15 @@ std::unique_ptr<Schedule> PolyScheduler::BuildSchedule() {
       auto* schedule_node = schedule_graph_.RetrieveNode(node->id());
       PADDLE_ENFORCE_NOT_NULL(
           schedule_node,
-          phi::errors::InvalidArgument("Missing node %s in schedule graph.",
-                                       node->id()));
+          ::common::errors::InvalidArgument(
+              "Missing node %s in schedule graph.", node->id()));
       group.nodes.push_back(schedule_node->safe_as<ScheduleGraphNode>());
     }
     schedule_groups_.emplace_back(std::move(group));
   }
   PADDLE_ENFORCE_EQ(schedule_groups_.size(),
                     dfg_groups.size(),
-                    ::phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The number of groups should be the same as the DFG "
                         "groups"));
 
@@ -398,7 +398,7 @@ PolyScheduler::PolyScheduler(
   PADDLE_ENFORCE_NE(
       stages.empty(),
       true,
-      phi::errors::InvalidArgument("No stage is provided! Please check."));
+      ::common::errors::InvalidArgument("No stage is provided! Please check."));
   // collect extra links
   auto _extra_links = extra_links;
   if (extra_links.empty()) {
@@ -417,24 +417,24 @@ std::vector<detail::Group> PolyScheduler::PartitionGroups(
     DataFlowGraph* graph) {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The DataFlowGraph pointer is null in PolyScheduler."));
   PADDLE_ENFORCE_NE(
       graph->nodes().empty(),
       true,
-      phi::errors::InvalidArgument("Graph is empty! Please check."));
+      ::common::errors::InvalidArgument("Graph is empty! Please check."));
   return detail::NaivePartitionGraph(graph);
 }
 
 void PolyScheduler::ScheduleAGroup(ScheduleGroup* group) {
   PADDLE_ENFORCE_NOT_NULL(
       group,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The ScheduleGroup pointer is null in ScheduleAGroup."));
   PADDLE_ENFORCE_NE(
       group->nodes.empty(),
       true,
-      phi::errors::InvalidArgument("Group is empty! Please check."));
+      ::common::errors::InvalidArgument("Group is empty! Please check."));
 
   // create scheduler for this group.
   std::vector<Stage*> stages;
@@ -450,7 +450,7 @@ void PolyScheduler::ScheduleAGroup(ScheduleGroup* group) {
 void PolyScheduler::ScheduleGroups() {
   PADDLE_ENFORCE_NE(schedule_groups_.empty(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    ::common::errors::PreconditionNotMet(
                         "You should call PartitionGroups first."));
   for (auto& group : schedule_groups_) {
     ScheduleAGroup(&group);
@@ -472,11 +472,11 @@ std::vector<Shared<ScheduleGraphNode>> PolyGroupScheduler::Build() {
   for (auto& link : compute_at_links) {
     PADDLE_ENFORCE_NE(stage_map.count(link.first),
                       0,
-                      ::phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The stage  is not found in the stage map"));
     PADDLE_ENFORCE_NE(stage_map.count(link.second.stage->tensor_->name),
                       0,
-                      ::phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The stage  is not found in the stage map"));
     auto* a = stage_map.at(link.first);
     auto* b = stage_map.at(link.second.stage->tensor_->name);
@@ -530,8 +530,9 @@ std::vector<Shared<ScheduleGraphNode>> PolyGroupScheduler::Build() {
 
 PolyGroupScheduler::PolyGroupScheduler(const std::vector<Stage*>& stages)
     : stages_(stages) {
-  PADDLE_ENFORCE_GT(
-      stages.size(), 0, ::phi::errors::InvalidArgument("No stage is provided"));
+  PADDLE_ENFORCE_GT(stages.size(),
+                    0,
+                    ::common::errors::InvalidArgument("No stage is provided"));
   for (auto* stage : stages) {
     AddStage(*stage);
   }

@@ -264,9 +264,11 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
 
         if 'invoke' in op_item:
             op_item['invoke']['args'] = [
-                args_map[param.strip()]
-                if param.strip() in args_map
-                else param.strip()
+                (
+                    args_map[param.strip()]
+                    if param.strip() in args_map
+                    else param.strip()
+                )
                 for param in op_item['invoke']['args'].split(',')
             ]
             return
@@ -344,9 +346,9 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                             scalar_configs
                             and args_item['name'] in scalar_configs
                         ):
-                            scalar_configs[
-                                op_args[key][args_item['name']]
-                            ] = scalar_configs[args_item['name']]
+                            scalar_configs[op_args[key][args_item['name']]] = (
+                                scalar_configs[args_item['name']]
+                            )
                         if (
                             int_array_configs
                             and args_item['name'] in int_array_configs
@@ -416,9 +418,9 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                         double_grad_item["backward_composite"] is not None
                         and phi_triple_grad_op_name != triple_grad_op_name
                     ):
-                        double_grad_item[
-                            "backward_composite"
-                        ] = triple_grad_op_name
+                        double_grad_item["backward_composite"] = (
+                            triple_grad_op_name
+                        )
                     double_grad_item['backward'] = triple_grad_op_name
                     triple_grad_item['op_name'] = triple_grad_op_name
                     add_grad_op_compat_name(triple_grad_item, args_map)
@@ -519,15 +521,15 @@ def parse_get_expected_kerneltype(
                 new_get_expected_kernel_type_func_map[
                     delete_last_underline(key)
                 ] = value
-            op_comp_map[
-                'get_expected_kernel_type'
-            ] = new_get_expected_kernel_type_func_map
+            op_comp_map['get_expected_kernel_type'] = (
+                new_get_expected_kernel_type_func_map
+            )
             if fw_name in op_comp_map['get_expected_kernel_type']:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if fw_name in fw_op_dict:
-                    fw_op_dict[fw_name][
-                        "get_expected_kernel_type"
-                    ] = op_comp_map['get_expected_kernel_type'][fw_name]
+                    fw_op_dict[fw_name]["get_expected_kernel_type"] = (
+                        op_comp_map['get_expected_kernel_type'][fw_name]
+                    )
             if "backward" in op_comp_map:
                 bw_names = [
                     bw_name.split('(')[0].strip()
@@ -539,9 +541,9 @@ def parse_get_expected_kerneltype(
                         bw_name in bw_op_dict
                         and bw_name in op_comp_map['get_expected_kernel_type']
                     ):
-                        bw_op_dict[bw_name][
-                            "get_expected_kernel_type"
-                        ] = op_comp_map['get_expected_kernel_type'][bw_name]
+                        bw_op_dict[bw_name]["get_expected_kernel_type"] = (
+                            op_comp_map['get_expected_kernel_type'][bw_name]
+                        )
 
 
 def parse_keep_signature(

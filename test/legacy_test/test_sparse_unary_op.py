@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.base.framework import convert_np_dtype_to_dtype_
+from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
 
 devices = ['cpu', 'gpu']
 
@@ -150,6 +150,240 @@ class TestSparseUnary(unittest.TestCase):
                     attr1,
                     attr2,
                 )
+
+    def test_sparse_abs(self):
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float16')
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float32')
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float64')
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'complex64')
+        self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'complex128')
+
+    def test_sparse_sin(self):
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'float16')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'float32')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'float64')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'complex64')
+        self.compare_with_dense(paddle.sin, paddle.sparse.sin, 'complex128')
+
+    def test_sparse_tan(self):
+        self.compare_with_dense(paddle.tan, paddle.sparse.tan)
+
+    def test_sparse_asin(self):
+        self.compare_with_dense(paddle.asin, paddle.sparse.asin)
+
+    def test_sparse_atan(self):
+        self.compare_with_dense(paddle.atan, paddle.sparse.atan)
+
+    def test_sparse_tanh(self):
+        self.compare_with_dense(paddle.tanh, paddle.sparse.tanh)
+
+    def test_sparse_asinh(self):
+        self.compare_with_dense(paddle.asinh, paddle.sparse.asinh)
+
+    def test_sparse_atanh(self):
+        self.compare_with_dense(paddle.atanh, paddle.sparse.atanh)
+
+    def test_sparse_sqrt(self):
+        self.compare_with_dense(paddle.sqrt, paddle.sparse.sqrt)
+
+    def test_sparse_square(self):
+        self.compare_with_dense(paddle.square, paddle.sparse.square)
+
+    def test_sparse_log1p(self):
+        self.compare_with_dense(paddle.log1p, paddle.sparse.log1p)
+
+    def test_sparse_relu(self):
+        self.compare_with_dense(paddle.nn.ReLU(), paddle.sparse.nn.ReLU())
+
+    def test_sparse_relu6(self):
+        self.compare_with_dense(paddle.nn.ReLU6(), paddle.sparse.nn.ReLU6())
+
+    def test_sparse_leaky_relu(self):
+        self.compare_with_dense(
+            paddle.nn.LeakyReLU(0.1), paddle.sparse.nn.LeakyReLU(0.1)
+        )
+
+    def test_sparse_sinh(self):
+        self.compare_with_dense(paddle.sinh, paddle.sparse.sinh)
+
+    def test_sparse_expm1(self):
+        self.compare_with_dense(paddle.expm1, paddle.sparse.expm1)
+
+    def test_sparse_deg2rad(self):
+        self.compare_with_dense(paddle.deg2rad, paddle.sparse.deg2rad)
+
+    def test_sparse_rad2deg(self):
+        self.compare_with_dense(paddle.rad2deg, paddle.sparse.rad2deg)
+
+    def test_sparse_neg(self):
+        self.compare_with_dense(paddle.neg, paddle.sparse.neg)
+
+    def test_sparse_pow(self):
+        self.compare_with_dense_one_attr(paddle.pow, paddle.sparse.pow, 3)
+
+    def test_sparse_mul_scalar(self):
+        self.compare_with_dense_one_attr(
+            paddle.Tensor.__mul__, paddle.sparse.multiply, 3
+        )
+
+    def test_sparse_div_scalar(self):
+        self.compare_with_dense_one_attr(
+            paddle.Tensor.__div__, paddle.sparse.divide, 2
+        )
+
+    def test_sparse_cast(self):
+        self.compare_with_dense_two_attr(
+            paddle.cast, paddle.sparse.cast, 'int32', 'float32'
+        )
+        self.compare_with_dense_two_attr(
+            paddle.cast, paddle.sparse.cast, 'int32', 'float64'
+        )
+
+
+class TestSparseUnaryStatic(unittest.TestCase):
+    '''
+    test sparse unary op with static graph in pir mode
+    static graph only support sparse coo format
+    '''
+
+    def check_result_coo(
+        self, dense_func, sparse_func, device='cpu', dtype='float32', *args
+    ):
+        paddle.set_device(device)
+        if dtype == 'complex64':
+            origin_x_real = paddle.rand([8, 16, 32], 'float32')
+            origin_x_com = paddle.rand([8, 16, 32], 'float32')
+            origin_x = (origin_x_real + 1j * origin_x_com).astype('complex64')
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype("float32")
+            n = 0
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype("float32")
+                n += 1
+                if n > 1000:
+                    mask[0] = 1
+                    break
+        elif dtype == 'complex128':
+            origin_x_real = paddle.rand([8, 16, 32], 'float64')
+            origin_x_com = paddle.rand([8, 16, 32], 'float64')
+            origin_x = (origin_x_real + 1j * origin_x_com).astype('complex128')
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
+            n = 0
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype("float64")
+                n += 1
+                if n > 1000:
+                    mask[0] = 1
+                    break
+        else:
+            origin_x = paddle.rand([8, 16, 32], dtype)
+            mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+            n = 0
+            while paddle.sum(mask) == 0:
+                mask = paddle.randint(0, 2, [8, 16, 32]).astype(dtype)
+                n += 1
+                if n > 1000:
+                    mask[0] = 1
+                    break
+
+        # --- check sparse coo with dense --- #
+        dense_x = origin_x * mask
+        indices_data, values_data = (
+            dense_x.detach().to_sparse_coo(sparse_dim=dense_x.ndim).indices(),
+            dense_x.detach().to_sparse_coo(sparse_dim=dense_x.ndim).values(),
+        )
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x_indices = paddle.static.data(
+                name="x_indices",
+                shape=indices_data.shape,
+                dtype=indices_data.dtype,
+            )
+            x_values = paddle.static.data(
+                name="x_values",
+                shape=values_data.shape,
+                dtype=values_data.dtype,
+            )
+            sparse_x = paddle.sparse.sparse_coo_tensor(
+                x_indices,
+                x_values,
+                shape=dense_x.shape,
+                dtype=dense_x.dtype,
+            )
+            if len(args) == 0:
+                sparse_out = sparse_func(sparse_x)
+            elif len(args) == 1:
+                sparse_out = sparse_func(sparse_x, args[0])
+            elif len(args) == 2:
+                sparse_out = sparse_func(sparse_x, args[0], args[1])
+            exe = paddle.static.Executor()
+            sp_fetch = exe.run(
+                feed={
+                    "x_indices": x_indices.numpy(),
+                    "x_values": x_values.numpy(),
+                },
+                fetch_list=[sparse_out],
+                return_numpy=False,
+            )
+            sp_out = sp_fetch[0]
+
+        dense_x.stop_gradient = False
+        if len(args) == 0:
+            dense_out = dense_func(dense_x)
+        elif len(args) == 1:
+            dense_out = dense_func(dense_x, args[0])
+        elif len(args) == 2:
+            if dense_func == paddle.cast:
+                dense_out = dense_func(dense_x, args[1])
+
+                int_dtype = convert_np_dtype_to_dtype_(args[0])
+                # only support coo format
+                self.assertEqual(sp_out.indices().dtype, int_dtype)
+            else:
+                dense_out = dense_func(dense_x, args[0], args[1])
+        np.testing.assert_allclose(
+            sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-05
+        )
+        paddle.disable_static()
+
+    def compare_with_dense(self, dense_func, sparse_func, dtype='float32'):
+        if in_pir_mode():
+            for device in devices:
+                # The sparse unary op is only compatible with float16 on the CUDA.
+                if (device == 'cpu' and dtype != 'float16') or (
+                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                ):
+                    self.check_result_coo(
+                        dense_func, sparse_func, device, dtype
+                    )
+
+    def compare_with_dense_one_attr(self, dense_func, sparse_func, attr1):
+        if in_pir_mode():
+            for device in devices:
+                if device == 'cpu' or (
+                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                ):
+                    self.check_result_coo(
+                        dense_func, sparse_func, device, 'float32', attr1
+                    )
+
+    def compare_with_dense_two_attr(
+        self, dense_func, sparse_func, attr1, attr2
+    ):
+        if in_pir_mode():
+            for device in devices:
+                if device == 'cpu' or (
+                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                ):
+                    self.check_result_coo(
+                        dense_func,
+                        sparse_func,
+                        device,
+                        'float32',
+                        attr1,
+                        attr2,
+                    )
 
     def test_sparse_abs(self):
         self.compare_with_dense(paddle.abs, paddle.sparse.abs, 'float16')

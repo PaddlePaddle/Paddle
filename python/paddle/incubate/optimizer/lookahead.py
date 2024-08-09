@@ -111,6 +111,7 @@ class LookAhead(Optimizer):
             >>> train(layer, loader, loss_fn, lookahead)
 
     """
+
     _slow_str = "slow"
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5, name=None):

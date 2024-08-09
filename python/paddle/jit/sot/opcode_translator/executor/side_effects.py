@@ -101,10 +101,10 @@ class SideEffects:
 
 class SideEffectRestorer:
     def pre_gen(self, codegen: PyCodeGen):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def post_gen(self, codegen: PyCodeGen):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class DictSideEffectRestorer(SideEffectRestorer):

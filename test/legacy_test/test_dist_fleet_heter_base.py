@@ -51,9 +51,9 @@ class FleetDistHeterRunnerBase:
         if args.role.upper() == "PSERVER":
             environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
             environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
-            environs[
-                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"
-            ] = all_heter_trainer_endpoints
+            environs["PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = (
+                all_heter_trainer_endpoints
+            )
             environs["POD_IP"] = args.endpoints.split(",")[
                 int(args.current_id)
             ].split(":")[0]
@@ -77,12 +77,12 @@ class FleetDistHeterRunnerBase:
             environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
             environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
             environs["PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST"] = next_endpoints
-            environs[
-                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"
-            ] = previous_endpoints
-            environs[
-                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"
-            ] = all_heter_trainer_endpoints
+            environs["PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"] = (
+                previous_endpoints
+            )
+            environs["PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = (
+                all_heter_trainer_endpoints
+            )
             environs["HETER_DEVICE_TYPE"] = heter_device
             environs["TRAINING_ROLE"] = args.role.upper()
             environs["POD_IP"] = all_heter_trainer_endpoints.split(",")[
@@ -102,13 +102,13 @@ class FleetDistHeterRunnerBase:
         elif args.role.upper() == "TRAINER":
             environs["PADDLE_PSERVERS_IP_PORT_LIST"] = args.endpoints
             environs["PADDLE_TRAINER_ENDPOINTS"] = args.trainer_endpoints
-            environs[
-                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST"
-            ] = heter_trainer_endpoints[0]
+            environs["PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST"] = (
+                heter_trainer_endpoints[0]
+            )
             environs["PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST"] = ""
-            environs[
-                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"
-            ] = all_heter_trainer_endpoints
+            environs["PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST"] = (
+                all_heter_trainer_endpoints
+            )
             environs["HETER_DEVICE_TYPE"] = "cpu"
             environs["TRAINING_ROLE"] = args.role.upper()
             environs["PADDLE_TRAINER_ID"] = args.current_id
