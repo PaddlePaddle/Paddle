@@ -624,8 +624,8 @@ bool LuUnpackOpInferSymbolicShape(
     std::vector<symbol::DimExpr> l_shape = x_shape;
     std::vector<symbol::DimExpr> u_shape = x_shape;
     if (m.isa<int64_t>() && n.isa<int64_t>()) {
-      int m_value = static_cast<int>(m.Get<std::int64_t>());
-      int n_value = static_cast<int>(n.Get<std::int64_t>());
+      int64_t m_value = static_cast<int64_t>(m.Get<std::int64_t>());
+      int64_t n_value = static_cast<int64_t>(n.Get<std::int64_t>());
       if (m_value >= n_value) {
         l_shape[x_rank - 1] = n;
       } else {
