@@ -1234,20 +1234,11 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
     axis += x_rank;
   }
 
-  PADDLE_ENFORCE_GE(
-      axis,
-      0,
-      common::errors::InvalidArgument(
-          "Attr(axis) value should be in range [-R, R-1], R is the rank of "
-          "Input(X). "
-          "But received axis: %d, R: %d. Current Input(X)'s shape is=[%s].",
-          axis,
-          x_rank,
-          x_shape));
+  bool axis_valid = (axis >= 0) && (axis < x_rank);
 
-  PADDLE_ENFORCE_LT(
-      axis,
-      x_rank,
+  PADDLE_ENFORCE_EQ(
+      axis_valid,
+      true,
       common::errors::InvalidArgument(
           "Attr(axis) value should be in range [-R, R-1], R is the rank of "
           "Input(X). "
