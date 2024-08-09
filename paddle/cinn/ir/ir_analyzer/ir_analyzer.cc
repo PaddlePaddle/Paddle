@@ -191,9 +191,8 @@ DeviceAPI GetDeviceAPI(const std::vector<Expr>& exprs) {
 }
 
 Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      true,
       phi::errors::InvalidArgument(
           "The block is not convertible to ir::ScheduleBlockRealize. It must "
           "be convertible to ir::ScheduleBlockRealize."));
