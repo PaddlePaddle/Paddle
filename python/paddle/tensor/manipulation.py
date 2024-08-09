@@ -203,6 +203,13 @@ def cast(x: Tensor, dtype: DTypeLike) -> Tensor:
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
 
+    The following picture shows an example where a tensor of type float64 is cast to a tensor of type uint8.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/cast.png
+        :width: 800
+        :alt: legend of reshape API
+        :align: center
+
     Args:
         x (Tensor): An input N-D Tensor with data type bool, float16,
             float32, float64, int32, int64, uint8.
