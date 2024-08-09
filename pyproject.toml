@@ -92,7 +92,9 @@ select = [
 
     # Ruff-specific rules
     "RUF010",
+    "RUF013",
     "RUF017",
+    "RUF019",
     "RUF100",
 
     # Flake8-raise
