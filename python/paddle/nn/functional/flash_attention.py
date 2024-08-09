@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Generator, Literal, overload
 
 import paddle
 import paddle.nn.functional as F
@@ -1218,6 +1217,7 @@ def flashmask_attention(
         or return_softmax_lse
     ):
         is_unpad = False
+
     else:
         is_unpad = bool(
             (paddle.diff(startend_row_indices[0, 0, :, 0]) >= 0).all()
