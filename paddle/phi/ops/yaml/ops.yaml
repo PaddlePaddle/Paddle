@@ -3845,6 +3845,7 @@
   optional : bias, residual, norm_bias, residual_out
   intermediate : inv_var
   backward : rms_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon = 1.0e-10f, float decay = 0.9f, float momentum = 0.0f, bool centered = false, bool multi_precision = false)

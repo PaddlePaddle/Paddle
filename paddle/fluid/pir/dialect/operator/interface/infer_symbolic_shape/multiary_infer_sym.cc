@@ -1257,12 +1257,46 @@ bool MeshgridOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool RmsNormOpInferSymbolicShape(pir::Operation *op,
-//                                  pir::InferSymbolicShapeContext
-//                                  *infer_context) {
-//   // pass
-//   return true;
-// }
+bool RmsNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape.shape();
+  size_t x_dims_size = x_dims.size();
+
+  symbol::DimExpr normalized_dims(1);
+  int begin_norm_axis =
+      op->attribute<pir::Int32Attribute>("begin_norm_axis").data();
+  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
+    normalized_dims = normalized_dims * x_dims[i];
+  }
+
+  const auto &norm_weight_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const std::vector<symbol::DimExpr> norm_weight_dims =
+      norm_weight_shape.shape();
+
+  infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+
+  if (op->result(2)) {
+    std::vector<symbol::DimExpr> inv_var_dims(x_dims.begin(),
+                                              x_dims.begin() + begin_norm_axis);
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(inv_var_dims)});
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+
+  return true;
+}
 
 // bool RoiPoolOpInferSymbolicShape(pir::Operation *op,
 //                                  pir::InferSymbolicShapeContext
