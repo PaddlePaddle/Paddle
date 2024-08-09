@@ -1174,11 +1174,12 @@ bool NormOpInferSymbolicShape(pir::Operation *op,
   if (!is_test) {
     if (axis < 0) axis += x_shape.size();
 
-    x_shape[axis] = symbol::DimExpr(1);
+    auto norm_shape = x_shape;
+    norm_shape[axis] = symbol::DimExpr(1);
     infer_context->SetShapeOrDataForValue(
         op->result(1),
         symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(x_shape)});
+            symbol::TensorShapeOrDataDimExprs(norm_shape)});
   }
 
   return true;
