@@ -87,7 +87,7 @@ class FusedLinear(Layer):
         bias_attr: ParamAttrLike | None = None,
         transpose_weight: bool = False,
         name: str | None = None,
-    ):
+    ) -> None:
         super().__init__()
         if transpose_weight:
             weight_shape = [out_features, in_features]
