@@ -14,12 +14,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generic, TypeVar
+from collections.abc import Iterable, Iterator
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
 
 
 class OrderedSet(Generic[T]):
