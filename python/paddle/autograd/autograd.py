@@ -476,10 +476,10 @@ def jacobian(
 
 
 def jacobian(
-    ys: Tensor | Sequence[Tensor],
-    xs: Tensor | Sequence[Tensor],
-    batch_axis: int | None = None,
-) -> tuple[tuple[Jacobian, ...], ...] | tuple[Jacobian, ...] | Jacobian:
+    ys,
+    xs,
+    batch_axis=None,
+):
     r"""
     Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
@@ -588,10 +588,10 @@ def hessian(
 
 
 def hessian(
-    ys: Tensor,
-    xs: Tensor | Sequence[Tensor],
-    batch_axis: int | None = None,
-) -> tuple[tuple[Hessian, ...], ...] | Hessian:
+    ys,
+    xs,
+    batch_axis=None,
+):
     r"""
     Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
