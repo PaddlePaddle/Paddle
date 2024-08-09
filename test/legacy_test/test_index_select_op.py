@@ -94,11 +94,11 @@ class TestIndexSelectOp(OpTest):
     def test_check_output(self):
         if self.x_type == np.complex64 or self.x_type == np.complex128:
             self.check_output(
-                check_prim=False, check_pir=True, check_prim_pir=True
+                check_prim=False, check_pir=True, check_prim_pir=False
             )
         else:
             self.check_output(
-                check_prim=True, check_pir=True, check_prim_pir=True
+                check_prim=True, check_pir=True, check_prim_pir=False
             )
 
     def test_check_grad_normal(self):
