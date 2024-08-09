@@ -93,7 +93,7 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         # FIXME(zjl): the original logic of create_lod_tensor would append
         # 1 to the shape. Maybe it is not a right way? Currently, we only
         # follow the previous logic
-        arr = arr.reshape(arr.shape + (1,))
+        arr = arr.reshape((*arr.shape, 1))
         tensor = core.LoDTensor()
         tensor.set(arr, place)
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
@@ -166,7 +166,7 @@ def create_random_int_lodtensor(
     """
     assert isinstance(base_shape, list), "base_shape should be a list"
     # append the total number of basic elements to the front of its shape
-    overall_shape = [sum(recursive_seq_lens[-1])] + base_shape
+    overall_shape = [sum(recursive_seq_lens[-1]), *base_shape]
     # the range of integer data elements is [low, high]
     data = np.random.random_integers(low, high, overall_shape).astype("int64")
     return create_lod_tensor(data, recursive_seq_lens, place)

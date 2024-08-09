@@ -1025,7 +1025,7 @@ def _append_backward_ops_with_checkpoints_(
             start_idx += 1
 
     if segments != [] and segments[0][0] != 0:
-        recompute_segments = [[0, segments[0][0]]] + segments
+        recompute_segments = [[0, segments[0][0]], *segments]
     else:
         recompute_segments = segments
 

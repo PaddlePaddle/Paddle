@@ -50,14 +50,6 @@ if(WITH_DGC)
   set(dgc_deps dgc)
 endif()
 
-if(WITH_GPU OR WITH_ROCM)
-  set(GPU_CTX_DEPS phi common)
-endif()
-
-if(WITH_XPU)
-  set(XPU_CTX_DEPS phi common)
-endif()
-
 if(WITH_IPU)
   set(IPU_CTX_DEPS ipu_info)
 else()
@@ -109,30 +101,16 @@ cc_library(
        cpu_helper
        framework_proto
        ${IPU_CTX_DEPS}
-       ${GPU_CTX_DEPS}
        ${ONEDNN_CTX_DEPS}
        ${dgc_deps}
        dlpack
        phi
-       common
-       ${XPU_CTX_DEPS})
+       common)
 
 cc_library(
   collective_helper
   SRCS collective_helper.cc gen_comm_id_helper.cc
   DEPS framework_proto device_context phi common)
-
-if(WITH_GPU OR WITH_ROCM)
-  target_link_libraries(device_context gpu_resource_pool)
-endif()
-
-if(WITH_XPU)
-  target_link_libraries(device_context xpu_resource_pool)
-endif()
-
-if(WITH_CUSTOM_DEVICE)
-  target_link_libraries(device_context custom_device_resource_pool)
-endif()
 
 cc_test(
   init_test
@@ -141,45 +119,12 @@ cc_test(
 
 # Manage all device event library
 set(DEVICE_EVENT_LIBS)
-cc_library(
-  device_event_base
-  SRCS device_event_base.cc
-  DEPS device_context op_registry phi common)
-set(DEVICE_EVENT_LIBS
-    device_event_base
-    CACHE INTERNAL "device event libs")
 
 if(WITH_GPU)
-  nv_library(
-    device_event_gpu
-    SRCS device_event_gpu.cc
-    DEPS device_event_base)
-  set(DEVICE_EVENT_LIBS
-      device_event_gpu
-      CACHE INTERNAL "device event libs")
-  if(WITH_CUSTOM_DEVICE)
-    nv_test(
-      device_event_test
-      SRCS device_event_test.cc
-      DEPS device_event_gpu device_event_custom_device)
-  else()
-    nv_test(
-      device_event_test
-      SRCS device_event_test.cc
-      DEPS device_event_gpu)
-  endif()
-  if(WITH_CUSTOM_DEVICE)
-    nv_library(
-      cuda_graph_with_memory_pool
-      SRCS cuda_graph_with_memory_pool.cc
-      DEPS ${DEVICE_EVENT_LIBS} device_event_custom_device device_context phi
-           common)
-  else()
-    nv_library(
-      cuda_graph_with_memory_pool
-      SRCS cuda_graph_with_memory_pool.cc
-      DEPS ${DEVICE_EVENT_LIBS} device_context phi common)
-  endif()
+  nv_test(
+    device_event_test
+    SRCS device_event_test.cc
+    DEPS phi common)
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -187,33 +132,14 @@ if(WITH_GPU)
   nv_test(
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
-    DEPS device_context phi common cuda_graph_with_memory_pool)
-else()
-  cc_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
     DEPS device_context phi common)
 endif()
 
 if(WITH_ROCM)
-  hip_library(
-    device_event_gpu
-    SRCS device_event_gpu.cc
-    DEPS device_event_base)
-  set(DEVICE_EVENT_LIBS
-      device_event_gpu
-      CACHE INTERNAL "device event libs")
-  if(WITH_CUSTOM_DEVICE)
-    hip_test(
-      device_event_test
-      SRCS device_event_test.cc
-      DEPS device_event_gpu device_event_custom_device)
-  else()
-    hip_test(
-      device_event_test
-      SRCS device_event_test.cc
-      DEPS device_event_gpu)
-  endif()
+  hip_test(
+    device_event_test
+    SRCS device_event_test.cc
+    DEPS phi common)
   hip_test(
     device_context_test
     SRCS device_context_test.cu
@@ -243,32 +169,10 @@ cc_test(
 
 add_subdirectory(profiler)
 
-if(WITH_GPU)
-  nv_library(
-    profiler
-    SRCS profiler.cc profiler.cu
-    DEPS phi common op_proto_maker shape_inference)
-elseif(WITH_ROCM)
-  hip_library(
-    profiler
-    SRCS profiler.cc profiler.cu
-    DEPS phi common op_proto_maker shape_inference)
-elseif(WITH_XPU)
-  cc_library(
-    profiler
-    SRCS profiler.cc
-    DEPS phi common op_proto_maker shape_inference)
-else()
-  cc_library(
-    profiler
-    SRCS profiler.cc
-    DEPS phi common op_proto_maker shape_inference)
-endif()
-
 cc_test(
   profiler_test
   SRCS profiler_test.cc
-  DEPS profiler)
+  DEPS phi common)
 cc_test(
   float16_test
   SRCS float16_test.cc
@@ -319,16 +223,6 @@ if(NOT APPLE AND NOT WIN32)
       SRCS device_code_test.cc
       DEPS phi common lod_tensor)
   endif()
-endif()
-
-if(WITH_CUSTOM_DEVICE)
-  cc_library(
-    device_event_custom_device
-    SRCS device_event_custom_device.cc
-    DEPS device_event_base custom_device_resource_pool)
-  set(DEVICE_EVENT_LIBS
-      ${DEVICE_EVENT_LIBS} device_event_custom_device
-      CACHE INTERNAL "device event libs")
 endif()
 
 cc_library(

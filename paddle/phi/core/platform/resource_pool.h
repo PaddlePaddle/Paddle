@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "glog/logging.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/platform/enforce.h"
 

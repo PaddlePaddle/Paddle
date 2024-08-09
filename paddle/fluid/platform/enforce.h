@@ -99,7 +99,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 // Note: this header for simplify HIP and CUDA type string
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #endif
 
 COMMON_DECLARE_int32(call_stack_level);
