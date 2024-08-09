@@ -20,7 +20,6 @@ import multiprocessing
 import random
 import sys
 import warnings
-from collections.abc import Generator
 from itertools import zip_longest
 from queue import Queue
 from threading import Thread
@@ -28,6 +27,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Generator,
     TypedDict,
     TypeVar,
     overload,
