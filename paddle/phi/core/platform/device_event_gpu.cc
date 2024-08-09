@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/core/platform/device_event_base.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace paddle {

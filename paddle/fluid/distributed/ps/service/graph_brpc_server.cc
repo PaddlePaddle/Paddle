@@ -23,7 +23,7 @@
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_server.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler.h"
 namespace paddle::distributed {
 
 #define CHECK_TABLE_EXIST(table, request, response)        \

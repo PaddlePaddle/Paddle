@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-#include "paddle/fluid/platform/device/custom/custom_device_resource_pool.h"
+#include "paddle/phi/core/platform/device/custom/custom_device_resource_pool.h"
 
 namespace paddle {
 namespace platform {
