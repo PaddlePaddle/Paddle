@@ -1170,14 +1170,17 @@ bool MinOpInferSymbolicShape(pir::Operation *op,
 
 bool MeanOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
+  const auto &axis_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
   bool keepdim = GetBoolAttr(op, "keepdim");
 
   const std::vector<int64_t> axis = [&] {
     pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
     std::vector<int64_t> axis_vec;
     if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
-      axis_vec = details::GetVectorAttr(
-          axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+      ExprVec axis_expr_vec = details::GetOrCreateExprVecFromData(
+          axis_shape_or_data, infer_context);
+      axis_vec = details::VecExpr2Int64(axis_expr_vec);
     } else {
       // TODO(lanxianghit): there's other source: pir::VectorType,
       // paddle::dialect::DenseTensorType, but after PRIM, maybe always
@@ -1306,7 +1309,14 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
   const auto &depth_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  int depth = depth_shape_or_data.data().value().at(0).Get<int64_t>();
+  if (depth_shape_or_data.data().has_value()) {
+    int depth = depth_shape_or_data.data().value().at(0).Get<int64_t>();
+  } else {
+    PADDLE_ENFORCE_EQ(!depth_shape_or_data.data().has_value(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The depth should have data! Please check."));
+  }
 
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims = x_dims;
