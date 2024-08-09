@@ -20,7 +20,7 @@ import typing
 import warnings
 import weakref
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Sequence, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Union
 
 import numpy as np
 from typing_extensions import Self
@@ -55,6 +55,8 @@ from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
     from paddle.nn.initializer import Initializer
 

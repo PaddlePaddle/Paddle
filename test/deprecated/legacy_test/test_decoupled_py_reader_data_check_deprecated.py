@@ -58,10 +58,10 @@ class TestClass(unittest.TestCase):
             startup_prog = base.Program()
             with base.program_guard(main_prog, startup_prog):
                 img = paddle.static.data(
-                    shape=[-1] + img_shape, dtype='float32', name='image'
+                    shape=[-1, *img_shape], dtype='float32', name='image'
                 )
                 label = paddle.static.data(
-                    shape=[-1] + label_shape, dtype='int64', name='label'
+                    shape=[-1, *label_shape], dtype='int64', name='label'
                 )
 
                 feeder = base.DataFeeder(feed_list=[img, label], place=p)
