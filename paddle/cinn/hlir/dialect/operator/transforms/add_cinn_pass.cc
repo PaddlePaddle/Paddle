@@ -54,6 +54,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_debug);
@@ -127,11 +128,14 @@ void ApplyCinnPreprocessPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   bool has_dynamic_shape = HasDynamicShape(*program);
 
+  pass_manager->AddPass(pir::CreateFusedGemmEpiloguePass());
   if (has_dynamic_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
+
+  // pass_manager->EnableIRPrinting();
 
   pass_manager->Run(program);
 }
@@ -218,6 +222,7 @@ void ApplyCinnLowerPass(
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
+  pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
