@@ -3233,6 +3233,7 @@
   kernel :
     func : mode
   backward : mode_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)
