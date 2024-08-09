@@ -346,8 +346,10 @@ def try_load_model_vars(
                         np.array(
                             np.random.random(
                                 tuple(
-                                    [batch_size,
-                                     *feed_config.feeded_vars_dims[i]]
+                                    [
+                                        batch_size,
+                                        *list(feed_config.feeded_vars_dims[i]),
+                                    ]
                                 )
                             ),
                             dtype=feed_config.feeded_vars_types[i],
@@ -357,8 +359,10 @@ def try_load_model_vars(
                     t = np.array(
                         np.random.random(
                             tuple(
-                                [batch_size,
-                                 *feed_config.feeded_vars_dims[i]]
+                                [
+                                    batch_size,
+                                    *list(feed_config.feeded_vars_dims[i]),
+                                ]
                             )
                         ),
                         dtype=feed_config.feeded_vars_types[i],

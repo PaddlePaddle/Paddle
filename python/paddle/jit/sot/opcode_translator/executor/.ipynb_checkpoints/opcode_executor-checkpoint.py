@@ -2027,12 +2027,14 @@ class OpcodeExecutor(OpcodeExecutorBase):
         loop_body_read_names, loop_body_write_names = analysis_used_names(
             self._instructions, loop_body_start_idx, loop_body_end_idx
         )
-        loop_body_inputs = [self._find_names_in_space(
+        loop_body_inputs = [
+            *self._find_names_in_space(
                 loop_body_read_names | loop_body_write_names,
                 (Space.locals, Space.cells),
-            ), 
-            "_break_flag"]
-        loop_body_outputs = [*loop_body_write_names, "_break_flag"]
+            ),
+            "_break_flag",
+        ]
+        loop_body_outputs = [*list(loop_body_write_names), "_break_flag"]
 
         def create_loop_body():
             pycode_gen = PyCodeGen(self._frame)
@@ -2218,10 +2220,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # why add write_names as input? check case in test/sot/test_12_for_loop.py
         # test_for_without_zero_iter
-        input_var_names = [self._find_names_in_space(
-            read_names | write_names, (Space.locals, Space.cells)
-            ), iterator.id]
-        output_var_names = [*write_names, iterator.id]
+        input_var_names = [
+            *self._find_names_in_space(
+                read_names | write_names, (Space.locals, Space.cells)
+            ),
+            iterator.id,
+        ]
+        output_var_names = [*list(write_names), iterator.id]
 
         # 2. create inline call loop fn
         def create_inline_call_fn():
