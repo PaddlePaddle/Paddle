@@ -553,6 +553,7 @@
     func : BinomialInferMeta
   kernel :
     func : binomial
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bipartite_match
   args: (Tensor dist_mat, str match_type = "bipartite", float dist_threshold = 0.5)
@@ -651,6 +652,7 @@
     func: BoxClipInferMeta
   kernel:
     func: box_clip
+  interfaces: paddle::dialect::InferSymbolicShapeInterface
 
 - op : box_coder
   args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type = "encode_center_size", bool box_normalized = true, int axis = 0, float[] variance = {})
@@ -855,6 +857,7 @@
     param : [x, scale]
     data_type : x
   inplace : (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : check_numerics
   args : (Tensor tensor, str op_type = "", str var_name = "", int check_nan_inf_level = 0, int stack_height_limit = -1, str output_dir = "")
@@ -1715,6 +1718,7 @@
     func : fake_quantize_dequantize_abs_max
     data_type : x
   backward : fake_quantize_dequantize_abs_max_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_dequantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1727,6 +1731,7 @@
   optional : in_accum, in_state, out_state, out_accum
   backward : fake_quantize_dequantize_moving_average_abs_max_grad
   inplace: (in_scale -> out_scale)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1738,6 +1743,7 @@
     data_type : x
   optional : in_accum, in_state, out_state, out_accum
   inplace: (in_scale -> out_scale)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_range_abs_max
   args : (Tensor x, Tensor in_scale, Tensor iter, int window_size = 10000,  int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -2642,6 +2648,7 @@
     data_type : x
   inplace: (x -> out)
   backward : l1_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : label_smooth
   args : (Tensor label, Tensor prior_dist, float epsilon = 0.0f)
@@ -3824,6 +3831,21 @@
     data_type : x
   backward: repeat_interleave_with_tensor_index_grad
 
+- op : reshape
+  args : (Tensor x, IntArray shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+    spmd_rule : ReshapeInferSpmd
+    local_shape: shape
+    global_shape: out
+  kernel :
+    func : reshape
+  inplace : (x -> out)
+  view: (x -> out)
+  backward: reshape_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : reverse
   args : (Tensor x, IntArray axis)
   output : Tensor
@@ -3946,6 +3968,7 @@
     data_type : x
   intermediate : noise
   backward : rrelu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rsqrt
   args : (Tensor x)
@@ -4212,7 +4235,7 @@
   kernel :
     func : silu
   backward : silu_grad
-  interfaces : paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
 
 - op : sin
   args : (Tensor x)
@@ -4355,6 +4378,7 @@
            sqrt_sr {selected_rows -> selected_rows}
   inplace : (x -> out)
   backward : sqrt_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : square
   args : (Tensor x)
@@ -4496,6 +4520,16 @@
   backward : sync_batch_norm_grad
   inplace : (mean -> mean_out), (variance -> variance_out)
   optional : reserve_space
+
+- op : sync_calc_stream
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : sync_calc_stream
+  inplace : (x -> out)
 
 - op : take_along_axis
   args : (Tensor arr, Tensor indices, int axis)
@@ -4882,6 +4916,7 @@
     data_type : input
   backward : view_dtype_grad
   no_need_buffer : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : view_shape
   args : (Tensor input, int64_t[] dims = {})

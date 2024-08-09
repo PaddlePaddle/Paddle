@@ -27,7 +27,7 @@ class Node;
 }  // namespace framework
 }  // namespace paddle
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace framework {

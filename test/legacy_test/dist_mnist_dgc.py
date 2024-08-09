@@ -101,9 +101,9 @@ class TestDistMnistDGC(TestDistRunnerBase):
                 learning_rate=self.lr,
                 momentum=0.9,
                 rampup_begin_step=2,
-                num_trainers=build_strategy.num_trainers
-                if build_strategy
-                else None,
+                num_trainers=(
+                    build_strategy.num_trainers if build_strategy else None
+                ),
             )
         if use_dgc:
             assert (

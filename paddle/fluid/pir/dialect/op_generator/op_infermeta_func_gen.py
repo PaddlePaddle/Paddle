@@ -886,14 +886,14 @@ def GenDistBranch(args, op_info):
             # vector<Tensor> input
             elif "pir::VectorType" in op_info.input_type_list[i]:
                 TEMPLATE = """
-    dist_operand_attrs.push_back(GetTensorDistAttrArray({name}));"""
+    dist_operand_attrs.push_back(GetTensorDistAttr({name}));"""
                 dist_branch_str += TEMPLATE.format(
                     name=op_info.input_name_list[i]
                 )
             # Tensor input
             else:
                 TEMPLATE = """
-    dist_operand_attrs.push_back({name}.type().dyn_cast<DistTypeInterface>().tensor_dist_attr());"""
+    dist_operand_attrs.push_back(GetTensorDistAttr({name}.type()));"""
                 dist_branch_str += TEMPLATE.format(
                     name=op_info.input_name_list[i]
                 )
@@ -901,12 +901,7 @@ def GenDistBranch(args, op_info):
     if len(op_info.mutable_attribute_name_list) > 0:
         TEMPLATE = """
     for(int i = {input_size}; i < {all_input_size}; ++i) {{
-      if(auto dist_type = input_values[i].type().dyn_cast<DistTypeInterface>()) {{
-        dist_operand_attrs.push_back(dist_type.tensor_dist_attr());
-      }}
-      else {{
-        dist_operand_attrs.push_back(nullptr);
-      }}
+        dist_operand_attrs.push_back(GetTensorDistAttr(input_values[i].type()));
     }}
 """
         dist_branch_str += TEMPLATE.format(
@@ -974,10 +969,6 @@ def gen_infermeta_func_str(args, op_info):
                 spmd_params = op_info.kernel_map['param']
         else:
             spmd_params = op_info.input_name_list
-        # TODO(GhostScreaming): specialized case for reshape_grad
-        # xshape is not kernel params, but inferspmd needs it.
-        if "reshape_grad" in op_info.kernel_map['func'][0]:
-            spmd_params = ["x"] + spmd_params
     op_info.spmd_params = spmd_params
 
     infermeta_inputs_str = get_infermeta_inputs_str(

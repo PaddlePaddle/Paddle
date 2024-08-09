@@ -20,7 +20,7 @@ limitations under the License. */
 #include "NvInferRuntimeCommon.h"
 #include "cuda_runtime_api.h"  // NOLINT
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -400,7 +400,6 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
       ihost_memory_->data(), ihost_memory_->size()));
 #endif
-
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_,
       common::errors::Fatal("Build TensorRT cuda engine failed! Please recheck "

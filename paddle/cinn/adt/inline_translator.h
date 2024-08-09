@@ -35,7 +35,7 @@ struct InlineTranslator final {
   static DstTree Call(const SrcTree& src_tree) {
     PADDLE_ENFORCE_EQ((src_tree.template Has<MapT<SrcTree>>()),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "src_tree.template should have <MapT<SrcTree>>()"));
     const MapT<DstTree> dst_tree =
         CallMap(src_tree.template Get<MapT<SrcTree>>());
@@ -102,7 +102,7 @@ struct InlineTranslator final {
     const auto& [arg_tensor] = arg_leaf.tuple();
     PADDLE_ENFORCE_EQ(producer_tensor == arg_tensor,
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "producer_tensor should be equal to arg_tensor"));
     List<OpExpr> ret{};
     ret->assign(op_call_children->begin(), op_call_children->end());
@@ -117,7 +117,7 @@ struct InlineTranslator final {
     PADDLE_ENFORCE_EQ(
         (consumer_tree.template Has<OpCallT<OpExpr>>()),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "consumer_tree.template should have <OpCallT<OpExpr>>()"));
     const auto& op_call = consumer_tree.template Get<OpCallT<OpExpr>>();
     const auto& op_call_children =
@@ -126,7 +126,7 @@ struct InlineTranslator final {
     PADDLE_ENFORCE_EQ(
         (op_call_child.template Has<Load<TensorT>>()),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "op_call_child.template should have <Load<TensorT>>()"));
   }
 
@@ -181,7 +181,7 @@ struct InlineTranslator final {
           index2dst_leaf.emplace(i, NaiveTranslateLeaf(*std::next(begin, i)))
               .second,
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "index2dst_leaf.emplace should return true"));
     }
     // Inline dst leaves
@@ -215,7 +215,7 @@ struct InlineTranslator final {
   static DstLeaf NaiveTranslateLeaf(const SrcTree& src_tree) {
     PADDLE_ENFORCE_EQ(src_tree.template Has<SrcLeaf>(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "src_tree.template should have <SrcLeaf>()"));
     const auto& [tensor, op_call] = src_tree.template Get<SrcLeaf>().tuple();
     const List<Load<TensorT>>& src_loads =

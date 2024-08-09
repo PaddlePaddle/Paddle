@@ -75,8 +75,7 @@ def _math_attention(
     causal: bool = ...,
     return_softmax: Literal[False] = ...,
     training: bool = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -88,8 +87,7 @@ def _math_attention(
     causal: bool = ...,
     return_softmax: Literal[True] = ...,
     training: bool = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -101,8 +99,7 @@ def _math_attention(
     causal: bool = ...,
     return_softmax: bool = ...,
     training: bool = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def _math_attention(
@@ -122,9 +119,7 @@ def _math_attention(
     query = paddle.transpose(query, [0, 2, 1, 3])
     key = paddle.transpose(key, [0, 2, 1, 3])
     value = paddle.transpose(value, [0, 2, 1, 3])
-    product = paddle.matmul(
-        x=query * (head_dim**-0.5), y=key, transpose_y=True
-    )
+    product = paddle.matmul(x=query * (head_dim**-0.5), y=key, transpose_y=True)
 
     if not causal:
         weights = F.softmax(product)
@@ -207,8 +202,7 @@ def flash_attention(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -224,8 +218,7 @@ def flash_attention(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -241,8 +234,7 @@ def flash_attention(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def flash_attention(
@@ -412,8 +404,7 @@ def flash_attn_qkvpacked(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -427,8 +418,7 @@ def flash_attn_qkvpacked(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -442,8 +432,7 @@ def flash_attn_qkvpacked(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def flash_attn_qkvpacked(
@@ -615,8 +604,7 @@ def flash_attn_unpadded(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -636,8 +624,7 @@ def flash_attn_unpadded(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -657,8 +644,7 @@ def flash_attn_unpadded(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def flash_attn_unpadded(
@@ -816,8 +802,7 @@ def flash_attn_varlen_qkvpacked(
     varlen_padded: bool = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -836,8 +821,7 @@ def flash_attn_varlen_qkvpacked(
     varlen_padded: bool = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -856,8 +840,7 @@ def flash_attn_varlen_qkvpacked(
     varlen_padded: bool = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def flash_attn_varlen_qkvpacked(

@@ -66,7 +66,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForBitcastConvert(
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       1U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of pack_args should be greater than 0 . "));
     std::string tensor_name = UniqName(op_name + "_Out");
     Expr A_expr = pack_args[0];

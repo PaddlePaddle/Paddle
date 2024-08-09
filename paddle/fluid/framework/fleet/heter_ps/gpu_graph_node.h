@@ -20,10 +20,10 @@
 #include <string>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/memory.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 
 COMMON_DECLARE_bool(gpugraph_load_node_list_into_hbm);
 namespace paddle {
