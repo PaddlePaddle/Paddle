@@ -104,7 +104,7 @@ def _all_reduce_in_static_mode(
 def all_reduce(
     tensor: Tensor,
     op: _ReduceOp = ReduceOp.SUM,
-    group: Group = None,
+    group: Group | None = None,
     sync_op: bool = True,
     use_calc_stream: bool = False,
 ) -> task | None:
