@@ -590,9 +590,7 @@ class CommContext:
                     backward_order_beta = self.cluster.get_beta(
                         ranks[j], ranks[i]
                     )
-                    beta = (
-                        max(backward_order_beta, forward_order_beta)
-                    )
+                    beta = max(backward_order_beta, forward_order_beta)
                     if max_beta is None:
                         max_beta = beta
                     else:

@@ -2379,8 +2379,8 @@ class RuleBasedTuner:
                             ]
                         )
                         cost, _ = self._get_sub_program_cost(dist_context)
-                        max_stage_cost = (
-                            max(local_stage_cost, min_max_stage_costs[s - 1][j])
+                        max_stage_cost = max(
+                            local_stage_cost, min_max_stage_costs[s - 1][j]
                         )
 
                         if cost <= min_cost:
@@ -2484,8 +2484,8 @@ class RuleBasedTuner:
                         cost_strategies[s][i][j] = cost
                         memory_strategies[s][i][j] = memory
 
-                        max_stage_cost = (
-                            max(local_stage_cost, min_max_stage_costs[s - 1][j])
+                        max_stage_cost = max(
+                            local_stage_cost, min_max_stage_costs[s - 1][j]
                         )
                         if memory > sum(max_mem):
                             cost = sys.maxsize
