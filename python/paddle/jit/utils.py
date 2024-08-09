@@ -14,8 +14,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
-from typing import Generic, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
 
 T = TypeVar("T")
 
