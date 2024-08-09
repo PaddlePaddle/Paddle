@@ -77,13 +77,13 @@ phi::distributed::Placements TensorDistAttribute::placements() const {
     if (mesh_id >= 0) {
       auto& p = placements[mesh_id];
       if (p->is_shard()) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension cann't be mapped to two  dimension of the "
             "same tensor: {%d} and {%d}",
             i,
             dynamic_cast<phi::distributed::Shard&>(*p).get_dim()));
       } else if (p->is_partial()) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "ProcessMesh dimension {%d} cannot be both shard and partial!",
             mesh_id));
       }

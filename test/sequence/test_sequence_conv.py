@@ -278,9 +278,7 @@ class TestSeqProjectCase3(TestSeqProject):
         self.input_size = [self.input_row, 25]
         idx = list(range(self.input_size[0]))
         del idx[0]
-        offset_lod = [
-            [0] + np.sort(random.sample(idx, 8)).tolist() + [self.input_size[0]]
-        ]
+        offset_lod = [[0, *np.sort(random.sample(idx, 8)), self.input_size[0]]]
         self.lod = [[]]
         # convert from offset-based lod to length-based lod
         for i in range(len(offset_lod[0]) - 1):

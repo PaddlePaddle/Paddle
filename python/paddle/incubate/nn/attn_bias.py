@@ -30,7 +30,7 @@ import paddle
 class AttentionBias(ABC):
     @abstractmethod
     def materialize(self, shape, dtype=paddle.float32):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class LowerTriangularMask(AttentionBias):
@@ -119,7 +119,7 @@ class PaddedSeqLenInfo(SeqLenInfo):
         )
 
     def split(self, x, batch_sizes=None):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 @dataclass
@@ -191,11 +191,14 @@ class BlockDiagonalMask(AttentionBias):
             paddle.concat(
                 [x.reshape([1, -1, *x.shape[2:]]) for x in tensors_k], axis=1
             ),
-            paddle.concat(
-                [x.reshape([1, -1, *x.shape[2:]]) for x in tensors_v], axis=1
-            )
-            if tensors_v is not None
-            else None,
+            (
+                paddle.concat(
+                    [x.reshape([1, -1, *x.shape[2:]]) for x in tensors_v],
+                    axis=1,
+                )
+                if tensors_v is not None
+                else None
+            ),
         )
 
     def split_queries(self, tensor):
@@ -242,9 +245,11 @@ class BlockDiagonalCausalWithOffsetPaddedKeysMask(AttentionBias):
         ):
             mask[q_start:q_end, k_start:k_end] = self._create_block_mask(
                 (q_end - q_start, k_end - k_start),
-                offset=0
-                if self.causal_diagonal is None
-                else int(self.causal_diagonal[i].item()),
+                offset=(
+                    0
+                    if self.causal_diagonal is None
+                    else int(self.causal_diagonal[i].item())
+                ),
                 dtype=dtype,
             )
         for _ in range(len(shape) - 2):

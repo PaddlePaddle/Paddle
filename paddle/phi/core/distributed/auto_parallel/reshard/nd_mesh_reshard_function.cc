@@ -306,7 +306,7 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
     SameNdMeshReshardFunction same_nd_reshard_func;
     PADDLE_ENFORCE(
         same_nd_reshard_func.IsSuitable(in, in_dist_attr_shard),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invoke the same nd reshard function is not valid from %s to %s.",
             in_dist_attr,
             in_dist_attr_shard));
@@ -318,10 +318,10 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
   SameStatusReshardFunction same_status_func;
   PADDLE_ENFORCE(
       same_status_func.IsSuitable(tmp_result, out_dist_attr),
-      phi::errors::InvalidArgument("Invoke the same status reshard function "
-                                   "is not valid from %s to %s.",
-                                   tmp_result.dist_attr(),
-                                   out_dist_attr));
+      common::errors::InvalidArgument("Invoke the same status reshard function "
+                                      "is not valid from %s to %s.",
+                                      tmp_result.dist_attr(),
+                                      out_dist_attr));
   same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 

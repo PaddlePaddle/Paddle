@@ -23,11 +23,12 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.base.core import task
     from paddle.distributed.communication.group import Group
+    from paddle.distributed.communication.reduce import _ReduceOp
 
 
 def all_reduce(
     tensor: Tensor,
-    op: ReduceOp = ReduceOp.SUM,
+    op: _ReduceOp = ReduceOp.SUM,
     group: Group | None = None,
     sync_op: bool = True,
 ) -> task:

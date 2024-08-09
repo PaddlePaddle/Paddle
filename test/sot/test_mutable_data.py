@@ -22,8 +22,7 @@ from paddle.jit.sot.opcode_translator.executor.mutable_data import (
 
 
 class VariableBase:
-    def __init__(self):
-        ...
+    def __init__(self): ...
 
 
 class ConstVariable(VariableBase):

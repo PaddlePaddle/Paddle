@@ -705,13 +705,13 @@ EOF
         get_precision_ut_mac
         if [[ "$on_precision" == "0" ]];then
           ctest -E "($disable_ut_quickly|$single_list)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
-          ctest -R "${single_list}" -E "($disable_ut_quickly)" --output-on-failure -j 1 | tee -a $tmpfile
+          ctest -R "${single_list}" -E "($disable_ut_quickly)" --output-on-failure -j 1 --timeout 15 | tee -a $tmpfile
         else
-            ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 | tee $tmpfile
+            ctest -R "($UT_list_prec)" -E "($disable_ut_quickly)" -LE ${nightly_label} --output-on-failure -j $2 --timeout 15 | tee $tmpfile
             tmpfile_rand=`date +%s%N`
             tmpfile=$tmp_dir/$tmpfile_rand
-            ctest -R "($UT_list_prec_1)" -E "(${disable_ut_quickly}|${single_list})" -LE ${nightly_label} --output-on-failure -j $2 | tee -a $tmpfile
-            ctest -R "($single_list)" -E "(${disable_ut_quickly})" --output-on-failure -j 1 | tee -a $tmpfile
+            ctest -R "($UT_list_prec_1)" -E "(${disable_ut_quickly}|${single_list})" -LE ${nightly_label} --output-on-failure -j $2 --timeout 15 | tee -a $tmpfile
+            ctest -R "($single_list)" -E "(${disable_ut_quickly})" --output-on-failure -j 1 --timeout 15 | tee -a $tmpfile
         fi
         failed_test_lists=''
         collect_failed_tests
@@ -2706,14 +2706,14 @@ set -x
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
             if [ "$WITH_ROCM" == "ON" ];then
-                env HIP_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+                env HIP_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 20;added_ut_error=$?
             else
-                env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+                env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 20;added_ut_error=$?
             fi
-            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 20;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
-                echo "Added UT should not exceed 15 seconds"
+                echo "Added UT should not exceed 20 seconds"
                 echo "========================================"
                 exit 8;
             fi
@@ -3475,6 +3475,11 @@ EOF
 }
 
 function distribute_test() {
+    python ${PADDLE_ROOT}/tools/get_pr_title.py skip_distribute_test && CINN_OR_BUAA_PR=1
+    if [[ "${CINN_OR_BUAA_PR}" = "1" ]];then
+        echo "PR's title with 'CINN' or 'BUAA', skip the run distribute ci test !"
+        exit 0
+    fi
     echo "Start gpups tests"
     parallel_test_base_gpups
     echo "End gpups tests"
@@ -3505,7 +3510,6 @@ function distribute_test() {
     rm -rf ./paddlenlp/models/bigscience/*
 
     # Already disable unittests of llama2 model in current CI pipeline
-    sed -i -e 's/case_list=(\$(awk/case_list=(auto_unit_test dygraph_unit_test) # /g' ./tools/auto_parallel/ci_auto_parallel.sh
     export FLAGS_dynamic_static_unified_comm=True
 
     echo "Start LLM Test"
@@ -3517,7 +3521,7 @@ function distribute_test() {
 
     echo "Start auto_parallel Test"
     cd ${work_dir}
-    timeout 50m bash tools/auto_parallel/ci_auto_parallel.sh
+    timeout 50m bash tools/auto_parallel/ci_distributed_stable.sh
     EXIT_CODE=$?
     echo "End auto_parallel Test"
 

@@ -362,7 +362,7 @@ bool LaunchStridedCopyCazeOneKernel(
           dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
   }
 
@@ -449,7 +449,7 @@ void LaunchStridedCopyDefaultKernel(
           input_data, input_stride, output_data, output_stride, dims, numel);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
   }
 }
@@ -785,7 +785,7 @@ bool LaunchStrided2ContiguousCazeOneKernel(
           dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
   }
 
@@ -863,7 +863,7 @@ void LaunchStrided2ContiguousDefaultKernel(
           input_data, input_stride, output_data, dims, numel);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
   }
 }
@@ -1199,7 +1199,7 @@ bool LaunchContiguous2StridedCazeOneKernel(
           dims[rank - 1] * dims[rank - 2] * dims[rank - 3]);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
   }
 
@@ -1277,7 +1277,7 @@ void LaunchContiguous2StridedDefaultKernel(
           input_data, output_data, output_stride, dims, numel);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 9, but received %d.", rank));
   }
 }
@@ -1297,14 +1297,14 @@ void StridedCopyKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(input.dims(),
                     out->dims(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input shape(%s) must be equal with out shape(%s).",
                         input.dims(),
                         out->dims()));
 
   PADDLE_ENFORCE_EQ(input.numel(),
                     out->numel(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input numel(%d) must be equal with out numel(%d).",
                         input.numel(),
                         out->numel()));
@@ -1320,7 +1320,7 @@ void StridedCopyKernel(const Context& dev_ctx,
 
   T* output_data = out->data<T>();
   PADDLE_ENFORCE_NOT_NULL(output_data,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "StridedCopyKernel's out tensor must complete "
                               "mutable data before call kernel."));
 

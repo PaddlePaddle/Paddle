@@ -45,7 +45,11 @@ struct DataRecord {
                                      link_step_data_all.begin() + batch_end);
       // Prepare LoDs
       data.lod.push_back(0);
-      CHECK(!data.link_step_data_all.empty()) << "empty";
+      PADDLE_ENFORCE_EQ(
+          !data.link_step_data_all.empty(),
+          true,
+          common::errors::InvalidArgument(
+              "`data.link_step_data_all` is empty, please check"));
       for (size_t j = 0; j < data.link_step_data_all.size(); j++) {
         for (const auto &d : data.link_step_data_all[j]) {
           data.rnn_link_data.push_back(d);

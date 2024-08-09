@@ -155,7 +155,7 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(key_seq_len,
                     query_seq_len,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Key seq len must be equal with query seq len "
                         "received key len: %d, query len: %d",
                         key_seq_len,
@@ -163,7 +163,7 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(key_seq_len >= 32 && key_seq_len <= 16384,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input x's last dim must be between [32, 16384] "
                         "received the last dimension of x is %d",
                         key_seq_len));
@@ -182,7 +182,7 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       query_seq_len % batches_per_block,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The query seq len (third dim of input X) must can divide the "
           "number of batches per block. The query seq len is %d, while "
           "the number of batches per block is %d.",
@@ -245,7 +245,7 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
               x_data, y_data, batch_count, key_seq_len);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented("Too large sequence length."));
+      PADDLE_THROW(common::errors::Unimplemented("Too large sequence length."));
       break;
   }
 }

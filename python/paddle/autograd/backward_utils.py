@@ -54,6 +54,8 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.pow",
     "pd_op.elementwise_pow",
     "pd_op.softmax",
+    "pd_op.matmul",
+    "pd_op.reduce_as",
 ]
 
 
