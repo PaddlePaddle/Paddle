@@ -666,18 +666,17 @@ def monkey_patch_tensor():
         device: PlaceLike,
         dtype: DTypeLike | None = ...,
         blocking: bool | None = ...,
-    ) -> Tensor:
-        ...
+    ) -> Tensor: ...
 
     @overload
     def to(
         self: Tensor, dtype: DTypeLike, blocking: bool | None = ...
-    ) -> Tensor:
-        ...
+    ) -> Tensor: ...
 
     @overload
-    def to(self: Tensor, other: Tensor, blocking: bool | None = ...) -> Tensor:
-        ...
+    def to(
+        self: Tensor, other: Tensor, blocking: bool | None = ...
+    ) -> Tensor: ...
 
     @framework.dygraph_only
     def to(self: Tensor, *args, **kwargs):
@@ -764,7 +763,7 @@ def monkey_patch_tensor():
         if len(invalid_keys) != 0:
             raise TypeError(
                 "to() got an unexpected keyword argument "
-                + list(invalid_keys)[0]
+                + next(iter(invalid_keys))
             )
         if size_args > 0:
             if isinstance(args[0], paddle.Tensor):

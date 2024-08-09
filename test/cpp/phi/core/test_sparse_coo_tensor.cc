@@ -94,11 +94,20 @@ TEST(sparse_coo_tensor, other_function) {
 
   // Test shallow_copy
   SparseCooTensor coo2(coo);
-  CHECK(coo.dims() == coo2.dims());
+  PADDLE_ENFORCE_EQ(
+      coo.dims(),
+      coo2.dims(),
+      common::errors::Fatal("`coo.dims()` is not equal to `coo2.dims()`, "
+                            "something wrong with shallow copy assignment"));
 
   // Test shallow_copy_assignment
   SparseCooTensor coo3 = coo2;
   CHECK(coo3.dims() == coo2.dims());
+  PADDLE_ENFORCE_EQ(
+      coo3.dims(),
+      coo2.dims(),
+      common::errors::Fatal("`coo3.dims()` is not equal to `coo2.dims()`, "
+                            "something wrong with shallow copy assignment"));
 }
 
 }  // namespace tests

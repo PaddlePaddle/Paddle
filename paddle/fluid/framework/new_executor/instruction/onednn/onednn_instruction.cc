@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
 
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -429,18 +429,19 @@ void OneDNNPhiKernelInstruction::Run() {
       tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>(*input));
       auto transed_tensor = tmp_holders.back().get();
 
-      std::set<std::string> elementwise_kernels = {
-          "add", "subtract", "multiply", "divide"};
-      if (elementwise_kernels.count(kernel_name_)) {
+      std::set<std::string> elementwise_kernels = {"onednn_op.add",
+                                                   "onednn_op.subtract",
+                                                   "onednn_op.multiply",
+                                                   "onednn_op.divide"};
+
+      if (elementwise_kernels.count(phi_op_name_)) {
         if (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
                 phi::DataLayout::kNHWC &&
             !(kernel_key_.dtype() == phi::DataType::COMPLEX64 ||
               kernel_key_.dtype() == phi::DataType::COMPLEX128)) {
+          from_layout = phi::DataLayout::kNHWC;
           phi::funcs::MatchShapeToLayout(
               transed_tensor, from_layout, phi::DataLayout::ONEDNN);
-          from_layout = phi::DataLayout::kNHWC;
-        } else {
-          continue;
         }
       } else {
         //  Handle 'layout_transform' in

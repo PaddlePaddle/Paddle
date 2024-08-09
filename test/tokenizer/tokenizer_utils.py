@@ -668,7 +668,7 @@ class PretrainedTokenizer:
             overflowing_tokens = []
             for _ in range(num_tokens_to_remove):
                 if pair_ids is None or len(ids) > len(pair_ids):
-                    overflowing_tokens = [ids[-1]] + overflowing_tokens
+                    overflowing_tokens = [ids[-1], *overflowing_tokens]
                     ids = ids[:-1]
                 else:
                     pair_ids = pair_ids[:-1]
@@ -942,9 +942,9 @@ class PretrainedTokenizer:
         if return_token_type_ids:
             encoded_inputs["token_type_ids"] = token_type_ids
         if return_special_tokens_mask:
-            encoded_inputs[
-                "special_tokens_mask"
-            ] = self.get_special_tokens_mask(ids, pair_ids)
+            encoded_inputs["special_tokens_mask"] = (
+                self.get_special_tokens_mask(ids, pair_ids)
+            )
         if return_length:
             encoded_inputs["seq_len"] = len(encoded_inputs["input_ids"])
 
@@ -1193,9 +1193,9 @@ class PretrainedTokenizer:
                     if return_token_type_ids:
                         encoded_inputs["token_type_ids"] = token_type_ids
                     if return_special_tokens_mask:
-                        encoded_inputs[
-                            "special_tokens_mask"
-                        ] = self.get_special_tokens_mask(ids, pair_ids)
+                        encoded_inputs["special_tokens_mask"] = (
+                            self.get_special_tokens_mask(ids, pair_ids)
+                        )
                     if return_length:
                         encoded_inputs["seq_len"] = len(
                             encoded_inputs["input_ids"]
