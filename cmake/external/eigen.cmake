@@ -44,7 +44,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
        tensor_random_header)
   # See: [Why calling some `git` commands before `patch`?]
   set(EIGEN_PATCH_COMMAND
-      git checkout -- . && git checkout ${EIGEN_TAG} && patch -Nd
+      patch -Nd
       ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor <
       ${tensor_random_header})
   execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
