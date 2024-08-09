@@ -216,9 +216,7 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
   PADDLE_ENFORCE_NOT_NULL(visitor.target_,
                           phi::errors::InvalidArgument(
                               "The visitor target is nullptr. It must not be "
-                              "nullptr. Block name: %s, Expressions: %s",
-                              block_name.c_str(),
-                              exprs.c_str()));
+                              "nullptr."));
   if (visitor.target_->As<ir::Block>()) {
     for (auto& stmt : visitor.target_->As<ir::Block>()->stmts) {
       if (stmt.As<ir::ScheduleBlockRealize>()) {
