@@ -187,7 +187,8 @@ bfloat16 Expr::as_bfloat16() const {
 }
 float16 Expr::as_float16() const {
   PADDLE_ENFORCE_EQ(type().is_bfloat16(),
-                    true phi::errors::InvalidArgument(
+                    true,
+                    phi::errors::InvalidArgument(
                         "Invalid type. The type must be bfloat16() type."));
   return float16(As<FloatImm>()->value);
 }
@@ -223,9 +224,9 @@ bool Expr::is_constant() const {
 }
 
 double Expr::get_constant() const {
-  PADDLE_ENFORCE_EQ(is_constant(),
-                    true phi::errors::InvalidArgument(
-                        "%s is not constant! Please check.", *this));
+  PADDLE_ENFORCE_NOT_NULL(
+      is_constant(),
+      phi::errors::InvalidArgument("%s is not constant! Please check.", *this));
   auto *vi = As<IntImm>();
   auto *vf = As<FloatImm>();
   if (vi) return vi->value;
@@ -334,7 +335,7 @@ void TryElevateInt32ToInt64(const std::vector<Expr> &expr_vec) {
     return;
   }
   for (const Expr &expr : expr_vec) {
-    if (expr->type() != Int(64)))
+    if (expr->type() != Int(64))
       if (expr->type() != Int(32))
         PADDLE_ENFORCE_NOT_NULL(
             expr->type().is_unk(),
