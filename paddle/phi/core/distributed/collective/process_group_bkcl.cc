@@ -22,6 +22,7 @@
 #include "paddle/phi/core/distributed/collective/common.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 
