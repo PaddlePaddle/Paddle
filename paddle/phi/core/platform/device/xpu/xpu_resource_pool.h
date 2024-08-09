@@ -19,8 +19,8 @@
 #include <type_traits>
 #include <vector>
 
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#include "paddle/fluid/platform/resource_pool.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/resource_pool.h"
 
 namespace paddle {
 namespace platform {

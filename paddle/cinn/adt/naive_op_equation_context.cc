@@ -72,7 +72,7 @@ void GenerateOpEquationsImpl(const ::pir::Operation* op_node,
       hlir::framework::pir::CompatibleInfo::OpName(*op_node));
   PADDLE_ENFORCE_EQ(generate_equations.Find(cinn_op),
                     true,
-                    phi::errors::NotFound("generate_equations not found"));
+                    ::common::errors::NotFound("generate_equations not found"));
   generate_equations[cinn_op](ctx);
 }
 
@@ -127,13 +127,13 @@ GetArgStaticDimT MakeGetterArgStaticDim(const List<Tensor>& tensors) {
   return [=](std::size_t tensor_idx,
              std::size_t dim_idx) -> std::optional<std::int64_t> {
     const auto& opt_expr = GetArgDim(tensors, tensor_idx, dim_idx);
-    PADDLE_ENFORCE_EQ(
-        opt_expr.has_value(),
-        true,
-        phi::errors::InvalidArgument("Sorry,but opt_expr don't has value"));
+    PADDLE_ENFORCE_EQ(opt_expr.has_value(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Sorry,but opt_expr don't has value"));
     PADDLE_ENFORCE_EQ(opt_expr.value().Has<std::int64_t>(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Sorry,but opt_expr should has value int64_t"));
     return opt_expr.value().Get<std::int64_t>();
   };
@@ -220,10 +220,10 @@ GenerateContext4LocalOpStmt(const List<OpStmt>& op_stmts) {
 
   for (const auto& op_stmt : *op_stmts) {
     const auto& ctx = MakeContextAndGenerateEquations(op_stmt);
-    PADDLE_ENFORCE_EQ(
-        op_stmt2equation_ctx->emplace(op_stmt, ctx).second,
-        true,
-        phi::errors::InvalidArgument("op_stmt2equation_ctx insert failed"));
+    PADDLE_ENFORCE_EQ(op_stmt2equation_ctx->emplace(op_stmt, ctx).second,
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "op_stmt2equation_ctx insert failed"));
   }
 
   return [op_stmt2equation_ctx](const auto& op_stmt) {

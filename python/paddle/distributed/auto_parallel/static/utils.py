@@ -2341,6 +2341,14 @@ def get_pp_stage(dist_context, rank):
     return pp_idx
 
 
+def get_pp_stage_by_pp_degree(pp_degree):
+    cur_rank = paddle.distributed.get_rank()
+    word_size = paddle.distributed.get_world_size()
+    pp_group_size = word_size // pp_degree
+    pp_stage = cur_rank // pp_group_size
+    return pp_stage
+
+
 def wrap_data_for_completion(
     dist_op, input_names: list, output_names: list, attr_names: list
 ):

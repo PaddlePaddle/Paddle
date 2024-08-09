@@ -57,9 +57,9 @@ LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-RPC_OP_ROLE_ATTR_NAME = (
-    op_role_attr_name
-) = core.op_proto_and_checker_maker.kOpRoleAttrName()
+RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = (
+    core.op_proto_and_checker_maker.kOpRoleAttrName()
+)
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 DIST_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Dist
@@ -1558,9 +1558,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             attrs['dc_asgd'] = True
 
         if len(prefetch_var_name_to_block_id) > 0:
-            attrs[
-                'prefetch_var_name_to_block_id'
-            ] = prefetch_var_name_to_block_id
+            attrs['prefetch_var_name_to_block_id'] = (
+                prefetch_var_name_to_block_id
+            )
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -2071,11 +2071,11 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     type="send",
                     inputs={'X': self.trainer_side_table_grad_list},
                     outputs={
-                        'Out': [
-                            self.grad_name_to_send_dummy_out[self.table_name]
-                        ]
-                        if self.sync_mode
-                        else []
+                        'Out': (
+                            [self.grad_name_to_send_dummy_out[self.table_name]]
+                            if self.sync_mode
+                            else []
+                        )
                     },
                     attrs={
                         "epmap": pserver_endpoints,
@@ -2351,9 +2351,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
             sparse_param_name = self.grad_name_to_param_name[orig_var.name]
             if self._is_input_of_remote_sparse_update_op(sparse_param_name):
-                self.sparse_param_to_height_sections[
-                    sparse_param_name
-                ] = height_sections
+                self.sparse_param_to_height_sections[sparse_param_name] = (
+                    height_sections
+                )
             program.global_block()._insert_op(
                 index=index + 1,
                 type="split_selected_rows",

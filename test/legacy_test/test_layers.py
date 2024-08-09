@@ -632,7 +632,7 @@ class TestBook(LayerTest):
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
         if append_batch_size:
-            shape = [self._batch_size] + shape
+            shape = [self._batch_size, *shape]
         if dtype == 'float32':
             return np.random.random(shape).astype(dtype)
         elif dtype == 'float64':
@@ -659,7 +659,7 @@ class TestBook(LayerTest):
                     shape, dtype, append_batch_size
                 )
             if append_batch_size:
-                shape = [-1] + shape
+                shape = [-1, *shape]
             data = paddle.static.data(
                 name=name,
                 shape=shape,

@@ -23,9 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
