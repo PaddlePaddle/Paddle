@@ -886,8 +886,7 @@ class FusedTransformerEncoderLayer(Layer):
         src: Tensor,
         src_mask: Tensor | None = ...,
         cache: None = ...,
-    ) -> Tensor:
-        ...
+    ) -> Tensor: ...
 
     @overload
     def forward(
@@ -895,8 +894,7 @@ class FusedTransformerEncoderLayer(Layer):
         src: Tensor,
         src_mask: Tensor | None = ...,
         cache: MultiHeadAttention.Cache = ...,
-    ) -> tuple[Tensor, MultiHeadAttention.Cache]:
-        ...
+    ) -> tuple[Tensor, MultiHeadAttention.Cache]: ...
 
     def forward(
         self,
@@ -1271,12 +1269,10 @@ class FusedMultiTransformer(Layer):
         dropout_rate: float = 0.0,
         activation: str = "gelu",
         normalize_before: bool = True,
-        ln_scale_attrs: (ParamAttrLike | Sequence[ParamAttrLike] | None) = None,
-        ln_bias_attrs: (ParamAttrLike | Sequence[ParamAttrLike] | None) = None,
-        qkv_weight_attrs: (
-            ParamAttrLike | Sequence[ParamAttrLike] | None
-        ) = None,
-        qkv_bias_attrs: (ParamAttrLike | Sequence[ParamAttrLike] | None) = None,
+        ln_scale_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
+        ln_bias_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
+        qkv_weight_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
+        qkv_bias_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
         linear_weight_attrs: (
             ParamAttrLike | Sequence[ParamAttrLike] | None
         ) = None,
@@ -1292,15 +1288,11 @@ class FusedMultiTransformer(Layer):
         ffn1_weight_attrs: (
             ParamAttrLike | Sequence[ParamAttrLike] | None
         ) = None,
-        ffn1_bias_attrs: (
-            ParamAttrLike | Sequence[ParamAttrLike] | None
-        ) = None,
+        ffn1_bias_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
         ffn2_weight_attrs: (
             ParamAttrLike | Sequence[ParamAttrLike] | None
         ) = None,
-        ffn2_bias_attrs: (
-            ParamAttrLike | Sequence[ParamAttrLike] | None
-        ) = None,
+        ffn2_bias_attrs: ParamAttrLike | Sequence[ParamAttrLike] | None = None,
         epsilon: float = 1e-5,
         residual_alpha: float = 1.0,
         num_layers: int = -1,
@@ -1572,8 +1564,7 @@ class FusedMultiTransformer(Layer):
         beam_offset: Tensor | None = ...,
         seq_lens: Tensor | None = ...,
         time_step: Tensor | None = ...,
-    ) -> Tensor:
-        ...
+    ) -> Tensor: ...
 
     @overload
     def forward(
@@ -1587,8 +1578,7 @@ class FusedMultiTransformer(Layer):
         beam_offset: Tensor | None = ...,
         seq_lens: Tensor | None = ...,
         time_step: Tensor | None = ...,
-    ) -> tuple[Tensor, Sequence[Tensor]]:
-        ...
+    ) -> tuple[Tensor, Sequence[Tensor]]: ...
 
     def forward(
         self,
