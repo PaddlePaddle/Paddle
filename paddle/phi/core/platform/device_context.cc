@@ -33,6 +33,10 @@ limitations under the License. */
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
+#if defined(PADDLE_WITH_XPU)
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#endif
+
 namespace paddle {
 namespace platform {
 
@@ -105,7 +109,12 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
 #endif
   } else if (p.GetType() == phi::AllocationType::XPU) {
 #if defined(PADDLE_WITH_XPU)
-    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    auto* xpu_ctx = dynamic_cast<phi::XPUContext*>(dev_ctx);
+    if (!disable_setting_default_stream_for_allocator) {
+      instance.SetDefaultStream(phi::XPUPlace(p.GetDeviceId()),
+                                xpu_ctx->stream());
+    }
+    dev_ctx->SetAllocator(instance.GetAllocator(p, xpu_ctx->stream()).get());
     dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
