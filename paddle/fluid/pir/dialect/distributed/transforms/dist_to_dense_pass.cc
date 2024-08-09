@@ -33,6 +33,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 using paddle::dialect::DistDenseTensorType;
 
@@ -49,9 +50,10 @@ pir::Type CastToLocalType(pir::Type type) {
       local_types.push_back(CastToLocalType(vec_type[i]));
     }
     return pir::VectorType::get(vec_type.ir_context(), local_types);
-  } else if (!type) {
+  } else if (!type || type.isa<pir::StackType>() ||
+             type.isa<pir::InletType>() || type.isa<pir::OutletType>()) {
     // skip if <<NULL TYPE>>
-    return nullptr;
+    return type;
   } else {
     // TODO(2024-Q2) not all value are dist type
     PADDLE_THROW(common::errors::PreconditionNotMet(

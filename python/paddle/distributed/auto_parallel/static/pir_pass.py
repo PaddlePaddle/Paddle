@@ -25,7 +25,14 @@ from .utils import get_pp_stage_by_pp_degree
 
 register_reshard_funcs()
 
-partition_skip_op_list = ["builtin.combine", "builtin.split"]
+partition_skip_op_list = [
+    "builtin.combine",
+    "pd_op.pylayer",
+    "cf.yield" "builtin.split",
+    "cf.tuple_push",
+    "cf.tuple_pop",
+    "cf.stack_create",
+]
 amp_ops = ["pd_op.check_finite_and_unscale_", "pd_op.update_loss_scaling_"]
 
 
