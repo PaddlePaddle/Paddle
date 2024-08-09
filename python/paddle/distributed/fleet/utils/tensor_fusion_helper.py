@@ -80,9 +80,18 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
     )
 
     var_groups = OrderedDict()
+    group_msg = []
     for group_idx, indices in enumerate(group_indices):
+        group_size = 0
         for index in indices:
             var_groups.setdefault(group_idx, []).append(parameters[index])
+            group_size += np.prod(parameters[index].shape)
+        dtype = parameters[indices[0]].dtype
+        bytes = group_size * core.size_of_dtype(dtype)
+        msg = f"group_{group_idx}: {bytes / 1024 ** 2:.4f} MB, dtype: {str(dtype)}"
+        group_msg.append(msg)
+
+    logger.info(f"Tensor Fusion Group Info:\n{group_msg}\n")
     return var_groups
 
 
