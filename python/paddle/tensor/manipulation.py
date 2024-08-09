@@ -460,9 +460,9 @@ def slice(
         elif isinstance(starts, (list, tuple)):
             attrs['starts'] = []
             if paddle.utils._contain_var(starts):
-                inputs[
-                    'StartsTensorList'
-                ] = paddle.utils._convert_to_tensor_list(starts)
+                inputs['StartsTensorList'] = (
+                    paddle.utils._convert_to_tensor_list(starts)
+                )
                 for i, dim in enumerate(starts):
                     if isinstance(dim, Variable):
                         attrs['starts'].append(-1)
@@ -3373,8 +3373,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -3386,8 +3385,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -3399,8 +3397,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -3412,8 +3409,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -3425,8 +3421,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3438,8 +3433,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3451,8 +3445,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3464,8 +3457,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -3477,8 +3469,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> Tensor | tuple[Tensor, ...]:
-    ...
+) -> Tensor | tuple[Tensor, ...]: ...
 
 
 def unique(
@@ -4413,9 +4404,9 @@ def tile(
         elif isinstance(repeat_times, (list, tuple)):
             attrs['repeat_times'] = get_attr_repeat_times(repeat_times)
             if paddle.utils._contain_var(repeat_times):
-                inputs[
-                    'repeat_times_tensor'
-                ] = paddle.utils._convert_to_tensor_list(repeat_times)
+                inputs['repeat_times_tensor'] = (
+                    paddle.utils._convert_to_tensor_list(repeat_times)
+                )
 
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -4647,9 +4638,9 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         elif isinstance(shape, (list, tuple)):
             attrs['shape'] = get_attr_expand_shape(shape)
             if paddle.utils._contain_var(shape):
-                inputs[
-                    'expand_shapes_tensor'
-                ] = paddle.utils._convert_to_tensor_list(shape)
+                inputs['expand_shapes_tensor'] = (
+                    paddle.utils._convert_to_tensor_list(shape)
+                )
 
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -4988,13 +4979,11 @@ def reshape_(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
 
 
 @overload
-def atleast_1d(inputs: Tensor, name: str | None = ...) -> Tensor:
-    ...
+def atleast_1d(inputs: Tensor, name: str | None = ...) -> Tensor: ...
 
 
 @overload
-def atleast_1d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]:
-    ...
+def atleast_1d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]: ...
 
 
 def atleast_1d(*inputs, name=None):
@@ -5067,13 +5056,11 @@ def atleast_1d(*inputs, name=None):
 
 
 @overload
-def atleast_2d(inputs: Tensor, name: str | None = ...) -> Tensor:
-    ...
+def atleast_2d(inputs: Tensor, name: str | None = ...) -> Tensor: ...
 
 
 @overload
-def atleast_2d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]:
-    ...
+def atleast_2d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]: ...
 
 
 def atleast_2d(*inputs, name=None):
@@ -5147,13 +5134,11 @@ def atleast_2d(*inputs, name=None):
 
 
 @overload
-def atleast_3d(inputs: Tensor, name: str | None = ...) -> Tensor:
-    ...
+def atleast_3d(inputs: Tensor, name: str | None = ...) -> Tensor: ...
 
 
 @overload
-def atleast_3d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]:
-    ...
+def atleast_3d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]: ...
 
 
 def atleast_3d(*inputs, name=None):
@@ -6165,13 +6150,11 @@ def masked_fill_(
 
 
 @overload
-def non_negative_axis(arr: Tensor, axis: int) -> int:
-    ...
+def non_negative_axis(arr: Tensor, axis: int) -> int: ...
 
 
 @overload
-def non_negative_axis(arr: Tensor, axis: Tensor) -> Tensor:
-    ...
+def non_negative_axis(arr: Tensor, axis: Tensor) -> Tensor: ...
 
 
 def non_negative_axis(arr, axis):

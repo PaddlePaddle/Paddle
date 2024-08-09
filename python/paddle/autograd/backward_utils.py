@@ -64,6 +64,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.minimum",
     "pd_op.gelu",
     "pd_op.hardswish",
+    "pd_op.reduce_as",
 ]
 
 

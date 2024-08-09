@@ -53,8 +53,7 @@ class AnnoConverter(Protocol):
     "Literal[('raise', 'wrap', 'clip')]" -> "Literal['raise', 'wrap', 'clip']"
     """
 
-    def convert(self, input: str) -> str:
-        ...
+    def convert(self, input: str) -> str: ...
 
 
 class LiteralConverter(AnnoConverter):
