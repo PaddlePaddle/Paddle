@@ -23,7 +23,7 @@ setup(
     ext_modules=CppExtension(
         sources=["mix_relu_and_extension.cc"],
         include_dirs=[
-            paddle_includes,
+            *paddle_includes,
             os.path.dirname(os.path.abspath(__file__)),
         ],
         extra_compile_args={'cc': ['-w', '-g']},
