@@ -1221,6 +1221,70 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
 
   return true;
 }
+bool RoiPoolOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &rois_dim =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1).shape());
+  const auto &rois_num =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  int pooled_height =
+      op->attribute<pir::Int32Attribute>("pooled_height").data();
+  int pooled_width = op->attribute<pir::Int32Attribute>("pooled_width").data();
+  int output_channels =
+      op->attribute<pir::Int32Attribute>("output_channels").data();
+  float spatial_scale =
+      op->attribute<pir::FloatAttribute>("spatial_scale").data();
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The input data should be a four-dimensional tensor with [N,C,H,W], "
+          "but received input data with %d dimension",
+          x_shpae.size()));
+  PADDLE_ENFORCE_EQ(rois_dim.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "rois should be a 2-D LoDTensor with shape (num_rois, "
+                        "4) given as [[x1, y1, x2, y2], ...], but received "
+                        "rois is %d-dimensional LoDTensor",
+                        rois_dim.size()));
+  const auto &four = symbol::DimExpr(4);
+  infer_context->AddEqualCstr(rois_dim[1], four);
+
+  if (!rois_num.data().isa<symbol::NullShapeOrDataDimExpr>()) {
+    auto &rois_num_dim = rois_num.shape();
+    PADDLE_ENFORCE_EQ(
+        rois_num_dim.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The number of rois should be a 1-D tensor with shape (num_rois), "
+            "but received the number of rois with %d dimension",
+            rois_num_dim.size()));
+  }
+
+  infer_context->AddEqualCstr(input_dims[1],
+                              output_channels * pooled_height * pooled_width);
+
+  auto out_dims = input_dims;
+
+  out_dims[0] = rois_dims[0];
+  out_dims[1] = symbol::DimExpr(output_channels);
+  out_dims[2] = symbol::DimExpr(pooled_height);
+  out_dims[3] = symbol::DimExpr(pooled_width);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 
 bool RoiAlignOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
