@@ -228,7 +228,7 @@ class DygraphShardingOptimizer:
                 scale_after_comm=False,
                 apply_decay_param_fun=self.origin_decay_param_fun,
                 use_reduce_avg=self.use_reduce_avg,
-                group_size=self.comm_buffer_size_MB,
+                group_size=self.comm_buffer_size_MB * 1024 * 1024,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer
