@@ -735,14 +735,14 @@ bool MarginCrossEntropyOpInferSymbolicShape(
 
   for (size_t i = 0; i < logits_rank; i++) {
     if (i != axis) {
-      infer_context->AddBroadcastableCstr(logits_dims[i], labels_dims[i]);
+      infer_context->AddEqualCstr(logits_dims[i], labels_dims[i]);
     }
   }
 
-  const auto one = symbol::DimExpr{1};
+  const auto &one = symbol::DimExpr{1};
 
   if (labels_dims.size() > 1) {
-    infer_context->AddEqualCstr(logits_dims[axis], one);
+    infer_context->AddEqualCstr(labels_dims[axis - 1], one);
   }
 
   infer_context->SetShapeOrDataForValue(
