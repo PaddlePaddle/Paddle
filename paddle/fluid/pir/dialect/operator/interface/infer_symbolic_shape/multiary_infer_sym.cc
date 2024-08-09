@@ -759,7 +759,7 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
     if (rank == 1) {
       const auto &s_or_d =
           infer_context->GetShapeOrDataForValue(operand_source);
-      ExprVec data = details::GetExprVecFromData(s_or_d);
+      ExprVec data = details::GetOrCreateExprVecFromData(s_or_d, infer_context);
 
       const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
       symbol::ShapeOrDataDimExprs shape_data{
