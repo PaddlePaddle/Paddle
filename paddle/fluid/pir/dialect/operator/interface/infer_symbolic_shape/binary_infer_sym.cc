@@ -110,11 +110,10 @@ bool BoxClipOpInferSymbolicShape(
                         im_info_shape.size()));
   infer_context->AddEqualCstr(im_info_shape[1], three);
 
-  std::vector<symbol::DimExpr> output_shape = input_shape.shape();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(output_shape)});
+          symbol::TensorShapeOrDataDimExprs(input_shape)});
 
   return true;
 }
