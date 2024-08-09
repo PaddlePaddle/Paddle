@@ -19,14 +19,14 @@ from functools import partial
 from itertools import product
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
-    from collections.abc import Generator
-
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
@@ -161,7 +161,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> Generator[
-        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+        tuple[paddle_infer.Config, list[int], float] | None, Any, Any
     ]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
