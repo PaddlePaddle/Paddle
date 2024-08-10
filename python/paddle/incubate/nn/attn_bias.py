@@ -131,7 +131,7 @@ class PaddedSeqLenInfo(SeqLenInfo):
 class BlockDiagonalMask(AttentionBias):
     q_seqinfo: SeqLenInfo
     k_seqinfo: SeqLenInfo
-    _batch_sizes: Sequence[int] | None
+    _batch_sizes: Sequence[int] | None = None
 
     def _create_block_mask(self, shape, dtype=paddle.float32):
         return paddle.zeros(shape=shape, dtype=dtype)
@@ -234,7 +234,7 @@ class BlockDiagonalCausalMask(BlockDiagonalMask):
 class BlockDiagonalCausalWithOffsetPaddedKeysMask(AttentionBias):
     q_seqinfo: SeqLenInfo
     k_seqinfo: PaddedSeqLenInfo
-    causal_diagonal: paddle.Tensor | None
+    causal_diagonal: paddle.Tensor | None = None
 
     def _create_block_mask(self, shape, offset=0, dtype=paddle.float32):
         create_as = dtype if dtype is not paddle.bfloat16 else paddle.float32
