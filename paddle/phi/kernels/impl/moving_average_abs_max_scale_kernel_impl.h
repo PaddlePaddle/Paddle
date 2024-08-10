@@ -14,29 +14,25 @@
 
 #pragma once
 
-#include <string>
-
-#include "paddle/common/hostdevice.h"
-#include "paddle/phi/common/transform.h"
-#include "paddle/phi/core/memory/malloc.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/fake_quantize_functor.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void MovingAverageAbsMaxScaleKernel(const Context &dev_ctx,
-                                    const DenseTensor &x,
-                                    const DenseTensor &in_accum_in,
-                                    const DenseTensor &in_state_in,
-                                    float moving_rate,
-                                    bool is_test,
-                                    DenseTensor *out,
-                                    DenseTensor *out_scale,
-                                    DenseTensor *out_state,
-                                    DenseTensor *out_accum) {
+void MovingAverageAbsMaxScaleKernel(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const paddle::optional<DenseTensor> &in_accum_in,
+    const paddle::optional<DenseTensor> &in_state_in,
+    float moving_rate,
+    bool is_test,
+    DenseTensor *out,
+    DenseTensor *out_scale,
+    DenseTensor *out_state,
+    DenseTensor *out_accum) {
   auto *in = &x;
 
   if (out != nullptr) {
@@ -50,8 +46,8 @@ void MovingAverageAbsMaxScaleKernel(const Context &dev_ctx,
   }
 
   // training
-  auto *in_accum = &in_accum_in;
-  auto *in_state = &in_state_in;
+  auto *in_accum = in_accum_in.get_ptr();
+  auto *in_state = in_state_in.get_ptr();
   phi::DenseTensor tmp_scale;
   tmp_scale.Resize(common::make_dim(1));
   T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
