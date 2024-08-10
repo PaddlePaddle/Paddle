@@ -995,7 +995,7 @@ bool GumbelSoftmaxOpInferSymbolicShape(
   return UnchangedShapeCheckAxisOpInferSymbolic(op, infer_context);
 }
 
-bool UnchangedShapeCheckAxisOpInferSymbolic(
+bool UnchangedCheckAxisOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
