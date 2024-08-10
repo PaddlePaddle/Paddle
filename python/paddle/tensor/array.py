@@ -15,7 +15,7 @@
 # Define functions about array.
 from __future__ import annotations
 
-from typing import Any, Sequence, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import paddle
 from paddle import _typing
@@ -24,6 +24,9 @@ from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import in_pir_mode
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core, in_dynamic_mode
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 __all__ = []
 T = TypeVar("T")
