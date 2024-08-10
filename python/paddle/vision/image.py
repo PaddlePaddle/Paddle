@@ -75,7 +75,7 @@ def set_image_backend(backend: _ImageBackend) -> None:
 
             >>> pil_data_folder = DatasetFolder(temp_dir)
 
-            >>> for items in pil_data_folder:  # type: ignore
+            >>> for items in pil_data_folder:
             ...     break
 
             >>> print(type(items[0]))
@@ -86,7 +86,7 @@ def set_image_backend(backend: _ImageBackend) -> None:
 
             >>> cv2_data_folder = DatasetFolder(temp_dir)
 
-            >>> for items in cv2_data_folder:  # type: ignore
+            >>> for items in cv2_data_folder:
             ...     break
 
             >>> print(type(items[0]))
