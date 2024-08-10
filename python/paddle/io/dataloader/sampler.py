@@ -118,8 +118,7 @@ class Sampler(Generic[_T]):
     # is not needed in same sence, e.g. paddle.io.IterableDataset
     if TYPE_CHECKING:
 
-        def __len__(self) -> int:
-            ...
+        def __len__(self) -> int: ...
 
 
 class SequenceSampler(Sampler[int]):

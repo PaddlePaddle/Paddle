@@ -27,7 +27,7 @@ np.random.seed(100)
 
 
 def find_latest_set(num):
-    return 1 + int(math.floor(math.log(num, 2)))
+    return 1 + int(math.floor(math.log2(num)))
 
 
 class CodeTable:

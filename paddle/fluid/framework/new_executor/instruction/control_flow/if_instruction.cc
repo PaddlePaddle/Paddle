@@ -24,9 +24,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
 
 #include "paddle/pir/include/core/builtin_attribute.h"
@@ -118,7 +118,7 @@ IfInstruction::IfInstruction(size_t id,
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
     if (value.use_count() > 0) {
-      VLOG(0) << "value " << i << " use conutn != 0";
+      VLOG(6) << "value " << i << " use conutn != 0";
       is_last_op = false;
     }
   }

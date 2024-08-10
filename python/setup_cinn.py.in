@@ -153,6 +153,9 @@ if '${WITH_GPU}' == 'ON':
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/float16.h')
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/bfloat16.h')
 
+if '${WITH_ROCM}' == 'ON':
+    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h')
+
 for lib in cinnlibs:
     shutil.copy(lib, libs_path)
     libname = os.path.basename(lib)

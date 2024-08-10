@@ -20,6 +20,7 @@ namespace phi {
 
 template <typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad);
 
@@ -31,6 +32,7 @@ void ReshapeDoubleGradKernel(const Context& dev_ctx,
 
 template <typename Context>
 void ReshapeGradStridedKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad);
 

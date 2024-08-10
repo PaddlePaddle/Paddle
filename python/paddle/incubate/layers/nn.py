@@ -108,9 +108,7 @@ def fused_embedding_seq_pool(
     padding_idx = (
         -1
         if padding_idx is None
-        else padding_idx
-        if padding_idx >= 0
-        else (size[0] + padding_idx)
+        else padding_idx if padding_idx >= 0 else (size[0] + padding_idx)
     )
     helper.append_op(
         type='fused_embedding_seq_pool',
@@ -530,11 +528,19 @@ def shuffle_batch(x: Tensor, seed: int | Tensor | None = None) -> Tensor:
     op_attrs = {}
     if isinstance(seed, int):
         op_attrs["startup_seed"] = seed
-        seed = helper.create_variable(
-            name=unique_name.generate("shuffle_batch_seed"),
-            dtype="int64",
-            persistable=False,
-        )
+        if paddle.framework.in_pir_mode():
+            seed = paddle.full([0], 0, "int64")
+            out, _, _ = _C_ops.shuffle_batch(x, seed, op_attrs["startup_seed"])
+            return out
+        else:
+            seed = helper.create_variable(
+                name=unique_name.generate("shuffle_batch_seed"),
+                dtype="int64",
+                persistable=False,
+            )
+    if paddle.framework.in_pir_mode():
+        out, _, _ = _C_ops.shuffle_batch(x, seed, 0)
+        return out
     helper.append_op(
         type='shuffle_batch',
         inputs={'X': x, 'Seed': seed},
@@ -790,8 +796,7 @@ def tdm_sampler(
     seed: int = ...,
     tree_dtype: DTypeLike = ...,
     dtype: DTypeLike = ...,
-) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
-    ...
+) -> tuple[list[Tensor], list[Tensor], list[Tensor]]: ...
 
 
 @overload
@@ -807,8 +812,7 @@ def tdm_sampler(
     seed: int = ...,
     tree_dtype: DTypeLike = ...,
     dtype: DTypeLike = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -827,8 +831,7 @@ def tdm_sampler(
 ) -> (
     tuple[Tensor, Tensor, Tensor]
     | tuple[list[Tensor], list[Tensor], list[Tensor]]
-):
-    ...
+): ...
 
 
 def tdm_sampler(

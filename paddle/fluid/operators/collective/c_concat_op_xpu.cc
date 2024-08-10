@@ -23,9 +23,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -38,8 +38,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    BKCLDataType dtype =
-        platform::ToBKCLDataType(framework::TransToProtoVarType(x->dtype()));
+    BKCLDataType dtype = phi::ToBKCLDataType(x->dtype());
 
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");

@@ -20,6 +20,7 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_legacy_and_pt_and_pir,
+    test_pir_only,
 )
 
 import paddle
@@ -152,6 +153,33 @@ class TestNoGradLinear(TestGradLinear):
 
     def tearDown(self):
         self.temp_dir.cleanup()
+
+
+class UnuseGradVarLayer(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, var_0, var_1):
+        var_1 = var_1 + 1
+        return var_0, var_1
+
+
+class TestUnuseGradVar(Dy2StTestBase):
+    @test_pir_only
+    def test_run(self):
+        layer = UnuseGradVarLayer()
+        layer = paddle.jit.to_static(layer)
+
+        x = paddle.to_tensor([1.0])
+        y = paddle.to_tensor([2.0])
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        out1, out2 = layer(x, y)
+        out = out1 + out2
+        out.backward()
+        np.testing.assert_array_equal(out.numpy(), [4])
+        np.testing.assert_array_equal(x.grad.numpy(), [1])
 
 
 if __name__ == '__main__':

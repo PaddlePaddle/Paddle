@@ -23,7 +23,7 @@ using phi::distributed::auto_parallel::str_join;
   const auto& x##_dims_mapping_src = x##_dist_attr_src.dims_mapping(); \
   PADDLE_ENFORCE_EQ(x##_ndim,                                          \
                     x##_dims_mapping_src.size(),                       \
-                    phi::errors::InvalidArgument(                      \
+                    common::errors::InvalidArgument(                   \
                         "[%d] [%d] The Tensor [%d]'s rank [%d] and "   \
                         "dims_mapping size [%d] are not matched.",     \
                         __FILE__,                                      \
@@ -36,7 +36,7 @@ using phi::distributed::auto_parallel::str_join;
   EXTRACT_SHAPE_AND_DIST_ATTR(x);                                    \
   PADDLE_ENFORCE_EQ(x##_ndim,                                        \
                     x##_dims_mapping_src.size(),                     \
-                    phi::errors::InvalidArgument(                    \
+                    common::errors::InvalidArgument(                 \
                         "[%d] [%d] The Tensor [%d]'s rank [%d] and " \
                         "dims_mapping size [%d] are not matched.",   \
                         __FILE__,                                    \

@@ -200,9 +200,7 @@ class WMT14(Dataset):
                     self.trg_ids.append(trg_ids)
                     self.trg_ids_next.append(trg_ids_next)
 
-    def __getitem__(
-        self, idx: int
-    ) -> tuple[
+    def __getitem__(self, idx: int) -> tuple[
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],
@@ -219,14 +217,12 @@ class WMT14(Dataset):
     @overload
     def get_dict(
         self, reverse: Literal[True] = ...
-    ) -> tuple[dict[int, str], dict[int, str]]:
-        ...
+    ) -> tuple[dict[int, str], dict[int, str]]: ...
 
     @overload
     def get_dict(
         self, reverse: Literal[False] = ...
-    ) -> tuple[dict[str, int], dict[str, int]]:
-        ...
+    ) -> tuple[dict[str, int], dict[str, int]]: ...
 
     @overload
     def get_dict(
@@ -234,8 +230,7 @@ class WMT14(Dataset):
     ) -> (
         tuple[dict[str, int], dict[str, int]]
         | tuple[dict[int, str], dict[int, str]]
-    ):
-        ...
+    ): ...
 
     def get_dict(self, reverse=False):
         """

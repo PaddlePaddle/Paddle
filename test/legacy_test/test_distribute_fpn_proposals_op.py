@@ -220,7 +220,7 @@ class TestDistributeFpnProposalsAPI(unittest.TestCase):
             refer_scale=224,
             rois_num=rois_num,
         )
-        fetch_list = multi_rois + [restore_ind] + rois_num_per_level
+        fetch_list = [*multi_rois, restore_ind, *rois_num_per_level]
 
         exe = paddle.static.Executor()
         output_stat = exe.run(
@@ -250,7 +250,7 @@ class TestDistributeFpnProposalsAPI(unittest.TestCase):
             refer_scale=224,
             rois_num=rois_num_dy,
         )
-        output_dy = multi_rois_dy + [restore_ind_dy] + rois_num_per_level_dy
+        output_dy = [*multi_rois_dy, restore_ind_dy, *rois_num_per_level_dy]
         output_dy_np = []
         for output in output_dy:
             output_np = output.numpy()

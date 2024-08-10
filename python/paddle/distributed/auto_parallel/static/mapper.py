@@ -36,6 +36,7 @@ def is_collective_comm_op(op):
         "c_reduce_prod",
         "c_broadcast",
         "all_gather",
+        "all_reduce",
     ]
     if op.type in comm_list:
         return True
@@ -168,9 +169,9 @@ def analyze_requirements_for_program(src_info, rank):
                     ] += link_info["comm_volume"]
                 else:
                     comm_requirements_to_ranks[tgt_rank] = {}
-                    comm_requirements_to_ranks[tgt_rank][
-                        "comm_volume"
-                    ] = link_info["comm_volume"]
+                    comm_requirements_to_ranks[tgt_rank]["comm_volume"] = (
+                        link_info["comm_volume"]
+                    )
     return resource_requirements, comm_requirements_to_ranks
 
 

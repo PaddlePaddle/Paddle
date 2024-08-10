@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace phi {
 class DenseTensor;
@@ -41,8 +41,8 @@ class MemcpyD2HFunctor {
     CopyLoDTensor(lod_tensor, out_tensor);
   }
 
-  void operator()(const framework::LoDTensorArray &array) const {
-    auto &out_array = *out_->GetMutable<framework::LoDTensorArray>();
+  void operator()(const phi::TensorArray &array) const {
+    auto &out_array = *out_->GetMutable<phi::TensorArray>();
     out_array.clear();
     out_array.resize(array.size());
 

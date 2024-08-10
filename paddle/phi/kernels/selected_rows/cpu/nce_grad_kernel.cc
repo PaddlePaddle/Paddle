@@ -92,7 +92,7 @@ void NCEGradKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_EQ(
           dist_probs->numel(),
           num_total_classes,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "ShapeError: The number of elements in Input(CustomDistProbs) "
               "should be equal to the number of total classes. But Received: "
               "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
@@ -102,7 +102,7 @@ void NCEGradKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_EQ(
           dist_alias->numel(),
           num_total_classes,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "ShapeError: The number of elements in Input(CustomDistAlias) "
               "should be equal to the number of total classes. But Received: "
               "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
@@ -112,7 +112,7 @@ void NCEGradKernel(const Context &dev_ctx,
       PADDLE_ENFORCE_EQ(
           dist_alias_probs->numel(),
           num_total_classes,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "ShapeError: The number of elements in "
               "Input(CustomDistAliasProbs) "
               "should be equal to the number of total classes. But Received: "
@@ -132,7 +132,7 @@ void NCEGradKernel(const Context &dev_ctx,
       break;
     }
     default: {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported SamplerType. SamplerType should be 0: Uniform, "
           "1: LogUniform or 2: CustomDist. Received SamplerType: %d",
           sampler_type));
@@ -169,8 +169,8 @@ void NCEGradKernel(const Context &dev_ctx,
 
   if (!is_sparse) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("The parameter weight_grad of a NCE_OP "
-                                     "must be DenseTensor"));
+        common::errors::InvalidArgument("The parameter weight_grad of a NCE_OP "
+                                        "must be DenseTensor"));
   } else {
     std::vector<int64_t> labels;
     for (int64_t i = 0; i < sample_labels->numel(); ++i) {
