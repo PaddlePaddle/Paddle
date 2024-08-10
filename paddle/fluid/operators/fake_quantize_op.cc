@@ -147,11 +147,6 @@ REGISTER_OPERATOR(
     ops::MovingAverageAbsMaxScaleOpMaker,
     ops::StraightThroughEstimatorMaker<paddle::framework::OpDesc>,
     ops::StraightThroughEstimatorMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(moving_average_abs_max_scale,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::MovingAverageAbsMaxScaleKernel,
-                          float) {}
 
 REGISTER_OPERATOR(straight_through_estimator_grad,
                   ops::StraightThroughEstimatorGradOp);
