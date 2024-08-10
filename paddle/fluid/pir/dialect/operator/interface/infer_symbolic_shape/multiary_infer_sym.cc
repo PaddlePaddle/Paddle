@@ -829,7 +829,8 @@ bool EditDistanceOpInferSymbolicShape(
     infer_context->AddEqualCstr(refs_dims[1], one);
   }
 
-  symbol::ShapeOrDataDimExprs refs_shape_or_data_exprs(refs_dims);
+  symbol::ShapeOrDataDimExprs refs_shape_or_data_exprs(
+      symbol::TensorShapeOrDataDimExprs(refs_dims));
   infer_context->SetShapeOrDataForValue(op->result(0),
                                         refs_shape_or_data_exprs);
 
