@@ -85,7 +85,6 @@ void PartialRecvInferMeta(int ring_id,
                           int peer,
                           DataType dtype,
                           const std::vector<int>& out_shape,
-                          bool use_calc_stream,
                           int num,
                           int id,
                           MetaTensor* out);
