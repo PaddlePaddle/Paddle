@@ -11,6 +11,7 @@ file(
 string(REPLACE ".py" "" TEST_TRT_IR_PASSES "${TEST_TRT_IR_PASSES}")
 
 list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_clip")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_clip")
 
 file(
   GLOB TEST_TRT_CONVERTER
