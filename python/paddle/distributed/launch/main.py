@@ -708,10 +708,7 @@ def launch() -> None:
                     logger.info(
                         "Get best config failed. Currently no config can be run."
                     )
-                if (
-                    "sharding_overlap" in cur_cfg
-                    and cur_cfg["sharding_overlap"]
-                ):
+                if cur_cfg.get("sharding_overlap"):
                     add_overlap_performance(
                         cur_cfg, tuner_cfg, recorder.history
                     )
@@ -811,10 +808,7 @@ def launch() -> None:
                         logger.info(
                             "Get best config failed. Currently no config can be run."
                         )
-                    if (
-                        "sharding_overlap" in cur_cfg
-                        and cur_cfg["sharding_overlap"]
-                    ):
+                    if cur_cfg.get("sharding_overlap"):
                         add_overlap_performance(
                             cur_cfg, tuner_cfg, recorder.history
                         )
@@ -1088,9 +1082,9 @@ def launch() -> None:
                         if single_dp_performance and step_time
                         else None
                     )
-                    cur_cfg[
-                        f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
-                    ] = multi_dp_performance
+                    cur_cfg[f"bw_{bw}_{tuner_cfg['metric_cfg']['name']}"] = (
+                        multi_dp_performance
+                    )
                     cur_cfg[
                         f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                     ] = (
@@ -1105,9 +1099,9 @@ def launch() -> None:
                         recorder.additional_metric_key = (
                             f"unified_bw_{bw}_{tuner_cfg['metric_cfg']['name']}"
                         )
-                        cur_cfg[
-                            "additional_metric_key"
-                        ] = recorder.additional_metric_key
+                        cur_cfg["additional_metric_key"] = (
+                            recorder.additional_metric_key
+                        )
 
             error_info = None
             cur_cfg["has_error"] = has_error
@@ -1221,7 +1215,7 @@ def launch() -> None:
                 logger.info("Get best config failed, no config can be run.")
 
             # record history
-            if "sharding_overlap" in cur_cfg and cur_cfg["sharding_overlap"]:
+            if cur_cfg.get("sharding_overlap"):
                 add_overlap_performance(cur_cfg, tuner_cfg, recorder.history)
 
             recorder.store_history(history_file_path)

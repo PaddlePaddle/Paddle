@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
 import csv
@@ -18,7 +19,6 @@ import itertools
 import logging
 import os
 import re
-from typing import Tuple
 
 import paddle
 
@@ -1405,7 +1405,7 @@ def gen_new_ctx(ctx, cur_cfg, tuner_cfg):
 
 def read_metric_log(
     path, file="workerlog.0", target_metric='step/s'
-) -> Tuple[float, int]:
+) -> tuple[float, int]:
     """For extracting metric from log file."""
     """
     return:
@@ -1469,7 +1469,7 @@ def read_metric_log(
 
 def read_step_time_log(
     path, file="workerlog.0", target_metric='interval_runtime'
-) -> Tuple[float, int]:
+) -> tuple[float, int]:
     target_file = path + "/" + file
     if not os.path.exists(target_file):
         return None
@@ -1539,7 +1539,7 @@ def read_allocated_memory_log(
             return metric_list[-1]
 
 
-def read_memory_log(path, file) -> Tuple[float, bool]:
+def read_memory_log(path, file) -> tuple[float, bool]:
     log_path = os.path.join(path, file)
     if not os.path.exists(log_path):
         return (0.0, True)
@@ -1599,7 +1599,7 @@ def read_log(
     metric_file="workerlog.0",
     target_metric='step/s',
     memory_file="0.gpu.log",
-) -> Tuple[float, float, int]:
+) -> tuple[float, float, int]:
     """
     extract metric and max memory usage from log file
     return:

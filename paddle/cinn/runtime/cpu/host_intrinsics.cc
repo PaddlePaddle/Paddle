@@ -31,7 +31,7 @@ void __cinn_host_tanh_v(const cinn_buffer_t* x, cinn_buffer_t* out) {
   PADDLE_ENFORCE_EQ(
       x->num_elements(),
       out->num_elements(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The number of elements in input buffer (x) must be equal to the "
           "number of elements in output buffer (out)."));
   int xn = x->num_elements();
