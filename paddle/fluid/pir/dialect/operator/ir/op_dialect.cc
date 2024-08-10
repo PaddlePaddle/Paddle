@@ -174,7 +174,10 @@ struct SliceOpInferSymbolicShapeInterfaceModel
         op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
     const auto& input_shape =
         infer_context->GetShapeOrDataForValue(op->operand_source(0));
-    CHECK(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>());
+    PADDLE_ENFORCE_EQ(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input shape can not be converted, please check"));
     const symbol::TensorListShapeOrDataDimExprs& data_shape_list =
         input_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     const symbol::TensorShapeOrDataDimExprs& output_shape =

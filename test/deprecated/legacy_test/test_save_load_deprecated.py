@@ -892,7 +892,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     main_program,
                     file_model_path,
                     exe,
-                    all_var_list + [temp_var],
+                    [*all_var_list, temp_var],
                 )
         temp_dir.cleanup()
 

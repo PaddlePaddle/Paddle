@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import copy
 import warnings
-from sqlite3 import NotSupportedError
 from typing import TYPE_CHECKING
 
 import paddle
@@ -265,10 +264,10 @@ def _squared_l2_norm(x):
 
 class BaseErrorClipAttr:
     def __str__(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _append_clip_op(self, block, grad_name):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class ErrorClipByValue(BaseErrorClipAttr):
@@ -353,7 +352,7 @@ class ClipGradBase:
         super().__init__()
 
     def __str__(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
@@ -384,10 +383,10 @@ class ClipGradBase:
             return self._static_clip(params_grads)
 
     def _process_context(self, context, param, grad):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _create_operators(self, param, grad):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class ClipGradByValue(ClipGradBase):
@@ -1006,7 +1005,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         sum_square_list.append(sum_square)
 
             if len(sum_square_list_fp16) > 0 and len(sum_square_list_bf16) > 0:
-                raise NotSupportedError(
+                raise NotImplementedError(
                     'FP16 and BF16 are not supported at the same time.'
                 )
 
