@@ -1041,10 +1041,7 @@ class OpInfoParser:
             return None
 
     def parse_data_transform_info(self):
-        if (
-            'data_transform' in self.op_yaml_item
-            and self.op_yaml_item['data_transform']
-        ):
+        if self.op_yaml_item.get('data_transform'):
             data_trans_item = self.op_yaml_item['data_transform']
             return data_trans_item
         return None
@@ -1776,10 +1773,7 @@ def AutoCodeGen(
                 if op_kernel_map is not None:
                     kernel_func_str = kernel_func_name
                     kernel_param_str = '", "'.join(op_kernel_map['param'])
-                    if (
-                        'data_type' in op_kernel_map
-                        and op_kernel_map['data_type']
-                    ):
+                    if op_kernel_map.get('data_type'):
                         for idx in range(
                             len(op_kernel_map['data_type']['candidates'])
                         ):
@@ -1805,7 +1799,7 @@ def AutoCodeGen(
                                 )
                         if kernel_key_dtype != "":
                             kernel_key_dtype = '"' + kernel_key_dtype[:-3]
-                    if 'backend' in op_kernel_map and op_kernel_map['backend']:
+                    if op_kernel_map.get('backend'):
                         kernel_key_backend = '", "'.join(
                             op_kernel_map['backend']['candidates']
                         )

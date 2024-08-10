@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import datetime
 import importlib
@@ -18,7 +19,7 @@ import json
 import os
 import socket
 from enum import Enum
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable
 from warnings import warn
 
 import paddle
@@ -41,6 +42,9 @@ from .profiler_statistic import (
 )
 from .timer import benchmark
 from .utils import RecordEvent, wrap_optimizers
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 class SummaryView(Enum):
@@ -216,7 +220,7 @@ def _default_state_scheduler(step: int):
 
 
 def export_chrome_tracing(
-    dir_name: str, worker_name: Optional[str] = None
+    dir_name: str, worker_name: str | None = None
 ) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to chrome tracing format file.
@@ -268,9 +272,7 @@ def export_chrome_tracing(
     return handle_fn
 
 
-def export_protobuf(
-    dir_name: str, worker_name: Optional[str] = None
-) -> Callable:
+def export_protobuf(dir_name: str, worker_name: str | None = None) -> Callable:
     r"""
     Return a callable, used for outputing tracing data to protobuf file.
     The output file will be saved in directory ``dir_name``, and file name will be set as ``worker_name``.
@@ -479,15 +481,15 @@ class Profiler:
     def __init__(
         self,
         *,
-        targets: Optional[Iterable[ProfilerTarget]] = None,
-        scheduler: Union[Callable[[int], ProfilerState], tuple, None] = None,
-        on_trace_ready: Optional[Callable[..., Any]] = None,
-        record_shapes: Optional[bool] = False,
-        profile_memory: Optional[bool] = False,
-        timer_only: Optional[bool] = False,
-        emit_nvtx: Optional[bool] = False,
-        custom_device_types: Optional[list] = [],
-        with_flops: Optional[bool] = False,
+        targets: Iterable[ProfilerTarget] | None = None,
+        scheduler: Callable[[int], ProfilerState] | tuple | None = None,
+        on_trace_ready: Callable[..., Any] | None = None,
+        record_shapes: bool | None = False,
+        profile_memory: bool | None = False,
+        timer_only: bool | None = False,
+        emit_nvtx: bool | None = False,
+        custom_device_types: list | None = [],
+        with_flops: bool | None = False,
     ):
         supported_targets = _get_supported_targets()
         if targets:
@@ -657,7 +659,7 @@ class Profiler:
                 self.on_trace_ready(self)
         utils._is_profiler_used = False
 
-    def step(self, num_samples: Optional[int] = None):
+    def step(self, num_samples: int | None = None):
         r"""
         Signals the profiler that the next profiling step has started.
         Get the new ProfilerState and trigger corresponding action.

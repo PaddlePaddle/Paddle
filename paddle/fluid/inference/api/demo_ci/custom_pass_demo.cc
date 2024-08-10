@@ -60,10 +60,18 @@ std::vector<float> GetOutputData(const std::shared_ptr<Predictor> &predictor) {
     input_tensor.set_name(input_name);
     inputs.emplace_back(std::move(input_tensor));
   }
-  CHECK(predictor->Run(inputs, &outputs));
-
-  CHECK(outputs[0].place() == paddle::GPUPlace{});
-  CHECK(outputs[0].dtype() == paddle::DataType::FLOAT32);
+  PADDLE_ENFORCE_EQ(
+      predictor->Run(inputs, &outputs),
+      true,
+      common::errors::ExecutionTimeout("Sorry, predictor run failed"));
+  PADDLE_ENFORCE_EQ(outputs[0].place(),
+                    paddle::GPUPlace{},
+                    common::errors::InvalidArgument(
+                        "Sorry, output tensor place is not GPUPlace"));
+  PADDLE_ENFORCE_EQ(outputs[0].dtype(),
+                    paddle::DataType::FLOAT32,
+                    common::errors::InvalidArgument(
+                        "Sorry, output tensor dtype is not FLOAT32"));
   auto output = outputs[0].copy_to(paddle::CPUPlace{}, true);
 
   std::vector<float> output_data;
@@ -92,7 +100,9 @@ int main(int argc, char **argv) {
   auto base_data = GetOutputData(InitPredictor(false));
   auto custom_data = GetOutputData(InitPredictor(true));
 
-  CHECK(AreEqual(base_data, custom_data, 1e-3));
-
+  PADDLE_ENFORCE_EQ(AreEqual(base_data, custom_data, 1e-3),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Sorry, base_data and custom_data are not equal"));
   return 0;
 }

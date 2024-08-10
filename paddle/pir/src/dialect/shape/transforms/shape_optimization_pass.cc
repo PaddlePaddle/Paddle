@@ -150,7 +150,7 @@ void CheckInferSymWithInferMeta(
     pir::InferSymbolicShapeContext* infer_context = nullptr) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
-    if (!res || !res.type()) {
+    if (!res || !res.type() || res.use_empty()) {
       continue;
     }
 

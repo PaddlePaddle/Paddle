@@ -1773,9 +1773,9 @@ class Engine:
         test_data: Dataset,
         test_sample_split: int | None = None,
         batch_size: int = 1,
-        steps: int = None,
+        steps: int | None = None,
         collate_fn: _CollateFn | None = None,
-        callbacks: Sequence[Callback] = None,
+        callbacks: Sequence[Callback] | None = None,
         verbose: int = 2,
     ) -> list[Any]:
         """
@@ -1901,7 +1901,7 @@ class Engine:
         use_buffer_reader: bool = True,
         use_shared_memory: bool = True,
         timeout: int = 0,
-        worker_init_fn: Callable[[int], None] = None,
+        worker_init_fn: Callable[[int], None] | None = None,
         epochs: int = 1,
         steps_per_epoch: int | None = None,
         sample_split: int = 1,

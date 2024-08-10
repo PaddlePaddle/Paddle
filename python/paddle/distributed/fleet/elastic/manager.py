@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
 import os
@@ -406,7 +407,7 @@ class ElasticManager:
 
         return int(self.etcd.get(self.prefix)[0]) == 1
 
-    def _match(self, host_list: list = None):
+    def _match(self, host_list: list | None = None):
         if host_list:
             self.hosts = host_list
         else:
