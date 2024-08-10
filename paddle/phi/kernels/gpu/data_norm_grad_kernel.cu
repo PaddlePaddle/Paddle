@@ -146,22 +146,8 @@ void DataNormGradKernel(const Context &dev_ctx,
 
   if (need_sync_stats) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    int rid = 0;
-    const auto &comm_context_manager =
-        phi::distributed::CommContextManager::GetInstance();
-    phi::distributed::NCCLCommContext *comm_ctx = nullptr;
-
-    PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
-                      true,
-                      common::errors::InvalidArgument(
-                          "You choose to use new communication library by "
-                          "setting environment "
-                          "variable FLAGS_dynamic_static_unified_comm True. "
-                          "But ring_id(%d) is "
-                          "not found in comm_context_manager.",
-                          std::to_string(rid)));
-    comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-        comm_context_manager.Get(std::to_string(rid)));
+    auto comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+        dev_ctx.GetCommContext());
     PADDLE_ENFORCE_NE(comm_ctx,
                       nullptr,
                       common::errors::Unavailable(
