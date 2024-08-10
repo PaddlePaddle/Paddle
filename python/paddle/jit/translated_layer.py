@@ -251,9 +251,9 @@ def _rename_var_program_desc(program_desc, include=None, exclude=None):
             dict_rename_var_old_new[var_name] = double_grad_rename_dict[
                 var_name
             ]
-            dict_rename_var_new_old[
-                double_grad_rename_dict[var_name]
-            ] = var_name
+            dict_rename_var_new_old[double_grad_rename_dict[var_name]] = (
+                var_name
+            )
 
     # Rename on program desc
     for b_idx in range(program_desc.num_blocks()):

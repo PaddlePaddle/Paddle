@@ -34,11 +34,7 @@ void FlattenInferStridedKernel(const Context& dev_ctx,
         "be called, something wrong has happened!"));
   }
   ReshapeStridedKernel<Context>(
-      dev_ctx,
-      x,
-      IntArray(common::vectorize<int64_t>(out->dims())),
-      out,
-      xshape);
+      dev_ctx, x, IntArray(common::vectorize<int64_t>(out->dims())), out);
 }
 
 template <typename Context>

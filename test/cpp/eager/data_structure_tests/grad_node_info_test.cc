@@ -27,7 +27,11 @@ TEST(GradNodeInfo, GradSlotMeta) {
   auto grad_slot = egr::GradSlotMeta();
   VLOG(6) << "Set SetStopGradient";
   grad_slot.SetStopGradient();
-  CHECK(grad_slot.IsStopGradient() == true);
+  PADDLE_ENFORCE_EQ(
+      grad_slot.IsStopGradient(),
+      true,
+      common::errors::Fatal("`grad_slot.IsStopGradient()` should be "
+                            "true, please check related function"));
 }
 
 void TestGradNodeBase(bool is_remove_gradient_hook) {
@@ -80,8 +84,16 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
       grad_test_node0->InputMeta()[1][0].GetTensorMeta().dtype,
       meta.dtype,
       common::errors::InvalidArgument("Dtype of input tensor mismatch."));
-  CHECK(grad_test_node0->OutputMeta()[0][0].IsStopGradient());
-  CHECK(grad_test_node0->OutputMeta()[1][0].IsStopGradient());
+  PADDLE_ENFORCE_EQ(grad_test_node0->OutputMeta()[0][0].IsStopGradient(),
+                    true,
+                    common::errors::Fatal(
+                        "`grad_test_node0->OutputMeta()[0][0].IsStopGradient()"
+                        "` should be true, please related function"));
+  PADDLE_ENFORCE_EQ(grad_test_node0->OutputMeta()[1][0].IsStopGradient(),
+                    true,
+                    common::errors::Fatal(
+                        "`grad_test_node0->OutputMeta()[1][0].IsStopGradient()"
+                        "` should be true, please related function"));
   PADDLE_ENFORCE_EQ(
       grad_test_node0->OutputMeta()[0][0].GetTensorMeta().dtype,
       meta.dtype,
@@ -160,9 +172,17 @@ TEST(GradNodeInfo, Edge) {
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>();
   VLOG(6) << "Test Construct Edge";
   egr::Edge edge0 = egr::Edge();
-  CHECK(edge0.IsInitialized() == false);
+  PADDLE_ENFORCE_EQ(
+      edge0.IsInitialized(),
+      false,
+      common::errors::Fatal("`edge0.IsInitialized()` should be "
+                            "false, please check related function"));
   egr::Edge edge1 = egr::Edge(grad_test_node0, size_t(0), size_t(0));
-  CHECK(edge1.IsInitialized() == true);
+  PADDLE_ENFORCE_EQ(
+      edge1.IsInitialized(),
+      true,
+      common::errors::Fatal("`edge1.IsInitialized()` should be "
+                            "true, please check related function"));
   egr::Edge edge2 =
       egr::Edge(grad_test_node0, std::make_pair(size_t(1), size_t(0)));
   VLOG(6) << "Test Set Edge's Grad Node";
@@ -175,7 +195,11 @@ TEST(GradNodeInfo, Edge) {
       2UL,
       common::errors::InvalidArgument("Size of input mismatch. Expected 2."));
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
-  CHECK(grad_node->InputMeta()[0][0].IsStopGradient() == true);
+  PADDLE_ENFORCE_EQ(
+      grad_node->InputMeta()[0][0].IsStopGradient(),
+      true,
+      common::errors::Fatal("`grad_node->InputMeta()[0][0].IsStopGradient()` "
+                            "should be true, please check related function"));
   VLOG(6) << "Test Get/Set Edge Rank Info";
   PADDLE_ENFORCE_EQ(
       edge2.GetEdgeRankInfo().first,

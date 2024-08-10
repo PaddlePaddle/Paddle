@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -81,9 +82,11 @@ class TrtConvertElementwiseTestOneInputSpecialCase0(TrtLayerAutoScanTest):
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
                                 "outputs_dtype": {
-                                    "output_data": np.float32
-                                    if op_type != "elementwise_floordiv"
-                                    else np.int32
+                                    "output_data": (
+                                        np.float32
+                                        if op_type != "elementwise_floordiv"
+                                        else np.int32
+                                    )
                                 },
                             }
                         ]
@@ -110,7 +113,7 @@ class TrtConvertElementwiseTestOneInputSpecialCase0(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             # The input.dims[1] must be equal to the weight's length.
             if self.dims == 4:
@@ -224,9 +227,11 @@ class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
                             "outputs_dtype": {
-                                "output_data": np.float32
-                                if op_type != "elementwise_floordiv"
-                                else np.int32
+                                "output_data": (
+                                    np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                )
                             },
                         }
                     ]
@@ -251,7 +256,7 @@ class TrtConvertElementwiseTestOneInputSpecialCase1(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [32]}
             self.dynamic_shape.max_input_shape = {"input_data": [64]}
@@ -367,9 +372,11 @@ class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
                                 "outputs_dtype": {
-                                    "output_data": np.float32
-                                    if op_type != "elementwise_floordiv"
-                                    else np.int32
+                                    "output_data": (
+                                        np.float32
+                                        if op_type != "elementwise_floordiv"
+                                        else np.int32
+                                    )
                                 },
                             }
                         ]
@@ -396,7 +403,7 @@ class TrtConvertElementwiseTestOneInput(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             # The input.dims[1] must be equal to the weight's length.
             if self.dims == 1:
@@ -513,9 +520,11 @@ class TrtConvertElementwiseTestTwoInputWithoutBroadcast(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
                             "outputs_dtype": {
-                                "output_data": np.float32
-                                if op_type != "elementwise_floordiv"
-                                else np.int32
+                                "output_data": (
+                                    np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                )
                             },
                         }
                     ]
@@ -539,7 +548,7 @@ class TrtConvertElementwiseTestTwoInputWithoutBroadcast(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {
@@ -719,9 +728,11 @@ class TrtConvertElementwiseTestTwoInputWithBroadcast(TrtLayerAutoScanTest):
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
                                 "outputs_dtype": {
-                                    "output_data": np.float32
-                                    if op_type != "elementwise_floordiv"
-                                    else np.int32
+                                    "output_data": (
+                                        np.float32
+                                        if op_type != "elementwise_floordiv"
+                                        else np.int32
+                                    )
                                 },
                             }
                         ]
@@ -749,7 +760,7 @@ class TrtConvertElementwiseTestTwoInputWithBroadcast(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             max_shape = [
                 [128],
@@ -872,9 +883,11 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
                                 "op_outputs": {"Out": ["output_data"]},
                                 "op_attrs": dics[0],
                                 "outputs_dtype": {
-                                    "output_data": np.float32
-                                    if op_type != "elementwise_floordiv"
-                                    else np.int32
+                                    "output_data": (
+                                        np.float32
+                                        if op_type != "elementwise_floordiv"
+                                        else np.int32
+                                    )
                                 },
                             }
                         ]
@@ -901,7 +914,7 @@ class TrtConvertElementwiseTestOneInputCornerCase(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             # The input.dims[1] must be equal to the weight's length.
             if self.dims == 1:
@@ -997,9 +1010,11 @@ class TrtConvertElementwiseTestTwoInputSkipCase(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
                             "outputs_dtype": {
-                                "output_data": np.int32
-                                if op_type == "elementwise_pow"
-                                else np.bool_
+                                "output_data": (
+                                    np.int32
+                                    if op_type == "elementwise_pow"
+                                    else np.bool_
+                                )
                             },
                         }
                     ]
@@ -1023,7 +1038,7 @@ class TrtConvertElementwiseTestTwoInputSkipCase(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {
@@ -1169,7 +1184,7 @@ class TrtConvertPowOp(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 0:
                 self.dynamic_shape.min_input_shape = {"input_data": []}
@@ -1301,9 +1316,11 @@ class TrtConvertElementwise0D(TrtLayerAutoScanTest):
                             "op_outputs": {"Out": ["output_data"]},
                             "op_attrs": dics[0],
                             "outputs_dtype": {
-                                "output_data": np.float32
-                                if op_type != "elementwise_floordiv"
-                                else np.int32
+                                "output_data": (
+                                    np.float32
+                                    if op_type != "elementwise_floordiv"
+                                    else np.int32
+                                )
                             },
                         }
                     ]
@@ -1332,7 +1349,7 @@ class TrtConvertElementwise0D(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             # The input.dims[1] must be equal to the weight's length.
             if self.dims == 0:
