@@ -72,11 +72,6 @@ def _conv3d(
     channel_last = data_format == "NDHWC"
     channel_dim = -1 if channel_last else 1
     num_channels = x.shape[channel_dim]
-    if num_channels < 0:
-        raise ValueError(
-            f"The channel dimension of the input({x.shape}) should be defined. "
-            f"Received: {num_channels}."
-        )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
     stride = convert_to_list(stride, dims, 'stride')
@@ -161,11 +156,6 @@ def _conv2d(
             f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
-    if num_channels < 0:
-        raise ValueError(
-            f"The channel dimension of the input({x.shape}) should be defined. "
-            f"Received: {num_channels}."
-        )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
     stride = convert_to_list(stride, dims, 'stride')
@@ -247,11 +237,6 @@ def _conv3d_igemm(
             f"Input x should be 5D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
-    if num_channels < 0:
-        raise ValueError(
-            f"The channel dimension of the input({x.shape}) should be defined. "
-            f"Received: {num_channels}."
-        )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
     stride = convert_to_list(stride, dims, 'stride')
@@ -331,11 +316,6 @@ def _conv2d_igemm(
             f"Input x should be 4D tensor, but received x with the shape of {x.shape}"
         )
     num_channels = x.shape[channel_dim]
-    if num_channels < 0:
-        raise ValueError(
-            f"The channel dimension of the input({x.shape}) should be defined. "
-            f"Received: {num_channels}."
-        )
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, dims)
     stride = convert_to_list(stride, dims, 'stride')

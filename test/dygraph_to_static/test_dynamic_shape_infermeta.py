@@ -72,6 +72,27 @@ class TestDynamicShapeInfermeta(Dy2StTestBase):
             [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
 
+    @test_pir_only
+    @test_ast_only
+    def test_group_norm(self):
+        self.check_dynamic_shape(
+            paddle.nn.GroupNorm(3, 3),
+            [paddle.randn([1, 3, 32, 32])],
+            [InputSpec(shape=[None, None, None, None], dtype='float32')],
+        )
+
+    @test_pir_only
+    @test_ast_only
+    def test_functional_conv(self):
+        self.check_dynamic_shape(
+            paddle.nn.functional.conv2d,
+            [paddle.randn([1, 3, 32, 32]), paddle.randn([3, 3, 3, 3])],
+            [
+                InputSpec(shape=[None, None, None, None], dtype='float32'),
+                InputSpec(shape=[None, None, None, None], dtype='float32'),
+            ],
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
