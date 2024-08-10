@@ -350,9 +350,9 @@ def run_adaround(
             sys.stdout.flush()
             if i == num_iterations:
                 break
-        final_weight_tensor_quant_dict[
-            weight_var_name
-        ] = adaround.update_final_weights()
+        final_weight_tensor_quant_dict[weight_var_name] = (
+            adaround.update_final_weights()
+        )
 
         if bias_correction:
             final_weight_tensor_quant_dict[weight_var_name] = bias_correction_w(

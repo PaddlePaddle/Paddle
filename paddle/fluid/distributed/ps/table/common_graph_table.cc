@@ -3524,10 +3524,17 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   nodeid_to_edgeids_.resize(node_type_str_to_node_types_idx.size());
   for (auto &obj : edge_to_id) {
     size_t pos = obj.first.find("2");
-    CHECK(pos != std::string::npos);
+    PADDLE_ENFORCE_EQ((pos != std::string::npos),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The string does not contain the character '2'."));
     std::string nodetype = obj.first.substr(0, pos);
     auto it = node_type_str_to_node_types_idx.find(nodetype);
-    CHECK(it != node_type_str_to_node_types_idx.end());
+    PADDLE_ENFORCE_EQ(
+        (it != node_type_str_to_node_types_idx.end()),
+        true,
+        common::errors::InvalidArgument(
+            "Node type not found in node_type_str_to_node_types_idx."));
     nodeid_to_edgeids_[it->second].push_back(obj.second);
     VLOG(0) << "add edge [" << obj.first << "=" << obj.second << "] to ["
             << nodetype << "=" << it->second << "]";

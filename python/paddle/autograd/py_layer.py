@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Sequence, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from typing_extensions import Concatenate
 
@@ -22,6 +22,8 @@ import paddle
 from paddle.base import core
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
 

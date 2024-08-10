@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import unittest
-from typing import List
 
 import numpy as np
 from dygraph_to_static_utils import (
@@ -35,15 +35,15 @@ def function(x: A) -> A:
 
 def fn_annotation_assign_with_value(x: paddle.Tensor):
     if x:
-        y: List[paddle.Tensor] = [x + 1]
+        y: list[paddle.Tensor] = [x + 1]
     else:
-        y: List[paddle.Tensor] = [x - 1]
+        y: list[paddle.Tensor] = [x - 1]
     return y
 
 
 def fn_annotation_assign_without_value(x: paddle.Tensor):
     if x:
-        y: List[paddle.Tensor]
+        y: list[paddle.Tensor]
         y = [x + 1]
     else:
         y = [x - 1]

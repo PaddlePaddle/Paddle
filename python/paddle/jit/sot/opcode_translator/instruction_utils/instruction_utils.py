@@ -382,9 +382,9 @@ def instrs_info(instrs, mark=None, range=None, want_str=True):
             "{line:<8s}{is_jump_target:>2s}{offset:>4d} {opname:<30s}{arg:<4s}{argval:<40s}{mark}".format(
                 line=str(instr.starts_line) if instr.starts_line else "",
                 is_jump_target=">>" if instr.is_jump_target else "  ",
-                offset=instr.offset
-                if instr.offset or instr.offset == 0
-                else -1,
+                offset=(
+                    instr.offset if instr.offset or instr.offset == 0 else -1
+                ),
                 opname=instr.opname,
                 arg=str(instr.arg) if instr.arg is not None else "",
                 argval=f"({instr.argval})" if instr.argval else "",
