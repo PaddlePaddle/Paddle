@@ -825,14 +825,12 @@ bool EditDistanceOpInferSymbolicShape(
   } else {
     symbol::DimExpr one = symbol::DimExpr(1);
 
-    symbol::DimExpr hyps_dim = symbol::DimExpr(hyps_dims[1]);
-    symbol::DimExpr refs_dim = symbol::DimExpr(refs_dims[1]);
-
-    infer_context->AddEqualCstr(hyps_dim, one);
-    infer_context->AddEqualCstr(refs_dim, one);
+    infer_context->AddEqualCstr(hyps_dim[1], one);
+    infer_context->AddEqualCstr(refs_dim[1], one);
   }
 
-  infer_context->SetShapeOrDataForValue(op->result(0), refs_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        refs_shape_or_data.shape());
   symbol::ShapeOrDataDimExprs single_dim_expr(symbol::TensorShapeOrDataDimExprs(
       std::vector<symbol::DimExpr>{symbol::DimExpr(1)}));
   infer_context->SetShapeOrDataForValue(
