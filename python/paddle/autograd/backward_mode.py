@@ -31,8 +31,8 @@ __all__ = []
 
 @framework.dygraph_only
 def backward(
-    tensors: list[Tensor],
-    grad_tensors: list[Tensor | None] | None = None,
+    tensors: Tensor | Sequence[Tensor],
+    grad_tensors: Tensor | Sequence[Tensor | None] | None = None,
     retain_graph: bool = False,
 ) -> None:
     """

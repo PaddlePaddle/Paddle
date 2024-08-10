@@ -61,7 +61,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import PlaceLike
     from paddle._typing.device_like import _Place
-    from paddle.base.dataset import DatasetBase
+    from paddle.distributed.fleet.dataset.dataset import DatasetBase
     from paddle.static import CompiledProgram
 
 __all__ = []
