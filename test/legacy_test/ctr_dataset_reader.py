@@ -77,7 +77,7 @@ class CtrReader:
                             dnn_input = load_dnn_input_record(fs[0])
                             lr_input = load_lr_input_record(fs[1])
                             click = [int(fs[2])]
-                            yield [dnn_input] + [lr_input] + [click]
+                            yield [dnn_input, lr_input, click]
 
         return reader
 
