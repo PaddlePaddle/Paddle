@@ -992,7 +992,7 @@ bool IdentityLossOpInferSymbolicShape(
 }
 bool GumbelSoftmaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return UnchangedShapeCheckAxisOpInferSymbolic(op, infer_context);
+  return UnchangedCheckAxisOpInferSymbolicShape(op, infer_context);
 }
 
 bool UnchangedCheckAxisOpInferSymbolicShape(
