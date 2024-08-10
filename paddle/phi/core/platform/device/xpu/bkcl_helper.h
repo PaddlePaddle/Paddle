@@ -25,8 +25,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"

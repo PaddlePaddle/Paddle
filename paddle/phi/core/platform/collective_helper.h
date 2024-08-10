@@ -18,7 +18,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "glog/logging.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/device_context.h"
