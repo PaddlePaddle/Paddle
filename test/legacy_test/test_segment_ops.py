@@ -283,9 +283,7 @@ class TestSegmentSumBF16Op(TestSegmentOps):
         )
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ["X"], "Out", check_pir=True, check_symbol_infer=False
-        )
+        self.check_grad_with_place(self.place, ["X"], "Out", check_pir=True)
 
 
 @unittest.skipIf(
