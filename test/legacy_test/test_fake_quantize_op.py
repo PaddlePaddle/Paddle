@@ -260,6 +260,10 @@ class TestFakeChannelWiseQuantizeDequantizeAbsMaxOp(OpTest):
                     round_type=round_type,
                 )
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+        self.check_output(check_symbol_infer=True)
+
 
 class TestFakeQuantizeRangeAbsMaxOp(OpTest):
     def setUp(self):
