@@ -111,7 +111,7 @@ class MLP_Hybrid(paddle.nn.Layer):
         )
         step = inputs.shape[-1] // mp_group.nranks
         mp_rank = dist.get_rank(mp_group)
-        mp_rank = mp_rank if mp_rank >= 0 else 0
+        mp_rank = max(mp_rank, 0)
         inputs = inputs[..., step * mp_rank : step * mp_rank + step]
 
         y = self._linear1(inputs)

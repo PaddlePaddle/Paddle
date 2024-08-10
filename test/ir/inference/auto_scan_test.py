@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 import abc
 import enum
@@ -19,7 +19,7 @@ import os
 import shutil
 import time
 import unittest
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import hypothesis
 import hypothesis.strategies as st
@@ -117,7 +117,7 @@ class AutoScanTest(unittest.TestCase):
     @abc.abstractmethod
     def add_ignore_check_case(
         self,
-        teller: [Callable[[ProgramConfig, paddle_infer.Config], bool]],
+        teller: list[Callable[[ProgramConfig, paddle_infer.Config], bool]],
         reason: IgnoreReasons,
         note: str,
     ):
@@ -128,7 +128,7 @@ class AutoScanTest(unittest.TestCase):
 
     def run_test_config(
         self, model, params, prog_config, pred_config, feed_data
-    ) -> Dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:
         """
         Test a single case.
         """
@@ -157,8 +157,8 @@ class AutoScanTest(unittest.TestCase):
         self,
         atol: float,
         rtol: float,
-        tensor: Dict[str, np.array],
-        baseline: Dict[str, np.array],
+        tensor: dict[str, np.array],
+        baseline: dict[str, np.array],
     ):
         for key, arr in tensor.items():
             self.assertTrue(
@@ -179,8 +179,8 @@ class AutoScanTest(unittest.TestCase):
         raise NotImplementedError
 
     def generate_op_config(
-        self, ops_config: List[Dict[str, Any]]
-    ) -> List[OpConfig]:
+        self, ops_config: list[dict[str, Any]]
+    ) -> list[OpConfig]:
         ops = []
         for i in range(len(ops_config)):
             op_config = ops_config[i]
@@ -224,11 +224,11 @@ class AutoScanTest(unittest.TestCase):
     @abc.abstractmethod
     def create_inference_config(
         self,
-        passes: Optional[List[str]] = None,
+        passes: list[str] | None = None,
         use_gpu: bool = False,
         use_mkldnn: bool = False,
         use_xpu: bool = False,
-        ir_optim: Optional[bool] = None,
+        ir_optim: bool | None = None,
     ):
         config = paddle_infer.Config()
         config.switch_ir_debug(True)
@@ -270,7 +270,7 @@ class MkldnnAutoScanTest(AutoScanTest):
                     "data": tensor_config.data,
                     "lod": tensor_config.lod,
                 }
-            results: List[Dict[str, np.ndarray]] = []
+            results: list[dict[str, np.ndarray]] = []
 
             # baseline: cpu no ir_optim run
             base_config = self.create_inference_config(ir_optim=False)
@@ -349,7 +349,7 @@ class PirMkldnnAutoScanTest(MkldnnAutoScanTest):
 
     def run_test_config(
         self, model, params, prog_config, pred_config, feed_data
-    ) -> Dict[str, np.ndarray]:
+    ) -> dict[str, np.ndarray]:
         """
         Test a single case.
         """
@@ -473,13 +473,13 @@ class PassAutoScanTest(AutoScanTest):
             self.fail_log(
                 f"At least {min_success_num} programs need to ran successfully, but now only about {successful_ran_programs} programs satisfied."
             )
-            raise AssertionError()
+            raise AssertionError
         used_time = time.time() - start_time
         if max_duration > 0 and used_time > max_duration:
             self.fail_log(
                 f"The duration exceeds {max_duration} seconds, if this is necessary, try to set a larger number for parameter `max_duration`."
             )
-            raise AssertionError()
+            raise AssertionError
 
     def run_test(self, quant=False, prog_configs=None):
         status = True
@@ -693,8 +693,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
         self,
         atol: float,
         rtol: float,
-        tensor: Dict[str, np.array],
-        baseline: Dict[str, np.array],
+        tensor: dict[str, np.array],
+        baseline: dict[str, np.array],
     ):
         for key, arr in tensor.items():
             self.assertEqual(
@@ -874,7 +874,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
     # TODO(wilber): just for backward compatible
     def add_skip_case(
         self,
-        teller: [Callable[[ProgramConfig, paddle_infer.Config], bool]],
+        teller: list[Callable[[ProgramConfig, paddle_infer.Config], bool]],
         reason: IgnoreReasons,
         note: str,
     ):
@@ -900,7 +900,7 @@ class CutlassAutoScanTest(AutoScanTest):
                     'data': tensor_config.data,
                     'lod': tensor_config.lod,
                 }
-            results: List[Dict[str, np.ndarray]] = []
+            results: list[dict[str, np.ndarray]] = []
 
             # baseline: gpu no ir_optim run
             base_config = self.create_inference_config(

@@ -40,7 +40,7 @@ void ConcatGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NE(
       x[0],
       nullptr,
-      phi::errors::InvalidArgument("The input should not be null."));
+      common::errors::InvalidArgument("The input should not be null."));
   auto axis = axis_scalar.to<int>();
   axis = phi::funcs::ComputeAxis(static_cast<int64_t>(axis),
                                  static_cast<int64_t>(x[0]->dims().size()));
@@ -54,15 +54,15 @@ void ConcatGradKernel(const Context& dev_ctx,
       ptrs[j] = nullptr;
     }
   }
-  PADDLE_ENFORCE_GE(
-      axis,
-      0,
-      phi::errors::InvalidArgument("concat_grad: axis should be larger than or "
-                                   "equal to 0, but received axis is %d.",
-                                   axis));
+  PADDLE_ENFORCE_GE(axis,
+                    0,
+                    common::errors::InvalidArgument(
+                        "concat_grad: axis should be larger than or "
+                        "equal to 0, but received axis is %d.",
+                        axis));
   PADDLE_ENFORCE_LT(axis,
                     out_grad.dims().size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "concat_grad: axis should be less than x[0]->dims()!"
                         "But received axis is %d, while x[0]->dims()"
                         "size is %d.",

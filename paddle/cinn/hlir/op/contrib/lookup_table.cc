@@ -51,10 +51,10 @@ ir::Tensor LookupTable(const ir::Tensor& table,
   PADDLE_ENFORCE_EQ(
       table->shape.size(),
       2,
-      phi::errors::InvalidArgument("The shape of table should be 2."));
+      ::common::errors::InvalidArgument("The shape of table should be 2."));
   PADDLE_ENFORCE_GT(ids->shape.size(),
                     1,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The shape of ids should be greater than 1."));
   auto output_shape = ids->shape;
   output_shape.back() = table->shape.back();
@@ -88,40 +88,57 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
     const Target& target) {
   std::string op_name("lookup_table");
   const auto& attr_store = attrs.attr_store;
-  CHECK(attr_store.count("padding_idx")) << "find no attr of axis";
+  PADDLE_ENFORCE_EQ(attr_store.count("padding_idx"),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The padding_idx should be set in lookup_table."));
   auto padding_idx = absl::get<int64_t>(attr_store.at("padding_idx"));
 
   framework::CINNCompute lookup_table_compute([=](lang::Args args,
                                                   lang::RetValue* ret) {
-    CHECK(!args.empty()) << "The input arguments of " << op_name
-                         << " compute is empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        ::common::errors::InvalidArgument("The input arguments of lookup_table "
+                                          "compute is empty! Please check."));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       2U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input arguments' size should be greater "
                           "than 2"));
     Expr A = pack_args[0];
     Expr B = pack_args[1];
-    CHECK(A.as_tensor());
-    CHECK(B.as_tensor());
-    CHECK(!output_shapes.empty());
+    PADDLE_ENFORCE_NOT_NULL(A.as_tensor(),
+                            ::common::errors::InvalidArgument(
+                                "The input argument of lookup_table compute "
+                                "is not tensor."));
+    PADDLE_ENFORCE_NOT_NULL(B.as_tensor(),
+                            ::common::errors::InvalidArgument(
+                                "The input argument of lookup_table compute "
+                                "is not tensor."));
+    PADDLE_ENFORCE_EQ(!output_shapes.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The output_shapes should not be empty."));
     auto tensor_A = A.as_tensor_ref();
     auto tensor_B = B.as_tensor_ref();
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", B shape: " << utils::Join(tensor_B->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    PADDLE_ENFORCE_EQ(
-        pack_args.size(),
-        3U,
-        phi::errors::InvalidArgument("The input arguments' size should be 3"));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      3U,
+                      ::common::errors::InvalidArgument(
+                          "The input arguments' size should be 3"));
     std::string tensor_name = pack_args[2].operator std::string();
 
     ir::Tensor out = LookupTable(tensor_A, tensor_B, padding_idx, tensor_name);
     std::vector<CINNValue> res;
     res.push_back(CINNValue(out));
-    CHECK(!out_type.empty())
-        << "Output type of " << op_name << " is empty! Please check.\n";
+    PADDLE_ENFORCE_EQ(!out_type.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The output type of lookup_table is empty."));
     *ret = CINNValuePack{res};
   });
 

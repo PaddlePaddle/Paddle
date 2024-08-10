@@ -22,6 +22,9 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #endif
+#ifdef CINN_WITH_HIP
+#include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#endif
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -115,7 +118,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     ir::Var kernel_stream(KERNEL_STREAM, type_of<void*>());
 
     // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
-    // however, this make CodeGenCUDA_Dev before spliting the host and device
+    // however, this make CodeGenCudaDev before spliting the host and device
     // module Maybe we could reorder the process.
     std::optional<Expr> shared_mem_bytes;
     cinn::common::DefaultDeviceTarget().arch.Match(
@@ -124,14 +127,18 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-          CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+          CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
           codegen_dev.Compile(ir::LoweredFunc(func));
           shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
 #endif
         },
         [&](common::HygonDCUArchHIP) {
-          PADDLE_THROW(::common::errors::Unimplemented(
-              "CINN todo: new hardware HygonDCUArchHIP"));
+#ifdef CINN_WITH_HIP
+          hip::CodeGenHipDevice codegen_dev(
+              cinn::common::DefaultHygonDcuHipTarget());
+          codegen_dev.Compile(ir::LoweredFunc(func));
+          shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#endif
         });
 
     VLOG(6) << "Add a call node for func->name " << func->name << "\n"
@@ -152,8 +159,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },
         [&](common::HygonDCUArchHIP) {
-          PADDLE_THROW(::common::errors::Unimplemented(
-              "CINN todo: new hardware HygonDCUArchHIP"));
+          call_kernel = runtime::intrinsic::call_hip_kernel;
         });
 
     auto call_extern_api =

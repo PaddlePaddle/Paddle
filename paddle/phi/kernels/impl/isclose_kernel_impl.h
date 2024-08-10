@@ -252,12 +252,12 @@ void IscloseKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       atol.dtype(),
       DataType::FLOAT64,
-      phi::errors::InvalidArgument("Input(Atol) type must be double"));
+      common::errors::InvalidArgument("Input(Atol) type must be double"));
 
   PADDLE_ENFORCE_EQ(
       rtol.dtype(),
       DataType::FLOAT64,
-      phi::errors::InvalidArgument("Input(Rtol) type must be double"));
+      common::errors::InvalidArgument("Input(Rtol) type must be double"));
 
   IscloseFunctor<Context, T>()(
       dev_ctx, x, y, rtol.to<double>(), atol.to<double>(), equal_nan, out);

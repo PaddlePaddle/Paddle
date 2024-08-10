@@ -29,8 +29,8 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #endif
 
 namespace paddle {
@@ -50,7 +50,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -73,7 +73,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::XPU,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Sync stream op can run on xpu place only for now."));
     int ring_id = ctx.Attr<int>("ring_id");
     XPUStream stream = nullptr;
@@ -82,7 +82,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -102,7 +102,7 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
     platform::XPUStreamSync(stream);
 
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU or XPU."));
 #endif
   }

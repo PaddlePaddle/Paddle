@@ -27,7 +27,7 @@ void RepeatInterleaveKernel(const Context& ctx,
                             DenseTensor* out) {
   PADDLE_ENFORCE_GT(repeats,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "repeats must grater than 0, but got %d", repeats));
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -75,7 +75,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
   DenseTensor index;
   PADDLE_ENFORCE_EQ(repeats_tensor.dims()[0] == x.dims()[dim],
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The length of Input(RepeatsTensor) must be the "
                         "same as length of Input(X) in axis. "
                         "But received: [%s], required: [%d].",
@@ -87,7 +87,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       index_type_match,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(RepeatsTensor) holds the wrong type, it holds %s, but "
           "desires to be %s or %s",
           DataTypeToString(index_type),
@@ -136,7 +136,8 @@ PD_REGISTER_KERNEL(repeat_interleave,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    XPU,
@@ -145,4 +146,5 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index,
                    float,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}

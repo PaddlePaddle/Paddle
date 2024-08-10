@@ -36,12 +36,12 @@ TEST(Tensor, Constructor) {
 
   PADDLE_ENFORCE_EQ(et1.defined(),
                     false,
-                    phi::errors::InvalidArgument("Tensor et1 should be "
-                                                 "undefined."));
+                    common::errors::InvalidArgument("Tensor et1 should be "
+                                                    "undefined."));
   PADDLE_ENFORCE_EQ(et2.name(),
                     "et2",
-                    phi::errors::InvalidArgument("Tensor name should be "
-                                                 "'et2'."));
+                    common::errors::InvalidArgument("Tensor name should be "
+                                                    "'et2'."));
 
   phi::DenseTensorMeta meta =
       phi::DenseTensorMeta(phi::DataType::FLOAT32, common::make_ddim({1, 2}));
@@ -57,35 +57,35 @@ TEST(Tensor, Constructor) {
       std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
   PADDLE_ENFORCE_EQ(et3_ptr[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(et3_ptr[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
   // copy constructor
   paddle::Tensor et4(et3);
   auto* et4_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et4.impl())->data<float>();
   PADDLE_ENFORCE_EQ(et4_ptr[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(et4_ptr[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
   paddle::Tensor et5(std::move(et4));
   auto* et5_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et5.impl())->data<float>();
   PADDLE_ENFORCE_EQ(et5_ptr[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(et5_ptr[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
 }
 
 TEST(Tensor, MemberFunction) {
@@ -104,83 +104,84 @@ TEST(Tensor, MemberFunction) {
   VLOG(6) << "Set Name";
   PADDLE_ENFORCE_EQ(et3.name(),
                     "et3",
-                    phi::errors::InvalidArgument("Tensor name should be "
-                                                 "'et3'."));
+                    common::errors::InvalidArgument("Tensor name should be "
+                                                    "'et3'."));
   PADDLE_ENFORCE_EQ(et3.defined(),
                     false,
-                    phi::errors::InvalidArgument("Tensor et3 should be "
-                                                 "undefined."));
+                    common::errors::InvalidArgument("Tensor et3 should be "
+                                                    "undefined."));
   et3.set_impl(dt);
   VLOG(6) << "Set impl";
   PADDLE_ENFORCE_EQ(et3.initialized(),
                     true,
-                    phi::errors::InvalidArgument("Tensor et3 should be "
-                                                 "initialized."));
+                    common::errors::InvalidArgument("Tensor et3 should be "
+                                                    "initialized."));
   PADDLE_ENFORCE_EQ(et3.is_cpu(),
                     true,
-                    phi::errors::InvalidArgument("Tensor et3 should be "
-                                                 "on CPU."));
+                    common::errors::InvalidArgument("Tensor et3 should be "
+                                                    "on CPU."));
   PADDLE_ENFORCE_EQ(et3.is_gpu(),
                     false,
-                    phi::errors::InvalidArgument("Tensor et3 should not be "
-                                                 "on GPU."));
+                    common::errors::InvalidArgument("Tensor et3 should not be "
+                                                    "on GPU."));
   PADDLE_ENFORCE_EQ(et3.numel(),
                     2,
-                    phi::errors::InvalidArgument("Tensor et3 should have "
-                                                 "2 elements."));
+                    common::errors::InvalidArgument("Tensor et3 should have "
+                                                    "2 elements."));
   auto expected_dim = common::make_ddim({1, 2});
-  PADDLE_ENFORCE_EQ(et3.dims(),
-                    expected_dim,
-                    phi::errors::InvalidArgument("Tensor dimensions should be "
-                                                 "{1, 2}."));
+  PADDLE_ENFORCE_EQ(
+      et3.dims(),
+      expected_dim,
+      common::errors::InvalidArgument("Tensor dimensions should be "
+                                      "{1, 2}."));
   PADDLE_ENFORCE_EQ(et3.type(),
                     phi::DataType::FLOAT32,
-                    phi::errors::InvalidArgument("Tensor data type should "
-                                                 "be FLOAT32."));
+                    common::errors::InvalidArgument("Tensor data type should "
+                                                    "be FLOAT32."));
   PADDLE_ENFORCE_EQ(et3.layout(),
                     phi::DataLayout::NCHW,
-                    phi::errors::InvalidArgument("Tensor layout should be "
-                                                 "NCHW."));
+                    common::errors::InvalidArgument("Tensor layout should be "
+                                                    "NCHW."));
   CHECK(phi::is_cpu_place(et3.place()));
   VLOG(6) << "Get impl";
   auto* dt3_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et3.impl())->data<float>();
   PADDLE_ENFORCE_EQ(dt3_ptr[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(dt3_ptr[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
   paddle::Tensor et4 = et3;
   VLOG(6) << "copy =";
   PADDLE_ENFORCE_EQ(et4.initialized(),
                     true,
-                    phi::errors::InvalidArgument("Tensor et4 should be "
-                                                 "initialized."));
+                    common::errors::InvalidArgument("Tensor et4 should be "
+                                                    "initialized."));
   auto* dt4_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et4.impl())->data<float>();
   PADDLE_ENFORCE_EQ(dt4_ptr[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(dt4_ptr[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
   VLOG(6) << "move =";
   paddle::Tensor et5 = std::move(et4);
   auto* dt5_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(et5.impl())->data<float>();
   PADDLE_ENFORCE_EQ(dt5_ptr[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(dt5_ptr[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
   VLOG(6) << "AutogradMeta";
   auto autograd_meta_test = std::make_shared<eager_test::AutogradMetaTest>(2);
   et3.set_autograd_meta(autograd_meta_test);
@@ -188,8 +189,8 @@ TEST(Tensor, MemberFunction) {
       static_cast<eager_test::AutogradMetaTest*>(et3.get_autograd_meta());
   PADDLE_ENFORCE_EQ(tmp_autograd_meta_test->val_,
                     2,
-                    phi::errors::InvalidArgument("AutogradMetaTest value "
-                                                 "should be 2."));
+                    common::errors::InvalidArgument("AutogradMetaTest value "
+                                                    "should be 2."));
 }
 
 TEST(EagerVariable, Constructor) {
@@ -208,32 +209,32 @@ TEST(EagerVariable, Constructor) {
   VLOG(6) << "Set Name";
   PADDLE_ENFORCE_EQ(t3.name(),
                     "t3",
-                    phi::errors::InvalidArgument("Tensor name should be "
-                                                 "'t3'."));
+                    common::errors::InvalidArgument("Tensor name should be "
+                                                    "'t3'."));
   PADDLE_ENFORCE_EQ(
       t3.defined(),
       false,
-      phi::errors::InvalidArgument("Tensor t3 should be undefined but got %d.",
-                                   t3.defined()));
+      common::errors::InvalidArgument(
+          "Tensor t3 should be undefined but got %d.", t3.defined()));
   t3.set_impl(dt);
 
   egr::EagerVariable et3 = egr::EagerVariable(t3);
   VLOG(6) << "SyncToVar";
   PADDLE_ENFORCE_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(et3.Var().Get<phi::DenseTensor>().data<float>()[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
   VLOG(6) << "SyncToTensor";
   paddle::Tensor t4;
   t4.set_impl(et3.GetTensorBase());
   PADDLE_ENFORCE_EQ(
       t4.initialized(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Tensor t4 should be initialized but got %d.", t4.initialized()));
 
   VLOG(6) << "Check Tensor";
@@ -241,18 +242,18 @@ TEST(EagerVariable, Constructor) {
       std::dynamic_pointer_cast<phi::DenseTensor>(t4.impl())->data<float>();
   PADDLE_ENFORCE_EQ(dt3_tmp_ptr[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(dt3_tmp_ptr[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
   t4.reset();
   PADDLE_ENFORCE_EQ(
       t4.defined(),
       false,
-      phi::errors::InvalidArgument("Tensor t4 should be undefined but got %d.",
-                                   t4.defined()));
+      common::errors::InvalidArgument(
+          "Tensor t4 should be undefined but got %d.", t4.defined()));
 
   VLOG(6) << "Check Tensor Copy_";
   std::vector<int64_t> rows = {1, 2};
@@ -280,17 +281,17 @@ TEST(EagerVariable, Constructor) {
                           .data<float>();
   PADDLE_ENFORCE_EQ(dt9_tmp_ptr[0],
                     6.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "6.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "6.0f."));
   PADDLE_ENFORCE_EQ(dt9_tmp_ptr[1],
                     11.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "11.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "11.0f."));
   PADDLE_ENFORCE_EQ(
       std::dynamic_pointer_cast<phi::SelectedRows>(t9.impl())->height(),
       2,
-      phi::errors::InvalidArgument("SelectedRows height should "
-                                   "be 2."));
+      common::errors::InvalidArgument("SelectedRows height should "
+                                      "be 2."));
 
   VLOG(6) << "Check Tensor Copy_ Dense Tensor";
   t5.copy_(t3, phi::GPUPlace(0), false);
@@ -299,24 +300,24 @@ TEST(EagerVariable, Constructor) {
       std::dynamic_pointer_cast<phi::DenseTensor>(t6.impl())->data<float>();
   PADDLE_ENFORCE_EQ(dt6_tmp_ptr[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(dt6_tmp_ptr[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
 #else
   t5.copy_(t3, phi::CPUPlace(), false);
   auto* dt5_tmp_ptr =
       std::dynamic_pointer_cast<phi::DenseTensor>(t5.impl())->data<float>();
   PADDLE_ENFORCE_EQ(dt5_tmp_ptr[0],
                     5.0f,
-                    phi::errors::InvalidArgument("First element should be "
-                                                 "5.0f."));
+                    common::errors::InvalidArgument("First element should be "
+                                                    "5.0f."));
   PADDLE_ENFORCE_EQ(dt5_tmp_ptr[1],
                     10.0f,
-                    phi::errors::InvalidArgument("Second element should be "
-                                                 "10.0f."));
+                    common::errors::InvalidArgument("Second element should be "
+                                                    "10.0f."));
 #endif
 
   VLOG(6) << "Finish";
@@ -342,14 +343,14 @@ TEST(EagerVariable, DataLayout) {
   auto layout = paddle::imperative::GetDataLayout(eager_var);
   PADDLE_ENFORCE_EQ(layout,
                     phi::DataLayout::UNDEFINED,
-                    phi::errors::InvalidArgument("Data layout should be "
-                                                 "UNDEFINED."));
+                    common::errors::InvalidArgument("Data layout should be "
+                                                    "UNDEFINED."));
   paddle::imperative::SetDataLayout(eager_var, phi::DataLayout::NCHW);
   layout = paddle::imperative::GetDataLayout(eager_var);
   PADDLE_ENFORCE_EQ(layout,
                     phi::DataLayout::NCHW,
-                    phi::errors::InvalidArgument("Data layout should be "
-                                                 "NCHW."));
+                    common::errors::InvalidArgument("Data layout should be "
+                                                    "NCHW."));
 }
 
 TEST(VariableCompatTensor, MemberFunction) {

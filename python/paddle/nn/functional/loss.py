@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
@@ -34,6 +34,7 @@ from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Callable, TypeAlias
 
     from paddle import Tensor
@@ -288,7 +289,19 @@ def base_softmax_with_cross_entropy(
              (got input_dims{input_dims}, label_dims{label_dims})'
         )
     if input_dims - 1 == label_dims:
-        label = paddle.unsqueeze(label, axis=axis)
+        batch_size = label.shape[0]
+        new_shape = [batch_size, logits.shape[1]]
+        label = paddle.reshape(label, new_shape)
+
+        # origin function
+        # -------
+        # label = paddle.unsqueeze(label, axis)
+        # ------
+
+        # notice : dim of label [-1,2,10] while logits is [-1,1] ,if use unsquezee
+        # logits [-1,1]->[-1,1,1], but input need 1 != 2 so change
+        # the modified function make logits [-1,1] -> [-1,2] (uncertain)
+        # another possible modify [-1,1] -> [-1,2,1]
     if in_dynamic_or_pir_mode():
         softmax, loss = _C_ops.cross_entropy_with_softmax(
             logits,
@@ -2176,8 +2189,7 @@ def margin_cross_entropy(
     group=...,
     return_softmax: Literal[True] = ...,
     reduction: _ReduceMode | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -2191,8 +2203,7 @@ def margin_cross_entropy(
     group=...,
     return_softmax: Literal[False] = ...,
     reduction: _ReduceMode | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -2206,8 +2217,7 @@ def margin_cross_entropy(
     group=...,
     return_softmax: bool = ...,
     reduction: _ReduceMode | None = ...,
-) -> Tensor | tuple[Tensor, Tensor]:
-    ...
+) -> Tensor | tuple[Tensor, Tensor]: ...
 
 
 def margin_cross_entropy(
@@ -2519,8 +2529,7 @@ def softmax_with_cross_entropy(
     numeric_stable_mode: bool = ...,
     return_softmax: Literal[True] = ...,
     axis: int = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -2532,8 +2541,7 @@ def softmax_with_cross_entropy(
     numeric_stable_mode: bool = ...,
     return_softmax: Literal[False] = ...,
     axis: int = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -2545,8 +2553,7 @@ def softmax_with_cross_entropy(
     numeric_stable_mode: bool = ...,
     return_softmax: bool = ...,
     axis: int = ...,
-) -> Tensor | tuple[Tensor, Tensor]:
-    ...
+) -> Tensor | tuple[Tensor, Tensor]: ...
 
 
 @deprecated(

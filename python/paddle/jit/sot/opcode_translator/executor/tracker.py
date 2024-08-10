@@ -24,7 +24,7 @@ from ...utils import InnerError, NameGenerator
 from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
 
 if TYPE_CHECKING:
-    from typing import Sequence
+    from collections.abc import Sequence
 
     from .pycode_generator import PyCodeGen
     from .variables import VariableBase
@@ -57,7 +57,7 @@ class Tracker:
         Args:
             codegen (PyCodeGen): An instance of PyCodeGen to generate instructions.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     # TODO(xiongkun): trace_value_from_frame is not a good name, it should be more related to guard but not tracable.
     def trace_value_from_frame(self) -> StringifiedExpression:
@@ -67,19 +67,7 @@ class Tracker:
         Returns:
             The value of the tracked variables.
         """
-        raise NotImplementedError()
-
-    def match_expr(self, expr: str) -> bool:
-        """
-        Match the expression with the tracked variables.
-
-        Args:
-            expr (str): The expression to be matched.
-
-        Returns:
-            bool: True if the expression matches the tracked variables, False otherwise.
-        """
-        return self.trace_value_from_frame().inlined_expr == expr
+        raise NotImplementedError
 
     def is_traceable(self) -> bool:
         """

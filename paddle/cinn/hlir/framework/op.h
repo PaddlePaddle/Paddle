@@ -137,7 +137,9 @@ class Operator {
    */
   static const Operator* Get(const std::string& op_name) {
     const Operator* op = OpRegistry::Global()->Find(op_name);
-    CHECK(op) << "Operator [" << op_name << "] is not registered";
+    PADDLE_ENFORCE_NOT_NULL(op,
+                            phi::errors::PreconditionNotMet(
+                                "Operator [%s] is not registered", op_name));
     return op;
   }
 
@@ -207,7 +209,10 @@ class Operator {
 
 template <typename ValueType>
 const ValueType& OpValueType<ValueType>::operator[](const Operator* op) const {
-  CHECK(op) << "The input op is nullptr and it is invalid! Please check again.";
+  PADDLE_ENFORCE_NOT_NULL(
+      op,
+      phi::errors::PreconditionNotMet(
+          "The input op is nullptr and it is invalid! Please check again."));
   const uint32_t idx = op->index;
   PADDLE_ENFORCE_LT(idx,
                     data.size(),

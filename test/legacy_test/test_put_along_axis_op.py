@@ -409,11 +409,9 @@ class TestPutAlongAxisOpMin(TestPutAlongAxisOp):
         for i in range(5):
             for j in range(5):
                 for k in range(5):
-                    self.target[i, self.index[i, j, k], k] = (
-                        self.value[i, j, k]
-                        if self.value[i, j, k]
-                        < self.target[i, self.index[i, j, k], k]
-                        else self.target[i, self.index[i, j, k], k]
+                    self.target[i, self.index[i, j, k], k] = min(
+                        self.target[i, self.index[i, j, k], k],
+                        self.value[i, j, k],
                     )
         self.inputs = {
             'Input': self.xnp,
@@ -458,11 +456,9 @@ class TestPutAlongAxisOpMinNotIncludeSelf(TestPutAlongAxisOp):
         for i in range(5):
             for j in range(5):
                 for k in range(5):
-                    self.target[i, self.index[i, j, k], k] = (
-                        self.value[i, j, k]
-                        if self.value[i, j, k]
-                        < self.target[i, self.index[i, j, k], k]
-                        else self.target[i, self.index[i, j, k], k]
+                    self.target[i, self.index[i, j, k], k] = min(
+                        self.target[i, self.index[i, j, k], k],
+                        self.value[i, j, k],
                     )
         self.inputs = {
             'Input': self.xnp,
@@ -503,11 +499,9 @@ class TestPutAlongAxisOpMax(TestPutAlongAxisOp):
         for i in range(5):
             for j in range(5):
                 for k in range(5):
-                    self.target[i, self.index[i, j, k], k] = (
-                        self.value[i, j, k]
-                        if self.value[i, j, k]
-                        > self.target[i, self.index[i, j, k], k]
-                        else self.target[i, self.index[i, j, k], k]
+                    self.target[i, self.index[i, j, k], k] = max(
+                        self.target[i, self.index[i, j, k], k],
+                        self.value[i, j, k],
                     )
         self.inputs = {
             'Input': self.xnp,
@@ -552,11 +546,9 @@ class TestPutAlongAxisOpMaxNotIncludeSelf(TestPutAlongAxisOp):
         for i in range(5):
             for j in range(5):
                 for k in range(5):
-                    self.target[i, self.index[i, j, k], k] = (
-                        self.value[i, j, k]
-                        if self.value[i, j, k]
-                        > self.target[i, self.index[i, j, k], k]
-                        else self.target[i, self.index[i, j, k], k]
+                    self.target[i, self.index[i, j, k], k] = max(
+                        self.target[i, self.index[i, j, k], k],
+                        self.value[i, j, k],
                     )
         self.inputs = {
             'Input': self.xnp,

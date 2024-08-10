@@ -1462,9 +1462,9 @@ void dispatch_blha_gqa_kernel(const Block_AttN_params<T> &params,
                            load_func,
                            store_func)
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("gqa_num_per_partitions = %d is unsupport!",
-                                   params.gqa_num_per_partitions));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "gqa_num_per_partitions = %d is unsupport!",
+        params.gqa_num_per_partitions));
   }
 }
 
@@ -1543,8 +1543,8 @@ void dispatch_blha_impl_blocksize(const Block_AttN_params<T> &params,
           params, stream, load_func, store_func, use_cachekv_int8);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented("block_size = %d is unsupport!",
-                                              params.block_size));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "block_size = %d is unsupport!", params.block_size));
   }
 }
 
@@ -1569,8 +1569,8 @@ void dispatch_blha_impl_headsize(const phi::GPUContext &dev_ctx,
           params, dev_ctx.stream(), load_func, store_func, use_cachekv_int8);
       break;
     default:
-      PADDLE_THROW(
-          phi::errors::Unimplemented("Dim_head = %d is unsupport!", dim_head));
+      PADDLE_THROW(common::errors::Unimplemented("Dim_head = %d is unsupport!",
+                                                 dim_head));
   }
 }
 
@@ -2715,7 +2715,7 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
   LoadEmbT sin_emb_vec;
   int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   const int half_lastdim = last_dim / 2;
-  const int offset = (q_num_head + kv_num_head) * last_dim;
+  const int offset = (q_num_head + kv_num_head) * half_lastdim;
   for (int64_t linear_index = global_thread_idx * VecSize,
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
@@ -2773,6 +2773,9 @@ void gqa_rotary_qk_variable(
     bool use_neox_style = false) {
   int elem_nums =
       token_num * (q_head_num + kv_head_num) * dim_head;  // just q and k
+  if (use_neox_style) {
+    elem_nums /= 2;
+  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
@@ -3147,7 +3150,7 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
   LoadEmbT sin_emb_vec;
   int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   const int half_lastdim = last_dim / 2;
-  const int offset = (q_num_head + 2 * kv_num_head) * last_dim;
+  const int offset = (q_num_head + 2 * kv_num_head) * half_lastdim;
   for (int64_t linear_index = global_thread_idx * VecSize,
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
@@ -3224,6 +3227,9 @@ void gqa_rotary_qk_variable(
     bool use_neox_style = false) {
   int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
+  if (use_neox_style) {
+    elem_nums /= 2;
+  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
@@ -3563,7 +3569,7 @@ __global__ void GQANeoxVariableLengthRotaryKernel(
   LoadEmbT sin_emb_vec;
   int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
   const int half_lastdim = last_dim / 2;
-  const int offset = (q_num_head + 2 * kv_num_head) * last_dim;
+  const int offset = (q_num_head + 2 * kv_num_head) * half_lastdim;
   for (int64_t linear_index = global_thread_idx * VecSize,
                step = gridDim.x * blockDim.x * VecSize;
        linear_index < elem_cnt;
@@ -3631,6 +3637,9 @@ void gqa_rotary_qk_variable(
     bool use_neox_style = false) {
   int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
+  if (use_neox_style) {
+    elem_nums /= 2;
+  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
@@ -3906,7 +3915,7 @@ void qkv_transpose_split(const phi::GPUContext &dev_ctx,
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -4062,7 +4071,7 @@ void qkv_transpose_split(
   constexpr int PackSize = VEC_16B / sizeof(T);
   PADDLE_ENFORCE_EQ(size_per_head % PackSize,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "dim_head=%d must be divisible by vec_size=%d",
                         size_per_head,
                         PackSize));
@@ -4178,7 +4187,7 @@ void GetDecoderTensor(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       dim_head % PackSize,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", dim_head, PackSize));
   int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
@@ -4266,7 +4275,7 @@ void InitValue(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       numel % PackSize,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "numel=%d must be divisible by vec_size=%d", numel, PackSize));
   const int pack_num = numel / PackSize;
   const int blocksize = 128;
@@ -4337,7 +4346,7 @@ void InvokeTransposeRemovePadding(const phi::GPUContext &dev_ctx,
   PADDLE_ENFORCE_EQ(
       head_dim % PackSize,
       0,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "dim_head=%d must be divisible by vec_size=%d", head_dim, PackSize));
   const int32_t pack_num = elem_cnt / PackSize;
   const int32_t block_size = 128;

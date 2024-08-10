@@ -268,7 +268,9 @@ def check_initialization_for_dp(dist_startup_prog):
         "layer_norm_0.w_0",
         "linear_0.w_0",
         "linear_0.b_0",
-    ] + ['linear_1.w_0', 'linear_1.b_0']
+        "linear_1.w_0",
+        "linear_1.b_0",
+    ]
     params = []
     for var_name, var in dist_startup_prog.global_block().vars.items():
         if var.is_parameter:
