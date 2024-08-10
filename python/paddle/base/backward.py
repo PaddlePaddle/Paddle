@@ -1975,8 +1975,7 @@ def append_backward(
     ) = ...,
     checkpoints: None = ...,
     distop_context: DistributedContext = ...,
-) -> list[tuple[Tensor, Tensor]]:
-    ...
+) -> list[tuple[Tensor, Tensor]]: ...
 
 
 @overload
@@ -1991,8 +1990,7 @@ def append_backward(
     ) = ...,
     checkpoints: list[Tensor] = ...,
     distop_context: DistributedContext = ...,
-) -> tuple[list[tuple[Tensor, Tensor]], list[str]]:
-    ...
+) -> tuple[list[tuple[Tensor, Tensor]], list[str]]: ...
 
 
 @framework.static_only
