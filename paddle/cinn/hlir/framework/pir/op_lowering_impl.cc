@@ -38,6 +38,7 @@
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 #include "paddle/cinn/optim/if_fusion.h"
 #include "paddle/cinn/optim/rearrange_load_instruction.h"
+#include "paddle/cinn/optim/reduce_init_merge.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -696,6 +697,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
                            common::ARMArch>) {},
           [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
+            optim::ReduceInitMerge(&(func_body));
             optim::EliminateCommonGlobalMemoryRead(&(func_body));
             optim::OptimizeExprGPU(&(func_body));
 #endif
