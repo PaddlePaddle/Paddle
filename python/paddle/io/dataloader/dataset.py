@@ -129,7 +129,7 @@ class IterableDataset(Dataset[_T]):
             >>> from paddle.io import IterableDataset
 
             >>> # define a random dataset
-            >>> class RandomDataset(IterableDataset):
+            >>> class RandomDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
