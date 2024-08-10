@@ -2670,14 +2670,14 @@ class OpTest(unittest.TestCase):
                     hasattr(self, 'force_fp32_output')
                     and self.force_fp32_output
                 ):
-                    atol = 1e-2 if atol < 1e-2 else atol
+                    atol = max(atol, 0.01)
                 else:
-                    atol = 2 if atol < 2 else atol
+                    atol = max(atol, 2)
             else:
-                atol = 1e-2 if atol < 1e-2 else atol
+                atol = max(atol, 0.01)
 
         if self.is_float16_op():
-            atol = 1e-3 if atol < 1e-3 else atol
+            atol = max(atol, 0.001)
 
         if no_check_set is not None:
             if (
@@ -3208,9 +3208,7 @@ class OpTest(unittest.TestCase):
         for grad in analytic_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = (
-                    0.01 if max_relative_error < 0.01 else max_relative_error
-                )
+                max_relative_error = max(max_relative_error, 0.01)
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
 
@@ -3218,16 +3216,12 @@ class OpTest(unittest.TestCase):
         for grad in numeric_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = (
-                    0.01 if max_relative_error < 0.01 else max_relative_error
-                )
+                max_relative_error = max(max_relative_error, 0.01)
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
 
         if self.is_float16_op():
-            max_relative_error = (
-                0.001 if max_relative_error < 0.001 else max_relative_error
-            )
+            max_relative_error = max(max_relative_error, 0.001)
         self._assert_is_close(
             numeric_grads,
             analytic_grads,
@@ -3375,10 +3369,10 @@ class OpTest(unittest.TestCase):
         if self.is_bfloat16_op():
             if self.is_mkldnn_op():
                 check_dygraph = False
-            atol = 1e-2 if atol < 1e-2 else atol
+            atol = max(atol, 0.01)
 
         if self.is_float16_op():
-            atol = 1e-3 if atol < 1e-3 else atol
+            atol = max(atol, 0.001)
 
         if (
             self.dtype == np.float64
@@ -3496,11 +3490,7 @@ class OpTest(unittest.TestCase):
                 for grad in dygraph_dygraph_grad:
                     if grad.dtype == np.uint16:
                         grad = convert_uint16_to_float(grad)
-                        max_relative_error = (
-                            0.03
-                            if max_relative_error < 0.03
-                            else max_relative_error
-                        )
+                        max_relative_error = max(max_relative_error, 0.03)
                     fp32_grads.append(grad)
                 dygraph_dygraph_grad = fp32_grads
                 self._assert_is_close(
@@ -3530,19 +3520,11 @@ class OpTest(unittest.TestCase):
                 for grad in pir_grad:
                     if grad.dtype == np.uint16:
                         grad = convert_uint16_to_float(grad)
-                        max_relative_error = (
-                            0.01
-                            if max_relative_error < 0.01
-                            else max_relative_error
-                        )
+                        max_relative_error = max(max_relative_error, 0.01)
                     fp32_analytic_grads.append(grad)
                 pir_grad = fp32_analytic_grads
                 if self.is_float16_op():
-                    max_relative_error = (
-                        0.01
-                        if max_relative_error < 0.01
-                        else max_relative_error
-                    )
+                    max_relative_error = max(max_relative_error, 0.01)
                 self._assert_is_close(
                     numeric_grads,
                     pir_grad,

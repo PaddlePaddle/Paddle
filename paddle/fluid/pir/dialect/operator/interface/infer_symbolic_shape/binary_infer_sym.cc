@@ -568,6 +568,39 @@ bool GatherNdOpInferSymbolicShape(
   return true;
 }
 
+bool HuberLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &label =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &input_dims = input.shape();
+  const std::vector<symbol::DimExpr> &label_dims = label.shape();
+  PADDLE_ENFORCE_EQ(input_dims.size(),
+                    label_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(input) rank and Input(label) rank should be "
+                        "same, but received input rank(%d) != label rank(%d)",
+                        input_dims.size(),
+                        label_dims.size()));
+
+  int rank = input_dims.size();
+  for (int i = 0; i < rank; ++i) {
+    infer_context->AddEqualCstr(input_dims[i], label_dims[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(label_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(label_dims)});
+
+  return true;
+}
+
 // bool HistogramOpInferSymbolicShape(pir::Operation *op,
 //                                    pir::InferSymbolicShapeContext
 //                                    *infer_context) {
@@ -961,27 +994,6 @@ bool TopPSamplingOpInferSymbolicShape(
 // bool YoloBoxHeadOpInferSymbolicShape(pir::Operation *op,
 //                                      pir::InferSymbolicShapeContext
 //                                      *infer_context) {
-//   // pass
-//   return true;
-// }
-
-// bool GammainccOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
-
-// bool HeavisideOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
-
-// bool NextafterOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
 //   // pass
 //   return true;
 // }
