@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "glog/logging.h"
+#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
