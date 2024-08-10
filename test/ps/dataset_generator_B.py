@@ -45,7 +45,7 @@ class CriteoDataset(fleet.MultiSlotDataGenerator):
             label = [int(features[0])]
             feature_name = ["dense_feature"]
             feature_name.append("label")
-            yield list(zip(feature_name, [label] + [dense_feature]))
+            yield list(zip(feature_name, [label, dense_feature]))
 
         return reader
 

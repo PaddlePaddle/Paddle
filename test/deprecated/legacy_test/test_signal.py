@@ -243,11 +243,11 @@ def frame(x, frame_length, hop_length, axis=-1):
 
     if axis == -1:
         shape = list(x.shape)[:-1] + [frame_length, n_frames]
-        strides = list(strides) + [hop_length * new_stride]
+        strides = [*list(strides), hop_length * new_stride]
 
     elif axis == 0:
         shape = [n_frames, frame_length] + list(x.shape)[1:]
-        strides = [hop_length * new_stride] + list(strides)
+        strides = [hop_length * new_stride, *list(strides)]
 
     else:
         raise Exception(f"Frame axis={axis} must be either 0 or -1")
@@ -489,11 +489,11 @@ def frame_for_api_test(x, frame_length, hop_length, axis=-1):
 
     if axis == -1:
         shape = list(x.shape)[:-1] + [frame_length, n_frames]
-        strides = list(strides) + [hop_length * x.itemsize]
+        strides = [*list(strides), hop_length * x.itemsize]
 
     elif axis == 0:
         shape = [n_frames, frame_length] + list(x.shape)[1:]
-        strides = [hop_length * x.itemsize] + list(strides)
+        strides = [hop_length * x.itemsize, *list(strides)]
 
     else:
         raise ValueError(f"Frame axis={axis} must be either 0 or -1")
@@ -525,10 +525,10 @@ def overlap_add_for_api_test(x, hop_length, axis=-1):
     if len(x.shape) > 3:
         reshape_output = True
         if axis == 0:
-            target_shape = [seq_length] + list(x.shape[2:])
+            target_shape = [seq_length, *list(x.shape[2:])]
             x = x.reshape(n_frames, frame_length, np.prod(x.shape[2:]))
         else:
-            target_shape = list(x.shape[:-2]) + [seq_length]
+            target_shape = [*list(x.shape[:-2]), seq_length]
             x = x.reshape(np.prod(x.shape[:-2]), frame_length, n_frames)
 
     if axis == 0:

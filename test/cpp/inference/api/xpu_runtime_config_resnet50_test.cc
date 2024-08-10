@@ -90,7 +90,7 @@ TEST(resnet50_xpu, basic) {
   PADDLE_ENFORCE_EQ(                                                       \
       predictor##idx_->GetExecStream(),                                    \
       config_.stream,                                                      \
-      phi::errors::InvalidArgument(                                        \
+      common::errors::InvalidArgument(                                     \
           "predictor##idx_->GetExecStream() is not equal with"             \
           "config_.stream while predictor##idx_->GetExecStream()"          \
           "is %d and config_.stream is %d",                                \
@@ -210,7 +210,7 @@ void RunPredictorWithRuntimeConfig(
   CompareOutput(predictor);
   PADDLE_ENFORCE_EQ(predictor->GetExecStream(),
                     runtime_config.stream,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "predictor->GetExecStream() is not equal with"
                         "runtime_config.stream"));
 }

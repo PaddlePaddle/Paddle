@@ -14,6 +14,8 @@
 
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 
+#include "paddle/common/errors.h"
+
 namespace {
 
 struct PyBindNodeAttrVisitor {
@@ -75,8 +77,11 @@ std::shared_ptr<OpImpl> OpStrategy::SelectImpl(
       }
     }
   }
-  CHECK(res)
-      << "There is no available strategy implementation! SelectImpl failed!";
+  PADDLE_ENFORCE_NE(
+      res,
+      nullptr,
+      phi::errors::NotFound(
+          "There is no available strategy implementation! SelectImpl failed!"));
   return res;
 }
 

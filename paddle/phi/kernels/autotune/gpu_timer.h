@@ -65,9 +65,10 @@ class GpuTimer {
     cudaEventCreate(&stop_);
 #endif
     PADDLE_ENFORCE_NOT_NULL(
-        start_, phi::errors::PreconditionNotMet("Start Event is not ready."));
+        start_,
+        common::errors::PreconditionNotMet("Start Event is not ready."));
     PADDLE_ENFORCE_NOT_NULL(
-        stop_, phi::errors::PreconditionNotMet("Stop Event is not ready."));
+        stop_, common::errors::PreconditionNotMet("Stop Event is not ready."));
   }
 
   ~GpuTimer() {

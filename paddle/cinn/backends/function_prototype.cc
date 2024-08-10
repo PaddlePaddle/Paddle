@@ -94,14 +94,14 @@ void FunctionProto::CheckValid() {
     PADDLE_ENFORCE_EQ(
         !mutable_arg_types.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "A void function should have at least one mutable argument to "
             "output something."));
   } else {
     PADDLE_ENFORCE_EQ(
         mutable_arg_types.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "A function with return should not have mutable argument."));
   }
 }
@@ -115,7 +115,7 @@ FunctionProto::shape_inference_t FunctionProto::ShapeFollowNthArgument(int n) {
     auto x = args[n].as_tensor();
     PADDLE_ENFORCE_NOT_NULL(
         x,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The argument at index (%d) must be a tensor.", n));
     return x->shape;
   };

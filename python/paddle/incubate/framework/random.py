@@ -24,8 +24,7 @@ if TYPE_CHECKING:
     from paddle._typing import PlaceLike
 
     class _GeneratorState(Protocol):
-        def current_seed(self) -> int:
-            ...
+        def current_seed(self) -> int: ...
 
 
 __all__ = []
@@ -34,22 +33,19 @@ __all__ = []
 @overload
 def get_rng_state(
     device: PlaceLike | None = ..., use_index: Literal[True] = ...
-) -> list[int]:
-    ...
+) -> list[int]: ...
 
 
 @overload
 def get_rng_state(
     device: PlaceLike | None = ..., use_index: Literal[False] = ...
-) -> list[_GeneratorState]:
-    ...
+) -> list[_GeneratorState]: ...
 
 
 @overload
 def get_rng_state(
     device: PlaceLike | None = ..., use_index: bool = ...
-) -> list[int] | list[_GeneratorState]:
-    ...
+) -> list[int] | list[_GeneratorState]: ...
 
 
 def get_rng_state(device=None, use_index=False):
@@ -116,8 +112,7 @@ def set_rng_state(
     state_list: Sequence[int],
     device: PlaceLike | None = ...,
     use_index: Literal[True] = ...,
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
@@ -125,8 +120,7 @@ def set_rng_state(
     state_list: Sequence[_GeneratorState],
     device: PlaceLike | None = ...,
     use_index: Literal[False] = ...,
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
@@ -134,8 +128,7 @@ def set_rng_state(
     state_list: Sequence[int] | Sequence[_GeneratorState],
     device: PlaceLike | None = ...,
     use_index: bool = ...,
-) -> None:
-    ...
+) -> None: ...
 
 
 def set_rng_state(

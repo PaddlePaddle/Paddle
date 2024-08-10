@@ -25,6 +25,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn::optim {
@@ -61,7 +62,7 @@ struct Mutator : public ir::IRMutator<> {
             PADDLE_ENFORCE_EQ(
                 new_shape.is_constant(),
                 true,
-                phi::errors::InvalidArgument("new_shape is not constant"));
+                ::common::errors::InvalidArgument("new_shape is not constant"));
             e = new_shape;
           }
           if (!buf_e.is_constant()) {
@@ -70,7 +71,7 @@ struct Mutator : public ir::IRMutator<> {
             PADDLE_ENFORCE_EQ(
                 new_shape.is_constant(),
                 true,
-                phi::errors::InvalidArgument("new_shape is not constant"));
+                ::common::errors::InvalidArgument("new_shape is not constant"));
             buf_e = new_shape;
           }
         }
@@ -87,7 +88,7 @@ struct Mutator : public ir::IRMutator<> {
             PADDLE_ENFORCE_EQ(
                 new_shape.is_constant(),
                 true,
-                phi::errors::InvalidArgument("new_shape is not constant"));
+                ::common::errors::InvalidArgument("new_shape is not constant"));
             e = new_shape;
           }
         }
@@ -99,7 +100,7 @@ struct Mutator : public ir::IRMutator<> {
         PADDLE_ENFORCE_EQ(
             buf_size.is_constant(),
             true,
-            phi::errors::InvalidArgument("buf_size is not constant"));
+            ::common::errors::InvalidArgument("buf_size is not constant"));
         shared_mem_size_used_ += static_cast<size_t>(buf_size.get_constant()) *
                                  static_cast<size_t>(buf->dtype.bits()) / 8;
       }
@@ -130,26 +131,24 @@ void CudaTransBufferWithDynamicShape(ir::Expr* e) {
           PADDLE_ENFORCE_EQ(
               (mutator.shared_mem_size_used_ <= max_shm_per_block),
               true,
-              phi::errors::InvalidArgument(
+              ::common::errors::InvalidArgument(
                   "The shared memory size used by current kernel is greater "
                   "than the max shared memory per block"));
         }
 #endif
       },
       [&](common::HygonDCUArchHIP) {
-#ifdef CINN_WITH_HIP
-        auto cur_dev_info =
-            common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);
-        if (cur_dev_info->IsValid()) {
-          size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
-          PADDLE_ENFORCE_LE(
-              mutator.shared_mem_size_used_,
-              max_shm_per_block,
-              ::common::errors::InvalidArgument(
-                  "The shared memory size used by current kernel is greater "
-                  "than the max shared memory per block"));
-        }
-#endif
+        using cinn::runtime::BackendAPI;
+        size_t max_shm_per_block =
+            BackendAPI::get_backend(common::HygonDCUArchHIP{})
+                ->get_device_property(
+                    BackendAPI::DeviceProperty::MaxSharedMemoryPerBlock);
+        PADDLE_ENFORCE_LE(
+            mutator.shared_mem_size_used_,
+            max_shm_per_block,
+            ::common::errors::InvalidArgument(
+                "The shared memory size used by current kernel is greater "
+                "than the max shared memory per block"));
       });
 }
 }  // namespace cinn::optim
