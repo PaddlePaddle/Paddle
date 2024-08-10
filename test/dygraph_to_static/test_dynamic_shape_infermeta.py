@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import unittest
-from typing import Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from dygraph_to_static_utils import (
@@ -26,6 +26,9 @@ from dygraph_to_static_utils import (
 
 import paddle
 from paddle.static.input import InputSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
 
 
 class TestDynamicShapeInfermeta(Dy2StTestBase):

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
 import pathlib
@@ -20,7 +21,7 @@ import sys
 import tempfile
 import uuid
 from collections import defaultdict
-from typing import Dict, List, Tuple, cast
+from typing import cast
 
 import numpy as np
 
@@ -303,7 +304,7 @@ def run_subprocess(start_command, env, timeout):
         )
 
 
-def convert_input_placements_to_dims_map(placements: Dict, inputs: Dict):
+def convert_input_placements_to_dims_map(placements: dict, inputs: dict):
     all_dims_map = {}
     for name, item in inputs.items():
         if name not in placements:
@@ -328,7 +329,7 @@ def convert_input_placements_to_dims_map(placements: Dict, inputs: Dict):
 
 
 def convert_input_dims_map_to_placements(
-    dims_map: Dict, inputs: Dict, mesh_ndim: int
+    dims_map: dict, inputs: dict, mesh_ndim: int
 ):
     placements_map = {}
     for name, item in inputs.items():
@@ -354,7 +355,7 @@ def convert_input_dims_map_to_placements(
 # TODO: This method has been implementd in
 # paddle/phi/core/distributed/auto_parallel/placement_types.h, bind it
 # python and it's logic.
-def placements_to_dims_map(placements: List, tensor_ndim: int) -> Tuple[int]:
+def placements_to_dims_map(placements: list, tensor_ndim: int) -> tuple[int]:
     r = [-1] * tensor_ndim
     for i, placement in enumerate(placements):
         if placement.is_shard():
@@ -373,23 +374,23 @@ def placements_to_dims_map(placements: List, tensor_ndim: int) -> Tuple[int]:
 # paddle/phi/core/distributed/auto_parallel/placement_types.h, and bind it to
 # python
 def dims_map_to_placements(
-    dim_map: Tuple[int], mesh_ndim: int, sums: Tuple[int] = ()
-) -> Tuple[dist.Placement]:
+    dim_map: tuple[int], mesh_ndim: int, sums: tuple[int] = ()
+) -> tuple[dist.Placement]:
     """
     Construct a placements from dim_map list and pending sum.
 
     Args:
-        dim_map (Tuple[int]): a list of integer that represents sharding on each
+        dim_map (tuple[int]): a list of integer that represents sharding on each
             tensor dimension, see `dim_map` property doc for details
         mesh_ndim (int): the ndim of Process mesh.
-        sums (Tuple[int]): a list of integer that represents the dist tensor have
+        sums (tuple[int]): a list of integer that represents the dist tensor have
             pending sum on which device mesh dimension.
 
     Return:
         a placement sequence.
     """
     # by default replicate on device mesh dims
-    placements: List[dist.Placement] = [
+    placements: list[dist.Placement] = [
         dist.Replicate() for _ in range(mesh_ndim)
     ]
 
