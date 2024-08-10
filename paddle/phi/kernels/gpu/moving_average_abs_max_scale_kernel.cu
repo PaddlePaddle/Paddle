@@ -15,9 +15,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/moving_average_abs_max_scale_kernel_impl.h"
 
-PD_REGISTER_STRUCT_KERNEL(moving_average_abs_max_scale,
-                          GPU,
-                          ALL_LAYOUT,
-                          phi::MovingAverageAbsMaxScaleKernel,
-                          float,
-                          phi::dtype::float16) {}
+PD_REGISTER_KERNEL(moving_average_abs_max_scale,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MovingAverageAbsMaxScaleKernel,
+                   float,
+                   phi::dtype::float16) {}
