@@ -352,7 +352,7 @@ def get_cluster_info(args):
             os.environ["PADDLE_ENABLE_ELASTIC"] = str(
                 enable_elastic(args, device_mode)
             )
-            cwd = pathlib.Path().resolve()
+            cwd = pathlib.Path().cwd()
             rank_mapping_path = os.path.join(
                 cwd, "auto_parallel_rank_mapping.json"
             )
