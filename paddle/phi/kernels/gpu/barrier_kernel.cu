@@ -65,7 +65,8 @@ void BarrierOpCUDAKernel(const Context& dev_ctx,
     phi::backends::gpu::GpuStreamSync(stream);
     VLOG(3) << "new NCCLCommContext has rid " << ring_id;
   } else {
-    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+    auto comm =
+        paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
     auto stream = dev_ctx.stream();
     ncclRedOp_t nccl_red_type = ncclSum;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
