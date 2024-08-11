@@ -734,19 +734,19 @@ def GenerateCoreOpInfoDeclaration():
 def GenerateCoreOpInfoDefinition():
     op_args_info_list = []
     for op_name, arg_list in core_ops_args_info.items():
-        arg_str = ",".join(['"' + v + '"' for v in arg_list])
+        arg_str = ",".join([f'"{v}"' for v in arg_list])
         op_args_info = f'{{ "{op_name}", {{ {arg_str} }} }},'
         op_args_info_list.append(op_args_info)
 
     op_types_info_list = []
     for op_name, type_list in core_ops_args_type_info.items():
-        type_str = ",".join(['"' + v + '"' for v in type_list])
+        type_str = ",".join([f'"{v}"' for v in type_list])
         op_types_info = f'{{ "{op_name}", {{ {type_str} }} }},'
         op_types_info_list.append(op_types_info)
 
     op_returns_info_list = []
     for op_name, return_list in core_ops_returns_info.items():
-        return_str = ",".join(['"' + v + '"' for v in return_list])
+        return_str = ",".join([f'"{v}"' for v in return_list])
         return_types_info = f'{{ "{op_name}", {{ {return_str} }} }},'
         op_returns_info_list.append(return_types_info)
 
