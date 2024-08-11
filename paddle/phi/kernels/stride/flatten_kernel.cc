@@ -29,16 +29,12 @@ void FlattenInferStridedKernel(const Context& dev_ctx,
                                DenseTensor* out,
                                DenseTensor* xshape) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   ReshapeStridedKernel<Context>(
-      dev_ctx,
-      x,
-      IntArray(common::vectorize<int64_t>(out->dims())),
-      out,
-      xshape);
+      dev_ctx, x, IntArray(common::vectorize<int64_t>(out->dims())), out);
 }
 
 template <typename Context>
@@ -49,9 +45,9 @@ void FlattenStridedKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* xshape) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   FlattenInferStridedKernel<Context>(
       dev_ctx, x, start_axis, stop_axis, out, xshape);

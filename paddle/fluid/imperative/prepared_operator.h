@@ -335,8 +335,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
       } else if (var.template IsType<phi::SelectedRows>()) {
         tensor_in = &(var.template Get<phi::SelectedRows>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
-      } else if (var.template IsType<framework::LoDTensorArray>()) {
-        tensor_in = &(var.template Get<framework::LoDTensorArray>());
+      } else if (var.template IsType<phi::TensorArray>()) {
+        tensor_in = &(var.template Get<phi::TensorArray>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
@@ -377,8 +377,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         } else if (var->template IsType<phi::SelectedRows>()) {
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<framework::LoDTensorArray>()) {
-          tensor_out = var->template GetMutable<framework::LoDTensorArray>();
+        } else if (var->template IsType<phi::TensorArray>()) {
+          tensor_out = var->template GetMutable<phi::TensorArray>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(common::errors::Unimplemented(

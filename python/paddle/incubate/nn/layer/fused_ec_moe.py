@@ -11,9 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
+from typing_extensions import TypeAlias
 
 from paddle.incubate.nn import functional as F
 from paddle.nn import Layer
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import ParamAttrLike
+
+    _ActTypeLiteral: TypeAlias = Literal[
+        'gelu',
+        'relu',
+    ]
 
 
 class FusedEcMoe(Layer):
@@ -24,11 +38,11 @@ class FusedEcMoe(Layer):
         inter_size (int): The dim size of feed forward network.
         num_expert (int): The number of experts.
         act_type (string): The activation type. Currently only support `gelu`, `relu`.
-        weight_attr (ParamAttr, optional): The attribute for the learnable
+        weight_attr (ParamAttr|None, optional): The attribute for the learnable
             weight of this layer. The default value is None and the weight will be
             initialized to zero. For detailed information, please refer to
             paddle.ParamAttr.
-        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
+        bias_attr (ParamAttr|bool|None, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
@@ -59,15 +73,21 @@ class FusedEcMoe(Layer):
             [10, 128, 1024]
     """
 
+    bmm_weight0: Tensor
+    bmm_bias0: Tensor
+    bmm_weight1: Tensor
+    bmm_bias1: Tensor
+    act_type: _ActTypeLiteral
+
     def __init__(
         self,
-        hidden_size,
-        inter_size,
-        num_experts,
-        act_type,
-        weight_attr=None,
-        bias_attr=None,
-    ):
+        hidden_size: int,
+        inter_size: int,
+        num_experts: int,
+        act_type: _ActTypeLiteral,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+    ) -> None:
         super().__init__()
         weight0_shape = [num_experts, hidden_size, inter_size]
         bias0_shape = [num_experts, 1, inter_size]
@@ -91,7 +111,7 @@ class FusedEcMoe(Layer):
         if self.act_type not in ["gelu", "relu"]:
             raise NotImplementedError("Currently only support `gelu`, `relu`. ")
 
-    def forward(self, x, gate):
+    def forward(self, x: Tensor, gate: Tensor) -> Tensor:
         return F.fused_ec_moe(
             x,
             gate,

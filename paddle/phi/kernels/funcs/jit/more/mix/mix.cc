@@ -56,7 +56,7 @@ void (*getActFunc(KernelType type, int d))(const T*, T*, int) {  // NOLINT
   } else if (type == kVIdentity) {
     return KernelFuncs<VIdentityTuple<T>, CPUPlace>::Cache().At(d);
   }
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Act JIT kernel do not support type: %s", type));
   return nullptr;
 }

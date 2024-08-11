@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -53,15 +55,15 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(batch, attrs: List[Dict[str, Any]]):
+        def generate_input1(batch, attrs: list[dict[str, Any]]):
             return np.ones([batch, attrs[0]['groups'] * 3, 64, 64]).astype(
                 np.float32
             )
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
-        def generate_weight2(attrs: List[Dict[str, Any]]):
+        def generate_weight2(attrs: list[dict[str, Any]]):
             return np.random.random([24, 1, 1]).astype(np.float32)
 
         batch_options = [1, 2]
@@ -148,7 +150,7 @@ class TrtConvertFusedConv2dAddActTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             input_groups = attrs[0]['groups'] * 3
             self.dynamic_shape.min_input_shape = {

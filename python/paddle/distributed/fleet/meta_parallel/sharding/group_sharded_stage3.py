@@ -406,9 +406,11 @@ class GroupShardedStage3(nn.Layer):
             if param.dtype not in self._grad_storages.keys():
                 self._grad_storages[param.dtype] = GradStorage(
                     buffer_size[param.dtype],
-                    dtype=param.dtype
-                    if not self.use_main_grad
-                    else paddle.float32,
+                    dtype=(
+                        param.dtype
+                        if not self.use_main_grad
+                        else paddle.float32
+                    ),
                     device=self._default_device,
                     destination=self._rank,
                     parm2align=self._unslice_params2align,

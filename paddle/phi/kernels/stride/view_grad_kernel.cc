@@ -28,9 +28,9 @@ void ViewShapeGradKernel(const Context& dev_ctx,
                          const std::vector<int64_t>& dims,
                          DenseTensor* input_grad) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   ViewShapeKernel<Context>(
       dev_ctx, out_grad, common::vectorize<int64_t>(input.dims()), input_grad);
@@ -43,9 +43,9 @@ void ViewDtypeGradKernel(const Context& dev_ctx,
                          DataType dtype,
                          DenseTensor* input_grad) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   ViewDtypeKernel<Context>(dev_ctx, out_grad, input.dtype(), input_grad);
 }

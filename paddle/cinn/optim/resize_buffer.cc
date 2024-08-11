@@ -37,7 +37,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
   void Visit(const ir::IfThenElse* op, Expr* expr) override {
     PADDLE_ENFORCE_NOT_NULL(
         expr->As<ir::IfThenElse>(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The expression could not be cast to ir::IfThenElse. Please check "
             "the expression type."));
 
@@ -58,7 +58,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
   // Visit for and collect extent
   void Visit(const ir::For* op, Expr* expr) override {
     PADDLE_ENFORCE_NOT_NULL(expr->As<ir::For>(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "The expression could not be cast to ir::For. "
                                 "Please check the expression type."));
     ir::For* for_ir = expr->As<ir::For>();

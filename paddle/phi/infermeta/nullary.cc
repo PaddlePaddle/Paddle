@@ -45,14 +45,17 @@ void CreateArrayInferMeta(DataType dtype, MetaTensor* out) {
   out->set_dtype(dtype);
 }
 
-void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
-  if (!shape.FromTensor()) {
+void CreateInferMeta(const IntArray& shape,
+                     DataType dtype,
+                     MetaTensor* out,
+                     MetaConfig config) {
+  if (config.is_runtime || !shape.FromTensor()) {
     const auto& data = shape.GetData();
     for (size_t i = 0; i < data.size(); ++i) {
       PADDLE_ENFORCE_GE(
           data[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Each value of attribute 'shape' is expected to be no less "
               "than 0. But received: shape[%u] = %d; shape = [%s].",
               i,

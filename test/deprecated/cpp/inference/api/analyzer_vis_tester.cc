@@ -35,7 +35,7 @@ Record ProcessALine(const std::string &line) {
   split(line, '\t', &columns);
   PADDLE_ENFORCE_EQ(columns.size(),
                     2UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "data format error, should be <data>\t<shape>"));
 
   Record record;
@@ -116,7 +116,7 @@ void profile(bool use_mkldnn = false) {
     PADDLE_ENFORCE_EQ(
         numel,
         refer.data.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "value of numel is wrong, expected %d but received %d",
             refer.data.size(),
             numel));
