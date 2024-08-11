@@ -1690,7 +1690,7 @@ def pad(
     mode: _PaddingTensorMode = 'constant',
     value: float = 0.0,
     data_format: DataLayoutND = "NCHW",
-    pad_from_first_axis: bool = True,
+    pad_from_left_axis: bool = True,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -1702,9 +1702,9 @@ def pad(
 
         2. When mode is ``'constant'``, and ``'pad'`` is a list or tuple, and the length of ``'pad'`` is not
         equal to 2*(N - 2):
-        2.1. If the length of ``'pad'`` is 2*N, the order of padding can be customized by ``'pad_from_first_axis'``.
-        if ``'pad_from_first_axis'`` is True, then the padding order will be started from the first dimension of
-        ``'x'`` and moving backward according to ``'pad'``; else if ``'pad_from_first_axis'`` is False, then the
+        2.1. If the length of ``'pad'`` is 2*N, the order of padding can be customized by ``'pad_from_left_axis'``.
+        if ``'pad_from_left_axis'`` is True, then the padding order will be started from the first dimension of
+        ``'x'`` and moving backward according to ``'pad'``; else if ``'pad_from_left_axis'`` is False, then the
         padding order will be started from the last dimension of ``'x'`` and moving forward according to ``'pad'``.
         2.2. Otherwise, the padding will be started from the last dimension.
 
@@ -1733,7 +1733,7 @@ def pad(
         data_format (str, optional): An string from: ``'NCL'``, ``'NLC'``, ``'NHWC'``, ``'NCHW'``, ``'NCDHW'``, ``'NDHWC'``. Specify the data format of
            the input data when: 1. mode is any of ``'reflect'``, ``'replicate'`` or ``'circular'``; or 2. the input ``'pad'`` is a tensor;
            or 3. the length of ``'pad'`` is ``2*(x.ndim - 2)``. Default: ``'NCHW'``.
-        pad_from_first_axis (bool, optional): The parameter is only valid when mode is ``'constant'`` and the input ``'pad'`` is
+        pad_from_left_axis (bool, optional): The parameter is only valid when mode is ``'constant'`` and the input ``'pad'`` is
            length of ``'pad'`` is ``2*x.ndim``, the order of padding can be customized. If True, the padding will be started from
            the first axis of ``'x'``; if False, it will be started from the last axis of ``'x'``. Default: True.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: ``'None'``.
@@ -1752,7 +1752,7 @@ def pad(
                 pad = [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
                 mode = 'constant'
                 value = 0
-                pad_from_first_axis = True
+                pad_from_left_axis = True
                 Out = [[[[[0., 0., 0.],
                           [1., 2., 3.],
                           [4., 5., 6.],
@@ -1763,7 +1763,7 @@ def pad(
                 pad = [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
                 mode = 'constant'
                 value = 0
-                pad_from_first_axis = False
+                pad_from_left_axis = False
                 Out = [[[[[0., 0., 0.],
                           [0., 0., 0.]]],
                         [[[1., 2., 3.],
@@ -1854,7 +1854,7 @@ def pad(
             >>> # example 4
             >>> x_shape = (1, 1, 3)
             >>> x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
-            >>> y = F.pad(x, [1, 0, 0, 1, 0, 0], value=0, mode='constant', pad_from_first_axis=True)
+            >>> y = F.pad(x, [1, 0, 0, 1, 0, 0], value=0, mode='constant', pad_from_left_axis=True)
             >>> print(y)
             Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[0., 0., 0.],
@@ -1865,7 +1865,7 @@ def pad(
             >>> # example 5
             >>> x_shape = (1, 1, 3)
             >>> x = paddle.arange(paddle.prod(paddle.to_tensor(x_shape)), dtype="float32").reshape(x_shape) + 1
-            >>> y = F.pad(x, [1, 0, 0, 1, 0, 0], value=0, mode='constant', pad_from_first_axis=False)
+            >>> y = F.pad(x, [1, 0, 0, 1, 0, 0], value=0, mode='constant', pad_from_left_axis=False)
             >>> print(y)
             Tensor(shape=[1, 2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[[0., 1., 2., 3.],
@@ -1911,8 +1911,8 @@ def pad(
                 pad_len_for_paddings
             )
 
-        # since the kernel pad from first axis, if we want to pad from last axis, we need to reverse the paddings
-        if not (len(pad) == x_dim * 2 and pad_from_first_axis):
+        # since the kernel pad from left axis, if we want to pad from right axis, we need to reverse the paddings
+        if not (len(pad) == x_dim * 2 and pad_from_left_axis):
             paddings = [
                 paddings[i - 1] if i % 2 == 1 else paddings[i + 1]
                 for i in range(2 * x_dim - 1, -1, -1)

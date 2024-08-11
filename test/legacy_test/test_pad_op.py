@@ -328,8 +328,8 @@ class TestPadOrder2N(unittest.TestCase):
         x = paddle.to_tensor(x_np)
         paddings = list(np.array(self.paddings).flatten())
 
-        # pad_from_first_axis
-        pad_from_first_axis = True
+        # pad_from_left_axis
+        pad_from_left_axis = True
         out_np = np.pad(
             x_np, paddings_np, mode="constant", constant_values=self.pad_value
         )
@@ -337,12 +337,12 @@ class TestPadOrder2N(unittest.TestCase):
             x,
             paddings,
             mode='constant',
-            pad_from_first_axis=pad_from_first_axis,
+            pad_from_left_axis=pad_from_left_axis,
         )
         np.testing.assert_array_equal(out, out_np)
 
-        # pad_from_last_axis:
-        pad_from_first_axis = False
+        # pad_from_right_axis:
+        pad_from_left_axis = False
         paddings_np.reverse()
         out_np = np.pad(
             x_np, paddings_np, mode="constant", constant_values=self.pad_value
@@ -351,7 +351,7 @@ class TestPadOrder2N(unittest.TestCase):
             x,
             paddings,
             mode='constant',
-            pad_from_first_axis=pad_from_first_axis,
+            pad_from_left_axis=pad_from_left_axis,
         )
         np.testing.assert_array_equal(out, out_np)
 
