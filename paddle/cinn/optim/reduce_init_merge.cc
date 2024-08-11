@@ -416,6 +416,21 @@ struct GlobalTensorTrait;
 
 template <typename Op>
 struct GlobalTensorChecker {
+  static bool ExtentEqual(const std::vector<ForVarExtent>& for_var_extents1,
+                          const std::vector<ForVarExtent>& for_var_extents2) {
+    if (for_var_extents1.size() != for_var_extents2.size()) return false;
+
+    for (size_t i = 0; i < for_var_extents1.size(); ++i) {
+      ForVarExtent lhs = for_var_extents1[i];
+      ForVarExtent rhs = for_var_extents2[i];
+      if (cinn::common::AutoSimplify(ir::Sub::Make(lhs.extent, rhs.extent)) !=
+          ir::Expr(0)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   static bool IndiceEqual(const IndicesAndExtent& indice_and_extent1,
                           const IndicesAndExtent& indice_and_extent2) {
     auto IndiceToExprWithForVar =
@@ -429,6 +444,10 @@ struct GlobalTensorChecker {
       return ret;
     };
 
+    if (!ExtentEqual(indice_and_extent1.for_var_extents,
+                     indice_and_extent2.for_var_extents)) {
+      return false;
+    }
     const auto& indice1 = indice_and_extent1.indices;
     const auto& indice2 = indice_and_extent2.indices;
     if (indice1.size() != indice2.size()) return false;
@@ -447,17 +466,17 @@ struct GlobalTensorChecker {
     return true;
   }
 
-  static bool ExtentEqual(const IndicesAndExtent& indice_and_extent1,
-                          const IndicesAndExtent& indice_and_extent2) {
+  static bool LoopVarAndExtentEqual(
+      const IndicesAndExtent& indice_and_extent1,
+      const IndicesAndExtent& indice_and_extent2) {
     const auto& for_var_extents1 = indice_and_extent1.for_var_extents;
     const auto& for_var_extents2 = indice_and_extent2.for_var_extents;
-    if (for_var_extents1.size() != for_var_extents2.size()) return false;
+    if (!ExtentEqual(for_var_extents1, for_var_extents2)) return false;
 
     for (size_t i = 0; i < for_var_extents1.size(); ++i) {
       ForVarExtent lhs = for_var_extents1[i];
       ForVarExtent rhs = for_var_extents2[i];
       if (lhs.loop_var != rhs.loop_var) return false;
-      if (lhs.extent != rhs.extent) return false;
     }
     return true;
   }
@@ -503,8 +522,8 @@ struct GlobalTensorTrait<ForLevel> {
                                    const IndicesAndExtent& indice_and_extent2) {
     return GlobalTensorChecker<ForLevel>::IndiceEqual(indice_and_extent1,
                                                       indice_and_extent2) &&
-           GlobalTensorChecker<ForLevel>::ExtentEqual(indice_and_extent1,
-                                                      indice_and_extent2);
+           GlobalTensorChecker<ForLevel>::LoopVarAndExtentEqual(
+               indice_and_extent1, indice_and_extent2);
   }
 };
 
