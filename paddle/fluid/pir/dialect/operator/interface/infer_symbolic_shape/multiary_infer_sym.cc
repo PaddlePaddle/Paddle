@@ -1294,28 +1294,29 @@ bool MulticlassNms3OpInferSymbolicShape(
   const auto &bboxes_shape = bboxes_shape_or_data.shape();
   const auto &scores_shape = scores_shape_or_data.shape();
 
-  PADDLE_ENFORCE_EQ(
-      scores_shape.size() == 2 || scores_shape.size() == 3,
-      true,
-      errors::InvalidArgument("The rank of Input(Scores) must be 2 or 3."));
+  PADDLE_ENFORCE_EQ(scores_shape.size() == 2 || scores_shape.size() == 3,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(Scores) must be 2 or 3."));
 
   PADDLE_ENFORCE_EQ(
       bboxes_shape.size(),
       3,
-      errors::InvalidArgument("The rank of Input(BBoxes) must be 3."));
+      common::errors::InvalidArgument("The rank of Input(BBoxes) must be 3."));
 
   if (scores_shape.size() == 3) {
-    PADDLE_ENFORCE_EQ(
-        bboxes_shape[2] == 4 || bboxes_shape[2] == 8 || bboxes_shape[2] == 16 ||
-            bboxes_shape[2] == 24 || bboxes_shape[2] == 32,
-        true,
-        errors::InvalidArgument("The last dimension of Input(BBoxes) must be "
-                                "4, 8, 16, 24, or 32."));
+    PADDLE_ENFORCE_EQ(bboxes_shape[2] == 4 || bboxes_shape[2] == 8 ||
+                          bboxes_shape[2] == 16 || bboxes_shape[2] == 24 ||
+                          bboxes_shape[2] == 32,
+                      true,
+                      common::errors::InvalidArgument(
+                          "The last dimension of Input(BBoxes) must be "
+                          "4, 8, 16, 24, or 32."));
     infer_context->AddEqualCstr(bboxes_shape[1], scores_shape[2]);
   } else {
     PADDLE_ENFORCE_EQ(bboxes_shape[2],
                       4,
-                      errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The last dimension of Input(BBoxes) must be 4."));
     infer_context->AddEqualCstr(bboxes_shape[1], scores_shape[1]);
   }
