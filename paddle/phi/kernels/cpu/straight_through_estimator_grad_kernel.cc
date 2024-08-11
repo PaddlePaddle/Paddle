@@ -17,5 +17,5 @@
 PD_REGISTER_KERNEL(straight_through_estimator_grad,
                    CPU,
                    ALL_LAYOUT,
-                   ops::StraightThroughEstimatorGradKernel,
+                   phi::StraightThroughEstimatorGradKernel,
                    float) {}
