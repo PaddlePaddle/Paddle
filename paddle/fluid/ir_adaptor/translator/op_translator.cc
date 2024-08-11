@@ -3193,6 +3193,15 @@ struct TopPSamplingOpTranscriber : public OpTranscriber {
     }
   }
 };
+struct SequencePoolOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "pad_value") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0);
+    }
+  }
+};
 
 struct FusedElemwiseAddActivationOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
@@ -3591,6 +3600,29 @@ struct QuantizeLinearOpTranscriber : public OpTranscriber {
   }
 };
 
+struct DropoutOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "mode") {
+      (*attribute_map)[info.name] =
+          pir::StrAttribute::get(ctx, "downgrade_in_infer");
+    }
+  }
+};
+
+struct ScaleOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "bias") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0f);
+    } else if (info.name == "bias_after_scale") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
+    }
+  }
+};
+
 struct Reshape2GradOpTranscriber : public OpTranscriber {
   pir::Operation* operator()(pir::IrContext* ctx,
                              TranslationContext* param_map,
@@ -3659,6 +3691,7 @@ OpTranslator::OpTranslator() {
       CrossEntropyWithSoftmaxOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["depthwise_conv2d"] = DepthwiseConv2dOpTranscriber();
+  special_handlers["dropout"] = DropoutOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
@@ -3689,8 +3722,10 @@ OpTranslator::OpTranslator() {
   special_handlers["repeat_interleave_grad"] =
       RepeatInterLeaveGradOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["scale"] = ScaleOpTranscriber();
   special_handlers["set_value"] = LegacySetValueDispatcher();
   special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
+  special_handlers["sequence_pool"] = SequencePoolOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
   special_handlers["share_buffer"] = ShareBufferOpTranscriber();
   special_handlers["slice"] = SliceOpTranscriber();
