@@ -647,7 +647,7 @@ def monkey_patch_variable():
                         ) or (
                             len(other_var.shape) == 0 and len(self.shape) == 0
                         ):
-                            promote_type = core.get_promote_dtype(
+                            promote_type = core.get_promote_dtype_old_ir(
                                 op_type, lhs_dtype, rhs_dtype
                             )
                             if lhs_dtype != promote_type:
@@ -660,7 +660,7 @@ def monkey_patch_variable():
                                 self = astype(self, rhs_dtype)
                             else:
                                 other_var = astype(other_var, lhs_dtype)
-                    elif core.need_type_promotion(
+                    elif core.need_type_promotion_old_ir(
                         op_type, lhs_dtype, rhs_dtype
                     ):
                         # only report warning here, real promotion deal in Executor

@@ -175,11 +175,13 @@ TYPE_PROMOTION_LOGIC_TEMPLATE = """
     auto op_name = phi::TransToFluidOpName("{op_name}");
     auto x_dtype = paddle::imperative::GetDataType({x});
     auto y_dtype = paddle::imperative::GetDataType({y});
-    if (phi::NeedTypePromotion("{op_name}", x_dtype, y_dtype)) {{
+    auto x_shape = pir::GetValueShape({x});
+    auto y_shape = pir::GetValueShape({y});
+    if (phi::NeedTypePromotion("{op_name}", x_dtype, y_dtype, x_shape, y_shape)) {{
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
     //{op_name}
-    auto promotion_type = phi::GetPromoteDtype(op_name, x_dtype, y_dtype);
+    auto promotion_type = phi::GetPromoteDtype("{op_name}", x_dtype, y_dtype, x_shape, y_shape);
 
     {x_cast}
     auto new_{y} = pir::PromoteCast("{y}", {y}, promotion_type);

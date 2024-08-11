@@ -345,7 +345,6 @@ try:
     )
 
     # type promotion
-    from .libpaddle import need_type_promotion, get_promote_dtype  # noqa: F401
 
     # isort: on
     if sys.platform != 'win32':

@@ -30,4 +30,17 @@ inline pir::Value PromoteCast(const std::string& input_name,
   }
 }
 
+std::vector<int64_t> GetValueShape(const pir::Value& value) {
+  if (value.type().isa<paddle::dialect::DenseTensorType>()) {
+    return phi::vectorize(
+        value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+  } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
+    return phi::vectorize(
+        value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dims());
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Currently, we can only get shape for dense_tensor or selected_rows."));
+  }
+}
+
 }  // namespace pir
