@@ -455,6 +455,17 @@
     data_type : param
   inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
 
+- op : barrier
+  args : (Tensor x, int ring_id)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : barrier
+    data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : batch_fc
   args : (Tensor input, Tensor w, Tensor bias)
   output : Tensor(out)
