@@ -88,7 +88,7 @@ inline static DataType promoteTypes(DataType x, DataType y) {
 // Migrated from operator overloading
 static std::unordered_set<std::string> support_promotion_ops = {
     "add",
-    "substract",
+    "subtract",
     "multiply",
     "mod",
     "divide",
