@@ -972,3 +972,11 @@
   kernel:
     func: partial_send
     param: [x, ring_id, peer, use_calc_stream, num, id]
+
+- op: straight_through_estimator_grad
+  args: (Tensor out_grad)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: StraightThroughEstimatorInferMeta
+  kernel:
+    func: straight_through_estimator_grad

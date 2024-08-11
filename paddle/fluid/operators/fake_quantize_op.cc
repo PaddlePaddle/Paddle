@@ -150,11 +150,6 @@ REGISTER_OPERATOR(
 
 REGISTER_OPERATOR(straight_through_estimator_grad,
                   ops::StraightThroughEstimatorGradOp);
-PD_REGISTER_STRUCT_KERNEL(straight_through_estimator_grad,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::StraightThroughEstimatorGradKernel,
-                          float) {}
 
 REGISTER_OP_VERSION(fake_channel_wise_quantize_abs_max)
     .AddCheckpoint(
