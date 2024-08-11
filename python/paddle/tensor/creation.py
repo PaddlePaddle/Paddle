@@ -602,10 +602,6 @@ def logspace(
     else:
         helper = LayerHelper("logspace", **locals())
 
-        start_dtype = convert_dtype(tensor_start.dtype)
-        stop_dtype = convert_dtype(tensor_stop.dtype)
-        base_dtype = convert_dtype(tensor_base.dtype)
-        out_dtype = convert_dtype(dtype)
         if isinstance(start, Variable):
             check_dtype(
                 start.dtype,
