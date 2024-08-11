@@ -2126,7 +2126,9 @@ class DistModel:
     def _make_feeds(self, data_list):
         # TODO (2024-Q2): formula make feed
         if self._in_pir_mode:
-            self._feed_name_list[self._mode] = ['input0', 'label0']
+            self._feed_name_list[self._mode] = [
+                f"input{i}" for i in range(len(data_list))
+            ]
 
         if (
             self._mode not in self._feed_name_list
