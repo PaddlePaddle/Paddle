@@ -28,12 +28,12 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace phi {
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 template <typename T, typename Context>
-void BarrierKernel(const Context& dev_ctx,
-                   const DenseTensor& x_in,
-                   int ring_id,
-                   DenseTensor* out) {
+void BarrierOpCUDAKernel(const Context& dev_ctx,
+                         const DenseTensor& x_in,
+                         int ring_id,
+                         DenseTensor* out) {
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto place = dev_ctx.GetPlace();
   ncclDataType_t dtype = phi::ToNCCLDataType(x_in.dtype());
   int64_t numel = x_in.numel();
@@ -73,12 +73,12 @@ void BarrierKernel(const Context& dev_ctx,
     phi::backends::gpu::GpuStreamSync(stream);
     VLOG(3) << "old NCCLCommContext has rid " << ring_id;
   }
-}
 #else
-PADDLE_THROW(
-    phi::errors::Unavailable("PaddlePaddle should compile with NCCL."));
+  PADDLE_THROW(
+      phi::errors::Unavailable("PaddlePaddle should compile with NCCL."));
 #endif
+}
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(barrier, GPU, ALL_LAYOUT, phi::BarrierKernel, int) {}
+PD_REGISTER_KERNEL(barrier, GPU, ALL_LAYOUT, phi::BarrierOpCUDAKernel, int) {}
