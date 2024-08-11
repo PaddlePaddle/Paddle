@@ -223,7 +223,7 @@ void TypePromotionForZeroDimTensor(std::string func,
 static PyObject* tensor__add__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__add__ or __radd_ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -326,7 +326,7 @@ static PyObject* tensor__add__method(TensorObject* self,
 static PyObject* tensor__sub__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__sub__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -430,7 +430,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
 static PyObject* tensor__rsub__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__rsub__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -533,7 +533,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
 static PyObject* tensor__mul__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__mul__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -646,7 +646,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
 static PyObject* tensor__div__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__div__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -759,7 +759,7 @@ static PyObject* tensor__div__method(TensorObject* self,
 static PyObject* tensor__rdiv__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__rdiv__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -865,7 +865,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
 static PyObject* tensor__gt__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__gt__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -966,7 +966,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
 static PyObject* tensor__ge__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__ge__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1067,7 +1067,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
 static PyObject* tensor__mod__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__mod__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1168,7 +1168,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
 static PyObject* tensor__matmul__method(TensorObject* self,
                                         PyObject* args,
                                         PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__matmul__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1295,7 +1295,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
 static PyObject* tensor__lt__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__lt__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1396,7 +1396,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
 static PyObject* tensor__le__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__le__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1497,7 +1497,7 @@ static PyObject* tensor__le__method(TensorObject* self,
 static PyObject* tensor__floordiv__method(TensorObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "floordiv pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1597,7 +1597,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
 static PyObject* tensor__pow__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "pow pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1702,7 +1702,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
 static PyObject* tensor__rpow__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__rpow__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1805,7 +1805,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
 static PyObject* tensor__ne__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__ne__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1906,7 +1906,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
 static PyObject* tensor__eq__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__eq__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);

@@ -519,7 +519,7 @@ def _get_include_dirs_when_compiling(compile_dir):
         include_dirs_file
     ), f"File {include_dirs_file} does not exist"
     with open(include_dirs_file, 'r') as f:
-        include_dirs = [line.strip() for line in f.readlines() if line.strip()]
+        include_dirs = [line.strip() for line in f if line.strip()]
 
     extra_dirs = ['paddle/base/platform']
     all_include_dirs = list(include_dirs)

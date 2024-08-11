@@ -1371,7 +1371,7 @@ def uniform_(
 
 def randint(
     low: int = 0,
-    high: int = None,
+    high: int | None = None,
     shape: ShapeLike = [1],
     dtype: DTypeLike | None = None,
     name: str | None = None,
@@ -1514,7 +1514,7 @@ def randint(
 def randint_like(
     x: Tensor,
     low: int = 0,
-    high: int = None,
+    high: int | None = None,
     dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:

@@ -47,7 +47,7 @@ std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor,
   int ndim = static_cast<int>(tensor->shape.size());
   PADDLE_ENFORCE_EQ(-ndim - 1 <= axis && axis <= ndim,
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The value of `axis` is out of the valid range. "
                         "Repeat only accepts `axis` in the range [-data.ndim - "
                         "1, data.ndim], "
@@ -60,7 +60,7 @@ std::vector<ir::Tensor> Repeat(const ir::Tensor &tensor,
   PADDLE_ENFORCE_GE(
       repeats,
       1,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The value of `repeats` is less than 1. "
           "Repeat only accepts `repeats >= 1`, but got repeats = %d. "
           "Please check your input and ensure `repeats` is greater than or "
@@ -114,7 +114,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
   PADDLE_ENFORCE_GE(
       repeats,
       1,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The value of `repeats` is less than 1. "
           "Repeat only accepts `repeats >= 1`, but got repeats = %d. "
           "Please check your input and ensure `repeats` is greater than or "
@@ -124,7 +124,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
                                             lang::RetValue *ret) {
     PADDLE_ENFORCE_EQ(!args.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input arguments of Repeat compute is empty. "
                           "Please check your input arguments and ensure they "
                           "are not empty."));
@@ -134,7 +134,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     PADDLE_ENFORCE_GE(
         pack_args.size(),
         1U,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "At least 1 input tensor is required for Repeat compute, "
             "but got %d input tensors. Please check your input.",
             pack_args.size()));
@@ -142,14 +142,14 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     Expr A = pack_args[0];
     PADDLE_ENFORCE_NOT_NULL(
         A.as_tensor(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The first argument in pack_args is null "
             "Please ensure the first argument is a valid tensor."));
 
     PADDLE_ENFORCE_EQ(
         !output_shapes.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The output shapes are empty. "
             "Please ensure the output shapes are correctly specified."));
 
@@ -164,7 +164,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     PADDLE_ENFORCE_EQ(
         out.size(),
         1U,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of Repeat's output should be 1, but got %d. "
             "Please check your Repeat function implementation.",
             out.size()));
@@ -182,7 +182,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     PADDLE_ENFORCE_EQ(
         !args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input argument of repeat schedule is empty. "
             "Please check your input arguments and ensure they are "
             "not empty."));
@@ -197,7 +197,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
     PADDLE_ENFORCE_EQ(
         !vec_ast.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The vector of AST expressions is empty. "
             "Please ensure there are valid expressions in the argument pack."));
     ir::ModuleExpr mod_expr(vec_ast);

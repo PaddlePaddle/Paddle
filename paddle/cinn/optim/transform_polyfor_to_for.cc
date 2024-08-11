@@ -101,8 +101,8 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
 
         PADDLE_ENFORCE_NOT_NULL(
             le->a().As<ir::Sub>(),
-            phi::errors::InvalidArgument("The value of le is incorrect."
-                                         "Expected value is 0"));
+            ::common::errors::InvalidArgument("The value of le is incorrect."
+                                              "Expected value is 0"));
         PADDLE_ENFORCE_EQ(le->b().As<ir::IntImm>()->value,
                           0UL,
                           ::common::errors::InvalidArgument(
@@ -115,8 +115,8 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
         auto lt = node->condition.As<ir::LT>();
         PADDLE_ENFORCE_NOT_NULL(
             lt->a().As<ir::Sub>(),
-            phi::errors::InvalidArgument("The value of lt is incorrect."
-                                         "Expected value is 0"));
+            ::common::errors::InvalidArgument("The value of lt is incorrect."
+                                              "Expected value is 0"));
         PADDLE_ENFORCE_EQ(lt->b().As<ir::IntImm>()->value,
                           0UL,
                           ::common::errors::InvalidArgument(
@@ -142,7 +142,7 @@ struct PolyForWithSimpleConditionToForMutator : public ir::IRMutator<Expr*> {
       PADDLE_ENFORCE_EQ(
           op->vectorize_info().valid(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The value of op->vectorize_info().valid() is incorrect."
               "Expected value is true"));
 

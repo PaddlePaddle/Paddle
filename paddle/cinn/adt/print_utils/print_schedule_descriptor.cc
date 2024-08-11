@@ -35,7 +35,10 @@ std::string ToTxtString(const LoopDescriptor& loop_descriptor) {
               *string += vectorize.iter_var_name();
             },
             [&](const Unroll& unroll) { *string += unroll.iter_var_name(); }};
-  CHECK(loop_size.Has<std::int64_t>());
+  PADDLE_ENFORCE_EQ(loop_size.Has<std::int64_t>(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The loop_size should have type int64_t."));
   *string += "=0.." + std::to_string(loop_size.Get<std::int64_t>());
   return ret;
 }
