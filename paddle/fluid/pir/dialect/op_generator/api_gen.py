@@ -768,7 +768,11 @@ class CodeGen:
 
     def _gen_type_promotion_logic(self, op_info, op_name):
         input_list = op_info.input_name_list
-        if op_name in type_promote_white_list:
+        if op_info.is_sparse_op:
+            type_promotion_logic_str = (
+                f"\n VLOG(5) << \" No Type Promotion for {op_name} api. \"; "
+            )
+        elif op_name in type_promote_white_list:
             x = type_promote_white_list[op_name][0]
             y = type_promote_white_list[op_name][1]
 
@@ -777,7 +781,8 @@ class CodeGen:
             )
 
             x_cast = f"auto new_{x} = pir::PromoteCast(\"{x}\", {x}, promotion_type);"
-
+            if op_info.is_sparse_op:
+                op_name += "sp_" if op_name[-1] == "_" else "_sp"
             type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
                 op_name=op_name,
                 x=x,
