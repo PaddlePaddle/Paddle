@@ -1274,14 +1274,6 @@ bool RoiAlignOpInferSymbolicShape(
 //   return MergedMomentumOpInferSymbolicShape(op, infer_context);
 // }
 
-bool MoeOpInferSymbolicShape(pir::Operation *op,
-                             pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
-  return true;
-}
-
 bool MulticlassNms3OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &bboxes_shape_or_data =
@@ -1291,50 +1283,113 @@ bool MulticlassNms3OpInferSymbolicShape(
   const auto &rois_num_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
 
-  const auto &bboxes_shape = bboxes_shape_or_data.shape();
-  const auto &scores_shape = scores_shape_or_data.shape();
-
-  PADDLE_ENFORCE_EQ(scores_shape.size() == 2 || scores_shape.size() == 3,
-                    true,
-                    common::errors::InvalidArgument(
-                        "The rank of Input(Scores) must be 2 or 3."));
+  const std::vector<symbol::DimExpr> &box_dims = bboxes_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &score_dims = scores_shape_or_data.shape();
+  const size_t score_size = score_dims.size();
 
   PADDLE_ENFORCE_EQ(
-      bboxes_shape.size(),
+      score_size == 2 || score_size == 3,
+      true,
+      common::errors::InvalidArgument(
+          "The rank of Input(Scores) must be 2 or 3. But received rank = %d",
+          score_size));
+  PADDLE_ENFORCE_EQ(
+      box_dims.size(),
       3,
-      common::errors::InvalidArgument("The rank of Input(BBoxes) must be 3."));
+      common::errors::InvalidArgument(
+          "The rank of Input(BBoxes) must be 3. But received rank = %d",
+          box_dims.size()));
 
-  if (scores_shape.size() == 3) {
-    PADDLE_ENFORCE_EQ(bboxes_shape[2] == 4 || bboxes_shape[2] == 8 ||
-                          bboxes_shape[2] == 16 || bboxes_shape[2] == 24 ||
-                          bboxes_shape[2] == 32,
-                      true,
-                      common::errors::InvalidArgument(
-                          "The last dimension of Input(BBoxes) must be "
-                          "4, 8, 16, 24, or 32."));
-    infer_context->AddEqualCstr(bboxes_shape[1], scores_shape[2]);
+  if (score_size == 3) {
+    PADDLE_ENFORCE_EQ(
+        box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
+            box_dims[2] == 24 || box_dims[2] == 32,
+        true,
+        common::errors::InvalidArgument("The last dimension of Input(BBoxes) "
+                                        "must be 4 or 8 or 16 or 24 or 32"));
+    PADDLE_ENFORCE_EQ(
+        box_dims[1],
+        score_dims[2],
+        common::errors::InvalidArgument(
+            "The 2nd dimension of Input(BBoxes) must be equal to "
+            "last dimension of Input(Scores), which represents the "
+            "predicted bboxes."
+            "But received box_dims[1](%s) != socre_dims[2](%s)",
+            box_dims[1],
+            score_dims[2]));
   } else {
-    PADDLE_ENFORCE_EQ(bboxes_shape[2],
+    PADDLE_ENFORCE_EQ(box_dims[2],
                       4,
                       common::errors::InvalidArgument(
-                          "The last dimension of Input(BBoxes) must be 4."));
-    infer_context->AddEqualCstr(bboxes_shape[1], scores_shape[1]);
+                          "The last dimension of Input(BBoxes) must be 4. But "
+                          "received dimension = %d",
+                          box_dims[2]));
+    PADDLE_ENFORCE_EQ(
+        box_dims[1],
+        score_dims[1],
+        common::errors::InvalidArgument(
+            "The 2nd dimension of Input"
+            "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
+            "But received box dimension = %d, score dimension = %d",
+            box_dims[1],
+            score_dims[1]));
   }
 
-  std::vector<symbol::DimExpr> out_shape = {symbol::DimExpr(-1),
-                                            bboxes_shape[2] + 2};
+  const auto &next_symbol_out = infer_context->GetNextSymName();
+  const auto &next_symbol_index = infer_context->GetNextSymName();
+  infer_context->AddEqualCstr(next_symbol_out, next_symbol_index);
+
+  int rois_num_numel = [&] {
+    auto rois_num_shape = rois_num_shape_or_data.shape();
+    int numel = 0;
+    for (size_t i = 0; i < rois_num_shape.size(); ++i) {
+      numel += rois_num_shape[i].dyn_cast<int64_t>();
+    }
+    return numel;
+  }();
+
+  int n = [&] {
+    auto bboxes = bboxes_shape_or_data.dyn_cast<pir::DenseTensorType>();
+    bool has_roisnum =
+        !rois_num_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>();
+    int n = 0;
+    if (has_roisnum) {
+      auto rois_num_tensor =
+          rois_num_shape_or_data.dyn_cast<pir::DenseTensorType>();
+      if (score_size == 3) {
+        n = score_dims[0].dyn_cast<int64_t>();
+      } else {
+        n = rois_num_numel;
+      }
+    } else {
+      if (score_size == 3) {
+        n = score_dims[0].dyn_cast<int64_t>();
+      } else {
+        n = bboxes.lod().back().size() - 1;
+      }
+    }
+    return n;
+  }();
+
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.emplace_back(next_symbol_out);
+  out_shape.emplace_back(box_dims[2] + 2);
+
+  std::vector<symbol::DimExpr> index_shape;
+  index_shape.emplace_back(next_symbol_index);
+  index_shape.emplace_back(1);
+
+  std::vector<symbol::DimExpr> nms_rois_num_shape;
+  nms_rois_num_shape.emplace_back(n);
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
-
-  std::vector<symbol::DimExpr> index_shape = {symbol::DimExpr(-1), 1};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(index_shape)});
-
-  std::vector<symbol::DimExpr> nms_rois_num_shape = {symbol::DimExpr(-1)};
   infer_context->SetShapeOrDataForValue(
       op->result(2),
       symbol::ShapeOrDataDimExprs{
@@ -1401,7 +1456,8 @@ bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
 }
 
 // bool NceOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
+//                              pir::InferSymbolicShapeContext *infer_context)
+//                              {
 //   // pass
 //   return true;
 // }

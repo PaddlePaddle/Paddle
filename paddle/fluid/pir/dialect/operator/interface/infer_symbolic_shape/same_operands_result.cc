@@ -142,7 +142,6 @@ OP_SAME_OPERANDS_AND_RESULT(Scatter)
 OP_SAME_OPERANDS_AND_RESULT(Scatter_)
 OP_SAME_OPERANDS_AND_RESULT(Select)
 OP_SAME_OPERANDS_AND_RESULT(ShadowFeed)
-OP_SAME_OPERANDS_AND_RESULT(ShadowFeedTensors)
 OP_SAME_OPERANDS_AND_RESULT(ShareData_)
 OP_SAME_OPERANDS_AND_RESULT(Sign)
 OP_SAME_OPERANDS_AND_RESULT(Sin)
@@ -238,6 +237,18 @@ bool ArgsortOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
   infer_context->SetShapeOrDataForValue(op->result(1), operand_shape_or_data);
+  return true;
+}
+
+bool ShadowFeedTensorsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::TensorListShapeOrDataDimExprs &shape_or_data_list =
+      infer_context->GetShapeOrDataForValue(operand_source)
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+  for (size_t i = 0; i < shape_or_data_list.size(); ++i) {
+    infer_context->SetShapeOrDataForValue(op->result(i), shape_or_data_list[i]);
+  }
   return true;
 }
 
