@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -20,6 +22,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -62,7 +65,7 @@ void BarrierKernel(const Context& dev_ctx,
     phi::backends::gpu::GpuStreamSync(stream);
     VLOG(3) << "new NCCLCommContext has rid " << ring_id;
   } else {
-    auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
+    auto comm = phi::platform::NCCLCommContext::Instance().Get(ring_id, place);
     auto stream = dev_ctx.stream();
     ncclRedOp_t nccl_red_type = ncclSum;
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
