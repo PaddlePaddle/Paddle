@@ -216,7 +216,7 @@ def fold_reshard_pass(dist_program):
         op.erase()
 
 
-def apply_reshard_pass(dist_program, params_grads):
+def apply_reshard_pass(dist_program, params_grads=[]):
     fold_reshard_pass(dist_program)
 
     # {grad.id: grad}

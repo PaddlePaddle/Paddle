@@ -164,6 +164,11 @@ class TestLlamaAuto:
             tr_loss_step.backward()
             tr_loss_add += tr_loss_step
 
+            if int(dist.get_rank()) in [2, 3, 6, 7]:
+                assert tr_loss_step._is_initialized()
+            else:
+                assert not tr_loss_step._is_initialized()
+
             if (step + 1) % self.gradient_accumulation_steps == 0:
                 tr_loss_add /= self.gradient_accumulation_steps
                 tr_loss = tr_loss_add
@@ -173,11 +178,6 @@ class TestLlamaAuto:
                 lr_scheduler.step()
 
                 tr_loss_add = 0
-
-            if int(dist.get_rank()) in [2, 3, 6, 7]:
-                assert tr_loss_step._is_initialized()
-            else:
-                assert not tr_loss_step._is_initialized()
 
         numpy_array = np.array(tr_loss)
         array_bytes = numpy_array.tobytes()
