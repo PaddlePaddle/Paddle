@@ -20,8 +20,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace phi {
