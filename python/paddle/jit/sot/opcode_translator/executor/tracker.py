@@ -24,7 +24,7 @@ from ...utils import InnerError, NameGenerator
 from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
 
 if TYPE_CHECKING:
-    from typing import Sequence
+    from collections.abc import Sequence
 
     from .pycode_generator import PyCodeGen
     from .variables import VariableBase

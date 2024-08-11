@@ -123,7 +123,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
   void ReplaceByContinuousReduceExternCall(ir::Expr* store, bool return_warp) {
     auto* node = store->As<ir::Store>()->value.As<OpT>();
     PADDLE_ENFORCE_NOT_NULL(
-        node, phi::errors::InvalidArgument("The node must not be null."));
+        node, ::common::errors::InvalidArgument("The node must not be null."));
     auto& operand = node->b();
     std::string reduce_func_name = hlir::pe::CrossThreadReduceExternalFuncName(
         store->As<ir::Store>()->value, operand.template As<ir::Load>()->tensor);
@@ -143,7 +143,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
   void ReplaceByDiscreteReduceExternCall(ir::Expr* store) {
     auto* node = store->As<ir::Store>()->value.As<OpT>();
     PADDLE_ENFORCE_NOT_NULL(
-        node, phi::errors::InvalidArgument("The node must not be null."));
+        node, ::common::errors::InvalidArgument("The node must not be null."));
     auto& operand = node->b();
     std::string reduce_func_name = hlir::pe::DiscreteReduceExternalFuncName(
         store->As<ir::Store>()->value, operand.template As<ir::Load>()->tensor);
@@ -216,7 +216,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     PADDLE_ENFORCE_EQ(original_update_body.As<ir::Block>() ||
                           original_update_body.As<ir::Store>(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The type of original_update_body is incorrect."
                           "Expected type is Block or Store."));
     if (original_update_body.As<ir::Block>()) {

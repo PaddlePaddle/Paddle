@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import collections
 import copy
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 
@@ -32,6 +32,8 @@ from .layers import Layer
 from .norm import LayerNorm
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import DTypeLike, ParamAttrLike
 

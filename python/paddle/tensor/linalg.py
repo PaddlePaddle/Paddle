@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 from typing_extensions import TypeAlias
@@ -42,6 +42,8 @@ from .manipulation import cast
 from .math import _get_reduce_axis
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
     _POrder: TypeAlias = Literal['fro', 'nuc']

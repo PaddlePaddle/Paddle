@@ -488,6 +488,8 @@ class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
         context);
     ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ReshapeOp>>(
         context);
+    ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::Reshape_Op>>(
+        context);
     ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::SliceOp>>(
         context);
     ps.Add<FuseSingleElementShapeOpsIntoGenerateShapeOpPattern>(context);

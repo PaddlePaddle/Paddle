@@ -24,14 +24,20 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     TensorListExprs list =
         shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     for (size_t i = 0; i < list.size(); i++) {
-      CHECK(list.at(i).data().has_value());
+      PADDLE_ENFORCE_EQ(list.at(i).data().has_value(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "i-th element of list has no value, please check"));
       for (auto expr : list.at(i).data().value()) {
         result.emplace_back(expr);
       }
     }
     return result;
   } else {
-    CHECK(shapeordata.data().has_value());
+    PADDLE_ENFORCE_EQ(shapeordata.data().has_value(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input `shapeordata.data` is empty, please check"));
     return shapeordata.data().value();
   }
 }

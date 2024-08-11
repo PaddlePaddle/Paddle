@@ -204,6 +204,78 @@ def heaviside_net(x, y):
     return paddle.heaviside(x, y)
 
 
+def square_net(x):
+    return paddle.square(x)
+
+
+def softsign_net(x):
+    return paddle.nn.functional.softsign(x)
+
+
+def floor_divide_net(x, y):
+    return paddle.floor_divide(x, y)
+
+
+def gelu_net(x):
+    return paddle.nn.functional.gelu(x)
+
+
+def hardsigmoid_net(x):
+    return paddle.nn.functional.hardsigmoid(x)
+
+
+def add_n_net(x, y, z):
+    return paddle.add_n([x, y, z])
+
+
+def mean_net(x):
+    return paddle.mean(x, axis=[1, 2])
+
+
+def pow_net(x):
+    return paddle.pow(x, 2.2)
+
+
+def reciprocal_net(x):
+    return paddle.reciprocal(x)
+
+
+def silu_net(x):
+    return paddle.nn.functional.silu(x)
+
+
+def relu_net(x):
+    return paddle.nn.functional.relu(x)
+
+
+def relu6_net(x):
+    return paddle.nn.functional.relu6(x)
+
+
+def hardswish_net(x):
+    return paddle.nn.functional.hardswish(x)
+
+
+def leaky_relu_net(x):
+    return paddle.nn.functional.leaky_relu(x, 0.1)
+
+
+def index_select_net(x, y):
+    return paddle.index_select(x, y)
+
+
+def softmax_net(x):
+    return paddle.nn.functional.softmax(x, axis=0)
+
+
+def sigmoid_cross_entropy_with_logits_net1(x, y):
+    return paddle._C_ops.sigmoid_cross_entropy_with_logits(x, y, None, True, -1)
+
+
+def sigmoid_cross_entropy_with_logits_net2(x, y, z):
+    return paddle._C_ops.sigmoid_cross_entropy_with_logits(x, y, z, True, -1)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -956,6 +1028,294 @@ class TestPrimHeaviside5(TestPrimTwo):
         self.y = np.random.random(self.shape_y).astype(self.dtype_y)
         self.net = heaviside_net
         self.necessary_ops = "pd_op.heaviside"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSquare(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = square_net
+        self.necessary_ops = "pd_op.square"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSoftsign(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = softsign_net
+        self.necessary_ops = "pd_op.softsign"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimFloorDivide(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [300, 2048]
+        self.shape_y = [300, 2048]
+        self.dtype_x = int
+        self.dtype_y = int
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.x = np.random.uniform(
+            low=1.0, high=100.0, size=self.shape_x
+        ).astype(self.dtype_x)
+        self.y = np.random.uniform(
+            low=1.0, high=100.0, size=self.shape_x
+        ).astype(self.dtype_x)
+        self.net = floor_divide_net
+        self.necessary_ops = "pd_op.floor_divide"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimGelu(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = gelu_net
+        self.necessary_ops = "pd_op.gelu"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimHardsigmoid(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = hardsigmoid_net
+        self.necessary_ops = "pd_op.hardsigmoid"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimAddn(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [10, 1, 10, 5, 5]
+        self.shape_y = [10, 1, 10, 5, 5]
+        self.shape_z = [10, 1, 10, 5, 5]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None, None, 5, 5]
+        self.init_y_shape = [None, None, None, 5, 5]
+        self.init_z_shape = [None, None, None, 5, 5]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = add_n_net
+        self.necessary_ops = "pd_op.add_n"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimMean(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = mean_net
+        self.necessary_ops = "pd_op.mean"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimPow(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = pow_net
+        self.necessary_ops = "pd_op.pow"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimReciprocal(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.uniform(
+            low=1.0, high=10.0, size=self.shape_x
+        ).astype(self.dtype_x)
+        self.net = reciprocal_net
+        self.necessary_ops = "pd_op.reciprocal"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSilu(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = silu_net
+        self.necessary_ops = "pd_op.silu"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimRelu(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = relu_net
+        self.necessary_ops = "pd_op.relu"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimRelu6(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = relu6_net
+        self.necessary_ops = "pd_op.relu6"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimHardswish(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = hardswish_net
+        self.necessary_ops = "pd_op.hardswish"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimLeakyRelu(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = leaky_relu_net
+        self.necessary_ops = "pd_op.leaky_relu"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimIndexSelect(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [300, 4096]
+        self.shape_y = [10]
+        self.dtype_x = "float32"
+        self.dtype_y = int
+        self.init_x_shape = [None, 4096]
+        self.init_y_shape = [None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.randint(low=0, high=100, size=self.shape_y).astype(
+            self.dtype_y
+        )
+        self.net = index_select_net
+        self.necessary_ops = "pd_op.index_select"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSoftmax(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [2, 300, 2048]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = softmax_net
+        self.necessary_ops = "pd_op.softmax"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSigmoidCrossEntropyWithLogitsOp1(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [300, 2048]
+        self.shape_y = [300, 2048]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.net = sigmoid_cross_entropy_with_logits_net1
+        self.necessary_ops = "pd_op.sigmoid_cross_entropy_with_logits"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSigmoidCrossEntropyWithLogitsOp2(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2024)
+        paddle.seed(2024)
+        self.shape_x = [300, 2048]
+        self.shape_y = [300, 2048]
+        self.shape_z = [300, 2048]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.init_z_shape = [None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = sigmoid_cross_entropy_with_logits_net2
+        self.necessary_ops = "pd_op.sigmoid_cross_entropy_with_logits"
         self.enable_cinn = False
         self.tol = 1e-6
 
