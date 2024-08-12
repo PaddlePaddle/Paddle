@@ -175,7 +175,7 @@ class TestPSROIPoolOp(OpTest):
         self.set_data()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')

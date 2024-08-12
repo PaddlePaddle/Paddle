@@ -1361,10 +1361,10 @@ bool PsroiPoolOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       input_dims.size(),
       4,
-      errors::InvalidArgument("The format of input tensor is NCHW"));
+      phi::errors::InvalidArgument("The format of input tensor is NCHW"));
   PADDLE_ENFORCE_EQ(rois_dims.size(),
                     2,
-                    errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
                         "given as [(x1, y1, x2, y2), ...]"));
   auto std::vector<symbol::DimExpr> dim_expr_vector(1);
@@ -1378,9 +1378,9 @@ bool PsroiPoolOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         rois_num_dims.size(),
         1,
-        errors::InvalidArgument("The second dimension of RoisNum should "
-                                "be 1, but received dimension is %d",
-                                rois_num_dims.size()));
+        phi::errors::InvalidArgument("The second dimension of RoisNum should "
+                                     "be 1, but received dimension is %d",
+                                     rois_num_dims.size()));
   }
   int pooled_height =
       op->attribute<pir::Int32Attribute>("pooled_height").data();
@@ -1389,19 +1389,19 @@ bool PsroiPoolOpInferSymbolicShape(
       op->attribute<pir::Int32Attribute>("output_channels").data();
   int a = output_channels * pooled_height * pooled_width;
   auto std::vector<symbol::DimExpr> dim_expr(1);
-  dim_expr_[0] = symbol::DimExpr(a);
+  dim_expr[0] = symbol::DimExpr(a);
   infer_context->AddEqualCstr(input_dims[1], dim_expr_[0]);
   PADDLE_ENFORCE_GT(pooled_height,
                     0,
-                    errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The pooled output height must be greater than 0"));
   PADDLE_ENFORCE_GT(pooled_width,
                     0,
-                    errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The pooled output width must be greater than 0"));
   PADDLE_ENFORCE_GT(output_channels,
                     1,
-                    errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The pooled output channels must greater than 1"));
   auto std::vector<symbol::DimExpr> out_dims = input_dims;
   out_dims[0] = rois_dims[0];
