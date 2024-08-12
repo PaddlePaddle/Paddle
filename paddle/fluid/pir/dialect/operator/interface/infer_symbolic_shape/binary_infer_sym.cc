@@ -1013,9 +1013,11 @@ bool YoloBoxOpInferSymbolicShape(
   symbol::DimExpr box_num = symbol::DimExpr(0);
   const auto &x_shape_2 = x_shape[2];
   const auto &x_shape_3 = x_shape[3];
-  if (x_shape_2.isa<int> && x_shape_2.isa<int>) {
-    int x_shape_2_value = static_cast<int>(x_shape_2.Get<std::int>());
-    int x_shape_3_value = static_cast<int>(x_shape_3.Get<std::int>());
+  if (x_shape_2.isa<int64_t> && x_shape_2.isa<int64_t>) {
+    int64_t x_shape_2_value =
+        static_cast<int64_t>(x_shape_2.Get<std::int64_t>());
+    int64_t x_shape_3_value =
+        static_cast<int64_t>(x_shape_3.Get<std::int64_t>());
     if (x_shape_2_value > 0 && x_shape_3_value > 0) {
       box_num = x_shape[2] * x_shape[3] * symbol::DimExpr(anchor_num);
     } else {
