@@ -1016,12 +1016,10 @@ struct NoneReduceMethod {};
 struct WarpReduceMethod {};
 struct BlockReduceMethod {};
 struct DiscreteReduceMethod {};
-struct IntervalReduceMethod {};
 using ReduceMethod = std::variant<NoneReduceMethod,
                                   WarpReduceMethod,
                                   BlockReduceMethod,
-                                  DiscreteReduceMethod,
-                                  IntervalReduceMethod>;
+                                  DiscreteReduceMethod>;
 
 // ScheduleBlock is the unit of schedule IR which represents tensor's
 // computation

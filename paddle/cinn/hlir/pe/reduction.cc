@@ -1205,40 +1205,6 @@ std::string DiscreteReduceExternalFuncName(const ir::Expr& op,
   return "";
 }
 
-std::string IntervalReduceExternalFuncName(const ir::Expr& op,
-                                           const ir::Expr& tensor) {
-  CHECK_NOTNULL(tensor.as_tensor());
-  if (op.As<ir::Add>()) {
-    if (tensor.as_tensor()->type().is_bool()) {
-      return "cinn_interval_reduce_any_internal_shm";
-    }
-    return "cinn_interval_reduce_sum" +
-           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
-  } else if (op.As<ir::Mul>()) {
-    if (tensor.as_tensor()->type().is_bool()) {
-      return "cinn_interval_reduce_all_internal_shm";
-    }
-    return "cinn_interval_reduce_prod" +
-           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
-  } else if (op.As<ir::Max>()) {
-    return "cinn_interval_reduce_max" +
-           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
-  } else if (op.As<ir::Min>()) {
-    return "cinn_interval_reduce_min" +
-           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal_shm";
-  } else if (op.As<ir::And>()) {
-    return "cinn_interval_reduce_all_internal_shm";
-  } else if (op.As<ir::Or>()) {
-    return "cinn_interval_reduce_any_internal_shm";
-  } else {
-    std::stringstream ss;
-    ss << op;
-    PADDLE_THROW(::common::errors::InvalidArgument(
-        "Reduce type %s is not supported yet!", ss.str()));
-  }
-  return "";
-}
-
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn
