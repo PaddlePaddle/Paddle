@@ -1007,32 +1007,35 @@ bool YoloBoxOpInferSymbolicShape(
       paddle::dialect::details::GetVectorAttr<int>(op, "anchors");
   int class_num = op->attribute<pir::Int32Attribute>("class_num").data();
 
-  const std::vector<symbol::DimExpr> &dim_x = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
   int anchor_num = static_cast<int>(anchors.size() / 2);
 
-  symbol::DimExprBuilder builder;
   symbol::DimExpr box_num = symbol::DimExpr(0);
-  symbol::DimExpr min_dimx2_0 = builder.Min(dim_x[2], box_num);
-  symbol::DimExpr min_dimx3_0 = builder.Min(dim_x[3], box_num);
-  if ((min_dimx2_0 == box_num) && (min_dimx3_0 == box_num)) {
-    box_num = dim_x[2] * dim_x[3] * symbol::DimExpr(anchor_num);
-  } else {
-    box_num = symbol::DimExpr(-1);
+  const auto &x_shape_2 = x_shape[2];
+  const auto &x_shape_3 = x_shape[3];
+  if (x_shape_2.isa<int> && x_shape_2.isa<int>) {
+    int x_shape_2_value = static_cast<int>(x_shape_2.Get<std::int>());
+    int x_shape_3_value = static_cast<int>(x_shape_3.Get<std::int>());
+    if (x_shape_2_value > 0 && x_shape_3_value > 0) {
+      box_num = x_shape[2] * x_shape[3] * symbol::DimExpr(anchor_num);
+    } else {
+      box_num = symbol::DimExpr(-1);
+    }
   }
 
-  std::vector<symbol::DimExpr> dim_boxes = {
-      dim_x[0], box_num, symbol::DimExpr(4)};
+  std::vector<symbol::DimExpr> boxes_shape = {
+      x_shape[0], box_num, symbol::DimExpr(4)};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(dim_boxes)});
+          symbol::TensorShapeOrDataDimExprs(boxes_shape)});
 
-  std::vector<symbol::DimExpr> dim_scores = {
-      dim_x[0], box_num, symbol::DimExpr(class_num)};
+  std::vector<symbol::DimExpr> scores_shape = {
+      x_shape[0], box_num, symbol::DimExpr(class_num)};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(dim_scores)});
+          symbol::TensorShapeOrDataDimExprs(scores_shape)});
 
   return true;
 }
