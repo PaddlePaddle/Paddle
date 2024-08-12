@@ -616,8 +616,8 @@ bool IndexSampleOpInferSymbolicShape(
   return true;
 }
 
-bool KLDivOpInferSymbolicShape(pir::Operation *op,
-                               pir::InferSymbolicShapeContext *infer_context) {
+bool KldivLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &label_shape_or_data =
