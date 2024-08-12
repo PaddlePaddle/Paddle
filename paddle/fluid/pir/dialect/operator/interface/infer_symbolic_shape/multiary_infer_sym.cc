@@ -1351,9 +1351,9 @@ bool MulticlassNms3OpInferSymbolicShape(
   std::vector<symbol::DimExpr> nms_rois_num_shape;
   nms_rois_num_shape.emplace_back(next_symbol_nms_rois_num);
 
-  VLOG(3) << "out_shape: " << common::make_ddim(out_shape);
-  VLOG(3) << "index_shape: " << common::make_ddim(index_shape);
-  VLOG(3) << "nms_rois_num_shape: " << common::make_ddim(nms_rois_num_shape);
+  VLOG(3) << "out_shape: " << out_shape;
+  VLOG(3) << "index_shape: " << index_shape;
+  VLOG(3) << "nms_rois_num_shape: " << nms_rois_num_shape;
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
