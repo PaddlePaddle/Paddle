@@ -336,14 +336,26 @@ class _moe_global_mesh_tensor(PyLayer):
 def get_sub_meshes_from_global_mesh(
     global_mesh, global_placements, local_mesh_dim
 ):
-    mesh_shape = global_mesh.shape
-    mesh_ndim = len(mesh_shape)
-    if local_mesh_dim >= mesh_ndim or (
-        local_mesh_dim < 0 and -local_mesh_dim >= mesh_ndim
+    if (
+        global_mesh is not None
+        and local_mesh_dim is not None
+        and global_placements is not None
     ):
+        mesh_shape = global_mesh.shape
+        mesh_ndim = len(mesh_shape)
+        if local_mesh_dim >= mesh_ndim or (
+            local_mesh_dim < 0 and -local_mesh_dim > mesh_ndim
+        ):
+            raise ValueError(
+                f"The local_mesh_dim should between (-{mesh_ndim}, {mesh_ndim}]"
+            )
+        if local_mesh_dim < 0:
+            local_mesh_dim += mesh_ndim
+    else:
         raise ValueError(
-            f"The local_mesh_dim should between (-{mesh_ndim}, {mesh_ndim})"
+            "the args global_mesh, global_placements and local_mesh_dim should all be set."
         )
+
     process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
     splitted_process_ids = np.split(
         process_ids, mesh_shape[local_mesh_dim], axis=local_mesh_dim
@@ -365,34 +377,6 @@ def moe_global_mesh_tensor(
     local_mesh_list, local_placements = get_sub_meshes_from_global_mesh(
         mesh, placements, local_mesh_dim
     )
-    # local_tensor = local_tensor_list[local_tensor_idx]
-    # global_dims = list(local_tensor.shape)
-    # local_mesh = None
-    # if paddle.in_dynamic_mode():
-    #     if local_tensor.is_dist():
-    #         local_mesh = local_tensor.process_mesh
-    #         local_val = local_tensor._local_value()
-    #     else:
-    #         local_val = local_tensor
-
-    # if local_mesh is not None:
-    #     assert (
-    #         len(local_mesh.shape) == 1
-    #     ), "dtensor_from_local only support 1D local mesh now when the input ``local_tensor`` is a dist_tensor."
-    #     local_process_ids = local_mesh.process_ids
-
-    #     if len(local_process_ids) > 1:
-    #         diff = local_process_ids[1] - local_process_ids[0]
-    #         global_mesh_shape = mesh.shape
-    #         for i in range(len(global_mesh_shape) - 1, -1, -1):
-    #             diff = diff // global_mesh_shape[i]
-    #             if diff == 0:
-    #                 local_mesh_dim = i
-    #                 break
-    #         assert (
-    #             local_mesh_dim == len(global_mesh_shape) - 1
-    #         ), "Only support the local mesh to be the last dimension of global mesh now."
-    #     local_placement = local_tensor.placements[0]
 
     local_tensor_idx = mesh.process_ids.index(dist.get_rank())
     local_tensor = local_tensor_list[local_tensor_idx]
@@ -522,23 +506,9 @@ def moe_sub_mesh_tensors(
     """
     Get the local part of the ``dist_tensor`` on the specific ``local_mesh_dim``.
     """
-    if (
-        global_mesh is not None
-        and local_mesh_dim is not None
-        and global_placements is not None
-    ):
-        mesh_shape = global_mesh.shape
-        process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
-        splitted_process_ids = np.split(
-            process_ids, mesh_shape[local_mesh_dim], axis=local_mesh_dim
-        )
-        local_mesh_list = []
-        for process_ids in splitted_process_ids:
-            local_mesh_list.append(dist.ProcessMesh(process_ids))
-        local_placements = list(global_placements)
-        local_placements.pop(local_mesh_dim)
-        if local_placements == []:
-            local_placements.append(dist.Replicate())
+    local_mesh_list, local_placements = get_sub_meshes_from_global_mesh(
+        global_mesh, global_placements, local_mesh_dim
+    )
 
     if paddle.framework.in_dynamic_mode():
         return _moe_sub_mesh_tensors.apply(
@@ -562,7 +532,7 @@ def moe_sub_mesh_tensors(
         return local_tensors
     else:
         raise NotImplementedError(
-            "local_tensor_from_dist is only supported in dynamic mode."
+            "moe_sub_mesh_tensors is only supported in dynamic mode."
         )
 
 
