@@ -832,9 +832,9 @@ class ShardingPass(PassBase):
                 f"Bucket[{i}] parameters: {[p.name for p in param_group.vars]}."
             )
 
-            broadcast_var_to_group_map[
-                param_group.coalesce_var.name
-            ] = param_group
+            broadcast_var_to_group_map[param_group.coalesce_var.name] = (
+                param_group
+            )
 
             # TODO revise me to manager stream and comm
             comm_stream_idx = i % self.param_comm_stream_num

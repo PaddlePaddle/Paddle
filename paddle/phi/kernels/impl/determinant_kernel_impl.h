@@ -57,7 +57,7 @@ inline int64_t GetBatchCount(const DDim dims) {
   PADDLE_ENFORCE_GE(
       dim_size,
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the input matrix dimension size should greater than 2."));
 
   // Cumulative multiplying each dimension until the last 2 to get the batch
@@ -113,11 +113,11 @@ void DeterminantKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       input_dim_size,
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the input matrix dimension size should greater than 2."));
   PADDLE_ENFORCE_EQ(input_dim[input_dim_size - 1],
                     input_dim[input_dim_size - 2],
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "the input matrix should be square matrix."));
   auto rank = input_dim[input_dim_size - 1];  // square matrix length
   DeterminantFunctor<T, Context>()(dev_ctx, x, rank, batch_count, out);

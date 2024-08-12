@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 #include <algorithm>
 
@@ -133,7 +133,7 @@ void EagerDeletionOpHandle::RunImpl() {
     CallOnce();
   }
 
-  platform::RecordEvent record_event(
+  phi::RecordEvent record_event(
       Name(), platform::TracerEventType::UserDefined, 2);
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (size_t i = 0; i < var_infos_.size(); ++i) {
@@ -154,8 +154,8 @@ void EagerDeletionOpHandle::RunImpl() {
       garbages.emplace_back(var->GetMutable<phi::SelectedRows>()
                                 ->mutable_value()
                                 ->MoveMemoryHolder());
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto *tensor_arr = var->GetMutable<LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto *tensor_arr = var->GetMutable<phi::TensorArray>();
       for (auto &t : *tensor_arr) {
         garbages.emplace_back(t.MoveMemoryHolder());
       }

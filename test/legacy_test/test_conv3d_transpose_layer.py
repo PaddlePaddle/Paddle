@@ -60,13 +60,16 @@ class Conv3DTransposeTestCase(unittest.TestCase):
         self.channel_last = self.data_format == "NDHWC"
         if self.channel_last:
             input_shape = (
-                (self.batch_size,) + self.spatial_shape + (self.num_channels,)
+                self.batch_size,
+                *self.spatial_shape,
+                self.num_channels,
             )
         else:
             input_shape = (
                 self.batch_size,
                 self.num_channels,
-            ) + self.spatial_shape
+                *self.spatial_shape,
+            )
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
@@ -76,7 +79,8 @@ class Conv3DTransposeTestCase(unittest.TestCase):
         self.weight_shape = weight_shape = (
             self.num_channels,
             self.num_filters // self.groups,
-        ) + tuple(filter_size)
+            *filter_size,
+        )
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )

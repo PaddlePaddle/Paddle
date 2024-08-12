@@ -171,17 +171,7 @@
     func : ReduceScatterInferMeta
     param: [x, nranks]
   kernel :
-    func : reduce_scatter
-    param: [x, nranks]
-
-- op : c_scatter
-  args : (Tensor x, int ring_id = 0, int root = 0, int nranks = 0, bool use_calc_stream = false)
-  output : Tensor(out)
-  infer_meta :
-    func : CScatterInferMeta
-    param : [x, nranks]
-  kernel :
-    func : c_scatter
+    func : c_reducescatter
 
 - op : c_split
   args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true)
@@ -358,6 +348,7 @@
     func : UnchangedInferMeta
   kernel:
     func: get_tensor_from_selected_rows {selected_rows -> dense}
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : global_gather
   args : (Tensor x, Tensor local_count, Tensor global_count, int ring_id = 0, bool use_calc_stream=false)
@@ -717,19 +708,6 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : reshape
-  args : (Tensor x, IntArray shape)
-  output : Tensor(out)
-  infer_meta :
-    func : ReshapeInferMeta
-    spmd_rule : ReshapeInferSpmdDynamic
-  kernel :
-    func : reshape_infer
-  inplace : (x -> out)
-  view: (x -> out)
-  backward: reshape_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : row_conv
   args : (Tensor x, Tensor filter)
   output : Tensor(out)
@@ -820,6 +798,7 @@
   kernel:
     func: shadow_feed
     param: [x]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed_tensors
   args : (Tensor[] x)
@@ -842,6 +821,7 @@
     param: [x]
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)
@@ -875,6 +855,14 @@
     func: sparse_momentum
     data_type: param
   optional: master_param, master_param_out
+
+- op : straight_through_estimator_grad
+  args: (Tensor out_grad)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: StraightThroughEstimatorInferMeta
+  kernel:
+    func: straight_through_estimator_grad
 
 - op : subtract
   args : (Tensor x, Tensor y)
@@ -960,6 +948,7 @@
     param: [x, in_accum, in_state, moving_rate, is_test]
   optional : in_accum, in_state, out, out_state, out_accum
   inplace : (in_accum -> out_accum), (in_state -> out_state)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op: nce
   args: (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)

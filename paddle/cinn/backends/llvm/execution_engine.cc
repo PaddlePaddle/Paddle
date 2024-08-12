@@ -177,15 +177,18 @@ void ExecutionEngine::Link(const ir::Module &module) {
   VLOG(3) << "ir_emitter->Compile(module) Begin";
   ir_emitter->Compile(module);
   VLOG(3) << "ir_emitter->Compile(module) Succeed!";
-  CHECK(!llvm::verifyModule(*m, &llvm::errs())) << "Invalid module found";
-
+  PADDLE_ENFORCE_EQ(!llvm::verifyModule(*m, &llvm::errs()),
+                    true,
+                    phi::errors::InvalidArgument("Sorry,Invalid module found"));
   auto machine = std::move(llvm::cantFail(
       llvm::cantFail(llvm::orc::JITTargetMachineBuilder::detectHost())
           .createTargetMachine()));
   LLVMModuleOptimizer optimize(machine.get(), 3, {}, true);
   optimize(m.get());
-  CHECK(!llvm::verifyModule(*m, &llvm::errs()))
-      << "Invalid optimized module detected";
+  PADDLE_ENFORCE_EQ(
+      !llvm::verifyModule(*m, &llvm::errs()),
+      true,
+      phi::errors::InvalidArgument("Invalid optimized module detected"));
   for (auto &f : *m) {
     VLOG(5) << "function: " << DumpToString(f);
   }
@@ -275,7 +278,7 @@ void ExecutionEngine::RegisterGlobalRuntimeSymbols() {
 
 template void ExecutionEngine::Link<CodeGenLLVM>(const ir::Module &module);
 template void ExecutionEngine::Link<CodeGenX86>(const ir::Module &module);
-template void ExecutionEngine::Link<CodeGenCUDA_Host>(const ir::Module &module);
+template void ExecutionEngine::Link<CodeGenCudaHost>(const ir::Module &module);
 template void ExecutionEngine::Link<CodeGenSwitchHost>(
     const ir::Module &module);
 

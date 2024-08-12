@@ -240,9 +240,11 @@ class TestBinaryAPI(unittest.TestCase):
                 if isinstance(api, dict):
                     out = api['func'](x, y)
                     out_cls = getattr(
-                        paddle.pir.Value
-                        if use_pir_api()
-                        else paddle.static.Variable,
+                        (
+                            paddle.pir.Value
+                            if use_pir_api()
+                            else paddle.static.Variable
+                        ),
                         api['cls_method'],
                     )(x, y)
                     self.assertEqual(out.shape, out_cls.shape)
@@ -282,9 +284,11 @@ class TestBinaryAPI(unittest.TestCase):
                 if isinstance(api, dict):
                     out = api['func'](x, y)
                     out_cls = getattr(
-                        paddle.pir.Value
-                        if use_pir_api()
-                        else paddle.static.Variable,
+                        (
+                            paddle.pir.Value
+                            if use_pir_api()
+                            else paddle.static.Variable
+                        ),
                         api['cls_method'],
                     )(x, y)
                     self.assertEqual(out.shape, out_cls.shape)
@@ -323,9 +327,11 @@ class TestBinaryAPI(unittest.TestCase):
                 if isinstance(api, dict):
                     out = api['func'](x, y)
                     out_cls = getattr(
-                        paddle.pir.Value
-                        if use_pir_api()
-                        else paddle.static.Variable,
+                        (
+                            paddle.pir.Value
+                            if use_pir_api()
+                            else paddle.static.Variable
+                        ),
                         api['cls_method'],
                     )(x, y)
                     self.assertEqual(out.shape, out_cls.shape)
@@ -362,9 +368,11 @@ class TestBinaryAPI(unittest.TestCase):
                 y = 0.5
                 if isinstance(api, dict):
                     out = getattr(
-                        paddle.pir.Value
-                        if use_pir_api()
-                        else paddle.static.Variable,
+                        (
+                            paddle.pir.Value
+                            if use_pir_api()
+                            else paddle.static.Variable
+                        ),
                         api['cls_method'],
                     )(x, y)
                     grad_list = paddle.static.append_backward(

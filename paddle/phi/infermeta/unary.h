@@ -158,7 +158,8 @@ void CropInferMeta(const MetaTensor& x,
                    MetaTensor* out,
                    MetaConfig config = MetaConfig());
 
-void CScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
+void CScatterInferMeta(
+    const MetaTensor& x, int ring_id, int root, int nranks, MetaTensor* out);
 
 void CSplitInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
@@ -954,6 +955,9 @@ void NumberCountInferMeta(const MetaTensor& x,
                           MetaTensor* out);
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void StraightThroughEstimatorInferMeta(const MetaTensor& out_grad,
+                                       MetaTensor* x_grad);
 
 void LrnInferMeta(const MetaTensor& x,
                   int n,

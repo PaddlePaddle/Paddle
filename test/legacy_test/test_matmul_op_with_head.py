@@ -41,14 +41,14 @@ def generate_compatible_shapes_mul_head(dim_X, dim_Y, transpose_X, transpose_Y):
         else:
             shape_X = [M, K]
     if dim_X == 3:
-        shape_X = [BATCH_SIZE] + shape_X
+        shape_X = [BATCH_SIZE, *shape_X]
     if dim_Y >= 2:
         if transpose_Y:
             shape_Y = [N, K]
         else:
             shape_Y = [K, N]
     if dim_Y == 3:
-        shape_Y = [BATCH_SIZE] + shape_Y
+        shape_Y = [BATCH_SIZE, *shape_Y]
     return shape_X, shape_Y
 
 
@@ -205,14 +205,14 @@ def generate_compatible_shapes_mul_head2(
         else:
             shape_X = [M1, K1]
     if dim_X == 3:
-        shape_X = [BATCH_SIZE] + shape_X
+        shape_X = [BATCH_SIZE, *shape_X]
     if dim_Y >= 2:
         if transpose_Y:
             shape_Y = [K2, M2]
         else:
             shape_Y = [M2, K2]
     if dim_Y == 3:
-        shape_Y = [BATCH_SIZE] + shape_Y
+        shape_Y = [BATCH_SIZE, *shape_Y]
     return shape_X, shape_Y
 
 

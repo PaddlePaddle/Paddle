@@ -1165,8 +1165,14 @@ def get_package_data_and_package_dir():
             + '/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
             libs_path,
         )
+        shutil.copy(
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h',
+            libs_path,
+        )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+        package_data['paddle.libs'] += ['cinn_hip_runtime_source.h']
 
         cinn_fp16_file = (
             env_dict.get("CINN_INCLUDE_DIR")
@@ -1866,7 +1872,7 @@ def check_submodules():
         with open(git_submodules_path) as f:
             return [
                 os.path.join(TOP_DIR, line.split("=", 1)[1].strip())
-                for line in f.readlines()
+                for line in f
                 if line.strip().startswith("path")
             ]
 

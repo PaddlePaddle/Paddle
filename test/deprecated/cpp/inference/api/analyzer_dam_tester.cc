@@ -70,11 +70,18 @@ struct DataRecord {
                            response.begin() + batch_end);
       data.response_mask.assign(response_mask.begin() + batch_iter,
                                 response_mask.begin() + batch_end);
-      CHECK(!data.response.empty());
-      CHECK(!data.response_mask.empty());
+      PADDLE_ENFORCE_EQ(!data.response.empty(),
+                        true,
+                        common::errors::Fatal(
+                            "Variable `data` response is empty, please check"));
+      PADDLE_ENFORCE_EQ(
+          !data.response_mask.empty(),
+          true,
+          common::errors::Fatal(
+              "Variable `data` response mask is empty, please check"));
       PADDLE_ENFORCE_EQ(data.response.size(),
                         data.response_mask.size(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required data.response.size() should be equal to "
                             "data.response_mask.size() . "));
     }
@@ -93,7 +100,7 @@ struct DataRecord {
       split(line, ',', &data);
       PADDLE_ENFORCE_EQ(data.size(),
                         (size_t)(2 * FLAGS_max_turn_num + 3),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required data.size() should be equal to "
                             "(size_t)(2 * FLAGS_max_turn_num + 3) . "));
       // load turn data
@@ -142,7 +149,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots,
   int size = one_batch.response[0].size();
   PADDLE_ENFORCE_EQ(size,
                     kMaxTurnLen,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Required size should be equal to kMaxTurnLen . "));
   // turn tensor assignment
   for (int i = 0; i < FLAGS_max_turn_num; ++i) {

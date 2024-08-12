@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 PD_DEFINE_bool(profile, false, "Turn on profiler for fluid");  // NOLINT
 

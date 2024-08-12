@@ -243,7 +243,7 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
 
         param = np.random.random(shape).astype(dtype)
         grad = np.random.random(shape).astype(dtype)
-        moment = np.random.random(shape).astype(dtype)
+        moment = np.random.random(shape).astype(mp_dtype)
         master_param = param.astype(mp_dtype)
 
         lr = np.array([0.002]).astype("float32")

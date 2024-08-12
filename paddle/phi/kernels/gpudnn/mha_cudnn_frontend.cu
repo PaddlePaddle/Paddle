@@ -630,7 +630,7 @@ void fused_attn_arbitrary_seqlen_fwd_impl(int64_t b,
 
     CHECK_CUDNN_FE(mha_graph->execute(handle, variant_pack, workspace));
   } catch (cudnn_frontend::cudnnException &e) {
-    PADDLE_THROW(phi::errors::Fatal(std::string(e.what())));
+    PADDLE_THROW(common::errors::Fatal(std::string(e.what())));
   }
 }
 
@@ -989,7 +989,7 @@ void fused_attn_arbitrary_seqlen_bwd_impl(int64_t b,
 
     CHECK_CUDNN_FE(mha_graph->execute(handle, variant_pack, workspace));
   } catch (cudnn_frontend::cudnnException &e) {
-    PADDLE_THROW(phi::errors::Fatal(std::string(e.what())));
+    PADDLE_THROW(common::errors::Fatal(std::string(e.what())));
   }
 }
 
