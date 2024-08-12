@@ -56,7 +56,7 @@ def cnn_model(data):
 
     SIZE = 10
     input_shape = conv_pool_2.shape
-    param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
+    param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1), SIZE]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
     with base.device_guard("gpu:1"):
