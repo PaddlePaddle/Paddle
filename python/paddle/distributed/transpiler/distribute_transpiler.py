@@ -1826,11 +1826,14 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 for grad in grad_list
                 if grad.name != grad_var_name(self.table_name)
             ]
-            self.table_param_grad = [
-                param_grad
-                for param_grad in params_grads
-                if param_grad[0].name == self.table_name
-            ][0]
+            self.table_param_grad = next(
+                (
+                    param_grad
+                    for param_grad in params_grads
+                    if param_grad[0].name == self.table_name
+                ),
+                None,  # Default value if no matching param_grad is found
+            )
             table_grad_var = self.table_param_grad[1]
             if self.sync_mode:
                 self.trainer_side_table_grad_list = [
