@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -28,7 +30,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input(attrs: List[Dict[str, Any]], batch):
+        def generate_input(attrs: list[dict[str, Any]], batch):
             if self.dims == 0:
                 return np.random.random([]).astype(np.float32)
             elif self.dims == 1:
@@ -41,7 +43,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                 elif attrs[0]["data_format"] == "NHWC":
                     return np.random.random([batch, 16, 3]).astype(np.float32)
                 else:
-                    raise AssertionError()
+                    raise AssertionError
             else:
                 if attrs[0]["data_format"] == "NCHW":
                     return np.random.random([batch, 3, 16, 32]).astype(
@@ -52,7 +54,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         np.float32
                     )
 
-        def generate_alpha(attrs: List[Dict[str, Any]]):
+        def generate_alpha(attrs: list[dict[str, Any]]):
             if self.dims == 0:
                 return np.random.random([]).astype(np.float32)
             if attrs[0]["mode"] == "all":
@@ -70,7 +72,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                     elif attrs[0]["data_format"] == "NHWC":
                         return np.random.random([1, 16, 3]).astype(np.float32)
                     else:
-                        raise AssertionError()
+                        raise AssertionError
                 else:
                     if attrs[0]["data_format"] == "NCHW":
                         return np.random.random([1, 3, 16, 32]).astype(
@@ -81,7 +83,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                             np.float32
                         )
                     else:
-                        raise AssertionError()
+                        raise AssertionError
 
         for batch in [1, 4]:
             for dims in [0, 1, 2, 3, 4]:
@@ -127,7 +129,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 0:
                 self.dynamic_shape.min_input_shape = {"input_data": []}
@@ -163,7 +165,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         "input_data": [1, 16, 3]
                     }
                 else:
-                    raise AssertionError()
+                    raise AssertionError
             else:
                 if attrs[0]["data_format"] == "NCHW":
                     self.dynamic_shape.min_input_shape = {
@@ -186,7 +188,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         "input_data": [1, 16, 32, 3]
                     }
                 else:
-                    raise AssertionError()
+                    raise AssertionError
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}

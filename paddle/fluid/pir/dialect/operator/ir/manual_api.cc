@@ -60,7 +60,7 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
   if (param) {
     PADDLE_ENFORCE_EQ(param->type(),
                       parameter.type(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Duplicate parameter %s with different type.", name));
   } else {
     std::unique_ptr<pir::Parameter> param_new(
@@ -74,7 +74,7 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
 void update_parameter(const pir::Value& parameter, const std::string& name) {
   pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
   PADDLE_ENFORCE_NOT_NULL(param,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Parameter %s not exist, can not update.", name));
   std::unique_ptr<pir::Parameter> param_new(
       new pir::Parameter(nullptr, 0, parameter.type()));
@@ -118,7 +118,7 @@ pir::Value embedding_grad(const pir::Value& x,
       return embedding_grad_op.weight_grad();
     }
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Now we do not support sparse weight embedding_grad."));
   }
 }
@@ -261,7 +261,7 @@ pir::Value assign(const pir::Value& x) {
             ->Build<paddle::dialect::AssignArrayOp>(x);
     return assign_array_op.result(0);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Currently, assign only supports DenseTensorType and "
         "DenseTensorArrayType."));
   }
@@ -294,7 +294,7 @@ pir::Value array_pop(pir::Value input, int index) {
             input, index);
     return array_pop_op.result(1);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "pop only supports DenseTensorArrayType."));
   }
 }

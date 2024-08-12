@@ -44,7 +44,7 @@ framework::proto::VarType::Type VarMessageToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "VarMessageToVarType:Unsupported type %d", type));
   }
 }
@@ -209,7 +209,7 @@ void DeserializeFromMultiVarMsgAndIOBuf(const MultiVarMsg& multi_msg,
     auto* var = scope->FindVar(msg.varname());
     PADDLE_ENFORCE_NE(var,
                       nullptr,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Not find variable %s in scope.", msg.varname()));
     if (msg.type() == ::paddle::distributed::LOD_TENSOR) {
       DeserializeLodTensor(var, msg, io_buffer_itr, ctx);

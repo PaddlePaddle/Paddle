@@ -148,7 +148,7 @@ void TransQKVWithBias(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -164,7 +164,7 @@ void TransQKVWithBias(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -176,7 +176,7 @@ void TransQKVWithBias(const int batch,
     // limit head_size * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(head_size * head_num,
                       1024,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -208,7 +208,7 @@ void TransQKVWithBias(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -224,7 +224,7 @@ void TransQKVWithBias(const int batch,
     // limit head_size * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(head_size * head_num,
                       1024,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -239,7 +239,7 @@ inline int round_up(int seq_len, int multiple = 32) {
   PADDLE_ENFORCE_GT(
       multiple,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "multiple should be a positive number, but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }

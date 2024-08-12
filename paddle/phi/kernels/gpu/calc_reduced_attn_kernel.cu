@@ -58,13 +58,13 @@ void CalcReducedAttnScoresKernel(const Context& ctx,
 #if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_EQ(q.dims().size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "calc_reduced_attention receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
 
   PADDLE_ENFORCE_EQ(k.dims().size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "calc_reduced_attention receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
 

@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/pre_analysis.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/flags.h"
@@ -52,19 +51,6 @@ void FusionOpAnalysis::PreCompileGroup() {
 
   std::vector<OpLoweringGroupPtr> groups;
   for (auto& group_info : *group_infos_) {
-    if (is_dy_shape_) {
-      const auto& optional_broadcast_group_list =
-          GetBroadcastGroupListForOptimize(group_info.second);
-      if (optional_broadcast_group_list.has_value()) {
-        std::vector<OpLoweringGroupPtr> group_list =
-            optional_broadcast_group_list.value();
-        VLOG(4) << "Pre-Compile for Broadcast Group with size: "
-                << group_list.size();
-        PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
-        pir_compiler.BuildBroadcastTree(group_list, group_info.second);
-        continue;
-      }
-    }
     groups.push_back(group_info.second);
   }
   // Build and trigger compilaion cache.

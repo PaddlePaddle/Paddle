@@ -109,14 +109,14 @@ template <typename T>
 static auto selectSumkernel(int64_t headdim) {
   PADDLE_ENFORCE_LE(headdim,
                     256,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "FlashAttention only support headdim <= 256"));
   PADDLE_ENFORCE_EQ(headdim % 32,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "FlashAttention only support headdim %% 32 == 0"));
   PADDLE_ENFORCE_NE(
-      headdim, 0, phi::errors::InvalidArgument("Headdim can't be zero"));
+      headdim, 0, common::errors::InvalidArgument("Headdim can't be zero"));
 #define CASEN(n) \
   case n:        \
     return SumStridedKV<T, n>;
@@ -141,11 +141,11 @@ static void kvReduceForGQA(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       dk->strides()[2],
       1,
-      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
+      common::errors::InvalidArgument("headdim dimention must be contiguous"));
   PADDLE_ENFORCE_EQ(
       dk_tmp.strides()[3],
       1,
-      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
+      common::errors::InvalidArgument("headdim dimention must be contiguous"));
   const int64_t reduceDimSize = dk_tmp.dims()[2];
   const size_t blockNum =
       std::min((static_cast<int64_t>(dk_tmp.dims()[0] + 31) / 32),
@@ -175,19 +175,19 @@ static void kvReduceBatchedForGQA(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       dk->strides()[3],
       1,
-      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
+      common::errors::InvalidArgument("headdim dimention must be contiguous"));
   PADDLE_ENFORCE_EQ(
       dk_tmp.strides()[4],
       1,
-      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
-  PADDLE_ENFORCE_EQ(
-      dk->strides()[0],
-      dk->strides()[1] * dk->dims()[1],
-      phi::errors::InvalidArgument("batchsize dimention must be contiguous"));
-  PADDLE_ENFORCE_EQ(
-      dk_tmp.strides()[0],
-      dk_tmp.strides()[1] * dk_tmp.dims()[1],
-      phi::errors::InvalidArgument("batchsize dimention must be contiguous"));
+      common::errors::InvalidArgument("headdim dimention must be contiguous"));
+  PADDLE_ENFORCE_EQ(dk->strides()[0],
+                    dk->strides()[1] * dk->dims()[1],
+                    common::errors::InvalidArgument(
+                        "batchsize dimention must be contiguous"));
+  PADDLE_ENFORCE_EQ(dk_tmp.strides()[0],
+                    dk_tmp.strides()[1] * dk_tmp.dims()[1],
+                    common::errors::InvalidArgument(
+                        "batchsize dimention must be contiguous"));
   const int64_t reduceDimSize = dk_tmp.dims()[3];
   const size_t blockNum = std::min(
       (static_cast<int64_t>(dk_tmp.dims()[0] * dk_tmp.dims()[1] + 31) / 32),
@@ -289,7 +289,7 @@ void FlashAttnUnpaddedGradBaseKernel(
   PADDLE_ENFORCE_EQ(
       head_size_og,
       head_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "flash_attn_bwd receive input with head_size_og == head_size"));
 
   FlashAttnBwdParamsV2 params =
@@ -528,7 +528,7 @@ static void sliceFlattenView(const DenseTensor& in,
   PADDLE_ENFORCE_LT(
       axis,
       in.dims().size(),
-      phi::errors::InvalidArgument("sliceView receive axis out of bound"));
+      common::errors::InvalidArgument("sliceView receive axis out of bound"));
   std::array<int64_t, DDim::kMaxRank> dimArr;
   std::array<int64_t, DDim::kMaxRank> strideArr;
   auto id = dimArr.begin(), is = strideArr.begin();
@@ -695,7 +695,7 @@ void FlashAttnGradBaseKernel(
   PADDLE_ENFORCE_EQ(
       head_size_og,
       head_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "flash_attn_bwd receive input with head_size_og == head_size"));
 
   const float softmax_scale = 1.0f / std::sqrt(head_size);

@@ -138,17 +138,17 @@ class TestWhereAPI(unittest.TestCase):
                     paddle.static.Program(), paddle.static.Program()
                 ):
                     cond = paddle.static.data(
-                        name='cond', shape=[-1] + self.shape, dtype='bool'
+                        name='cond', shape=[-1, *self.shape], dtype='bool'
                     )
                     if not paddle.framework.use_pir_api():
                         cond.desc.set_need_check_feed(False)
                     x = paddle.static.data(
-                        name='x', shape=[-1] + self.shape, dtype='float32'
+                        name='x', shape=[-1, *self.shape], dtype='float32'
                     )
                     if not paddle.framework.use_pir_api():
                         x.desc.set_need_check_feed(False)
                     y = paddle.static.data(
-                        name='y', shape=[-1] + self.shape, dtype='float32'
+                        name='y', shape=[-1, *self.shape], dtype='float32'
                     )
                     if not paddle.framework.use_pir_api():
                         y.desc.set_need_check_feed(False)

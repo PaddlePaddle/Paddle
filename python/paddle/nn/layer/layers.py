@@ -20,7 +20,7 @@ import typing
 import warnings
 import weakref
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Sequence, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Union
 
 import numpy as np
 from typing_extensions import Self
@@ -55,6 +55,8 @@ from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
     from paddle.nn.initializer import Initializer
 
@@ -429,19 +431,19 @@ class Layer:
         self._op_recorder = LayerOpsRecorder(ops=[], hooks=[])
         self._customized_attrs = {}
 
-        self._forward_pre_hooks: typing.OrderedDict[
-            int, _ForwardPreHook
-        ] = OrderedDict()
-        self._forward_post_hooks: typing.OrderedDict[
-            int, _ForwardPostHook
-        ] = OrderedDict()
+        self._forward_pre_hooks: typing.OrderedDict[int, _ForwardPreHook] = (
+            OrderedDict()
+        )
+        self._forward_post_hooks: typing.OrderedDict[int, _ForwardPostHook] = (
+            OrderedDict()
+        )
 
         # only used in AMP Training
         self._cast_to_low_precision = True
 
-        self._state_dict_hooks: typing.OrderedDict[
-            int, _StateDictHook
-        ] = OrderedDict()
+        self._state_dict_hooks: typing.OrderedDict[int, _StateDictHook] = (
+            OrderedDict()
+        )
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 

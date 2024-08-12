@@ -52,7 +52,7 @@ TEST(AssignOp, AssignLoDTensorArray) {
   paddle::framework::Variable output;
   paddle::operators::AssignFunctor assign_functor(&output, ctx);
 
-  paddle::framework::LoDTensorArray input;
+  phi::TensorArray input;
   for (int i = 0; i < 5; ++i) {
     phi::DDim in_dims = common::make_ddim({i + 1, i + 2});
     phi::DenseTensor lod_tensor;
@@ -65,7 +65,7 @@ TEST(AssignOp, AssignLoDTensorArray) {
 
   assign_functor(input);
 
-  auto& out_array = output.Get<paddle::framework::LoDTensorArray>();
+  auto& out_array = output.Get<phi::TensorArray>();
   for (int i = 0; i < 5; ++i) {
     phi::DDim out_dims = out_array[i].dims();
     EXPECT_EQ(common::make_ddim({i + 1, i + 2}), out_dims);

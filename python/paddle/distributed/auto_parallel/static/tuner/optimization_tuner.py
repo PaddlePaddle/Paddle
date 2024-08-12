@@ -411,15 +411,15 @@ class OptimizationTuner:
             paddle.distributed.ParallelEnv()
         )
         profile_ctx['group_map'] = parse_process_groups()
-        profile_ctx[
-            "loss_var_name"
-        ] = self._baseline_dist_context.serial_loss.name
-        profile_ctx[
-            "main_program_decs"
-        ] = trial.main_program.desc.serialize_to_string()
-        profile_ctx[
-            "startup_program_decs"
-        ] = trial.startup_program.desc.serialize_to_string()
+        profile_ctx["loss_var_name"] = (
+            self._baseline_dist_context.serial_loss.name
+        )
+        profile_ctx["main_program_decs"] = (
+            trial.main_program.desc.serialize_to_string()
+        )
+        profile_ctx["startup_program_decs"] = (
+            trial.startup_program.desc.serialize_to_string()
+        )
         self._dataset.batch_size = self._batch_size
         self._dataset.input_names = self._get_input_names()
 

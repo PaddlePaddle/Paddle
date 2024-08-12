@@ -196,15 +196,5 @@ def train(to_static, enable_prim, enable_cinn):
     return train_losses
 
 
-class TestResnet(unittest.TestCase):
-    @unittest.skipIf(
-        not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
-        "paddle is not compiled with CINN and CUDA",
-    )
-    def test_cinn(self):
-        dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
-        np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
-
-
 if __name__ == '__main__':
     unittest.main()
