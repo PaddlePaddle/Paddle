@@ -1349,13 +1349,11 @@ bool MulticlassNms3OpInferSymbolicShape(
   }();
 
   int n = [&] {
-    auto bboxes = bboxes_shape_or_data.dyn_cast<pir::DenseTensorType>();
+    auto bboxes = bboxes_shape_or_data.dyn_cast<pir::DenseTensor>();
     bool has_roisnum =
         !rois_num_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>();
     int n = 0;
     if (has_roisnum) {
-      auto rois_num_tensor =
-          rois_num_shape_or_data.dyn_cast<pir::DenseTensorType>();
       if (score_size == 3) {
         n = score_dims[0].dyn_cast<int64_t>();
       } else {
