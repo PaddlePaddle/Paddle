@@ -1337,37 +1337,8 @@ bool MulticlassNms3OpInferSymbolicShape(
 
   const auto &next_symbol_out = infer_context->GetNextSymName();
   const auto &next_symbol_index = infer_context->GetNextSymName();
+  const auto &next_symbol_nms_rois_num = infer_context->GetNextSymName();
   infer_context->AddEqualCstr(next_symbol_out, next_symbol_index);
-
-  int rois_num_numel = [&] {
-    auto rois_num_shape = rois_num_shape_or_data.shape();
-    int numel = 0;
-    for (size_t i = 0; i < rois_num_shape.size(); ++i) {
-      numel += rois_num_shape[i].dyn_cast<int64_t>();
-    }
-    return numel;
-  }();
-
-  int n = [&] {
-    auto bboxes = bboxes_shape_or_data.dyn_cast<pir::DenseTensor>();
-    bool has_roisnum =
-        !rois_num_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>();
-    int n = 0;
-    if (has_roisnum) {
-      if (score_size == 3) {
-        n = score_dims[0].dyn_cast<int64_t>();
-      } else {
-        n = rois_num_numel;
-      }
-    } else {
-      if (score_size == 3) {
-        n = score_dims[0].dyn_cast<int64_t>();
-      } else {
-        n = bboxes.lod().back().size() - 1;
-      }
-    }
-    return n;
-  }();
 
   std::vector<symbol::DimExpr> out_shape;
   out_shape.emplace_back(next_symbol_out);
@@ -1378,7 +1349,7 @@ bool MulticlassNms3OpInferSymbolicShape(
   index_shape.emplace_back(1);
 
   std::vector<symbol::DimExpr> nms_rois_num_shape;
-  nms_rois_num_shape.emplace_back(n);
+  nms_rois_num_shape.emplace_back(next_symbol_nms_rois_num);
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
