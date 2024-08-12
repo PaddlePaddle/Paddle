@@ -1218,7 +1218,7 @@ class ConcreteProgram:
                     input_kwargs_spec, main_program
                 )
                 if class_instance:
-                    static_inputs = tuple(
+                    static_inputs = (
                         class_instance,
                         *list(static_inputs),
                     )
@@ -1319,7 +1319,7 @@ class ConcreteProgram:
                     input_kwargs_spec, main_program
                 )
                 if class_instance:
-                    static_inputs = tuple(
+                    static_inputs = (
                         class_instance,
                         *list(static_inputs),
                     )
