@@ -34,19 +34,19 @@ def parsing(externalErrorDesc):
     ssl._create_default_https_context = ssl._create_unverified_context
     html = urllib.request.urlopen(url).read().decode('utf-8')
     res_div = r'<div class="section">.*?<p>CUDA error types </p>.*?</div>.*?<div class="enum-members">(.*?)</div>'
-    m_div = re.findall(res_div, html, re.S | re.M)[0]
+    m_div = re.findall(res_div, html, re.DOTALL | re.MULTILINE)[0]
 
     res_dt = r'<dt>(.*?)</dt>.*?<dd>(.*?)</dd>'
-    m_dt = re.findall(res_dt, m_div, re.S | re.M)
+    m_dt = re.findall(res_dt, m_div, re.DOTALL | re.MULTILINE)
     for error in m_dt:
         res_type = r'<span class="enum-member-name-def">(.*?) = <span class="ph ph apiData">(.*?)</span></span>'
-        m_type = re.findall(res_type, error[0], re.S | re.M)[0]
+        m_type = re.findall(res_type, error[0], re.DOTALL | re.MULTILINE)[0]
         m_message = error[1]
         m_message = m_message.replace('\n', '')
         res_a = r'(<a class=.*?</a>)'
         res_shape = r'<a class=.*?>(.*?)</a>'
-        list_a = re.findall(res_a, m_message, re.S | re.M)
-        list_shape = re.findall(res_shape, m_message, re.S | re.M)
+        list_a = re.findall(res_a, m_message, re.DOTALL | re.MULTILINE)
+        list_shape = re.findall(res_shape, m_message, re.DOTALL | re.MULTILINE)
         assert len(list_a) == len(list_shape)
         for idx in range(len(list_a)):
             m_message = m_message.replace(list_a[idx], list_shape[idx])
@@ -57,16 +57,20 @@ def parsing(externalErrorDesc):
 
         res_span = r'(<span class=.*?</span>)'
         res_span_detail = r'<span class=.*?>(.*?)</span>'
-        list_span = re.findall(res_span, m_message, re.S | re.M)
-        list_span_detail = re.findall(res_span_detail, m_message, re.S | re.M)
+        list_span = re.findall(res_span, m_message, re.DOTALL | re.MULTILINE)
+        list_span_detail = re.findall(
+            res_span_detail, m_message, re.DOTALL | re.MULTILINE
+        )
         assert len(list_span) == len(list_span_detail)
         for idx in range(len(list_span)):
             m_message = m_message.replace(list_span[idx], list_span_detail[idx])
 
         res_p = r'(<p>.*?</p>)'
         res_p_detail = r'<p>(.*?)</p>'
-        list_p = re.findall(res_p, m_message, re.S | re.M)
-        list_p_detail = re.findall(res_p_detail, m_message, re.S | re.M)
+        list_p = re.findall(res_p, m_message, re.DOTALL | re.MULTILINE)
+        list_p_detail = re.findall(
+            res_p_detail, m_message, re.DOTALL | re.MULTILINE
+        )
         assert len(list_p) == len(list_p_detail)
         for idx in range(len(list_p)):
             m_message = m_message.replace(list_p[idx], list_p_detail[idx])
@@ -94,13 +98,13 @@ def parsing(externalErrorDesc):
     html = urllib.request.urlopen(url).read().decode('utf-8')
 
     res_div = r'<div class="section">.*?<p>CURAND function call status types </p>.*?</div>.*?<div class="enum-members">(.*?)</div>'
-    m_div = re.findall(res_div, html, re.S | re.M)[0]
+    m_div = re.findall(res_div, html, re.DOTALL | re.MULTILINE)[0]
 
     res_dt = r'<dt>(.*?)</dt>.*?<dd>(.*?)</dd>'
-    m_dt = re.findall(res_dt, m_div, re.S | re.M)
+    m_dt = re.findall(res_dt, m_div, re.DOTALL | re.MULTILINE)
     for error in m_dt:
         res_type = r'<span class="enum-member-name-def">(.*?) = <span class="ph ph apiData">(.*?)</span></span>'
-        m_type = re.findall(res_type, error[0], re.S | re.M)[0]
+        m_type = re.findall(res_type, error[0], re.DOTALL | re.MULTILINE)[0]
         m_message = error[1]
 
         _Messages = allMessageDesc.messages.add()
@@ -144,17 +148,19 @@ def parsing(externalErrorDesc):
     f.write(html)
 
     res_div = r'<div class="section" id="cudnnStatus_t__section_lmp_dgr_2jb"><a name="cudnnStatus_t__section_lmp_dgr_2jb" shape="rect">(.*?)</div>'
-    m_div = re.findall(res_div, html, re.S | re.M)[0]
+    m_div = re.findall(res_div, html, re.DOTALL | re.MULTILINE)[0]
 
     res_dt = r'<dt class="dt dlterm"><samp class="ph codeph">(.*?)</samp></dt>.*?<dd class="dd">(.*?)</dd>'
-    m_dt = re.findall(res_dt, m_div, re.S | re.M)
+    m_dt = re.findall(res_dt, m_div, re.DOTALL | re.MULTILINE)
     for error in m_dt:
         m_message = error[1]
 
         res_class = r'<p class="p">.*?</p>'
         res_class_detail = r'<p class="p">(.*?)</p>'
-        list_class = re.findall(res_class, m_message, re.S | re.M)
-        list_class_detail = re.findall(res_class_detail, m_message, re.S | re.M)
+        list_class = re.findall(res_class, m_message, re.DOTALL | re.MULTILINE)
+        list_class_detail = re.findall(
+            res_class_detail, m_message, re.DOTALL | re.MULTILINE
+        )
         assert len(list_class) == len(list_class_detail)
         for idx in range(len(list_class)):
             m_message = m_message.replace(
@@ -163,24 +169,28 @@ def parsing(externalErrorDesc):
 
         res_a = r'(<a class="xref".*?</a>)'
         res_shape = r'<a class="xref".*?>(.*?)</a>'
-        list_a = re.findall(res_a, m_message, re.S | re.M)
-        list_shape = re.findall(res_shape, m_message, re.S | re.M)
+        list_a = re.findall(res_a, m_message, re.DOTALL | re.MULTILINE)
+        list_shape = re.findall(res_shape, m_message, re.DOTALL | re.MULTILINE)
         assert len(list_a) == len(list_shape)
         for idx in range(len(list_a)):
             m_message = m_message.replace(list_a[idx], list_shape[idx])
 
         res_span = r'(<span class="ph">.*?</span>)'
         res_span_detail = r'<span class="ph">(.*?)</span>'
-        list_span = re.findall(res_span, m_message, re.S | re.M)
-        list_span_detail = re.findall(res_span_detail, m_message, re.S | re.M)
+        list_span = re.findall(res_span, m_message, re.DOTALL | re.MULTILINE)
+        list_span_detail = re.findall(
+            res_span_detail, m_message, re.DOTALL | re.MULTILINE
+        )
         assert len(list_span) == len(list_span_detail)
         for idx in range(len(list_span)):
             m_message = m_message.replace(list_span[idx], list_span_detail[idx])
 
         res_samp = r'(<samp class="ph codeph">.*?</samp>)'
         res_samp_detail = r'<samp class="ph codeph">(.*?)</samp>'
-        list_samp = re.findall(res_samp, m_message, re.S | re.M)
-        list_samp_detail = re.findall(res_samp_detail, m_message, re.S | re.M)
+        list_samp = re.findall(res_samp, m_message, re.DOTALL | re.MULTILINE)
+        list_samp_detail = re.findall(
+            res_samp_detail, m_message, re.DOTALL | re.MULTILINE
+        )
         assert len(list_samp) == len(list_samp_detail)
         for idx in range(len(list_samp)):
             m_message = m_message.replace(list_samp[idx], list_samp_detail[idx])
@@ -216,10 +226,10 @@ def parsing(externalErrorDesc):
     html = urllib.request.urlopen(url).read().decode('utf-8')
 
     res_div = r'<p class="p">The type is used for function status returns. All cuBLAS library.*?<div class="tablenoborder">(.*?)</div>'
-    m_div = re.findall(res_div, html, re.S | re.M)[0]
+    m_div = re.findall(res_div, html, re.DOTALL | re.MULTILINE)[0]
 
     res_dt = r'<p class="p"><samp class="ph codeph">(.*?)</samp></p>.*?colspan="1">(.*?)</td>'
-    m_dt = re.findall(res_dt, m_div, re.S | re.M)
+    m_dt = re.findall(res_dt, m_div, re.DOTALL | re.MULTILINE)
 
     for error in m_dt:
         m_message = error[1]
@@ -227,16 +237,20 @@ def parsing(externalErrorDesc):
 
         res_p = r'<p class="p">.*?</p>'
         res_p_detail = r'<p class="p">(.*?)</p>'
-        list_p = re.findall(res_p, m_message, re.S | re.M)
-        list_p_detail = re.findall(res_p_detail, m_message, re.S | re.M)
+        list_p = re.findall(res_p, m_message, re.DOTALL | re.MULTILINE)
+        list_p_detail = re.findall(
+            res_p_detail, m_message, re.DOTALL | re.MULTILINE
+        )
         assert len(list_p) == len(list_p_detail)
         for idx in range(len(list_p)):
             m_message = m_message.replace(list_p[idx], list_p_detail[idx])
 
         res_samp = r'<samp class="ph codeph">.*?</samp>'
         res_samp_detail = r'<samp class="ph codeph">(.*?)</samp>'
-        list_samp = re.findall(res_samp, m_message, re.S | re.M)
-        list_samp_detail = re.findall(res_samp_detail, m_message, re.S | re.M)
+        list_samp = re.findall(res_samp, m_message, re.DOTALL | re.MULTILINE)
+        list_samp_detail = re.findall(
+            res_samp_detail, m_message, re.DOTALL | re.MULTILINE
+        )
         assert len(list_samp) == len(list_samp_detail)
         for idx in range(len(list_samp)):
             m_message = m_message.replace(list_samp[idx], list_samp_detail[idx])
@@ -278,12 +292,12 @@ def parsing(externalErrorDesc):
     html = urllib.request.urlopen(url).read().decode('utf-8')
 
     res_div = r'This is a status type returned by the library functions and.*?<div class="tablenoborder">(.*?)</div>'
-    m_div = re.findall(res_div, html, re.S | re.M)[0]
+    m_div = re.findall(res_div, html, re.DOTALL | re.MULTILINE)[0]
 
     res_dt = (
         r'<samp class="ph codeph">(.*?)</samp></td>.*?colspan="1">(.*?)</td>'
     )
-    m_dt = re.findall(res_dt, m_div, re.S | re.M)
+    m_dt = re.findall(res_dt, m_div, re.DOTALL | re.MULTILINE)
 
     for error in m_dt:
         m_message = error[1]
@@ -292,25 +306,31 @@ def parsing(externalErrorDesc):
 
         res_p = r'<p class="p">.*?</p>'
         res_p_detail = r'<p class="p">(.*?)</p>'
-        list_p = re.findall(res_p, m_message, re.S | re.M)
-        list_p_detail = re.findall(res_p_detail, m_message, re.S | re.M)
+        list_p = re.findall(res_p, m_message, re.DOTALL | re.MULTILINE)
+        list_p_detail = re.findall(
+            res_p_detail, m_message, re.DOTALL | re.MULTILINE
+        )
         assert len(list_p) == len(list_p_detail)
         for idx in range(len(list_p)):
             m_message = m_message.replace(list_p[idx], list_p_detail[idx])
 
         res_samp = r'<samp class="ph codeph">.*?</samp>'
         res_samp_detail = r'<samp class="ph codeph">(.*?)</samp>'
-        list_samp = re.findall(res_samp, m_message, re.S | re.M)
-        list_samp_detail = re.findall(res_samp_detail, m_message, re.S | re.M)
+        list_samp = re.findall(res_samp, m_message, re.DOTALL | re.MULTILINE)
+        list_samp_detail = re.findall(
+            res_samp_detail, m_message, re.DOTALL | re.MULTILINE
+        )
         assert len(list_samp) == len(list_samp_detail)
         for idx in range(len(list_samp)):
             m_message = m_message.replace(list_samp[idx], list_samp_detail[idx])
 
         res_strong = r'<strong class="ph b">.*?</strong>'
         res_strong_detail = r'<strong class="ph b">(.*?)</strong>'
-        list_strong = re.findall(res_strong, m_message, re.S | re.M)
+        list_strong = re.findall(
+            res_strong, m_message, re.DOTALL | re.MULTILINE
+        )
         list_strong_detail = re.findall(
-            res_strong_detail, m_message, re.S | re.M
+            res_strong_detail, m_message, re.DOTALL | re.MULTILINE
         )
         assert len(list_strong) == len(list_strong_detail)
         for idx in range(len(list_strong)):
@@ -331,10 +351,10 @@ def parsing(externalErrorDesc):
     allMessageDesc.type = external_error_pb2.NCCL
     html = urllib.request.urlopen(url).read().decode('utf-8')
     res_div = r'<code class="descname">ncclResult_t</code>(.*?)</div>'
-    m_div = re.findall(res_div, html, re.S | re.M)[0]
+    m_div = re.findall(res_div, html, re.DOTALL | re.MULTILINE)[0]
 
     res_dt = r'<code class="descname">(.*?)</code>.*?<span class="pre">(.*?)</span></code>\)(.*?)</p>\n</dd></dl>'
-    m_dt = re.findall(res_dt, m_div, re.S | re.M)
+    m_dt = re.findall(res_dt, m_div, re.DOTALL | re.MULTILINE)
     for error in m_dt:
         m_message = re.sub(r'\n', '', error[2])
         _Messages = allMessageDesc.messages.add()

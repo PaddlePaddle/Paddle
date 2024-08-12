@@ -1842,7 +1842,7 @@ def check_submodules():
         with open(git_submodules_path) as f:
             return [
                 os.path.join(TOP_DIR, line.split("=", 1)[1].strip())
-                for line in f.readlines()
+                for line in f
                 if line.strip().startswith("path")
             ]
 
