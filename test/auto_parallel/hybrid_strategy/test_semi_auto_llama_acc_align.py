@@ -25,7 +25,7 @@ class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
         _default_envs = {
             "dp": "2",
             "mp": "2",
-            "pp": "1",
+            "pp": "2",
             "acc_step": "1",
             "FLAGS_embedding_deterministic": "1",
             "FLAGS_cudnn_deterministic": "1",
