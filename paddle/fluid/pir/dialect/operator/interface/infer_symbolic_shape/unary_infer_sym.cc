@@ -1242,14 +1242,21 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
     if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
       ExprVec axis_expr_vec = details::GetOrCreateExprVecFromData(
           axis_shape_or_data, infer_context);
-      axis_vec = details::VecExpr2Int64(axis_expr_vec);
+      auto optional_axis_vec = details::VecExpr2Int64(axis_expr_vec);
+
+      if (optional_axis_vec.has_value()) {
+        axis_vec = optional_axis_vec.value();
+      } else {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "VecExpr2Int64 returned an empty optional."));
+      }
     } else {
       // TODO(lanxianghit): there's other source: pir::VectorType,
       // paddle::dialect::DenseTensorType, but after PRIM, maybe always
       // FullIntArrayOp, to be confirmed
-      PADDLE_THROW(
-          phi::errors::Unimplemented("MeanOpInferSymbolicShape: 'axis' only "
-                                     "support FullIntArrayOp's result now."));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "MeanOpInferSymbolicShape: 'axis' only support FullIntArrayOp's "
+          "result now."));
     }
     return axis_vec;
   }();
@@ -1384,8 +1391,9 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
   const auto &depth_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  int depth;
   if (depth_shape_or_data.data().has_value()) {
-    int depth = depth_shape_or_data.data().value().at(0).Get<int64_t>();
+    depth = depth_shape_or_data.data().value().at(0).Get<int64_t>();
   } else {
     PADDLE_ENFORCE_EQ(!depth_shape_or_data.data().has_value(),
                       true,
