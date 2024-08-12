@@ -25,15 +25,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PartialRecvOpCUDAKernel(const Context& dev_ctx,
-                             int ring_id,
-                             int peer,
-                             DataType type,
-                             const std::vector<int>& out_shape,
-                             bool use_calc_stream,
-                             int num,
-                             int id,
-                             DenseTensor* out) {
+void PartialRecvKernel(const Context& dev_ctx,
+                       int ring_id,
+                       int peer,
+                       DataType type,
+                       const std::vector<int>& out_shape,
+                       bool use_calc_stream,
+                       int num,
+                       int id,
+                       DenseTensor* out) {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
   auto out_dims = out->dims();
@@ -137,10 +137,10 @@ void PartialRecvOpCUDAKernel(const Context& dev_ctx,
 
 #if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
     defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(partial_recv,
+PD_REGISTER_KERNEL(partial_recv_v2,
                    GPU,
                    ALL_LAYOUT,
-                   phi::PartialRecvOpCUDAKernel,
+                   phi::PartialRecvKernel,
                    float,
                    double,
                    phi::dtype::bfloat16,
@@ -148,10 +148,10 @@ PD_REGISTER_KERNEL(partial_recv,
                    int64_t,
                    phi::dtype::float16) {}
 #else
-PD_REGISTER_KERNEL(partial_recv,
+PD_REGISTER_KERNEL(partial_recv_v2,
                    GPU,
                    ALL_LAYOUT,
-                   phi::PartialRecvOpCUDAKernel,
+                   phi::PartialRecvKernel,
                    float,
                    double,
                    int,

@@ -602,7 +602,7 @@
   infer_meta :
     func: PartialRecvInferMeta
   kernel :
-    func : partial_recv
+    func : partial_recv_v2
     data_type : dtype
 
 - op : print

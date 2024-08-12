@@ -32,7 +32,7 @@ void PartialRecvOpCPUKernel(const Context& dev_ctx UNUSED,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(partial_recv,
+PD_REGISTER_KERNEL(partial_recv_v2,
                    CPU,
                    ALL_LAYOUT,
                    phi::PartialRecvOpCPUKernel,
