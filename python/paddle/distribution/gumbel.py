@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import numbers
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -25,6 +25,8 @@ from paddle.base import framework
 from paddle.distribution.transformed_distribution import TransformedDistribution
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.distribution import Transform, Uniform
 

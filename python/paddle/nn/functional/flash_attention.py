@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generator, Literal, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
 import paddle.nn.functional as F
@@ -28,6 +28,8 @@ g_enable_flash = None
 g_enable_mem_efficient = None
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from paddle import Tensor
 
 

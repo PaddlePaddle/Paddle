@@ -154,7 +154,10 @@ static StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
       std::make_shared<FusionTracker>(upstream.tracker_,
                                       downstream.tracker_));  // copy first.
   int insert_num = InsertDownstreamIntoTree(upstream, result);
-  CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
+  PADDLE_ENFORCE_EQ(insert_num,
+                    1,
+                    phi::errors::PreconditionNotMet(
+                        "Must insert only once, but insert %d", insert_num));
   return result;
 }
 
@@ -572,8 +575,8 @@ static StmtPattern MergePattern(const StmtPattern& first,
         return MergePatternImpl(lhs, rhs);
       },
       [&](const auto& lhs, const auto& rhs) -> StmtPattern {
-        CHECK(false) << "Found not support merge!" << GetPatternName(first)
-                     << "X" << GetPatternName(second);
+        PADDLE_THROW(
+            phi::errors::Unimplemented("Not support for MergePatternImpl"));
       },
   };
   return std::visit(PatternMatch, first, second);

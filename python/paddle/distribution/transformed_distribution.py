@@ -14,11 +14,13 @@
 from __future__ import annotations
 
 import typing
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from paddle.distribution import distribution, independent, transform
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.distribution.distribution import Distribution
     from paddle.distribution.transform import Transform

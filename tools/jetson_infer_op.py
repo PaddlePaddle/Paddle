@@ -166,7 +166,7 @@ def set_diff_value(file, atol="1e-5", inplace_atol="1e-7"):
         + atol
         + ",inplace_atol="
         + inplace_atol
-        + ",/g\' "
+        + ",/g' "
         + file
     )
 

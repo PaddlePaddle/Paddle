@@ -26,6 +26,7 @@
 #include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/collective/process_group_with_stream.h"
 #include "paddle/phi/core/distributed/store/store.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/core/distributed/collective/bkcl_tools.h"

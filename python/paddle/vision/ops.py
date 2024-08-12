@@ -2095,7 +2095,7 @@ def nms(
         return keep_boxes_idxs[sorted_sub_indices]
 
     if in_dygraph_mode():
-        top_k = shape if shape < top_k else top_k
+        top_k = min(top_k, shape)
         _, topk_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
         return keep_boxes_idxs[topk_sub_indices]
 

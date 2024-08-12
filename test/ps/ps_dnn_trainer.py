@@ -91,7 +91,7 @@ class YamlHelper:
                     nests.append(k)
                     fatten_env_namespace(nests, v)
                 else:
-                    global_k = ".".join(namespace_nests + [k])
+                    global_k = ".".join([*namespace_nests, k])
                     all_flattens[global_k] = v
 
         fatten_env_namespace([], _envs)
