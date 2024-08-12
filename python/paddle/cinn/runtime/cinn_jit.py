@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
 import ast
 import functools
 import inspect
 import textwrap
-from typing import Callable, Generic, Optional, TypeVar, Union, cast
+from typing import Callable, Generic, TypeVar, cast
 
 from .utils import inspect_function_scope
 
@@ -103,9 +104,7 @@ def {self.fn.__name__}({jit_input_args}, target=cinn.common.DefaultHostTarget())
         return str(self.convert_to_llir())
 
 
-def to_cinn_llir(
-    fn: Optional[T] = None,
-) -> Union[CinnLowerLevelIrJit[T]]:
+def to_cinn_llir(fn: T | None = None) -> CinnLowerLevelIrJit[T]:
     def decorator(fn: T) -> CinnLowerLevelIrJit[T]:
         return CinnLowerLevelIrJit(fn)
 
