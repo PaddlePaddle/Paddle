@@ -821,7 +821,8 @@ bool SegmentPoolOpInferSymbolicShape(
   std::vector<symbol::DimExpr> out_shape;
   if (ids_shape_or_data.data().has_value()) {
     const auto &ids_data = ids_shape_or_data.data();
-    out_shape.push_back(ids_data.value()[ids_shape.size() - 1] + DimExpr{1});
+    out_shape.push_back(ids_data.value()[ids_shape.size() - 1] +
+                        symbol::DimExpr{1});
   } else {
     symbol::DimExpr out_unknown =
         infer_context->GetNextSymName();  // unknown until runtime
