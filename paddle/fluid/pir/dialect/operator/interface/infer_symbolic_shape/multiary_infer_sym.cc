@@ -1374,7 +1374,9 @@ bool PsroiPoolOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
   const std::vector<symbol::DimExpr> &rois_num_dims =
       rois_num_shape_or_data.shape();
-  if (!rois_num_shape_or_data.empty()) {
+  const auto &rois_num_tensor =
+      rois_num_shape_or_data.type().dyn_cast<pir::VectorType>();
+  if (!rois_num_tensor.empty()) {
     PADDLE_ENFORCE_EQ(
         rois_num_dims.size(),
         1,
