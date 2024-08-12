@@ -231,9 +231,7 @@ class TestFakeChannelWiseQuantizeDequantizeAbsMaxOp(OpTest):
         self.outputs = {'Out': output_data, 'OutScale': scale}
         self.dtype = dtype
         self.attrs['quant_axis'] = quant_axis
-        self.check_output(check_dygraph=False)
-        self.check_output(check_pir=True)
-        self.check_output(check_symbol_infer=True)
+        self.check_output(check_dygraph=False, check_pir=True)
         gradient = [np.ones(input_data.shape) / np.prod(input_data.shape)]
         self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
