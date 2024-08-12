@@ -1375,7 +1375,10 @@ bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
                                   pos_shape_or_data.shape()[i]);
     }
   }
-  infer_context->SetShapeOrDataForValue(op->result(0), input_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(input_shape_or_data.shape())});
   return true;
 }
 
