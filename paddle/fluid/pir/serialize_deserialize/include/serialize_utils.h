@@ -19,6 +19,8 @@
 #include <vector>
 
 #include "paddle/common/layout.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
@@ -47,6 +49,10 @@ class AttrTypeWriter {
   static Json WritePaddleOperatorAttr(const pir::Attribute& attr);
 
   static Json WritePaddleOperatorType(const pir::Type& type);
+
+  static Json WritePaddleDistType(const pir::Type& type);
+
+  static Json WritePaddleDistAttr(const pir::Attribute& attr);
 };
 /** serializeTypeToJson is a template function to serialize
  * a pir type to a json object. a pir type may have value or no value
@@ -195,6 +201,9 @@ Json writeType(const pir::Type& type) {
              paddle::dialect::OperatorDialect::name()) {
     VLOG(6) << "write PaddleOperatorType ... ";
     return AttrTypeWriter::WritePaddleOperatorType(type);
+  } else if (type.dialect().name() == paddle::dialect::DistDialect::name()) {
+    VLOG(6) << "write PaddleDistType ... ";
+    return AttrTypeWriter::WritePaddleDistType(type);
   } else {
     PADDLE_ENFORCE(
         false,
@@ -215,6 +224,9 @@ Json writeAttr(const pir::Attribute& attr) {
              paddle::dialect::OperatorDialect::name()) {
     VLOG(8) << "write PaddleOperatorAttr ... ";
     return AttrTypeWriter::WritePaddleOperatorAttr(attr);
+  } else if (attr.dialect().name() == paddle::dialect::DistDialect::name()) {
+    VLOG(8) << "write PaddleDistAttr ... ";
+    return AttrTypeWriter::WritePaddleDistAttr(attr);
   } else {
     PADDLE_ENFORCE(
         false,
@@ -224,6 +236,76 @@ Json writeAttr(const pir::Attribute& attr) {
   VLOG(8) << "Finish write attr ... ";
 
   return Json::object();
+}
+
+// ProcessMesh includes: std::vector<int64_t>& shape, std::vector<int64_t>&
+// process_ids, std::vector<std::string>& dim_names
+template <>
+Json serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
+    const paddle::dialect::ProcessMeshAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  Json content = Json::array();
+
+  content.push_back(attr.shape());
+  content.push_back(attr.process_ids());
+  content.push_back(attr.dim_names());
+
+  json_obj[DATA] = content;
+  return json_obj;
+}
+
+// TensorDistAttribute includes: ProcessMeshAttribute mesh_attr,
+// std::vector<int64_t> dims_mapping, flat_hash_map<int64_t, phi::ReduceType>
+// partial_status;
+template <>
+Json serializeAttrToJson<paddle::dialect::TensorDistAttribute>(
+    const paddle::dialect::TensorDistAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  Json content = Json::array();
+
+  content.push_back(serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
+      attr.process_mesh_attr()));
+  content.push_back(attr.dims_mapping());
+
+  Json map_json = Json::array();
+  for (const auto& [key, value] : attr.partial_status()) {
+    map_json.push_back(
+        std::vector<int64_t>({key, static_cast<int64_t>(value)}));
+  }
+  content.push_back(map_json);
+
+  json_obj[DATA] = content;
+  return json_obj;
+}
+
+// OperationDistAttribute includes: ProcessMeshAttribute mesh_attr,
+// std::vector<pir::Attribute> operands, std::vector<pir::Attribute> results;
+template <>
+Json serializeAttrToJson<paddle::dialect::OperationDistAttribute>(
+    const paddle::dialect::OperationDistAttribute& attr) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
+  Json content = Json::array();
+
+  content.push_back(serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
+      attr.process_mesh_attr()));
+
+  Json operands_json = Json::array();
+  for (size_t i = 0; i < attr.operands().size(); i++) {
+    operands_json.push_back(writeAttr(attr.operands().at(i)));
+  }
+  content.push_back(operands_json);
+
+  Json results_json = Json::array();
+  for (size_t i = 0; i < attr.results().size(); i++) {
+    results_json.push_back(writeAttr(attr.results().at(i)));
+  }
+  content.push_back(results_json);
+
+  json_obj[DATA] = content;
+  return json_obj;
 }
 
 Json AttrTypeWriter::WriteBuiltInAttr(const pir::Attribute& attr) {
@@ -400,6 +482,32 @@ Json serializeTypeToJsonIncludeWriteType<paddle::dialect::DenseTensorArrayType>(
   return json_obj;
 }
 
+template <>
+Json serializeTypeToJsonIncludeWriteType<paddle::dialect::DistDenseTensorType>(
+    const paddle::dialect::DistDenseTensorType& type) {
+  Json json_obj;
+  json_obj[ID] = COMPRESS_DIALECT_NAME(type) + "." + type.name();
+  Json content = Json::array();
+
+  // serialize pir::DenseTensorType dense_tensor_type;
+  content.push_back(serializeTypeToJsonIncludeWriteType<pir::DenseTensorType>(
+      type.dense_tensor_type()));
+
+  // serialize TensorDistAttribute tensor_dist_attr;
+  content.push_back(serializeAttrToJson<paddle::dialect::TensorDistAttribute>(
+      type.tensor_dist_attr()));
+
+  // serialize common::DDim local_ddim;
+  std::vector<int64_t> local_ddim_;
+  for (auto i = 0; i < type.local_ddim().size(); i++) {
+    local_ddim_.push_back(type.local_ddim().at(i));
+  }
+  content.push_back(local_ddim_);
+
+  json_obj[DATA] = content;
+  return json_obj;
+}
+
 Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
   Json type_json = Json::object();
   if (type.isa<pir::BoolType>()) {
@@ -530,6 +638,43 @@ Json AttrTypeWriter::WritePaddleOperatorType(const pir::Type& type) {
                        "Unknown Type when write paddle.operatordialect type"));
     return Json::object();
   }
+}
+
+Json AttrTypeWriter::WritePaddleDistType(const pir::Type& type) {
+  Json type_json = Json::object();
+  if (type.isa<paddle::dialect::DistDenseTensorType>()) {
+    VLOG(8) << "Write DistDenseTensorType ... ";
+    return pir::serializeTypeToJsonIncludeWriteType<
+        paddle::dialect::DistDenseTensorType>(
+        type.dyn_cast<paddle::dialect::DistDenseTensorType>());
+  } else {
+    PADDLE_ENFORCE(false,
+                   phi::errors::InvalidArgument(
+                       "Unknown Type when write paddle.dist_dialect type"));
+    return Json::object();
+  }
+}
+
+Json AttrTypeWriter::WritePaddleDistAttr(const pir::Attribute& attr) {
+  if (attr.isa<paddle::dialect::ProcessMeshAttribute>()) {
+    VLOG(8) << "write ProcessMeshAttribute .";
+    return pir::serializeAttrToJson<paddle::dialect::ProcessMeshAttribute>(
+        attr.dyn_cast<paddle::dialect::ProcessMeshAttribute>());
+  } else if (attr.isa<paddle::dialect::TensorDistAttribute>()) {
+    VLOG(8) << "write TensorDistAttribute .";
+    return pir::serializeAttrToJson<paddle::dialect::TensorDistAttribute>(
+        attr.dyn_cast<paddle::dialect::TensorDistAttribute>());
+  } else if (attr.isa<paddle::dialect::OperationDistAttribute>()) {
+    VLOG(8) << "write OperationDistAttribute .";
+    return pir::serializeAttrToJson<paddle::dialect::OperationDistAttribute>(
+        attr.dyn_cast<paddle::dialect::OperationDistAttribute>());
+  } else {
+    PADDLE_ENFORCE(
+        false,
+        phi::errors::InvalidArgument(
+            "Unknown Attr %s when write paddle.operatordialect attr"));
+  }
+  return Json::object();
 }
 
 }  // namespace pir

@@ -17,12 +17,12 @@
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/platform/device_context.h"
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "pybind11/pytypes.h"
 

@@ -24,7 +24,7 @@ struct MergeTrivialPatternOperation {
   void operator()(PatternGraph* graph, PatternNodePtr upstream) {
     PADDLE_ENFORCE_GE(upstream->downstream().size(),
                       1,
-                      phi::errors::PreconditionNotMet(
+                      ::common::errors::PreconditionNotMet(
                           "The trivial pattern wait for sinking should has "
                           "at least 1 downstream , but got %d.",
                           upstream->downstream().size()));
@@ -66,7 +66,7 @@ struct MergeReduceTreeOperation {
     PADDLE_ENFORCE_EQ(
         node->downstream().size(),
         1,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The downstream of the ReduceTree node should be 1, but got %d.",
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
@@ -86,7 +86,7 @@ struct MergeReduceTreeAndTrivialOperation {
     PADDLE_ENFORCE_EQ(
         node->downstream().size(),
         1,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The downstream of the ReduceTree node should be 1, but got %d.",
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
@@ -150,7 +150,7 @@ struct LiftToAnchorPatternOperation {
     PADDLE_ENFORCE_EQ(
         node->sink_op()->num_results(),
         1,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "Op with multi output value can not lift to AnchorPattern"));
     pir::Value anchor = node->sink_op()->result(0);
     node->set_stmt_pattern(AnchorPattern(
@@ -177,7 +177,7 @@ struct FuseUpstreamAnchorOperation {
     PADDLE_ENFORCE_NE(
         optional_transform_route,
         std::nullopt,
-        phi::errors::PreconditionNotMet("Transform Route Not Found"));
+        ::common::errors::PreconditionNotMet("Transform Route Not Found"));
 
     auto transform_route = optional_transform_route.value();
 
@@ -215,7 +215,7 @@ struct FuseDownstreamAnchorOperation {
     PADDLE_ENFORCE_NE(
         optional_transform_route,
         std::nullopt,
-        phi::errors::PreconditionNotMet("Transform Route Not Found"));
+        ::common::errors::PreconditionNotMet("Transform Route Not Found"));
 
     auto transform_route = optional_transform_route.value();
 
@@ -265,14 +265,14 @@ struct HorizontalFusionOperation {
     PADDLE_ENFORCE_EQ(
         GetPatternName(i->stmt_pattern()),
         HorizontalFusionPattern::name(),
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The pattern of the first node should be HorizontalFusionPattern, "
             "but got %s.",
             GetPatternName(i->stmt_pattern())));
     PADDLE_ENFORCE_EQ(
         GetPatternName(j->stmt_pattern()),
         HorizontalFusionPattern::name(),
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The pattern of the second node should be HorizontalFusionPattern, "
             "but got %s.",
             GetPatternName(j->stmt_pattern())));

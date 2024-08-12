@@ -16,19 +16,24 @@
 
 #include <sys/stat.h>
 #include <fstream>
-
+#include "paddle/cinn/backends/codegen_cuda_host.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
-#include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/cinn/runtime/flags.h"
+#endif
+#ifdef CINN_WITH_HIP
+#include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#include "paddle/cinn/backends/hip/compiler_hip.h"
+#include "paddle/cinn/runtime/hip/hip_module.h"
 #endif
 #include "paddle/cinn/adt/adt.h"
 
@@ -270,8 +275,17 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #endif
       },
       [&](common::HygonDCUArchHIP) -> std::string {
-        PADDLE_THROW(::common::errors::Unimplemented(
-            "CINN todo: new hardware HygonDCUArchHIP"));
+#ifdef CINN_WITH_HIP
+        auto _host_module_device_module_ =
+            SplitDeviceAndHostModule(module);  // NOLINT
+        auto& host_module = std::get<0>(_host_module_device_module_);
+        auto& device_module = std::get<1>(_host_module_device_module_);
+        hip::CodeGenHipDevice codegen(target_);
+        auto source_code = codegen.Compile(device_module);
+        return source_code;
+#else
+        CINN_NOT_IMPLEMENTED
+#endif
       });
 }
 
@@ -308,7 +322,7 @@ void Compiler::RegisterDeviceModuleSymbol() {
       [&](common::X86Arch) { return; },
       [&](common::ARMArch) { return; },
       [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
-      [&](common::HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED; });
+      [&](common::HygonDCUArchHIP) { RegisterHipModuleSymbol(); });
 }
 
 void Compiler::RegisterCudaModuleSymbol() {
@@ -328,6 +342,39 @@ void Compiler::RegisterCudaModuleSymbol() {
   for (const auto& kernel_fn_name : device_fn_name_) {
     auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
     CHECK(fn_kernel) << "Fail to get CUfunction kernel_fn_name";
+    fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
+    symbols.RegisterVar(kernel_fn_name + "_ptr_",
+                        reinterpret_cast<void*>(fn_kernel));
+  }
+  engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+#else
+  CINN_NOT_IMPLEMENTED
+#endif
+}
+
+void Compiler::RegisterHipModuleSymbol() {
+#ifdef CINN_WITH_HIP
+  hiprtc::Compiler compiler;
+  std::string source_code =
+      hip::CodeGenHipDevice::GetSourceHeader() + device_fn_code_;
+  std::string hsaco = compiler(source_code);
+  PADDLE_ENFORCE_EQ(
+      !hsaco.empty(),
+      true,
+      phi::errors::Fatal("Compile hsaco failed from source code:\n%s",
+                         source_code));
+  using runtime::hip::HIPModule;
+  hip_module_.reset(new HIPModule(hsaco));
+  // get device id
+  using cinn::runtime::BackendAPI;
+  int device_id = BackendAPI::get_backend(target_)->get_device();
+  // register kernel
+  RuntimeSymbols symbols;
+  for (const auto& kernel_fn_name : device_fn_name_) {
+    auto fn_kernel = hip_module_->GetFunction(device_id, kernel_fn_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        fn_kernel,
+        phi::errors::Fatal("HIP GetFunction Error: get valid kernel."));
     fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
     symbols.RegisterVar(kernel_fn_name + "_ptr_",
                         reinterpret_cast<void*>(fn_kernel));
@@ -379,8 +426,39 @@ void Compiler::CompileCudaModule(const Module& module,
 }
 
 void Compiler::CompileHipModule(const Module& module, const std::string& code) {
-  PADDLE_THROW(::common::errors::Unimplemented(
-      "CINN todo: new hardware HygonDCUArchHIP"));
+#ifdef CINN_WITH_HIP
+  auto _host_module_device_module_ =
+      SplitDeviceAndHostModule(module);  // NOLINT
+  auto& host_module = std::get<0>(_host_module_device_module_);
+  auto& device_module = std::get<1>(_host_module_device_module_);
+  VLOG(3) << "[HIP] host module:\n" << host_module;
+  VLOG(3) << "[HIP] device module:\n" << device_module;
+  std::string source_code;
+  if (!FLAGS_cinn_debug_custom_code_path.empty()) {
+    std::string file_path = FLAGS_cinn_debug_custom_code_path;
+    source_code = GetFileContent(file_path);
+  } else if (code.empty()) {
+    hip::CodeGenHipDevice codegen(target_);
+    source_code = codegen.Compile(device_module);
+  } else {
+    source_code = code;
+  }
+  PADDLE_ENFORCE_EQ(
+      !source_code.empty(),
+      true,
+      phi::errors::Fatal("Compile HIP code failed from device module:\n%s",
+                         device_module));
+  VLOG(3) << "[HIP]:\n" << source_code;
+  SourceCodePrint::GetInstance()->write(source_code);
+  device_fn_code_ += source_code;
+  for (auto& fn : device_module.functions()) {
+    std::string kernel_fn_name = fn->name;
+    device_fn_name_.emplace_back(kernel_fn_name);
+  }
+  engine_->Link<CodeGenCUDA_Host>(host_module);
+#else
+  CINN_NOT_IMPLEMENTED
+#endif
 }
 
 void Compiler::CompileX86Module(const Module& module) {

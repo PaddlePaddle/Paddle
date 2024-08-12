@@ -50,8 +50,9 @@ TEST(intrusive_ref_counter, async) {
 
 TEST(intrusive_ptr, default_ctor) {
   intrusive_ptr<SharedObject> p;
-  PADDLE_ENFORCE_EQ(
-      p == nullptr, true, phi::errors::Fatal("Input pointer is not a nullptr"));
+  PADDLE_ENFORCE_EQ(p == nullptr,
+                    true,
+                    common::errors::Fatal("Input pointer is not a nullptr"));
 }
 TEST(intrusive_ptr, private_ctor) {
   auto p = make_intrusive<SharedObject>();
