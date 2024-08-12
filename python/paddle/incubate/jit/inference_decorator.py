@@ -564,7 +564,7 @@ def inference(
             >>> batch = 4096
             >>> hidd = 1024
             >>> dtype = "bfloat16"
-            >>> x = paddle.rand([batch, hidd], dtype=dtype)
+            >>> x = paddle.rand([batch, hidd], dtype=dtype) # type: ignore[arg-type]
             >>> mylayer = ExampleLayer(hidd)
             >>> dynamic_result = mylayer(x)
             >>> mylayer = paddle.incubate.jit.inference(mylayer)
