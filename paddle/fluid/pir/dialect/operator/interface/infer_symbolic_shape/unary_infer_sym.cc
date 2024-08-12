@@ -581,27 +581,27 @@ bool DiagOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto x_shape = x_shape_or_data.shape();
   const int offset = op->attribute<pir::Int32Attribute>("offset").data();
-  int64_t x_dim_0, x_dim_1;
+  int64_t x_dim_0 = 1, x_dim_1;
 
-  if (x_shape.size() <= 1) {
+  if (x_shape.size() == 1) {
     if (x_shape[0].isa<int64_t>())
       x_dim_0 = x_shape[0].dyn_cast<int64_t>();
     else
-      x_dim_0 = x_shape_or_data.data().value()[0];
+      x_dim_0 = x_shape_or_data.data().value()[0].dyn_cast<int64_t>();
   }
 
-  if (x_shape.size() <= 2) {
+  if (x_shape.size() == 2) {
     if (x_shape[1].isa<int64_t>())
       x_dim_1 = x_shape[1].dyn_cast<int64_t>();
     else
-      x_dim_1 = x_shape_or_data.data().value()[1];
+      x_dim_1 = x_shape_or_data.data().value()[1].dyn_cast<int64_t>();
   }
 
   if (x_shape.size() <= 1) {
-    int64_t size_ = (x_dims.size() == 1UL ? x_dim_0 : 1L) + offset;
+    int64_t size_ = (x_shape.size() == 1UL ? x_dim_0 : 1L) + offset;
     infer_context->SetShapeOrDataForValue(
         op->result(0), symbol::TensorShapeOrDataDimExprs({size_, size_}));
-  } else if (x_dims.size() == 2UL) {
+  } else if (x_shape.size() == 2UL) {
     int64_t size_ = 0;
     if (offset >= 0) {
       if (x_dim_0 > x_dim_1) {
@@ -621,7 +621,7 @@ bool DiagOpInferSymbolicShape(pir::Operation *op,
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "diag only support 1D/2D matrix, but input has %u dims",
-        x_dims.size()));
+        x_shape.size()));
   }
   return true;
 }
@@ -786,31 +786,40 @@ bool EigvalshOpInferSymbolicShape(
 
 bool FractionalMaxPool2dOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  auto x_dims =
+  const auto x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  auto output_size =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  std::vector<int> output_size_ =
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+  std::vector<symbol::DimExpr> output_size;
+  for (auto dim : output_size_) output_size.emplace_back(dim);
   PADDLE_ENFORCE_EQ(
-      (x_dims.size() == 4 || x_dims.size() == 5),
+      (x_shape.size() == 4 || x_shape.size() == 5),
       true,
       common::errors::InvalidArgument(
           "Pooling intput should be 4-D or 5-D tensor but received %dD-Tensor",
-          x_dims.size()));
+          x_shape.size()));
 
   PADDLE_ENFORCE_EQ(
-      x_dims.size() - output_size.size(),
+      x_shape.size() - output_size.size(),
       2U,
       common::errors::InvalidArgument(
           "The input size %d minus the output size %d should equal to 2.",
-          x_dims.size(),
+          x_shape.size(),
           output_size.size()));
 
-  auto output_shape = std::vector<symbol::DimExpr>{x_dims[0], x_dims[1]};
+  auto output_shape = std::vector<symbol::DimExpr>{x_shape[0], x_shape[1]};
   output_shape.insert(
       output_shape.end(), output_size.begin(), output_size.end());
 
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs(output_shape));
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
   return true;
 }
 

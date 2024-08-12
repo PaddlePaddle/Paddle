@@ -337,7 +337,7 @@ bool DotOpInferSymbolicShape(pir::Operation *op,
   // Dot OP require both inputs should have the same shape
 
   auto x_shape_cut =
-      std::vector<symbol::DimExpr>(x_dims.begin(), x_dims.end() - 1);
+      std::vector<symbol::DimExpr>(x_shape.begin(), x_shape.end() - 1);
   auto output_shape = symbol::ShapeOrDataDimExprs{
       symbol::TensorShapeOrDataDimExprs(x_shape_cut)};
   infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
