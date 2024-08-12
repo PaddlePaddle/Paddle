@@ -97,7 +97,7 @@ class IfElseTransformer(BaseTransformer):
             set_args_node,
             true_func_node,
             false_func_node,
-            new_node
+            new_node,
         ]
 
     def visit_Call(self, node):
