@@ -1287,9 +1287,6 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
             "VecExpr2Int64 returned an empty optional."));
       }
     } else {
-      // TODO(lanxianghit): there's other source: pir::VectorType,
-      // paddle::dialect::DenseTensorType, but after PRIM, maybe always
-      // FullIntArrayOp, to be confirmed
       PADDLE_THROW(common::errors::Unimplemented(
           "MeanOpInferSymbolicShape: 'axis' only support FullIntArrayOp's "
           "result now."));
