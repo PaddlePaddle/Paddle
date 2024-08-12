@@ -88,6 +88,7 @@ class StudentT(distribution.Distribution):
             [1.52126312, 2.32064891])
 
     """
+
     df: Tensor
     loc: Tensor
     scale: Tensor

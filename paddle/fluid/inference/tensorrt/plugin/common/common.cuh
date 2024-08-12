@@ -18,7 +18,7 @@
 
 #include <cub/cub.cuh>
 #include "cublas_v2.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 using kv_float = cub::KeyValuePair<float, float>;
 using kv_half = cub::KeyValuePair<half, half>;

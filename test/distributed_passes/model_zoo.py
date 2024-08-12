@@ -34,7 +34,7 @@ def resnet_model(
     place, batch_size, image_shape=[3, 224, 224], num_classes=1000
 ):
     image = paddle.static.data(
-        shape=[batch_size] + image_shape, dtype='float32', name='image'
+        shape=[batch_size, *image_shape], dtype='float32', name='image'
     )
     label = paddle.static.data(
         shape=[batch_size, 1], dtype='int64', name='label'
@@ -71,7 +71,7 @@ def resnet_model(
 
 def simple_net(place, batch_size, image_shape=[784], num_classes=10):
     image = paddle.static.data(
-        shape=[batch_size] + image_shape, dtype='float32', name='image'
+        shape=[batch_size, *image_shape], dtype='float32', name='image'
     )
     label = paddle.static.data(
         shape=[batch_size, 1], dtype='int64', name='label'

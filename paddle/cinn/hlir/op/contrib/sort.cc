@@ -160,7 +160,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
   PADDLE_ENFORCE_GE(
       attr_store.count("axis"),
       1,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The attr_store doesn't have the attribute of 'axis'."));
   int axis = absl::get<int>(attr_store.at("axis"));
   bool is_ascend = true;
@@ -173,33 +173,33 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
     PADDLE_ENFORCE_NE(
         args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input argument of Sort compute is empty! Please check."));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       1U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "At least 1 input tensors for Sort compute\n"));
     Expr A = pack_args[0];
     PADDLE_ENFORCE_NOT_NULL(
         A.as_tensor(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Required Input must be a tensor. Please check."));
     PADDLE_ENFORCE_NE(output_shapes.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The output shape of Sort is empty! Please check."));
     auto tensor_A = A.as_tensor_ref();
     VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       2U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input argument's size of Sort should be 2"));
     PADDLE_ENFORCE_EQ(
         pack_args[1].is_string(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Required pack_args[1] must be a string. Please check."));
     std::string tensor_name = pack_args[1].operator std::string();
     std::vector<ir::Tensor> out =
@@ -209,7 +209,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
         CINNValue(out[0]), CINNValue(out[1]), CINNValue(out[2])};
     PADDLE_ENFORCE_NE(out_type.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The output type of Sort is empty! Please check."));
 
     *ret = CINNValuePack{res};
@@ -220,8 +220,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
     PADDLE_ENFORCE_NE(
         args.empty(),
         true,
-        phi::errors::InvalidArgument("The input argument of sort_schedule "
-                                     "compute is empty! Please check."));
+        ::common::errors::InvalidArgument("The input argument of sort_schedule "
+                                          "compute is empty! Please check."));
 
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
@@ -234,7 +234,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
     PADDLE_ENFORCE_NE(
         vec_ast.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The vec_ast of sort_schedule compute is empty! Please check."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
@@ -272,7 +272,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
   PADDLE_ENFORCE_GE(
       attr_store.count("axis"),
       1,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The attr_store doesn't have the attribute of 'axis'."));
   int axis = absl::get<int>(attr_store.at("axis"));
   bool is_ascend = true;
@@ -285,22 +285,22 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     PADDLE_ENFORCE_NE(
         args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input argument of Argsort compute is empty! Please check."));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       1U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input arguments' size of ArgSort should be 1"));
     Expr A = pack_args[0];
     PADDLE_ENFORCE_NOT_NULL(
         A.as_tensor(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Required Input must be a tensor. Please check."));
     PADDLE_ENFORCE_NE(
         output_shapes.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The output shape of Argsort is empty! Please check."));
     auto tensor_A = A.as_tensor_ref();
 
@@ -308,12 +308,12 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       3U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The input argument's size of ArgSort should be 3"));
     PADDLE_ENFORCE_EQ(
         pack_args[1].is_string(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Required pack_args[1] must be a string. Please check."));
     std::string tensor_name = pack_args[1].operator std::string();
     auto out = ArgSort(tensor_A, target, axis, is_ascend, tensor_name);
@@ -323,18 +323,18 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     PADDLE_ENFORCE_NE(
         out_type.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The output type of ArgSort is empty! Please check."));
     *ret = CINNValuePack{res};
   });
 
   framework::CINNSchedule argsort_schedule([=](lang::Args args,
                                                lang::RetValue *ret) {
-    PADDLE_ENFORCE_NE(
-        args.empty(),
-        true,
-        phi::errors::InvalidArgument("The input argument of argsort_schedule "
-                                     "compute is empty! Please check."));
+    PADDLE_ENFORCE_NE(args.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The input argument of argsort_schedule "
+                          "compute is empty! Please check."));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -346,7 +346,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
     PADDLE_ENFORCE_NE(
         vec_ast.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The vec_ast of argsort_schedule compute is empty! Please check."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
