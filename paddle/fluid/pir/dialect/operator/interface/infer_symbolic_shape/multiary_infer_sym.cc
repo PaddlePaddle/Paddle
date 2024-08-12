@@ -1259,32 +1259,32 @@ bool MeshgridOpInferSymbolicShape(
 
 bool RmsNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape =
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  std::vector<symbol::DimExpr> x_dims = x_shape.shape();
-  size_t x_dims_size = x_dims.size();
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  size_t x_shape_size = x_shape.size();
 
   symbol::DimExpr normalized_dims(1);
   int begin_norm_axis =
       op->attribute<pir::Int32Attribute>("begin_norm_axis").data();
-  for (size_t i = begin_norm_axis; i < x_dims_size; ++i) {
-    normalized_dims = normalized_dims * x_dims[i];
+  for (size_t i = begin_norm_axis; i < x_shape_size; ++i) {
+    normalized_dims = normalized_dims * x_shape[i];
   }
 
   const auto &norm_weight_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
-  const std::vector<symbol::DimExpr> norm_weight_dims =
+  const std::vector<symbol::DimExpr> &norm_weight_dims =
       norm_weight_shape.shape();
 
   infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   if (op->result(2)) {
-    std::vector<symbol::DimExpr> inv_var_dims(x_dims.begin(),
-                                              x_dims.begin() + begin_norm_axis);
+    std::vector<symbol::DimExpr> inv_var_dims(
+        x_shape.begin(), x_shape.begin() + begin_norm_axis);
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         symbol::ShapeOrDataDimExprs{
@@ -1293,7 +1293,7 @@ bool RmsNormOpInferSymbolicShape(
 
   infer_context->SetShapeOrDataForValue(
       op->result(1),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   return true;
 }
