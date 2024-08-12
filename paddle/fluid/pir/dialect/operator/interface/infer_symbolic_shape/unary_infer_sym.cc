@@ -2448,11 +2448,63 @@ bool Unsqueeze_OpInferSymbolicShape(
 //   return true;
 // }
 
-// bool UnstackOpInferSymbolicShape(pir::Operation *op,
-//                                  pir::InferSymbolicShapeContext
-//                                  *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UnStackOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  int rank = x_dims.size();
+
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  int num = op->attribute<pir::Int32Attribute>("num").data();
+
+  PADDLE_ENFORCE_GE(axis,
+                    -rank,
+                    common::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be inside "
+                        "[-rank, rank), where rank = %d",
+                        rank));
+  PADDLE_ENFORCE_LT(axis,
+                    rank,
+                    common::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be inside "
+                        "[-rank, rank), where rank = %d",
+                        rank));
+
+  if (axis < 0) axis += rank;
+
+  size_t output_count = op->num_results();
+  PADDLE_ENFORCE_EQ(output_count,
+                    static_cast<size_t>(num),
+                    common::errors::InvalidArgument(
+                        "Number of Outputs(Y) is wrong. Got %d , but it must "
+                        "equal to attribute num which is %d.",
+                        output_count,
+                        static_cast<size_t>(num)));
+
+  if (x_dims[axis].dyn_cast<int64_t>()) {
+    PADDLE_ENFORCE_EQ(
+        num,
+        x_dims[axis].dyn_cast<int64_t>(),
+        common::errors::InvalidArgument(
+            "The number of attribute num is not equal to the length of the %d "
+            "axis of Input(X). Expect %d but got %d.",
+            axis,
+            x_dims[axis].dyn_cast<int64_t>(),
+            num));
+  }
+
+  std::vector<symbol::DimExpr> out_dims = x_dims;
+  out_dims.erase(out_dims.begin() + axis);
+
+  for (size_t i = 0; i < output_count; i++) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(i),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_dims)});
+  }
+
+  return true;
+}
 
 }  // namespace paddle::dialect
