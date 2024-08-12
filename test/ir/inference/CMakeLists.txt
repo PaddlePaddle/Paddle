@@ -10,14 +10,15 @@ file(
   "test_trt_*.py")
 string(REPLACE ".py" "" TEST_TRT_IR_PASSES "${TEST_TRT_IR_PASSES}")
 
-list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_clip")
-list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_clip")
-
 file(
   GLOB TEST_TRT_CONVERTER
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_trt_convert_*.py")
 string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
+
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_convert_clip")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_clip")
+list(REMOVE_ITEM TEST_TRT_CONVERTER "test_trt_convert_clip")
 
 if(NOT WITH_DISTRIBUTE)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_delete_c_identity_op_pass")
