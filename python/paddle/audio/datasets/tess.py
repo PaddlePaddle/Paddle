@@ -14,12 +14,15 @@
 from __future__ import annotations
 
 import os
-from typing import Any, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils import download
 
 from .dataset import AudioClassificationDataset
+
+if TYPE_CHECKING:
+    from .esc50 import _FeatTypeLiteral, _ModeLiteral
 
 __all__ = []
 
@@ -95,10 +98,10 @@ class TESS(AudioClassificationDataset):
 
     def __init__(
         self,
-        mode: str = 'train',
+        mode: _ModeLiteral = 'train',
         n_folds: int = 5,
         split: int = 1,
-        feat_type: str = 'raw',
+        feat_type: _FeatTypeLiteral = 'raw',
         archive: dict[str, str] | None = None,
         **kwargs: Any,
     ) -> None:
