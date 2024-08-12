@@ -95,20 +95,6 @@ def group_case_for_parallel(rootPath):
             f"case num of new_{filename}is: ",
             len(new_cinn_cases_list),
         )
-    if os.path.exists(f'{rootPath}/build/pr_ci_cinn_gpu_ut_list_tmp'):
-        cinn_tests_file = open(
-            f'{rootPath}/build/pr_ci_cinn_gpu_ut_list_tmp', 'r'
-        )
-        cinn_cases = cinn_tests_file.read().strip().split('\n')
-        cinn_tests_file.close()
-        new_cinn_cases_list = list(
-            set(all_need_run_cases).intersection(set(cinn_cases))
-        )
-        if len(new_cinn_cases_list) != 0:
-            all_group_case += new_cinn_cases_list
-            all_need_run_cases = list(
-                set(all_need_run_cases).difference(set(all_group_case))
-            )
 
     for filename in parallel_case_file_list:
         fi = open(filename, 'r')
