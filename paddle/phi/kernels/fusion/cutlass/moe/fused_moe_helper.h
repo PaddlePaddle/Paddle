@@ -135,7 +135,7 @@ class MoeHelper {
                   const std::string moe_type,
                   DenseTensor *output) {
     auto *input_activations = X->data<T>();
-    auto *gating_weights = gate_weight->data<float>();
+    auto *gating_weights = gate_weight->data<T>();
     auto *fc1_expert_biases = ffn1_bias->data<T>();
     auto *fc2_expert_biases = ffn2_bias->data<T>();
 
@@ -167,6 +167,8 @@ class MoeHelper {
     VLOG(4) << "num_rows: " << num_rows << "   " << hidden_size << "   "
             << inter_size << "    " << num_experts << "k " << k;
 
+    DenseTensor gate_weight_tensor =
+        Empty<float>(ctx, {hidden_size, num_experts});
     DenseTensor gate_tensor = Empty<float>(ctx, {num_rows, num_experts});
     DenseTensor X_tensor = Empty<float>(ctx, {num_rows, hidden_size});
 
@@ -234,9 +236,10 @@ class MoeHelper {
         ctx, num_rows, num_experts, hidden_size, "None", false);
 
     CastKernel<T>(ctx, *X, DataType::FLOAT32, &X_tensor);
+    CastKernel<T>(ctx, *gate_weight, DataType::FLOAT32, &gate_weight_tensor);
 
     gate_compute.Compute(&X_tensor,
-                         gate_weight,
+                         &gate_weight_tensor,
                          /*weight_scale*/ nullptr,
                          /*bias*/ nullptr,
                          &mixgemm_workspace,

@@ -103,7 +103,10 @@ class TestFusedMoEOp(OpTest):
 
         self.gate = Linear(self.d_model, self.num_expert)
 
-        self.gate_weight = self.gate.weight.cast(paddle.float32)
+        self.gate_weight = paddle.to_tensor(
+            self.gate.weight.numpy(),
+            dtype=self.x_type,
+        )
         self.gate_weight.stop_gradient = True
 
         paddle.set_default_dtype(self.x_type)
