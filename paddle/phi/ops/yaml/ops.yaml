@@ -546,6 +546,7 @@
   kernel:
     func: bincount
   optional: weights
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : binomial
   args : (Tensor count, Tensor prob)

@@ -173,12 +173,51 @@ bool Binomial_OpInferSymbolicShape(
   return BinomialOpInferSymbolicShape(op, infer_context);
 }
 
-// bool BincountOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+bool BincountOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The 'shape' of Input(X) must be 1-D tensor. But the "
+                        "dimension of Input(X) is [%d]",
+                        x_dims.size()));
+
+  if (op->operand_source(1)) {
+    const auto &weights_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    const std::vector<symbol::DimExpr> &weights_dims =
+        weights_shape_or_data.shape();
+
+    PADDLE_ENFORCE_EQ(weights_dims.size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "The 'shape' of Input(Weights) must be 1-D tensor. "
+                          "But the dimension of Input(Weights) is [%d]",
+                          weights_dims.size()));
+
+    PADDLE_ENFORCE_EQ(
+        weights_dims[0],
+        x_dims[0],
+        common::errors::InvalidArgument(
+            "The 'shape' of Input(Weights) must be equal to the 'shape' of "
+            "Input(X). But received: the 'shape' of Input(Weights) is [%s], "
+            "the 'shape' of Input(X) is [%s]",
+            weights_dims,
+            x_dims));
+  }
+
+  // Set the output shape, which is of unknown size (-1)
+  std::vector<symbol::DimExpr> out_dims = {symbol::DimExpr(-1)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 
 // bool BmmOpInferSymbolicShape(pir::Operation *op,
 //                              pir::InferSymbolicShapeContext *infer_context) {
