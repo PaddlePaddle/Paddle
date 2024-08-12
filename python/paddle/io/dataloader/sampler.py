@@ -17,11 +17,7 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generator,
     Generic,
-    Iterator,
-    Sequence,
-    Sized,
     TypeVar,
 )
 
@@ -31,6 +27,8 @@ from ...framework import core
 from ...tensor import randperm
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Iterator, Sequence, Sized
+
     import numpy.typing as npt
 
     from paddle import Tensor

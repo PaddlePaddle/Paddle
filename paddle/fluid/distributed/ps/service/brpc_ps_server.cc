@@ -21,7 +21,7 @@
 #include "paddle/fluid/distributed/ps/table/depends/sparse_utils.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 namespace google::protobuf {
 class Closure;

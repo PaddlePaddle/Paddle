@@ -553,6 +553,7 @@
     func : BinomialInferMeta
   kernel :
     func : binomial
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bipartite_match
   args: (Tensor dist_mat, str match_type = "bipartite", float dist_threshold = 0.5)
@@ -651,6 +652,7 @@
     func: BoxClipInferMeta
   kernel:
     func: box_clip
+  interfaces: paddle::dialect::InferSymbolicShapeInterface
 
 - op : box_coder
   args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type = "encode_center_size", bool box_normalized = true, int axis = 0, float[] variance = {})
@@ -855,6 +857,7 @@
     param : [x, scale]
     data_type : x
   inplace : (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : check_numerics
   args : (Tensor tensor, str op_type = "", str var_name = "", int check_nan_inf_level = 0, int stack_height_limit = -1, str output_dir = "")
@@ -1467,6 +1470,7 @@
     func : edit_distance
     data_type : DataType::FLOAT32
   optional : hypslength, refslength
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : eig
   args: (Tensor x)
@@ -1476,6 +1480,7 @@
   kernel:
     func: eig
   backward: eig_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : eigh
   args : (Tensor x, str UPLO = "L")
@@ -1494,6 +1499,7 @@
     func : EigvalsInferMeta
   kernel :
     func : eigvals
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : eigvalsh
   args : (Tensor x, str uplo = "L", bool is_test = false)
@@ -1715,6 +1721,7 @@
     func : fake_quantize_dequantize_abs_max
     data_type : x
   backward : fake_quantize_dequantize_abs_max_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_dequantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1727,6 +1734,7 @@
   optional : in_accum, in_state, out_state, out_accum
   backward : fake_quantize_dequantize_moving_average_abs_max_grad
   inplace: (in_scale -> out_scale)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -1738,6 +1746,7 @@
     data_type : x
   optional : in_accum, in_state, out_state, out_accum
   inplace: (in_scale -> out_scale)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_range_abs_max
   args : (Tensor x, Tensor in_scale, Tensor iter, int window_size = 10000,  int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -2138,6 +2147,7 @@
     func : gammaincc
   inplace: (x -> out)
   backward : gammaincc_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gammaln
   args : (Tensor x)
@@ -2340,6 +2350,7 @@
     func : hardtanh
   inplace: (x -> out)
   backward : hardtanh_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : heaviside
   args : (Tensor x, Tensor y)
@@ -2349,6 +2360,7 @@
   kernel :
     func : heaviside
   backward : heaviside_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hinge_loss
   args: (Tensor logits, Tensor labels)
@@ -2379,6 +2391,7 @@
     func : hsigmoid_loss
     data_type : x
   backward : hsigmoid_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : huber_loss
   args : (Tensor input, Tensor label, float delta)
@@ -2389,6 +2402,7 @@
     func : huber_loss
   intermediate : residual
   backward : huber_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : i0
   args : (Tensor x)
@@ -2644,6 +2658,7 @@
     data_type : x
   inplace: (x -> out)
   backward : l1_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : label_smooth
   args : (Tensor label, Tensor prior_dist, float epsilon = 0.0f)
@@ -3008,6 +3023,7 @@
     func : margin_cross_entropy
     data_type : logits
   backward : margin_cross_entropy_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : masked_multihead_attention_
   args : (Tensor x, Tensor cache_kv, Tensor bias, Tensor src_mask, Tensor cum_offsets, Tensor sequence_lengths, Tensor rotary_tensor, Tensor beam_cache_offset, Tensor qkv_out_scale, Tensor out_shift, Tensor out_smooth, int seq_len, int rotary_emb_dims, bool use_neox_rotary_style=false, str compute_dtype = "default", float out_scale=-1, int quant_round_type=1, float quant_max_bound=127.0, float quant_min_bound=-127.0)
@@ -3057,6 +3073,7 @@
   kernel :
     func : matrix_power
   backward : matrix_power_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : matrix_rank
   args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
@@ -3227,6 +3244,7 @@
   kernel :
     func : mode
   backward : mode_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : momentum_
   args : (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor master_param, float mu, bool use_nesterov = false, str regularization_method = "", float regularization_coeff = 0.0f, bool multi_precision = false, float rescale_grad = 1.0f)
@@ -3337,6 +3355,7 @@
     func : nextafter
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : nll_loss
   args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index = -100, str reduction = "mean")
@@ -3962,6 +3981,7 @@
     data_type : x
   intermediate : noise
   backward : rrelu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rsqrt
   args : (Tensor x)
@@ -4117,6 +4137,7 @@
   kernel:
     func: set_value_with_tensor
   backward: set_value_with_tensor_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sgd_
   args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision=false)
@@ -4208,6 +4229,7 @@
   inplace : (x -> out)
   backward : sigmoid_cross_entropy_with_logits_grad
   optional : pos_weight
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sign
   args : (Tensor x)
@@ -4490,6 +4512,7 @@
      func : swiglu
   optional : y
   backward: swiglu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : swish
   args : (Tensor x)

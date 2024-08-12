@@ -54,7 +54,7 @@ from .trainer_factory import FetchHandlerMonitor, TrainerFactory
 from .wrapped_decorator import signature_safe_contextmanager
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Sequence
 
     import numpy.typing as npt
 
@@ -1675,7 +1675,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = ...,
         feed: dict[str, npt.NDArray[Any]] | list[npt.NDArray[Any]] | None = ...,
-        fetch_list: list[str | Tensor] | None = ...,
+        fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
         scope: core.Scope | None = ...,
@@ -1689,7 +1689,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = ...,
         feed: dict[str, npt.NDArray[Any]] | list[npt.NDArray[Any]] | None = ...,
-        fetch_list: list[str | Tensor] | None = ...,
+        fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
         scope: core.Scope | None = ...,
@@ -1703,7 +1703,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = ...,
         feed: dict[str, npt.NDArray[Any]] | list[npt.NDArray[Any]] | None = ...,
-        fetch_list: list[str | Tensor] | None = ...,
+        fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
         scope: core.Scope | None = ...,
@@ -2882,10 +2882,7 @@ class Executor:
             self._add_scope_cache(cache_key, cached_scope)
         if micro_cached_scopes is None:
             micro_cached_scopes = []
-            if (
-                "inference_generation" in fleet_opt
-                and fleet_opt["inference_generation"]
-            ):
+            if fleet_opt.get("inference_generation"):
                 for _ in range(int(fleet_opt["num_micro_batches"])):
                     micro_cached_scopes.append(cached_scope.new_scope())
                 self._add_micro_scopes_cache(cache_key, micro_cached_scopes)
@@ -2954,10 +2951,7 @@ class Executor:
                 fetch_task.set_program(fetch_program)
 
             micro_scope_list = []
-            if (
-                "inference_generation" in fleet_opt
-                and fleet_opt["inference_generation"]
-            ):
+            if fleet_opt.get("inference_generation"):
                 for i in range(int(fleet_opt["num_micro_batches"])):
                     micro_scope_list.append(cached_scope.new_scope())
 

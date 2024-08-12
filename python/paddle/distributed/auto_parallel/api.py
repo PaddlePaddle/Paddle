@@ -188,12 +188,7 @@ def shard_tensor(
     if stop_gradient is None:
         stop_gradient = getattr(data, "stop_gradient", True)
 
-    if isinstance(data, EagerParamBase) and not data._is_initialized():
-        assert (
-            data._init_func is not None
-        ), "Get an uninitialized param with an unregistered init_func."
-        tensor = data
-    elif paddle.framework.in_pir_mode():
+    if paddle.framework.in_pir_mode():
         assert isinstance(
             data, (type(None), pir.Value)
         ), "input tensor is not pir value."
@@ -202,10 +197,19 @@ def shard_tensor(
         ), "shard_tensor() input data only supported dense tensor type right."
         tensor = data
     else:
-        # `paddle.to_tensor` supports both dynamic and static mode
-        tensor = paddle.to_tensor(
-            data, dtype=dtype, place=place, stop_gradient=stop_gradient
-        )
+        if isinstance(data, EagerParamBase) and not data._is_initialized():
+            assert (
+                data._init_func is not None
+            ), "Get an uninitialized param with an unregistered init_func."
+            tensor = data
+        elif isinstance(data, paddle.Tensor) and dtype is None:
+            # if place is not equal, it is handled in paddle.Tensor()
+            tensor = data
+        else:
+            # `paddle.to_tensor` supports both dynamic and static mode
+            tensor = paddle.to_tensor(
+                data, dtype=dtype, place=place, stop_gradient=stop_gradient
+            )
 
     if paddle.in_dynamic_mode():
         # here the dist tensor is deep copy constructed
@@ -723,9 +727,9 @@ def reshard(dist_tensor, mesh, placements):
 def shard_layer(
     layer: nn.Layer,
     process_mesh: ProcessMesh,
-    shard_fn: Callable = None,
-    input_fn: Callable = None,
-    output_fn: Callable = None,
+    shard_fn: Callable | None = None,
+    input_fn: Callable | None = None,
+    output_fn: Callable | None = None,
 ) -> nn.Layer:
     """
     Converts all layer's parameters to DistTensor parameters according to
@@ -2644,8 +2648,8 @@ class ShardDataloader:
         self,
         dataloader: paddle.io.DataLoader,
         meshes: ProcessMesh | list[ProcessMesh] | tuple[ProcessMesh],
-        input_keys: list[str] | tuple[str] = None,
-        shard_dims: list | tuple | str | int = None,
+        input_keys: list[str] | tuple[str] | None = None,
+        shard_dims: list | tuple | str | int | None = None,
         is_dataset_splitted: bool = False,
     ):
         # do some check
@@ -2898,8 +2902,8 @@ class ShardDataloader:
 def shard_dataloader(
     dataloader: paddle.io.DataLoader,
     meshes: ProcessMesh | list[ProcessMesh] | tuple[ProcessMesh],
-    input_keys: list[str] | tuple[str] = None,
-    shard_dims: list | tuple | str | int = None,
+    input_keys: list[str] | tuple[str] | None = None,
+    shard_dims: list | tuple | str | int | None = None,
     is_dataset_splitted: bool = False,
 ) -> ShardDataloader:
     """
