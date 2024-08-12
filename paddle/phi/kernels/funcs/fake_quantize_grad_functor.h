@@ -52,9 +52,9 @@ inline HOSTDEVICE T roundWithTiesToEven(T x) {
           : xUpper);
 }
 
-template <typename Context, typename T> 
+template <typename Context, typename T>
 class FakeQuantizeDequantizeGradLSQFunctor {
-  public:
+ public:
   void operator()(const Context &dev_ctx,
                   const DenseTensor &x,
                   const DenseTensor &scale,

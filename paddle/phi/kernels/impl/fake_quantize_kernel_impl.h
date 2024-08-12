@@ -230,17 +230,16 @@ void FakeQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void FakeQuantizeDequantizeLSQKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& scale,
-                               const float lsq_factor,
-                               int bit_length,
-                               int round_type,
-                               DenseTensor* out) {
+void FakeQuantizeDequantizeLSQKernel(const Context &dev_ctx,
+                                     const DenseTensor &x,
+                                     const DenseTensor &scale,
+                                     const float lsq_factor,
+                                     int bit_length,
+                                     int round_type,
+                                     DenseTensor *out) {
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
   phi::funcs::FakeQuantizeDequantizeLSQFunctor<Context, T>()(
-    dev_ctx, x, scale, lsq_factor, bin_cnt, round_type, out
-    );
+      dev_ctx, x, scale, lsq_factor, bin_cnt, round_type, out);
 }
 
 }  // namespace phi

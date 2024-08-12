@@ -158,7 +158,7 @@ class ClipAndFakeQuantDequantFunctor {
                   DenseTensor *out);
 };
 
-template <typename Context, typename T> 
+template <typename Context, typename T>
 class FakeQuantizeDequantizeLSQFunctor {
  public:
   void operator()(const Context &dev_ctx,

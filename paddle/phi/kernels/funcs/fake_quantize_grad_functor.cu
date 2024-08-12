@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/fake_quantize_grad_functor.h"
 // #include "paddle/phi/kernels/funcs/reduce_function.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#include "paddle/phi/common/memory_utils.h"
 
 namespace phi {
 namespace funcs {
@@ -33,14 +33,14 @@ struct QuantizeDataType<phi::dtype::float16> {
 
 template <typename T>
 __global__ void QuantizeDequantizeGradLSQKernel(const T *in,
-                                            const T *scale,
-                                            const T *out_grad,
-                                            const float lsq_factor,
-                                            const int bin_cnt,
-                                            const int round_type,
-                                            const int n,
-                                            T *x_grad_data,
-                                            T *scale_grad_data) {
+                                                const T *scale,
+                                                const T *out_grad,
+                                                const float lsq_factor,
+                                                const int bin_cnt,
+                                                const int round_type,
+                                                const int n,
+                                                T *x_grad_data,
+                                                T *scale_grad_data) {
   int bid = threadIdx.x + blockIdx.x * blockDim.x;
   int tid = threadIdx.x;
 
@@ -58,9 +58,9 @@ __global__ void QuantizeDequantizeGradLSQKernel(const T *in,
     ComputeDataType y_grad = static_cast<ComputeDataType>(out_grad[i]);
 
     if (y_grad < min_bound || y_grad > max_bound) {
-        x_grad_data[i] = static_cast<T>(0);
+      x_grad_data[i] = static_cast<T>(0);
     } else {
-        x_grad_data[i] = static_cast<T>(y_grad);
+      x_grad_data[i] = static_cast<T>(y_grad);
     }
     ComputeDataType x_quant_round = x;
     ComputeDataType x_quant = x * inv_s;
@@ -77,26 +77,26 @@ __global__ void QuantizeDequantizeGradLSQKernel(const T *in,
     }
     ComputeDataType elem = x_quant_round - x_quant;
     if (x_quant < min_bound) {
-        elem = min_bound;
+      elem = min_bound;
     } else if (x_quant > max_bound) {
-        elem = max_bound;
+      elem = max_bound;
     }
     elem = elem * y_grad * lsq_f;
     scale_grad_data[i] = static_cast<T>(elem);
   }
-
 }
 
-template <typename Context, typename T> 
-void FakeQuantizeDequantizeGradLSQFunctor<Context, T>::operator()(const Context &dev_ctx,
-                                                                const DenseTensor &x,
-                                                                const DenseTensor &scale,
-                                                                const DenseTensor &out_grad,
-                                                                const float lsq_factor,
-                                                                const int bin_cnt,
-                                                                const int round_type,
-                                                                DenseTensor *x_grad,
-                                                                DenseTensor *scale_grad) {
+template <typename Context, typename T>
+void FakeQuantizeDequantizeGradLSQFunctor<Context, T>::operator()(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const DenseTensor &scale,
+    const DenseTensor &out_grad,
+    const float lsq_factor,
+    const int bin_cnt,
+    const int round_type,
+    DenseTensor *x_grad,
+    DenseTensor *scale_grad) {
   int num = x.numel();
   int block = 1024;
   int grid = (block - 1 + num) / block;
@@ -109,10 +109,19 @@ void FakeQuantizeDequantizeGradLSQFunctor<Context, T>::operator()(const Context 
 
   DenseTensor scale_grad_elem;
   scale_grad_elem.Resize({x.dims()});
-  T *scale_grad_elem_data = dev_ctx.template Alloc<T>(&scale_grad_elem, scale_grad_elem.numel() * sizeof(T));
+  T *scale_grad_elem_data = dev_ctx.template Alloc<T>(
+      &scale_grad_elem, scale_grad_elem.numel() * sizeof(T));
 
-  QuantizeDequantizeGradLSQKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
-    in_data, scale_data, out_grad_data, lsq_factor, bin_cnt, round_type, num, x_grad_data, scale_grad_elem_data);
+  QuantizeDequantizeGradLSQKernel<T>
+      <<<grid, block, 0, dev_ctx.stream()>>>(in_data,
+                                             scale_data,
+                                             out_grad_data,
+                                             lsq_factor,
+                                             bin_cnt,
+                                             round_type,
+                                             num,
+                                             x_grad_data,
+                                             scale_grad_elem_data);
 
   dev_ctx.template Alloc<T>(scale_grad);
 
@@ -121,7 +130,7 @@ void FakeQuantizeDequantizeGradLSQFunctor<Context, T>::operator()(const Context 
   IntArray reduce_dims(v_dims);
 
   phi::SumKernel<T, Context>(
-    dev_ctx, scale_grad_elem, reduce_dims, x.dtype(), 0, scale_grad);
+      dev_ctx, scale_grad_elem, reduce_dims, x.dtype(), 0, scale_grad);
   scale_grad->Resize(scale.dims());
 }
 

@@ -4164,8 +4164,8 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
 
 void FakeQuantizeLSQInferMeta(const MetaTensor& x,
                               const MetaTensor& scale,
-                              float lsq_factor, 
-                              int bit_length, 
+                              float lsq_factor,
+                              int bit_length,
                               int round_type,
                               MetaTensor* out) {
   PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
@@ -4184,13 +4184,14 @@ void FakeQuantizeLSQInferMeta(const MetaTensor& x,
 
   auto scale_dims = scale.dims();
   int scale_size = scale_dims.size();
-  PADDLE_ENFORCE_EQ(scale_size == 1,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "'scale size' should be 1 for tensorwise LSQ quant, but "
-                        "the received is %d",
-                        scale_size));
-  
+  PADDLE_ENFORCE_EQ(
+      scale_size == 1,
+      true,
+      phi::errors::InvalidArgument(
+          "'scale size' should be 1 for tensorwise LSQ quant, but "
+          "the received is %d",
+          scale_size));
+
   out->set_dtype(x.dtype());
   out->set_dims(x.dims());
   out->share_lod(x);

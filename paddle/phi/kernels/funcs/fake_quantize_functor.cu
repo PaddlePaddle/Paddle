@@ -709,14 +709,15 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
       in_data, scale_data, bin_cnt, round_type, num, out_data);
 }
 
-template <typename Context, typename T> 
-void FakeQuantizeDequantizeLSQFunctor<Context, T>::operator()(const Context &dev_ctx,
-                                                              const DenseTensor &x,
-                                                              const DenseTensor &scale,
-                                                              const float lsq_factor,
-                                                              const int bin_cnt,
-                                                              const int round_type,
-                                                              DenseTensor *out) {
+template <typename Context, typename T>
+void FakeQuantizeDequantizeLSQFunctor<Context, T>::operator()(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const DenseTensor &scale,
+    const float lsq_factor,
+    const int bin_cnt,
+    const int round_type,
+    DenseTensor *out) {
   int num = x.numel();
   int block = 1024;
   int grid = (block - 1 + num) / block;
@@ -725,7 +726,7 @@ void FakeQuantizeDequantizeLSQFunctor<Context, T>::operator()(const Context &dev
   const T *scale_data = scale.data<T>();
   T *out_data = dev_ctx.template Alloc<T>(out);
   QuantizeDequantizeLSQKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
-    in_data, scale_data, lsq_factor, bin_cnt, round_type, num, out_data);
+      in_data, scale_data, lsq_factor, bin_cnt, round_type, num, out_data);
 }
 
 template class FindAbsMaxFunctor<GPUContext, float16>;
