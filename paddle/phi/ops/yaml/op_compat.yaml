@@ -2769,7 +2769,7 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
-- op : partial_recv
+- op : partial_recv(partial_recv_v2)
   outputs :
     out : Out
 
