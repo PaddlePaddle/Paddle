@@ -235,7 +235,7 @@ class _Conv2D(Layer):
 
         # the sparse conv restricts the shape is [H, W, in_channels, out_channels]
         filter_shape = [
-            self._kernel_size,
+            *self._kernel_size,
             self._in_channels,
             self._out_channels,
         ]
