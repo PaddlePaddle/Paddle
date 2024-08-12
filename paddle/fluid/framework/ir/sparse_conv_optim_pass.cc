@@ -67,7 +67,7 @@ void SparseConvOptimPass::ApplyImpl(ir::Graph* graph) const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
       scope,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Scope in SparseConvOptimPass should not be null."));
   // Create pattern
   patterns::SparseConvOptimPartern pattern(gpd.mutable_pattern(), pattern_name);
@@ -99,7 +99,7 @@ void SparseConvOptimPass::ApplyImpl(ir::Graph* graph) const {
     PADDLE_ENFORCE_EQ((dilations.size() == paddings.size() &&
                        paddings.size() == strides.size()),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The dilations, paddings, strides must have the same "
                           "rank, but received %d, %d, %d.",
                           dilations.size(),

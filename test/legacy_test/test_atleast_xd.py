@@ -221,9 +221,11 @@ class BaseTest(unittest.TestCase):
                 out_ref = func_ref(
                     func_type,
                     *[
-                        input.numpy()
-                        if isinstance(input, paddle.Tensor)
-                        else input
+                        (
+                            input.numpy()
+                            if isinstance(input, paddle.Tensor)
+                            else input
+                        )
                         for input in inputs
                     ]
                 )
@@ -251,9 +253,11 @@ class BaseTest(unittest.TestCase):
                 out_ref = func_ref(
                     func_type,
                     *[
-                        input.numpy()
-                        if isinstance(input, paddle.Tensor)
-                        else input
+                        (
+                            input.numpy()
+                            if isinstance(input, paddle.Tensor)
+                            else input
+                        )
                         for input in inputs
                     ]
                 )

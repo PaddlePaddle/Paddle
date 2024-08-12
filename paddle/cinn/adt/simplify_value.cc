@@ -67,7 +67,7 @@ struct SimplifyRedundantBroadcastedIterator {
       const auto& simplified_bd = DimExpr{symbol::SimplifyDimExpr(bd)};
       return BroadcastedIterator<Value, DimExpr>{inner_iterator, simplified_bd};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code"));
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 };
 
@@ -112,7 +112,10 @@ struct SimplifyDotUndot {
         pre_index_undot = index_undot_value;
       }
     }
-    CHECK(pre_index_undot.has_value());
+    PADDLE_ENFORCE_EQ(
+        pre_index_undot.has_value(),
+        true,
+        phi::errors::InvalidArgument("pre_index_undot should not be null"));
     const auto& [index_value, undot_dims] =
         pre_index_undot.value()
             .Get<IndexUnDotValue<Value, List<DimExpr>>>()
@@ -195,9 +198,14 @@ struct SimplifyGcdShape {
     const auto& iter_values = index_dot_values.Get<List<Value>>();
     const auto& undot_dim_values = undot_dims;
     const auto& dot_dim_values = dot_dims;
-    CHECK(IsConstantListAllPositiveInt64(undot_dim_values));
-    CHECK(IsConstantListAllPositiveInt64(dot_dim_values));
-
+    PADDLE_ENFORCE_EQ(IsConstantListAllPositiveInt64(undot_dim_values),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The undot_dim_values should be all positive int64"));
+    PADDLE_ENFORCE_EQ(IsConstantListAllPositiveInt64(dot_dim_values),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The dot_dim_values should be all positive int64"));
     const auto& sub_reshape_dim_ranges =
         GetSubReshapeDimRanges(undot_dim_values, dot_dim_values);
     if (!sub_reshape_dim_ranges.has_value()) {
@@ -224,7 +232,7 @@ struct SimplifyGcdShape {
           PADDLE_ENFORCE_EQ(
               sub_range_item_idx,
               0UL,
-              phi::errors::InvalidArgument(
+              ::common::errors::InvalidArgument(
                   "The sub_range_item_idx should be 0, but got %d.",
                   sub_range_item_idx));
           return sub_range_dot;
@@ -277,20 +285,20 @@ struct SimplifyGcdShape {
     PADDLE_ENFORCE_GE(
         range.first,
         0UL,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The range.first should be greater than or equal to 0, "
             "but got %d.",
             range.first));
     PADDLE_ENFORCE_GE(
         range.second,
         0UL,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The range.second should be greater than or equal to 0, "
             "but got %d.",
             range.second));
     PADDLE_ENFORCE_LE(range.first,
                       container->size(),
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The range.first should be less than or equal to the "
                           "size of the container, but got range.first = %d, "
                           "container size = %d.",
@@ -299,7 +307,7 @@ struct SimplifyGcdShape {
     PADDLE_ENFORCE_LE(
         range.second,
         container->size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The range.second should be less than or equal to the "
             "size of the container, but got range.second = %d, "
             "container size = %d.",
@@ -307,7 +315,7 @@ struct SimplifyGcdShape {
             container->size()));
     PADDLE_ENFORCE_LT(range.first,
                       range.second,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The range.first should be less than range.second, "
                           "but got range.first = %d, range.second = %d.",
                           range.first,
@@ -321,7 +329,10 @@ struct SimplifyDotDot {
   std::int64_t Product(const List<DimExpr>& dims) {
     std::int64_t ret = 1;
     for (const auto& dim : *dims) {
-      CHECK(dim.Has<std::int64_t>());
+      PADDLE_ENFORCE_EQ(
+          dim.Has<std::int64_t>(),
+          true,
+          phi::errors::InvalidArgument("dim should have std::int64_t"));
       ret *= dim.Get<std::int64_t>();
     }
     return ret;
@@ -333,7 +344,7 @@ struct SimplifyDotDot {
     PADDLE_ENFORCE_EQ(
         index_dot_values.Get<List<Value>>()->size(),
         dot_dims->size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of index_dot_values and dot_dims should be equal, "
             "but got index_dot_values size = %d, dot_dims size = %d.",
             index_dot_values.Get<List<Value>>()->size(),
@@ -400,7 +411,10 @@ struct SymbolicDim_SimplifyDotUndot {
         pre_index_undot = index_undot_value;
       }
     }
-    CHECK(pre_index_undot.has_value());
+    PADDLE_ENFORCE_EQ(
+        pre_index_undot.has_value(),
+        true,
+        phi::errors::InvalidArgument("pre_index_undot should not be null"));
     const auto& [index_value, undot_dims] =
         pre_index_undot.value()
             .Get<IndexUnDotValue<Value, List<DimExpr>>>()
@@ -413,7 +427,7 @@ struct SymbolicDim_SimplifyDotUndot {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code"));
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 };
 
@@ -447,7 +461,10 @@ struct SymbolicDim_SimplifyDotUndot_DimExpr {
         pre_index_undot = index_undot_value;
       }
     }
-    CHECK(pre_index_undot.has_value());
+    PADDLE_ENFORCE_EQ(
+        pre_index_undot.has_value(),
+        true,
+        phi::errors::InvalidArgument("pre_index_undot should not be null"));
     const auto& [index_value, undot_dims] =
         pre_index_undot.value()
             .Get<IndexUnDotValue<Value, List<DimExpr>>>()
@@ -460,7 +477,7 @@ struct SymbolicDim_SimplifyDotUndot_DimExpr {
       return IndexDotValue<Value, List<DimExpr>>{
           SimplifyValue(list_get_item_values, ctx), dot_dims};
     }
-    PADDLE_THROW(phi::errors::Fatal("Dead code"));
+    PADDLE_THROW(::common::errors::Fatal("Dead code"));
   }
 };
 
@@ -519,7 +536,7 @@ struct SymbolicDim_SimplifyDotDot {
     PADDLE_ENFORCE_EQ(
         index_dot_values.Get<List<Value>>()->size(),
         dot_dims->size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of index_dot_values and dot_dims should be equal, "
             "but got index_dot_values size = %d, dot_dims size = %d.",
             index_dot_values.Get<List<Value>>()->size(),

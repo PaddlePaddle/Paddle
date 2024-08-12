@@ -91,9 +91,11 @@ def run(op_type, precision):
             workspace_size=1 << 30,
             max_batch_size=1,
             min_subgraph_size=1,
-            precision_mode=PrecisionType.Half
-            if precision == "fp16"
-            else PrecisionType.Int8,
+            precision_mode=(
+                PrecisionType.Half
+                if precision == "fp16"
+                else PrecisionType.Int8
+            ),
             use_static=False,
             use_calib_mode=False,
         )

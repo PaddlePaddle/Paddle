@@ -81,13 +81,13 @@ nvinfer1::DimsExprs GatherNdPluginDynamic::getOutputDimensions(
   PADDLE_ENFORCE_EQ(
       nb_inputs,
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The gather_nd plugin should have 2 input, but got %d.", nb_inputs));
   PADDLE_ENFORCE_EQ(
       output_index,
       0,
-      phi::errors::InvalidArgument("When GetOutputDimensions in gather_nd "
-                                   "plugin, the output_index should be 0."));
+      common::errors::InvalidArgument("When GetOutputDimensions in gather_nd "
+                                      "plugin, the output_index should be 0."));
 
   nvinfer1::DimsExprs x_dims = inputs[0];
   nvinfer1::DimsExprs index_dims = inputs[1];
@@ -114,16 +114,16 @@ bool GatherNdPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of gather_nd plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
@@ -29,6 +29,9 @@ from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Literal
+
     from paddle import Tensor
     from paddle._typing import (
         DataLayout1D,

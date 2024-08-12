@@ -31,7 +31,7 @@ int AutoGenRule::NumberApplicable() const {
   PADDLE_ENFORCE_GE(
       num_applicable_,
       0,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The num_applicable_ should be greater than or equal to 0."));
   return num_applicable_;
 }
@@ -39,7 +39,7 @@ int AutoGenRule::NumberApplicable() const {
 void AutoGenRule::ApplyRandomly() {
   PADDLE_ENFORCE_GT(num_applicable_,
                     0,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The num_applicable_ should be greater than 0."));
   int index = rand() % num_applicable_;  // NOLINT
   return Apply(index);

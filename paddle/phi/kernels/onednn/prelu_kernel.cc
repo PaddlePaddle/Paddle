@@ -27,7 +27,7 @@ void PReluKernel(const Context& dev_ctx,
                  DenseTensor* out) {
   PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType(),
                     AllocationType::CPU,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Operator oneDNN PReLU must use CPUPlace"));
 
   bool is_test = dev_ctx.HasDnnAttr("is_test")

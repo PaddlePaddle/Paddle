@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import TYPE_CHECKING, Any, Sequence, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -48,6 +48,8 @@ from ..framework import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle._typing import (
         DTypeLike,
         NestedNumbericSequence,
@@ -903,7 +905,7 @@ def to_tensor(
 
     # call assign for static graph
     else:
-        re_exp = re.compile(r'[(](.+?)[)]', re.S)
+        re_exp = re.compile(r'[(](.+?)[)]', re.DOTALL)
         place_str = re.findall(re_exp, str(place))[0]
         with paddle.static.device_guard(place_str):
             return _to_tensor_static(data, dtype, stop_gradient)
@@ -1695,7 +1697,31 @@ def tril(
              [5 , 0 , 0 , 0 ],
              [9 , 10, 0 , 0 ]])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.tril(x, diagonal)
+    elif in_pir_mode():
+        op_type = 'tril'
+        assert x is not None, f'x cannot be None in {op_type}'
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            op_type,
+        )
+        if len(x.shape) < 2:
+            raise ValueError(f"x shape in {op_type} must be at least 2-D")
+        if not isinstance(diagonal, (int,)):
+            raise TypeError(f"diagonal in {op_type} must be a python Int")
         return _C_ops.tril(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -1776,7 +1802,31 @@ def triu(
              [0 , 10, 11, 12]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.triu(x, diagonal)
+    elif in_pir_mode():
+        op_type = 'triu'
+        assert x is not None, f'x cannot be None in {op_type}'
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            op_type,
+        )
+        if len(x.shape) < 2:
+            raise ValueError(f"x shape in {op_type} must be at least 2-D")
+        if not isinstance(diagonal, (int,)):
+            raise TypeError(f"diagonal in {op_type} must be a python Int")
         return _C_ops.triu(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('triu', **locals()))
@@ -1798,15 +1848,13 @@ def triu_(
 @overload
 def meshgrid(
     args: Sequence[paddle.Tensor], name: str | None = None
-) -> list[paddle.Tensor]:
-    ...
+) -> list[paddle.Tensor]: ...
 
 
 @overload
 def meshgrid(
     *args: paddle.Tensor, name: str | None = None
-) -> list[paddle.Tensor]:
-    ...
+) -> list[paddle.Tensor]: ...
 
 
 def meshgrid(*args, **kwargs):

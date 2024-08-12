@@ -27,8 +27,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -65,7 +63,6 @@ class CUDAGraphContextManager {
 
   DeviceContext *Get(int64_t pool_id, const Place &place, int stream_priority) {
     std::lock_guard<std::mutex> lk(ctx_mtx_);
-    VLOG(6) << "Get cuda graph device context for " << place;
 
     DeviceContextMap &ctxs = cuda_graph_ctx_pool_[pool_id];
     if (ctxs.find(place) == ctxs.end()) {
@@ -193,7 +190,7 @@ enum gpuStreamCaptureMode {
   cudaStreamCaptureModeRelaxed = 2
 };
 static void ThrowErrorIfNotSupportCUDAGraph() {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "CUDA Graph is only supported when CUDA version >= 10.1"));
 }
 #endif
@@ -224,19 +221,19 @@ class CUDAGraph {
 
   static int64_t SetMemoryPoolID(int64_t pool_id) {
     auto &pool_id_ = capturing_graph_->pool_id_;
-    PADDLE_ENFORCE_EQ(
-        pool_id_,
-        kInvalidPoolID,
-        phi::errors::InvalidArgument("Cannot reset memory pool id twice, the "
-                                     "former memory pool id is %d.",
-                                     pool_id_));
+    PADDLE_ENFORCE_EQ(pool_id_,
+                      kInvalidPoolID,
+                      common::errors::InvalidArgument(
+                          "Cannot reset memory pool id twice, the "
+                          "former memory pool id is %d.",
+                          pool_id_));
     if (pool_id <= kInvalidPoolID) {
       pool_id_ = UniqueMemoryPoolID();
     } else {
-      PADDLE_ENFORCE_GE(
-          pool_id,
-          kDefaultPoolID,
-          phi::errors::InvalidArgument("Invalid memory pool id %d.", pool_id));
+      PADDLE_ENFORCE_GE(pool_id,
+                        kDefaultPoolID,
+                        common::errors::InvalidArgument(
+                            "Invalid memory pool id %d.", pool_id));
       pool_id_ = pool_id;
     }
     return pool_id_;

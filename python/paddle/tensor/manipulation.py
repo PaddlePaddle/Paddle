@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
@@ -43,6 +43,8 @@ from ..framework import (
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         DTypeLike,
@@ -460,9 +462,9 @@ def slice(
         elif isinstance(starts, (list, tuple)):
             attrs['starts'] = []
             if paddle.utils._contain_var(starts):
-                inputs[
-                    'StartsTensorList'
-                ] = paddle.utils._convert_to_tensor_list(starts)
+                inputs['StartsTensorList'] = (
+                    paddle.utils._convert_to_tensor_list(starts)
+                )
                 for i, dim in enumerate(starts):
                     if isinstance(dim, Variable):
                         attrs['starts'].append(-1)
@@ -1309,6 +1311,15 @@ def concat(
 
     Concatenates the input along the axis. It doesn't support 0-D Tensor because it requires a certain axis, and 0-D Tensor
     doesn't have any axis.
+
+    The image illustrates a typical case of the concat operation.
+    Two three-dimensional tensors with shapes [2, 3, 4] are concatenated along different axes, resulting in tensors of different shapes.
+    The effects of concatenation along various dimensions are clearly visible.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/concat.png
+        :width: 500
+        :alt: legend of concat API
+        :align: center
 
     Args:
         x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16, bfloat16,
@@ -2259,6 +2270,13 @@ def hstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     """
     Stacks all the input tensors ``x`` along horizontal axis.
     All tensors must be of the same dtype.
+
+    The image below illustrates how ``hstack`` works.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/hstack.png
+        :width: 500
+        :alt: legend of hstack API
+        :align: center
 
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
@@ -3357,8 +3375,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -3370,8 +3387,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -3383,8 +3399,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -3396,8 +3411,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -3409,8 +3423,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3422,8 +3435,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3435,8 +3447,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3448,8 +3459,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -3461,8 +3471,7 @@ def unique(
     axis: int | None = ...,
     dtype: DTypeLike = ...,
     name: str | None = ...,
-) -> Tensor | tuple[Tensor, ...]:
-    ...
+) -> Tensor | tuple[Tensor, ...]: ...
 
 
 def unique(
@@ -4397,9 +4406,9 @@ def tile(
         elif isinstance(repeat_times, (list, tuple)):
             attrs['repeat_times'] = get_attr_repeat_times(repeat_times)
             if paddle.utils._contain_var(repeat_times):
-                inputs[
-                    'repeat_times_tensor'
-                ] = paddle.utils._convert_to_tensor_list(repeat_times)
+                inputs['repeat_times_tensor'] = (
+                    paddle.utils._convert_to_tensor_list(repeat_times)
+                )
 
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -4631,9 +4640,9 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         elif isinstance(shape, (list, tuple)):
             attrs['shape'] = get_attr_expand_shape(shape)
             if paddle.utils._contain_var(shape):
-                inputs[
-                    'expand_shapes_tensor'
-                ] = paddle.utils._convert_to_tensor_list(shape)
+                inputs['expand_shapes_tensor'] = (
+                    paddle.utils._convert_to_tensor_list(shape)
+                )
 
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -4972,13 +4981,11 @@ def reshape_(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
 
 
 @overload
-def atleast_1d(inputs: Tensor, name: str | None = ...) -> Tensor:
-    ...
+def atleast_1d(inputs: Tensor, name: str | None = ...) -> Tensor: ...
 
 
 @overload
-def atleast_1d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]:
-    ...
+def atleast_1d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]: ...
 
 
 def atleast_1d(*inputs, name=None):
@@ -5051,13 +5058,11 @@ def atleast_1d(*inputs, name=None):
 
 
 @overload
-def atleast_2d(inputs: Tensor, name: str | None = ...) -> Tensor:
-    ...
+def atleast_2d(inputs: Tensor, name: str | None = ...) -> Tensor: ...
 
 
 @overload
-def atleast_2d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]:
-    ...
+def atleast_2d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]: ...
 
 
 def atleast_2d(*inputs, name=None):
@@ -5131,13 +5136,11 @@ def atleast_2d(*inputs, name=None):
 
 
 @overload
-def atleast_3d(inputs: Tensor, name: str | None = ...) -> Tensor:
-    ...
+def atleast_3d(inputs: Tensor, name: str | None = ...) -> Tensor: ...
 
 
 @overload
-def atleast_3d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]:
-    ...
+def atleast_3d(*inputs: Tensor, name: str | None = ...) -> list[Tensor]: ...
 
 
 def atleast_3d(*inputs, name=None):
@@ -6149,13 +6152,11 @@ def masked_fill_(
 
 
 @overload
-def non_negative_axis(arr: Tensor, axis: int) -> int:
-    ...
+def non_negative_axis(arr: Tensor, axis: int) -> int: ...
 
 
 @overload
-def non_negative_axis(arr: Tensor, axis: Tensor) -> Tensor:
-    ...
+def non_negative_axis(arr: Tensor, axis: Tensor) -> Tensor: ...
 
 
 def non_negative_axis(arr, axis):
@@ -6276,7 +6277,7 @@ def take_along_axis(
 def put_along_axis(
     arr: Tensor,
     indices: Tensor,
-    values: int | Tensor,
+    values: float | Tensor,
     axis: int,
     reduce: Literal[
         'assign', 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'
@@ -6291,7 +6292,7 @@ def put_along_axis(
         arr (Tensor) : The Destination Tensor. Supported data types are float32 and float64.
         indices (Tensor) : Indices to put along each 1d slice of arr. This must match the dimension of arr,
             and need to broadcast against arr if broadcast is 'True'. Supported data type are int and int64.
-        values (int|Tensor) : The value element(s) to put. The data types should be same as arr.
+        values (scalar|Tensor) : The value element(s) to put. The data types should be same as arr.
         axis (int) : The axis to put 1d slices along.
         reduce (str, optional): The reduce operation, default is 'assign', support 'add', 'assign', 'mul', 'multiply', 'mean', 'amin' and 'amax'.
         include_self (bool, optional): whether to reduce with the elements of arr, default is 'True'.
@@ -6442,12 +6443,13 @@ def put_along_axis(
 def put_along_axis_(
     arr: Tensor,
     indices: Tensor,
-    values: Tensor,
+    values: float | Tensor,
     axis: int,
     reduce: Literal[
         'assign', 'add', 'mul', 'multiply', 'mean', 'amin', 'amax'
     ] = "assign",
     include_self: bool = True,
+    broadcast: bool = True,
 ):
     r"""
     Inplace version of ``put_along_axis`` API, the output Tensor will be inplaced with input ``arr``.
@@ -6458,15 +6460,41 @@ def put_along_axis_(
             "`indices` and `arr` must have the same number of dimensions!"
         )
     axis = non_negative_axis(arr, axis)
-    broadcast_shape = infer_broadcast_shape(arr, indices, axis)
-    values = (
-        paddle.to_tensor(values)
-        if not isinstance(values, paddle.Tensor)
-        else values
-    )
-    if broadcast_shape:
-        indices = paddle.broadcast_to(indices, broadcast_shape)
-    values = paddle.broadcast_to(values, indices.shape)
+    if broadcast:
+        broadcast_shape = infer_broadcast_shape(arr, indices, axis)
+        values = (
+            paddle.to_tensor(values)
+            if not isinstance(values, paddle.Tensor)
+            else values
+        )
+        if broadcast_shape:
+            indices = paddle.broadcast_to(indices, broadcast_shape)
+        values = paddle.broadcast_to(values, indices.shape)
+    else:
+        if isinstance(values, (paddle.Tensor, paddle.pir.Value)):
+            if len(indices.shape) != len(values.shape):
+                raise ValueError(
+                    "`indices` and `values` must have the same number of dimensions!"
+                )
+            for i in range(len(arr.shape)):
+                if (
+                    i != axis and arr.shape[i] < indices.shape[i]
+                ) or indices.shape[i] > values.shape[i]:
+                    raise RuntimeError(
+                        f"Size does not match at dimension {i} expected index {indices.shape} to be smaller than self {arr.shape} apart from dimension {axis} and to be smaller size than values {values.shape}"
+                    )
+        else:
+            values = paddle.to_tensor(values).astype(arr.dtype)
+            elements = 1
+            for num in values.shape:
+                elements *= num
+            if elements == 1:  # paddle.pir.Value has no attribute 'size'
+                values = paddle.broadcast_to(values, indices.shape)
+        axis_max_size = arr.shape[axis]
+        if not (indices < axis_max_size).all():
+            raise RuntimeError(
+                f"one of element of indices is out of bounds for dimension {axis} with size {axis_max_size}"
+            )
     return _C_ops.put_along_axis_(
         arr, indices, values, axis, reduce, include_self
     )

@@ -21,7 +21,7 @@
 #include "paddle/fluid/eager/to_static/run_program_op_node.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/value.h"
@@ -82,10 +82,9 @@ static void clear_unused_out_var_in_backward(
 
 static void pir_clear_unused_out_var_in_backward(
     const std::vector<pir::Value>& fo,
-    const pir::Block* forward_block,
     const pir::Block* backward_block,
     paddle::framework::Scope* scope) {
-  auto out_names = details::GetNameFromValue(forward_block, fo, false, true);
+  auto out_names = details::GetNameFromValue(fo);
   std::deque<std::shared_ptr<paddle::memory::Allocation>>* garbages =
       new std::deque<std::shared_ptr<paddle::memory::Allocation>>();
   for (auto out_name : out_names) {
@@ -139,7 +138,7 @@ static std::vector<paddle::Tensor> Trans2ContiguousTensors(
     const std::vector<paddle::Tensor>& tensors) {
   std::vector<paddle::Tensor> res;
   for (const auto& t : tensors) {
-    if (t.is_initialized() && t.is_dense_tensor() &&
+    if (t.initialized() && t.is_dense_tensor() &&
         !std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())
              ->meta()
              .is_contiguous()) {
@@ -313,14 +312,10 @@ inline void pir_run_program_ad_func(
 
     std::shared_ptr<::pir::Program> backward_program = PADDLE_GET_CONST(
         std::shared_ptr<::pir::Program>, attrs.at("backward_program"));
-    std::shared_ptr<::pir::Program> forward_program = PADDLE_GET_CONST(
-        std::shared_ptr<::pir::Program>, attrs.at("forward_program"));
     auto forward_outputs =
         PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo"));
-    pir_clear_unused_out_var_in_backward(forward_outputs,
-                                         forward_program->block(),
-                                         backward_program->block(),
-                                         step_scope[0]);
+    pir_clear_unused_out_var_in_backward(
+        forward_outputs, backward_program->block(), step_scope[0]);
 
     grad_node->SetFwdParams(params_tmp);
 
