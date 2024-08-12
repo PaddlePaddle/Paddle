@@ -59,17 +59,29 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
                                      bool use_calc_stream,
                                      int gid)
     : TaskStream(rank, comm_type, sync_op, use_calc_stream),
-      comm_event_(place, platform::GenerateDeviceEventFlag()),
       task_place_(place),
-      gid_(gid) {}
+      gid_(gid) {
+  if (!use_calc_stream) {
+    comm_event_ = std::make_shared<platform::DeviceEvent>(
+        place, platform::GenerateDeviceEventFlag());
+  }
+}
 
 ProcessGroupNCCL::NCCLTask::~NCCLTask() = default;
 
-bool ProcessGroupNCCL::NCCLTask::IsCompleted() { return comm_event_.Query(); }
+bool ProcessGroupNCCL::NCCLTask::IsCompleted() {
+  if (comm_event_) {
+    return comm_event_->Query();
+  } else {
+    return true;
+  }
+}
 
 void ProcessGroupNCCL::NCCLTask::UpdateWaitChain(
     const phi::DeviceContext& ctx) {
-  comm_event_.Record(&ctx);
+  if (comm_event_) {
+    comm_event_->Record(&ctx);
+  }
 }
 
 void ProcessGroupNCCL::NCCLTask::RemoveHolderStreamInGroup() {
@@ -90,8 +102,11 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
     return true;
   }
 
-  const auto* calc_ctx = phi::DeviceContextPool::Instance().Get(task_place_);
-  comm_event_.Wait(platform::Place2DeviceType(task_place_), calc_ctx);
+  const auto* calc_ctx =
+      platform::DeviceContextPool::Instance().Get(task_place_);
+  if (comm_event_) {
+    comm_event_->Wait(platform::Place2DeviceType(task_place_), calc_ctx);
+  }
 
   if (FLAGS_nccl_blocking_wait) {
     // NOTE(shenliang03): It will block host for sync

@@ -91,7 +91,7 @@ def get_rng_state(
     """
     state_list = []
     if device is None:
-        place = paddle.framework._current_expected_place()
+        place = paddle.framework._current_expected_place_()
     else:
         place = paddle.device._convert_to_place(device)
 
@@ -176,7 +176,7 @@ def set_rng_state(
 
     """
     if device is None:
-        place = paddle.framework._current_expected_place()
+        place = paddle.framework._current_expected_place_()
     else:
         place = device._convert_to_place(device)
 
