@@ -52,8 +52,7 @@ class NTransposeFlattenConcatFusePattern : public paddle::drr::DrrPatternBase {
       transpose_op({&pat.Tensor("transpose_in_" + std::to_string(i))},
                    {&pat.Tensor("transpose_out_" + std::to_string(i))});
       flatten_op({&pat.Tensor("transpose_out_" + std::to_string(i))},
-                 {&pat.Tensor("flatten_out_" + std::to_string(i)),
-                  &pat.Tensor("flatten_xshape_" + std::to_string(i))});
+                 {&pat.Tensor("flatten_out_" + std::to_string(i))});
       combine_in.push_back(&pat.Tensor("flatten_out_" + std::to_string(i)));
     }
     const auto &combine_op = pat.Op(pir::CombineOp::name());
