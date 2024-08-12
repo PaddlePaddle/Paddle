@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import collections
 import os
 from typing import Any, NamedTuple
 
@@ -72,12 +71,12 @@ class TESS(AudioClassificationDataset):
             ...     # [feature_dim, num_frames] , label_id
     """
 
-    archive = {
+    archive: dict[str, str] = {
         'url': 'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set.zip',
         'md5': '1465311b24d1de704c4c63e4ccc470c7',
     }
 
-    label_list = [
+    label_list: list[str] = [
         'angry',
         'disgust',
         'fear',
@@ -86,20 +85,13 @@ class TESS(AudioClassificationDataset):
         'ps',  # pleasant surprise
         'sad',
     ]
-    meta_info = collections.namedtuple(
-        'META_INFO', ('speaker', 'word', 'emotion')
-    )
-    audio_path = 'TESS_Toronto_emotional_speech_set'
 
-    archive: dict[str, str] = ...
-    label_list: list[str] = ...
+    audio_path: str = 'TESS_Toronto_emotional_speech_set'
 
-    class meta_info(NamedTuple):  # noqa: F811
+    class meta_info(NamedTuple):
         speaker: str
         word: str
         emotion: str
-
-    audio_path: str = ...
 
     def __init__(
         self,

@@ -13,7 +13,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import collections
 import os
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
@@ -97,12 +96,12 @@ class ESC50(AudioClassificationDataset):
 
     """
 
-    archive = {
+    archive: dict[str, str] = {
         'url': 'https://paddleaudio.bj.bcebos.com/datasets/ESC-50-master.zip',
         'md5': '7771e4b9d86d0945acce719c7a59305a',
     }
 
-    label_list = [
+    label_list: list[str] = [
         # Animals
         'Dog',
         'Rooster',
@@ -159,19 +158,10 @@ class ESC50(AudioClassificationDataset):
         'Fireworks',
         'Hand saw',
     ]
-    meta = os.path.join('ESC-50-master', 'meta', 'esc50.csv')
-    meta_info = collections.namedtuple(
-        'META_INFO',
-        ('filename', 'fold', 'target', 'category', 'esc10', 'src_file', 'take'),
-    )
+    meta: str = os.path.join('ESC-50-master', 'meta', 'esc50.csv')
     audio_path = os.path.join('ESC-50-master', 'audio')
 
-    archive: dict[str, str] = ...
-    label_list: list[str] = ...
-    meta: str = ...
-    audio_path: str = ...
-
-    class meta_info(NamedTuple):  # noqa: F811
+    class meta_info(NamedTuple):
         filename: str
         fold: str
         target: str
