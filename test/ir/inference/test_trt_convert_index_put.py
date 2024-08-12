@@ -26,7 +26,8 @@ import paddle.inference as paddle_infer
 class TrtConvertIndexPut(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
-        if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8200:
+        print(f'ver = {ver}')
+        if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200:
             return False
         return True
 
