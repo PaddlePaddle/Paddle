@@ -1412,12 +1412,8 @@ bool PsroiPoolOpInferSymbolicShape(
                     1,
                     phi::errors::InvalidArgument(
                         "The pooled output channels must greater than 1"));
-  std::vector<symbol::DimExpr> out_dims = input_dims;
-  out_dims[0] = rois_dims[0];
-  out_dims[1] =
-      output_channels;  // input_dims[1] / (pooled_height * pooled_width);
-  out_dims[2] = pooled_height;
-  out_dims[3] = pooled_width;
+  std::vector<symbol::DimExpr> out_dims = {
+      rois_dims[0], output_channels, pooled_height, pooled_width};
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
