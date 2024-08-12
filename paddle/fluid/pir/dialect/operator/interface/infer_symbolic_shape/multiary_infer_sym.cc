@@ -1367,14 +1367,16 @@ bool PsroiPoolOpInferSymbolicShape(
                     phi::errors::InvalidArgument(
                         "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
                         "given as [(x1, y1, x2, y2), ...]"));
-  std::vector<symbol::DimExpr> dim_expr_vector = {};
-  dim_expr_vector[0] = 4;
-  infer_context->AddEqualCstr(rois_dims[1], dim_expr_vector[0]);
-  auto &rois_num_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  const std::vector<symbol::DimExpr> &rois_num_dims =
-      rois_num_shape_or_data.shape();
+  PADDLE_ENFORCE_EQ(rois_dims[1],
+                    4,
+                    errors::InvalidArgument(
+                        "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                        "given as [(x1, y1, x2, y2), ...]"));
   if (op->operand_source(2)) {
+    auto &rois_num_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const std::vector<symbol::DimExpr> &rois_num_dims =
+        rois_num_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(
         rois_num_dims.size(),
         1,
@@ -1387,10 +1389,17 @@ bool PsroiPoolOpInferSymbolicShape(
   int pooled_width = op->attribute<pir::Int32Attribute>("pooled_width").data();
   int output_channels =
       op->attribute<pir::Int32Attribute>("output_channels").data();
-  int a = output_channels * pooled_height * pooled_width;
-  std::vector<symbol::DimExpr> dim_expr = {};
-  dim_expr[0] = a;
-  infer_context->AddEqualCstr(input_dims[1], dim_expr[0]);
+  PADDLE_ENFORCE_EQ(
+      input_dims[1],
+      output_channels * pooled_height * pooled_width,
+      errors::InvalidArgument(
+          "the channel of X(%d) "
+          "should be equal to the product of "
+          "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
+          input_dims[1],
+          output_channels,
+          pooled_height,
+          pooled_width));
   PADDLE_ENFORCE_GT(pooled_height,
                     0,
                     phi::errors::InvalidArgument(
