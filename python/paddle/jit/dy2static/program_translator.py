@@ -1219,7 +1219,8 @@ class ConcreteProgram:
                 )
                 if class_instance:
                     static_inputs = tuple(
-                        [class_instance, *list(static_inputs)]
+                        class_instance,
+                        *list(static_inputs),
                     )
 
                 # 2. Builds program only once and returns the output Variables.
@@ -1319,7 +1320,8 @@ class ConcreteProgram:
                 )
                 if class_instance:
                     static_inputs = tuple(
-                        [class_instance, *list(static_inputs)]
+                        class_instance,
+                        *list(static_inputs),
                     )
 
                 # 2. Builds program only once and returns the output Variables.
