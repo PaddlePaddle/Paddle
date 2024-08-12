@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import struct
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Tuple, Union
 
 import numpy as np
 
@@ -35,8 +35,12 @@ from .framework import (
 )
 
 if TYPE_CHECKING:
-    from paddle._typing import DTypeLike
+    from typing_extensions import TypeAlias
+
+    from paddle._typing import DTypeLike, ShapeLike
     from paddle._typing.dtype_like import _DTypeLiteral
+
+    _ClassInfo: TypeAlias = Union[type[Any], Tuple["_ClassInfo", ...]]
 
 __all__ = []
 
@@ -215,12 +219,21 @@ def check_dtype(
 
 
 def check_shape(
-    shape,
-    op_name,
-    expected_shape_type=(list, tuple, Variable, Value),
-    expected_element_type=(int, Variable, Value),
-    expected_tensor_dtype=('int32', 'int64'),
-):
+    shape: ShapeLike,
+    op_name: str,
+    expected_shape_type: _ClassInfo = (
+        list,
+        tuple,
+        Variable,
+        Value,
+    ),
+    expected_element_type: _ClassInfo = (
+        int,
+        Variable,
+        Value,
+    ),
+    expected_tensor_dtype: tuple[_DTypeLiteral, ...] = ('int32', 'int64'),
+) -> None:
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return

@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -54,6 +54,8 @@ from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from typing_extensions import NotRequired, TypedDict
 
     from paddle import Tensor
@@ -369,9 +371,9 @@ class Optimizer:
                             "xpu_adamw_moment_dtype", default="fp32"
                         )
                         if xpu_adamw_moment_dtype == "fp16":
-                            state_dict[
-                                var_tmp.name + ".SCALE_VALUE"
-                            ] = var_tmp.get_tensor().get_xpu_scale_value()
+                            state_dict[var_tmp.name + ".SCALE_VALUE"] = (
+                                var_tmp.get_tensor().get_xpu_scale_value()
+                            )
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:

@@ -200,9 +200,10 @@ std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
   }
   auto val = label - input;
   auto abs_val = abs<T>(val);
+  auto factor = full_scalar<T>(0.5, input.dtype());
   auto ans = where<T>(abs_val <= delta_full,
-                      0.5 * val * val,
-                      delta_full * (abs_val - 0.5 * delta_full));
+                      factor * val * val,
+                      delta_full * (abs_val - factor * delta_full));
   return std::make_tuple(ans, val);
 }
 

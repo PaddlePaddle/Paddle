@@ -43,7 +43,8 @@ class TestCholeskyOp(OpTest):
         self._input_shape = (2, 32, 32)
         self._upper = True
         self.init_config()
-        self.trans_dims = list(range(len(self._input_shape) - 2)) + [
+        self.trans_dims = [
+            *range(len(self._input_shape) - 2),
             len(self._input_shape) - 1,
             len(self._input_shape) - 2,
         ]

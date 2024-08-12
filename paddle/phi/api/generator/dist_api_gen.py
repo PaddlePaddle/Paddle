@@ -1593,9 +1593,11 @@ class DistForwardAPI(ForwardAPI):
                 ] and self.need_to_generate_code_for_inplace_impl(i):
                     infer_meta_code += SET_DIMS_TEMPLATE.format(
                         dst=self.dist_output_args[i],
-                        src=self.dist_output_args[i] + '_tmp'
-                        if i > 0
-                        else self.dist_output_args[i],
+                        src=(
+                            self.dist_output_args[i] + '_tmp'
+                            if i > 0
+                            else self.dist_output_args[i]
+                        ),
                     )
 
         # TODO(GhostScreaming): kernel like reshape need calculate local_shape
@@ -1610,9 +1612,11 @@ class DistForwardAPI(ForwardAPI):
             out_name = self.dist_output_args[0]
             infer_meta_code += CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
                 out_name=out_name,
-                out_dist_attr="PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);"
-                if self.infer_meta['spmd_rule']
-                else f"phi::distributed::TensorDistAttr(common::vectorize({out_name}->dims()))",
+                out_dist_attr=(
+                    "PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);"
+                    if self.infer_meta['spmd_rule']
+                    else f"phi::distributed::TensorDistAttr(common::vectorize({out_name}->dims()))"
+                ),
                 dtype="int64_t" if shape_type == "IntArray" else "int",
                 op_name=self.kernel['func'][0],
                 shape_name=shape_name,

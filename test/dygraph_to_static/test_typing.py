@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import os
 import tempfile
 import unittest
-from typing import Dict, List, Tuple
 
 import numpy as np
 from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pir
@@ -37,7 +38,7 @@ class LinearNetWithTuple(BaseLayer):
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
 
-    def forward(self, x) -> Tuple[paddle.Tensor, str]:
+    def forward(self, x) -> tuple[paddle.Tensor, str]:
         out1, out2 = self.build(x)
         return (out2, 'str')
 
@@ -46,7 +47,7 @@ class LinearNetWithTuple2(BaseLayer):
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
 
-    def forward(self, x) -> Tuple[paddle.Tensor, np.array]:
+    def forward(self, x) -> tuple[paddle.Tensor, np.array]:
         out1, out2 = self.build(x)
         return (out2, np.ones([4, 16]))
 
@@ -55,7 +56,7 @@ class LinearNetWithList(BaseLayer):
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
 
-    def forward(self, x) -> List[paddle.Tensor]:
+    def forward(self, x) -> list[paddle.Tensor]:
         out1, out2 = self.build(x)
         return [out2]
 
@@ -64,7 +65,7 @@ class LinearNetWithDict(BaseLayer):
     def __init__(self, in_size, out_size):
         super().__init__(in_size, out_size)
 
-    def forward(self, x) -> Dict[str, paddle.Tensor]:
+    def forward(self, x) -> dict[str, paddle.Tensor]:
         out1, out2 = self.build(x)
         return {'out': out2}
 

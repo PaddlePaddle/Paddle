@@ -231,7 +231,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto& arg = ctx->InputAt(range.first);
-      if (!arg.is_initialized()) {
+      if (!arg.initialized()) {
         ComputeCallHelper<Tail...>::
             template Compute<in_idx + 1, attr_idx, out_idx>(
                 ctx, pargs..., paddle::none);
@@ -294,7 +294,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto arg = ctx->InputsBetween(range.first, range.second);
-      if (arg.empty() || !arg[0].is_initialized()) {
+      if (arg.empty() || !arg[0].initialized()) {
         ComputeCallHelper<Tail...>::
             template Compute<in_idx + 1, attr_idx, out_idx>(
                 ctx, pargs..., paddle::none);

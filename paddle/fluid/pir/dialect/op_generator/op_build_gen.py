@@ -71,6 +71,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'AccuracyInferMeta',
     'BoxCoderInferMeta',
     'InstanceNormInferMeta',
+    'GroupNormInferMeta',
     'LayerNormInferMeta',
     'MatchMatrixTensorInferMeta',
     'MultiClassNMSInferMeta',

@@ -224,7 +224,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         if offload:
             assert (
                 self._pfp16
-            ), "Only support offload strategy while using \'Adam\', \'AdamW\' and \'Momentum\' optimizer with AMP/Pure FP16"
+            ), "Only support offload strategy while using 'Adam', 'AdamW' and 'Momentum' optimizer with AMP/Pure FP16"
 
         self.offload = offload  # Using for offload
         self.offload_device = "cpu"
