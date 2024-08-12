@@ -380,7 +380,13 @@ struct AliveBufferAnalyer : public ir::IRMutator<Expr*> {
       return alive_buffers.count(buffer->name) != 0;
     };
 
+    auto AliveBufferEmpty = [&]() -> bool {
+      return (alive_buffers_.read_buffer_names.empty() &&
+              alive_buffers_.write_buffer_names.empty());
+    };
+
     auto CheckReadAndWriteBuffers = [&](const ir::ScheduleBlock* node) -> bool {
+      if (AliveBufferEmpty()) return false;
       for (const auto& buffer_region : node->read_buffers) {
         if (IsContainsBuffer(buffer_region, alive_buffers_.write_buffer_names))
           return false;
@@ -400,7 +406,7 @@ struct AliveBufferAnalyer : public ir::IRMutator<Expr*> {
       block_need_fuse_ = block_need_fuse_ && CheckReadAndWriteBuffers(node);
     }
 
-    if (!alive_buffers_.read_buffer_names.empty()) {
+    if (!AliveBufferEmpty()) {
       RecordReadAndWriteBuffers(node);
     }
     ir::IRMutator<>::Visit(op, expr);
