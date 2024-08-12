@@ -592,17 +592,17 @@ bool DiagOpInferSymbolicShape(pir::Operation *op,
     if (x_shape[0].isa<int64_t>() && x_shape[1].isa<int64_t>()) {
       int64_t size_ = 0;
       if (offset_data >= 0) {
-        if (x_dims[0].dyn_cast<int64_t>() > x_dims[1].dyn_cast<int64_t>()) {
-          size_ = x_dims[0].dyn_cast<int64_t>();
+        if (x_shape[0].dyn_cast<int64_t>() > x_shape[1].dyn_cast<int64_t>()) {
+          size_ = x_shape[0].dyn_cast<int64_t>();
         } else {
-          size_ = x_dims[1].dyn_cast<int64_t>() - offset_data;
+          size_ = x_shape[1].dyn_cast<int64_t>() - offset_data;
         }
       } else {
-        if (x_dims[0].dyn_cast<int64_t>() + offset_data <
-            x_dims[1].dyn_cast<int64_t>()) {
-          size_ = x_dims[0].dyn_cast<int64_t>() + offset_data;
+        if (x_shape[0].dyn_cast<int64_t>() + offset_data <
+            x_shape[1].dyn_cast<int64_t>()) {
+          size_ = x_shape[0].dyn_cast<int64_t>() + offset_data;
         } else {
-          size_ = x_dims[1].dyn_cast<int64_t>();
+          size_ = x_shape[1].dyn_cast<int64_t>();
         }
       }
       infer_context->SetShapeOrDataForValue(
