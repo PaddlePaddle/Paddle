@@ -1044,12 +1044,67 @@ bool TopPSamplingOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool UnpoolOpInferSymbolicShape(pir::Operation *op,
-//                                 pir::InferSymbolicShapeContext
-//                                 *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UnpoolOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  // Get the symbolic shape of the input tensors
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &indices_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &indices_dims =
+      indices_shape_or_data.shape();
+
+  // Check if the input tensor's rank meets specific conditions
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Unpool Input(X) must be of 4-dimensional, but "
+                        "received Input(X)'s dimensions is %d.",
+                        x_dims.size()));
+  PADDLE_ENFORCE_EQ(x_dims,
+                    indices_dims,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(X) must be equal to the "
+                        "dimensions of Input(Indices), but received "
+                        "dimensions of Input(X) is [%d], received dimensions "
+                        "of Input(Indices) is [%d]",
+                        x_dims,
+                        indices_dims));
+
+  // Get attributes
+  std::vector<int> ksize =
+      paddle::dialect::details::GetVectorAttr<int>(op, "ksize");
+  std::vector<int> strides =
+      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
+  std::vector<int> paddings =
+      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
+  std::string data_format =
+      op->attribute<pir::StrAttribute>("data_format").AsString();
+  std::vector<int64_t> output_size =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "output_size");
+
+  // Construct the symbolic shape of the output tensor
+  std::vector<symbol::DimExpr> output_shape({x_dims[0], x_dims[1]});
+  bool is_runtime = op->attribute<pir::BoolAttribute>("is_runtime").data();
+
+  for (int i = 0; i < static_cast<int>(ksize.size()); ++i) {
+    if (!is_runtime && (x_dims[i + 2]).dyn_cast<int64_t>() <= 0) {
+      output_shape.push_back(symbol::DimExpr(-1));
+    } else {
+      output_shape.push_back(symbol::DimExpr(output_size[i]));
+    }
+  }
+
+  // Set the symbolic shape of the output tensor
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
 
 // bool YoloBoxOpInferSymbolicShape(pir::Operation *op,
 //                                  pir::InferSymbolicShapeContext
