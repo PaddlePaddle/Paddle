@@ -98,24 +98,28 @@ class TestWhileOp(unittest.TestCase):
             )
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
+    @test_with_pir_api
     def test_simple_net_forward(self):
-        with paddle.pir_utils.OldIrGuard():
-            main_program = base.Program()
-            startup_program = base.Program()
-            with base.program_guard(main_program, startup_program):
-                self.simple_net()
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
+            self.simple_net()
+            if paddle.framework.in_pir_mode():
+                binary = main_program
+            else:
                 binary = base.compiler.CompiledProgram(main_program)
 
-                xpu_place = paddle.XPUPlace(0)
-                exe = Executor(xpu_place)
-                d = []
+            xpu_place = paddle.XPUPlace(0)
+            exe = Executor(xpu_place)
+            d = []
 
-                for i in range(3):
-                    d.append(numpy.random.random(size=[10]).astype('float32'))
+            for i in range(3):
+                d.append(numpy.random.random(size=[10]).astype('float32'))
 
-                for _ in range(2):
-                    exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
+            for _ in range(2):
+                exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
+    @test_with_pir_api
     def test_exceptions(self):
         i = paddle.zeros(shape=[2], dtype='int64')
         array_len = paddle.tensor.fill_constant(

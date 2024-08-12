@@ -45,10 +45,10 @@ def overlap_add(x, hop_length, axis=-1):
     if len(x.shape) > 3:
         reshape_output = True
         if axis == 0:
-            target_shape = [seq_length] + list(x.shape[2:])
+            target_shape = [seq_length, *x.shape[2:]]
             x = x.reshape(n_frames, frame_length, np.prod(x.shape[2:]))
         else:
-            target_shape = list(x.shape[:-2]) + [seq_length]
+            target_shape = [*x.shape[:-2], seq_length]
             x = x.reshape(np.prod(x.shape[:-2]), frame_length, n_frames)
 
     if axis == 0:

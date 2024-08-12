@@ -34,6 +34,7 @@
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/operator_fusion/fusion_interface.h"
 #include "paddle/cinn/optim/check_tensor_buffer_map.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 #include "paddle/cinn/optim/if_fusion.h"
@@ -94,7 +95,7 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map) {
   std::shared_ptr<GroupInfo> group_info = std::make_shared<GroupInfo>();
   group_info->data_space = fusion_group_info.loop_ranges;
-  group_info->loop_transform_map = fusion_group_info.loop_transform_map;
+  group_info->loop_strides = fusion_group_info.loop_strides;
   group_info->reduce_axis = fusion_group_info.reduce_axis;
   group_info->reduce_var_names =
       std::set<std::string>(fusion_group_info.reduce_var_name.begin(),
@@ -212,7 +213,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // =========== OpFusion ============
 
   // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
-  func_bodies = OperationFusion(ops, func_bodies, group->output_values());
+  func_bodies = OperationFusion(ops, func_bodies, group->fusion_tracker_ptr);
   const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
 
   if (FLAGS_cinn_check_tensor_buffer_map) {
@@ -791,9 +792,12 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       auto& strategy_map =
           Operator::GetAttrs<StrategyFunctionSymbolic>("CINNStrategySymbolic");
       StrategyFunctionSymbolic strategy = strategy_map[cinn_op];
-      CHECK(static_cast<bool>(strategy))
-          << " cinn_op_name: " << cinn_op_name
-          << " has no CINNStrategySymbolic registered.";
+      PADDLE_ENFORCE_EQ(
+          static_cast<bool>(strategy),
+          true,
+          phi::errors::PreconditionNotMet(
+              "cinn_op_name: %s has no CINNStrategySymbolic registered.",
+              cinn_op_name));
       op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
                                                 op_func_arg_tensors,
                                                 out_types,
@@ -919,7 +923,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
   op_func_arg_tensors->clear();
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
-    CHECK(pack[idx].is_tensor());
+    PADDLE_ENFORCE_EQ(
+        pack[idx].is_tensor(),
+        true,
+        phi::errors::PreconditionNotMet(
+            "The element at index %d in pack must be a tensor.", idx));
     op_func_arg_tensors->push_back(
         pack[idx].operator ir::Expr().as_tensor_ref());
   }

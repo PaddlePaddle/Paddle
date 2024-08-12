@@ -54,7 +54,7 @@ static phi::Backend ConvertPlaceToBackend(const phi::Place& place) {
     case phi::AllocationType::XPU:
       return phi::Backend::XPU;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot convert place(%d).", static_cast<int>(place.GetType())));
   }
   return phi::Backend::UNDEFINED;
@@ -228,8 +228,8 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
             .GetOrRegisterGlobalDeviceTypeId(device_type));
 #else
     PADDLE_THROW(
-        phi::errors::Unavailable("Paddle is not compiled with CustomDevice. "
-                                 "Cannot enable custom_device_mixed."));
+        common::errors::Unavailable("Paddle is not compiled with CustomDevice. "
+                                    "Cannot enable custom_device_mixed."));
 #endif
   }
 
@@ -283,12 +283,12 @@ void AutoMixedPrecisionPass::Init(Graph* graph) const {
 
 void AutoMixedPrecisionPass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "During the auto_mixed_precision_pass, the graph "
                               "should not be nullptr."));
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "During the auto_mixed_precision_pass, the graph "
                         "should be main graph."));
 
@@ -471,7 +471,7 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
           PADDLE_ENFORCE_EQ(
               in_var_node->IsVar(),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "in_var_node->IsVar() is False, which means that "
                   "inputs may be not a valid variable."));
           auto* real_in_var_node = real_vars_.at(in_var_node->Var()->Name())[0];
@@ -487,7 +487,7 @@ void AutoMixedPrecisionPass::GetOpPrecision() const {
           PADDLE_ENFORCE_EQ(
               out_var_node->IsVar(),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "out_var_node->IsVar() is False, which means that "
                   "outputs may be not a valid variable."));
           auto* real_out_var_node =
@@ -532,7 +532,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
         for (auto* var_node : op_node->outputs) {
           PADDLE_ENFORCE_EQ(var_node->IsVar(),
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "var_node->IsVar() is False, which means that "
                                 "outputs may be not a valid variable."));
           if (var_node->Var()->Persistable()) continue;
@@ -556,7 +556,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
             PADDLE_ENFORCE_EQ(
                 in_var_node->IsVar(),
                 true,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "in_var_node->IsVar() is False, which means that "
                     "inputs may be not a valid variable."));
             if (in_var_node->Var()->Persistable()) continue;
@@ -576,7 +576,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
             PADDLE_ENFORCE_EQ(
                 out_var_node->IsVar(),
                 true,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "out_var_node->IsVar() is False, which means that "
                     "outputs may be not a valid variable."));
             if (out_var_node->Var()->Persistable()) continue;
@@ -601,7 +601,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
           PADDLE_ENFORCE_EQ(
               in_var_node->IsVar(),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "in_var_node->IsVar() is False, which means that "
                   "inputs may be not a valid variable."));
           if (!VarNodeHasDtype(in_var_node)) continue;
@@ -625,7 +625,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
           PADDLE_ENFORCE_EQ(
               out_var_node->IsVar(),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "out_var_node->IsVar() is False, which means that "
                   "outputs may be not a valid variable."));
           if (!VarNodeHasDtype(out_var_node)) continue;
@@ -816,7 +816,7 @@ bool AutoMixedPrecisionPass::OutputVarsNotConvert(
 void AutoMixedPrecisionPass::SetVarPrecision() const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(scope,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "During the auto_mixed_precision_pass, the scope "
                               "should not be null."));
   for (const auto& nodes : all_op_nodes_) {
@@ -830,7 +830,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
           PADDLE_ENFORCE_EQ(
               in_var_node->IsVar(),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "in_var_node->IsVar() is False, which means that "
                   "inputs may be not a valid variable."));
 
@@ -874,7 +874,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
           PADDLE_ENFORCE_EQ(
               out_var_node->IsVar(),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "out_var_node->IsVar() is False, which means that "
                   "outputs may be not a valid variable."));
 
@@ -922,7 +922,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
 void AutoMixedPrecisionPass::ConvertWeightsData() const {
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(scope,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "During the auto_mixed_precision_pass, the scope "
                               "should not be null."));
 
@@ -935,7 +935,7 @@ void AutoMixedPrecisionPass::ConvertWeightsData() const {
       PADDLE_ENFORCE_EQ(
           var->IsType<phi::DenseTensor>(),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "var->IsType<phi::DenseTensor>() is False, which means the "
               "variable has invalid type instead of <phi::DenseTensor>."));
 
@@ -991,7 +991,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
     auto* block_desc = all_op_nodes_[i][0]->Op()->Block();
     PADDLE_ENFORCE_NOT_NULL(
         block_desc,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "During the auto_mixed_precision_pass, the block description "
             "should not be null."));
     for (auto* op_node : all_op_nodes_[i]) {
@@ -1067,7 +1067,7 @@ void AutoMixedPrecisionPass::InsertCastOp() const {
         PADDLE_ENFORCE_EQ(
             cache_kv_inputs.size(),
             cache_kv_outputs.size(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Cache inputs should be the same size with cache outputs, but "
                 "recieved %d as inputs and %d as outputs.",
                 cache_kv_inputs.size(),

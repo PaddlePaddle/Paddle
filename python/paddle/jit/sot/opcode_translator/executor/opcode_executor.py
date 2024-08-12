@@ -364,9 +364,9 @@ class OpcodeExecutorBase:
         self.new_code: types.CodeType | None = self.empty_code
         self.guard_fn = None
         self._name = "Executor"
-        self._call_shape: tuple[
-            str, ...
-        ] | None = None  # store kwnames for Python 3.11+
+        self._call_shape: tuple[str, ...] | None = (
+            None  # store kwnames for Python 3.11+
+        )
         self._prepare_virtual_env()
         self.stop_state = None
 
@@ -406,7 +406,7 @@ class OpcodeExecutorBase:
             NotImplementedError: If the method is not implemented.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def transform(self):
         """
@@ -416,7 +416,7 @@ class OpcodeExecutorBase:
             NotImplementedError: If the method is not implemented.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def find_space_of_var_name(self, name):
         code = self._graph.pycode_gen._origin_code

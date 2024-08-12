@@ -46,11 +46,11 @@ class DNNLayer(nn.Layer):
             ),
         )
 
-        sizes = (
-            [sparse_feature_dim * num_field + dense_feature_dim]
-            + self.layer_sizes
-            + [2]
-        )
+        sizes = [
+            sparse_feature_dim * num_field + dense_feature_dim,
+            *self.layer_sizes,
+            2,
+        ]
         acts = ["relu" for _ in range(len(self.layer_sizes))] + [None]
         self._mlp_layers = []
         for i in range(len(layer_sizes) + 1):
@@ -85,7 +85,7 @@ class DNNLayer(nn.Layer):
             # emb.stop_gradient = True
             sparse_embs.append(emb)
 
-        y_dnn = paddle.concat(x=sparse_embs + [dense_inputs], axis=1)
+        y_dnn = paddle.concat(x=[*sparse_embs, dense_inputs], axis=1)
 
         if self.sync_mode == 'heter':
             with paddle.base.device_guard('gpu'):
@@ -318,7 +318,7 @@ class StaticModel:
 
         label = paddle.static.data(name="label", shape=[None, 1], dtype="int64")
 
-        feeds_list = [label] + sparse_input_ids + [dense_input]
+        feeds_list = [label, *sparse_input_ids, dense_input]
         return feeds_list
 
     def net(self, input, is_infer=False):

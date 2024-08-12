@@ -150,7 +150,7 @@ void CheckInferSymWithInferMeta(
     pir::InferSymbolicShapeContext* infer_context = nullptr) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
-    if (!res || !res.type()) {
+    if (!res || !res.type() || res.use_empty()) {
       continue;
     }
 
@@ -288,7 +288,13 @@ void InferSymExprForOp(Operation* op,
         std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
             infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
                 .value();
-        CHECK(cached_result_shape_or_data.size() == op->num_results());
+        PADDLE_ENFORCE_EQ(cached_result_shape_or_data.size(),
+                          op->num_results(),
+                          common::errors::Fatal(
+                              "Cached number of result %u is not equal to the "
+                              "given number of output %u",
+                              cached_result_shape_or_data.size(),
+                              op->num_results()));
         for (uint32_t i = 0; i < op->num_results(); ++i) {
           infer_context->SetShapeOrDataForValue(op->result(i),
                                                 cached_result_shape_or_data[i]);

@@ -65,7 +65,7 @@ struct CUBlas<float> {
 #if CUDA_VERSION >= 8000
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasSgemmBatched(args...));
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "SgemmBatched is not supported on cuda <= 7.5"));
 #endif
   }
@@ -76,7 +76,7 @@ struct CUBlas<float> {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cublasSgemmStridedBatched(args...));
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "SgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
@@ -127,7 +127,7 @@ struct CUBlas<float> {
                                                              ldc));
     });
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasSgemmEx is not supported on cuda <= 7.5"));
 #endif
   }
@@ -195,7 +195,7 @@ struct CUBlas<double> {
 #if CUDA_VERSION >= 8000
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasDgemmBatched(args...));
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "DgemmBatched is not supported on cuda <= 7.5"));
 #endif
   }
@@ -206,15 +206,15 @@ struct CUBlas<double> {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cublasDgemmStridedBatched(args...));
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "DgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
 
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args UNUSED) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Currently there are not cublasDgemmEx."));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Currently there are not cublasDgemmEx."));
   }
 
   template <typename... ARGS>
@@ -340,7 +340,7 @@ struct CUBlas<phi::dtype::float16> {
                                             algo));
     });
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasGemmBatchedEx is not supported on cuda <= 7.5"));
 #endif
   }
@@ -385,7 +385,7 @@ struct CUBlas<phi::dtype::float16> {
         strideC,
         batchCount));
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "HgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
@@ -444,7 +444,7 @@ struct CUBlas<phi::dtype::float16> {
                                                             algo));
     });
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasGemmEx is not supported on cuda <= 7.5"));
 #endif
   }
@@ -535,7 +535,7 @@ struct CUBlas<phi::dtype::complex<float>> {
         strideC,
         batchCount));
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "CgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
@@ -652,7 +652,7 @@ struct CUBlas<phi::dtype::complex<float>> {
                                                             algo));
     });
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasGemmEx is not supported on cuda <= 7.5"));
 #endif
   }
@@ -830,7 +830,7 @@ struct CUBlas<phi::dtype::complex<double>> {
         strideC,
         batchCount));
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "CgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
   }
@@ -976,7 +976,7 @@ struct CUBlas<phi::dtype::complex<double>> {
                                                             algo));
     });
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "cublasGemmEx is not supported on cuda <= 7.5"));
 #endif
   }
@@ -1129,7 +1129,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas fp16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1208,7 +1208,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       80,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas bf16 gemm requires GPU compute capability >= 80,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1246,7 +1246,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   });
 #else
   // raise error
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "cublasGemmEx with bfloat16 is not supported on cuda <= 11"));
 
 #endif  // CUDA_VERSION >= 11000
@@ -1277,7 +1277,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas complex64 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1357,7 +1357,7 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas complex128 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1540,7 +1540,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       80,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas bf16 gemm requires GPU compute capability >= 80,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -1578,7 +1578,7 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
   });
 #else
   // raise error
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "cublasGemmEx with bfloat16 is not supported on cuda <= 11"));
 
 #endif  // CUDA_VERSION >= 11000
@@ -1846,7 +1846,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   });
 #else
   // raise error
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "cublasGemmStridedBatchedEx with bfloat16 is not supported on cuda <= "
       "11"));
 #endif  // CUDA_VERSION >= 11000
@@ -1988,7 +1988,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       53,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas fp16 gemm requires GPU compute capability >= 53,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -2043,7 +2043,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_GE(
       context_.GetComputeCapability(),
       80,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cublas bf16 gemm requires GPU compute capability >= 80,"
           "but received %d",
           context_.GetComputeCapability()));
@@ -2086,7 +2086,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   });
 #else
   // raise error
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "cublasGemmBatchedEx with bfloat16 is not supported on cuda <= 11"));
 
 #endif  // CUDA_VERSION >= 11000
@@ -2144,7 +2144,7 @@ void Blas<phi::GPUContext>::BatchedGETRI(int n,
   PADDLE_ENFORCE_NE(
       a_inv,
       a,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
           "in-place. The memory space of output matrix (address: %p) cannot "
           "overlap memory space of input matrix (address: %p).",

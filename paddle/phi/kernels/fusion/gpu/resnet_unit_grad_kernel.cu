@@ -66,10 +66,10 @@ void ResNetUnitGradKernel(
     DenseTensor *filter_z_grad,
     DenseTensor *scale_z_grad,
     DenseTensor *bias_z_grad) {
-  PADDLE_ENFORCE_EQ(
-      phi::backends::gpu::CudnnDataType<T>::type,
-      CUDNN_DATA_HALF,
-      phi::errors::Unavailable("ResNetUnitOp only supports float16 for now."));
+  PADDLE_ENFORCE_EQ(phi::backends::gpu::CudnnDataType<T>::type,
+                    CUDNN_DATA_HALF,
+                    common::errors::Unavailable(
+                        "ResNetUnitOp only supports float16 for now."));
 
   const phi::DenseTensor *y_grad = &out_grad;
 

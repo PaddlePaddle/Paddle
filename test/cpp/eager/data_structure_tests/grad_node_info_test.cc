@@ -27,7 +27,11 @@ TEST(GradNodeInfo, GradSlotMeta) {
   auto grad_slot = egr::GradSlotMeta();
   VLOG(6) << "Set SetStopGradient";
   grad_slot.SetStopGradient();
-  CHECK(grad_slot.IsStopGradient() == true);
+  PADDLE_ENFORCE_EQ(
+      grad_slot.IsStopGradient(),
+      true,
+      common::errors::Fatal("`grad_slot.IsStopGradient()` should be "
+                            "true, please check related function"));
 }
 
 void TestGradNodeBase(bool is_remove_gradient_hook) {
@@ -53,7 +57,7 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
       std::dynamic_pointer_cast<phi::DenseTensor>(res[0][0].impl())
           ->data<float>()[0],
       6.0f,
-      phi::errors::InvalidArgument("Data of grads mismatch. Expected 6.0."));
+      common::errors::InvalidArgument("Data of grads mismatch. Expected 6.0."));
   egr::Edge tmp_edge1(grad_test_node1, 3, 4);
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>(tmp_edge1);
   et1.set_autograd_meta(auto_grad1);
@@ -67,29 +71,37 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   PADDLE_ENFORCE_EQ(
       grad_test_node0->InputMeta()[0].size(),
       1UL,
-      phi::errors::InvalidArgument("Size of input mismatch. Expected 1."));
+      common::errors::InvalidArgument("Size of input mismatch. Expected 1."));
   PADDLE_ENFORCE_EQ(
       grad_test_node0->InputMeta()[1].size(),
       1UL,
-      phi::errors::InvalidArgument("Size of input mismatch. Expected 1."));
+      common::errors::InvalidArgument("Size of input mismatch. Expected 1."));
   PADDLE_ENFORCE_EQ(
       grad_test_node0->InputMeta()[0][0].GetTensorMeta().dtype,
       meta.dtype,
-      phi::errors::InvalidArgument("Dtype of input tensor mismatch."));
+      common::errors::InvalidArgument("Dtype of input tensor mismatch."));
   PADDLE_ENFORCE_EQ(
       grad_test_node0->InputMeta()[1][0].GetTensorMeta().dtype,
       meta.dtype,
-      phi::errors::InvalidArgument("Dtype of input tensor mismatch."));
-  CHECK(grad_test_node0->OutputMeta()[0][0].IsStopGradient());
-  CHECK(grad_test_node0->OutputMeta()[1][0].IsStopGradient());
+      common::errors::InvalidArgument("Dtype of input tensor mismatch."));
+  PADDLE_ENFORCE_EQ(grad_test_node0->OutputMeta()[0][0].IsStopGradient(),
+                    true,
+                    common::errors::Fatal(
+                        "`grad_test_node0->OutputMeta()[0][0].IsStopGradient()"
+                        "` should be true, please related function"));
+  PADDLE_ENFORCE_EQ(grad_test_node0->OutputMeta()[1][0].IsStopGradient(),
+                    true,
+                    common::errors::Fatal(
+                        "`grad_test_node0->OutputMeta()[1][0].IsStopGradient()"
+                        "` should be true, please related function"));
   PADDLE_ENFORCE_EQ(
       grad_test_node0->OutputMeta()[0][0].GetTensorMeta().dtype,
       meta.dtype,
-      phi::errors::InvalidArgument("Dtype of output tensor mismatch."));
+      common::errors::InvalidArgument("Dtype of output tensor mismatch."));
   PADDLE_ENFORCE_EQ(
       grad_test_node0->OutputMeta()[1][0].GetTensorMeta().dtype,
       meta.dtype,
-      phi::errors::InvalidArgument("Dtype of output tensor mismatch."));
+      common::errors::InvalidArgument("Dtype of output tensor mismatch."));
 
   VLOG(6) << "Test Default Set Meta and Get Meta";
   auto grad_test_node2 = std::make_shared<eager_test::GradTestNode>(
@@ -98,12 +110,12 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
   PADDLE_ENFORCE_GT(
       grad_test_node2->OutputMeta()[0].size(),
       0UL,
-      phi::errors::InvalidArgument("Size of output not greater than 0."));
+      common::errors::InvalidArgument("Size of output not greater than 0."));
   CHECK(grad_test_node2->OutputMeta()[0][0].IsStopGradient() == false);
   PADDLE_ENFORCE_EQ(
       grad_test_node2->OutputMeta()[0].size(),
       1UL,
-      phi::errors::InvalidArgument("Size of output mismatch. Expected 1."));
+      common::errors::InvalidArgument("Size of output mismatch. Expected 1."));
 
   VLOG(6) << "Test Gradient Hook";
   auto gradient_hook = [](const paddle::Tensor& et) -> paddle::Tensor {
@@ -138,7 +150,7 @@ void TestGradNodeBase(bool is_remove_gradient_hook) {
       std::dynamic_pointer_cast<phi::DenseTensor>(grad_hook_res[0][0].impl())
           ->data<float>()[0],
       is_remove_gradient_hook ? 5.0 : 11.0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Data of grad hook res mismatch. Expected 5.0 or 11.0."));
 }
 
@@ -160,9 +172,17 @@ TEST(GradNodeInfo, Edge) {
   auto auto_grad1 = std::make_shared<egr::AutogradMeta>();
   VLOG(6) << "Test Construct Edge";
   egr::Edge edge0 = egr::Edge();
-  CHECK(edge0.IsInitialized() == false);
+  PADDLE_ENFORCE_EQ(
+      edge0.IsInitialized(),
+      false,
+      common::errors::Fatal("`edge0.IsInitialized()` should be "
+                            "false, please check related function"));
   egr::Edge edge1 = egr::Edge(grad_test_node0, size_t(0), size_t(0));
-  CHECK(edge1.IsInitialized() == true);
+  PADDLE_ENFORCE_EQ(
+      edge1.IsInitialized(),
+      true,
+      common::errors::Fatal("`edge1.IsInitialized()` should be "
+                            "true, please check related function"));
   egr::Edge edge2 =
       egr::Edge(grad_test_node0, std::make_pair(size_t(1), size_t(0)));
   VLOG(6) << "Test Set Edge's Grad Node";
@@ -173,34 +193,38 @@ TEST(GradNodeInfo, Edge) {
   PADDLE_ENFORCE_EQ(
       grad_node->InputMeta().size(),
       2UL,
-      phi::errors::InvalidArgument("Size of input mismatch. Expected 2."));
+      common::errors::InvalidArgument("Size of input mismatch. Expected 2."));
   std::vector<egr::AutogradMeta*> metas = {auto_grad1.get()};
-  CHECK(grad_node->InputMeta()[0][0].IsStopGradient() == true);
+  PADDLE_ENFORCE_EQ(
+      grad_node->InputMeta()[0][0].IsStopGradient(),
+      true,
+      common::errors::Fatal("`grad_node->InputMeta()[0][0].IsStopGradient()` "
+                            "should be true, please check related function"));
   VLOG(6) << "Test Get/Set Edge Rank Info";
   PADDLE_ENFORCE_EQ(
       edge2.GetEdgeRankInfo().first,
       1UL,
-      phi::errors::InvalidArgument("Edge rank info mismatch. Expected 1."));
+      common::errors::InvalidArgument("Edge rank info mismatch. Expected 1."));
   PADDLE_ENFORCE_EQ(
       edge2.GetEdgeRankInfo().second,
       0UL,
-      phi::errors::InvalidArgument("Edge rank info mismatch. Expected 0."));
+      common::errors::InvalidArgument("Edge rank info mismatch. Expected 0."));
   edge2.SetEdgeRankInfo(2, 3);
   PADDLE_ENFORCE_EQ(
       edge2.GetEdgeRankInfo().first,
       2UL,
-      phi::errors::InvalidArgument("Edge rank info mismatch. Expected 2."));
+      common::errors::InvalidArgument("Edge rank info mismatch. Expected 2."));
   PADDLE_ENFORCE_EQ(
       edge2.GetEdgeRankInfo().second,
       3UL,
-      phi::errors::InvalidArgument("Edge rank info mismatch. Expected 3."));
+      common::errors::InvalidArgument("Edge rank info mismatch. Expected 3."));
   edge2.SetEdgeRankInfo(std::make_pair(size_t(4), size_t(5)));
   PADDLE_ENFORCE_EQ(
       edge2.GetEdgeRankInfo().first,
       4UL,
-      phi::errors::InvalidArgument("Edge rank info mismatch. Expected 4."));
+      common::errors::InvalidArgument("Edge rank info mismatch. Expected 4."));
   PADDLE_ENFORCE_EQ(
       edge2.GetEdgeRankInfo().second,
       5UL,
-      phi::errors::InvalidArgument("Edge rank info mismatch. Expected 5."));
+      common::errors::InvalidArgument("Edge rank info mismatch. Expected 5."));
 }

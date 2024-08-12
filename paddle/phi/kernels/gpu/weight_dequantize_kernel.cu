@@ -385,7 +385,7 @@ void WeightDequantize(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       (k % NUMPERTHREAD == 0),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently, WeightDequantize only support k % NUMPERTHREAD == 0."));
   unsigned int block_dim_x = 256;
   unsigned int kperblock = block_dim_x * NUMPERTHREAD;
