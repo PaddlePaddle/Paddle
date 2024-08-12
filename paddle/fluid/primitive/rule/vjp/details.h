@@ -1566,8 +1566,8 @@ void max_grad(const Tensor& x,
     const Tensor x_shape = shape<T>(x);
     const Tensor zero_tensor =
         backend::full_with_tensor<T>(x_shape, 0.0, x.dtype());
-    const size_t axis_size = axis.size();
-    const size_t x_dim_size = x.dims().size();
+    const int64_t axis_size = axis.size();
+    const int64_t x_dim_size = x.dims().size();
 
     reduce_all = false;
     if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
