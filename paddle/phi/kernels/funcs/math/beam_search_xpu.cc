@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iostream>
 #include "glog/logging.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/math/beam_search.h"
@@ -62,6 +63,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
                   bool is_accumulated) {
     auto abs_lod = phi::ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
+    std::cout << "debug22" << std::endl;
 
     auto items = SelectTopBeamSizeItems(pre_ids,
                                         pre_scores,
@@ -83,6 +85,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
       }
     }
 
+    std::cout << "debug11" << std::endl;
     PruneEndBeams(
         pre_ids, abs_lod, &selected_items, level, end_id, ids->place());
     // calculate the output tensor's height
@@ -98,6 +101,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     auto *selected_ids_data = context.template Alloc<int64_t>(selected_ids);
     selected_scores->Resize(dims);
     auto *selected_scores_data = context.template Alloc<float>(selected_scores);
+    std::cout << "debug33" << std::endl;
     if (parent_idx != nullptr) {
       parent_idx->Resize({static_cast<int64_t>(num_instances)});
     }
