@@ -109,7 +109,7 @@ cc_library(
 
 cc_library(
   collective_helper
-  SRCS collective_helper.cc gen_comm_id_helper.cc
+  SRCS collective_helper.cc
   DEPS framework_proto device_context phi common)
 
 cc_test(

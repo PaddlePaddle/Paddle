@@ -20,11 +20,16 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class AttentionBias(ABC):
@@ -57,7 +62,7 @@ class LowerTriangularMaskWithTensorBias(LowerTriangularMask):
 class SeqLenInfo:
     seqstart: paddle.Tensor
     max_seqlen: int
-    seqstart_py: List[int]
+    seqstart_py: list[int]
 
     def intervals(self):
         yield from zip(self.seqstart_py, self.seqstart_py[1:])
@@ -126,7 +131,7 @@ class PaddedSeqLenInfo(SeqLenInfo):
 class BlockDiagonalMask(AttentionBias):
     q_seqinfo: SeqLenInfo
     k_seqinfo: SeqLenInfo
-    _batch_sizes: Optional[Sequence[int]] = None
+    _batch_sizes: Sequence[int] | None = None
 
     def _create_block_mask(self, shape, dtype=paddle.float32):
         return paddle.zeros(shape=shape, dtype=dtype)
@@ -229,7 +234,7 @@ class BlockDiagonalCausalMask(BlockDiagonalMask):
 class BlockDiagonalCausalWithOffsetPaddedKeysMask(AttentionBias):
     q_seqinfo: SeqLenInfo
     k_seqinfo: PaddedSeqLenInfo
-    causal_diagonal: Optional[paddle.Tensor] = None
+    causal_diagonal: paddle.Tensor | None = None
 
     def _create_block_mask(self, shape, offset=0, dtype=paddle.float32):
         create_as = dtype if dtype is not paddle.bfloat16 else paddle.float32

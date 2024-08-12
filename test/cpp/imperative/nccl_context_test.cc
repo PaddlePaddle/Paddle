@@ -19,7 +19,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 namespace imperative = paddle::imperative;
 namespace platform = paddle::platform;
