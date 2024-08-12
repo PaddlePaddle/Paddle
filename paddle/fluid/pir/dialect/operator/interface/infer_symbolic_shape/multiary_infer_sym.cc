@@ -1351,18 +1351,22 @@ bool MulticlassNms3OpInferSymbolicShape(
   std::vector<symbol::DimExpr> nms_rois_num_shape;
   nms_rois_num_shape.emplace_back(next_symbol_nms_rois_num);
 
+  VLOG(3) << "out_shape: " << common::make_ddim(out_shape);
+  VLOG(3) << "index_shape: " << common::make_ddim(index_shape);
+  VLOG(3) << "nms_rois_num_shape: " << common::make_ddim(nms_rois_num_shape);
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_shape)});
+          symbol::TensorShapeOrDataDimExprs(common::make_ddim(out_shape))});
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(index_shape)});
+          symbol::TensorShapeOrDataDimExprs(common::make_ddim(index_shape))});
   infer_context->SetShapeOrDataForValue(
       op->result(2),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(nms_rois_num_shape)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          common::make_ddim(nms_rois_num_shape))});
 
   return true;
 }
