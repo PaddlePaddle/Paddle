@@ -131,7 +131,7 @@ class TestFusedMoEOp(OpTest):
             None if self.quant_method == "None" else self.scale0,
             None if self.quant_method == "None" else self.scale1,
             self.quant_method,
-            2,
+            self.top_k,
         )
 
         return fused_out
