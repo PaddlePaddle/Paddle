@@ -1223,11 +1223,11 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
 }
 bool RoiPoolOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &input_dims =
+  const auto &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  const auto &rois_dim =
+  const auto &rois_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
-  const auto &rois_num =
+  const auto &rois_num_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
 
   int pooled_height =
@@ -1236,38 +1236,38 @@ bool RoiPoolOpInferSymbolicShape(
   int output_channels =
       op->attribute<pir::Int32Attribute>("output_channels").data();
   PADDLE_ENFORCE_EQ(
-      input_dims.size(),
+      x_shape.size(),
       4,
       phi::errors::InvalidArgument(
           "The input data should be a four-dimensional tensor with [N,C,H,W], "
           "but received input data with %d dimension",
-          input_dims.size()));
-  PADDLE_ENFORCE_EQ(rois_dim.size(),
+          x_shape.size()));
+  PADDLE_ENFORCE_EQ(rois_shape.size(),
                     2,
                     phi::errors::InvalidArgument(
                         "rois should be a 2-D LoDTensor with shape (num_rois, "
                         "4) given as [[x1, y1, x2, y2], ...], but received "
                         "rois is %d-dimensional LoDTensor",
-                        rois_dim.size()));
+                        rois_shape.size()));
   const auto &four = symbol::DimExpr(4);
-  infer_context->AddEqualCstr(rois_dim[1], four);
+  infer_context->AddEqualCstr(rois_shape[1], four);
 
-  if (rois_num.size() > 0) {
+  if (rois_num_shape.size() > 0) {
     PADDLE_ENFORCE_EQ(
-        rois_num.size(),
+        rois_num_shape.size(),
         1,
         phi::errors::InvalidArgument(
             "The number of rois should be a 1-D tensor with shape (num_rois), "
             "but received the number of rois with %d dimension",
-            rois_num.size()));
+            rois_num_shape.size()));
   }
 
-  infer_context->AddEqualCstr(input_dims[1],
+  infer_context->AddEqualCstr(x_shape[1],
                               output_channels * pooled_height * pooled_width);
 
-  auto out_dims = input_dims;
+  auto out_dims = x_shape;
 
-  out_dims[0] = rois_num[0];
+  out_dims[0] = rois_num_shape[0];
   out_dims[1] = symbol::DimExpr(output_channels);
   out_dims[2] = symbol::DimExpr(pooled_height);
   out_dims[3] = symbol::DimExpr(pooled_width);
