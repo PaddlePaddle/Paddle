@@ -198,16 +198,7 @@ bool BincountOpInferSymbolicShape(
                           "The 'shape' of Input(Weights) must be 1-D tensor. "
                           "But the dimension of Input(Weights) is [%d]",
                           weights_dims.size()));
-
-    PADDLE_ENFORCE_EQ(
-        weights_dims[0],
-        x_dims[0],
-        common::errors::InvalidArgument(
-            "The 'shape' of Input(Weights) must be equal to the 'shape' of "
-            "Input(X). But received: the 'shape' of Input(Weights) is [%s], "
-            "the 'shape' of Input(X) is [%s]",
-            weights_dims,
-            x_dims));
+    infer_context->AddEqualCstr(weights_dims[0], x_dims[0]);
   }
 
   // Set the output shape, which is of unknown size (-1)
