@@ -244,21 +244,21 @@ bool BatchFcOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       input_dims.size(),
       3,
-      common::errors::InvalidArgument("Input of BatchFCOp should have 3D."));
+      common::errors::InvalidArgument("Input of BatchFcOp should have 3D."));
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       3,
-      common::errors::InvalidArgument("W of BatchFCOp should have 3D."));
+      common::errors::InvalidArgument("W of BatchFcOp should have 3D."));
   PADDLE_ENFORCE_EQ(
       input_dims[0],
       w_dims[0],
       common::errors::InvalidArgument(
-          "Input.dim[0] and W.dim[0] of BatchFCOp should be same."));
+          "Input.dim[0] and W.dim[0] of BatchFcOp should be same."));
   PADDLE_ENFORCE_EQ(
       input_dims[2],
       w_dims[1],
       common::errors::InvalidArgument(
-          "Input.dim[2] and W.dim[1] of BatchFCOp should be same."));
+          "Input.dim[2] and W.dim[1] of BatchFcOp should be same."));
   PADDLE_ENFORCE_EQ(bias_dims[0],
                     input_dims[0],
                     common::errors::InvalidArgument(
