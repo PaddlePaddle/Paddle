@@ -440,36 +440,39 @@ bool CholeskyOpInferSymbolicShape(
   return true;
 }
 
-// bool ClassCenterSampleOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // 获取输入张量的符号形状或数据
-//   const symbol::ShapeOrDataDimExprs &label_shape_or_data =
-//       infer_context->GetShapeOrDataForValue(op->operand_source(0));
+bool ClassCenterSampleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // 获取输入张量的符号形状或数据
+  const symbol::ShapeOrDataDimExprs &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
-//   // 确保输入张量的rank为1
-//   PADDLE_ENFORCE_EQ(label_shape_or_data.shape().size(),
-//                     1,
-//                     common::errors::InvalidArgument(
-//                         "Rank of Input(Label) should be equal to 1, "
-//                         "but the value given is %d.",
-//                         label_shape_or_data.shape().size()));
+  // 确保输入张量的rank为1
+  PADDLE_ENFORCE_EQ(label_shape_or_data.shape().size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "Rank of Input(Label) should be equal to 1, "
+                        "but the value given is %d.",
+                        label_shape_or_data.shape().size()));
 
-//   // 获取属性值
-//   int num_samples = op->attribute<pir::Int32Attribute>("num_samples").data();
+  // 获取属性值
+  int num_samples = op->attribute<pir::Int32Attribute>("num_samples").data();
 
-//   // 设置输出张量 remapped_label 的符号形状
-//   infer_context->SetShapeOrDataForValue(op->result(0), label_shape_or_data);
+  // 设置输出张量 remapped_label 的符号形状
+  infer_context->SetShapeOrDataForValue(op->result(0), label_shape_or_data);
 
-//   // 设置输出张量 sampled_local_class_center 的符号形状
-//   std::vector<symbol::DimExpr> sampled_local_class_center_shape;
-//   sampled_local_class_center_shape.emplace_back(symbol::DimExpr(num_samples));
-//   infer_context->SetShapeOrDataForValue(
-//       op->result(1),
-//       symbol::ShapeOrDataDimExprs{
-//           symbol::TensorShapeOrDataDimExprs(sampled_local_class_center_shape)});
+  symbol::DimExpr out_unknown =
+      infer_context->GetNextSymName();  // unknown until runtime
 
-//   return true;
-// }
+  // 设置输出张量 sampled_local_class_center 的符号形状
+  std::vector<symbol::DimExpr> sampled_local_class_center_shape;
+  sampled_local_class_center_shape.emplace_back(symbol::DimExpr({out_unknown}));
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(sampled_local_class_center_shape)});
+
+  return true;
+}
 
 bool ClipByNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
