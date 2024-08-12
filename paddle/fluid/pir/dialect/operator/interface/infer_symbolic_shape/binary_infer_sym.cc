@@ -179,6 +179,20 @@ bool BincountOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
+  const std::vector<symbol::DimExpr> &input_data = x_shape_or_data.data();
+  const std::vector<symbol::DimExpr> &input_numel = input_data->numerl();
+
+  int64_t output_size = static_cast<int64_t>(*std::max_element(
+                            input_data[0], input_data[0] + input_numel[0])) +
+                        1L;
+
+  const auto &minlength_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const std::vector<symbol::DimExpr> &minlength_data =
+      minlength_shape_or_data.data();
+
+  output_size = std::max(output_size, static_cast<int64_t>(minlength_data[0]));
+
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     1,
                     common::errors::InvalidArgument(
@@ -202,7 +216,7 @@ bool BincountOpInferSymbolicShape(
   }
 
   // Set the output shape, which is of unknown size (-1)
-  std::vector<symbol::DimExpr> out_dims = {symbol::DimExpr({-1})};
+  std::vector<symbol::DimExpr> out_dims = {symbol::DimExpr(output_size)};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
