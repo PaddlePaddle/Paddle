@@ -1499,6 +1499,7 @@
     func : EigvalsInferMeta
   kernel :
     func : eigvals
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : eigvalsh
   args : (Tensor x, str uplo = "L", bool is_test = false)
