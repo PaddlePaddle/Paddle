@@ -61,6 +61,8 @@ class ProcessMeshAttribute : public pir::AttrBase<ProcessMeshAttribute,
                                   const std::vector<int64_t>& shape,
                                   const std::vector<int64_t>& process_ids,
                                   const std::vector<std::string>& dim_names);
+
+  static std::string name() { return "a_process_mesh"; }
 };
 
 class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
@@ -98,6 +100,8 @@ class TensorDistAttribute : public pir::AttrBase<TensorDistAttribute,
                dims_mapping,
                partial_status);
   }
+
+  static std::string name() { return "a_tensor_dist"; }
 };
 
 class OperationDistAttribute : public pir::AttrBase<OperationDistAttribute,
@@ -128,6 +132,8 @@ class OperationDistAttribute : public pir::AttrBase<OperationDistAttribute,
                                     const std::vector<Attribute>& results) {
     return get(ctx, ProcessMeshAttribute::get(ctx, mesh), operands, results);
   }
+
+  static std::string name() { return "a_op_dist"; }
 };
 
 }  // namespace dialect

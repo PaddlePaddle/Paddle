@@ -34,7 +34,7 @@ class TestTranposeUnsqueezeFusePass(PassTest):
                     name='x', shape=[5, 5, 5, 5], dtype='float32'
                 )
                 transpose = paddle.transpose(
-                    x, [len(x.shape) - 1] + list(range(0, len(x.shape) - 1))
+                    x, [len(x.shape) - 1, *range(0, len(x.shape) - 1)]
                 )
                 out = paddle.unsqueeze(transpose, [1])
                 out = paddle.assign(out)

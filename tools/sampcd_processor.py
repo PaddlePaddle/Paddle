@@ -80,7 +80,7 @@ def _patch_tensor_place():
         (.*?)                   # Place=(XXX)
         (\,.*?\))
         """,
-        re.X | re.S,
+        re.VERBOSE | re.DOTALL,
     )
 
     _check_output = checker.check_output
@@ -128,7 +128,7 @@ def _patch_float_precision(digits):
             )?
         )
         """,
-        re.X | re.S,
+        re.VERBOSE | re.DOTALL,
     )
 
     _check_output = checker.check_output
@@ -201,7 +201,7 @@ class TimeoutDirective(Directive):
             )
         )
         """,
-        re.X | re.S,
+        re.VERBOSE | re.DOTALL,
     )
 
     def __init__(self, timeout):
@@ -239,7 +239,7 @@ class SingleProcessDirective(Directive):
             \s
         )
         """,
-        re.X | re.S,
+        re.VERBOSE | re.DOTALL,
     )
 
     def parse_directive(self, docstring):
@@ -276,7 +276,7 @@ class Fluid(BadStatement):
         .*
         (\bfluid\b)
         """,
-        re.X,
+        re.VERBOSE,
     )
 
     def check(self, docstring):
@@ -300,7 +300,7 @@ class SkipNoReason(BadStatement):
         [+]SKIP
         (?P<reason>.*)
         """,
-        re.X,
+        re.VERBOSE,
     )
 
     def check(self, docstring):
@@ -324,7 +324,7 @@ class DeprecatedRequired(BadStatement):
         (?P<directive>require[sd]?\s*:)
         (?P<env>.+)
         """,
-        re.X,
+        re.VERBOSE,
     )
 
     def check(self, docstring):
@@ -398,7 +398,7 @@ class Xdoctester(DocTester):
             (doctest)       # directive prefix, which should be replaced
             (?=(:\s*.*\n))  # positive lookahead, directive content
             """,
-            re.X,
+            re.VERBOSE,
         )
 
         self.directive_prefix = 'xdoctest'

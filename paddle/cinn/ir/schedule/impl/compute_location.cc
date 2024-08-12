@@ -132,11 +132,11 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
     VLOG(3) << i << "-th block_loop:\n" << block_loops[i];
     std::optional<bool> prove_eq = analyzer.ProveEQ(
         loops[i].As<ir::For>()->extent, block_loops[i].As<ir::For>()->extent);
-    PADDLE_ENFORCE_EQ(
-        prove_eq.has_value() && prove_eq.value(),
-        true,
-        phi::errors::InvalidArgument("The proof result should have a value and "
-                                     "the proof result is false."));
+    PADDLE_ENFORCE_EQ(prove_eq.has_value() && prove_eq.value(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The proof result should have a value and "
+                          "the proof result is false."));
     if (!prove_eq.has_value() || prove_eq.value() == false) {
       os << "Extent of loop in Expr Param(loop) and extent of loop in Expr "
             "Param(block) should be equal correspondingly!\n";
@@ -232,12 +232,12 @@ void DyScheduleImpl::ReverseComputeAt(const Expr& block,
   std::ostringstream os;
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The block argument must be of type ScheduleBlockRealize."));
 
-  PADDLE_ENFORCE_NOT_NULL(
-      loop.As<ir::For>(),
-      phi::errors::InvalidArgument("The loop argument must be of type For."));
+  PADDLE_ENFORCE_NOT_NULL(loop.As<ir::For>(),
+                          ::common::errors::InvalidArgument(
+                              "The loop argument must be of type For."));
   Expr root = this->GetRootBlock(block);
   auto producers = GetProducers(block, root);
   auto consumers = GetConsumers(block, root);
