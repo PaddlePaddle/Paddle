@@ -1912,6 +1912,9 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
           }
           grad_node->SetGradInMeta(self->tensor, 0);
         }
+      } else {
+        self->tensor.set_autograd_meta(
+            transed_sub_tensor.mutable_autograd_meta());
       }
       if (PyCheckTensor(value_obj)) {
         // pass the stop_gradient from value to tensor.
