@@ -17,15 +17,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PartialRecvOpCPUKernel(const Context& dev_ctx UNUSED,
-                            int ring_id UNUSED,
-                            int peer UNUSED,
-                            DataType dtype UNUSED,
-                            const std::vector<int>& out_shape UNUSED,
-                            bool use_calc_stream UNUSED,
-                            int num UNUSED,
-                            int id UNUSED,
-                            DenseTensor* out UNUSED) {
+void PartialRecvKernel(const Context& dev_ctx UNUSED,
+                       int ring_id UNUSED,
+                       int peer UNUSED,
+                       DataType dtype UNUSED,
+                       const std::vector<int>& out_shape UNUSED,
+                       bool use_calc_stream UNUSED,
+                       int num UNUSED,
+                       int id UNUSED,
+                       DenseTensor* out UNUSED) {
   PADDLE_THROW(common::errors::Unavailable(
       "Do not support partial_recv for cpu kernel now."));
 }
@@ -35,7 +35,7 @@ void PartialRecvOpCPUKernel(const Context& dev_ctx UNUSED,
 PD_REGISTER_KERNEL(partial_recv_v2,
                    CPU,
                    ALL_LAYOUT,
-                   phi::PartialRecvOpCPUKernel,
+                   phi::PartialRecvKernel,
                    float,
                    double,
                    int,
