@@ -580,44 +580,39 @@ bool DiagOpInferSymbolicShape(pir::Operation *op,
   const auto x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto x_shape = x_shape_or_data.shape();
-  const int offset = op->attribute<pir::Int32Attribute>("offset").data();
-  int64_t x_dim_0 = 1, x_dim_1;
-
-  if (x_shape.size() == 1) {
-    if (x_shape[0].isa<int64_t>())
-      x_dim_0 = x_shape[0].dyn_cast<int64_t>();
-    else
-      x_dim_0 = x_shape_or_data.data().value()[0].dyn_cast<int64_t>();
-  }
-
-  if (x_shape.size() == 2) {
-    if (x_shape[1].isa<int64_t>())
-      x_dim_1 = x_shape[1].dyn_cast<int64_t>();
-    else
-      x_dim_1 = x_shape_or_data.data().value()[1].dyn_cast<int64_t>();
-  }
+  const int offset_data = op->attribute<pir::Int32Attribute>("offset").data();
+  auto offset = symbol::DimExpr(offset_data);
 
   if (x_shape.size() <= 1) {
-    int64_t size_ = (x_shape.size() == 1UL ? x_dim_0 : 1L) + offset;
+    symbol::DimExpr size_ =
+        (x_shape.size() == 1UL ? x_shape[0] : symbol::DimExpr(1)) + offset;
     infer_context->SetShapeOrDataForValue(
         op->result(0), symbol::TensorShapeOrDataDimExprs({size_, size_}));
   } else if (x_shape.size() == 2UL) {
-    int64_t size_ = 0;
-    if (offset >= 0) {
-      if (x_dim_0 > x_dim_1) {
-        size_ = x_dim_0;
+    if (x_shape[0].isa<int64_t>() && x_shape[1].isa<int64_t>()) {
+      int64_t size_ = 0;
+      if (offset_data >= 0) {
+        if (x_shape[0].dyn_cast<int64_t>() > x_shape[1].dyn_cast<int64_t>()) {
+          size_ = x_shape[0].dyn_cast<int64_t>();
+        } else {
+          size_ = x_shape[1].dyn_cast<int64_t>() - offset_data;
+        }
       } else {
-        size_ = x_dim_1 - offset;
+        if (x_shape[0].dyn_cast<int64_t>() + offset_data <
+            x_shape[1].dyn_cast<int64_t>()) {
+          size_ = x_shape[0].dyn_cast<int64_t>() + offset_data;
+        } else {
+          size_ = x_shape[1].dyn_cast<int64_t>();
+        }
       }
+      infer_context->SetShapeOrDataForValue(
+          op->result(0), symbol::TensorShapeOrDataDimExprs({size_}));
     } else {
-      if (x_dim_0 + offset < x_dim_1) {
-        size_ = x_dim_0 + offset;
-      } else {
-        size_ = x_dim_1;
-      }
+      symbol::DimExpr out_unknown =
+          infer_context->GetNextSymName();  // unknown until runtime
+      infer_context->SetShapeOrDataForValue(
+          op->result(0), symbol::TensorShapeOrDataDimExprs({out_unknown}));
     }
-    infer_context->SetShapeOrDataForValue(
-        op->result(0), symbol::TensorShapeOrDataDimExprs({size_}));
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "diag only support 1D/2D matrix, but input has %u dims",
