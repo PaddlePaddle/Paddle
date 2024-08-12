@@ -120,8 +120,6 @@ class DecoderAttentionPattern : public paddle::drr::DrrPatternBase {
       const auto &transpose_v_perm =
           match_ctx.Attr<std::vector<int32_t>>("transpose_v_perm");
 
-      VLOG(0) << "calc constraints of transpose op";
-
       if (transpose_q_perm.size() != 4 || transpose_k_perm.size() != 4 ||
           transpose_v_perm.size() != 4) {
         return false;
@@ -138,7 +136,6 @@ class DecoderAttentionPattern : public paddle::drr::DrrPatternBase {
           transpose_v_perm[2] != 1 || transpose_v_perm[3] != 3) {
         return false;
       }
-      VLOG(0) << "constraints of transpose op are satisfied";
       return true;
     });
 

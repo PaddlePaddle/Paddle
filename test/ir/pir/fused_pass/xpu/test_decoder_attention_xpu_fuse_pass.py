@@ -80,7 +80,7 @@ class TestAddLayernormXpuFusePattern(PassTest):
     def setUp(self):
         if core.is_compiled_with_xpu():
             self.places.append(paddle.XPUPlace(0))
-        self.skip_accuracy_verification = True
+        self.skip_accuracy_verification = False
 
     def sample_program(self):
         yield self.build_ir_program(), False
