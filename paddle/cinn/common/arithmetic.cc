@@ -147,15 +147,19 @@ GiNaC::ex ExprToGinacConverter::operator()(Expr expr) {
            n->As<IfThenElse>();
   });
 
-  CHECK(complex_nodes.empty()) << "Ginac converter can only deal with simple "
-                                  "math expression, but get some complex nodes"
-                               << expr;
-
+  PADDLE_ENFORCE_EQ(complex_nodes.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Ginac converter can only deal with simple math "
+                        "expression, but get some complex nodes."));
   return BuildHelper(expr);
 }
 
 GiNaC::symbol ExprToGinacConverter::CreateGinacSymbol(const std::string& repr) {
-  CHECK(!repr.empty());
+  PADDLE_ENFORCE_EQ(
+      !repr.empty(),
+      true,
+      ::common::errors::InvalidArgument("The repr should not be empty."));
   auto it = repr_to_ginac_.find(repr);
   if (it != repr_to_ginac_.end()) return it->second;
 
@@ -165,7 +169,9 @@ GiNaC::symbol ExprToGinacConverter::CreateGinacSymbol(const std::string& repr) {
 }
 
 GiNaC::symbol ExprToGinacConverter::CreateGinacSymbol(const ir::Expr& var) {
-  CHECK(var.As<_Var_>());
+  PADDLE_ENFORCE_NOT_NULL(
+      var.As<_Var_>(),
+      ::common::errors::InvalidArgument("The var should not be nullptr."));
   return CreateGinacSymbol(Repr(var));
 }
 
@@ -191,8 +197,10 @@ class GiNaCToExprVisitor : public GiNaC::symbol::visitor,
 
   void visit(const GiNaC::symbol& node) override {
     auto it = repr_to_expr.find(node.get_name());
-    CHECK(it != repr_to_expr.end())
-        << "node [" << node.get_name() << "] not found";
+    PADDLE_ENFORCE_NE(
+        it,
+        repr_to_expr.end(),
+        ::common::errors::InvalidArgument("The node should be found."));
     cur = it->second;
   }
 
@@ -221,7 +229,9 @@ class GiNaCToExprVisitor : public GiNaC::symbol::visitor,
     node.op(1).accept(*this);
 
     auto* intv = cur.As<IntImm>();
-    CHECK(intv);
+    PADDLE_ENFORCE_NOT_NULL(
+        intv,
+        ::common::errors::InvalidArgument("The intv should not be nullptr."));
     PADDLE_ENFORCE_EQ(
         intv->value,
         -1,
@@ -313,8 +323,10 @@ std::tuple<Expr, bool /*positive*/> Solve(Expr lhs, Expr rhs, Var var) {
   // tell the symbol
   auto diff = lhs_ex - rhs_ex;
   auto diff_res = ginac::diff(diff, symbol);
-  CHECK(!diff_res.is_zero());
-
+  PADDLE_ENFORCE_EQ(
+      !diff_res.is_zero(),
+      true,
+      ::common::errors::InvalidArgument("The diff_res should not be zero."));
   return std::make_tuple(value, diff_res > 0);
 }
 

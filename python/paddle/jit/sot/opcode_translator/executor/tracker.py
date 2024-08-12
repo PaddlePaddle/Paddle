@@ -24,7 +24,7 @@ from ...utils import InnerError, NameGenerator
 from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
 
 if TYPE_CHECKING:
-    from typing import Sequence
+    from collections.abc import Sequence
 
     from .pycode_generator import PyCodeGen
     from .variables import VariableBase
@@ -57,7 +57,7 @@ class Tracker:
         Args:
             codegen (PyCodeGen): An instance of PyCodeGen to generate instructions.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     # TODO(xiongkun): trace_value_from_frame is not a good name, it should be more related to guard but not tracable.
     def trace_value_from_frame(self) -> StringifiedExpression:
@@ -67,7 +67,7 @@ class Tracker:
         Returns:
             The value of the tracked variables.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def is_traceable(self) -> bool:
         """
@@ -447,7 +447,7 @@ class GetIterTracker(Tracker):
 
 class CreateLayerTracker(Tracker):
     def __init__(self, layer_class, args, kwargs):
-        super().__init__([layer_class] + list(args) + list(kwargs.values()))
+        super().__init__([layer_class, *list(args), *list(kwargs.values())])
         self.layer_class = layer_class
         self.args = args
         self.kwargs = kwargs
@@ -490,7 +490,7 @@ class CreateLayerTracker(Tracker):
 
         return StringifiedExpression(
             expr,
-            [class_tracer] + arg_tracers + kwarg_tracers,
+            [class_tracer, *arg_tracers, *kwarg_tracers],
             union_free_vars(
                 *(
                     tracer.free_vars

@@ -179,13 +179,13 @@ class TestCrossEntropyOp4(TestCrossEntropyOp):
         self.X_2d = randomize_probability(self.ins_num, self.class_num).astype(
             self.dtype
         )
-        self.x = self.X_2d.reshape(self.shape + [self.class_num])
+        self.x = self.X_2d.reshape([*self.shape, self.class_num])
 
     def init_label(self):
         self.label_2d = np.random.randint(
             0, self.class_num, (self.ins_num, 1), dtype="int64"
         )
-        self.label = self.label_2d.reshape(self.shape + [1])
+        self.label = self.label_2d.reshape([*self.shape, 1])
 
     def get_cross_entropy(self):
         cross_entropy_2d = np.array(
@@ -195,7 +195,7 @@ class TestCrossEntropyOp4(TestCrossEntropyOp):
             ]
         ).astype(self.dtype)
         self.cross_entropy = np.array(cross_entropy_2d).reshape(
-            self.shape + [1]
+            [*self.shape, 1]
         )
 
     def init_attr_type(self):
@@ -236,14 +236,14 @@ class TestCrossEntropyOp5(TestCrossEntropyOp):
         self.X_2d = randomize_probability(self.ins_num, self.class_num).astype(
             self.dtype
         )
-        self.x = self.X_2d.reshape(self.shape + [self.class_num])
+        self.x = self.X_2d.reshape([*self.shape, self.class_num])
 
     def init_label(self):
         self.label_2d = np.random.uniform(
             0.1, 1.0, [self.ins_num, self.class_num]
         ).astype(self.dtype)
         self.label_2d /= self.label_2d.sum(axis=1, keepdims=True)
-        self.label = self.label_2d.reshape(self.shape + [self.class_num])
+        self.label = self.label_2d.reshape([*self.shape, self.class_num])
 
     def get_cross_entropy(self):
         cross_entropy_2d = (
@@ -252,7 +252,7 @@ class TestCrossEntropyOp5(TestCrossEntropyOp):
             .astype(self.dtype)
         )
         self.cross_entropy = np.array(cross_entropy_2d).reshape(
-            self.shape + [1]
+            [*self.shape, 1]
         )
 
     def init_attr_type(self):
@@ -279,7 +279,7 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
         self.X_2d = randomize_probability(self.ins_num, self.class_num).astype(
             self.dtype
         )
-        self.x = self.X_2d.reshape(self.shape + [self.class_num])
+        self.x = self.X_2d.reshape([*self.shape, self.class_num])
 
     def init_label(self):
         self.label_index_2d = np.random.randint(
@@ -287,7 +287,7 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
         )
         label_2d = np.zeros(self.X_2d.shape)
         label_2d[np.arange(self.ins_num), self.label_index_2d] = 1
-        self.label = label_2d.reshape(self.shape + [self.class_num]).astype(
+        self.label = label_2d.reshape([*self.shape, self.class_num]).astype(
             self.dtype
         )
 
@@ -300,7 +300,7 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
         )
         self.cross_entropy = (
             np.array(cross_entropy_2d)
-            .reshape(self.shape + [1])
+            .reshape([*self.shape, 1])
             .astype(self.dtype)
         )
 
@@ -330,9 +330,11 @@ class TestCrossEntropyOp7(TestCrossEntropyOp):
     def get_cross_entropy(self):
         self.cross_entropy = np.array(
             [
-                [-np.log(self.x[i][self.label[i][0]])]
-                if self.label[i][0] != self.ignore_index
-                else [0]
+                (
+                    [-np.log(self.x[i][self.label[i][0]])]
+                    if self.label[i][0] != self.ignore_index
+                    else [0]
+                )
                 for i in range(self.x.shape[0])
             ]
         ).astype(self.dtype)
@@ -360,9 +362,11 @@ class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
     def get_cross_entropy(self):
         self.cross_entropy = np.array(
             [
-                [-np.log(self.x[i][self.label[i]])]
-                if self.label[i] != self.ignore_index
-                else [0]
+                (
+                    [-np.log(self.x[i][self.label[i]])]
+                    if self.label[i] != self.ignore_index
+                    else [0]
+                )
                 for i in range(self.x.shape[0])
             ]
         ).astype(self.dtype)

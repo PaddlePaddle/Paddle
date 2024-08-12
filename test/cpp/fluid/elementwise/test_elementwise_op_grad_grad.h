@@ -26,10 +26,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/memory.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace operators {

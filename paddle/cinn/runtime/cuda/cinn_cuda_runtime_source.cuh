@@ -651,6 +651,45 @@ EXPAND_REDUCE_FP16_MACRO(CINN_DISCRETE_REDUCE_INTERNAL_SHM_MACRO)
 #undef CINN_DISCRETE_REDUCE_INTERNAL_SHM_IMPL
 #undef CINN_DISCRETE_REDUCE_INTERNAL_SHM_MACRO
 
+#define CINN_INTERVAL_REDUCE_INTERNAL_SHM_IMPL(REDUCE_TYPE, value)               \
+  int tid = (threadIdx.z * blockDim.y + threadIdx.y) * blockDim.x + threadIdx.x; \
+  shm[tid] = value;                                                              \
+  __syncthreads();                                                               \
+  for (int size = blockDim.z; size > 1; size = (size + 1) / 2) {                 \
+    if (threadIdx.z < size / 2) {                                                \
+      shm[tid] = cinn_##REDUCE_TYPE(shm[tid], shm[tid + ((size + 1) / 2) * blockDim.y * blockDim.x]); \
+    }                                                                            \
+    __syncthreads();                                                             \
+  }                                                                              \
+  for (int size = blockDim.x; size > 1; size = (size + 1) / 2) {                 \
+    if (threadIdx.x < size / 2 && threadIdx.z == 0) {                            \
+      shm[tid] = cinn_##REDUCE_TYPE(shm[tid], shm[tid + ((size + 1) / 2)]);      \
+    }                                                                            \
+    __syncthreads();                                                             \
+  }                                                                              \
+  return shm[threadIdx.y * blockDim.x];
+
+#define CINN_INTERVAL_REDUCE_INTERNAL_SHM_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                           \
+  __device__ inline DTYPE cinn_interval_reduce_##REDUCE_TYPE##_internal_shm(const DTYPE value, DTYPE* shm) { \
+    CINN_INTERVAL_REDUCE_INTERNAL_SHM_IMPL(REDUCE_TYPE, value); \
+  }
+
+EXPAND_REDUCE_INT32_MARCO(CINN_INTERVAL_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_INT64_MARCO(CINN_INTERVAL_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_FP32_MACRO(CINN_INTERVAL_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_FP64_MACRO(CINN_INTERVAL_REDUCE_INTERNAL_SHM_MACRO)
+EXPAND_REDUCE_BOOL_MACRO(CINN_INTERVAL_REDUCE_INTERNAL_SHM_MACRO)
+
+#ifdef CINN_CUDA_BF16
+EXPAND_REDUCE_BF16_MACRO(CINN_INTERVAL_REDUCE_INTERNAL_SHM_MACRO)
+#endif
+
+#ifdef CINN_CUDA_FP16
+EXPAND_REDUCE_FP16_MACRO(CINN_INTERVAL_REDUCE_INTERNAL_SHM_MACRO)
+#endif
+
+#undef CINN_INTERVAL_REDUCE_INTERNAL_SHM_IMPL
+#undef CINN_INTERVAL_REDUCE_INTERNAL_SHM_MACRO
 
 #define CINN_BLOCK_REDUCE_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                     \
   __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE(const DTYPE *buf, int offset, int extend) { \

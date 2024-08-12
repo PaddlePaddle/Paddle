@@ -594,9 +594,9 @@ def append_backward_ops(
         for outside_output, inside_output in zip(
             base_op.results(), inside_outputs
         ):
-            state.inside_value_to_outside_value_map[
-                inside_output
-            ] = outside_output
+            state.inside_value_to_outside_value_map[inside_output] = (
+                outside_output
+            )
         forward_ops = effective_forward_ops[:-1]
     else:
         forward_ops = effective_forward_ops
@@ -642,9 +642,9 @@ def append_backward_ops(
                     while_tuple_ops.append(stackop)
                     bwd_ops = [pop_op]
                     for output, copy_output in zip(inputs[1:], copy_out[1:]):
-                        control_flow_value_to_copyvalue_map[
-                            output[0]
-                        ] = copy_output[0]
+                        control_flow_value_to_copyvalue_map[output[0]] = (
+                            copy_output[0]
+                        )
                 else:
                     # all(zero_flag) support this op has no contribution for grad
                     # should be delete (prune sub_graph)
@@ -713,9 +713,9 @@ def append_backward_ops(
                                 control_flow_value_to_copyvalue_map=sub_control_flow_value_to_copyvalue_map,
                             )
                             for input_tuple in inputs_used_by_other_op:
-                                state.value_to_valuegrad[
-                                    input_tuple[0]
-                                ] = input_tuple[1]
+                                state.value_to_valuegrad[input_tuple[0]] = (
+                                    input_tuple[1]
+                                )
 
                         for input_tuple in inputs_used_by_other_op:
                             state.value_to_valuegrad[input_tuple[0]] = []
