@@ -622,12 +622,60 @@ bool BilinearOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool BroadcastTensorsOpInferSymbolicShape(pir::Operation *op,
-//                                           pir::InferSymbolicShapeContext
-//                                           *infer_context) {
-//   // pass
-//   return true;
-// }
+bool BroadcastTensorsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<std::vector<symbol::DimExpr>> input_shapes;
+  for (size_t i = 0; i < op->num_operands(); ++i) {
+    const auto &input_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(i));
+    input_shapes.push_back(input_shape_or_data.shape());
+  }
+
+  int target_rank = 0;
+
+  // 1. Find Output rank = max(Inputs rank)
+  for (const auto &input_shape : input_shapes) {
+    target_rank = std::max(target_rank, static_cast<int>(input_shape.size()));
+  }
+
+  std::vector<symbol::DimExpr> target_dims(target_rank, symbol::DimExpr(1));
+
+  // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
+  for (int index = 0; index < target_rank; ++index) {
+    symbol::DimExpr target_dim_size(1);
+    for (const auto &input_shape : input_shapes) {
+      int axis = static_cast<int>(input_shape.size()) - index - 1;
+      symbol::DimExpr dim_size(1);
+      if (axis >= 0) {
+        dim_size = input_shape[axis];
+      }
+
+      if (!target_dim_size.is_dynamic() && !dim_size.is_dynamic() &&
+          target_dim_size != dim_size && dim_size != 1 &&
+          target_dim_size != 1) {
+        PADDLE_THROW(errors::InvalidArgument(
+            "BroadcastTensorsOp inputs do not satisfy broadcast semantics, "
+            "please check axis = %d in reverse order",
+            index));
+      }
+
+      if (dim_size != 1) {
+        target_dim_size = dim_size;
+      }
+    }
+    target_dims[target_rank - index - 1] = target_dim_size;
+  }
+
+  // 3. Set Output Dim
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(i),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(target_dims)});
+  }
+
+  return true;
+}
 
 bool BilinearInterpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
