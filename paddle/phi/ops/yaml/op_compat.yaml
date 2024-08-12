@@ -364,7 +364,7 @@
 
 - op : barrier
   inputs :
-    {x : X, ring_id : Ring_id}
+    {x : X}
   outputs :
     out : Out
 
