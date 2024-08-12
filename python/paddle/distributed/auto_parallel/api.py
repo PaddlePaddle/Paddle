@@ -2737,7 +2737,15 @@ class ShardDataloader:
         dataloader: paddle.io.DataLoader,
         meshes: ProcessMesh | list[ProcessMesh] | tuple[ProcessMesh],
         input_keys: list[str] | tuple[str] | None = None,
-        shard_dims: list | tuple | str | int | None = None,
+        shard_dims: (
+            list
+            | tuple
+            | str
+            | int
+            | list[dist.Placement]
+            | list[list[dist.Placement]]
+            | None
+        ) = None,
         is_dataset_splitted: bool = False,
     ):
         # do some check
@@ -2869,6 +2877,7 @@ class ShardDataloader:
             for shard_dim in shard_dims:
                 mesh_dim = self._convert_placements_to_mesh_dim(shard_dim)
                 res.append(mesh_dim)
+            return res
         else:
             raise TypeError(
                 f"shard_dims must be Placements or list/tuple of Placements, but got {type(shard_dims)}"
@@ -3034,10 +3043,18 @@ class ShardDataloader:
 
 
 def shard_dataloader(
-    dataloader: DataLoader,
-    meshes: ProcessMesh | Sequence[ProcessMesh],
-    input_keys: Sequence[str] | None = None,
-    shard_dims: Sequence[str] | Sequence[int] | str | int | None = None,
+    dataloader: paddle.io.DataLoader,
+    meshes: ProcessMesh | list[ProcessMesh] | tuple[ProcessMesh],
+    input_keys: list[str] | tuple[str] | None = None,
+    shard_dims: (
+        list
+        | tuple
+        | str
+        | int
+        | list[dist.Placement]
+        | list[list[dist.Placement]]
+        | None
+    ) = None,
     is_dataset_splitted: bool = False,
 ) -> ShardDataloader:
     """
