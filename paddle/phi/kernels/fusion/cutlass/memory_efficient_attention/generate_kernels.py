@@ -387,9 +387,9 @@ def write_decl_impl(
     kernels.sort()
 
     implfile_to_kernels: dict[str, list[T]] = collections.defaultdict(list)
-    cat_to_kernels: dict[
-        tuple[str, int, int], list[T]
-    ] = collections.defaultdict(list)
+    cat_to_kernels: dict[tuple[str, int, int], list[T]] = (
+        collections.defaultdict(list)
+    )
 
     dispatch_all = ""
     declarations = cpp_file_header + "#pragma once\n"

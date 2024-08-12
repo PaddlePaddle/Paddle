@@ -975,7 +975,7 @@ class stream_guard:
             >>> data2 = paddle.ones(shape=[20])
             >>> data3 = data1 + data2
             >>> with paddle.device.stream_guard(s):
-            ...     s.wait_stream(paddle.device.default_stream())
+            ...     s.wait_stream(paddle.device.default_stream()) # type: ignore[attr-defined]
             ...     data4 = data1 + data3
 
     '''

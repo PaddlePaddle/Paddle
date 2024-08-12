@@ -31,14 +31,14 @@ struct ScheduleBlockRemover : public ir::IRMutator<Expr*> {
     auto* node = expr->As<ir::ScheduleBlockRealize>();
     PADDLE_ENFORCE_NOT_NULL(
         node,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The expression could not be cast to ir::ScheduleBlockRealize. "
             "Please check the expression type."));
     auto& iter_values = node->iter_values;
     auto* schedule_block = node->schedule_block.As<ir::ScheduleBlock>();
     PADDLE_ENFORCE_NOT_NULL(
         schedule_block,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The schedule block could not be cast to ir::ScheduleBlock. Please "
             "check the schedule block type."));
     auto& iter_vars = schedule_block->iter_vars;

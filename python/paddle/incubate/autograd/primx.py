@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import typing
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Sequence, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import paddle
 from paddle.base import framework
@@ -41,6 +41,8 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.base.framework import Block
 

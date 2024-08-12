@@ -106,10 +106,7 @@ def process_scalar(op_item, scalar_configs):
 
                 scalar_config = scalar_configs[attr_item['name']]
                 attr_item['is_support_tensor'] = (
-                    True
-                    if 'support_tensor' in scalar_config
-                    and scalar_config['support_tensor']
-                    else False
+                    True if scalar_config.get('support_tensor') else False
                 )
                 attr_item['data_type'] = (
                     scalar_config['data_type']
@@ -144,10 +141,7 @@ def process_int_array(op_item, int_array_configs):
 
                 int_array_config = int_array_configs[attr_item['name']]
                 attr_item['is_support_tensor'] = (
-                    True
-                    if 'support_tensor' in int_array_config
-                    and int_array_config['support_tensor']
-                    else False
+                    True if int_array_config.get('support_tensor') else False
                 )
                 attr_item['data_type'] = (
                     data_type_map[int_array_config['data_type']]
@@ -235,7 +229,7 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
     def update_common_params_name(
         op_item, args_name_map, scalar_configs, int_array_configs
     ):
-        if 'inplace' in op_item and op_item['inplace']:
+        if op_item.get('inplace'):
             inplace_map = {}
             for key, val in op_item['inplace'].items():
                 if key in args_map:
@@ -244,11 +238,11 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                     val = args_map[val]
                 inplace_map[key] = val
             op_item['inplace'] = inplace_map
-        if 'no_need_buffer' in op_item and op_item['no_need_buffer']:
+        if op_item.get('no_need_buffer'):
             op_item['no_need_buffer'] = get_param_list_alias(
                 op_item['no_need_buffer'], args_map
             )
-        if 'data_transform' in op_item and op_item['data_transform']:
+        if op_item.get('data_transform'):
             data_trans_item = op_item['data_transform']
             if 'skip_transform' in data_trans_item:
                 data_trans_item['skip_transform'] = get_param_list_alias(
@@ -264,9 +258,11 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
 
         if 'invoke' in op_item:
             op_item['invoke']['args'] = [
-                args_map[param.strip()]
-                if param.strip() in args_map
-                else param.strip()
+                (
+                    args_map[param.strip()]
+                    if param.strip() in args_map
+                    else param.strip()
+                )
                 for param in op_item['invoke']['args'].split(',')
             ]
             return
@@ -344,9 +340,9 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                             scalar_configs
                             and args_item['name'] in scalar_configs
                         ):
-                            scalar_configs[
-                                op_args[key][args_item['name']]
-                            ] = scalar_configs[args_item['name']]
+                            scalar_configs[op_args[key][args_item['name']]] = (
+                                scalar_configs[args_item['name']]
+                            )
                         if (
                             int_array_configs
                             and args_item['name'] in int_array_configs
@@ -416,9 +412,9 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                         double_grad_item["backward_composite"] is not None
                         and phi_triple_grad_op_name != triple_grad_op_name
                     ):
-                        double_grad_item[
-                            "backward_composite"
-                        ] = triple_grad_op_name
+                        double_grad_item["backward_composite"] = (
+                            triple_grad_op_name
+                        )
                     double_grad_item['backward'] = triple_grad_op_name
                     triple_grad_item['op_name'] = triple_grad_op_name
                     add_grad_op_compat_name(triple_grad_item, args_map)
@@ -458,7 +454,7 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
                 for attr in reuse_op['attrs']:
                     if args_index < len(args_list):
                         attr_value = (
-                            f"this->GetAttr(\"{args_list[args_index]}\")"
+                            f'this->GetAttr("{args_list[args_index]}")'
                             if args_list[args_index] in bw_fluid_attrs_set
                             else args_list[args_index]
                         )
@@ -519,15 +515,15 @@ def parse_get_expected_kerneltype(
                 new_get_expected_kernel_type_func_map[
                     delete_last_underline(key)
                 ] = value
-            op_comp_map[
-                'get_expected_kernel_type'
-            ] = new_get_expected_kernel_type_func_map
+            op_comp_map['get_expected_kernel_type'] = (
+                new_get_expected_kernel_type_func_map
+            )
             if fw_name in op_comp_map['get_expected_kernel_type']:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if fw_name in fw_op_dict:
-                    fw_op_dict[fw_name][
-                        "get_expected_kernel_type"
-                    ] = op_comp_map['get_expected_kernel_type'][fw_name]
+                    fw_op_dict[fw_name]["get_expected_kernel_type"] = (
+                        op_comp_map['get_expected_kernel_type'][fw_name]
+                    )
             if "backward" in op_comp_map:
                 bw_names = [
                     bw_name.split('(')[0].strip()
@@ -539,9 +535,9 @@ def parse_get_expected_kerneltype(
                         bw_name in bw_op_dict
                         and bw_name in op_comp_map['get_expected_kernel_type']
                     ):
-                        bw_op_dict[bw_name][
-                            "get_expected_kernel_type"
-                        ] = op_comp_map['get_expected_kernel_type'][bw_name]
+                        bw_op_dict[bw_name]["get_expected_kernel_type"] = (
+                            op_comp_map['get_expected_kernel_type'][bw_name]
+                        )
 
 
 def parse_keep_signature(

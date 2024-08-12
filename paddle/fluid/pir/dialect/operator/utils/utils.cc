@@ -61,8 +61,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushDenseOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
-    MovingAverageAbsMaxScaleOp::name(),
-    MovingAverageAbsMaxScale_Op::name(),
     CReduceAvgOp::name(),
     CReduceAvg_Op::name(),
     CReduceMaxOp::name(),
@@ -72,7 +70,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PullBoxSparseOp::name(),
     PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
-    PartialSendOp::name(),
     PartialRecvOp::name(),
     SendAndRecvOp::name()};
 

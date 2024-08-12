@@ -432,10 +432,12 @@ class PRChecker:
                             else:
                                 notHitMapFiles.append(f_judge)
                     else:
-                        notHitMapFiles.append(f_judge) if file_dict[
-                            f
-                        ] != 'removed' else print(
-                            f"remove file not hit mapFiles: {f_judge}"
+                        (
+                            notHitMapFiles.append(f_judge)
+                            if file_dict[f] != 'removed'
+                            else print(
+                                f"remove file not hit mapFiles: {f_judge}"
+                            )
                         )
                 else:
                     if file_dict[f] not in ['removed']:

@@ -22,6 +22,9 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #endif
+#ifdef CINN_WITH_HIP
+#include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#endif
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -130,8 +133,12 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
 #endif
         },
         [&](common::HygonDCUArchHIP) {
-          PADDLE_THROW(::common::errors::Unimplemented(
-              "CINN todo: new hardware HygonDCUArchHIP"));
+#ifdef CINN_WITH_HIP
+          hip::CodeGenHipDevice codegen_dev(
+              cinn::common::DefaultHygonDcuHipTarget());
+          codegen_dev.Compile(ir::LoweredFunc(func));
+          shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#endif
         });
 
     VLOG(6) << "Add a call node for func->name " << func->name << "\n"
@@ -152,8 +159,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },
         [&](common::HygonDCUArchHIP) {
-          PADDLE_THROW(::common::errors::Unimplemented(
-              "CINN todo: new hardware HygonDCUArchHIP"));
+          call_kernel = runtime::intrinsic::call_hip_kernel;
         });
 
     auto call_extern_api =

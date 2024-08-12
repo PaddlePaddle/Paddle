@@ -30,8 +30,9 @@ def pir_fc(hidden, size, activation, param_attr, bias_attr):
         input_shape = input.shape
         num_flatten_dims = len(input_shape) - 1
         param_shape = [
-            reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
-        ] + [size]
+            reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1),
+            size,
+        ]
 
         w = helper.create_parameter(
             attr=param_attr, shape=param_shape, dtype=input.dtype, is_bias=False
@@ -216,7 +217,7 @@ def bow_net(
 def init_data(batch_size=32, img_shape=[784], label_range=9):
     np.random.seed(5)
     assert isinstance(img_shape, list)
-    input_shape = [batch_size] + img_shape
+    input_shape = [batch_size, *img_shape]
     img = np.random.random(size=input_shape).astype(np.float32)
     label = (
         np.array([np.random.randint(0, label_range) for _ in range(batch_size)])

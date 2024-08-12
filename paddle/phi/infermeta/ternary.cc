@@ -937,7 +937,8 @@ void GroupNormInferMeta(const MetaTensor& x,
                         const std::string& data_layout_str,
                         MetaTensor* y,
                         MetaTensor* mean,
-                        MetaTensor* variance) {
+                        MetaTensor* variance,
+                        MetaConfig config) {
   PADDLE_ENFORCE_NE(y,
                     nullptr,
                     common::errors::InvalidArgument(
@@ -966,34 +967,37 @@ void GroupNormInferMeta(const MetaTensor& x,
   const int64_t channel_num =
       (data_layout == DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
   auto batch_size = x_dim[0];
-  PADDLE_ENFORCE_LE(
-      groups,
-      channel_num,
-      common::errors::InvalidArgument(
-          "The Attr(groups) of Op(group_norm) must be less than or "
-          "equal to the number of channels. But received: groups "
-          "is [%s], channels is [%s], the Attr(data_layout) "
-          "is [%s]. The error may come from wrong data_layout setting.",
-          groups,
-          channel_num,
-          data_layout_str));
-  PADDLE_ENFORCE_GE(
-      groups,
-      1,
-      common::errors::InvalidArgument(
-          "The Attr(groups) of Op(group_norm) must be "
-          "greater than or equal to 1. But received: groups is [%s].",
-          groups));
-  PADDLE_ENFORCE_EQ(
-      channel_num % groups,
-      0,
-      common::errors::InvalidArgument(
-          "Expected number of channels in input to be divisible by "
-          "num_groups, but got input channel is %d and num_groups is %d",
-          channel_num,
-          groups));
+  bool need_check = channel_num != -1 || config.is_runtime;
+  if (need_check) {
+    PADDLE_ENFORCE_LE(
+        groups,
+        channel_num,
+        common::errors::InvalidArgument(
+            "The Attr(groups) of Op(group_norm) must be less than or "
+            "equal to the number of channels. But received: groups "
+            "is [%s], channels is [%s], the Attr(data_layout) "
+            "is [%s]. The error may come from wrong data_layout setting.",
+            groups,
+            channel_num,
+            data_layout_str));
+    PADDLE_ENFORCE_GE(
+        groups,
+        1,
+        common::errors::InvalidArgument(
+            "The Attr(groups) of Op(group_norm) must be "
+            "greater than or equal to 1. But received: groups is [%s].",
+            groups));
+    PADDLE_ENFORCE_EQ(
+        channel_num % groups,
+        0,
+        common::errors::InvalidArgument(
+            "Expected number of channels in input to be divisible by "
+            "num_groups, but got input channel is %d and num_groups is %d",
+            channel_num,
+            groups));
+  }
 
-  if (scale) {
+  if (scale && need_check) {
     PADDLE_ENFORCE_EQ(
         scale.dims().size(),
         1UL,
@@ -1015,7 +1019,7 @@ void GroupNormInferMeta(const MetaTensor& x,
             channel_num,
             data_layout_str));
   }
-  if (bias) {
+  if (bias && need_check) {
     PADDLE_ENFORCE_EQ(
         bias.dims().size(),
         1UL,

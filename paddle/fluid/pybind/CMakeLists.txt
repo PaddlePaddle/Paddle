@@ -15,7 +15,6 @@ set(PYBIND_DEPS
     generate_pass
     pass_builder
     compiled_program
-    profiler
     layer
     tracer
     engine
@@ -33,7 +32,6 @@ set(PYBIND_DEPS
     ps_gpu_wrapper
     custom_operator
     cost_model
-    cuda_graph_with_memory_pool
     fleet_executor
     global_utils
     phi_utils
@@ -669,6 +667,10 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS custom_operator_node)
     list(APPEND PYBIND_DEPS eager_tensor_operants)
     list(APPEND PYBIND_DEPS pybind_util)
+  endif()
+
+  if(TENSORRT_FOUND)
+    list(APPEND PYBIND_DEPS pir_tensorrt_plugin)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
