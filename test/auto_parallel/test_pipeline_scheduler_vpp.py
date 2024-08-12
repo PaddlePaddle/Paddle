@@ -35,7 +35,7 @@ class TestVPPPass(unittest.TestCase):
         cmd = [
             sys.executable,
             "-u",
-            *coverage_args,  # Unpack coverage_args
+            *coverage_args,
             "-m",
             "paddle.distributed.launch",
             "--devices",
