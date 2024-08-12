@@ -574,7 +574,7 @@ class VariableBase:
         assert class_var is not None
         # if __call__ is a method, we should add self to arguments.
         if inspect.ismethod(self.get_py_value().__call__):
-            args = (self,) + args
+            args = (self, *args)
         unbound_method = get_unbound_method(self.get_py_value(), '__call__')
         if hasattr(unbound_method, "__code__"):
             fn_var = UserDefinedFunctionVariable(

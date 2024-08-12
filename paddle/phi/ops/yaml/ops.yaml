@@ -1499,6 +1499,7 @@
     func : EigvalsInferMeta
   kernel :
     func : eigvals
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : eigvalsh
   args : (Tensor x, str uplo = "L", bool is_test = false)
@@ -4137,6 +4138,7 @@
   kernel:
     func: set_value_with_tensor
   backward: set_value_with_tensor_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sgd_
   args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision=false)
@@ -4228,6 +4230,7 @@
   inplace : (x -> out)
   backward : sigmoid_cross_entropy_with_logits_grad
   optional : pos_weight
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sign
   args : (Tensor x)
@@ -4510,6 +4513,7 @@
      func : swiglu
   optional : y
   backward: swiglu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : swish
   args : (Tensor x)
