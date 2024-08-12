@@ -4414,16 +4414,15 @@
 
 - op : squeeze
   args : (Tensor x, IntArray axis={})
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : SqueezeWithXShapeInferMeta
+    func : SqueezeInferMeta
     spmd_rule : SqueezeInferSpmd
   kernel :
     func : squeeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
-  intermediate : xshape
   backward : squeeze_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 

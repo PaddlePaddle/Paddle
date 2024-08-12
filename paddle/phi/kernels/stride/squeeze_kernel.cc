@@ -25,10 +25,10 @@ COMMON_DECLARE_bool(use_stride_kernel);
 namespace phi {
 
 template <typename Context>
-void SqueezeInferStridedKernel(const Context& dev_ctx,
-                               const DenseTensor& input,
-                               const IntArray& axes_arr,
-                               DenseTensor* out) {
+void SqueezeStridedKernel(const Context& dev_ctx,
+                          const DenseTensor& input,
+                          const IntArray& axes_arr,
+                          DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -123,25 +123,25 @@ void SqueezeInferStridedKernel(const Context& dev_ctx,
 }
 
 template <typename Context>
-void SqueezeStridedKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const IntArray& axes,
-                          DenseTensor* out,
-                          DenseTensor* xshape UNUSED) {
+void SqueezeWithXShapeStridedKernel(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const IntArray& axes,
+                                    DenseTensor* out,
+                                    DenseTensor* xshape UNUSED) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
-  SqueezeInferStridedKernel<Context>(dev_ctx, x, axes, out);
+  SqueezeStridedKernel<Context>(dev_ctx, x, axes, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze_infer,
-                                         STRIDED,
-                                         phi::SqueezeInferStridedKernel) {}
-
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze,
                                          STRIDED,
                                          phi::SqueezeStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(squeeze_with_xshape,
+                                         STRIDED,
+                                         phi::SqueezeWithXShapeStridedKernel) {}
