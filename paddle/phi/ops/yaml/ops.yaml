@@ -892,7 +892,7 @@
     func : class_center_sample
     data_type : label
   traits : pir::SideEffectTrait
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)

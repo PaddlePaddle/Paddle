@@ -586,7 +586,7 @@ void ClassCenterSampleInferMeta(const MetaTensor& label,
           "output of sampled local class center should not be null."));
   remapped_label->set_dims(label.dims());
   remapped_label->set_dtype(label.dtype());
-  sampled_local_class_center->set_dims(common::make_ddim({num_samples}));
+  sampled_local_class_center->set_dims(common::make_ddim({-1}));
   sampled_local_class_center->set_dtype(label.dtype());
 }
 
