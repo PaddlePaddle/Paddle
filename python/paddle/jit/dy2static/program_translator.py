@@ -739,7 +739,7 @@ class SymbolicStaticFunction(StaticFunction):
             backend=backend,
         )
         if self._class_instance is not None:
-            args = (self._class_instance, *args)
+            args = (self._class_instance,) + args
         return traced_fun(*args, **kwargs)
 
     @property
@@ -1119,7 +1119,7 @@ class HookHelper:
                     hook_result = (hook_result,)
                 inputs = hook_result
 
-        return [self.class_instance, *list(inputs)]
+        return [self.class_instance] + list(inputs)
 
     def apply_post_hooks(self, inputs, outputs):
         """
@@ -1219,7 +1219,7 @@ class ConcreteProgram:
                 )
                 if class_instance:
                     static_inputs = tuple(
-                        [class_instance, *list(static_inputs)]
+                        [class_instance] + list(static_inputs)
                     )
 
                 # 2. Builds program only once and returns the output Variables.
@@ -1319,7 +1319,7 @@ class ConcreteProgram:
                 )
                 if class_instance:
                     static_inputs = tuple(
-                        [class_instance, *list(static_inputs)]
+                        [class_instance] + list(static_inputs)
                     )
 
                 # 2. Builds program only once and returns the output Variables.
