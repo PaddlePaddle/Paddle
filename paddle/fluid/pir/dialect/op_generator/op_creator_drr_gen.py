@@ -77,9 +77,9 @@ Dialect2NameSpaceMap = {
     "onednn_op": "paddle::onednn::dialect",
 }
 Dialect2OpHeaderMap = {
-    "pd_op": "#include \"paddle/fluid/pir/dialect/operator/ir/pd_op.h\"",
-    "cinn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/cinn_op.h\"",
-    "onednn_op": "#include \"paddle/fluid/pir/dialect/operator/ir/onednn_op.h\"",
+    "pd_op": '#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"',
+    "cinn_op": '#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"',
+    "onednn_op": '#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"',
 }
 
 

@@ -2214,7 +2214,7 @@ def OpGenerator(
             if dialect_name == "onednn_op":
                 if first_file:
                     op["is_onednn_only"] = True
-                    onednn_only_op_list.append("\"" + op['name'] + "\"")
+                    onednn_only_op_list.append('"' + op['name'] + '"')
                     if op['name'] in ops_onednn_extra_map:
                         onednn_item = ops_onednn_extra_map[op['name']]
                         op["is_onednn_only"] = onednn_item["is_onednn_only"]
@@ -2411,7 +2411,7 @@ def OpGenerator(
 
         if dialect_name == "onednn_op":
             op_def_h_file_tmp = (
-                "paddle/fluid/pir/dialect/operator/ir/pd_op.h\"\n#include \""
+                'paddle/fluid/pir/dialect/operator/ir/pd_op.h"\n#include "'
                 + op_def_h_file
             )
         else:
