@@ -3618,6 +3618,7 @@
     data_type : x
   optional : boxes_num
   backward : psroi_pool_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true)
