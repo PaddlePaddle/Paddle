@@ -71,9 +71,17 @@ llvm::Value* CodeGenInvokeModule::LowerParseArgsValueCall(
       2,
       ::common::errors::InvalidArgument(
           "The number of arguments of ParseArgsValue should be 2"));
-  CHECK(call_ir->read_args[0].is_var() &&
-        call_ir->read_args[0].as_var()->type().is_cpp_handle());
-  CHECK(call_ir->read_args[1].type().is_int(32));
+  PADDLE_ENFORCE_EQ(
+      call_ir->read_args[0].is_var() &&
+          call_ir->read_args[0].as_var()->type().is_cpp_handle(),
+      true,
+      phi::errors::InvalidArgument("The first read argument must be a variable "
+                                   "with a C++ handle type."));
+
+  PADDLE_ENFORCE_EQ(call_ir->read_args[1].type().is_int(32),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The second read argument must be of type int32."));
   args_type.push_back(CinnTypeToLLVMType(type_of<void*>(), m_));
   args_type.push_back(CinnTypeToLLVMType(type_of<int32_t>(), m_));
 
@@ -94,7 +102,10 @@ llvm::Value* CodeGenSwitchHost::LowerInnerCaseCall(const ir::Call* op) {
                  [](auto& arg) { return std::addressof(arg); });
   // TODO(Hongqing-work): Add check for parameter type
   llvm::Function* call_func = m_->getFunction(op->name);
-  CHECK(call_func) << "Unknown function referenced. [" << op->name << "]";
+  PADDLE_ENFORCE_NOT_NULL(
+      call_func,
+      phi::errors::InvalidArgument("Unknown function referenced. [%s]",
+                                   op->name.c_str()));
   b_->CreateCall(call_func, ll_function_args);
   return nullptr;
 }

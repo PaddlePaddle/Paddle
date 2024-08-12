@@ -24,9 +24,7 @@ from typing import (
     Any,
     AnyStr,
     Callable,
-    Mapping,
     Protocol,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -49,6 +47,7 @@ from .dataloader.dataloader_iter import (
 
 if TYPE_CHECKING:
     import numbers
+    from collections.abc import Mapping, Sequence
 
     import numpy.typing as npt
 
@@ -65,24 +64,21 @@ if TYPE_CHECKING:
         @overload
         def __call__(
             self, batch: Sequence[npt.NDArray[Any]] | Sequence[numbers.Number]
-        ) -> npt.NDArray[Any]:
-            ...
+        ) -> npt.NDArray[Any]: ...
 
         @overload
-        def __call__(self, batch: Sequence[Tensor]) -> Tensor:
-            ...
+        def __call__(self, batch: Sequence[Tensor]) -> Tensor: ...
 
         @overload
-        def __call__(self, batch: Sequence[AnyStr]) -> AnyStr:
-            ...
+        def __call__(self, batch: Sequence[AnyStr]) -> AnyStr: ...
 
         @overload
-        def __call__(self, batch: Sequence[Mapping[_K, _V]]) -> Mapping[_K, _V]:
-            ...
+        def __call__(
+            self, batch: Sequence[Mapping[_K, _V]]
+        ) -> Mapping[_K, _V]: ...
 
         @overload
-        def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
-            ...
+        def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]: ...
 
 
 # NOTE: [ avoid hanging & failed quickly ]
@@ -438,16 +434,20 @@ class DataLoader:
     use_buffer_reader: bool
     prefetch_factor: int
     worker_init_fn: Callable[[int], None] | None
-    dataset: Dataset
+    dataset: Dataset[Any]
     feed_list: Sequence[Tensor] | None
     places: list[_Place]
     num_workers: int
     dataset_kind: _DatasetKind
     use_shared_memory: bool
+    timeout: int
+    batch_sampler: BatchSampler | _InfiniteIterableSampler | None
+    drop_last: bool
+    auto_collate_batch: bool
 
     def __init__(
         self,
-        dataset: Dataset,
+        dataset: Dataset[Any],
         feed_list: Sequence[Tensor] | None = None,
         places: PlaceLike | Sequence[PlaceLike] | None = None,
         return_list: bool = True,

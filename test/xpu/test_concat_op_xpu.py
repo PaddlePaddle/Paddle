@@ -49,9 +49,7 @@ class XPUTestConcatOp(XPUOpTestWrapper):
             self.attrs = {'axis': self.axis}
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = (
-                    self.actual_axis if self.actual_axis > 0 else 0
-                )
+                self.actual_axis = max(0, self.actual_axis)
             else:
                 self.actual_axis = self.axis
 

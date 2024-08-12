@@ -167,7 +167,7 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
 
     # Why condition 'pp_rank < 0' exists?
     # Because if pp_degree = 1, pp_rank is set -1
-    pp_rank = 0 if pp_rank <= 0 else pp_rank
+    pp_rank = max(0, pp_rank)
 
     if dist.get_world_size() > 1:
         process_group = _get_all_ranks_of_pp(
@@ -183,9 +183,11 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
         attr_d = {
             "process_shape": [dp_degree, mp_degree] if hcg else [1],
             "process_group": process_group,
-            "dims_mapping": v.dims_mapping
-            if hasattr(v, "dims_mapping")
-            else [-1 for _ in v.shape],
+            "dims_mapping": (
+                v.dims_mapping
+                if hasattr(v, "dims_mapping")
+                else [-1 for _ in v.shape]
+            ),
         }
         attr_dict[k] = attr_d
 

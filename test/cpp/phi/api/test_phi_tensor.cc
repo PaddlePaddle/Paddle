@@ -340,11 +340,11 @@ void GroupTestDtype() {
 
 void TestInitialized() {
   auto test_tensor = paddle::experimental::empty({1, 1});
-  PADDLE_ENFORCE_EQ(test_tensor.is_initialized(),
+  PADDLE_ENFORCE_EQ(test_tensor.initialized(),
                     true,
                     common::errors::InvalidArgument(
                         "test_tensor should be initialized, but got %s",
-                        test_tensor.is_initialized()));
+                        test_tensor.initialized()));
   float* tensor_data = test_tensor.data<float>();
   for (int i = 0; i < test_tensor.size(); i++) {
     tensor_data[i] = 0.5;
@@ -363,11 +363,11 @@ void TestInitialized() {
 void TestDataInterface() {
   // Test DenseTensor
   auto test_tensor = paddle::experimental::empty({1, 1});
-  PADDLE_ENFORCE_EQ(test_tensor.is_initialized(),
+  PADDLE_ENFORCE_EQ(test_tensor.initialized(),
                     true,
                     common::errors::InvalidArgument(
                         "test_tensor should be initialized, but got %s",
-                        test_tensor.is_initialized()));
+                        test_tensor.initialized()));
   void* tensor_ptr = test_tensor.data();
   PADDLE_ENFORCE_NE(
       tensor_ptr,
@@ -389,11 +389,11 @@ void TestDataInterface() {
   selected_rows->mutable_value()->mutable_data<float>(phi::CPUPlace())[0] =
       static_cast<float>(10.0f);
   paddle::Tensor sr_tensor = paddle::Tensor(selected_rows);
-  PADDLE_ENFORCE_EQ(sr_tensor.is_initialized(),
+  PADDLE_ENFORCE_EQ(sr_tensor.initialized(),
                     true,
                     common::errors::InvalidArgument(
                         "sr_tensor should be initialized, but got %s",
-                        sr_tensor.is_initialized()));
+                        sr_tensor.initialized()));
   tensor_ptr = sr_tensor.data();
   PADDLE_ENFORCE_NE(tensor_ptr,
                     nullptr,
