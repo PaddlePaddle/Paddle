@@ -509,6 +509,14 @@ class OpInfoParser:
 
         # parse inplace && view
         self.inplace_map = self.parse_op_inplace_info()
+        # sometime output is the inplace value of input, if input is optional, output should be optional too
+        if self.inplace_map is not None:
+            self.refine_output_optional_list(self.output_optional_list)
+            self.cross_check(
+                self.output_name_list,
+                self.output_type_list,
+                self.output_optional_list,
+            )
         self.view_map = self.parse_op_view_info()
 
         # parse data_transform
@@ -931,6 +939,15 @@ class OpInfoParser:
             else:
                 optional_list.append("false")
         return optional_list
+
+    def refine_output_optional_list(self, optional_list):
+        for i, output_info in enumerate(self.op_yaml_item['outputs']):
+            if output_info['name'] in self.inplace_map.keys():
+                input_index = self.input_name_list.index(
+                    self.inplace_map[output_info['name']]
+                )
+                if self.input_optional_list[input_index] == "true":
+                    optional_list[i] = "true"
 
     def parse_output_intermediate_list(self):
         intermediate_list = []
