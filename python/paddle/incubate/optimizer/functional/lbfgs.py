@@ -41,7 +41,7 @@ def minimize_lbfgs(
     tolerance_grad: float = 1e-8,
     tolerance_change: float = 1e-8,
     initial_inverse_hessian_estimate: Tensor | None = None,
-    line_search_fn: Literal['strong wolfe'] = 'strong wolfe',
+    line_search_fn: Literal['strong_wolfe'] = 'strong_wolfe',
     max_line_search_iters: int = 50,
     initial_step_length: int = 1.0,
     dtype: Literal['float32', 'float64'] = 'float32',
