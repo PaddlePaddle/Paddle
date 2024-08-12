@@ -228,7 +228,7 @@ bool AucOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool BatchFCOpInferSymbolicShape(
+bool BatchFcOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
