@@ -464,6 +464,7 @@
     func : batch_fc
     data_type: input
   backward: batch_fc_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bce_loss
   args : (Tensor input, Tensor label)
