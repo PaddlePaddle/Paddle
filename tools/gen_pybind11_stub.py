@@ -671,13 +671,13 @@ class OpsYamlBaseAPI:
                     if _op_name in ops_names:
                         try:
                             # replace the line from stub file with full signature
-                            ops_file[
-                                ops_names[_op_name]
-                            ] = self.make_op_function(
-                                _op_name,
-                                op_inputs,
-                                op_attrs,
-                                output_type_list,
+                            ops_file[ops_names[_op_name]] = (
+                                self.make_op_function(
+                                    _op_name,
+                                    op_inputs,
+                                    op_attrs,
+                                    output_type_list,
+                                )
                             )
                         except:
                             print(
