@@ -577,7 +577,7 @@ def scaled_dot_product_attention(
         # [batch_size, max_sequence_length, num_heads, hidden_size_per_head].
         reshaped = paddle.reshape(
             x=x,
-            shape=list(x.shape[:-1]) + [num_heads, hidden_size // num_heads],
+            shape=[*x.shape[:-1], num_heads, hidden_size // num_heads],
         )
 
         # permute the dimensions into:

@@ -167,7 +167,7 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
 
     # Why condition 'pp_rank < 0' exists?
     # Because if pp_degree = 1, pp_rank is set -1
-    pp_rank = 0 if pp_rank <= 0 else pp_rank
+    pp_rank = max(0, pp_rank)
 
     if dist.get_world_size() > 1:
         process_group = _get_all_ranks_of_pp(

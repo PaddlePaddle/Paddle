@@ -14,7 +14,7 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -29,7 +29,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"

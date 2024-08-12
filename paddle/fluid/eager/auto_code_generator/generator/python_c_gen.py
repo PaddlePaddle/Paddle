@@ -69,15 +69,15 @@ def FindParsingFunctionFromAttributeType(atype):
 # Refactored Functions #
 ########################
 PARSE_PYTHON_C_TENSORS_TEMPLATE = (
-    "    auto {} = {}(\"{}\", \"{}\", args, {}, {});\n"
+    '    auto {} = {}("{}", "{}", args, {}, {});\n'
 )
 
 PARSE_PYTHON_C_TENSOR_REF_TEMPLATE = (
-    "    auto& {} = {}(\"{}\", \"{}\", args, {}, {});\n"
+    '    auto& {} = {}("{}", "{}", args, {}, {});\n'
 )
 
 CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE = (
-    "    {} = {}(\"{}\", \"{}\", args, {}, {}, mesh);\n"
+    '    {} = {}("{}", "{}", args, {}, {}, mesh);\n'
 )
 
 CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_WITH_SINGLE_TENSOR_TEMPLATE = """
@@ -100,7 +100,7 @@ PARSE_PYTHON_C_ARGS_TEMPLATE = """    PyObject* {}_obj = PyTuple_GET_ITEM(args, 
 """
 
 
-RECORD_EVENT_TEMPLATE = "phi::RecordEvent {}(\"{} {}\", paddle::platform::TracerEventType::UserDefined, 1);"
+RECORD_EVENT_TEMPLATE = 'phi::RecordEvent {}("{} {}", paddle::platform::TracerEventType::UserDefined, 1);'
 
 
 RETURN_INPLACE_PYOBJECT_TEMPLATE = """
@@ -177,7 +177,7 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}
 FUNCTION_NAME_TEMPLATE = "{}{}{}"
 
 
-PYTHON_C_FUNCTION_REG_TEMPLATE = "  {{\"{}{}\", (PyCFunction)(void(*)(void)) {}eager_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}},\n"
+PYTHON_C_FUNCTION_REG_TEMPLATE = '  {{"{}{}", (PyCFunction)(void(*)(void)) {}eager_api_{}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {} in dygraph."}},\n'
 
 
 PYTHON_C_WRAPPER_TEMPLATE = """

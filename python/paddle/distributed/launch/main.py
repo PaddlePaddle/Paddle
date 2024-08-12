@@ -708,10 +708,7 @@ def launch() -> None:
                     logger.info(
                         "Get best config failed. Currently no config can be run."
                     )
-                if (
-                    "sharding_overlap" in cur_cfg
-                    and cur_cfg["sharding_overlap"]
-                ):
+                if cur_cfg.get("sharding_overlap"):
                     add_overlap_performance(
                         cur_cfg, tuner_cfg, recorder.history
                     )
@@ -811,10 +808,7 @@ def launch() -> None:
                         logger.info(
                             "Get best config failed. Currently no config can be run."
                         )
-                    if (
-                        "sharding_overlap" in cur_cfg
-                        and cur_cfg["sharding_overlap"]
-                    ):
+                    if cur_cfg.get("sharding_overlap"):
                         add_overlap_performance(
                             cur_cfg, tuner_cfg, recorder.history
                         )
@@ -1003,13 +997,13 @@ def launch() -> None:
                 mem_allnodes = [i[0].decode() for i in result]
 
                 for mem in mem_allnodes:
-                    if mem is None:
+                    if mem is None or cur_cfg["max_mem_usage"] is None:
                         continue
                     if mem == "OOM":
                         cur_cfg["max_mem_usage"] = mem
                         break
                     cur_cfg["max_mem_usage"] = max(
-                        int(mem), int(cur_cfg["max_mem_usage"])
+                        int(float(mem)), int(float(cur_cfg["max_mem_usage"]))
                     )
 
             # if need accurate peak memory
@@ -1221,7 +1215,7 @@ def launch() -> None:
                 logger.info("Get best config failed, no config can be run.")
 
             # record history
-            if "sharding_overlap" in cur_cfg and cur_cfg["sharding_overlap"]:
+            if cur_cfg.get("sharding_overlap"):
                 add_overlap_performance(cur_cfg, tuner_cfg, recorder.history)
 
             recorder.store_history(history_file_path)
@@ -1237,6 +1231,10 @@ def launch() -> None:
             if paddle.device.is_compiled_with_custom_device('npu'):
                 processes = os.popen(
                     "fuser -v /dev/davinci* |awk '{for(i=1;i<=NF;i++) print $i;}'"
+                ).readlines()
+            elif paddle.is_compiled_with_xpu():
+                processes = os.popen(
+                    "fuser -v /dev/xpu* |awk '{for(i=1;i<=NF;i++) print $i;}'"
                 ).readlines()
             else:
                 processes = os.popen(
