@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-import os
-
 import numpy as np
 from util import run_pir_pass
 
@@ -123,39 +121,6 @@ class BertModel(nn.Layer):
         embeddings = self.embeddings(input_ids)
         encoded_output = self.encoder(embeddings)
         return encoded_output
-
-
-def get_r50_v2_program(model_dir, prefix):
-    paddle.enable_static()
-    with paddle.pir_utils.IrGuard():
-        startup_program = static.default_startup_program()
-        scope = paddle.static.global_scope()
-        place = paddle.CUDAPlace(0)
-        exe = static.Executor(place)
-        [
-            pir_program,
-            feed_target_names,
-            fetch_targets,
-        ] = paddle.static.io.load_inference_model_pir(
-            model_dir,
-            executor=exe,
-            model_filename=os.path.join(model_dir, prefix + ".json"),
-            params_filename=os.path.join(model_dir, prefix + ".pdiparams"),
-        )
-
-        with paddle.static.program_guard(pir_program, startup_program):
-            x = np.ones([2, 3, 224, 224]).astype("float32")
-            fetches = exe.run(
-                pir_program,
-                feed={"_jst.0.inputs.0": x},
-                fetch_list=fetch_targets,
-            )
-        params = pir_program.global_block().all_parameters()
-        param_dict = {}
-        for v in params:
-            name = v.get_defining_op().attrs()["parameter_name"]
-            param_dict.update({name: np.array(scope.var(name).get_tensor())})
-        return pir_program, scope, param_dict, feed_target_names, fetch_targets
 
 
 def get_bert_program():

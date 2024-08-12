@@ -111,22 +111,3 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
                 executor.run(
                     program, feed=max_shape_feed, fetch_list=[output_var]
                 )
-
-
-def warmup_shape_infer_v2(
-    program, min_shape_feed, max_shape_feed, fetch_var_list
-):
-    with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(program):
-            executor = paddle.static.Executor()
-            # Run the program with input_data
-            for _ in range(1):
-                output_original = executor.run(
-                    program, feed=min_shape_feed, fetch_list=fetch_var_list
-                )
-
-            # Run the program with input_data_max_shape (fake max_shape input)
-            for _ in range(1):
-                executor.run(
-                    program, feed=max_shape_feed, fetch_list=fetch_var_list
-                )
