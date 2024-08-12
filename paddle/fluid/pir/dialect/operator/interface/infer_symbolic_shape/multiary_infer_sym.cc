@@ -1228,7 +1228,7 @@ bool RoiPoolOpInferSymbolicShape(
   const auto &rois_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
   const auto &rois_num_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
   const auto &rois_num_shape = rois_num_shape_or_data.shape();
 
   int pooled_height =
