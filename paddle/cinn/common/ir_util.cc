@@ -90,8 +90,11 @@ Expr RampRelatedAdd(ir::Broadcast *broadcast, Expr other) {
 }
 // ramp + ramp
 Expr RampRelatedAdd(ir::Ramp *ramp, ir::Ramp *other) {
-  CHECK(ramp);
-  CHECK(other);
+  PADDLE_ENFORCE_NOT_NULL(
+      ramp, phi::errors::InvalidArgument("Ramp pointer should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      other,
+      phi::errors::InvalidArgument("Other ramp pointer should not be null."));
   if (ramp->lanes == other->lanes) {
     Expr base_add = cinn::common::AutoSimplify(ramp->base + other->base);
     Expr stride_add = cinn::common::AutoSimplify(ramp->stride + other->stride);
@@ -181,10 +184,14 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
   Expr res;
   ir::TryElevateInt32ToInt64(shape);
   for (int i = 0; i < shape.size(); i++) {
-    CHECK(shape[i].type() == Int(64) || shape[i].type() == Int(32))
-        << "The shape data type currently supports only int32 or int64, but "
-           "the current data type of shape["
-        << i << "] is " << shape[i].type();
+    PADDLE_ENFORCE_EQ(
+        shape[i].type() == Int(64) || shape[i].type() == Int(32),
+        true,
+        ::common::errors::InvalidArgument(
+            "The shape data type currently supports only int32 or int64, but "
+            "the current data type of shape[{}] is {}",
+            i,
+            shape[i].type()));
     Expr indice_prod = indices[i];
     optim::SimplifyCast(&indice_prod);
     for (int j = i + 1; j < shape.size(); j++) {
@@ -271,7 +278,10 @@ Expr select(Expr cond, Expr true_value, Expr false_value) {
 }
 
 Expr and_all(const std::vector<Expr> &conds) {
-  CHECK(!conds.empty());
+  PADDLE_ENFORCE_NE(conds.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The conditions vector should not be empty."));
   Expr res = conds.front();
   for (int i = 1; i < conds.size(); i++) {
     res = ir::And::Make(res, conds[i]);
@@ -280,7 +290,10 @@ Expr and_all(const std::vector<Expr> &conds) {
 }
 
 Expr or_all(const std::vector<Expr> &conds) {
-  CHECK(!conds.empty());
+  PADDLE_ENFORCE_NE(conds.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The conditions vector should not be empty."));
   Expr res = conds.front();
   for (int i = 1; i < conds.size(); i++) {
     res = ir::Or::Make(res, conds[i]);
@@ -396,7 +409,10 @@ std::vector<std::string> GatherItersToTensorProducer(
 
     void Visit(const ir::Store *op, Expr *expr) {
       if (op->tensor.as_tensor()->name == target_tensor_name) {
-        CHECK(iters.empty());
+        PADDLE_ENFORCE_EQ(iters.empty(),
+                          true,
+                          phi::errors::InvalidArgument(
+                              "The iterators vector should be empty."));
         for (auto &e : for_stack) {
           auto *for_n = e->As<ir::For>();
           auto *polyfor_n = e->As<ir::PolyFor>();
