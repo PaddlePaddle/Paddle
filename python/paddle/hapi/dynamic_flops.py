@@ -32,13 +32,13 @@ if TYPE_CHECKING:
     from paddle.nn import Layer
     from paddle.static import Program
 
-    _CustomOpsAlias: TypeAlias = dict[Layer, Callable[..., None]]
+    _CustomOpsAlias: TypeAlias = dict[type[Layer], Callable[..., None]]
 
 __all__ = []
 
 
 def flops(
-    net: Layer,
+    net: Layer | Program,
     input_size: list[int],
     custom_ops: _CustomOpsAlias | None = None,
     print_detail: bool = False,
@@ -102,7 +102,7 @@ def flops(
             ...                      [1, 1, 28, 28],
             ...                      custom_ops= {nn.LeakyReLU: count_leaky_relu},
             ...                      print_detail=True)
-            >>> print(FLOPs)
+            >>> # doctest: +SKIP('numpy print with different version')
             <class 'paddle.nn.layer.conv.Conv2D'>'s flops has been counted
             <class 'paddle.nn.layer.activation.ReLU'>'s flops has been counted
             Cannot find suitable count function for <class 'paddle.nn.layer.pooling.MaxPool2D'>. Treat it as zero FLOPs.
@@ -121,6 +121,8 @@ def flops(
             |   linear_2   |     [1, 84]     |     [1, 10]     |  850   |  840   |
             +--------------+-----------------+-----------------+--------+--------+
             Total Flops: 347560     Total Params: 61610
+            >>> # doctest: -SKIP
+            >>> print(FLOPs)
             347560
     """
     if isinstance(net, nn.Layer):
@@ -233,7 +235,7 @@ register_hooks = {
 
 
 def dynamic_flops(
-    model: Layer | Program,
+    model: Layer,
     inputs: Tensor,
     custom_ops: _CustomOpsAlias | None = None,
     print_detail: bool = False,
