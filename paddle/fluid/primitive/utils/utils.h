@@ -138,6 +138,7 @@ Tensor get_unsqueeze_dims(const Tensor& origin_shape,
   return concat<T>(result);
 }
 
+// This function compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
                                              const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();
