@@ -84,11 +84,16 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
 }
 
 uint64_t GetPirVersion() {
-  std::filesystem::path path =
-      std::filesystem::absolute(__FILE__).parent_path().parent_path() / "patch";
-  VLOG(8) << "patch_path: " << path;
+  std::string current_path = std::filesystem::current_path().string();
+  std::string paddle_root =
+      current_path.substr(0, current_path.find("Paddle") + 7);
+  VLOG(8) << "Paddle path: " << paddle_root;
+  std::filesystem::path patch_path =
+      std::filesystem::path(paddle_root.c_str()) / "paddle" / "fluid" / "pir" /
+      "serialize_deserialize" / "patch";
+  VLOG(8) << "Patch path: " << patch_path;
   int version = 0;
-  for (auto& v : std::filesystem::directory_iterator(path)) {
+  for (auto& v : std::filesystem::directory_iterator(patch_path)) {
     std::string filename = v.path().filename().string();
     std::string extension_name = v.path().extension().string();
     // 0.yaml for develop version
@@ -103,11 +108,16 @@ uint64_t GetPirVersion() {
   return version;
 }
 uint64_t GetMaxReleasePirVersion() {
-  std::filesystem::path path =
-      std::filesystem::absolute(__FILE__).parent_path().parent_path() / "patch";
-  VLOG(8) << "patch_path: " << path;
+  std::string current_path = std::filesystem::current_path().string();
+  std::string paddle_root =
+      current_path.substr(0, current_path.find("Paddle") + 7);
+  VLOG(8) << "Paddle path: " << paddle_root;
+  std::filesystem::path patch_path =
+      std::filesystem::path(paddle_root.c_str()) / "paddle" / "fluid" / "pir" /
+      "serialize_deserialize" / "patch";
+  VLOG(8) << "Patch path: " << patch_path;
   int version = 0;
-  for (auto& v : std::filesystem::directory_iterator(path)) {
+  for (auto& v : std::filesystem::directory_iterator(patch_path)) {
     std::string filename = v.path().filename().string();
     std::string extension_name = v.path().extension().string();
     VLOG(8) << filename;
