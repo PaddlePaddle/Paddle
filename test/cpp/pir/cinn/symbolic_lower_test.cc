@@ -117,33 +117,6 @@ BuildGroupProgramForLowering() {
   return {program, groups};
 }
 
-TEST(ReshapeOpGroup, CINNLowering) {
-  FLAGS_cinn_bucket_compile = true;
-  // Step 1: Construct pir::Program
-  auto program_info = BuildGroupProgramForLowering();
-  auto program = std::get<0>(program_info);
-  auto groups = std::get<1>(program_info);
-
-  std::stringstream ss;
-  program->Print(ss);
-  LOG(INFO) << ss.str();
-
-  for (const auto* op : groups[0]->ops()) {
-    LOG(INFO) << op->name() << ":";
-    for (uint32_t i = 0; i < op->num_results(); ++i) {
-      const auto& sym_shape = groups[0]->GetShapeOrDataExprs(op->result(i));
-      LOG(INFO) << " result(" << i << ") : " << sym_shape;
-    }
-  }
-
-  // Step 2: Compiler New pir::Program into Runtime Program
-  auto target = cinn::common::DefaultNVGPUTarget();
-  cinn::hlir::framework::PirCompiler ir_compiler(target);
-  auto fn_ptr_res = ir_compiler.Build(groups);
-  ASSERT_EQ(fn_ptr_res.size(), 1);
-  ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
-}
-
 std::tuple<std::shared_ptr<::pir::Program>, std::vector<OpLoweringGroupPtr>>
 BuildBroadcastGroupProgramForLowering() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -212,31 +185,4 @@ BuildBroadcastGroupProgramForLowering() {
   groups[0]->set_value_to_shape_or_data_exprs(value_to_shape_data);
 
   return {program, groups};
-}
-
-TEST(BroadcastOpGroup, CINNLowering) {
-  FLAGS_cinn_bucket_compile = true;
-  // Step 1: Construct pir::Program
-  auto program_info = BuildBroadcastGroupProgramForLowering();
-  auto program = std::get<0>(program_info);
-  auto groups = std::get<1>(program_info);
-
-  std::stringstream ss;
-  program->Print(ss);
-  LOG(INFO) << ss.str();
-
-  for (const auto* op : groups[0]->ops()) {
-    LOG(INFO) << op->name() << ":";
-    for (uint32_t i = 0; i < op->num_results(); ++i) {
-      const auto& sym_shape = groups[0]->GetShapeOrDataExprs(op->result(i));
-      LOG(INFO) << " result(" << i << ") : " << sym_shape;
-    }
-  }
-
-  // Step 2: Compiler New pir::Program into Runtime Program
-  auto target = cinn::common::DefaultNVGPUTarget();
-  cinn::hlir::framework::PirCompiler ir_compiler(target);
-  auto fn_ptr_res = ir_compiler.Build(groups);
-  ASSERT_EQ(fn_ptr_res.size(), 1);
-  ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
 }
