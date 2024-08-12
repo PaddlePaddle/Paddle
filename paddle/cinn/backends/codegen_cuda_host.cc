@@ -32,11 +32,14 @@ using cinn::common::float16;
 
 const int kArgsArrayMaxLen = 20;
 
-llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
+llvm::Value* CodeGenCudaHost::LowerGPUKernelLauncher(
     const ir::_LoweredFunc_* func) {
   auto body = func->body;
   auto* call_ir = body.As<ir::Call>();
-  CHECK(call_ir);
+  PADDLE_ENFORCE_EQ(
+      call_ir,
+      nullptr,
+      phi::errors::InvalidArgument("The 'call_ir' must be true."));
 
   // Create the function
   // @{
@@ -144,7 +147,12 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
             b_->getInt8PtrTy(), kvalue, r_arg.as_var()->name + "_ptr_load"));
       } else if (r_arg.as_var()->type().is_cpp_handle() ||
                  r_arg.as_var()->type().is_int(32)) {
-        CHECK(global_args.count(r_arg.as_var()->name));
+        PADDLE_ENFORCE_EQ(
+            global_args.count(r_arg.as_var()->name),
+            1,
+            phi::errors::InvalidArgument(
+                "The argument '%s' must be present in global_args.",
+                r_arg.as_var()->name.c_str()));
         call_args.push_back(global_args[r_arg.as_var()->name]);
       } else {
         CINN_NOT_IMPLEMENTED;
@@ -194,7 +202,7 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
   return function;
 }
 
-llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
+llvm::Value* CodeGenCudaHost::LowerGPUKernelCall(const ir::Call* call_ir) {
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
                  f_->arg_end(),
@@ -285,7 +293,12 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
         call_args.push_back(b_->CreateLoad(
             b_->getInt8PtrTy(), kvalue, r_arg.as_var()->name + "_ptr_load"));
       } else if (r_arg.as_var()->type().is_cpp_handle()) {
-        CHECK(global_args.count(r_arg.as_var()->name));
+        PADDLE_ENFORCE_EQ(
+            global_args.count(r_arg.as_var()->name),
+            1,
+            phi::errors::InvalidArgument(
+                "The argument '%s' must be present in global_args.",
+                r_arg.as_var()->name.c_str()));
         call_args.push_back(global_args[r_arg.as_var()->name]);
       } else if (r_arg.as_var()->type().is_int()) {
         call_args.push_back(GetVar(r_arg.as_var()->name, false));

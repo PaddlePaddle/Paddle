@@ -30,8 +30,8 @@
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace google {
 namespace protobuf {

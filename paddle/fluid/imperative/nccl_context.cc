@@ -17,7 +17,7 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 #endif
 
 #ifdef PADDLE_WITH_NCCL
@@ -30,8 +30,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle::framework {
 class Variable;

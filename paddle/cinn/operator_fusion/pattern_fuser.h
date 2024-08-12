@@ -154,7 +154,10 @@ static StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
       std::make_shared<FusionTracker>(upstream.tracker_,
                                       downstream.tracker_));  // copy first.
   int insert_num = InsertDownstreamIntoTree(upstream, result);
-  CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
+  PADDLE_ENFORCE_EQ(insert_num,
+                    1,
+                    phi::errors::PreconditionNotMet(
+                        "Must insert only once, but insert %d", insert_num));
   return result;
 }
 
@@ -188,7 +191,8 @@ static std::vector<ExprPromise> InitExprPromiseImpl(
 template <typename PATTERN>
 std::vector<ExprPromise> InitExprPromiseImpl(const PATTERN& pattern,
                                              pir::Value anchor) {
-  PADDLE_THROW("Can not Init ExprPromise");
+  PADDLE_THROW(::common::errors::Unimplemented(
+      "Can not Init ExprPromise with Unsupport Pattern."));
 }
 
 static std::vector<ExprPromise> InitExprPromise(const StmtPattern& pattern,
@@ -213,7 +217,7 @@ static TrivialPattern RecoverAnchorPatternToTrivial(
     const AnchorPattern& anchor_pattern) {
   PADDLE_ENFORCE_EQ(anchor_pattern.anchor_state.promise.size(),
                     1,
-                    phi::errors::PreconditionNotMet(
+                    ::common::errors::PreconditionNotMet(
                         "Can only recover AnchorPattern whose anchor_state "
                         "size is 1 (exact %d)",
                         anchor_pattern.anchor_state.promise.size()));
@@ -247,10 +251,12 @@ static std::vector<pir::Operation*> GetOutputOpsInPattern(
       return {pattern.sink_op()};
     }
     std::vector<pir::Operation*> operator()(const UnsupportPattern& pattern) {
-      PADDLE_THROW("not implement!");
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Get output ops in UnsupportPattern is not implement!"));
     }
     std::vector<pir::Operation*> operator()(const AnchorPattern& pattern) {
-      PADDLE_THROW("not implement!");
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Can't get output ops in AnchorPattern Currently."));
     }
     std::vector<pir::Operation*> operator()(const ReduceTreePattern& pattern) {
       return this->operator()(pattern.GetRootPattern());
@@ -569,8 +575,8 @@ static StmtPattern MergePattern(const StmtPattern& first,
         return MergePatternImpl(lhs, rhs);
       },
       [&](const auto& lhs, const auto& rhs) -> StmtPattern {
-        CHECK(false) << "Found not support merge!" << GetPatternName(first)
-                     << "X" << GetPatternName(second);
+        PADDLE_THROW(
+            phi::errors::Unimplemented("Not support for MergePatternImpl"));
       },
   };
   return std::visit(PatternMatch, first, second);
