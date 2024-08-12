@@ -630,7 +630,6 @@ void TensorRTEngineInstruction::BindOutputTensor(
 
   auto *fluid_t = output_tensor;
   fluid_t->Resize(common::make_ddim(ddim));
-
   PADDLE_ENFORCE_LT(bind_index,
                     num_bindings,
                     common::errors::InvalidArgument(
@@ -710,10 +709,10 @@ void TensorRTEngineInstruction::RunTrt() {
                                         out_variable_array->at(i)->Type()));
     }
   }
-
+  VLOG(4) << "Start Runing trt engine...";
   // Execute the engine.
   trt_engine_->Execute(runtime_batch, &buffers, stream);
-
+  VLOG(4) << "End Runing trt engine and deal with output";
   for (size_t i = 0; i < out_variable_array->size(); ++i) {
     auto type = outputs_dtype_[i];
 

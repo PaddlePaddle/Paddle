@@ -28,31 +28,31 @@ TEST(dense_tensor, meta) {
   const LoD lod{};
 
   DenseTensorMeta meta_0;
-  PADDLE_ENFORCE_EQ(
-      meta_0.valid(),
-      false,
-      phi::errors::InvalidArgument("Fail in default DenseTensorMeta. Expected "
-                                   "meta_0 to be invalid, but got: %s",
-                                   meta_0.valid()));
+  PADDLE_ENFORCE_EQ(meta_0.valid(),
+                    false,
+                    common::errors::InvalidArgument(
+                        "Fail in default DenseTensorMeta. Expected "
+                        "meta_0 to be invalid, but got: %s",
+                        meta_0.valid()));
 
   DenseTensorMeta meta_1(dtype, dims);
   PADDLE_ENFORCE_EQ(
       meta_1.dtype,
       dtype,
-      phi::errors::InvalidArgument("Fail in DenseTensorMeta with dtype and "
-                                   "dims. Expected dtype: %s, but got: %s",
-                                   dtype,
-                                   meta_1.dtype));
+      common::errors::InvalidArgument("Fail in DenseTensorMeta with dtype and "
+                                      "dims. Expected dtype: %s, but got: %s",
+                                      dtype,
+                                      meta_1.dtype));
   PADDLE_ENFORCE_EQ(
       meta_1.dims,
       dims,
-      phi::errors::InvalidArgument("Fail in DenseTensorMeta with dtype and "
-                                   "dims. Expected dims: %s, but got: %s",
-                                   dims,
-                                   meta_1.dims));
+      common::errors::InvalidArgument("Fail in DenseTensorMeta with dtype and "
+                                      "dims. Expected dims: %s, but got: %s",
+                                      dims,
+                                      meta_1.dims));
   PADDLE_ENFORCE_EQ(meta_1.valid(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype and dims. Expected "
                         "meta_1 to be valid, but got: %s",
                         meta_1.valid()));
@@ -60,28 +60,28 @@ TEST(dense_tensor, meta) {
   DenseTensorMeta meta_2(dtype, dims, layout);
   PADDLE_ENFORCE_EQ(meta_2.dtype,
                     dtype,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype, dims and layout. "
                         "Expected dtype: %s, but got: %s",
                         dtype,
                         meta_2.dtype));
-  PADDLE_ENFORCE_EQ(
-      meta_2.dims,
-      dims,
-      phi::errors::InvalidArgument("Fail in DenseTensorMeta with dtype, dims "
-                                   "and layout. Expected dims: %s, but got: %s",
-                                   dims,
-                                   meta_2.dims));
+  PADDLE_ENFORCE_EQ(meta_2.dims,
+                    dims,
+                    common::errors::InvalidArgument(
+                        "Fail in DenseTensorMeta with dtype, dims "
+                        "and layout. Expected dims: %s, but got: %s",
+                        dims,
+                        meta_2.dims));
   PADDLE_ENFORCE_EQ(meta_2.layout,
                     layout,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype, dims and layout. "
                         "Expected layout: %s, but got: %s",
                         layout,
                         meta_2.layout));
   PADDLE_ENFORCE_EQ(meta_2.valid(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype, dims and layout. "
                         "Expected meta_2 to be valid, but got: %s",
                         meta_2.valid()));
@@ -89,35 +89,35 @@ TEST(dense_tensor, meta) {
   DenseTensorMeta meta_3(dtype, dims, layout, lod);
   PADDLE_ENFORCE_EQ(meta_3.dtype,
                     dtype,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype, dims, layout and "
                         "lod. Expected dtype: %s, but got: %s",
                         dtype,
                         meta_3.dtype));
   PADDLE_ENFORCE_EQ(meta_3.dims,
                     dims,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype, dims, layout and "
                         "lod. Expected dims: %s, but got: %s",
                         dims,
                         meta_3.dims));
   PADDLE_ENFORCE_EQ(meta_3.layout,
                     layout,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype, dims, layout and "
                         "lod. Expected layout: %s, but got: %s",
                         layout,
                         meta_3.layout));
   PADDLE_ENFORCE_EQ(meta_3.lod,
                     lod,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype, dims, layout and "
                         "lod. Expected lod: %s, but got: %s",
                         lod,
                         meta_3.lod));
   PADDLE_ENFORCE_EQ(meta_3.valid(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail in DenseTensorMeta with dtype, dims, layout and "
                         "lod. Expected meta_3 to be valid, but got: %s",
                         meta_3.valid()));
@@ -126,73 +126,73 @@ TEST(dense_tensor, meta) {
   PADDLE_ENFORCE_EQ(
       meta_4.dtype,
       dtype,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected dtype: %s, but got: %s",
           dtype,
           meta_4.dtype));
   PADDLE_ENFORCE_EQ(
       meta_4.dims,
       dims,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected dims: %s, but got: %s",
           dims,
           meta_4.dims));
   PADDLE_ENFORCE_EQ(
       meta_4.layout,
       layout,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected layout: %s, but got: %s",
           layout,
           meta_4.layout));
   PADDLE_ENFORCE_EQ(
       meta_4.lod,
       lod,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected lod: %s, but got: %s",
           lod,
           meta_4.lod));
   PADDLE_ENFORCE_EQ(
       meta_4.valid(),
       true,
-      phi::errors::InvalidArgument("Fail in copy DenseTensorMeta. Expected "
-                                   "meta_4 to be valid, but got: %s",
-                                   meta_4.valid()));
+      common::errors::InvalidArgument("Fail in copy DenseTensorMeta. Expected "
+                                      "meta_4 to be valid, but got: %s",
+                                      meta_4.valid()));
 
   DenseTensorMeta meta_5(meta_4);
   PADDLE_ENFORCE_EQ(
       meta_5.dtype,
       dtype,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected dtype: %s, but got: %s",
           dtype,
           meta_5.dtype));
   PADDLE_ENFORCE_EQ(
       meta_5.dims,
       dims,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected dims: %s, but got: %s",
           dims,
           meta_5.dims));
   PADDLE_ENFORCE_EQ(
       meta_5.layout,
       layout,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected layout: %s, but got: %s",
           layout,
           meta_5.layout));
   PADDLE_ENFORCE_EQ(
       meta_5.lod,
       lod,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail in copy DenseTensorMeta. Expected lod: %s, but got: %s",
           lod,
           meta_5.lod));
   PADDLE_ENFORCE_EQ(
       meta_5.valid(),
       true,
-      phi::errors::InvalidArgument("Fail in copy DenseTensorMeta. Expected "
-                                   "meta_5 to be valid, but got: %s",
-                                   meta_5.valid()));
+      common::errors::InvalidArgument("Fail in copy DenseTensorMeta. Expected "
+                                      "meta_5 to be valid, but got: %s",
+                                      meta_5.valid()));
 }
 
 TEST(dense_tensor, def_ctor) {
@@ -200,9 +200,9 @@ TEST(dense_tensor, def_ctor) {
   PADDLE_ENFORCE_EQ(
       tensor_0.valid(),
       true,
-      phi::errors::InvalidArgument("Fail in default DenseTensor. Expected "
-                                   "tensor_0 to be valid, but got: %s",
-                                   tensor_0.valid()));
+      common::errors::InvalidArgument("Fail in default DenseTensor. Expected "
+                                      "tensor_0 to be valid, but got: %s",
+                                      tensor_0.valid()));
 }
 
 TEST(dense_tensor, ctor) {
@@ -249,14 +249,14 @@ TEST(dense_tensor, resize) {
   PADDLE_ENFORCE_EQ(
       tensor_0.capacity(),
       2u,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail to initialize DenseTensor. Expected capacity: 2, but got: %s",
           tensor_0.capacity()));
   tensor_0.ResizeAndAllocate({1, 2, 3});
   PADDLE_ENFORCE_EQ(
       tensor_0.capacity(),
       6u,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Fail to resize DenseTensor. Expected capacity: 6, but got: %s",
           tensor_0.capacity()));
 }
@@ -275,7 +275,7 @@ TEST(dense_tensor, shallow_copy) {
   DenseTensor tensor_1(tensor_0);
   PADDLE_ENFORCE_EQ(tensor_0.meta(),
                     tensor_1.meta(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail to copy DenseTensor. Expected tensor_0 and "
                         "tensor_1 to have the same meta"));
 }
@@ -298,7 +298,7 @@ TEST(dense_tensor, storage_properties) {
   }
   PADDLE_ENFORCE_EQ(caught_exception,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Fail to get storage properties. Expected an exception "
                         "to be thrown for OneDNNStorageProperties"));
 #endif

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -91,7 +92,7 @@ class TrtConvertLogicalTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
@@ -237,7 +238,7 @@ class TrtConvertCompareTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> (paddle_infer.Config, list[int], float):
         def generate_dynamic_shape(attrs):
             if self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
@@ -398,7 +399,7 @@ class TrtConvertLessEqualTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> (paddle_infer.Config, list[int], float):
         def generate_dynamic_shape(attrs):
             if self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
@@ -561,7 +562,7 @@ class TrtConvertGreaterEqualTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> (paddle_infer.Config, list[int], float):
         def generate_dynamic_shape(attrs):
             if self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
@@ -726,7 +727,7 @@ class TrtConvertCompareSkipTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> (paddle_infer.Config, list[int], float):
         def generate_dynamic_shape(attrs):
             if self.dims == 2:
                 shape_data = [2, 16]

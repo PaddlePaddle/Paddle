@@ -40,12 +40,12 @@ class TestCommunicator(unittest.TestCase):
         os.environ["PADDLE_PORT"] = "36001"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"
-        ] = "127.0.0.1:36001,127.0.0.2:36001"
-        os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"
-        ] = "127.0.0.1:36002,127.0.0.2:36002"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = (
+            "127.0.0.1:36001,127.0.0.2:36001"
+        )
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = (
+            "127.0.0.1:36002,127.0.0.2:36002"
+        )
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["FLAGS_selected_gpus"] = "0"
         role = role_maker.PaddleCloudRoleMaker()

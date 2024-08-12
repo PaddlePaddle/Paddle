@@ -15,9 +15,9 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.framework import (
     in_dynamic_or_pir_mode,
 )
@@ -26,6 +26,8 @@ from ..base import framework
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -164,8 +166,8 @@ class Adagrad(Optimizer):
         }
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
-
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
@@ -197,8 +199,8 @@ class Adagrad(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
-
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 

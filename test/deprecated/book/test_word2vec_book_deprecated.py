@@ -119,7 +119,7 @@ def train(
             [first_word, second_word, third_word, forth_word, next_word]
         )
     else:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     if use_bf16:

@@ -108,7 +108,7 @@ def analysisFNDAFile(rootPath, test):
                 matchObj = re.match(
                     r'(.*)Maker(.*)|(.*)Touch(.*)Regist(.*)|(.*)Touch(.*)JitKernel(.*)|(.*)converterC2Ev(.*)',
                     fn,
-                    re.I,
+                    re.IGNORECASE,
                 )
                 if matchObj is None:
                     OP_REGIST = False

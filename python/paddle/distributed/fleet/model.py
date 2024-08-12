@@ -102,9 +102,11 @@ def distributed_model(model):
                 level="O2",
                 master_weight=None,
                 save_dtype=None,
-                dtype="float16"
-                if strategy.amp_configs['use_pure_fp16']
-                else "bfloat16",
+                dtype=(
+                    "float16"
+                    if strategy.amp_configs['use_pure_fp16']
+                    else "bfloat16"
+                ),
             )
 
         init_loss_scaling = strategy.amp_configs['init_loss_scaling']

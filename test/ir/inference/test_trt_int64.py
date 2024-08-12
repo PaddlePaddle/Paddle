@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -61,7 +63,7 @@ class TrtInt64Test1(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return (10 * np.random.random([6, 6, 64, 64])).astype(np.int64)
 
         for axes in [[0, 1], [1, 3], [2, 3]]:
@@ -108,7 +110,7 @@ class TrtInt64Test1(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [8, 8, 64, 64]}
@@ -187,7 +189,7 @@ class TrtInt64Test2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 3:
                 self.dynamic_shape.min_input_shape = {

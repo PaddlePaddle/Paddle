@@ -695,7 +695,7 @@ def cross_validate(ops):
 
                 assert len(fw_call["outputs"]) == len(
                     fw_op["outputs"]
-                ), f"{name}: forward call has more outputs than the op "
+                ), f"{name}: requires outputs number of fw_call == fw_op, but received {fw_call['outputs']} != {fw_op['outputs']}"
                 for output, output_ in zip(
                     fw_call["outputs"], fw_op["outputs"]
                 ):

@@ -47,9 +47,13 @@ def find_output_shape(input_list):
 def make_inputs_outputs(input_shapes, dtype, is_bfloat16=False):
     """Automatically generate formatted inputs and outputs from input_shapes"""
     input_list = [
-        (np.random.random(shape) + 1j * np.random.random(shape)).astype(dtype)
-        if dtype == 'complex64' or dtype == 'complex128'
-        else np.random.random(shape).astype(dtype)
+        (
+            (np.random.random(shape) + 1j * np.random.random(shape)).astype(
+                dtype
+            )
+            if dtype == 'complex64' or dtype == 'complex128'
+            else np.random.random(shape).astype(dtype)
+        )
         for shape in input_shapes
     ]
     output_shape = find_output_shape(input_list)
