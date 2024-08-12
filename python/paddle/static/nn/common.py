@@ -654,9 +654,6 @@ def data_norm(
             "Y": data_norm_out,
             "Means": means,
             "Scales": scales,
-            "BatchSize": batch_size,
-            "BatchSum": batch_sum,
-            "BatchSquareSum": batch_square_sum,
         },
         attrs=attrs,
     )

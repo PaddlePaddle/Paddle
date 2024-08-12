@@ -418,21 +418,7 @@ class DataNormGradOp : public framework::OperatorWithKernel {
                    "Input",
                    framework::GradVarName("Y"),
                    "DataNormGrad");
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("BatchSize"),
-        true,
-        common::errors::NotFound(
-            "Output(BatchSize) of DataNormGradOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("BatchSum"),
-        true,
-        common::errors::NotFound(
-            "Output(BatchSum) of DataNormGradOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("BatchSquareSum"),
-        true,
-        common::errors::NotFound(
-            "Output(BatchSquareSum) of DataNormGradOp should not be null."));
+
     OP_INOUT_CHECK(ctx->HasInput("Means"), "Input", "Means", "DataNormGrad");
     OP_INOUT_CHECK(ctx->HasInput("Scales"), "Input", "Scales", "DataNormGrad");
     bool enable_scale_and_shift =
@@ -730,9 +716,6 @@ class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetInput("scale_w", this->Input("scale_w"));
     op->SetInput("bias", this->Input("bias"));
-    op->SetOutput("BatchSize", this->Input("BatchSize"));
-    op->SetOutput("BatchSum", this->Input("BatchSum"));
-    op->SetOutput("BatchSquareSum", this->Input("BatchSquareSum"));
     op->SetInput("Scales", this->Output("Scales"));
     op->SetInput("Means", this->Output("Means"));
 
