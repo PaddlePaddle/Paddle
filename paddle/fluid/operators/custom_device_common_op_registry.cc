@@ -1553,10 +1553,6 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       device_type,
       paddle::operators::NumberCountOpCustomDeviceKernel<int64_t>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
-      limit_by_capacity,
-      device_type,
-      paddle::operators::LimitByCapacityOpCustomDeviceKernel<int64_t>) {}
-  REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       prune_gate_by_capacity,
       device_type,
       paddle::operators::PruneGateByCapacityCustomDeviceKernel<int64_t>) {}
