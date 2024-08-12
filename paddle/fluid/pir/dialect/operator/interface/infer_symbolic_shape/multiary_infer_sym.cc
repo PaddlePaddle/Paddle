@@ -1507,19 +1507,46 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-// bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(pir::Operation *op,
-//                                                        pir::InferSymbolicShapeContext
-//                                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-// bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(pir::Operation *op,
-//                                                         pir::InferSymbolicShapeContext
-//                                                         *infer_context) {
-//   return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op,
-//   infer_context);
-// }
+  size_t rank = input_shape_or_data.shape().size();
+  PADDLE_ENFORCE_EQ(rank,
+                    label_shape_or_data.shape().size(),
+                    common::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        rank,
+                        label_shape_or_data.shape().size()));
+
+  for (size_t i = 0; i < rank; ++i) {
+    infer_context->AddEqualCstr(input_shape_or_data.shape()[i],
+                                label_shape_or_data.shape()[i]);
+  }
+  if (op->operand_source(2)) {
+    const auto &pos_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    for (size_t i = 0; i < rank; ++i) {
+      infer_context->AddEqualCstr(input_shape_or_data.shape()[i],
+                                  pos_shape_or_data.shape()[i]);
+    }
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(input_shape_or_data.shape())});
+  return true;
+}
+
+bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op, infer_context);
+}
 
 // bool SyncBatchNormOpInferSymbolicShape(pir::Operation *op,
 //                                        pir::InferSymbolicShapeContext
