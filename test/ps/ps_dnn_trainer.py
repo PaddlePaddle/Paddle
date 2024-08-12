@@ -91,7 +91,7 @@ class YamlHelper:
                     nests.append(k)
                     fatten_env_namespace(nests, v)
                 else:
-                    global_k = ".".join(namespace_nests + [k])
+                    global_k = ".".join([*namespace_nests, k])
                     all_flattens[global_k] = v
 
         fatten_env_namespace([], _envs)
@@ -514,7 +514,9 @@ class DnnTrainer:
 
             from paddle.distributed.ps.the_one_ps import TheOnePSRuntime
 
-            _runtime_handle = TheOnePSRuntime()  # ps 目录下重构版的 TheOnePSRuntime
+            _runtime_handle = (
+                TheOnePSRuntime()
+            )  # ps 目录下重构版的 TheOnePSRuntime
             _runtime_handle._set_basic_info(ps_optimizer.pass_ctx._attrs)
             if fleet.is_worker():
                 worker_desc = (

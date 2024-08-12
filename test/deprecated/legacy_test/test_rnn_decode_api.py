@@ -513,9 +513,11 @@ class TrainingHelper:
         self.inputs_ = paddle.utils.map_structure(
             lambda x: paddle.nn.functional.pad(
                 x,
-                pad=([0, 1] + [0, 0] * (len(x.shape) - 1))
-                if time_major
-                else ([0, 0, 0, 1] + [0, 0] * (len(x.shape) - 2)),
+                pad=(
+                    ([0, 1] + [0, 0] * (len(x.shape) - 1))
+                    if time_major
+                    else ([0, 0, 0, 1] + [0, 0] * (len(x.shape) - 2))
+                ),
             ),
             self.inputs,
         )

@@ -3631,7 +3631,20 @@ struct Reshape2GradOpTranscriber : public OpTranscriber {
                       true,
                       common::errors::InvalidArgument(
                           "Reshape2_Grad op does not have input Out@GRAD"));
-    auto& input_outgrad_value = param_map->at(input_outgrad_name).value;
+    auto input_outgrad_value_info = param_map->at(input_outgrad_name);
+    if (input_outgrad_value_info.generated_by_vector) {
+      InsertSliceOperationForTarget(
+          ctx, param_map, block, input_outgrad_value_info, input_outgrad_name);
+      input_outgrad_value_info = param_map->at(input_outgrad_name);
+    }
+    pir::Value input_outgrad_value = input_outgrad_value_info.value;
+
+    PADDLE_ENFORCE_EQ(
+        input_outgrad_value.type().isa<paddle::dialect::DenseTensorType>(),
+        true,
+        ::common::errors::InvalidArgument(
+            "input type must be DenseTensorType, but received: %s.",
+            input_outgrad_value.type()));
 
     dialect::ReshapeGradOp reshape_grad_op =
         builder.Build<dialect::ReshapeGradOp>(xshape_value,

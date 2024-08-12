@@ -697,9 +697,9 @@ class TestSetValueItemBool5(TestSetValueApi):
         return x
 
     def _get_answer(self):
-        self.data[
-            np.array([[False, True, False], [True, True, False]])
-        ] = self.value
+        self.data[np.array([[False, True, False], [True, True, False]])] = (
+            self.value
+        )
 
 
 class TestSetValueItemBool6(TestSetValueApi):

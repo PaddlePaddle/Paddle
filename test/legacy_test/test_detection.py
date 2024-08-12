@@ -180,7 +180,7 @@ class TestDistributeFpnProposals(LayerTest):
                 refer_scale=224,
                 rois_num=rois_num,
             )
-            fetch_list = multi_rois + [restore_ind] + rois_num_per_level
+            fetch_list = [*multi_rois, restore_ind, *rois_num_per_level]
             output_stat = self.get_static_graph_result(
                 feed={'rois': rois_np, 'rois_num': rois_num_np},
                 fetch_list=fetch_list,
@@ -210,7 +210,7 @@ class TestDistributeFpnProposals(LayerTest):
                 rois_num=rois_num_dy,
             )
             print(type(multi_rois_dy))
-            output_dy = multi_rois_dy + [restore_ind_dy] + rois_num_per_level_dy
+            output_dy = [*multi_rois_dy, restore_ind_dy, *rois_num_per_level_dy]
             output_dy_np = []
             for output in output_dy:
                 output_np = output.numpy()

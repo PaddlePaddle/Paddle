@@ -22,8 +22,8 @@
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 
 namespace paddle {
 namespace memory {

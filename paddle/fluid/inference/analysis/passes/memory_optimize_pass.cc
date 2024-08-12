@@ -141,7 +141,11 @@ void MemoryOptimizePass::CollectVarMemorySize(
                                         "fetch",
                                         "share_data"};
     for (auto* tmp : node->inputs) {
-      CHECK(tmp->IsOp());
+      PADDLE_ENFORCE_EQ(tmp->IsOp(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Expected a node to be an operation, but the given "
+                            "node is not an operation."));
       std::string op_type = tmp->Op()->Type();
       if (std::find(invalid_op.begin(), invalid_op.end(), op_type) !=
           invalid_op.end()) {
@@ -149,7 +153,11 @@ void MemoryOptimizePass::CollectVarMemorySize(
       }
     }
     for (auto* tmp : node->outputs) {
-      CHECK(tmp->IsOp());
+      PADDLE_ENFORCE_EQ(tmp->IsOp(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Expected a node to be an operation, but the given "
+                            "node is not an operation."));
       std::string op_type = tmp->Op()->Type();
       if (std::find(invalid_op.begin(), invalid_op.end(), op_type) !=
           invalid_op.end()) {

@@ -15,11 +15,16 @@ gather_srcs(
   extern_func_jit_register.cc
   modular.cc
   compiler.cc
-  codegen_device_util.cc)
+  codegen_device_util.cc
+  codegen_gpu_dev.cc)
 
 if(WITH_CUDA)
   add_subdirectory(nvrtc)
   list(APPEND srcs cuda_util.cc codegen_cuda_dev.cc)
+endif()
+
+if(WITH_ROCM)
+  add_subdirectory(hip)
 endif()
 
 if(WITH_OPENMP)

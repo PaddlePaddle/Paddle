@@ -14,12 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import json
 import os
 import unicodedata
 from shutil import copyfile
-from typing import Optional
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils.download import get_path_from_url
@@ -190,7 +191,7 @@ class PretrainedTokenizer:
         self,
         text,
         text_pair=None,
-        max_seq_len: Optional[int] = None,
+        max_seq_len: int | None = None,
         stride=0,
         is_split_into_words=False,
         pad_to_max_seq_len=False,
@@ -409,7 +410,7 @@ class PretrainedTokenizer:
         """
         Converts a sequence of tokens into ids using the `vocab` attribute (an
         instance of `Vocab`). Override it if needed.
-        Args：
+        Args:
             tokens (list[int]): List of token ids.
         Returns:
             list: Converted id list.
@@ -668,7 +669,7 @@ class PretrainedTokenizer:
             overflowing_tokens = []
             for _ in range(num_tokens_to_remove):
                 if pair_ids is None or len(ids) > len(pair_ids):
-                    overflowing_tokens = [ids[-1]] + overflowing_tokens
+                    overflowing_tokens = [ids[-1], *overflowing_tokens]
                     ids = ids[:-1]
                 else:
                     pair_ids = pair_ids[:-1]
@@ -942,9 +943,9 @@ class PretrainedTokenizer:
         if return_token_type_ids:
             encoded_inputs["token_type_ids"] = token_type_ids
         if return_special_tokens_mask:
-            encoded_inputs[
-                "special_tokens_mask"
-            ] = self.get_special_tokens_mask(ids, pair_ids)
+            encoded_inputs["special_tokens_mask"] = (
+                self.get_special_tokens_mask(ids, pair_ids)
+            )
         if return_length:
             encoded_inputs["seq_len"] = len(encoded_inputs["input_ids"])
 
@@ -1193,9 +1194,9 @@ class PretrainedTokenizer:
                     if return_token_type_ids:
                         encoded_inputs["token_type_ids"] = token_type_ids
                     if return_special_tokens_mask:
-                        encoded_inputs[
-                            "special_tokens_mask"
-                        ] = self.get_special_tokens_mask(ids, pair_ids)
+                        encoded_inputs["special_tokens_mask"] = (
+                            self.get_special_tokens_mask(ids, pair_ids)
+                        )
                     if return_length:
                         encoded_inputs["seq_len"] = len(
                             encoded_inputs["input_ids"]
