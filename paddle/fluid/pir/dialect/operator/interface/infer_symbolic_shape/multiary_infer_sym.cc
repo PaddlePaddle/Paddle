@@ -1369,7 +1369,7 @@ bool PsroiPoolOpInferSymbolicShape(
                         "given as [(x1, y1, x2, y2), ...]"));
   PADDLE_ENFORCE_EQ(rois_dims[1],
                     4,
-                    errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
                         "given as [(x1, y1, x2, y2), ...]"));
   if (op->operand_source(2)) {
@@ -1392,7 +1392,7 @@ bool PsroiPoolOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       input_dims[1],
       output_channels * pooled_height * pooled_width,
-      errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "the channel of X(%d) "
           "should be equal to the product of "
           "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
