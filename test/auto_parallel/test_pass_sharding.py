@@ -30,7 +30,7 @@ class TestShardingPass(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
-        cmd = (
+        cmd = [
             sys.executable,
             "-u",
             *coverage_args,
@@ -41,7 +41,7 @@ class TestShardingPass(unittest.TestCase):
             "--log_dir",
             tmp_dir.name,
             launch_model_path,
-        )
+        ]
 
         process = subprocess.Popen(cmd)
         process.wait()
