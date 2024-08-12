@@ -22,8 +22,14 @@ class CConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "c_concat");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "c_concat");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "Input 'X' of c_concat must be provided."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "Output 'Out' of c_concat must be provided."));
     int nranks = ctx->Attrs().Get<int>("nranks");
     int rank = ctx->Attrs().Get<int>("rank");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
