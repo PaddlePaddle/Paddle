@@ -447,15 +447,15 @@ def conv1d(
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
 
     if len(padding) == 2:
-        padding = [0] * 2 + padding
+        padding = [0, 0, *padding]
     elif len(padding) == 1:
-        padding = [0] + padding
+        padding = [0, *padding]
     else:
         raise ValueError(
             f"The size of padding's dimension should be 1 or 2. But got padding={padding}"
         )
-    stride = [1] + convert_to_list(stride, 1, 'stride')
-    dilation = [1] + convert_to_list(dilation, 1, 'dilation')
+    stride = [1, *convert_to_list(stride, 1, "stride")]
+    dilation = [1, *convert_to_list(dilation, 1, "dilation")]
     from ...tensor.creation import assign as paddle_assign
 
     weight = paddle_assign(weight)
@@ -935,16 +935,16 @@ def conv1d_transpose(
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 1)
 
     if len(padding) == 2:
-        padding = padding + [0] * 2
+        padding = [*padding, 0, 0]
     elif len(padding) == 1:
-        padding = padding + [0]
+        padding = [*padding, 0]
     else:
         raise ValueError(
             f"The size of padding's dimension should 1 or 2. But got padding={padding}"
         )
 
-    stride = convert_to_list(stride, 1, 'stride') + [1]
-    dilation = convert_to_list(dilation, 1, 'dilation') + [1]
+    stride = [*convert_to_list(stride, 1, "stride"), 1]
+    dilation = [*convert_to_list(dilation, 1, "dilation"), 1]
 
     if output_size is None:
         output_size = []
@@ -955,7 +955,7 @@ def conv1d_transpose(
                 'output_size'
             )
         if isinstance(output_size, (list, tuple, int)):
-            output_size = convert_to_list(output_size, 1, 'output_size') + [1]
+            output_size = [*convert_to_list(output_size, 1, 'output_size'), 1]
         else:
             raise ValueError(
                 "output_size should be int, or list, tuple of ints"
@@ -964,9 +964,10 @@ def conv1d_transpose(
     if output_padding == 0:
         output_padding = []
     else:
-        output_padding = convert_to_list(
-            output_padding, 1, 'output_padding'
-        ) + [0]
+        output_padding = [
+            *convert_to_list(output_padding, 1, 'output_padding'),
+            0,
+        ]
 
     if len(output_padding) > 0 and output_padding[0] > stride[0]:
         raise ValueError(
