@@ -33,7 +33,7 @@ class TestAMPO2(unittest.TestCase):
         cmd = [
             sys.executable,
             "-u",
-            *coverage_args,  # Unpacking coverage_args directly into the list
+            *coverage_args,
             "-m",
             "paddle.distributed.launch",
             "--devices",
