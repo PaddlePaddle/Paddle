@@ -72,7 +72,7 @@ class DownpourPsClientService : public PsService {
     PADDLE_ENFORCE_EQ(
         client_id,
         (_client->_client_id),
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Wrong request client's id. Expect to match self. But recieved "
             "request client's id = %lu and self = %lu.",
             client_id,

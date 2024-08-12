@@ -39,7 +39,7 @@ def merge_max_value(old, new):
             if isinstance(old[i], list):
                 new[i] = merge_max_value(old[i], new[i])
             else:
-                new[i] = old[i] if new[i] < old[i] else new[i]
+                new[i] = max(new[i], old[i])
     return new
 
 

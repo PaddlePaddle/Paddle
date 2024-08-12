@@ -84,7 +84,7 @@ struct FoldCINNCallArgumentsMutator : public ir::IRMutator<> {
       if (arg.as_tensor()) {
         PADDLE_ENFORCE_EQ(arg.as_tensor()->buffer.defined(),
                           true,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Expected tensor [%s] to have a defined buffer, "
                               "but the buffer is not defined.",
                               arg.as_tensor()->name.c_str()));

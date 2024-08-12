@@ -103,14 +103,14 @@ TEST(cpuQuantizePass, ConvReLU6) {
       PADDLE_ENFORCE_EQ(
           node->Op()->GetAttrIfExists<float>("fuse_beta"),
           6,
-          phi::errors::InvalidArgument("Attr fuse_beta must equal to 6. "));
+          common::errors::InvalidArgument("Attr fuse_beta must equal to 6. "));
       fused_conv2d_num++;
     }
   }
   PADDLE_ENFORCE_GT(
       fused_conv2d_num,
       0,
-      phi::errors::InvalidArgument("Graph must contain fused_conv2d. "));
+      common::errors::InvalidArgument("Graph must contain fused_conv2d. "));
 }
 
 }  // namespace pass

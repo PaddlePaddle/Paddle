@@ -126,7 +126,7 @@ const AttrType& InferMetaContext::AttrAt(size_t idx) const {
   try {
     return paddle::get<AttrType>(attrs_.at(idx));
   } catch (paddle::bad_variant_access const& e) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Attribute cast error in InferMeta Context, the expected attribute "
         "type is `%s`.",
         std::type_index(typeid(AttrType)).name()));

@@ -14,18 +14,20 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol, Sequence, overload
+from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle import base
 from paddle.base import core
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Literal, Protocol
+
     from paddle._typing import PlaceLike
 
     class _GeneratorState(Protocol):
-        def current_seed(self) -> int:
-            ...
+        def current_seed(self) -> int: ...
 
 
 __all__ = []
@@ -34,22 +36,19 @@ __all__ = []
 @overload
 def get_rng_state(
     device: PlaceLike | None = ..., use_index: Literal[True] = ...
-) -> list[int]:
-    ...
+) -> list[int]: ...
 
 
 @overload
 def get_rng_state(
     device: PlaceLike | None = ..., use_index: Literal[False] = ...
-) -> list[_GeneratorState]:
-    ...
+) -> list[_GeneratorState]: ...
 
 
 @overload
 def get_rng_state(
     device: PlaceLike | None = ..., use_index: bool = ...
-) -> list[int] | list[_GeneratorState]:
-    ...
+) -> list[int] | list[_GeneratorState]: ...
 
 
 def get_rng_state(device=None, use_index=False):
@@ -116,8 +115,7 @@ def set_rng_state(
     state_list: Sequence[int],
     device: PlaceLike | None = ...,
     use_index: Literal[True] = ...,
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
@@ -125,8 +123,7 @@ def set_rng_state(
     state_list: Sequence[_GeneratorState],
     device: PlaceLike | None = ...,
     use_index: Literal[False] = ...,
-) -> None:
-    ...
+) -> None: ...
 
 
 @overload
@@ -134,8 +131,7 @@ def set_rng_state(
     state_list: Sequence[int] | Sequence[_GeneratorState],
     device: PlaceLike | None = ...,
     use_index: bool = ...,
-) -> None:
-    ...
+) -> None: ...
 
 
 def set_rng_state(

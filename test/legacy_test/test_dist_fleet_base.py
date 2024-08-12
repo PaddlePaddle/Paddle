@@ -384,7 +384,7 @@ class TestFleetBase(unittest.TestCase):
             listen_rgx = "Fail to listen"
 
             with open(logx, "r") as rb:
-                for line in rb.readlines():
+                for line in rb:
                     if listen_rgx in line:
                         is_lf = True
                         break

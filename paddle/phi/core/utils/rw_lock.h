@@ -34,20 +34,21 @@ struct RWLock {
     PADDLE_ENFORCE_EQ(
         pthread_rwlock_rdlock(&lock_),
         0,
-        phi::errors::External("The pthread failed to acquire read lock."));
+        common::errors::External("The pthread failed to acquire read lock."));
   }
 
   inline void WRLock() {
     PADDLE_ENFORCE_EQ(
         pthread_rwlock_wrlock(&lock_),
         0,
-        phi::errors::External("The pthread failed to acquire write lock."));
+        common::errors::External("The pthread failed to acquire write lock."));
   }
 
   inline void UNLock() {
-    PADDLE_ENFORCE_EQ(pthread_rwlock_unlock(&lock_),
-                      0,
-                      phi::errors::External("The pthread failed to unlock."));
+    PADDLE_ENFORCE_EQ(
+        pthread_rwlock_unlock(&lock_),
+        0,
+        common::errors::External("The pthread failed to unlock."));
   }
 
  private:

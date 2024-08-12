@@ -34,8 +34,7 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_XPU_BKCL)
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    BKCLDataType dtype =
-        platform::ToBKCLDataType(framework::TransToProtoVarType(in->dtype()));
+    BKCLDataType dtype = phi::ToBKCLDataType(in->dtype());
 
     int nranks = ctx.Attr<int>("nranks");
     int rid = ctx.Attr<int>("ring_id");

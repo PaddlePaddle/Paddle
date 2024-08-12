@@ -109,14 +109,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
                                             int vec_size = 1) {
   PADDLE_ENFORCE_GE(numel,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "numel is expected to be greater than or equal 0,"
                         " but received %d.",
                         numel));
   PADDLE_ENFORCE_GE(
       vec_size,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "vec_size is expected greater than 0, but received %d.", vec_size));
   // Get compute_capability
   const int capability = context.GetComputeCapability();
@@ -166,15 +166,15 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
   PADDLE_ENFORCE_GT(
       x_dim,
       0,
-      phi::errors::InvalidArgument("x dim number should greater than 0,"
-                                   " but received value is: %d",
-                                   x_dim));
+      common::errors::InvalidArgument("x dim number should greater than 0,"
+                                      " but received value is: %d",
+                                      x_dim));
   PADDLE_ENFORCE_GT(
       y_dim,
       0,
-      phi::errors::InvalidArgument("y dim number should greater than 0,"
-                                   " but received value is: %d",
-                                   y_dim));
+      common::errors::InvalidArgument("y dim number should greater than 0,"
+                                      " but received value is: %d",
+                                      y_dim));
 
   const int kThreadsPerBlock = 256;
   int block_cols = std::min<int64_t>(x_dim, kThreadsPerBlock);

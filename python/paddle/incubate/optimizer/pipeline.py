@@ -165,9 +165,11 @@ class PipelineOptimizer:
             offset += 1
         block._insert_op(
             op_idx + 1 + offset,
-            type='c_allreduce_max'
-            if op.type == "reduce_any"
-            else 'c_allreduce_sum',
+            type=(
+                'c_allreduce_max'
+                if op.type == "reduce_any"
+                else 'c_allreduce_sum'
+            ),
             inputs={'X': temp_var if op.type == "reduce_any" else out_var},
             outputs={'Out': temp_var if op.type == "reduce_any" else out_var},
             attrs={
@@ -889,9 +891,11 @@ class PipelineOptimizer:
                         )
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='send_v2'
-                            if not use_mp or is_param
-                            else 'partial_send',
+                            type=(
+                                'send_v2'
+                                if not use_mp or is_param
+                                else 'partial_send'
+                            ),
                             inputs={'X': var},
                             attrs={
                                 self._op_device_key: prev_dev,
@@ -930,9 +934,11 @@ class PipelineOptimizer:
                             extra_index_info['index'] += 1
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='recv_v2'
-                            if not use_mp or is_param
-                            else 'partial_recv',
+                            type=(
+                                'recv_v2'
+                                if not use_mp or is_param
+                                else 'partial_recv'
+                            ),
                             outputs={'Out': [var]},
                             attrs={
                                 'out_shape': var_shape,
