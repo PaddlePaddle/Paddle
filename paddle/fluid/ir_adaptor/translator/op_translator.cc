@@ -3646,12 +3646,9 @@ struct WithXShapeGradOpTranscriber : public OpTranscriber {
         ::common::errors::InvalidArgument(
             "input type must be DenseTensorType, but received: %s.",
             input_outgrad_value.type()));
-
     // NOTE(Aurelius84): Even though we use xshape to construct grad op,
     // but in GradKernel we still use dx->dims by default.
-    OpT grad_op =
-        builder.Build<OpT>(xshape_value,
-                                              input_outgrad_value);
+    OpT grad_op = builder.Build<OpT>(xshape_value, input_outgrad_value);
     param_map->PushValue(out_name, grad_op.result(0));
 
     return grad_op.operation();
