@@ -49,7 +49,7 @@ class TestFuseBatchNormActPass(DistPassTestBase):
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
         image = paddle.static.data(
-            shape=[batch_size] + image_shape, dtype='float32', name='image'
+            shape=[batch_size, *image_shape], dtype='float32', name='image'
         )
 
         model = BatchNormActNet()
