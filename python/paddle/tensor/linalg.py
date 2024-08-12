@@ -4019,15 +4019,49 @@ def pinv(
             return out_2
 
 
-def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def _check_right_solve_shape(x, y):
+    """check the input shape of x and y for solve when left is False"""
+    x_shape = x.shape[-2:]
+    if len(y.shape) == 1:
+        raise ValueError(
+            "Incompatible shapes of X and Y for the equation Out * X = Y, "
+            f"where input X's matrix shape is {x_shape} and"
+            f"input Y's matrix shape is {list(y.shape).append(1)}"
+        )
+    else:
+        y_shape = y.shape[-2:]
+        if x_shape[0] != y_shape[1]:
+            raise ValueError(
+                "Incompatible shapes of X and Y for the equation Out * X = Y, "
+                f"where input X's matrix shape is {x_shape} and"
+                f"input Y's matrix shape is {y_shape}"
+            )
+
+
+def _transpose_last_2dim(x):
+    """transpose the last 2 dimension of a tensor"""
+    x_new_dims = list(range(len(x.shape)))
+    x_new_dims[-1], x_new_dims[-2] = x_new_dims[-2], x_new_dims[-1]
+    x = transpose(x, x_new_dims)
+    return x
+
+
+def solve(
+    x: Tensor, y: Tensor, left: bool = True, name: str | None = None
+) -> Tensor:
     r"""
 
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
     Let :math:`X` be a square matrix or a batch of square matrices, :math:`Y` be
-    a vector/matrix or a batch of vectors/matrices, the equation should be:
+    a vector/matrix or a batch of vectors/matrices. When `left` is True, the equation should be:
 
     .. math::
         Out = X^-1 * Y
+
+    When `left` is False, the equation should be:
+
+    .. math::
+        Out = Y * X^-1
 
     Specifically, this system of linear equations has one solution if and only if input 'X' is invertible.
 
@@ -4036,6 +4070,7 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             more batch dimensions. Its data type should be float32 or float64.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
             more batch dimensions. Its data type should be float32 or float64.
+        left (bool, optional): Whether to solve the system :math:`X * Out = Y` or :math:`Out * X = Y`. Default: True.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -4061,8 +4096,13 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [2., 3.])
     """
+    if not left:
+        _check_right_solve_shape(x, y)
+        x = _transpose_last_2dim(x)
+        y = _transpose_last_2dim(y)
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.solve(x, y)
+        out = _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("solve", **locals())
@@ -4073,7 +4113,10 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         helper.append_op(
             type="solve", inputs={"X": x, "Y": y}, outputs={"Out": out}
         )
-        return out
+
+    if not left:
+        out = _transpose_last_2dim(out)
+    return out
 
 
 def triangular_solve(
