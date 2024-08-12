@@ -1367,7 +1367,7 @@ bool PsroiPoolOpInferSymbolicShape(
                     phi::errors::InvalidArgument(
                         "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
                         "given as [(x1, y1, x2, y2), ...]"));
-  auto std::vector<symbol::DimExpr> dim_expr_vector(1);
+  std::vector<symbol::DimExpr> dim_expr_vector(1);
   dim_expr_vector[0] = symbol::DimExpr(4);
   infer_context->AddEqualCstr(rois_dims[1], dim_expr_vector[0]);
   const auto &rois_num_shape_or_data =
@@ -1388,9 +1388,9 @@ bool PsroiPoolOpInferSymbolicShape(
   int output_channels =
       op->attribute<pir::Int32Attribute>("output_channels").data();
   int a = output_channels * pooled_height * pooled_width;
-  auto std::vector<symbol::DimExpr> dim_expr(1);
+  std::vector<symbol::DimExpr> dim_expr(1);
   dim_expr[0] = symbol::DimExpr(a);
-  infer_context->AddEqualCstr(input_dims[1], dim_expr_[0]);
+  infer_context->AddEqualCstr(input_dims[1], dim_expr[0]);
   PADDLE_ENFORCE_GT(pooled_height,
                     0,
                     phi::errors::InvalidArgument(
@@ -1403,7 +1403,7 @@ bool PsroiPoolOpInferSymbolicShape(
                     1,
                     phi::errors::InvalidArgument(
                         "The pooled output channels must greater than 1"));
-  auto std::vector<symbol::DimExpr> out_dims = input_dims;
+  std::vector<symbol::DimExpr> out_dims = input_dims;
   out_dims[0] = rois_dims[0];
   out_dims[1] =
       output_channels;  // input_dims[1] / (pooled_height * pooled_width);
