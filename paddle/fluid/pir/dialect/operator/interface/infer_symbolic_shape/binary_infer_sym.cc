@@ -330,7 +330,6 @@ bool DotOpInferSymbolicShape(pir::Operation *op,
                         "match that of input tensor X(%u).",
                         y_rank,
                         x_rank));
-  bool shape_match = true;
   for (size_t i = 0; i < x_rank; ++i) {
     infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
   }
