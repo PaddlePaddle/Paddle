@@ -88,13 +88,19 @@ inline static DataType promoteTypes(DataType x, DataType y) {
 // Migrated from operator overloading
 static std::unordered_set<std::string> support_promotion_ops = {
     "add",
+    "elementwise_add",
     "subtract",
+    "elementwise_sub",
     "multiply",
-    "mod",
+    "elementwise_mul",
+    "elementwise_mod",
+    "remainder"
     "divide",
+    "elementwise_div",
     "truediv",
-    "floor_div",
+    "floor_divide",
     "pow",
+    "elementwise_pow",
     "equal",
     "not_equal",
     "less_than",
@@ -147,15 +153,15 @@ inline phi::DataType GetPromoteDtype(
     const DataType& y_dtype,
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
-  if (op_name == "divide" || op_name == "divide_") {
+  if (op_name == "divide" || op_name == "divide_" ||
+      op_name == "elementwise_div") {
     if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
       return DataType::FLOAT32;
     }
   }
   // Tensor + 0-d Tensor
-  // if(support_promotion_ops.find(op_name) != support_promotion_ops.end() &&
-  // (x_shape.size() == 0 || y_shape.size() == 0)) {
-  if ((x_shape.size() == 0 || y_shape.size() == 0)) {
+  if (support_promotion_ops.find(op_name) != support_promotion_ops.end() &&
+      (x_shape.size() == 0 || y_shape.size() == 0)) {
     if (!is_common_dtype_for_scalar(x_dtype, y_dtype) ||
         (x_shape.size() == 0 && y_shape.size() == 0)) {
       return phi::promoteTypes(x_dtype, y_dtype);

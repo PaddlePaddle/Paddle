@@ -409,13 +409,13 @@ class TestElementwiseDivOpXsizeLessThanYsize(ElementwiseDivOp):
 class TestElementwiseDivOpInt(ElementwiseDivOp):
     def init_dtype(self):
         self.dtype = np.int32
-        self.val_dtype = np.int32
+        self.val_dtype = np.float32
 
     def gen_data(self, shape):
         return np.random.randint(1, 5, size=shape)
 
     def compute_output(self, x, y):
-        return x // y
+        return x / y
 
 
 def create_test_fp16_class(parent, max_relative_error=2e-3):

@@ -768,11 +768,7 @@ class CodeGen:
 
     def _gen_type_promotion_logic(self, op_info, op_name):
         input_list = op_info.input_name_list
-        if op_info.is_sparse_op:
-            type_promotion_logic_str = (
-                f"\n VLOG(5) << \" No Type Promotion for {op_name} api. \"; "
-            )
-        elif op_name in type_promote_white_list:
+        if op_name in type_promote_white_list:
             x = type_promote_white_list[op_name][0]
             y = type_promote_white_list[op_name][1]
 

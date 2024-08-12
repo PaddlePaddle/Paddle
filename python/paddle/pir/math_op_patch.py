@@ -403,58 +403,10 @@ def monkey_patch_value():
                         other_var,
                     )
 
-            # 3. unify right var type to left var
-            rhs_dtype = safe_get_dtype(other_var)
-            op_type = python_api.__name__
-            # if lhs_dtype != rhs_dtype:
-            #     if method_name in SUPPORT_PROMOTION_OPS:
-            #         # different major types or both 0-d tensor follow with T+T rule.
-            #         if len(other_var.shape) == 0 or len(self.shape) == 0:
-            #             if not core.is_common_dtype_for_scalar_with_datatype(
-            #                 lhs_dtype, rhs_dtype
-            #             ) or (
-            #                 len(other_var.shape) == 0 and len(self.shape) == 0
-            #             ):
-            #                 promote_type = core.get_promote_dtype(
-            #                     op_type, lhs_dtype, rhs_dtype
-            #                 )
-            #                 if lhs_dtype != promote_type:
-            #                     self = astype(self, promote_type)
-            #                 if rhs_dtype != promote_type:
-            #                     other_var = astype(other_var, promote_type)
-            #             # common major types follow with tensor: int32(tensor) + int64(scalar) = int32
-            #             else:
-            #                 if len(self.shape) == 0:
-            #                     self = astype(self, rhs_dtype)
-            #                 else:
-            #                     other_var = astype(other_var, lhs_dtype)
-            #         elif core.need_type_promotion(
-            #             op_type, lhs_dtype, rhs_dtype
-            #         ):
-            #             # only report warning here, real promotion deal in Executor
-            #             warnings.warn(
-            #                 f"The input dtypes of OP {op_type} are {lhs_dtype} and {rhs_dtype}, the output will be auto-promoted"
-            #             )
-            #             warnings.filterwarnings(
-            #                 "ignore", message="The input dtypes of OP"
-            #             )
-            #     else:
-            #         raise TypeError(
-            #             f"got different data type in {op_type} between {lhs_dtype} and {rhs_dtype}."
-            #         )
-
             if reverse:
                 tmp = self
                 self = other_var
                 other_var = tmp
-
-            # if (
-            #     (python_api == paddle.divide)
-            #     and self.dtype in _supported_int_dtype_
-            #     and self.dtype == other_var.dtype
-            # ):
-            #     self = paddle.cast(self, DataType.FLOAT32)
-            #     other_var = paddle.cast(other_var, DataType.FLOAT32)
 
             out = python_api(self, other_var)
             return out
