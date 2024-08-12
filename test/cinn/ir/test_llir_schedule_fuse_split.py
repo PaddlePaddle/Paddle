@@ -190,15 +190,15 @@ def test_split_dynamic():
             for i in range(128):
                 for j in range(128):
                     for k_7 in range(16):
-                        for k_8 in range((N / 16) + 1):
-                            if (((N / 16) * k_7) + (k_7 + k_8)) < N:
+                        for k_8 in range((N + 15) / 16):
+                            if ((((15 + N) / 16) * k_7) + k_8) < N:
                                 with ir.ScheduleBlockContext("Y") as Y_block:
                                     i1, j1, k1 = ir.AxisMap(
                                         "SSS",
                                         [
                                             i,
                                             j,
-                                            (((N / 16) * k_7) + (k_7 + k_8)),
+                                            ((((15 + N) / 16) * k_7) + k_8),
                                         ],
                                     )
                                     Y[i1, j1, k1] = X[i1, j1, k1] * 2.0

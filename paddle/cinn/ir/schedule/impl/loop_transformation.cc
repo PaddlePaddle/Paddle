@@ -116,31 +116,26 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   bool is_positive = true;
   int num_minus1 = 0;
   std::vector<Expr> process_factors;
-  Expr prod_size(-1);
-  int idx_neg1 = 1;
-  for (auto factor : factors) prod_size = prod_size * Expr(factor);
+  int prod_size(-1);
+  bool exact_split = true;
+  for (auto factor : factors) prod_size = prod_size * factor;
+  Expr remaining_size = tot_extent / Expr(prod_size);
+  Expr total_size = remaining_size * Expr(prod_size);
+  common::cas_intervals_t var_intervals = {};
+  cinn::common::SymbolicExprAnalyzer analyzer(var_intervals);
+  if (!analyzer.ProveEQ(tot_extent, total_size).value_or(false)) {
+    remaining_size = (tot_extent + Expr(prod_size - 1)) / Expr(prod_size);
+    exact_split = false;
+  }
   std::for_each(factors.begin(), factors.end(), [&](int factor) {
     if (factor == -1) {
-      process_factors.push_back(
-          cinn::common::AutoSimplify(tot_extent / prod_size));
-      idx_neg1 = -idx_neg1;
+      process_factors.push_back(remaining_size);
     } else {
       process_factors.push_back(Expr(factor));
-      if (idx_neg1 > 0) idx_neg1++;
     }
     if (factor < 1 && factor != -1) is_positive = false;
     if (factor == -1) ++num_minus1;
   });
-
-  idx_neg1 = (-idx_neg1) - 1;
-
-  bool exact_split =
-      (tot_extent ==
-       cinn::common::AutoSimplify(process_factors[0] * process_factors[1]));
-  if (!exact_split) {
-    process_factors[idx_neg1] =
-        cinn::common::AutoSimplify(process_factors[idx_neg1] + Expr(1));
-  }
 
   if (num_minus1 > 1 || (!is_positive)) {
     os << "The params in factors of Split on dynamic shape should contains at "
