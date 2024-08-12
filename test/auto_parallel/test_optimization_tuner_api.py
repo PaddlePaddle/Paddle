@@ -34,7 +34,7 @@ class TestOptimizationTunerAPI(unittest.TestCase):
         cmd = [
             sys.executable,
             "-u",
-            *coverage_args,  # Unpacking coverage_args
+            *coverage_args,
             "-m",
             "launch",
             "--gpus",
