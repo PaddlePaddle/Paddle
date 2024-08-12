@@ -340,14 +340,12 @@ class TestUniformRandomOpApi(unittest.TestCase):
             y = linear(x)
 
             place = base.CPUPlace()
-            x_tensor = base.create_lod_tensor(
-                np.random.rand(3, 16).astype("float32"), [[1, 2]], place
-            )
+            x_data = np.random.rand(3, 16).astype("float32")
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             ret = exe.run(
                 paddle.static.default_main_program(),
-                feed={'x': x_tensor},
+                feed={'x': x_data},
                 fetch_list=[y],
                 return_numpy=False,
             )
