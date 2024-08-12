@@ -618,57 +618,45 @@ bool IndexSampleOpInferSymbolicShape(
 
 bool KLDivOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
-  // 获取输入 x 和 label 的符号形状
-  const symbol::ShapeOrDataDimExprs &x_shape =
+  const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const symbol::ShapeOrDataDimExprs &label_shape =
+  const auto &label_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &x_shape = x_shape_or_data.shape();
+  const auto &label_shape = label_shape_or_data.shape();
 
-  // 获取形状信息
-  const auto &dim_x = x_shape.shape();
-  const auto &dim_target = label_shape.shape();
-
-  // 检查输入的维度数量是否相同
-  PADDLE_ENFORCE_EQ(dim_x.size(),
-                    dim_target.size(),
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    label_shape.size(),
                     common::errors::InvalidArgument(
-                        "Input(X) rank and Input(Target) rank should be "
-                        "same, but received X rank(%d) != Target rank(%d)",
-                        dim_x.size(),
-                        dim_target.size()));
+                        "Input(X) rank and Input(Target) rank should be same, "
+                        "but received X rank(%d) != Target rank(%d)",
+                        x_shape.size(),
+                        label_shape.size()));
 
-  // 检查每个维度的大小是否一致
-  for (size_t i = 0; i < dim_x.size(); i++) {
-    infer_context->AddEqualCstr(dim_x[i], dim_target[i]);
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    infer_context->AddEqualCstr(x_shape[i], label_shape[i]);
   }
 
-  // 属性获取
   std::string reduction =
       op->attribute<pir::StrAttribute>("reduction").AsString();
-
-  // 检查 reduction 属性的有效性
-  const bool reduction_valid =
-      (reduction == "mean" || reduction == "sum" || reduction == "batchmean" ||
-       reduction == "none");
+  bool reduction_valid = (reduction == "mean" || reduction == "sum" ||
+                          reduction == "batchmean" || reduction == "none");
   PADDLE_ENFORCE_EQ(
       reduction_valid,
       true,
       common::errors::InvalidArgument(
           "Attr(reduction) can only be 'none'|'batchmean'|'sum'|'mean'."));
 
-  // 设置输出张量的形状
+  std::vector<symbol::DimExpr> out_shape;
   if (reduction == "none") {
-    infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(dim_x)});
+    out_shape = x_shape;
   } else {
-    infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs({})});
+    out_shape = std::vector<symbol::DimExpr>{};
   }
-
-  // 设置输出张量的数据类型
-  infer_context->SetDtypeForValue(op->result(0), x_shape.dtype());
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
 
   return true;
 }
