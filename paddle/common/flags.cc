@@ -1793,3 +1793,21 @@ PHI_DEFINE_EXPORTED_double(accuracy_check_atol_bf16,
 PHI_DEFINE_EXPORTED_double(accuracy_check_rtol_bf16,
                            1e-3,
                            "It controls the rtol of accuracy_check op");
+
+
+/**
+ * fused_multi_transformer_op related FLAG
+ * Name: mmha_use_flash_decoding
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable flash decoding for mmha kernels in fused_multi_transformer_op.
+ */
+PHI_DEFINE_EXPORTED_bool(mmha_use_flash_decoding,
+                         false,
+                         "Enable flash decoding for mmha kernels in "
+                         "fused_multi_transformer_op.");
+
+PHI_DEFINE_EXPORTED_int32(multi_block_attention_min_partition_size,
+                          1024,
+                          "The minimum partition size for flash decoding");
