@@ -2219,7 +2219,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         # test_for_without_zero_iter
         input_var_names = self._find_names_in_space(
             read_names | write_names, (Space.locals, Space.cells)
-            ) + [iterator.id]
+        ) + [iterator.id]
         output_var_names = list(write_names) + [iterator.id]
 
         # 2. create inline call loop fn
