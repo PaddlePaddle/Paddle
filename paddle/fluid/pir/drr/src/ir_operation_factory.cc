@@ -717,6 +717,79 @@ void OperationFactory::RegisterManualOpCreator() {
         return rewriter.Build<paddle::onednn::dialect::ScaleOp>(inputs[0],
                                                                 attrs);
       });
+  // below op since attr will replace to default after insert some bf16 op
+  // We have to build here to solve
+  RegisterOperationCreator(
+      "onednn_op.multiply",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::onednn::dialect::MultiplyOp>(
+            inputs[0], inputs[1], attrs);
+      });
+
+  RegisterOperationCreator(
+      "onednn_op.multiply_",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::onednn::dialect::Multiply_Op>(
+            inputs[0], inputs[1], attrs);
+      });
+
+  RegisterOperationCreator(
+      "onednn_op.add",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::onednn::dialect::AddOp>(
+            inputs[0], inputs[1], attrs);
+      });
+
+  RegisterOperationCreator(
+      "onednn_op.add_",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::onednn::dialect::Add_Op>(
+            inputs[0], inputs[1], attrs);
+      });
+
+  RegisterOperationCreator(
+      "onednn_op.sigmoid",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::onednn::dialect::SigmoidOp>(inputs[0],
+                                                                  attrs);
+      });
+
+  RegisterOperationCreator(
+      "onednn_op.sigmoid_",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::onednn::dialect::Sigmoid_Op>(inputs[0],
+                                                                   attrs);
+      });
+  RegisterOperationCreator(
+      "onednn_op.relu",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::onednn::dialect::ReluOp>(inputs[0],
+                                                               attrs);
+      });
+
+  RegisterOperationCreator(
+      "onednn_op.relu_",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        return rewriter.Build<paddle::onednn::dialect::Relu_Op>(inputs[0],
+                                                                attrs);
+      });
+
 #endif
 
   RegisterOperationCreator(
