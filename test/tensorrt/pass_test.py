@@ -31,6 +31,8 @@ class PassTest(unittest.TestCase):
         self.places = []
         self.skip_accuracy_verification = False
         self.pass_attr_list = []  # pass_name:pass_attr(defalut:None)
+        self.trt_expected_ops = {}
+        self.check_trt_attr = True  # Open and check by default
 
     def run_pir_pass(self, program):
         pm = pir.PassManager(opt_level=4)
@@ -40,7 +42,22 @@ class PassTest(unittest.TestCase):
             for pass_name, pass_attr in pass_item.items():
                 pm.add_pass(pass_name, pass_attr)
         pm.run(program)
+
+        if self.check_trt_attr:
+            self.check_trt_attributes(program)
         return program
+
+    def check_trt_attributes(self, program):
+        trt_attr_found = False
+        for op in program.global_block().ops:
+            if op.name() in self.trt_expected_ops:
+                if op.has_attr("__l_trt__"):
+                    trt_attr_found = True
+                    break
+        if not trt_attr_found:
+            self.fail(
+                "No operation in the program has the '__l_trt__' attribute."
+            )
 
     def check_fused_ops(self, program):
         self.assertTrue(
