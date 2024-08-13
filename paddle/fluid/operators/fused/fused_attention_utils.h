@@ -87,6 +87,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     }
     if (comm_ctx) {
       comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
+      paddle::platform::GpuStreamSync(stream);
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
