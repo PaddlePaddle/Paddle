@@ -993,6 +993,7 @@
     func : conv2d_transpose
     data_type : x
   backward : conv2d_transpose_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : conv2d_transpose_bias
   args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
