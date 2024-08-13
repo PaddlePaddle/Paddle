@@ -1651,6 +1651,71 @@ bool Where_OpInferSymbolicShape(pir::Operation *op,
   return WhereOpInferSymbolicShape(op, infer_context);
 }
 
+bool MultiplexOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &ins = infer_context->GetShapeOrDataForValue(op->operand_source(0))
+                        .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+  PADDLE_ENFORCE_NE(
+      ins.empty(),
+      true,
+      common::errors::InvalidArgument("MultiInput(X) shouldn't be empty."));
+
+  const auto ids_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  PADDLE_ENFORCE_EQ(ids_shape_or_data.shape().size(),
+                    2,
+                    common::errors::PreconditionNotMet(
+                        "The index tensor must be a vector with 2 dimensions"));
+
+  PADDLE_ENFORCE_EQ(
+      ids_shape_or_data.shape()[1],
+      symbol::DimExpr(1),
+      common::errors::PreconditionNotMet(
+          "The index tensor must be a vector with batchSize x 1."));
+
+  PADDLE_ENFORCE_GT(
+      ins.size(),
+      1,
+      common::errors::InvalidArgument("multiplex operator should have more "
+                                      "than one candidate input tensors."));
+
+  auto num_ins = ins.size();
+  auto in_shape = ins[0].shape();
+  PADDLE_ENFORCE_GE(
+      in_shape.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The rank of candidate tensors must be not less than 2."));
+
+  for (size_t i = 1; i < num_ins; ++i) {
+    auto shape = ins[i].shape();
+
+    PADDLE_ENFORCE_EQ(in_shape.size(),
+                      shape.size(),
+                      common::errors::PreconditionNotMet(
+                          "All the candidate tensors must have the same dim."));
+
+    for (size_t j = 0; j < in_shape.size(); ++j)
+      infer_context->AddEqualCstr(in_shape[j], ins[i].shape()[j]);
+  }
+
+  if (in_shape[0].isa<int64_t>() &&
+      ids_shape_or_data.shape()[0].isa<int64_t>()) {
+    PADDLE_ENFORCE_GE(in_shape[0].dyn_cast<int64_t>(),
+                      ids_shape_or_data.shape()[0].dyn_cast<int64_t>(),
+                      common::errors::InvalidArgument(
+                          "The 2nd-dim of input cannot be smaller than "
+                          "batchSize of the index tensor."));
+  }
+  in_shape[0] = ids_shape_or_data.shape()[0];
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrData{symbol::TensorShapeOrDataDimExprs(in_shape)});
+  return true;
+}
+
 bool FakeChannelWiseDequantizeMaxAbsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
