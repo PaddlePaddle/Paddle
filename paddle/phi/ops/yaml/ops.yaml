@@ -1962,6 +1962,7 @@
   kernel :
     func : fractional_max_pool2d
   backward : fractional_max_pool2d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fractional_max_pool3d
   args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0, 0}, float random_u = 0.0, bool return_mask = true)
@@ -1971,6 +1972,7 @@
   kernel :
     func : fractional_max_pool3d
   backward : fractional_max_pool3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : frame
   args : (Tensor x, int frame_length, int hop_length, int axis=-1)
