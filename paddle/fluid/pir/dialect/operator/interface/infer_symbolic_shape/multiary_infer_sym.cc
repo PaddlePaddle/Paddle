@@ -745,9 +745,9 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   }
 
   pir::Value operand_source = op->operand_source(0);
+  const auto &x_shape = infer_context->GetShapeOrDataForValue(operand_source);
   const auto &shape_data_list =
-      infer_context->GetShapeOrDataForValue(operand_source)
-          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+      x_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
   size_t rank = shape_data_list.at(0).shape().size();
   const int64_t axis = [&] {
@@ -755,12 +755,9 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
     return axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
   }();
 
-  if (shape_data_list.at(0).data().has_value()) {
+  if (details::HasCompleteData(x_shape)) {
     if (rank == 1) {
-      const auto &s_or_d =
-          infer_context->GetShapeOrDataForValue(operand_source);
-      ExprVec data = details::GetExprVecFromData(s_or_d);
-
+      ExprVec data = details::GetExprVecFromData(x_shape);
       const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
       symbol::ShapeOrDataDimExprs shape_data{
           symbol::TensorShapeOrDataDimExprs(shape, data)};
@@ -808,6 +805,66 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
 
   pir::Value res = op->result(0);
   infer_context->SetShapeOrDataForValue(res, shape_data);
+
+  return true;
+}
+
+bool EditDistanceOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &hyps_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &refs_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const auto &hyps_dims = hyps_shape_or_data.shape();
+  const auto &refs_dims = refs_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      hyps_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Input(Hyps) must be a 2-D Tensor, but received rank %u.",
+          hyps_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      refs_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Input(Refs) must be a 2-D Tensor, but received rank %u.",
+          refs_dims.size()));
+
+  infer_context->AddEqualCstr(hyps_dims[0], refs_dims[0]);
+
+  bool has_lengths = op->operand_source(2) && op->operand_source(3);
+  if (has_lengths) {
+    const auto &hypslength_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const auto &refslength_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(3));
+
+    infer_context->AddEqualCstr(hypslength_shape_or_data.shape()[0],
+                                hyps_dims[0]);
+
+    infer_context->AddEqualCstr(refslength_shape_or_data.shape()[0],
+                                refs_dims[0]);
+
+    infer_context->AddEqualCstr(hypslength_shape_or_data.shape()[0],
+                                refslength_shape_or_data.shape()[0]);
+  } else {
+    symbol::DimExpr one = symbol::DimExpr(1);
+
+    infer_context->AddEqualCstr(hyps_dims[1], one);
+    infer_context->AddEqualCstr(refs_dims[1], one);
+  }
+
+  symbol::ShapeOrDataDimExprs out_shape_or_data_exprs(
+      symbol::TensorShapeOrDataDimExprs(
+          std::vector<symbol::DimExpr>{refs_dims}));
+  infer_context->SetShapeOrDataForValue(op->result(0), out_shape_or_data_exprs);
+
+  symbol::ShapeOrDataDimExprs single_dim_expr(symbol::TensorShapeOrDataDimExprs(
+      std::vector<symbol::DimExpr>{symbol::DimExpr(1)}));
+  infer_context->SetShapeOrDataForValue(
+      op->result(1), symbol::ShapeOrDataDimExprs({single_dim_expr}));
 
   return true;
 }
@@ -1422,12 +1479,46 @@ bool PsroiPoolOpInferSymbolicShape(
   return true;
 }
 
-// bool RmsNormOpInferSymbolicShape(pir::Operation *op,
-//                                  pir::InferSymbolicShapeContext
-//                                  *infer_context) {
-//   // pass
-//   return true;
-// }
+bool RmsNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  size_t x_shape_size = x_shape.size();
+
+  symbol::DimExpr normalized_dims(1);
+  int begin_norm_axis =
+      op->attribute<pir::Int32Attribute>("begin_norm_axis").data();
+  for (size_t i = begin_norm_axis; i < x_shape_size; ++i) {
+    normalized_dims = normalized_dims * x_shape[i];
+  }
+
+  const auto &norm_weight_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const std::vector<symbol::DimExpr> &norm_weight_dims =
+      norm_weight_shape.shape();
+
+  infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  if (op->result(2)) {
+    std::vector<symbol::DimExpr> inv_var_dims(
+        x_shape.begin(), x_shape.begin() + begin_norm_axis);
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(inv_var_dims)});
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  return true;
+}
 
 // bool RoiPoolOpInferSymbolicShape(pir::Operation *op,
 //                                  pir::InferSymbolicShapeContext
@@ -1511,19 +1602,46 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-// bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(pir::Operation *op,
-//                                                        pir::InferSymbolicShapeContext
-//                                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-// bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(pir::Operation *op,
-//                                                         pir::InferSymbolicShapeContext
-//                                                         *infer_context) {
-//   return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op,
-//   infer_context);
-// }
+  size_t rank = input_shape_or_data.shape().size();
+  PADDLE_ENFORCE_EQ(rank,
+                    label_shape_or_data.shape().size(),
+                    common::errors::InvalidArgument(
+                        "Input(X) and Input(Label) shall have the same rank."
+                        "But received: the rank of Input(X) is [%d], "
+                        "the rank of Input(Label) is [%d].",
+                        rank,
+                        label_shape_or_data.shape().size()));
+
+  for (size_t i = 0; i < rank; ++i) {
+    infer_context->AddEqualCstr(input_shape_or_data.shape()[i],
+                                label_shape_or_data.shape()[i]);
+  }
+  if (op->operand_source(2)) {
+    const auto &pos_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    for (size_t i = 0; i < rank; ++i) {
+      infer_context->AddEqualCstr(input_shape_or_data.shape()[i],
+                                  pos_shape_or_data.shape()[i]);
+    }
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(input_shape_or_data.shape())});
+  return true;
+}
+
+bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return SigmoidCrossEntropyWithLogitsOpInferSymbolicShape(op, infer_context);
+}
 
 // bool SyncBatchNormOpInferSymbolicShape(pir::Operation *op,
 //                                        pir::InferSymbolicShapeContext

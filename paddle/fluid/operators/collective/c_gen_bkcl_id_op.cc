@@ -20,9 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
