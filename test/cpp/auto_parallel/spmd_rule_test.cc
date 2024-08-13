@@ -1634,8 +1634,7 @@ TEST(UnsqueezeGradInferSpmd, Ctor) {
 
   x_dist_attr.set_dims_mapping({0, 1});
   out_grad_dist_attr.set_dims_mapping({-1, 0, -1, 1});
-  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape),
-                                       xshape_dist_attr);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
   out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(out_grad_shape),
                                               out_grad_dist_attr);
 
