@@ -67,6 +67,8 @@ DEFINE_GENERAL_PATTERN(Silu, paddle::dialect::SiluOp)
 DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
 DEFINE_GENERAL_PATTERN(FusedConv2dAddAct, paddle::dialect::FusedConv2dAddActOp)
 DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
+DEFINE_GENERAL_PATTERN(Shape, paddle::dialect::ShapeOp)
+DEFINE_GENERAL_PATTERN(Expand, paddle::dialect::ExpandOp)
 
 #undef DEFINE_GENERAL_PATTERN
 
@@ -1064,6 +1066,8 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(DepthwiseConv2d)
     ADD_PATTERN(Nonzero)
     ADD_PATTERN(Gelu)
+    ADD_PATTERN(Shape)
+    ADD_PATTERN(Expand)
 
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
