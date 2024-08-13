@@ -638,7 +638,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
     target_rank = std::max(target_rank, static_cast<int>(input_shape.size()));
   }
 
-  std::vector<symbol::DimExpr> target_dims(target_rank, symbol::DimExpr(1));
+  std::vector<symbol::DimExpr> target_dims(target_rank, symbol::DimExpr(0));
 
   // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
   for (int index = 0; index < target_rank; ++index) {
@@ -650,8 +650,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
         dim_size = input_shape[axis];
       }
 
-      if (!target_dim_size.is_dynamic() && !dim_size.is_dynamic() &&
-          target_dim_size != dim_size && dim_size != 1 &&
+      if (target_dim_size != dim_size && dim_size != 1 &&
           target_dim_size != 1) {
         PADDLE_THROW(errors::InvalidArgument(
             "BroadcastTensorsOp inputs do not satisfy broadcast semantics, "
