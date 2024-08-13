@@ -133,27 +133,6 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
   return vec_res;
 }
 
-std::vector<pir::Operation*> GetProducerOpsRecursive(
-    pir::Operation* root,
-    const std::unordered_map<pir::Operation*, size_t>& op2id) {
-  std::unordered_set<pir::Operation*> visited;
-  std::deque<pir::Operation*> queue;
-  std::vector<pir::Operation*> result;
-  queue.push_back(root);
-  visited.insert(root);
-  while (!queue.empty()) {
-    pir::Operation* cur = queue.front();
-    queue.pop_front();
-    result.push_back(cur);
-    for (const auto& new_op : GetProducerOpsReverseSort(cur, op2id)) {
-      if (visited.count(new_op)) continue;
-      visited.insert(new_op);
-      queue.push_back(new_op);
-    }
-  }
-  return result;
-}
-
 std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   std::unordered_set<pir::Operation*> producers;
 
@@ -167,6 +146,27 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
     }
   }
   return producers;
+}
+
+std::vector<pir::Operation*> GetProducerOpsRecursive(
+    pir::Operation* root,
+    const std::unordered_map<pir::Operation*, size_t>& op2id) {
+  std::unordered_set<pir::Operation*> visited;
+  std::deque<pir::Operation*> queue;
+  std::vector<pir::Operation*> result;
+  queue.push_back(root);
+  visited.insert(root);
+  while (!queue.empty()) {
+    pir::Operation* cur = queue.front();
+    queue.pop_front();
+    result.push_back(cur);
+    for (const auto& new_op : GetProducerOps(cur)) {
+      if (visited.count(new_op)) continue;
+      visited.insert(new_op);
+      queue.push_back(new_op);
+    }
+  }
+  return result;
 }
 
 std::unordered_set<pir::Operation*> GetConsumerOps(
@@ -189,6 +189,17 @@ std::unordered_set<pir::Operation*> GetConsumerOps(
   return consumers;
 }
 
+std::unordered_set<pir::Operation*> GetConsumerOpsSimple(pir::Operation* op) {
+  std::unordered_set<pir::Operation*> consumers;
+  for (auto& result : op->results()) {
+    for (auto it = result.use_begin(); it != result.use_end(); ++it) {
+      auto parent_op = it->owner();
+      consumers.insert(parent_op);
+    }
+  }
+  return consumers;
+}
+
 std::vector<pir::Operation*> GetConsumerOpsRecursive(
     pir::Operation* root,
     const std::unordered_map<pir::Operation*, size_t>& op2id) {
@@ -201,24 +212,13 @@ std::vector<pir::Operation*> GetConsumerOpsRecursive(
     pir::Operation* cur = queue.front();
     queue.pop_front();
     result.push_back(cur);
-    for (const auto& new_op : GetConsumerOps(cur, op2id)) {
+    for (const auto& new_op : GetConsumerOpsSimple(cur)) {
       if (visited.count(new_op)) continue;
       visited.insert(new_op);
       queue.push_back(new_op);
     }
   }
   return result;
-}
-
-std::unordered_set<pir::Operation*> GetConsumerOpsSimple(pir::Operation* op) {
-  std::unordered_set<pir::Operation*> consumers;
-  for (auto& result : op->results()) {
-    for (auto it = result.use_begin(); it != result.use_end(); ++it) {
-      auto parent_op = it->owner();
-      consumers.insert(parent_op);
-    }
-  }
-  return consumers;
 }
 
 static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
@@ -277,9 +277,9 @@ SubgraphDetector::SubgraphDetector(pir::Block* block,
                                    const OpClassifier& classifier)
     : block_(block), op_classifier_(classifier) {
   sort_ops_ = InverselyTopologicalSort(block_);
-  size_t index = sort_ops_.size() - 1;
-  for (auto& op : sort_ops_) {
-    op2id_[op] = index--;
+  size_t index = 0;
+  for (auto& op : *block) {
+    op2id_[&op] = index++;
   }
 }
 
@@ -289,17 +289,6 @@ std::vector<GroupOpsVec> SubgraphDetector::operator()() {
   BuildSubGraph();
   VLOG(4) << "Subgraph list size: " << subgraph_list_.size();
 
-  // for (auto& subgraph : subgraph_list_) {
-  // auto* subgraph_ptr = subgraph.get();
-  // VLOG(4) << "Subgraph: " << subgraph_ptr;
-  // VLOG(4) << "   substitute: " << subgraph_ptr->substitute;
-  // for (auto& op: subgraph_ptr->ops) {
-  // VLOG(4) << "ops: " << op->name();
-  //}
-  //}
-  // (???) why subgraph fusion remove all the subgraph.
-  // DoSubGraphFusion();
-  // VLOG(4) << "Subgraph list size: " << subgraph_list_.size();
   std::vector<GroupOpsVec> groups;
   for (auto& subgraph : subgraph_list_) {
     if (!subgraph->substitute) {
@@ -333,6 +322,7 @@ struct UnionFindSet {
   std::unordered_map<pir::Operation*, pir::Operation*> parent;
   std::unordered_map<pir::Operation*, SubGraphPtr> root2subgraph;
   OpClassifier op_classifier_;
+  SubGraphPtr GetSetFromGraph(SubGraphPtr x) { return GetSetFromOp(x->ops[0]); }
 
   pir::Operation* Find(pir::Operation* x) {
     if (parent.find(x) == parent.end()) {
@@ -364,7 +354,6 @@ struct UnionFindSet {
   SubGraphPtr GetSetFromOp(pir::Operation* op) {
     const auto& root = Find(op);
     if (!root2subgraph.count(root)) {
-      op_classifier_(*op);
       root2subgraph[root] = std::make_shared<SubGraph>(op, op_classifier_(*op));
     }
     return root2subgraph[root];
@@ -399,10 +388,22 @@ struct UnionFindSet {
   }
 };
 
+static GraphSet Intersect(const GraphSet& upstream,
+                          const GraphSet& downstream) {
+  GraphSet intersected_set;
+  for (auto& item : upstream) {
+    if (downstream.count(item)) {
+      intersected_set.insert(item);
+    }
+  }
+  return intersected_set;
+}
+
 struct LoopDetectionMapping {
   std::unordered_map<SubGraphPtr, std::unordered_set<SubGraphPtr>> upstreams_;
   std::unordered_map<SubGraphPtr, std::unordered_set<SubGraphPtr>> downstreams_;
   std::unordered_set<SubGraphPtr> all_nodes_;
+  UnionFindSet* uf_set_;
   LoopDetectionMapping(const std::vector<pir::Operation*> sort_ops,
                        const std::unordered_map<pir::Operation*, size_t>& op2id,
                        UnionFindSet* uf_set) {
@@ -420,28 +421,18 @@ struct LoopDetectionMapping {
         downstreams_[op_set].insert(consumer_set);
       }
     }
+    uf_set_ = uf_set;
   }
+
   void MergeNodes(const SubGraphPtr& first,
                   const SubGraphPtr& second,
                   const SubGraphPtr& merged) {
     std::unordered_set<SubGraphPtr> merged_upstreams;
     std::unordered_set<SubGraphPtr> merged_downstreams;
-    for (auto& item : upstreams_[first])
-      if (all_nodes_.count(item)) {
-        merged_upstreams.insert(item);
-      }
-    for (auto& item : upstreams_[second])
-      if (all_nodes_.count(item)) {
-        merged_upstreams.insert(item);
-      }
-    for (auto& item : downstreams_[first])
-      if (all_nodes_.count(item)) {
-        merged_downstreams.insert(item);
-      }
-    for (auto& item : downstreams_[second])
-      if (all_nodes_.count(item)) {
-        merged_downstreams.insert(item);
-      }
+    for (auto& item : GetUpstreamSet(first)) merged_upstreams.insert(item);
+    for (auto& item : GetUpstreamSet(second)) merged_upstreams.insert(item);
+    for (auto& item : GetDownstreamSet(first)) merged_downstreams.insert(item);
+    for (auto& item : GetDownstreamSet(second)) merged_downstreams.insert(item);
     upstreams_[merged] = merged_upstreams;
     downstreams_[merged] = merged_downstreams;
     if (first != merged) {
@@ -458,40 +449,48 @@ struct LoopDetectionMapping {
   }
   bool CanFuse(const SubGraphPtr& up, const SubGraphPtr& down) {
     if (up == down) return false;
-    for (auto& node : all_nodes_) {
-      if (node != up && node != down && downstreams_[up].count(node) &&
-          upstreams_[down].count(node)) {
-        return false;
-      }
+    GraphSet after_fuse_upstreams =
+        Union(GetUpstreamSet(up), GetUpstreamSet(down));
+    GraphSet after_fuse_downstreams =
+        Union(GetDownstreamSet(up), GetDownstreamSet(down));
+    auto intersection = Intersect(after_fuse_upstreams, after_fuse_downstreams);
+    intersection.erase(up);
+    intersection.erase(down);
+    VLOG(0) << "Can Fuse size() = : " << intersection.size();
+    VLOG(0) << "Can Fuse: " << (intersection.size() == 0);
+    return intersection.size() == 0;
+  }
+
+  GraphSet GetUpstreamSet(const SubGraphPtr& cur) {
+    GraphSet res;
+    for (auto& raw_node : upstreams_[cur]) {
+      auto node = uf_set_->GetSetFromGraph(raw_node);
+      if (all_nodes_.count(node) && node != cur) res.insert(node);
     }
-    return true;
+    upstreams_[cur] = res;
+    return res;
+  }
+
+  GraphSet GetDownstreamSet(const SubGraphPtr& cur) {
+    GraphSet res;
+    for (auto& raw_node : downstreams_[cur]) {
+      auto node = uf_set_->GetSetFromGraph(raw_node);
+      if (all_nodes_.count(node) && node != cur) res.insert(node);
+    }
+    upstreams_[cur] = res;
+    return res;
   }
 };
 
-static GraphSet Intersect(const GraphSet& upstream,
-                          const GraphSet& downstream) {
-  GraphSet intersected_set;
+static GraphSet SetDifference(const GraphSet& upstream,
+                              const GraphSet& downstream) {
+  GraphSet diff_set;
   for (auto& item : upstream) {
-    if (downstream.count(item)) {
-      intersected_set.insert(item);
+    if (!downstream.count(item)) {
+      diff_set.insert(item);
     }
   }
-  return intersected_set;
-}
-static inline bool CanApplyFusion(
-    const SubGraphPtr& upstream,
-    const SubGraphPtr& downstream,
-    std::unordered_map<pir::Operation*,
-                       std::unordered_map<pir::Operation*, bool>>&
-        can_apply_fusion_map) {
-  for (auto& up_op : upstream->ops) {
-    for (auto& down_op : downstream->ops) {
-      if (can_apply_fusion_map[up_op][down_op]) {
-        return false;
-      }
-    }
-  }
-  return true;
+  return diff_set;
 }
 
 struct RecursiveOpGetter {
@@ -515,17 +514,6 @@ struct RecursiveOpGetter {
     return set;
   }
 };
-
-static GraphSet SetDifference(const GraphSet& upstream,
-                              const GraphSet& downstream) {
-  GraphSet diff_set;
-  for (auto& item : upstream) {
-    if (!downstream.count(item)) {
-      diff_set.insert(item);
-    }
-  }
-  return diff_set;
-}
 
 static GraphSet UpstreamSet(UnionFindSet& union_set,  // NOLINT
                             const SubGraphPtr& graph) {
@@ -606,8 +594,9 @@ void SubgraphDetector::DoOpFusion() {
       // try fuse producer to sub-graph
       auto op_graph_ptr = union_find.GetSetFromOp(op);
       auto producer_graph_ptr = union_find.GetSetFromOp(producer);
-      SubGraphPtr merged = union_find.Union(op, producer);
-      loop_detector.MergeNodes(op_graph_ptr, producer_graph_ptr, merged);
+      union_find.Union(op, producer);
+      loop_detector.MergeNodes(
+          op_graph_ptr, producer_graph_ptr, union_find.GetSetFromOp(op));
     }
   }
   for (const auto& op : sort_ops_) {
