@@ -604,6 +604,7 @@
   kernel :
     func : partial_recv_v2
     data_type : dtype
+  optional: out
 
 - op : print
   args : (Tensor in, int first_n, str message, int summarize, bool print_tensor_name = true, bool print_tensor_type = true, bool print_tensor_shape = true, bool print_tensor_layout = true, bool print_tensor_lod = true, str print_phase = "BOTH", bool is_forward = true)

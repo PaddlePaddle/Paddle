@@ -16,11 +16,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
-
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 namespace phi {
 
@@ -70,63 +67,38 @@ void PartialRecvKernel(const Context& dev_ctx,
   int64_t recv_numel = numel / num;
   int64_t offset = recv_numel * id;
 
-  auto map = distributed::ProcessGroupMapFromGid::getInstance();
-  if (map->has(rid)) {
-    // Use ProcessGroup
-    distributed::ProcessGroup* pg = map->get(rid);
-    auto task = pg->Recv(out, peer, offset, recv_numel, /*sync_op*/ true);
-    task->Wait();
-  } else {
-    gpuStream_t stream = nullptr;
-    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
-    int nranks = 0;
-    int rank = 0;
-    const auto& comm_context_manager =
-        phi::distributed::CommContextManager::GetInstance();
+  gpuStream_t stream = nullptr;
+  phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+  int nranks = 0;
+  int rank = 0;
+  comm_ctx =
+      static_cast<phi::distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
+  PADDLE_ENFORCE_NE(comm_ctx,
+                    nullptr,
+                    common::errors::Unavailable(
+                        "NCCLCommContext is nullptr, collective op should "
+                        "has ring_id attr."));
 
-    // Use New Communication Library
-    PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
-                      true,
-                      common::errors::InvalidArgument(
-                          "You choose to use new communication library by "
-                          "setting environment "
-                          "variable FLAGS_dynamic_static_unified_comm True. "
-                          "But ring_id(%d) is "
-                          "not found in comm_context_manager.",
-                          std::to_string(rid)));
-    comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-        comm_context_manager.Get(std::to_string(rid)));
-    PADDLE_ENFORCE_NE(comm_ctx,
-                      nullptr,
-                      common::errors::Unavailable(
-                          "NCCLCommContext is nullptr, collective op should "
-                          "has ring_id attr."));
+  stream = comm_ctx->GetStream();
+  nranks = comm_ctx->GetSize();
+  rank = comm_ctx->GetRank();
 
-    stream = comm_ctx->GetStream();
-    nranks = comm_ctx->GetSize();
-    rank = comm_ctx->GetRank();
+  VLOG(3) << "new comm_context_manager has ring_id " << rid;
 
-    VLOG(3) << "new comm_context_manager has ring_id " << rid;
+  PADDLE_ENFORCE_LT(
+      peer,
+      nranks,
+      common::errors::InvalidArgument("The value of peer (%d) you set must "
+                                      "be less than nranks (%d).",
+                                      peer,
+                                      nranks));
 
-    if (use_calc_stream) {
-      // should ExecutionContext for calc stream.
-      stream = dev_ctx.stream();
-    }
+  auto recv_buf = distributed::GetPartialTensor(*out, offset, recv_numel);
+  comm_ctx->Recv(&recv_buf, recv_numel, peer, stream);
 
-    PADDLE_ENFORCE_LT(
-        peer,
-        nranks,
-        common::errors::InvalidArgument("The value of peer (%d) you set must "
-                                        "be less than nranks (%d).",
-                                        peer,
-                                        nranks));
+  VLOG(3) << "rank " << rank << " recv " << recv_numel << " from offset["
+          << offset << "] from " << peer;
 
-    auto recv_buf = distributed::GetPartialTensor(*out, offset, recv_numel);
-    comm_ctx->Recv(&recv_buf, recv_numel, peer, stream);
-
-    VLOG(3) << "rank " << rank << " recv " << recv_numel << " from offset["
-            << offset << "] from " << peer;
-  }
 #else
   PADDLE_THROW(common::errors::Unavailable(
       "PaddlePaddle should be compiled with NCCL and "
