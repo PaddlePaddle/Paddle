@@ -445,6 +445,8 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
                      phi::DataType::INT8,
+                     phi::DataType::FLOAT16,
+                     phi::DataType::BFLOAT16,
                      phi::DataType::FLOAT32})},
       {"flatten",
        XPUKernelSet({phi::DataType::INT64,

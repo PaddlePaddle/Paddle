@@ -968,12 +968,6 @@ bool FlattenOpInferSymbolicShape(
   symbol::ShapeOrDataDimExprs out_shape_data{
       symbol::TensorShapeOrDataDimExprs(out_shape)};
   infer_context->SetShapeOrDataForValue(op->result(0), out_shape_data);
-
-  std::vector<symbol::DimExpr> xshape_shape = x_shape;
-  xshape_shape.insert(xshape_shape.begin(), symbol::DimExpr{0});
-  symbol::ShapeOrDataDimExprs xshape_shape_data{
-      symbol::TensorShapeOrDataDimExprs(xshape_shape)};
-  infer_context->SetShapeOrDataForValue(op->result(1), xshape_shape_data);
   return true;
 }
 
