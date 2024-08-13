@@ -821,7 +821,7 @@
     func : SqueezeWithXShapeInferMeta
     spmd_rule : SqueezeInferSpmd
   kernel :
-    func : squeeze
+    func : squeeze_with_xshape
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
