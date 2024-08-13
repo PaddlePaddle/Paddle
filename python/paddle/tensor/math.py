@@ -7806,7 +7806,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
     if isinstance(y, (float, int)):
         y = paddle.to_tensor(y, dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
+    if out_shape != list(x.shape):
         warnings.warn(
             f"The shape of broadcast output {out_shape} is different from the input tensor x with shape: {x.shape}, please make sure you are using copysign api correctly."
         )
