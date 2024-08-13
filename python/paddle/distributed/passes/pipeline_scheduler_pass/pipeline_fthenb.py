@@ -18,7 +18,10 @@ from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
-from ..pass_utils import _program_for_fthenb_and_1f1b
+from ..pass_utils import (
+    _pir_program_for_fthenb_and_1f1b,
+    _program_for_fthenb_and_1f1b,
+)
 from .pipeline_pass_base import PipelinePassBase
 
 FORWARD = "forward"
@@ -58,6 +61,15 @@ class PipelineFThenBPass(PipelinePassBase):
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
         types = [FORWARD, BACKWARD, OPT]
         sub_program_list = _program_for_fthenb_and_1f1b(
+            program, enable_send_recv_overlap
+        )
+        return types, sub_program_list
+
+    def _partial_pir_programs(self, program):
+        # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
+        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        types = [FORWARD, BACKWARD, OPT]
+        sub_program_list = _pir_program_for_fthenb_and_1f1b(
             program, enable_send_recv_overlap
         )
         return types, sub_program_list

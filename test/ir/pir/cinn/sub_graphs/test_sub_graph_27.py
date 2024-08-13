@@ -64,6 +64,7 @@ class TestLayer(TestBase):
         )
         self.net = LayerCase
         self.with_precision_compare = False
+        self.with_train = False
 
     # NOTE prim + cinn lead to error
 

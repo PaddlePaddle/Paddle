@@ -186,7 +186,7 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   PADDLE_ENFORCE_EQ(
       out_msg_in_indexes.value()->size() == in_msg_in_indexes.value()->size(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of out_msg_in_indexes should be equal to the size of "
           "in_msg_in_indexes, but got out_msg_in_indexes size = %d, "
           "in_msg_in_indexes size = %d.",
@@ -195,7 +195,7 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   PADDLE_ENFORCE_EQ(
       out_msg_out_indexes.value()->size() == in_msg_out_indexes.value()->size(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The size of out_msg_out_indexes should be equal to the size of "
           "in_msg_out_indexes, but got out_msg_out_indexes size = %d, "
           "in_msg_out_indexes size = %d.",
@@ -288,8 +288,8 @@ void CheckEquationsSolvable(
         [&](const auto& opt_old_value, const auto& simplified_value) {
           LOG(ERROR) << "old_value: " << ToTxtString(opt_old_value);
           LOG(ERROR) << "simplified_value: " << ToTxtString(simplified_value);
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("CheckEquationsSolvable Failed"));
+          PADDLE_THROW(::common::errors::InvalidArgument(
+              "CheckEquationsSolvable Failed"));
           return tValueInferSuccess<bool>{false};
         });
   };

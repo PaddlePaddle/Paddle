@@ -2949,9 +2949,23 @@ struct FloorFunctor : public BaseActivationFunctor<T> {
 // round(x) = [x]
 template <typename T>
 struct RoundFunctor : public BaseActivationFunctor<T> {
+  int decimals;
+
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"deciamls", &decimals}};
+  }
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.round();
+    if (decimals == 0) {
+      out.device(d) = x.round();
+    } else if (decimals > 0) {
+      auto ten_pow_deciamls = static_cast<T>(std::pow(10, decimals));
+      out.device(d) = (x * ten_pow_deciamls).round() / ten_pow_deciamls;
+    } else {
+      auto ten_pow_deciamls = static_cast<T>(std::pow(10, -decimals));
+      out.device(d) = (x / ten_pow_deciamls).round() * ten_pow_deciamls;
+    }
   }
 };
 
@@ -5161,11 +5175,26 @@ struct CudaFloorFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaRoundFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  int decimals;
 
+  std::vector<std::pair<const char*, int*>> GetAttrs() {
+    return {{"deciamls", &decimals}};
+  }
   // round(x) = round(x)
   __device__ __forceinline__ T operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(round(x));
+
+    if (decimals == 0) {
+      return static_cast<T>(round(x));
+    } else if (decimals > 0) {
+      float ten_pow_deciamls = powf(10., decimals);
+      return static_cast<T>(round(x * static_cast<MPType>(ten_pow_deciamls)) /
+                            ten_pow_deciamls);
+    } else {
+      float ten_pow_deciamls = powf(10., -decimals);
+      return static_cast<T>(round(x / static_cast<MPType>(ten_pow_deciamls)) *
+                            ten_pow_deciamls);
+    }
   }
 };
 

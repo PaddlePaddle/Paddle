@@ -27,10 +27,10 @@ def _all_to_all_tensor_in_dygraph(
 ):
     if use_calc_stream:
         return group.process_group.all_to_all_tensor_on_calc_stream(
-            out_tensor, in_tensor
+            in_tensor, out_tensor
         )
 
-    task = group.process_group.all_to_all_tensor(out_tensor, in_tensor, sync_op)
+    task = group.process_group.all_to_all_tensor(in_tensor, out_tensor, sync_op)
     if sync_op:
         task.wait()
 
@@ -157,7 +157,7 @@ def alltoall(
             >>> import paddle.distributed as dist
 
             >>> dist.init_parallel_env()
-            >>> out_tensor_list = []
+            >>> out_tensor_list = [] # type: ignore[var-annotated]
             >>> if dist.get_rank() == 0:
             ...     data1 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             ...     data2 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]])

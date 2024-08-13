@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import TYPE_CHECKING, NoReturn, Sequence, TypedDict
+from typing import TYPE_CHECKING, NoReturn, TypedDict
 
 from typing_extensions import NotRequired
 
@@ -26,6 +26,8 @@ from ..base import framework
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
     from paddle.regularizer import WeightDecayRegularizer
@@ -399,10 +401,10 @@ class LBFGS(Optimizer):
 
             >>> paddle.disable_static()
             >>> np.random.seed(0)
-            >>> np_w = np.random.rand(1).astype(np.float32)  # type: ignore
-            >>> np_x = np.random.rand(1).astype(np.float32)  # type: ignore
+            >>> np_w = np.random.rand(1).astype(np.float32)  # type: ignore[var-annotated]
+            >>> np_x = np.random.rand(1).astype(np.float32)  # type: ignore[var-annotated]
 
-            >>> inputs = [np.random.rand(1).astype(np.float32) for i in range(10)]  # type: ignore
+            >>> inputs = [np.random.rand(1).astype(np.float32) for i in range(10)]  # type: ignore[var-annotated]
             >>> # y = 2x
             >>> targets = [2 * x for x in inputs]
 

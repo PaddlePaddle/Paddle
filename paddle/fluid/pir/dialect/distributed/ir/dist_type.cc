@@ -40,6 +40,9 @@ DistDenseTensorType DistDenseTensorType::get(
 
 common::DDim InferLocalDDim(const common::DDim& global_ddim,
                             TensorDistAttribute dist_attr) {
+  if (global_ddim.size() == -1 || global_ddim.size() == 0) {
+    return global_ddim;
+  }
   auto& mesh_dim = dist_attr.process_mesh_attr().shape();
   auto& dim_mapping = dist_attr.dims_mapping();
   PADDLE_ENFORCE_EQ(global_ddim.size(),

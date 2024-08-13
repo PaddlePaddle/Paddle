@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import paddle
 from paddle import nn
@@ -121,7 +121,7 @@ class BasicBlock(nn.Layer):
         groups: int = 1,
         base_width: int = 64,
         dilation: int = 1,
-        norm_layer: type[nn.Layer] | None = None,
+        norm_layer: Callable[..., nn.Layer] | None = None,
     ) -> None:
         super().__init__()
         if norm_layer is None:
@@ -173,7 +173,7 @@ class BottleneckBlock(nn.Layer):
         groups: int = 1,
         base_width: int = 64,
         dilation: int = 1,
-        norm_layer: type[nn.Layer] | None = None,
+        norm_layer: Callable[..., nn.Layer] | None = None,
     ) -> None:
         super().__init__()
         if norm_layer is None:

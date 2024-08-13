@@ -76,6 +76,7 @@ void MaxPool2dWithIndexKernel(const Context& ctx,
                               const std::vector<int>& paddings,
                               bool global_pooling,
                               bool adaptive,
+                              bool ceil_mode,
                               DenseTensor* out,
                               DenseTensor* mask);
 
@@ -117,6 +118,7 @@ void MaxPool3dWithIndexKernel(const Context& ctx,
                               const std::vector<int>& paddings,
                               bool global_pooling,
                               bool adaptive,
+                              bool ceil_mode,
                               DenseTensor* out,
                               DenseTensor* mask);
 

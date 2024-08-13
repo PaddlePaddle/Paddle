@@ -51,25 +51,24 @@ void VisitEachValue(const pir::Operation& op, const DoEachT& DoEach) {
   }
 }
 
+std::vector<symbol::DimExpr> SimplifyDimExprVector(
+    const std::vector<symbol::DimExpr>& original_dim_exprs) {
+  std::vector<symbol::DimExpr> simplified_dim_exprs{};
+  for (const symbol::DimExpr& dim_expr : original_dim_exprs) {
+    simplified_dim_exprs.push_back(symbol::SimplifyDimExpr(dim_expr));
+  }
+  return simplified_dim_exprs;
+}
+
 symbol::TensorShapeOrDataDimExprs SimplifyTensorShapeOrData(
     const symbol::TensorShapeOrDataDimExprs& shape_or_data) {
-  const auto& SimplifyDimExpr =
-      [](const std::vector<symbol::DimExpr>& original_dim_expr)
-      -> std::vector<symbol::DimExpr> {
-    std::vector<symbol::DimExpr> simplified_dim_expr{};
-    for (const symbol::DimExpr& dim_expr : original_dim_expr) {
-      simplified_dim_expr.push_back(symbol::SimplifyDimExpr(dim_expr));
-    }
-    return simplified_dim_expr;
-  };
-
   std::vector<symbol::DimExpr> simplified_shape =
-      SimplifyDimExpr(shape_or_data.shape());
+      SimplifyDimExprVector(shape_or_data.shape());
   if (!shape_or_data.data().has_value()) {
     return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape);
   }
   std::vector<symbol::DimExpr> simplified_data =
-      SimplifyDimExpr(shape_or_data.data().value());
+      SimplifyDimExprVector(shape_or_data.data().value());
   return symbol::ShapeOrData<symbol::DimExpr>(simplified_shape,
                                               simplified_data);
 }
@@ -90,7 +89,12 @@ symbol::ShapeOrDataDimExprs SimplifyShapeOrData(
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
       },
-      [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
+      [](const symbol::RankedTensorArrayShapeOrDataDimExprs& tensor_array) {
+        return symbol::ShapeOrDataDimExprs(
+            symbol::RankedTensorArrayShapeOrDataDimExprs(
+                SimplifyDimExprVector(tensor_array.GetShapeHint())));
+      },
+      [](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(null_shape_or_data);
       }};
   return std::visit(lambdas, shape_or_data.variant());

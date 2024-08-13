@@ -28,7 +28,7 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     const std::unordered_map<std::string, size_t>& buffers,
     int batch_size,
     std::string engine_name,
-    const platform::Place place)
+    const phi::Place place)
     : batch_size_(batch_size),
       data_buffers_(),
       data_tensors_(),
@@ -39,7 +39,7 @@ TRTInt8Calibrator::TRTInt8Calibrator(
     std::string input_name = it.first;
     int data_size = it.second;
     int num_ele = data_size / sizeof(int16_t);
-    framework::DDim data_shape = common::make_ddim({num_ele});
+    phi::DDim data_shape = common::make_ddim({num_ele});
     temp_tensor.Resize(data_shape);
     data_buffers_[input_name] = std::pair<void*, size_t>(
         static_cast<void*>(temp_tensor.mutable_data<int16_t>(place)),
@@ -85,7 +85,7 @@ bool TRTInt8Calibrator::setBatch(
   for (const auto& it : data) {
     auto dataptr = data_buffers_.find(it.first);
     if (dataptr == data_buffers_.end()) {
-      PADDLE_THROW(platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "%s input name '%s' does not match with the buffer names.",
           engine_name_,
           it.first));
@@ -119,11 +119,11 @@ bool TRTInt8Calibrator::getBatch(void** bindings,
     auto it = data_buffers_.find(names[i]);
     if (it == data_buffers_.end()) {
       try {
-        PADDLE_THROW(platform::errors::Fatal(
-            "Calibration engine asked for unknown tensor "
-            "name '%s' at position %d.",
-            names[i],
-            i));
+        PADDLE_THROW(
+            common::errors::Fatal("Calibration engine asked for unknown tensor "
+                                  "name '%s' at position %d.",
+                                  names[i],
+                                  i));
       } catch (std::exception& e) {
       }
     }

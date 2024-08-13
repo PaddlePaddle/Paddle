@@ -110,7 +110,6 @@ from paddle import (  # noqa: F401
     regularizer,
     sparse,
     static,
-    # pp_tensorrt,
     sysconfig,
     vision,
 )
@@ -228,6 +227,7 @@ from .tensor.linalg import (  # noqa: F401
     dot,
     eigvalsh,
     histogram,
+    histogram_bin_edges,
     histogramdd,
     matmul,
     mv,
@@ -380,6 +380,7 @@ from .tensor.math import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     broadcast_shape,
+    cartesian_prod,
     ceil,
     clip,
     combinations,
@@ -724,7 +725,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                     if not path_patched:
                         prev_path = os.environ['PATH']
                         os.environ['PATH'] = ';'.join(
-                            dll_paths + [os.environ['PATH']]
+                            [*dll_paths, os.environ['PATH']]
                         )
                         path_patched = True
                     res = kernel32.LoadLibraryW(dll)
@@ -803,6 +804,7 @@ __all__ = [
     'is_tensor',
     'is_complex',
     'is_integer',
+    'cartesian_prod',
     'cross',
     'where',
     'where_',

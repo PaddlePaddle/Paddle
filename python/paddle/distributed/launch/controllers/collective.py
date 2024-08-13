@@ -127,6 +127,7 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINER_ID": f"{i + rank_offset}",
                 "PADDLE_TRAINERS_NUM": f"{len(job_endpoints)}",
                 "PADDLE_RANK_IN_NODE": str(i),
+                "PADDLE_AUTO_CLUSTER": str(self.ctx.args.auto_cluster_config),
             }
             if len(",".join(job_endpoints)) < 120 * 1024:
                 e.update({"PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints)})
@@ -148,7 +149,7 @@ class CollectiveController(Controller):
             else:
                 e.update({'PADDLE_DISTRI_BACKEND': 'gloo'})
 
-            log_file = f"workerlog.{i}"
+            log_file = f"workerlog.{i + rank_offset}"
             self.add_container(envs=e, log_file=log_file)
 
         return True
@@ -229,6 +230,7 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINER_ID": f"{i + rank_offset}",
                 "PADDLE_TRAINERS_NUM": f"{global_size}",
                 "PADDLE_RANK_IN_NODE": str(i),
+                "PADDLE_AUTO_CLUSTER": str(self.ctx.args.auto_cluster_config),
             }
             if len(",".join(job_endpoints)) < 120 * 1024:
                 e.update({"PADDLE_TRAINER_ENDPOINTS": ",".join(job_endpoints)})
@@ -251,7 +253,7 @@ class CollectiveController(Controller):
                 e.update({'PADDLE_DISTRI_BACKEND': 'gloo'})
 
             # log_file = "{}.{}.{}.log".format(self.job.id, self.pod.name, i)
-            log_file = f"workerlog.{i}"
+            log_file = f"workerlog.{i + rank_offset}"
             self.add_container(envs=e, log_file=log_file)
 
         return True

@@ -19,7 +19,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 

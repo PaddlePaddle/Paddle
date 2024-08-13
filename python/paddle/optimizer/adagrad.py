@@ -15,12 +15,19 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
+
+from paddle import _C_ops, pir
+from paddle.framework import (
+    in_dynamic_or_pir_mode,
+)
 
 from ..base import framework
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -122,6 +129,7 @@ class Adagrad(Optimizer):
             >>> adagrad.clear_grad()
 
     """
+
     type: str
     initial_accumulator_value: float
     _moment_acc_str = "moment"
@@ -158,8 +166,8 @@ class Adagrad(Optimizer):
         }
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
-
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
@@ -191,8 +199,8 @@ class Adagrad(Optimizer):
             self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
-
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
@@ -210,29 +218,44 @@ class Adagrad(Optimizer):
             else None
         )
 
-        # Create the adagrad optimizer op
-        inputs = {
-            "Param": param_and_grad[0],
-            "Grad": param_and_grad[1],
-            "Moment": moment_acc,
-            "LearningRate": self._create_param_lr(param_and_grad),
-        }
+        if in_dynamic_or_pir_mode():
+            _, _, _ = _C_ops.adagrad_(
+                param_and_grad[0],
+                param_and_grad[1],
+                moment_acc,
+                self._create_param_lr(param_and_grad),
+                master_weight if find_master else None,
+                self._epsilon,
+                find_master,
+            )
+            return None
+        else:
+            # Create the adagrad optimizer op
+            inputs = {
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Moment": moment_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            }
 
-        outputs = {"ParamOut": param_and_grad[0], "MomentOut": moment_acc}
+            outputs = {"ParamOut": param_and_grad[0], "MomentOut": moment_acc}
 
-        if find_master:
-            inputs["MasterParam"] = master_weight
-            outputs["MasterParamOut"] = master_weight
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
 
-        adagrad_op = block.append_op(
-            type=self.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs={"epsilon": self._epsilon, "multi_precision": find_master},
-            stop_gradient=True,
-        )
+            adagrad_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs={
+                    "epsilon": self._epsilon,
+                    "multi_precision": find_master,
+                },
+                stop_gradient=True,
+            )
 
-        return adagrad_op
+            return adagrad_op
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])

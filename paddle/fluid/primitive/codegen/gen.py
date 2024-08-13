@@ -136,6 +136,7 @@ CUSTOM_VJP = [
     'sigmoid_grad',
     'silu_grad',
     'softmax_grad',
+    'softsign_grad',
     'sqrt_grad',
     'stack_grad',
     'swiglu',
@@ -356,12 +357,12 @@ def extend_compat_info(apis, compats):
                 ):
                     support_tensor_attrs_names.append(attr_name)
         if len(support_tensor_attrs_names) > 0:
-            for api in [fwd_api] + backward_apis:
+            for api in [fwd_api, *backward_apis]:
                 attrs = api["attrs"]
                 for attr in attrs:
                     if attr['name'] in support_tensor_attrs_names:
                         attr['support_tensor'] = True
-        for api in [fwd_api] + backward_apis:
+        for api in [fwd_api, *backward_apis]:
             attrs = api["attrs"]
             for attr in attrs:
                 if attr['name'] in compat_attrs_data_type:
@@ -511,9 +512,11 @@ def gen(
         for api in revs + ir_revs + fused_revs + sparse_revs
     ]
     apis = [
-        {**api, **{'is_prim': True}}
-        if api['name'] in prims
-        else {**api, **{'is_prim': False}}
+        (
+            {**api, **{'is_prim': True}}
+            if api['name'] in prims
+            else {**api, **{'is_prim': False}}
+        )
         for api in apis
     ]
 

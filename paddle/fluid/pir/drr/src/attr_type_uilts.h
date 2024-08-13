@@ -36,6 +36,7 @@ PD_SPECIALIZE_CppTypeToIrAttribute(bool, pir::BoolAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int32_t, pir::Int32Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(int64_t, pir::Int64Attribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(float, pir::FloatAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(double, pir::DoubleAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::string, pir::StrAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int32_t>, pir::ArrayAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int64_t>,
@@ -124,7 +125,7 @@ struct IrAttrTypeCast<std::vector<int64_t>> {
       result =
           attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "Dynamic cast failed for IR attribute vector<int64_t>"));
     }
     return result;

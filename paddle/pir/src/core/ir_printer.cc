@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
 #include <list>
 #include <ostream>
 #include <string>
@@ -70,6 +69,10 @@ void BasicIrPrinter::PrintType(Type type) {
     os << "c64";
   } else if (type.isa<Complex128Type>()) {
     os << "c128";
+  } else if (type.isa<Float8E4M3FNType>()) {
+    os << "f8e4m3fn";
+  } else if (type.isa<Float8E5M2Type>()) {
+    os << "f8e5m2";
   } else if (type.isa<VectorType>()) {
     os << "vec[";
     auto inner_types = type.dyn_cast<VectorType>().data();
@@ -110,8 +113,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
       s_val.replace(found, search.length(), replacement);
       found = s_val.find(search, found + replacement.length());
     }
-    auto end_size = std::min(100uz, s_val.size());
-    os << "\"" << s_val.substr(0, end_size) << "\"";
+    os << "\"" << s_val << "\"";
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     if (b.data()) {
       os << "true";
@@ -367,7 +369,7 @@ void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   const void* key = v.impl();
   PADDLE_ENFORCE_EQ(aliases_.find(key),
                     aliases_.end(),
-                    phi::errors::InvalidArgument("Value already has alias"));
+                    common::errors::InvalidArgument("Value already has alias"));
   aliases_[key] = alias;
 }
 

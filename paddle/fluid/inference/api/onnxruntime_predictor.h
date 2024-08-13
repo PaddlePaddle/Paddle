@@ -26,7 +26,7 @@
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "paddle/utils/string/printf.h"
 #include "paddle2onnx/converter.h"
 
@@ -232,7 +232,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
 
   AnalysisConfig config_;
   std::mutex clone_mutex_;
-  platform::Place place_;
+  phi::Place place_;
   std::vector<ONNXDesc> input_desc_;
   std::vector<ONNXDesc> output_desc_;
   int predictor_id_;

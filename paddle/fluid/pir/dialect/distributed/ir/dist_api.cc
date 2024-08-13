@@ -63,4 +63,53 @@ pir::Value reshard(const pir::Value& x,
   return reshard_op.result(0);
 }
 
+std::vector<pir::Value> local_tensors_from_dist(
+    const pir::Value& input,
+    const std::vector<phi::distributed::ProcessMesh>& local_mesh_list,
+    const std::vector<int64_t>& local_dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& local_partial_status,
+    const phi::distributed::ProcessMesh& global_mesh,
+    const std::vector<int64_t>& global_dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& global_partial_status) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  std::vector<TensorDistAttribute> local_dist_attrs;
+  for (const phi::distributed::ProcessMesh& mesh : local_mesh_list) {
+    local_dist_attrs.emplace_back(TensorDistAttribute::get(
+        ctx, mesh, local_dims_mapping, local_partial_status));
+  }
+  TensorDistAttribute global_dist_attr = TensorDistAttribute::get(
+      ctx, global_mesh, global_dims_mapping, global_partial_status);
+
+  auto op = ApiBuilder::Instance().GetBuilder()->Build<LocalTensorsFromDistOp>(
+      input, local_dist_attrs, global_dist_attr);
+  return op.results();
+}
+
+pir::Value dist_tensor_from_locals(
+    const std::vector<pir::Value>& inputs,
+    const std::vector<phi::distributed::ProcessMesh>& local_mesh_list,
+    const std::vector<int64_t>& local_dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& local_partial_status,
+    const phi::distributed::ProcessMesh& global_mesh,
+    const std::vector<int64_t>& global_dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& global_partial_status,
+    const std::vector<int64_t>& global_shape) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+
+  std::vector<TensorDistAttribute> local_dist_attrs;
+  for (const phi::distributed::ProcessMesh& mesh : local_mesh_list) {
+    local_dist_attrs.emplace_back(TensorDistAttribute::get(
+        ctx, mesh, local_dims_mapping, local_partial_status));
+  }
+
+  TensorDistAttribute global_dist_attr = TensorDistAttribute::get(
+      ctx, global_mesh, global_dims_mapping, global_partial_status);
+
+  phi::DDim global_ddim = phi::make_ddim(global_shape);
+
+  auto op = ApiBuilder::Instance().GetBuilder()->Build<DistTensorFromLocalsOp>(
+      inputs, local_dist_attrs, global_dist_attr, global_ddim);
+  return op.result(0);
+}
+
 }  // namespace paddle::dialect

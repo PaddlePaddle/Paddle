@@ -15,12 +15,12 @@
 
 #include <queue>
 
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
-#include "paddle/fluid/memory/allocation/spin_lock.h"
-#include "paddle/fluid/platform/device_event.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/platform/device_event.h"
 
 COMMON_DECLARE_bool(fast_eager_deletion_mode);
 COMMON_DECLARE_bool(new_executor_use_cuda_graph);
@@ -54,12 +54,23 @@ inline bool IsInterpretercoreFastGCEnabled() {
   // `EventQuery` method in event GC cannot be used in
   // cuda graph.
   PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
+                                .IsStreamSafeCUDAAllocatorUsed() == true &&
+                        memory::allocation::AllocatorFacade::Instance()
+                                .IsCUDAMallocAsyncAllocatorUsed() == true,
+                    false,
+                    common::errors::InvalidArgument(
+                        "StreamSafeAllocator and AsyncAllocator shouldn't be "
+                        "True together."));
+  PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
                                 .IsStreamSafeCUDAAllocatorUsed() == false &&
+                        memory::allocation::AllocatorFacade::Instance()
+                                .IsCUDAMallocAsyncAllocatorUsed() == false &&
                         FLAGS_new_executor_use_cuda_graph,
                     false,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "When FLAGS_new_executor_use_cuda_graph is true, "
-                        "IsStreamSafeCUDAAllocatorUsed must be true, but "
+                        "Either IsStreamSafeCUDAAllocatorUsed or "
+                        "IsCUDAMallocAsyncAllocatorUsed must be true, but "
                         "got false."));
   return (memory::allocation::AllocatorFacade::Instance()
               .IsStreamSafeCUDAAllocatorUsed() &&
@@ -69,12 +80,11 @@ inline bool IsInterpretercoreFastGCEnabled() {
 
 std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
-    const platform::Place& place,
-    const std::vector<Instruction>& vec_instruction);
+    const phi::Place& place, const std::vector<Instruction>& vec_instruction);
 
 std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
-    const platform::Place& place,
+    const phi::Place& place,
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction);
 
 }  // namespace framework

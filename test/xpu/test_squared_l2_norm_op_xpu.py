@@ -83,100 +83,113 @@ class XPUTestSquaredL2NormOp(XPUOpTestWrapper):
             self.x = np.random.uniform(-0.1, 0.1, (2, 128, 256))
             self.x[np.abs(self.x) < self.max_relative_error] = 0.01
 
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape1(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (5120, 32))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape2(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (32, 1920))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape3(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (640, 32))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape4(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (32, 5120))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape5(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (32, 3456))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape6(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (1728, 32))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape7(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (31776, 5120))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape8(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (5120, 1920))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape9(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (1920,))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape10(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (640, 5120))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape11(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (5120, 3456))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape12(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (3456,))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape13(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (1728, 5120))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape14(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (5120, 31776))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
-    @check_run_big_shape_test()
-    class TestSquaredL2NormOpLargeShape15(TestSquaredL2NormOp):
-        def set_inputs(self):
-            self.x = np.random.uniform(-0.1, 0.1, (31776,))
-            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
-
 
 support_types = get_xpu_op_support_types('squared_l2_norm')
 for stype in support_types:
     create_test_class(globals(), XPUTestSquaredL2NormOp, stype)
+
+
+@check_run_big_shape_test()
+class TestSquaredL2NormOpLargeShape1(unittest.TestCase):
+    def setUp(self):
+        self.diffs = {"float32": 1e-4, "float16": 1e-3, "bfloat16": 1e-2}
+        self.init_shape()
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for dtype in ["float32", "float16", "bfloat16"]:
+            diff = self.diffs[dtype]
+            with paddle.no_grad():
+                x = paddle.rand(self.shape, dtype=dtype)
+                actual_val = paddle._C_ops.squared_l2_norm(x)
+                actuval_val = actual_val.numpy()
+                if dtype == "bfloat16":
+                    np_x = x.astype("float32").numpy()
+                    expect_val = np.square(np.linalg.norm(np_x))
+                    expect_val = convert_float_to_uint16(expect_val)
+                else:
+                    np_x = x.numpy()
+                    expect_val = np.square(np.linalg.norm(np_x))
+                diff *= (int(x.numel()) + 300000 - 1) / 300000
+
+            np.testing.assert_allclose(
+                actual_val, expect_val, rtol=diff, atol=diff, verbose=True
+            )
+        paddle.enable_static()
+
+    def init_shape(self):
+        self.shape = [5120, 32]
+
+
+class TestSquaredL2NormOpLargeShape2(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [32, 1920]
+
+
+class TestSquaredL2NormOpLargeShape3(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [640, 32]
+
+
+class TestSquaredL2NormOpLargeShape4(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [32, 5120]
+
+
+class TestSquaredL2NormOpLargeShape5(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [32, 3456]
+
+
+class TestSquaredL2NormOpLargeShape6(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [1728, 32]
+
+
+class TestSquaredL2NormOpLargeShape7(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [31776, 5120]
+
+
+class TestSquaredL2NormOpLargeShape8(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [5120, 1920]
+
+
+class TestSquaredL2NormOpLargeShape9(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [1920]
+
+
+class TestSquaredL2NormOpLargeShape10(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [640, 5120]
+
+
+class TestSquaredL2NormOpLargeShape11(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [5120, 3456]
+
+
+class TestSquaredL2NormOpLargeShape12(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [3456]
+
+
+class TestSquaredL2NormOpLargeShape13(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [1728, 5120]
+
+
+class TestSquaredL2NormOpLargeShape14(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [5120, 31776]
+
+
+class TestSquaredL2NormOpLargeShape15(TestSquaredL2NormOpLargeShape1):
+    def init_shape(self):
+        self.shape = [31776]
+
 
 if __name__ == "__main__":
     paddle.enable_static()

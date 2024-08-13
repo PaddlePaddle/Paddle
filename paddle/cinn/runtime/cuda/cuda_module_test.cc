@@ -44,7 +44,8 @@ void saxpy(float a, float *x, float *y, float *out, size_t n)
 )ROC";
 
   auto ptx = compiler(source_code);
-  PADDLE_ENFORCE_NE(ptx.empty(), true, phi::errors::NotFound("ptx is empty!"));
+  PADDLE_ENFORCE_NE(
+      ptx.empty(), true, ::common::errors::NotFound("ptx is empty!"));
 
   CUDAModule module(ptx, CUDAModule::Kind::PTX);
   auto func = module.GetFunction(0, "saxpy");
@@ -75,7 +76,7 @@ TEST(CUDAModule, float16) {
 
     auto ptx = compiler(source_code);
     PADDLE_ENFORCE_NE(
-        ptx.empty(), true, phi::errors::NotFound("ptx is empty!"));
+        ptx.empty(), true, ::common::errors::NotFound("ptx is empty!"));
     return ptx;
   };
 
@@ -121,7 +122,7 @@ TEST(CUDAModule, float16) {
   PADDLE_ENFORCE_EQ(
       res,
       true,
-      phi::errors::PreconditionNotMet(
+      ::common::errors::PreconditionNotMet(
           "The difference between two arrays exceeds the bound."));
 }
 
@@ -149,7 +150,7 @@ TEST(CUDAModule, bfloat16) {
 
     auto ptx = compiler(source_code);
     PADDLE_ENFORCE_NE(
-        ptx.empty(), true, phi::errors::NotFound("ptx is empty!"));
+        ptx.empty(), true, ::common::errors::NotFound("ptx is empty!"));
     return ptx;
   };
 
@@ -195,7 +196,7 @@ TEST(CUDAModule, bfloat16) {
   PADDLE_ENFORCE_EQ(
       res,
       true,
-      phi::errors::PreconditionNotMet(
+      ::common::errors::PreconditionNotMet(
           "The difference between two arrays exceeds the bound."));
 }
 

@@ -32,11 +32,14 @@ using cinn::common::float16;
 
 const int kArgsArrayMaxLen = 20;
 
-llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
+llvm::Value* CodeGenCudaHost::LowerGPUKernelLauncher(
     const ir::_LoweredFunc_* func) {
   auto body = func->body;
   auto* call_ir = body.As<ir::Call>();
-  CHECK(call_ir);
+  PADDLE_ENFORCE_EQ(
+      call_ir,
+      nullptr,
+      phi::errors::InvalidArgument("The 'call_ir' must be true."));
 
   // Create the function
   // @{
@@ -68,18 +71,18 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
     PADDLE_ENFORCE_EQ(
         kernel_stream->getType(),
         ll_void_p_ty(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The type of kernel_stream should be void*"));  // void* stream
   }
   PADDLE_ENFORCE_EQ(
       kernel_args->getType(),
       ll_void_p_ty(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of kernel_args should be void*"));  // void* args
   PADDLE_ENFORCE_EQ(
       kernel_args_count->getType(),
       ll_int32_ty(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of kernel_args_count should be int32"));  // int32
 
   std::unordered_map<std::string, llvm::Value*> global_args = {
@@ -144,7 +147,12 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
             b_->getInt8PtrTy(), kvalue, r_arg.as_var()->name + "_ptr_load"));
       } else if (r_arg.as_var()->type().is_cpp_handle() ||
                  r_arg.as_var()->type().is_int(32)) {
-        CHECK(global_args.count(r_arg.as_var()->name));
+        PADDLE_ENFORCE_EQ(
+            global_args.count(r_arg.as_var()->name),
+            1,
+            phi::errors::InvalidArgument(
+                "The argument '%s' must be present in global_args.",
+                r_arg.as_var()->name.c_str()));
         call_args.push_back(global_args[r_arg.as_var()->name]);
       } else {
         CINN_NOT_IMPLEMENTED;
@@ -194,73 +202,7 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
   return function;
 }
 
-llvm::Value* CodeGenCUDA_Host::LowerHostFunc(const ir::_LoweredFunc_* func) {
-  // Create the function
-  // @{
-  auto* function_type = GenFunctionTypeFromCinnFunction(func, true);
-  f_ = llvm::Function::Create(
-      function_type, llvm::Function::ExternalLinkage, func->name, m_);
-  f_->setCallingConv(llvm::CallingConv::C);
-  f_->setHasUWTable();
-
-  std::vector<llvm::Value*> ll_function_args;
-  std::transform(f_->arg_begin(),
-                 f_->arg_end(),
-                 std::back_inserter(ll_function_args),
-                 [](auto& arg) { return std::addressof(arg); });
-  // @}
-
-  // Set local scope table
-  PADDLE_ENFORCE_EQ(ll_function_args.size(),
-                    func->args.size(),
-                    phi::errors::InvalidArgument(
-                        "The number of arguments is not equal to the number of "
-                        "function arguments"));
-  for (int i = 0; i < ll_function_args.size(); ++i) {
-    SetVar(func->args[i].name(), ll_function_args[i]);
-  }
-  llvm::BasicBlock* entry = llvm::BasicBlock::Create(
-      /*Context=*/b_->getContext(),
-      /*Name=*/"entry",
-      /*Parent=*/f_,
-      /*InsertBefore=*/nullptr);
-  b_->SetInsertPoint(entry);
-  CodeGenLLVM::Visit(&func->body);
-
-  // Reset local scope table
-  for (const ir::Argument& func_arg : func->args) {
-    symbol_table_->Erase(func_arg.name());
-  }
-  RetVoid();
-
-  return f_;
-}
-
-llvm::Value* CodeGenCUDA_Host::LowerParseArgsValueCall(
-    const ir::Call* call_ir) {
-  auto ret_type = CinnTypeToLLVMType(Int(64), m_);
-  std::vector<llvm::Type*> args_type;
-  PADDLE_ENFORCE_EQ(
-      call_ir->read_args.size(),
-      2,
-      phi::errors::InvalidArgument(
-          "The number of arguments of ParseArgsValue should be 2"));
-  CHECK(call_ir->read_args[0].is_var() &&
-        call_ir->read_args[0].as_var()->type().is_cpp_handle());
-  CHECK(call_ir->read_args[1].type().is_int(32));
-  args_type.push_back(CinnTypeToLLVMType(type_of<void*>(), m_));
-  args_type.push_back(CinnTypeToLLVMType(type_of<int32_t>(), m_));
-
-  auto func_type = llvm::FunctionType::get(ret_type, args_type, false);
-  auto call_func = m_->getOrInsertFunction(call_ir->name, func_type);
-
-  std::vector<llvm::Value*> call_args;
-  call_args.push_back(std::addressof(*f_->arg_begin()));
-  call_args.push_back(b_->getInt32(call_ir->read_args[1].as_int32()));
-  return b_->CreateCall(call_func, call_args);
-}
-
-llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
+llvm::Value* CodeGenCudaHost::LowerGPUKernelCall(const ir::Call* call_ir) {
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
                  f_->arg_end(),
@@ -274,18 +216,18 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
     PADDLE_ENFORCE_EQ(
         kernel_stream->getType(),
         ll_void_p_ty(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The type of kernel_stream should be void*"));  // void* stream
   }
   PADDLE_ENFORCE_EQ(
       kernel_args->getType(),
       ll_void_p_ty(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of kernel_args should be void*"));  // void* args
   PADDLE_ENFORCE_EQ(
       kernel_args_count->getType(),
       ll_int32_ty(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of kernel_args_count should be int32"));  // int32
 
   std::unordered_map<std::string, llvm::Value*> global_args = {
@@ -351,7 +293,12 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
         call_args.push_back(b_->CreateLoad(
             b_->getInt8PtrTy(), kvalue, r_arg.as_var()->name + "_ptr_load"));
       } else if (r_arg.as_var()->type().is_cpp_handle()) {
-        CHECK(global_args.count(r_arg.as_var()->name));
+        PADDLE_ENFORCE_EQ(
+            global_args.count(r_arg.as_var()->name),
+            1,
+            phi::errors::InvalidArgument(
+                "The argument '%s' must be present in global_args.",
+                r_arg.as_var()->name.c_str()));
         call_args.push_back(global_args[r_arg.as_var()->name]);
       } else if (r_arg.as_var()->type().is_int()) {
         call_args.push_back(GetVar(r_arg.as_var()->name, false));

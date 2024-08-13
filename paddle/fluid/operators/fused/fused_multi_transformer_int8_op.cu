@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fused/fused_attention_utils.h"
-#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_resource_pool.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm_int8.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
@@ -109,19 +109,19 @@ class FusedMultiTransformerINT8OpKernel : public framework::OpKernel<T> {
     if (time_step) {
       PADDLE_ENFORCE_EQ(time_step->place(),
                         phi::CPUPlace(),
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The place of input(TimeStep) must be CPUPlace."));
       // cache_seq_len
       int time_step_value = time_step->data<int>()[0];
       PADDLE_ENFORCE_GT(time_step_value,
                         0,
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The value of time_step must > 0, but now is %d",
                             time_step_value));
       PADDLE_ENFORCE_EQ(
           seq_len,
           1,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "In decode stage, the seq_len of input must be 1, but now is %d",
               seq_len));
       out_seq_len += time_step_value;

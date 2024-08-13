@@ -1014,6 +1014,7 @@ struct is_pod<phi::dtype::float16> {
                             is_standard_layout<phi::dtype::float16>::value;
 };
 
+#if !(defined(PADDLE_WITH_CUSTOM_KERNEL) && defined(PADDLE_WITH_HIP))
 template <>
 struct is_floating_point<phi::dtype::float16>
     : std::integral_constant<
@@ -1021,6 +1022,8 @@ struct is_floating_point<phi::dtype::float16>
           std::is_same<
               phi::dtype::float16,
               typename std::remove_cv<phi::dtype::float16>::type>::value> {};
+#endif
+
 template <>
 struct is_signed<phi::dtype::float16> {
   static const bool value = true;

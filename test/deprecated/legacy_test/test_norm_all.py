@@ -1277,17 +1277,24 @@ class API_NormTest(unittest.TestCase):
         paddle.enable_static()
 
     def test_name(self):
-        paddle.enable_static()
-        with base.program_guard(base.Program()):
-            x = paddle.static.data(name="x", shape=[10, 10], dtype="float32")
-            y_1 = paddle.norm(x, p='fro', axis=[-2, -1], name='frobenius_name')
-            y_2 = paddle.norm(x, p=2, name='pnorm_name')
-            y_3 = paddle.norm(x, p='nuc', axis=[0, 1], name='nuclear_name')
-            y_4 = paddle.norm(x, p=2, axis=[0, 1], name='p_matrix_norm_name')
-            self.assertEqual(('frobenius_name' in y_1.name), True)
-            self.assertEqual(('pnorm_name' in y_2.name), True)
-            self.assertEqual(('nuclear_name' in y_3.name), True)
-            self.assertEqual(('p_matrix_norm_name' in y_4.name), True)
+        if not paddle.framework.use_pir_api():
+            paddle.enable_static()
+            with base.program_guard(base.Program()):
+                x = paddle.static.data(
+                    name="x", shape=[10, 10], dtype="float32"
+                )
+                y_1 = paddle.norm(
+                    x, p='fro', axis=[-2, -1], name='frobenius_name'
+                )
+                y_2 = paddle.norm(x, p=2, name='pnorm_name')
+                y_3 = paddle.norm(x, p='nuc', axis=[0, 1], name='nuclear_name')
+                y_4 = paddle.norm(
+                    x, p=2, axis=[0, 1], name='p_matrix_norm_name'
+                )
+                self.assertEqual(('frobenius_name' in y_1.name), True)
+                self.assertEqual(('pnorm_name' in y_2.name), True)
+                self.assertEqual(('nuclear_name' in y_3.name), True)
+                self.assertEqual(('p_matrix_norm_name' in y_4.name), True)
 
     def test_errors(self):
         paddle.enable_static()

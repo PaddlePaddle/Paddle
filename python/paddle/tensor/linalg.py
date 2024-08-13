@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import numpy as np
 from typing_extensions import TypeAlias
@@ -42,6 +42,8 @@ from .manipulation import cast
 from .math import _get_reduce_axis
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
     _POrder: TypeAlias = Literal['fro', 'nuc']
@@ -495,7 +497,7 @@ def vector_norm(
     def inf_norm(
         input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
     ):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             out = _C_ops.abs(input)
             if porder == np.float64('inf'):
                 return _C_ops.max(out, axis, keepdim)
@@ -1695,6 +1697,10 @@ def cond(
 
     def empty_tensor(input, shape):
         if in_dynamic_or_pir_mode():
+            if in_pir_mode():
+                raise ValueError(
+                    "only support x is nonempty tensor in static graph mode"
+                )
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
@@ -2382,6 +2388,8 @@ def histogram(
     bins: int = 100,
     min: int = 0,
     max: int = 0,
+    weight: Tensor | None = None,
+    density: bool = False,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -2394,10 +2402,14 @@ def histogram(
         bins (int, optional): number of histogram bins. Default: 100.
         min (int, optional): lower end of the range (inclusive). Default: 0.
         max (int, optional): upper end of the range (inclusive). Default: 0.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        weight (Tensor, optional): If provided, it must have the same shape as input. Each value in input contributes its associated
+            weight towards the bin count (instead of 1). Default: None.
+        density (bool, optional): If False, the result will contain the count (or total weight) in each bin. If True, the result is the
+            value of the probability density function over the bins, normalized such that the integral over the range of the bins is 1.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor: data type is int64, shape is (nbins,).
+        Tensor, shape is (nbins,), the counts or density of the histogram.
 
     Examples:
         .. code-block:: python
@@ -2411,20 +2423,93 @@ def histogram(
             [0, 2, 1, 0])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.histogram(input, bins, min, max)
+        return _C_ops.histogram(input, weight, bins, min, max, density)
     else:
         helper = LayerHelper('histogram', **locals())
         check_variable_and_dtype(
             input, 'X', ['int32', 'int64', 'float32', 'float64'], 'histogram'
         )
-        out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
+
+        if weight or density:
+            if weight:
+                check_variable_and_dtype(
+                    weight,
+                    'Weight',
+                    ['int32', 'int64', 'float32', 'float64'],
+                    'histogram',
+                )
+            out = helper.create_variable_for_type_inference(
+                dtype=VarDesc.VarType.FP32
+            )
+        else:
+            out = helper.create_variable_for_type_inference(
+                dtype=VarDesc.VarType.INT64
+            )
+
         helper.append_op(
             type='histogram',
-            inputs={'X': input},
+            inputs={'X': input, 'Weight': weight},
             outputs={'Out': out},
-            attrs={'bins': bins, 'min': min, 'max': max},
+            attrs={
+                'bins': bins,
+                'min': min,
+                'max': max,
+                'density': density,
+            },
         )
         return out
+
+
+def histogram_bin_edges(
+    input: Tensor,
+    bins: int = 100,
+    min: int = 0,
+    max: int = 0,
+    name: str | None = None,
+) -> Tensor:
+    """
+    Computes only the edges of the bins used by the histogram function.
+    If min and max are both zero, the minimum and maximum values of the data are used.
+
+    Args:
+        input (Tensor): The data type of the input Tensor should be float32, float64, int32, int64.
+        bins (int, optional): number of histogram bins.
+        min (int, optional): lower end of the range (inclusive). Default: 0.
+        max (int, optional): upper end of the range (inclusive). Default: 0.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, the values of the histogram and the bin edges. The output data type will be float32.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> inputs = paddle.to_tensor([1, 2, 1])
+            >>> result = paddle.histogram_bin_edges(inputs, bins=4, min=0, max=3)
+            >>> print(result)
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.75000000, 1.50000000, 2.25000000, 3.        ])
+    """
+    check_type(input, 'input', (Variable), 'histogram_bin_edges')
+    check_dtype(
+        input.dtype,
+        'input',
+        ['float32', 'float64', 'int32', 'int64'],
+        'histogram_bin_edges',
+    )
+    check_type(bins, 'bins', int, 'histogram_bin_edges')
+    if max == 0 and min == 0:
+        min = paddle.min(input)
+        max = paddle.max(input)
+    else:
+        if max < min:
+            raise ValueError("max must be larger than min in range parameter")
+    if (min - max) == 0:
+        max = max + 0.5
+        min = min - 0.5
+    return paddle.linspace(min, max, bins + 1, name=name)
 
 
 def bincount(
@@ -3077,8 +3162,7 @@ def qr(
     x: Tensor,
     mode: Literal['reduced', 'complete'] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3086,8 +3170,7 @@ def qr(
     x: Tensor,
     mode: Literal['r'] = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 def qr(
@@ -3165,8 +3248,7 @@ def lu(
     pivot: bool = ...,
     get_infos: Literal[False] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -3175,15 +3257,13 @@ def lu(
     pivot: bool = ...,
     get_infos: Literal[True] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
 def lu(
     x: Tensor, pivot: bool = ..., get_infos: bool = ..., name: str | None = ...
-) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]: ...
 
 
 def lu(
@@ -3939,15 +4019,49 @@ def pinv(
             return out_2
 
 
-def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def _check_right_solve_shape(x, y):
+    """check the input shape of x and y for solve when left is False"""
+    x_shape = x.shape[-2:]
+    if len(y.shape) == 1:
+        raise ValueError(
+            "Incompatible shapes of X and Y for the equation Out * X = Y, "
+            f"where input X's matrix shape is {x_shape} and"
+            f"input Y's matrix shape is {list(y.shape).append(1)}"
+        )
+    else:
+        y_shape = y.shape[-2:]
+        if x_shape[0] != y_shape[1]:
+            raise ValueError(
+                "Incompatible shapes of X and Y for the equation Out * X = Y, "
+                f"where input X's matrix shape is {x_shape} and"
+                f"input Y's matrix shape is {y_shape}"
+            )
+
+
+def _transpose_last_2dim(x):
+    """transpose the last 2 dimension of a tensor"""
+    x_new_dims = list(range(len(x.shape)))
+    x_new_dims[-1], x_new_dims[-2] = x_new_dims[-2], x_new_dims[-1]
+    x = transpose(x, x_new_dims)
+    return x
+
+
+def solve(
+    x: Tensor, y: Tensor, left: bool = True, name: str | None = None
+) -> Tensor:
     r"""
 
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
     Let :math:`X` be a square matrix or a batch of square matrices, :math:`Y` be
-    a vector/matrix or a batch of vectors/matrices, the equation should be:
+    a vector/matrix or a batch of vectors/matrices. When `left` is True, the equation should be:
 
     .. math::
         Out = X^-1 * Y
+
+    When `left` is False, the equation should be:
+
+    .. math::
+        Out = Y * X^-1
 
     Specifically, this system of linear equations has one solution if and only if input 'X' is invertible.
 
@@ -3956,6 +4070,7 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             more batch dimensions. Its data type should be float32 or float64.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
             more batch dimensions. Its data type should be float32 or float64.
+        left (bool, optional): Whether to solve the system :math:`X * Out = Y` or :math:`Out * X = Y`. Default: True.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3981,8 +4096,13 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [2., 3.])
     """
+    if not left:
+        _check_right_solve_shape(x, y)
+        x = _transpose_last_2dim(x)
+        y = _transpose_last_2dim(y)
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.solve(x, y)
+        out = _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
         helper = LayerHelper("solve", **locals())
@@ -3993,7 +4113,10 @@ def solve(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         helper.append_op(
             type="solve", inputs={"X": x, "Y": y}, outputs={"Out": out}
         )
-        return out
+
+    if not left:
+        out = _transpose_last_2dim(out)
+    return out
 
 
 def triangular_solve(
@@ -5104,7 +5227,7 @@ def matrix_exp(x: Tensor, name: str | None = None) -> Tensor:
         return paddle.static.nn.cond(
             is_finite,
             lambda: paddle.less_than(i, max_squaring),
-            lambda: paddle.full((), False),
+            lambda: paddle.full((), False, dtype=paddle.bool),
         )
 
     def body(i, result):
@@ -5293,6 +5416,7 @@ def histogramdd(
             e = paddle.linspace(r[0], r[1], bins[idx] + 1, x.dtype)
             edges.append(e)
             dedges.append(e.diff())
+            hist_shape.append(bins[idx] + 2)
     elif isinstance(
         bins, tuple
     ):  # tuple with D tensors for each innermost dimension
@@ -5301,9 +5425,9 @@ def histogramdd(
             bin = paddle.to_tensor(bin)
             edges.append(bin)
             dedges.append(bin.diff())
+            hist_shape.append(bin.shape[0] + 1)
     else:
         raise ValueError("Input bins must be Tensor[], int[], or int.")
-    hist_shape = [edge.shape[0] + 1 for edge in edges]
     index_list = []
     # edges shape: [D, linspaced]
     # index_list shape: [D, N]

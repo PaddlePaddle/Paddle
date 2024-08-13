@@ -118,7 +118,7 @@ Node *pool2d_handler(Graph *graph, Node *node) {
     if (adaptive) {
       auto ksize = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
       if (ksize[0] != 1 || ksize[1] != 1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Only support pool_size=1 with adaptive mode."));
       }
       // adaptive maxpool op is max_pool2d_with_index. Only process avgpool
@@ -136,7 +136,7 @@ Node *pool2d_handler(Graph *graph, Node *node) {
       return CreateBaseOp(
           graph, node, "popart_globalaveragepool", node->inputs, node->outputs);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "op pool2d with unkonwn pooling_type: %s", pooling_type));
     }
   }
@@ -144,7 +144,7 @@ Node *pool2d_handler(Graph *graph, Node *node) {
     auto padding_algorithm =
         PADDLE_GET_CONST(std::string, op->GetAttr("padding_algorithm"));
     if (padding_algorithm != "EXPLICIT") {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "op pool2d with unkonwn padding_algorithm: %s", padding_algorithm));
     }
   }
@@ -194,7 +194,7 @@ Node *pool2d_handler(Graph *graph, Node *node) {
                             {"strides", strides},
                         });
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "op pool2d with unkonwn pooling_type: %s", pooling_type));
   }
 }
@@ -203,7 +203,7 @@ Node *max_pool2d_with_index_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
   auto ksize = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("ksize"));
   if (ksize[0] != 1 || ksize[1] != 1) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Only support pool_size=1 with adaptive mode."));
   }
   return CreateBaseOp(graph,
@@ -356,7 +356,7 @@ Node *dropout_handler(Graph *graph, Node *node) {
                           {});
     } else {
       PADDLE_THROW(
-          platform::errors::InvalidArgument("Invalid dropout_implementation"));
+          common::errors::InvalidArgument("Invalid dropout_implementation"));
     }
   } else {
     if (dropout_implementation_ == "upscale_in_train") {
@@ -369,11 +369,11 @@ Node *dropout_handler(Graph *graph, Node *node) {
                           {GetOutputVarNode("Out", node)},
                           attrs_);
     } else if (dropout_implementation_ == "downgrade_in_infer") {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Do not support downgrade_in_infer with training"));
     } else {
       PADDLE_THROW(
-          platform::errors::InvalidArgument("Invalid dropout_implementation"));
+          common::errors::InvalidArgument("Invalid dropout_implementation"));
     }
   }
 }
@@ -384,7 +384,7 @@ Node *conv2d_transpose_handler(Graph *graph, Node *node) {
   auto data_format = PADDLE_GET_CONST(std::string, op->GetAttr("data_format"));
   if (data_format != "NCHW") {
     PADDLE_THROW(
-        platform::errors::InvalidArgument("Only support NCHW as data_format."));
+        common::errors::InvalidArgument("Only support NCHW as data_format."));
   }
 
   auto *kernel_info = GetInputVarNode("Filter", node);
@@ -472,7 +472,7 @@ Node *affine_channel_handler(Graph *graph, Node *node) {
   auto data_layout = PADDLE_GET_CONST(std::string, op->GetAttr("data_layout"));
   if (data_layout != "NCHW") {
     PADDLE_THROW(
-        platform::errors::InvalidArgument("Only support NCHW as data_format."));
+        common::errors::InvalidArgument("Only support NCHW as data_format."));
   }
 
   auto *scale = GetInputVarNode("Scale", node);
@@ -515,7 +515,7 @@ Node *interp_handler(Graph *graph, Node *node, const std::string &mode) {
   auto data_layout = PADDLE_GET_CONST(std::string, op->GetAttr("data_layout"));
   if (data_layout != "NCHW") {
     PADDLE_THROW(
-        platform::errors::InvalidArgument("Only support NCHW as data_format."));
+        common::errors::InvalidArgument("Only support NCHW as data_format."));
   }
 
   auto align_corners = PADDLE_GET_CONST(bool, op->GetAttr("align_corners"));
@@ -723,7 +723,7 @@ Node *data_norm_handler(Graph *graph, Node *node) {
 
   if (slot_dim > 0) {
     PADDLE_THROW(
-        platform::errors::InvalidArgument("slot_dim > 0 is not supported."));
+        common::errors::InvalidArgument("slot_dim > 0 is not supported."));
   }
 
   bool enable_scale_and_shift = false;
@@ -782,16 +782,16 @@ Node *pad_handler(Graph *graph, Node *node) {
 
   if (data_format == "NDHWC") {
     PADDLE_THROW(
-        platform::errors::Unimplemented("NDHWC format is not supported."));
+        common::errors::Unimplemented("NDHWC format is not supported."));
   }
   if (mode == "replicate" || mode == "circular") {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "circular and replicate modes are not supported."));
   }
   if (op->Input("Paddings").size()) {
     // Paddings -> input tensor
     // PopART Pad Op only support `pad` as a constant
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Do not support Paddings as a inputs tensor"));
   }
   // Paddings -> Attr

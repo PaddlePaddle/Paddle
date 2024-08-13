@@ -275,7 +275,6 @@ class DistributedStrategy:
 
                 >>> import paddle
                 >>> build_strategy = paddle.static.BuildStrategy()
-                >>> build_strategy.enable_sequential_execution = True
                 >>> build_strategy.fuse_elewise_add_act_ops = True
                 >>> build_strategy.fuse_bn_act_ops = True
                 >>> build_strategy.enable_auto_fusion = True

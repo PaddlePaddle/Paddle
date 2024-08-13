@@ -91,7 +91,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
     op->SetAttr("file_path", save_params_path);
     op->CheckAttrs();
 
-    framework::Executor exe(platform::CPUPlace{});
+    framework::Executor exe(phi::CPUPlace{});
     exe.Run(save_program, &scope, 0, true, true);
   };
   // TODO(shentanyue01): Setting hardware and version identification for

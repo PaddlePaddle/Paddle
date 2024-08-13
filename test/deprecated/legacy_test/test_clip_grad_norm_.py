@@ -78,7 +78,10 @@ class TestClipGradNorm(unittest.TestCase):
             clip_grad_norm_(input_pd, max_norm=2, norm_type=float("inf"))
             paddle.disable_static()
 
-        self.assertRaises(RuntimeError, TestRuntimeErrorStaticMode)
+        if paddle.framework.use_pir_api():
+            self.assertRaises(AttributeError, TestRuntimeErrorStaticMode)
+        else:
+            self.assertRaises(RuntimeError, TestRuntimeErrorStaticMode)
 
 
 def run_test_equal(

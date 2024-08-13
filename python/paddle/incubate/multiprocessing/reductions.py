@@ -232,7 +232,7 @@ def _reduce_lodtensor(lodtensor):
     return (rebuild, (type(lodtensor),) + metadata)
 
 
-def init_reductions():
+def init_reductions() -> None:
     if not _supported_check():
         return
 

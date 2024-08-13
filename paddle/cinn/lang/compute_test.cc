@@ -19,7 +19,6 @@
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/buffer.h"
 #include "paddle/cinn/lang/placeholder.h"
 
 namespace cinn {

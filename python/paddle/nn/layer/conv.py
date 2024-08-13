@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -32,6 +32,8 @@ from ..initializer import Normal
 from .layers import Layer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         DataLayout1D,
@@ -180,7 +182,9 @@ class _ConvNd(Layer):
             default_initializer=_get_default_param_initializer(),
         )
         self.bias = self.create_parameter(
-            attr=self._bias_attr, shape=[self._out_channels], is_bias=True
+            attr=self._bias_attr,
+            shape=[self._out_channels],
+            is_bias=True,
         )
 
         cudnn_version = get_cudnn_version()

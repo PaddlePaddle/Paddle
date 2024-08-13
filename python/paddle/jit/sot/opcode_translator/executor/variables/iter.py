@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from ....utils import BreakGraphError, FallbackError
 from ..tracker import ConstTracker, DummyTracker
@@ -23,6 +23,8 @@ from .basic import ConstantVariable
 from .container import ContainerVariable, TupleVariable
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from ..function_graph import FunctionGraph
     from ..pycode_generator import PyCodeGen
     from ..tracker import Tracker
@@ -39,8 +41,8 @@ class IterVariable(VariableBase):
         super().__init__(graph, tracker)
         self.hold = obj
 
-    def make_stringify_guard(self):
-        return self.hold.make_stringify_guard()
+    def make_stringified_guard(self):
+        return self.hold.make_stringified_guard()
 
     def next(self):
         raise NotImplementedError(f"Can not simulate `next` for {type(self)}")
@@ -75,7 +77,7 @@ class SequenceIterVariable(IterVariable):
             self.idx += 1
             return val
         else:
-            raise StopIteration()
+            raise StopIteration
 
     def to_list(self) -> list:
         if self.has_side_effect():

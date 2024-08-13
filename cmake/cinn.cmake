@@ -177,12 +177,6 @@ target_link_libraries(cinnapi op_dialect pir phi)
 add_dependencies(cinnapi op_dialect pir phi)
 
 add_dependencies(cinnapi python)
-if(LINUX)
-  target_link_libraries(cinnapi "-Wl,--unresolved-symbols=ignore-all")
-elseif(APPLE)
-  target_link_libraries(cinnapi "-Wl,-undefined,dynamic_lookup")
-endif()
-
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
   add_dependencies(cinnapi cinn_mklml)
@@ -283,6 +277,8 @@ set(PUBLISH_LIBS ON)
 if(PUBLISH_LIBS)
   set(core_includes
       "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
+  set(core_includes
+      "${core_includes};paddle/cinn/runtime/hip/cinn_hip_runtime_source.h")
   set(core_includes
       "${core_includes};paddle/common/flags.h;paddle/utils/test_macros.h")
   foreach(header ${core_includes})

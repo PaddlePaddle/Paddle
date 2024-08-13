@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Tuple
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -52,7 +52,7 @@ MODE_FLAG_MAP = {
 }
 
 
-class Cifar10(Dataset):
+class Cifar10(Dataset[Tuple["_ImageDataType", "npt.NDArray[Any]"]]):
     """
     Implementation of `Cifar-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
     dataset, which has 10 categories.

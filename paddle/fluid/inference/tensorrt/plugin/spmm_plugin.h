@@ -26,7 +26,7 @@ limitations under the License.
 #include "NvInferPlugin.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-#include "paddle/fluid/platform/dynload/cusparseLt.h"
+#include "paddle/phi/backends/dynload/cusparseLt.h"
 
 namespace paddle {
 namespace inference {

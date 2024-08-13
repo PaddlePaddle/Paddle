@@ -373,6 +373,28 @@ class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
             paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.add": 2})
 
+    def test_can_not_replace_op_with_subblocks(self):
+        with program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.static.data("x1", [2, 2], dtype="float32")
+            x2 = paddle.static.data("x2", [2, 2], dtype="float32")
+            cond = paddle.static.data("cond", [], dtype="bool")
+            loop_var = paddle.static.data("i", [], dtype="int32")
+
+            def loop_body(loop_var):
+                tmp_var = x1 * x2
+                return [loop_var + 1]
+
+            def get_cond(loop_var):
+                return cond
+
+            paddle.static.nn.while_loop(get_cond, loop_body, [loop_var])
+            paddle.static.nn.while_loop(get_cond, loop_body, [loop_var])
+
+            self.assert_op_count_equal(main_program, {"pd_op.while": 2})
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.while": 2})
+
 
 if __name__ == "__main__":
     unittest.main()

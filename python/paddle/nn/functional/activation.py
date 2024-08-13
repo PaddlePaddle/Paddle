@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -146,9 +146,7 @@ def elu_(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
     Please refer to :ref:`api_paddle_nn_functional_elu`.
     """
     assert alpha >= 0.0, "elu_ only support alpha >= 0, please use elu instead."
-    if in_dynamic_mode():
-        return _C_ops.elu_(x, alpha)
-    return _legacy_C_ops.elu_(x, 'alpha', alpha)
+    return _C_ops.elu_(x, alpha)
 
 
 def gelu(
@@ -1299,11 +1297,7 @@ def softmax_(
     """
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    outs_cast = (
-        x
-        if dtype is None
-        else _legacy_C_ops.cast(x, 'in_dtype', x.dtype, 'out_dtype', dtype)
-    )
+    outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
     return _C_ops.softmax_(outs_cast, axis)
 
 

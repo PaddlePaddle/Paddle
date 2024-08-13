@@ -116,7 +116,7 @@ static void PrintMeta(const DenseTensor &t, const char *name) {
   PADDLE_ENFORCE_EQ(
       t.initialized(),
       true,
-      phi::errors::InvalidArgument("Tensor(%s) is not initialized.", name));
+      common::errors::InvalidArgument("Tensor(%s) is not initialized.", name));
   std::stringstream ss;
   ss << "Tensor(" << name << "): ";
   ss << "dtype(" << t.dtype() << "), ";
@@ -174,12 +174,12 @@ void FusedLinearParamGradAdd(const Context &ctx,
         PADDLE_ENFORCE_EQ(
             dweight_out->dtype(),
             phi::CppTypeToDataType<MT>::Type(),
-            phi::errors::InvalidArgument("Invaid data type error."));
+            common::errors::InvalidArgument("Invaid data type error."));
       } else {
         PADDLE_ENFORCE_EQ(
             dweight_out->dtype(),
             phi::CppTypeToDataType<T>::Type(),
-            phi::errors::InvalidArgument("Invaid data type error."));
+            common::errors::InvalidArgument("Invaid data type error."));
       }
     } else {
       if (multi_precision) {
@@ -197,12 +197,12 @@ void FusedLinearParamGradAdd(const Context &ctx,
         PADDLE_ENFORCE_EQ(
             dbias_out->dtype(),
             phi::CppTypeToDataType<MT>::Type(),
-            phi::errors::InvalidArgument("Invaid data type error."));
+            common::errors::InvalidArgument("Invaid data type error."));
       } else {
         PADDLE_ENFORCE_EQ(
             dbias_out->dtype(),
             phi::CppTypeToDataType<T>::Type(),
-            phi::errors::InvalidArgument("Invaid data type error."));
+            common::errors::InvalidArgument("Invaid data type error."));
       }
     } else {
       if (multi_precision) {
@@ -271,7 +271,7 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              bool has_bias,
                              DenseTensor *dweight_out,
                              DenseTensor *dbias_out) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "FusedLinearParamGradAdd is only supported when CUDA_VERSION >= 11.6."));
 }
 #endif

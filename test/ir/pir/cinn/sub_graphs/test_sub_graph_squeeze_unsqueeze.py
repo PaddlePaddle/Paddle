@@ -51,7 +51,6 @@ class TestSplitSqueeze(TestBase):
         ]
         self.inputs = (paddle.rand(shape=[1, 12, 1, 64], dtype=paddle.float32),)
         self.net = SqueezeCase
-        self.with_train = False
         self.atol = 1e-8
 
 

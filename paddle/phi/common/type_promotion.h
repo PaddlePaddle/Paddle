@@ -43,7 +43,7 @@ inline int DataTypeToNum(const DataType& dtype) {
     case DataType::BFLOAT16:
       return 11;
     default:
-      PADDLE_THROW(phi::errors::InvalidType(
+      PADDLE_THROW(common::errors::InvalidType(
           "Invalid enum data type for type promote %s.", dtype));
   }
 }
@@ -156,7 +156,7 @@ inline bool NeedTypePromotion(const std::string& op_name,
         (is_support_complex(x) || is_support_complex(y))) {
       return true;
     } else {
-      PADDLE_THROW(phi::errors::InvalidType(
+      PADDLE_THROW(common::errors::InvalidType(
           "Type promotion only support calculations between floating-point "
           "numbers and between complex and real numbers. But got different "
           "data type x: %s, y: %s.",

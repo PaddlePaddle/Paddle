@@ -63,7 +63,7 @@ class LookAhead(Optimizer):
             >>> IMAGE_SIZE = 784
             >>> CLASS_NUM = 10
             >>> # define a random dataset
-            >>> class RandomDataset(paddle.io.Dataset):
+            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...     def __getitem__(self, idx):
@@ -111,6 +111,7 @@ class LookAhead(Optimizer):
             >>> train(layer, loader, loss_fn, lookahead)
 
     """
+
     _slow_str = "slow"
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5, name=None):

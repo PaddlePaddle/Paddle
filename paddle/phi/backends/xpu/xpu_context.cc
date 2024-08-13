@@ -22,6 +22,8 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/os_info.h"
 #include "xpu/runtime.h"
 #include "xpu/runtime_ex.h"
@@ -120,7 +122,7 @@ struct XPUContext::Impl {
     return context_;
   }
 
-  void Wait() const {
+  void Wait() {
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     xpu_wait(context_->xpu_stream);
@@ -129,6 +131,8 @@ struct XPUContext::Impl {
       PD_CHECK(ctx_t != nullptr, "the xpu context is nullptr.");
       xpu_wait(ctx_t->xpu_stream);
     }
+
+    ClearStashedMemory();
   }
 
   class XHPCBufferManager {
@@ -269,6 +273,12 @@ struct XPUContext::Impl {
     }
   }
 
+  void AddStashedMemory(const DenseTensor& tensor) {
+    stashed_mem_for_free_.push_back(tensor.Holder());
+  }
+
+  void ClearStashedMemory() { stashed_mem_for_free_.clear(); }
+
   bool owned_{false};
   bool stream_owned_{false};
   Place place_;
@@ -282,6 +292,7 @@ struct XPUContext::Impl {
   // resources, XPUContext only holds references.
   xpu::BKCLContext_t bkcl_context_{nullptr};
   XHPCBufferManager xhpc_buf_mgr_;
+  std::vector<std::shared_ptr<Allocation>> stashed_mem_for_free_;
 };
 
 static int64_t get_gm_size(int i) {
@@ -448,9 +459,16 @@ void XPUContext::StreamWaitStream(int wait_stream, int record_stream) const {
   StreamWaitEvent(event, wait_stream);
   r = xpu_event_destroy(event);
   PADDLE_ENFORCE_XRE_SUCCESS(r);
+
+  impls_[record_stream]->ClearStashedMemory();
 }
 
 int64_t XPUContext::GetStreamNum() const { return impls_.size(); }
+
+void XPUContext::AddStashedMemory(int stream, const DenseTensor& tensor) {
+  CheckValidStreamId(stream);
+  impls_[stream]->AddStashedMemory(tensor);
+}
 
 void XPUContext::Init() { impls_[0]->Init(); }
 }  // namespace phi

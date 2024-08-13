@@ -241,7 +241,14 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
               ? add1(pat.Tensor("any_tensor"), pat.Tensor("add_out"))
               : add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
     }
-
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
+      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto r_shape = pir::GetShapeFromValue(match_ctx.Tensor("residual"));
+      if (x_shape[0] != r_shape[0]) {
+        return false;
+      }
+      return true;
+    });
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &cast_op_dtype = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {

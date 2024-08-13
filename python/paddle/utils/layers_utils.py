@@ -491,29 +491,6 @@ def check_shape(shape):
                 )
 
 
-def try_set_static_shape_tensor(tensor, shape):
-    """Try to set static shape of tensor from a shape tensor.
-
-    For example,
-
-    import paddle
-    paddle.enable_static()
-    data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
-    shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape)
-    print(x.shape)
-    # (-1, 2)
-
-    """
-    if not in_dygraph_mode():
-        # static graph mode, and shape is not all inferred (contains -1)
-        if -1 in tensor.shape:
-            if isinstance(shape, Variable):
-                shape = try_get_constant_shape_from_tensor(shape)
-                if shape:
-                    tensor.desc.set_shape(shape)
-
-
 def try_get_constant_shape_from_tensor(shape_tensor):
     """Try to get shape from a tensor with constant value.
 

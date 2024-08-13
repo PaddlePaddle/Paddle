@@ -203,7 +203,7 @@ class TestReshardNdMesh:
         all_gather_ops = []
         slice_ops = []
         for i, op in enumerate(new_ops):
-            if op.name() == "pd_op.c_allgather":
+            if op.name() == "pd_op.all_gather":
                 all_gather_ops.append(op)
             elif op.name() == "pd_op.slice":
                 slice_ops.append(op)
@@ -279,10 +279,10 @@ class TestReshardNdMesh:
         ops = dist_program.global_block().ops
         op_names = [op.name() for op in ops]
         assert "pd_op.c_allreduce_sum" in op_names
-        assert "pd_op.c_allgather" in op_names
+        assert "pd_op.all_gather" in op_names
         assert "pd_op.slice" in op_names
 
-        allgather_op = ops[op_names.index("pd_op.c_allgather")]
+        allgather_op = ops[op_names.index("pd_op.all_gather")]
         allreduce_sum_op = ops[op_names.index("pd_op.c_allreduce_sum")]
         slice_op = ops[op_names.index("pd_op.slice")]
 

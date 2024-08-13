@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import os
 import unittest
 
 import numpy as np
@@ -145,7 +146,12 @@ class TestQrAPI(unittest.TestCase):
             np_q = np.zeros(np_q_shape).astype(np_dtype)
             np_r = np.zeros(np_r_shape).astype(np_dtype)
             places = []
-            places = [base.CPUPlace()]
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
@@ -212,7 +218,12 @@ class TestQrAPI(unittest.TestCase):
             np_q = np.zeros(np_q_shape).astype(np_dtype)
             np_r = np.zeros(np_r_shape).astype(np_dtype)
             places = []
-            places = [base.CPUPlace()]
+            if (
+                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+                in ['1', 'true', 'on']
+                or not core.is_compiled_with_cuda()
+            ):
+                places.append(base.CPUPlace())
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:

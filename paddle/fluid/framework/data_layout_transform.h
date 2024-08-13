@@ -16,10 +16,10 @@
 
 #include <vector>
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -30,7 +30,7 @@ namespace paddle {
 namespace framework {
 
 struct CastDataLayout {
-  CastDataLayout(const platform::DeviceContext* ctx,
+  CastDataLayout(const phi::DeviceContext* ctx,
                  const std::vector<int>& axis,
                  const phi::DenseTensor& in,
                  phi::DenseTensor* out)
@@ -38,7 +38,7 @@ struct CastDataLayout {
 
   const phi::DenseTensor in_;
   phi::DenseTensor* out_;
-  const platform::DeviceContext* ctx_;
+  const phi::DeviceContext* ctx_;
   const std::vector<int> axis_;
 
   template <typename T>

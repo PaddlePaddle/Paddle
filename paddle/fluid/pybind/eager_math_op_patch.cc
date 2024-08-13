@@ -30,8 +30,6 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -40,6 +38,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "pybind11/detail/internals.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -48,10 +48,10 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/python_headers.h"
-#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/common/type_promotion.h"
+#include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle::pybind {
@@ -79,34 +79,32 @@ static bool IsNumpyArray(PyObject* obj) {
 }
 
 void InitTensorWithNumpyValue(const py::object& array,
-                              const paddle::platform::Place& place,
+                              const phi::Place& place,
                               Tensor* self,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
       self->defined(),
       true,
-      paddle::platform::errors::Fatal(
+      common::errors::Fatal(
           "Calling InitTensorWithNumpyValue of Eager Tensor without "
           "EmptyTensorInitializer is "
           "forbidden. Please check your code and make sure you new a "
           "eager tensor before init it with NumPy."));
   phi::DenseTensor* impl_ptr =
       static_cast<phi::DenseTensor*>(self->impl().get());
-  if (platform::is_cpu_place(place)) {
-    SetTensorFromPyArray<platform::CPUPlace>(impl_ptr, array, place, zero_copy);
-  } else if (platform::is_xpu_place(place)) {
-    SetTensorFromPyArray<platform::XPUPlace>(impl_ptr, array, place, zero_copy);
-  } else if (platform::is_gpu_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPlace>(
+  if (phi::is_cpu_place(place)) {
+    SetTensorFromPyArray<phi::CPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (phi::is_xpu_place(place)) {
+    SetTensorFromPyArray<phi::XPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (phi::is_gpu_place(place)) {
+    SetTensorFromPyArray<phi::GPUPlace>(impl_ptr, array, place, zero_copy);
+  } else if (phi::is_cuda_pinned_place(place)) {
+    SetTensorFromPyArray<phi::GPUPinnedPlace>(
         impl_ptr, array, place, zero_copy);
-  } else if (platform::is_cuda_pinned_place(place)) {
-    SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        impl_ptr, array, place, zero_copy);
-  } else if (platform::is_custom_place(place)) {
-    SetTensorFromPyArray<platform::CustomPlace>(
-        impl_ptr, array, place, zero_copy);
+  } else if (phi::is_custom_place(place)) {
+    SetTensorFromPyArray<phi::CustomPlace>(impl_ptr, array, place, zero_copy);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Place should be one of "
         "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/CustomPlace"));
   }
@@ -136,26 +134,26 @@ std::set<phi::DataType> _complex_dtypes{
 //     '__rtruediv__',
 //     '__matmul__',
 
-void SetDevice(paddle::platform::Place place) {
-  if (paddle::platform::is_gpu_place(place)) {
+void SetDevice(phi::Place place) {
+  if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     phi::backends::gpu::SetDeviceId(place.device);
     VLOG(6) << "CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId()
             << " from " << static_cast<int>(place.device);
 #else
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU if use CUDAPlace."));
 #endif
   }
 
-  if (paddle::platform::is_custom_place(place)) {
+  if (phi::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
     phi::DeviceManager::SetDevice(place);
     VLOG(6) << "CurrentDeviceId: "
             << phi::DeviceManager::GetDevice(place.GetDeviceType()) << " from "
             << static_cast<int>(place.device);
 #else
-    PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with CUSTOM_DEVICE if use "
         "CustomPlace."));
 #endif
@@ -225,7 +223,7 @@ void TypePromotionForZeroDimTensor(std::string func,
 static PyObject* tensor__add__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__add__ or __radd_ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -294,7 +292,7 @@ static PyObject* tensor__add__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -328,7 +326,7 @@ static PyObject* tensor__add__method(TensorObject* self,
 static PyObject* tensor__sub__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__sub__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -399,7 +397,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -432,7 +430,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
 static PyObject* tensor__rsub__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__rsub__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -502,7 +500,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -535,7 +533,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
 static PyObject* tensor__mul__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__mul__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -609,7 +607,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -648,7 +646,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
 static PyObject* tensor__div__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__div__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -713,7 +711,7 @@ static PyObject* tensor__div__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -761,7 +759,7 @@ static PyObject* tensor__div__method(TensorObject* self,
 static PyObject* tensor__rdiv__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__rdiv__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -820,7 +818,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -867,7 +865,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
 static PyObject* tensor__gt__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__gt__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -931,7 +929,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -968,7 +966,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
 static PyObject* tensor__ge__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__ge__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1032,7 +1030,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1069,7 +1067,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
 static PyObject* tensor__mod__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__mod__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1134,7 +1132,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1170,7 +1168,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
 static PyObject* tensor__matmul__method(TensorObject* self,
                                         PyObject* args,
                                         PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__matmul__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1232,7 +1230,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1297,7 +1295,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
 static PyObject* tensor__lt__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__lt__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1361,7 +1359,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1398,7 +1396,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
 static PyObject* tensor__le__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__le__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1462,7 +1460,7 @@ static PyObject* tensor__le__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1499,7 +1497,7 @@ static PyObject* tensor__le__method(TensorObject* self,
 static PyObject* tensor__floordiv__method(TensorObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "floordiv pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1564,7 +1562,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1599,7 +1597,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
 static PyObject* tensor__pow__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "pow pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1669,7 +1667,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1704,7 +1702,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
 static PyObject* tensor__rpow__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__rpow__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1770,7 +1768,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1807,7 +1805,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
 static PyObject* tensor__ne__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__ne__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1871,7 +1869,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =
@@ -1908,7 +1906,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
 static PyObject* tensor__eq__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
-  paddle::platform::RecordEvent pythonc_record_event(
+  phi::RecordEvent pythonc_record_event(
       "__eq__ pybind_patch_func",
       paddle::platform::TracerEventType::UserDefined,
       1);
@@ -1971,7 +1969,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
           py::reinterpret_borrow<py::object>(py::handle(other_obj));
-      other_tensor = paddle::Tensor(place);
+      other_tensor = paddle::empty({}, phi::DataType::FLOAT32, place);
       InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
     } else {
       paddle::experimental::Scalar value =

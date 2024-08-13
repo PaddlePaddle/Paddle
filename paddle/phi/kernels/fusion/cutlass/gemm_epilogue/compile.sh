@@ -38,9 +38,24 @@ case "$gpu_cc" in
     *)  exit 0  ;;
 esac
 
+SOURCE_CUTLASS_DIR="../../../../../../third_party/cutlass"
+SOURCE_CUTLASS_GIT_DIR="../../../../../../../.git/modules/third_party/cutlass"
 cutlass_repo_directory="cutlass"
 if [ ! -d "$cutlass_repo_directory" ]; then
-    git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
+    if [ -d "$SOURCE_CUTLASS_DIR" ]; then
+        echo "Cutlass folder exists in the submodule and is being copied to the current directory..."
+        cp -r "$SOURCE_CUTLASS_DIR" cutlass
+        cd cutlass
+        echo "Copy the .git directory of cutlass to the current directory"
+        rm -rf .git
+        cp -r "$SOURCE_CUTLASS_GIT_DIR" .git
+        sed -i '6c\ \ worktree = ../' .git/config
+        git checkout v2.11.0
+        cd ..
+    else
+        echo "Cutlass folder does not exist in the submodule and is being downloaded..."
+        git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
+    fi
 fi
 
 

@@ -71,7 +71,7 @@ struct TEST_API DenseTensorMeta {
   /// \return Whether the metadata is valid.
   bool valid() const noexcept;
 
-  bool is_contiguous() const noexcept;
+  bool is_contiguous() const;
 
   bool is_scalar{false};
   /// \brief Determine whether using gpudnn speed-up library in the new dygraph.

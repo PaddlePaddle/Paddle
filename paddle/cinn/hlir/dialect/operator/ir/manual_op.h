@@ -67,7 +67,7 @@ class IR_API FusionOp
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.fusion"; }
-  static constexpr uint32_t attributes_num = 1;
+  static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
@@ -76,7 +76,8 @@ class IR_API FusionOp
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Type> &output_types,
-                    const cinn::dialect::GroupInfo &group_info);
+                    const cinn::dialect::GroupInfo &group_info,
+                    const cinn::fusion::FusionTrackerPtr &tracker);
 
   pir::Block *block();
   pir::Block *block() const;

@@ -163,15 +163,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "auto_mixed_precision_pass",
 });
 
-const std::vector<std::string> kDlnneSubgraphPasses({
-    "is_test_pass",                  //
-    "delete_dropout_op_pass",        //
-    "simplify_with_basic_ops_pass",  //
-    "conv_bn_fuse_pass",             //
-    "depthwise_conv_bn_fuse_pass",   //
-    "shuffle_channel_detect_pass",   //
-});
-
 // TODO(inference): Most of the existing pass fusion operators do not
 // support fp16/bf16 precision, temporarily use low precision pass to prevent
 // running errors. After fusion operator supports low precision, delete this.
@@ -624,6 +615,7 @@ const std::vector<std::string> kPirGpuPasses{
     "transpose_flatten_concat_fuse_pass",
     "remove_redundant_transpose_pass",
     "transfer_layout_pass",
+    "horizontal_fuse_pass",
 };
 
 const std::vector<std::string> kPirXpuPasses{
@@ -633,6 +625,7 @@ const std::vector<std::string> kPirXpuPasses{
     "map_op_to_another_pass",
     "identity_op_clean_pass",
     // Operator fusion pass
+    "add_activation_xpu_fuse_pass",
     "add_layernorm_xpu_fuse_pass",
     "conv2d_bn_xpu_fuse_pass",
     "conv2d_add_xpu_fuse_pass",
@@ -645,18 +638,21 @@ const std::vector<std::string> kPirMkldnnPasses {
       "depthwise_conv_onednn_pass",               //
       "squeeze_transpose_onednn_fuse_pass",       //
       "conv2d_bn_onednn_fuse_pass",               //
+      "conv2d_bias_bn_onednn_fuse_pass",          //
       "conv2d_bias_fuse_pass",                    //
+      "conv2d_transpose_bn_fuse_pass",            //
+      "conv2d_transpose_bias_bn_fuse_pass",       //
       "conv2d_transpose_bias_fuse_pass",          //
       "conv3d_bias_fuse_pass",                    //
       "conv_elementwise_add_onednn_fuse_pass",    //
       "conv_activation_onednn_fuse_pass",         //
       "conv_concat_activation_onednn_fuse_pass",  //
-      "batch_norm_act_fuse_pass",                 //
       "matmul_scale_fuse_pass",                   //
       "scale_matmul_fuse_pass",                   //
       "reshape_transpose_matmul_fuse_pass",       //
       "matmul_transpose_reshape_fuse_pass",       //
       "matmul_add_act_fuse_pass",                 //
+      "matmul_reshape_add_fuse_pass",             //
       "fc_onednn_enable_pass",                    //
       "matmul_elementwise_add_fuse_pass",         //
       "matmul_activation_fuse_pass",              //
@@ -667,12 +663,13 @@ const std::vector<std::string> kPirMkldnnPasses {
     defined(PADDLE_WITH_DNNL)
       "self_attention_fuse_pass",  //
 #endif
+      "batch_norm_act_fuse_pass",             //
       "softplus_activation_fuse_pass",        //
       "shuffle_channel_detect_pass",          //
-      "operator_reshape_onednn_fuse_pass",    //
       "elementwise_act_onednn_fuse_pass",     //
-      "operator_unsqueeze_onednn_fuse_pass",  //
       "operator_scale_onednn_fuse_pass",      //
+      "operator_unsqueeze_onednn_fuse_pass",  //
+      "operator_reshape_onednn_fuse_pass",    //
       "onednn_placement_pass"                 //
 };
 

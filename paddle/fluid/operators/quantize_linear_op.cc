@@ -92,6 +92,8 @@ class QuantizeLinearOpMaker : public framework::OpProtoAndCheckerMaker {
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0);
     AddAttr<int>("bit_length", "(int, default 8)").SetDefault(8);
+    AddAttr<int>("qmin", "(int, default -128)").SetDefault(-128);
+    AddAttr<int>("qmax", "(int, default 127)").SetDefault(127);
     AddAttr<int>(
         "round_type",
         "(int, default 0) The round type of fp32 to int."

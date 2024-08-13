@@ -25,7 +25,7 @@ disable_wingpu_test="^test_model$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_py_reader_using_executor$|\
 ^test_program_prune_backward_deprecated$|\
-^test_decoupled_py_reader_data_check$|\
+^test_decoupled_py_reader_data_check_deprecated$|\
 ^test_fleet_base_single$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_py_reader_combination$|\
@@ -123,7 +123,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_matmul_op_static_build$|\
 ^test_matmul_v2_op_static_build$|\
 ^test_image_classification$|\
-^test_apply_pass_to_program$|\
+^test_apply_pass_to_program_deprecated$|\
 ^test_mobile_net$|\
 ^test_IntermediateLayerGetter$|\
 ^test_pad3d_op$|\
@@ -173,7 +173,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_onednn_multi_gru_fuse_pass$|\
 ^test_onednn_multi_gru_seq_fuse_pass$|\
 ^test_onednn_reshape_transpose_matmul_fuse_pass$|\
-^test_conv2d_layer$|\
+^test_conv2d_layer_deprecated$|\
 ^test_conv3d_layer$|\
 ^test_decorator$|\
 ^test_flash_attention$|\
@@ -218,7 +218,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_executor_and_mul$|\
 ^test_gru_unit_op$|\
 ^test_matmul_op$|\
-^test_decoupled_py_reader_data_check$|\
+^test_decoupled_py_reader_data_check_deprecated$|\
 ^test_decoupled_py_reader_deprecated$|\
 ^test_generator_dataloader_deprecated$|\
 ^test_py_reader_combination$|\
@@ -410,7 +410,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_fuse_bn_act_pass_deprecated$|\
 ^test_fuse_bn_act_pass_deprecated_static_build$|\
 ^test_fuse_bn_add_act_pass$|\
-^test_decoupled_py_reader_data_check$|\
+^test_decoupled_py_reader_data_check_deprecated$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_dataloader_early_reset_deprecated$|\
 ^test_fleet_base_single$|\

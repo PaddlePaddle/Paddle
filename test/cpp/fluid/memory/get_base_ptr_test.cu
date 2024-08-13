@@ -15,8 +15,8 @@
 #include <random>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/memory/malloc.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace memory {
@@ -25,7 +25,7 @@ namespace allocation {
 class CUDAAllocatoionBasePtrTest : public ::testing::Test {
  public:
   void SetUp() override {
-    place_ = platform::CUDAPlace();
+    place_ = phi::GPUPlace();
     alloc_times_ = 100;
     batch_size_ = 10;
     max_alloc_size_ = platform::GpuMaxAllocSize() / alloc_times_;
@@ -99,7 +99,7 @@ class CUDAAllocatoionBasePtrTest : public ::testing::Test {
   }
 
  private:
-  platform::CUDAPlace place_;
+  phi::GPUPlace place_;
   size_t max_alloc_size_;
   size_t alloc_times_;
   size_t batch_size_;

@@ -172,7 +172,7 @@ struct HardLabelCrossEntropyForwardFunctor {
     auto label = label_[idx];
     if (label != ignore_index_) {
       // don't update to PADDLE_ENFORCE_GE and PADDLE_ENFORCE_LT cause
-      // can't use phi::errors::InvalidArgument in HOSTDEVICE
+      // can't use common::errors::InvalidArgument in HOSTDEVICE
       PADDLE_ENFORCE(label >= 0 && label < feature_size_,
                      "Variable value (label) of "
                      "OP(fluid.layers.cross_entropy) expected >= 0 "

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generator, Literal, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
 import paddle.nn.functional as F
@@ -28,6 +28,8 @@ g_enable_flash = None
 g_enable_mem_efficient = None
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from paddle import Tensor
 
 
@@ -75,8 +77,7 @@ def _math_attention(
     causal: bool = ...,
     return_softmax: Literal[False] = ...,
     training: bool = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -88,8 +89,7 @@ def _math_attention(
     causal: bool = ...,
     return_softmax: Literal[True] = ...,
     training: bool = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -101,8 +101,7 @@ def _math_attention(
     causal: bool = ...,
     return_softmax: bool = ...,
     training: bool = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def _math_attention(
@@ -122,9 +121,7 @@ def _math_attention(
     query = paddle.transpose(query, [0, 2, 1, 3])
     key = paddle.transpose(key, [0, 2, 1, 3])
     value = paddle.transpose(value, [0, 2, 1, 3])
-    product = paddle.matmul(
-        x=query * (head_dim**-0.5), y=key, transpose_y=True
-    )
+    product = paddle.matmul(x=query * (head_dim**-0.5), y=key, transpose_y=True)
 
     if not causal:
         weights = F.softmax(product)
@@ -207,8 +204,7 @@ def flash_attention(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -224,8 +220,7 @@ def flash_attention(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -241,8 +236,7 @@ def flash_attention(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def flash_attention(
@@ -412,8 +406,7 @@ def flash_attn_qkvpacked(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -427,8 +420,7 @@ def flash_attn_qkvpacked(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -442,8 +434,7 @@ def flash_attn_qkvpacked(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def flash_attn_qkvpacked(
@@ -615,8 +606,7 @@ def flash_attn_unpadded(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -636,8 +626,7 @@ def flash_attn_unpadded(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -657,8 +646,7 @@ def flash_attn_unpadded(
     rng_name: str = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def flash_attn_unpadded(
@@ -816,8 +804,7 @@ def flash_attn_varlen_qkvpacked(
     varlen_padded: bool = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, None]:
-    ...
+) -> tuple[Tensor, None]: ...
 
 
 @overload
@@ -836,8 +823,7 @@ def flash_attn_varlen_qkvpacked(
     varlen_padded: bool = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -856,8 +842,7 @@ def flash_attn_varlen_qkvpacked(
     varlen_padded: bool = ...,
     training: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None]: ...
 
 
 def flash_attn_varlen_qkvpacked(
@@ -1016,15 +1001,15 @@ def scaled_dot_product_attention(
         query(Tensor): The query tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         key(Tensor): The key tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         value(Tensor): The value tensor in the Attention module.
                         4-D tensor with shape:
                         [batch_size, seq_len, num_heads, head_dim].
-                        The dtype can be float61 or bfloat16.
+                        The dtype can be float16 or bfloat16.
         attn_mask(Tensor, optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
         dropout_p(float, optional): The dropout ratio.
@@ -1251,3 +1236,102 @@ def flash_attention_with_sparse_mask(
         return outputs[0]
     else:
         return outputs
+
+
+def calc_reduced_attention_scores(
+    query: paddle.Tensor, key: paddle.Tensor, softmax_lse: paddle.Tensor
+) -> paddle.Tensor:
+    r"""
+    The equation is:
+
+    .. math::
+
+        result=reduce\_sum(softmax(\frac{ Q * K^T }{\sqrt{d}}), dim=-2)
+
+    Warning:
+        This API only supports inputs with dtype float16 and bfloat16.
+
+    Args:
+        query(Tensor): The query tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, seqlen_q, num_heads, head_dim].
+                        The dtype can be float16 or bfloat16.
+        key(Tensor): The key tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, seqlen_k, num_heads, head_dim].
+                        The dtype can be float16 or bfloat16.
+        softmax_lse(Tensor): The logsumexp of each row returned by _C_ops.flash_attn().
+                        3-D tensor with shape:
+                        [batch_size, num_heads, seqlen_q_rounded], where seqlen_q_rounded = ceil(seqlen_q/128).
+                        The dtype is float32.
+    Returns:
+        reduced_attention_scores(Tensor), The reduce sum of attention scores across seqlen_q.
+        4-D tensor with shape: [batch_size, num_heads, 1, seqlen_k]. The dtype is float32.
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP('reduce_attn_scores need A100 compile')
+            >>> import paddle
+            >>> import numpy as np
+            >>> import paddle._C_ops as _C_ops
+            >>> from paddle.nn.functional.flash_attention import (
+            >>>     calc_reduced_attention_scores
+            >>> )
+            >>> np.random.seed(2024)
+            >>> q_shape = (5,1024,16,128)
+            >>> k_shape = (5,2048,16,128)
+            >>> dtype = 'float16'
+            >>> query = np.random.random(q_shape)
+            >>> key = np.random.random(k_shape)
+            >>> q = paddle.to_tensor(
+            >>>     query, place=place, dtype=dtype, stop_gradient=True
+            >>> )
+            >>> k = paddle.to_tensor(
+            >>>     key, place=place, dtype=dtype, stop_gradient=True
+            >>> )
+            >>> _, _, softmax_lse, _ = _C_ops.flash_attn(
+            >>>     q,
+            >>>     k,
+            >>>     k,
+            >>>     (None,), #fixed_seed_offset
+            >>>     None, #attn_mask
+            >>>     0.0, #dropout
+            >>>     False, #causal
+            >>>     False, #return_softmax
+            >>>     False, #is_test
+            >>>     "" #rng_name
+            >>> )
+            >>> reduced_attn_scores = calc_reduced_attention_scores(
+            >>>     q,
+            >>>     k,
+            >>>     softmax_lse,
+            >>> )
+            >>> # doctest: -SKIP
+    """
+    assert (
+        query.stop_gradient and key.stop_gradient
+    ), 'calc_reduced_attention_scores() is for inference only.'
+
+    if in_dynamic_or_pir_mode():
+        reduced_scores = _C_ops.calc_reduced_attn_scores(
+            query, key, softmax_lse
+        )
+        return reduced_scores
+
+    helper = LayerHelper('calc_reduced_attn_scores', **locals())
+    reduced_scores = helper.create_variable_for_type_inference(paddle.float32)
+    softmax = helper.create_variable_for_type_inference(paddle.float32)
+    inputs = {
+        'q': query,
+        'k': key,
+        'softmax_lse': softmax_lse,
+    }
+    outputs = {
+        'reduced_scores': reduced_scores,
+    }
+    helper.append_op(
+        type='calc_reduced_attn_scores',
+        inputs=inputs,
+        outputs=outputs,
+    )
+    return reduced_scores

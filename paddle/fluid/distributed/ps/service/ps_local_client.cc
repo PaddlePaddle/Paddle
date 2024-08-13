@@ -110,7 +110,7 @@ int32_t PsLocalClient::Initialize() {
   PADDLE_ENFORCE_EQ(
       shard_buffer_remain,
       region_buffer.size() * sizeof(float),
-      platform::errors::PreconditionNotMet("pull dense size error."));
+      common::errors::PreconditionNotMet("pull dense size error."));
   size_t index = 0;
   while (shard_buffer_remain > 0 && region_idx < region_num) {
     auto& region = regions[region_idx];
@@ -205,7 +205,7 @@ int32_t PsLocalClient::Initialize() {
     PADDLE_ENFORCE_LE(
         offset + data_num,
         data_size,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "invalid dense size, cur pos[%d] data_num[%d] size[%d]",
             offset,
             data_num,

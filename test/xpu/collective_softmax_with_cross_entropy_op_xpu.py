@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import pickle
 import sys
 
 import numpy as np
@@ -23,6 +22,7 @@ from op_test import convert_float_to_uint16
 from test_collective_base_xpu import (
     DataTypeCast,
     TestCollectiveRunnerBase,
+    dump_output,
     runtime_main,
 )
 
@@ -46,7 +46,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
         self.logits_shape = [self.seq_len, self.local_elements]
         self.label_shape = [self.seq_len, 1]
 
-    def get_model(self, main_prog, startup_program, rank):
+    def get_model(self, main_prog, startup_program, rank, ignore_index):
         with program_guard(main_prog, startup_program):
             logits = data(
                 name="Logits",
@@ -86,6 +86,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
                         'ring_id': self.ring_id,
                         'rank': rank,
                         'nranks': self.nranks,
+                        'ignore_index': ignore_index,
                     },
                 )
                 # generate backward op_desc
@@ -129,13 +130,6 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             ]
             self.label_shape = [self.batch_size, self.seq_len, 1]
 
-        np_dtype = DataTypeCast(args["dtype"])
-        loss, softmax = self.get_model(train_prog, startup_prog, rank)
-        device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-        place = paddle.XPUPlace(device_id)
-        exe = Executor(place)
-        exe.run(startup_prog)
-
         # NOTE use uid here to assure that two xpus share the same label
         np.random.seed(os.getuid())
         label = np.random.randint(
@@ -144,6 +138,17 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             size=self.label_shape,
             dtype='int32',
         )
+        ignore_index = label[0][0]
+
+        np_dtype = DataTypeCast(args["dtype"])
+        loss, softmax = self.get_model(
+            train_prog, startup_prog, rank, ignore_index
+        )
+        device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+        place = paddle.XPUPlace(device_id)
+        exe = Executor(place)
+        exe.run(startup_prog)
+
         # use FAKE loss_grad here, only to examine the correctness of grad func
         loss_grad_fp32 = np.random.uniform(
             low=-10.0, high=10.0, size=self.label_shape
@@ -167,7 +172,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             feed={'Logits': logits, 'Label': label, 'Loss@GRAD': loss_grad},
             fetch_list=[loss.name, softmax.name, 'Logits@GRAD'],
         )
-        sys.stdout.buffer.write(pickle.dumps(out))
+        dump_output(out)
 
 
 if __name__ == "__main__":

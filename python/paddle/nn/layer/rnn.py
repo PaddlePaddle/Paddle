@@ -1650,10 +1650,20 @@ class RNNBase(LayerList):
             ]
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
-            self._dropout_state = self.create_variable(
-                dtype=core.VarDesc.VarType.UINT8,
-                name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
-            )
+            if in_pir_mode():
+                self._dropout_state = paddle.pir.core.create_parameter(
+                    dtype="uint8",
+                    shape=[0],
+                    name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
+                    initializer=paddle.nn.initializer.Constant(value=0),
+                    trainable=False,
+                )
+                self._dropout_state.stop_gradient = True
+            else:
+                self._dropout_state = self.create_variable(
+                    dtype=core.VarDesc.VarType.UINT8,
+                    name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
+                )
             if in_dynamic_mode():
                 with paddle.no_grad():
                     dtype = params[0].dtype

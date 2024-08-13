@@ -107,11 +107,14 @@ list(
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
   expand_v2_op.cc
+  argsort_op.cc
   cumsum_op.cc
   temporal_shift_op.cc
   einsum_op.cc
   unbind_op.cc
+  isnan_v2_op.cc
   assign_op.cc
+  p_norm_op.cc
   flip_op.cc
   quantize_linear_op.cc
   dequantize_linear_op.cc

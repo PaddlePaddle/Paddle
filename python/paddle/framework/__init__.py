@@ -54,6 +54,7 @@ from ..base.framework import (  # noqa: F401
     get_flags,
     in_dygraph_mode as in_dynamic_mode,
     in_dynamic_or_pir_mode,
+    in_pir_executor_mode,
     in_pir_mode,
     set_flags,
     switch_main_program,

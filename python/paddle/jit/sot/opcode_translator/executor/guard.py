@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
     CheckGuardInputT = TypeVar("CheckGuardInputT", bound=VariableBase)
 
-# NOTE(SigureMo): [How to write Stringify Guard?]
+# NOTE(SigureMo): [How to write Stringified Guard?]
 # 1. we should capture free variables manually, the string cannot capture free
 #    variables automatically.
 # 2. Be aware that the comparison logic before and after stringify may be different.
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 #    runtime overhead.
 
 
-class StringifyExpression:
+class StringifiedExpression:
     """
     Used to store string based expressions for generating Guard.
     """
@@ -63,23 +63,23 @@ def union_free_vars(*free_vars: dict[str, Any]):
     return {k: v for d in free_vars for k, v in d.items()}
 
 
-def make_guard(stringify_guards: list[StringifyExpression]) -> Guard:
+def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
     """
-    Make a guard from a list of StringifyExpression.
+    Make a guard from a list of StringifiedExpression.
 
-    For more design ideas, refer to the `Stringify guard <https://github.com/PaddlePaddle/PaddleSOT/blob/develop/docs/design/stringify-guard.md>`_ for details.
+    For more design ideas, refer to the `Stringified guard <https://github.com/PaddlePaddle/PaddleSOT/blob/develop/docs/design/stringify-guard.md>`_ for details.
 
     Args:
-        stringify_guards: a list of StringifyExpression.
+        stringified_guards: a list of StringifiedExpression.
     """
     with EventGuard("make_guard"):
-        num_guards = len(stringify_guards)
+        num_guards = len(stringified_guards)
         if not num_guards:
             guard = lambda frame: True
             guard.expr = "lambda frame: True"
             return guard
 
-        def analyse_expressions(stringify_exprs, tmp_names):
+        def analyse_expressions(stringified_exprs, tmp_names):
             func_string = "def built_guard_fn(frame):\n"
             lambda_string = "lambda frame: "
             free_vars = {}
@@ -88,7 +88,7 @@ def make_guard(stringify_guards: list[StringifyExpression]) -> Guard:
                 func_string += f"    {v} = {k}\n"
 
             func_result = ""
-            for str_expr in stringify_exprs:
+            for str_expr in stringified_exprs:
                 func_result += str_expr.expr + " and "
                 lambda_string += str_expr.inlined_expr + " and "
                 free_vars = union_free_vars(free_vars, str_expr.free_vars)
@@ -102,7 +102,7 @@ def make_guard(stringify_guards: list[StringifyExpression]) -> Guard:
             free_vars,
             lambda_string,
         ) = analyse_expressions(
-            stringify_guards, current_tmp_name_records().tmp_names_record
+            stringified_guards, current_tmp_name_records().tmp_names_record
         )
 
         exec(
@@ -126,9 +126,9 @@ def support_weak_ref(obj):
 
 
 def check_guard(
-    fn: Callable[[CheckGuardInputT], list[StringifyExpression]]
-) -> Callable[[CheckGuardInputT], list[StringifyExpression]]:
-    def wrapper(self: CheckGuardInputT) -> list[StringifyExpression]:
+    fn: Callable[[CheckGuardInputT], list[StringifiedExpression]]
+) -> Callable[[CheckGuardInputT], list[StringifiedExpression]]:
+    def wrapper(self: CheckGuardInputT) -> list[StringifiedExpression]:
         assert (
             self.tracker.is_traceable()
         ), "Cannot make guard from a non-tracable guard variable."
@@ -146,7 +146,7 @@ def check_guard(
 
 
 @check_guard
-def object_equal_stringify_guard(self) -> list[StringifyExpression]:
+def object_equal_stringified_guard(self) -> list[StringifiedExpression]:
     frame_value_tracer = self.tracker.trace_value_from_frame()
 
     obj_free_var_name = f"__{self.id}"
@@ -154,7 +154,7 @@ def object_equal_stringify_guard(self) -> list[StringifyExpression]:
     if support_weak_ref(weak_ref_obj):
         weak_ref_obj = weakref.ref(self.get_py_value())
         return [
-            StringifyExpression(
+            StringifiedExpression(
                 f"{obj_free_var_name}() is not None and {{}} == {obj_free_var_name}()",
                 [frame_value_tracer],
                 union_free_vars(
@@ -164,7 +164,7 @@ def object_equal_stringify_guard(self) -> list[StringifyExpression]:
             )
         ]
     return [
-        StringifyExpression(
+        StringifiedExpression(
             f"{{}} == {obj_free_var_name}",
             [frame_value_tracer],
             union_free_vars(

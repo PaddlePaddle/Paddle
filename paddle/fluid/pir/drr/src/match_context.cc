@@ -38,6 +38,7 @@ template bool MatchContext::Attr<bool>(const std::string&) const;
 template int32_t MatchContext::Attr<int32_t>(const std::string&) const;
 template int64_t MatchContext::Attr<int64_t>(const std::string&) const;
 template float MatchContext::Attr<float>(const std::string&) const;
+template double MatchContext::Attr<double>(const std::string&) const;
 template std::string MatchContext::Attr<std::string>(const std::string&) const;
 template std::vector<int32_t> MatchContext::Attr<std::vector<int32_t>>(
     const std::string&) const;

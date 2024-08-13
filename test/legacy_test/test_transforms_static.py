@@ -28,6 +28,13 @@ class TestTransformUnitTestBase(unittest.TestCase):
             np.float32
         )
         self.set_trans_api()
+        self.init_dy_res()
+
+    def init_dy_res(self):
+        # Obtain the dynamic transform result first before test_transform.
+        self.dy_res = self.dynamic_transform()
+        if isinstance(self.dy_res, paddle.Tensor):
+            self.dy_res = self.dy_res.numpy()
 
     def get_shape(self):
         return (3, 64, 64)
@@ -59,12 +66,8 @@ class TestTransformUnitTestBase(unittest.TestCase):
         return res[0]
 
     def test_transform(self):
-        dy_res = self.dynamic_transform()
-        if isinstance(dy_res, paddle.Tensor):
-            dy_res = dy_res.numpy()
         st_res = self.static_transform()
-
-        np.testing.assert_almost_equal(dy_res, st_res)
+        np.testing.assert_almost_equal(self.dy_res, st_res)
 
 
 class TestResize(TestTransformUnitTestBase):
@@ -118,14 +121,17 @@ class TestRandomCrop_random(TestTransformUnitTestBase):
         self.crop_size = (224, 224)
         self.api = transforms.RandomCrop(self.crop_size)
 
-    def assert_test_random_equal(self, res, eps=10e-5):
+    def assert_test_random_equal(self, res, eps=1e-4):
         _, h, w = self.get_shape()
         c_h, c_w = self.crop_size
         res_assert = True
-        for y in range(h - c_h):
-            for x in range(w - c_w):
+        for y_offset in range(h - c_h + 1):
+            for x_offset in range(w - c_w + 1):
                 diff_abs_sum = np.abs(
-                    self.img[:, y : y + c_h, x : x + c_w] - res
+                    self.img[
+                        :, y_offset : y_offset + c_h, x_offset : x_offset + c_w
+                    ]
+                    - res
                 ).sum()
                 if diff_abs_sum < eps:
                     res_assert = False
@@ -135,10 +141,9 @@ class TestRandomCrop_random(TestTransformUnitTestBase):
         assert not res_assert
 
     def test_transform(self):
-        dy_res = self.dynamic_transform().numpy()
         st_res = self.static_transform()
 
-        self.assert_test_random_equal(dy_res)
+        self.assert_test_random_equal(self.dy_res)
         self.assert_test_random_equal(st_res)
 
 
@@ -177,12 +182,9 @@ class TestRandomErasing(TestTransformUnitTestBase):
         )
 
     def test_transform(self):
-        dy_res = self.dynamic_transform()
-        if isinstance(dy_res, paddle.Tensor):
-            dy_res = dy_res.numpy()
         st_res = self.static_transform()
 
-        self.assert_test_erasing(dy_res)
+        self.assert_test_erasing(self.dy_res)
         self.assert_test_erasing(st_res)
 
     def assert_test_erasing(self, arr):

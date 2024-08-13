@@ -62,7 +62,7 @@ bool StrInVariableNameMap(const std::string &,
 void TransferVariablePlace(const framework::Scope *scope,
                            const std::string &var_name,
                            const phi::Place &dst_place,
-                           const platform::DeviceContext &dev_ctx);
+                           const phi::DeviceContext &dev_ctx);
 
 }  // namespace operators
 }  // namespace paddle

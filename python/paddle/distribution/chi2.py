@@ -11,11 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.framework import Variable
 from paddle.distribution.gamma import Gamma
 from paddle.framework import in_dynamic_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor, dtype
 
 __all__ = ["Chi2"]
 
@@ -39,7 +47,11 @@ class Chi2(Gamma):
 
     """
 
-    def __init__(self, df):
+    df: Tensor
+    rate: Tensor
+    dtype: dtype
+
+    def __init__(self, df: float | Tensor) -> None:
         if not in_dynamic_mode():
             check_type(
                 df,

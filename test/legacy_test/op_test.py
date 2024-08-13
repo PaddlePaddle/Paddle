@@ -56,7 +56,7 @@ from white_list import (
 )
 
 import paddle
-from paddle import base, pir
+from paddle import base
 from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.base import Scope, core, unique_name
 from paddle.base.backward import append_backward
@@ -1611,8 +1611,46 @@ class OpTest(unittest.TestCase):
         else:
             return outs, fetch_list
 
-    def _infer_and_compare_symbol(self):
+    def _compare_symbol(self, program, outs):
+        i = 0
+        # check that all ops have defined the InferSymbolicShapeInterface
+        if paddle.base.libpaddle.pir.all_ops_defined_symbol_infer(program):
+            # compare expect & actual
+            shape_analysis = (
+                paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                    program
+                )
+            )
+            for block in program.blocks:
+                for op in block.ops:
+                    if op.name() == "pd_op.fetch":
+                        for j, var in enumerate(op.results()):
+                            if (
+                                var.is_dense_tensor_type()
+                                or var.is_selected_row_type()
+                            ):
+                                shape_or_data = (
+                                    shape_analysis.get_shape_or_data_for_var(
+                                        var
+                                    )
+                                )
+                                expect_shape = outs[i].shape
+                                i += 1
+                                expect_data = []
+                                if not shape_or_data.is_equal(
+                                    expect_shape, expect_data
+                                ):
+                                    raise AssertionError(
+                                        f"The shape or data of Operator {self.op_type}'s result_value[{j}] is different from expected."
+                                    )
+        else:
+            # TODO(gongshaotian): raise error
+            pass
+
+    def _infer_and_compare_symbol(self, place):
         """Don't caculate the program, only infer the shape of var"""
+
+        kernel_sig = self.get_kernel_signature(place)
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
             with scope_guard(Scope()):
@@ -1623,29 +1661,55 @@ class OpTest(unittest.TestCase):
                     input_dict,
                     feed,
                 ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=True)
-
-                # run the program with pass
-                pm = pir.PassManager()
-                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
-                pm.run(program)
-
-                # compare expect & actual
-                shape_analysis = (
-                    paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
-                        program
-                    )
+                # prepare args
+                args = OpTestUtils.prepare_python_api_arguments(
+                    self.python_api,
+                    static_inputs,
+                    attrs,
+                    kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
                 )
-                for var in program.list_vars():
-                    shape_or_data = shape_analysis.get_shape_or_data_for_var(
-                        var
-                    )
-                    expect_shape = var.shape
-                    expect_data = []
-                    if not shape_or_data.is_equal(expect_shape, expect_data):
-                        raise AssertionError(
-                            f"Operator {self.op_type} Value {var.name}'s shape or data is different from expected."
+                inputs_sig, attrs_sig, outputs_sig = kernel_sig
+                if hasattr(self, "python_out_sig"):
+                    outputs_sig = self.python_out_sig
+                args = OpTestUtils.assumption_assert_and_transform(
+                    args, len(inputs_sig)
+                )
+                # add op to program
+                ret_tuple = self.python_api(*args)
+                fetch_list = getattr(self, "fetch_list", [])
+                # if the fetch_list is customized by user, we use it directly.
+                # if not, fill the fetch_list by the user configured outputs in test.
+                # filter ret_tuple
+                ret_to_check = []
+                if len(fetch_list) == 0:
+                    if isinstance(ret_tuple, (tuple, list)):
+                        assert len(ret_tuple) == len(outputs_sig)
+                        for var, sig_name in zip(ret_tuple, outputs_sig):
+                            if not self._need_fetch(sig_name):
+                                continue
+                            if isinstance(var, list):
+                                ret_to_check.append(var)
+                                for v in var:
+                                    fetch_list.append(v)
+                            else:
+                                ret_to_check.append(var)
+                                fetch_list.append(var)
+                    elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
+                        fetch_list.append(ret_tuple)
+                        ret_to_check = ret_tuple
+                    elif ret_tuple is None:
+                        pass
+                    else:
+                        raise ValueError(
+                            "output of python api should be Value or list of Value or tuple of Value"
                         )
-                return True
+
+                # executor run
+                executor = Executor(place)
+                outs = executor.run(program, feed=feed, fetch_list=[fetch_list])
+
+                self._compare_symbol(program, outs)
 
     def _compare_expect_and_actual_outputs(
         self, place, fetch_list, expect_outs, actual_outs, inplace_atol=None
@@ -2068,7 +2132,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
-        check_symbol_infer=False,
+        check_symbol_infer=True,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2578,7 +2642,7 @@ class OpTest(unittest.TestCase):
             def infer_and_compare_symbol(self):
                 """infer symbol and compare it with actualy shape and data"""
                 self.is_python_api_test = True
-                self.op_test._infer_and_compare_symbol()
+                self.op_test._infer_and_compare_symbol(place)
 
         # set some flags by the combination of arguments.
         if self.is_float16_op():
@@ -2606,14 +2670,14 @@ class OpTest(unittest.TestCase):
                     hasattr(self, 'force_fp32_output')
                     and self.force_fp32_output
                 ):
-                    atol = 1e-2 if atol < 1e-2 else atol
+                    atol = max(atol, 0.01)
                 else:
-                    atol = 2 if atol < 2 else atol
+                    atol = max(atol, 2)
             else:
-                atol = 1e-2 if atol < 1e-2 else atol
+                atol = max(atol, 0.01)
 
         if self.is_float16_op():
-            atol = 1e-3 if atol < 1e-3 else atol
+            atol = max(atol, 0.001)
 
         if no_check_set is not None:
             if (
@@ -2660,15 +2724,15 @@ class OpTest(unittest.TestCase):
                     )
                     python_api_info = {
                         "api_name": self.python_api.__name__,
-                        "api_module": inspect.getmodule(
-                            self.python_api
-                        ).__name__
-                        if inspect.getmodule(
-                            self.python_api
-                        ).__name__.startswith("paddle")
-                        else pathlib.Path(
-                            inspect.getmodule(self.python_api).__file__
-                        ).stem,
+                        "api_module": (
+                            inspect.getmodule(self.python_api).__name__
+                            if inspect.getmodule(
+                                self.python_api
+                            ).__name__.startswith("paddle")
+                            else pathlib.Path(
+                                inspect.getmodule(self.python_api).__file__
+                            ).stem
+                        ),
                     }
                     # code gen for auto parallel forward test
                     gen_auto_parallel_test_file(
@@ -2681,9 +2745,9 @@ class OpTest(unittest.TestCase):
                     start_command = get_subprocess_command(
                         runtime_envs["CUDA_VISIBLE_DEVICES"],
                         generated_forward_test_path,
-                        log_dir=self.log_dir
-                        if hasattr(self, "log_dir")
-                        else None,
+                        log_dir=(
+                            self.log_dir if hasattr(self, "log_dir") else None
+                        ),
                     )
                     run_subprocess(start_command, runtime_envs, timeout=120)
 
@@ -2712,7 +2776,7 @@ class OpTest(unittest.TestCase):
                     pir_checker = PirChecker(self, self.outputs)
                     pir_checker.check()
 
-        if check_symbol_infer:
+        if check_pir and check_symbol_infer:
             if (
                 type(place) is paddle.base.libpaddle.CPUPlace
                 or type(place) is paddle.base.libpaddle.CUDAPlace
@@ -2809,8 +2873,27 @@ class OpTest(unittest.TestCase):
                     return []
             else:
                 return []
-        places = [base.CPUPlace()]
+        places = []
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in [
+                '1',
+                'true',
+                'on',
+            ]
+            or not (
+                core.is_compiled_with_cuda()
+                and core.op_support_gpu(self.op_type)
+                and not cpu_only
+            )
+            or self.op_type
+            in [
+                'gaussian_random',
+                'lrn',
+            ]
+        ):
+            places.append(base.CPUPlace())
         if (
             core.is_compiled_with_cuda()
             and core.op_support_gpu(self.op_type)
@@ -2834,7 +2917,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
-        check_symbol_infer=False,
+        check_symbol_infer=True,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -3125,9 +3208,7 @@ class OpTest(unittest.TestCase):
         for grad in analytic_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = (
-                    0.01 if max_relative_error < 0.01 else max_relative_error
-                )
+                max_relative_error = max(max_relative_error, 0.01)
             fp32_analytic_grads.append(grad)
         analytic_grads = fp32_analytic_grads
 
@@ -3135,16 +3216,12 @@ class OpTest(unittest.TestCase):
         for grad in numeric_grads:
             if grad.dtype == np.uint16:
                 grad = convert_uint16_to_float(grad)
-                max_relative_error = (
-                    0.01 if max_relative_error < 0.01 else max_relative_error
-                )
+                max_relative_error = max(max_relative_error, 0.01)
             fp32_numeric_grads.append(grad)
         numeric_grads = fp32_numeric_grads
 
         if self.is_float16_op():
-            max_relative_error = (
-                0.001 if max_relative_error < 0.001 else max_relative_error
-            )
+            max_relative_error = max(max_relative_error, 0.001)
         self._assert_is_close(
             numeric_grads,
             analytic_grads,
@@ -3233,14 +3310,14 @@ class OpTest(unittest.TestCase):
                     grad_test_info_path, generated_grad_test_path
                 ):
                     backward_extra_test_info = {}
-                    backward_extra_test_info[
-                        "inputs_to_check"
-                    ] = inputs_to_check
+                    backward_extra_test_info["inputs_to_check"] = (
+                        inputs_to_check
+                    )
                     backward_extra_test_info["output_names"] = output_names
                     backward_extra_test_info["no_grad_set"] = no_grad_set
-                    backward_extra_test_info[
-                        "user_defined_grad_outputs"
-                    ] = user_defined_grad_outputs
+                    backward_extra_test_info["user_defined_grad_outputs"] = (
+                        user_defined_grad_outputs
+                    )
                     dump_test_info(
                         self,
                         place,
@@ -3250,15 +3327,15 @@ class OpTest(unittest.TestCase):
                     )
                     python_api_info = {
                         "api_name": self.python_api.__name__,
-                        "api_module": inspect.getmodule(
-                            self.python_api
-                        ).__name__
-                        if inspect.getmodule(
-                            self.python_api
-                        ).__name__.startswith("paddle")
-                        else pathlib.Path(
-                            inspect.getmodule(self.python_api).__file__
-                        ).stem,
+                        "api_module": (
+                            inspect.getmodule(self.python_api).__name__
+                            if inspect.getmodule(
+                                self.python_api
+                            ).__name__.startswith("paddle")
+                            else pathlib.Path(
+                                inspect.getmodule(self.python_api).__file__
+                            ).stem
+                        ),
                     }
                     # code gen for auto parallel grad test
                     gen_auto_parallel_test_file(
@@ -3278,9 +3355,9 @@ class OpTest(unittest.TestCase):
                     start_command = get_subprocess_command(
                         runtime_envs["CUDA_VISIBLE_DEVICES"],
                         generated_grad_test_path,
-                        log_dir=self.log_dir
-                        if hasattr(self, "log_dir")
-                        else None,
+                        log_dir=(
+                            self.log_dir if hasattr(self, "log_dir") else None
+                        ),
                     )
                     run_subprocess(start_command, runtime_envs, timeout=120)
 
@@ -3292,10 +3369,10 @@ class OpTest(unittest.TestCase):
         if self.is_bfloat16_op():
             if self.is_mkldnn_op():
                 check_dygraph = False
-            atol = 1e-2 if atol < 1e-2 else atol
+            atol = max(atol, 0.01)
 
         if self.is_float16_op():
-            atol = 1e-3 if atol < 1e-3 else atol
+            atol = max(atol, 0.001)
 
         if (
             self.dtype == np.float64
@@ -3311,7 +3388,7 @@ class OpTest(unittest.TestCase):
 
         # oneDNN numeric gradient should use CPU kernel
         use_onednn = False
-        if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
+        if op_attrs.get("use_mkldnn"):
             op_attrs["use_mkldnn"] = False
             use_onednn = True
         if hasattr(self, "attrs"):
@@ -3413,11 +3490,7 @@ class OpTest(unittest.TestCase):
                 for grad in dygraph_dygraph_grad:
                     if grad.dtype == np.uint16:
                         grad = convert_uint16_to_float(grad)
-                        max_relative_error = (
-                            0.03
-                            if max_relative_error < 0.03
-                            else max_relative_error
-                        )
+                        max_relative_error = max(max_relative_error, 0.03)
                     fp32_grads.append(grad)
                 dygraph_dygraph_grad = fp32_grads
                 self._assert_is_close(
@@ -3447,19 +3520,11 @@ class OpTest(unittest.TestCase):
                 for grad in pir_grad:
                     if grad.dtype == np.uint16:
                         grad = convert_uint16_to_float(grad)
-                        max_relative_error = (
-                            0.01
-                            if max_relative_error < 0.01
-                            else max_relative_error
-                        )
+                        max_relative_error = max(max_relative_error, 0.01)
                     fp32_analytic_grads.append(grad)
                 pir_grad = fp32_analytic_grads
                 if self.is_float16_op():
-                    max_relative_error = (
-                        0.01
-                        if max_relative_error < 0.01
-                        else max_relative_error
-                    )
+                    max_relative_error = max(max_relative_error, 0.01)
                 self._assert_is_close(
                     numeric_grads,
                     pir_grad,

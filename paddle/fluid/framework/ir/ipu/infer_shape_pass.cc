@@ -88,7 +88,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
       auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
       paddle::framework::RuntimeContext ctx(
           op->Inputs(), op->Outputs(), *scope);
-      op->RuntimeInferShape(*scope, paddle::platform::CPUPlace(), ctx);
+      op->RuntimeInferShape(*scope, phi::CPUPlace(), ctx);
 
       for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); it++) {
         for (int i = 0; i < it->second.size(); i++) {

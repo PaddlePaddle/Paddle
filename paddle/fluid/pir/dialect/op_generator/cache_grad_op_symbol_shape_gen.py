@@ -111,9 +111,12 @@ class CacheGradOpSymbolShapeCodeGen:
                 continue
             if op_info_item.backward_name not in self.op_info_maps:
                 continue
-
             grad_op_item = self.op_info_maps[op_info_item.backward_name]
-            if grad_op_item.infer_meta_map is None:
+
+            if (
+                op_info_item.kernel_map is None
+                or grad_op_item.kernel_map is None
+            ):
                 continue
 
             for op_phi_name in op_info_item.op_phi_name:
@@ -143,20 +146,6 @@ class CacheGradOpSymbolShapeCodeGen:
                                 index=index,
                             )
                         )
-                    elif input_name in op_info_item.mutable_attribute_name_list:
-                        # mutable attribute
-                        index = len(
-                            op_info_item.input_name_list
-                        ) + op_info_item.mutable_attribute_name_list.index(
-                            input_name
-                        )
-                        create_grad_op_shape_info_code += (
-                            GET_INPUT_SHAPE_CODE_TEMPLATE.format(
-                                input_name=input_name,
-                                name_suffix=SHAPE_VAR_NAME_SUFFIX,
-                                index=index,
-                            )
-                        )
                     elif input_name.endswith("_grad"):
                         # output grad
                         origin_out_name = input_name[:-5]
@@ -171,13 +160,35 @@ class CacheGradOpSymbolShapeCodeGen:
                             )
                         )
                     else:
-                        raise (
+                        raise ValueError(
                             f"Not found input name {input_name} for backward op {op_info_item.backward_name}."
                         )
+                # mutable attribute
+                for (
+                    mutable_attribute_name
+                ) in grad_op_item.mutable_attribute_name_list:
+                    assert (
+                        mutable_attribute_name
+                        in op_info_item.mutable_attribute_name_list
+                    ), f"{mutable_attribute_name} is not found in {op_info_item.backward_name}'s mutable_attribute name list."
+                    index = len(
+                        op_info_item.input_name_list
+                    ) + op_info_item.mutable_attribute_name_list.index(
+                        mutable_attribute_name
+                    )
+                    create_grad_op_shape_info_code += (
+                        GET_INPUT_SHAPE_CODE_TEMPLATE.format(
+                            input_name=mutable_attribute_name,
+                            name_suffix=SHAPE_VAR_NAME_SUFFIX,
+                            index=index,
+                        )
+                    )
 
                 create_grad_op_output_shape_code = ""
                 for output_name in grad_op_item.output_name_list:
-                    assert output_name.endswith("_grad")
+                    if not output_name.endswith("_grad"):
+                        create_grad_op_output_shape_code = ""
+                        break
                     origin_input_name = output_name[:-5]
                     if (
                         origin_input_name
@@ -216,7 +227,10 @@ class CacheGradOpSymbolShapeCodeGen:
                     input_shape_list=", ".join(
                         [
                             input_name + SHAPE_VAR_NAME_SUFFIX
-                            for input_name in grad_op_item.input_name_list
+                            for input_name in (
+                                grad_op_item.input_name_list
+                                + grad_op_item.mutable_attribute_name_list
+                            )
                         ]
                     ),
                     create_grad_op_output_shape_code=create_grad_op_output_shape_code,
@@ -227,6 +241,21 @@ class CacheGradOpSymbolShapeCodeGen:
                         ]
                     ),
                 )
+
+                if len(op_info_item.kernel_map['func']) == 1:
+                    continue
+                for kernel_func_name in op_info_item.kernel_map['func']:
+                    is_inplace_version = op_phi_name.endswith('_')
+                    op_origin_name = (
+                        op_phi_name[:-1] if is_inplace_version else op_phi_name
+                    )
+                    if kernel_func_name == op_origin_name:
+                        continue
+                    inplace_suffix = '_' if is_inplace_version else ''
+                    body_code += UNIMPLEMENTED_CODE_TEMPLATE.format(
+                        op_name=to_pascal_case(kernel_func_name)
+                        + inplace_suffix
+                    )
 
         directory_path = os.path.dirname(cpp_file_path)
         if not os.path.exists(directory_path):

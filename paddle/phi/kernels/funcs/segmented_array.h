@@ -112,7 +112,7 @@ struct ArraySetterBase {
                      void* src,
                      size_t num_bytes,
                      bool use_cuda_graph = false) {
-    allocation = phi::memory_utils::Alloc(
+    auto allocation = phi::memory_utils::Alloc(
         ctx.GetPlace(),
         num_bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
@@ -129,10 +129,13 @@ struct ArraySetterBase {
                                        num_bytes,
                                        phi::gpuMemcpyHostToDevice,
                                        ctx.stream());
-    return allocation->ptr();
+
+    auto ptr = allocation->ptr();
+    allocations.emplace_back(std::move(allocation));
+    return ptr;
   }
 
-  phi::Allocator::AllocationPtr allocation{nullptr};
+  std::vector<phi::Allocator::AllocationPtr> allocations;
 };
 
 template <typename Context, typename T, SegmentedArraySize Size>

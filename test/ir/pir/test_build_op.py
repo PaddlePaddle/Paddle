@@ -162,6 +162,7 @@ class TestBuildOp6(unittest.TestCase):
                 ["out"],
                 [[1, 1]],
                 [paddle.base.libpaddle.DataType.FLOAT32],
+                "NO DEBUG",
             )
             self.assertEqual(
                 out[0]
@@ -170,7 +171,7 @@ class TestBuildOp6(unittest.TestCase):
                 .source()
                 .get_defining_op()
                 .name(),
-                "pd_op.tensorrt_engine_op",
+                "pd_op.tensorrt_engine",
             )
 
 

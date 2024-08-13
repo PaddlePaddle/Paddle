@@ -74,6 +74,8 @@ pir::Value array_length(pir::Value x);
 
 pir::Value array_read(pir::Value array, pir::Value i);
 
+pir::Value fetch(pir::Value value, std::string name, int col);
+
 pir::Value array_write_(pir::Value array, pir::Value x, pir::Value i);
 
 std::tuple<pir::Value, pir::Value> array_to_tensor(pir::Value x,
@@ -107,6 +109,7 @@ std::vector<pir::Value> tensorrt_engine(
     std::vector<std::string> input_names,
     std::vector<std::string> output_names,
     std::vector<std::vector<int64_t>> outputs_shape,
-    std::vector<phi::DataType> outputs_dtype);
+    std::vector<phi::DataType> outputs_dtype,
+    const std::string& converter_debug_info);
 }  // namespace dialect
 }  // namespace paddle

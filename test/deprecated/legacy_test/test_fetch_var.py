@@ -23,16 +23,21 @@ from paddle import base
 class TestFetchVar(unittest.TestCase):
     def set_input(self):
         self.val = np.array([1, 3, 5]).astype(np.int32)
+        self.name = "x"
 
     def test_fetch_var(self):
         self.set_input()
-        x = paddle.tensor.create_tensor(
-            dtype="int32", persistable=True, name="x"
+        x = paddle.static.data(
+            name=self.name, shape=self.val.shape, dtype="int32"
         )
-        paddle.assign(self.val, output=x)
+        x.persistable = True
         exe = base.Executor(base.CPUPlace())
-        exe.run(base.default_main_program(), feed={}, fetch_list=[])
-        fetched_x = base.executor._fetch_var("x")
+        exe.run(
+            base.default_main_program(),
+            feed={self.name: self.val},
+            fetch_list=[],
+        )
+        fetched_x = base.executor._fetch_var(x.name)
         np.testing.assert_array_equal(fetched_x, self.val)
         self.assertEqual(fetched_x.dtype, self.val.dtype)
 
@@ -40,6 +45,7 @@ class TestFetchVar(unittest.TestCase):
 class TestFetchNullVar(TestFetchVar):
     def set_input(self):
         self.val = np.array([]).astype(np.int32)
+        self.name = "y"
 
 
 if __name__ == '__main__':

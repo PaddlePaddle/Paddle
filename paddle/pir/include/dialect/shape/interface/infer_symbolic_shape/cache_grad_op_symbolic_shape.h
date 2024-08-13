@@ -28,16 +28,16 @@ class CacheGradOpSymbolicShapeInterface
  public:
   /// Defined these methods with the interface.
   struct Concept {
-    explicit Concept(bool (*cache_grad_op_symbolic_shape)(
+    explicit Concept(void (*cache_grad_op_symbolic_shape)(
         pir::Operation *op, pir::InferSymbolicShapeContext *infer_context))
         : cache_grad_op_symbolic_shape(cache_grad_op_symbolic_shape) {}
-    bool (*cache_grad_op_symbolic_shape)(
+    void (*cache_grad_op_symbolic_shape)(
         pir::Operation *op, pir::InferSymbolicShapeContext *infer_context);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static inline bool CacheGradOpSymbolicShape(
+    static inline void CacheGradOpSymbolicShape(
         pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
       return op->dyn_cast<ConcreteOp>().CacheGradOpSymbolicShape(infer_context);
     }
@@ -50,7 +50,7 @@ class CacheGradOpSymbolicShapeInterface
       : pir::OpInterfaceBase<CacheGradOpSymbolicShapeInterface>(op),
         impl_(impl) {}
 
-  bool CacheGradOpSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+  void CacheGradOpSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
  private:
   Concept *impl_;

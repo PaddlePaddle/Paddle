@@ -23,7 +23,7 @@
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/program.h"
 
 namespace paddle {
@@ -33,7 +33,7 @@ class InterpreterCore;
 
 class StandaloneExecutor {
  public:
-  StandaloneExecutor(const platform::Place& place,
+  StandaloneExecutor(const phi::Place& place,
                      const interpreter::Plan& plan_,
                      Scope* scope);
 
@@ -48,7 +48,7 @@ class StandaloneExecutor {
 
  private:
   bool is_interpretercore_build_result_shared_{false};
-  const platform::Place place_;
+  const phi::Place place_;
   interpreter::Plan plan_;
   std::vector<std::shared_ptr<InterpreterCore>> interpretercores_;
 

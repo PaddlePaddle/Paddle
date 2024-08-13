@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import struct
+from typing import TYPE_CHECKING, Any, Tuple, Union
 
 import numpy as np
 
+import paddle
 from paddle import pir
-from paddle._typing.dtype_like import DTypeLike
 
 from ..pir import Value
 from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
@@ -30,6 +33,14 @@ from .framework import (
     in_dygraph_mode,
     in_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
+    from paddle._typing import DTypeLike, ShapeLike
+    from paddle._typing.dtype_like import _DTypeLiteral
+
+    _ClassInfo: TypeAlias = Union[type[Any], Tuple["_ClassInfo", ...]]
 
 __all__ = []
 
@@ -92,7 +103,7 @@ def convert_uint16_to_float(data):
     return np.reshape(new_data, data.shape)
 
 
-def convert_dtype(dtype: DTypeLike) -> str:
+def convert_dtype(dtype: DTypeLike) -> _DTypeLiteral:
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
@@ -208,12 +219,21 @@ def check_dtype(
 
 
 def check_shape(
-    shape,
-    op_name,
-    expected_shape_type=(list, tuple, Variable, Value),
-    expected_element_type=(int, Variable, Value),
-    expected_tensor_dtype=('int32', 'int64'),
-):
+    shape: ShapeLike,
+    op_name: str,
+    expected_shape_type: _ClassInfo = (
+        list,
+        tuple,
+        Variable,
+        Value,
+    ),
+    expected_element_type: _ClassInfo = (
+        int,
+        Variable,
+        Value,
+    ),
+    expected_tensor_dtype: tuple[_DTypeLiteral, ...] = ('int32', 'int64'),
+) -> None:
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
@@ -487,13 +507,31 @@ class DataFeeder:
                 )
             )
 
-        for each_sample in iterable:
-            assert len(each_sample) == len(converter), (
-                "The number of fields in data (%d) does not match "
-                + "len(feed_list) (%d)"
-            ) % (len(each_sample), len(converter))
-            for each_converter, each_slot in zip(converter, each_sample):
-                each_converter.feed(each_slot)
+        def feed_data(converter, data):
+            if isinstance(data, (list, tuple)):
+                for item in data:
+                    feed_data(converter, item)
+            else:
+                converter.feed(data)
+
+        if paddle.framework.use_pir_api():
+            for each_sample in iterable:
+                assert len(each_sample) == len(converter), (
+                    "The number of fields in data (%d) does not match "
+                    + "len(feed_list) (%d)"
+                ) % (len(each_sample), len(converter))
+                for each_converter, each_slot in zip(converter, each_sample):
+                    feed_data(each_converter, each_slot)
+
+        else:
+            for each_sample in iterable:
+                assert len(each_sample) == len(converter), (
+                    "The number of fields in data (%d) does not match "
+                    + "len(feed_list) (%d)"
+                ) % (len(each_sample), len(converter))
+                for each_converter, each_slot in zip(converter, each_sample):
+                    each_converter.feed(each_slot)
+
         ret_dict = {}
         for each_name, each_converter in zip(self.feed_names, converter):
             ret_dict[each_name] = each_converter.done()

@@ -32,8 +32,7 @@ class NOP : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
-  void RunImpl(const Scope &scope,
-               const platform::Place &place) const override {}
+  void RunImpl(const Scope &scope, const phi::Place &place) const override {}
 };
 
 class SumOpMaker : public OpProtoAndCheckerMaker {
@@ -174,22 +173,6 @@ TEST(GraphTest, TestException) {
     not_met_exception = true;
   }
   ASSERT_TRUE(not_met_exception);
-}
-
-TEST(GraphTest, TestAttrCopy) {
-  ProgramDesc prog;
-  ir::Graph src_g(prog);
-  ir::Graph dst_g(prog);
-  const std::string kIntValue = "int_value";
-  const std::string kFloatValue = "float_value";
-  const int INT_VALUE = 3;
-  src_g.Set<int>(kIntValue, new int(INT_VALUE));
-  details::CopyGraphAttrIfExists<int>(src_g, &dst_g, kIntValue);
-  details::CopyGraphAttrIfExists<float>(src_g, &dst_g, kFloatValue);
-
-  ASSERT_TRUE(dst_g.Has(kIntValue));
-  ASSERT_EQ(dst_g.Get<int>(kIntValue), INT_VALUE);
-  ASSERT_FALSE(dst_g.Has(kFloatValue));
 }
 
 TEST(GraphTest, TestInterfaceConvertAllBlocks) {

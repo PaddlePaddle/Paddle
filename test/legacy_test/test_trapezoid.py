@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
-from distutils.version import LooseVersion
 
 import numpy as np
 
@@ -24,7 +24,7 @@ from paddle.pir_utils import test_with_pir_api
 def get_ref_api():
     return (
         np.trapezoid
-        if LooseVersion(np.__version__) >= LooseVersion('2.0.0')
+        if np.lib.NumpyVersion(np.__version__) >= "2.0.0"
         else np.trapz  # noqa: NPY201
     )
 
@@ -54,7 +54,13 @@ class TestTrapezoidAPI(unittest.TestCase):
         self.set_api()
         self.set_args()
         self.get_output()
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -76,7 +82,13 @@ class TestTrapezoidAPI(unittest.TestCase):
     @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.device.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.device.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:

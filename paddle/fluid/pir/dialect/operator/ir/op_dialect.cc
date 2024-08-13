@@ -50,7 +50,7 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       for (size_t i = 0; i < op->num_operands(); ++i) {
         PADDLE_ENFORCE_NOT_NULL(
             op->operand(i).type().dyn_cast<DenseTensorType>(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Currently InferSymbolicShape of CombineOp only support "
                 "DenseTensorType."));
 
@@ -76,7 +76,7 @@ struct ConstantOpInferSymbolicShapeInterfaceModel
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     PADDLE_ENFORCE_NOT_NULL(
         op->result(0).type().dyn_cast<DenseTensorType>(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Currently InferSymbolicShape of ConstantOp only support "
             "DenseTensorType result."));
 
@@ -174,7 +174,10 @@ struct SliceOpInferSymbolicShapeInterfaceModel
         op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
     const auto& input_shape =
         infer_context->GetShapeOrDataForValue(op->operand_source(0));
-    CHECK(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>());
+    PADDLE_ENFORCE_EQ(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Input shape can not be converted, please check"));
     const symbol::TensorListShapeOrDataDimExprs& data_shape_list =
         input_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     const symbol::TensorShapeOrDataDimExprs& output_shape =
@@ -192,20 +195,14 @@ struct SplitOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
-    const auto& shape_data_list =
+    const symbol::TensorListShapeOrDataDimExprs& shape_data_list =
         infer_context->GetShapeOrDataForValue(op->operand_source(0))
             .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
     for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
-      PADDLE_ENFORCE_EQ(
-          shape_data_list[rst_idx].data().has_value(),
-          false,
-          paddle::platform::errors::InvalidArgument(
-              "Currently InferSymbolicShape of SplitOp only support "
-              "input without value."));
       infer_context->SetShapeOrDataForValue(
           op->result(rst_idx),
-          symbol::ShapeOrDataDimExprs{shape_data_list[rst_idx]});
+          symbol::ShapeOrDataDimExprs{shape_data_list.at(rst_idx)});
     }
     return true;
   }
@@ -560,7 +557,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
       auto attr_type_str = attr_name_and_type[1];
       param_names.push_back(attr_name);
       if (CppTypeToAttrTypeMap().count(attr_type_str) == 0) {
-        PADDLE_THROW(platform::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
             "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -653,7 +650,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         inputs.size(),
         fwd_inputs_name.size(),
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Custom op: %s inputs size should be %d, but now is %d.",
             pir_op_name,
             fwd_inputs_name.size(),
@@ -661,7 +658,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         fwd_outputs_name.size(),
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Custom op: %s outputs size should be %d, but now is %d.",
             pir_op_name,
             fwd_outputs_name.size(),
@@ -670,7 +667,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         out_grads.size(),
         fwd_outputs_name.size(),
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Custom op: %s outputs grad size should be %d, but now is %d.",
             pir_op_name,
             fwd_outputs_name.size(),
@@ -719,13 +716,13 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
               std::distance(fwd_outputs_name.begin(), fwd_outputs_name_iter);
           return std::make_pair(2, index);
         } else {
-          PADDLE_THROW(paddle::platform::errors::NotFound(
+          PADDLE_THROW(common::errors::NotFound(
               "Can't find the grad op input:%s, please check your register "
               "grad op whether has correct input name",
               grad_op_input_name));
         }
       } else {
-        PADDLE_THROW(paddle::platform::errors::NotFound(
+        PADDLE_THROW(common::errors::NotFound(
             "Can't find the grad op input:%s, please check your register grad "
             "op whether has correct input name",
             grad_op_input_name));
@@ -838,7 +835,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         output_shapes.size(),
         all_values_num,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of output shapes after running custom operator's "
             "InferShapeFunc is wrong, "
             "expected contains %d Tensors' shape, but actually contains %d "
@@ -849,7 +846,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     PADDLE_ENFORCE_EQ(
         output_dtypes.size(),
         all_values_num,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of output dtypes after running custom operator's "
             "InferDtypeFunc is wrong, "
             "expected contains %d Tensors' dtype, but actually contains %d "
@@ -962,7 +959,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
         PADDLE_ENFORCE_NE(
             fwd_inputs_name_iter,
             fwd_inputs_name.end(),
-            paddle::platform::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom op: %s output %s is a Vec output. It should have the "
                 "forward input that need calculate gradients.",
                 pir_op_name,

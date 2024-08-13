@@ -3083,6 +3083,8 @@ class ReplaceFakeQuantDequantPass:
             if op.op().has_attr("bit_length")
             else self._quant_bits
         )
+        qmax = (1 << (bit_length - 1)) - 1
+        qmin = -1 * qmax - 1
 
         zero_point_node = None
         quanted_node = x_node
@@ -3108,7 +3110,12 @@ class ReplaceFakeQuantDequantPass:
         )
         quant_op_node = graph.create_op_node(
             op_type="quantize_linear",
-            attrs={"quant_axis": quant_axis, "bit_length": bit_length},
+            attrs={
+                "quant_axis": quant_axis,
+                "bit_length": bit_length,
+                "qmin": qmin,
+                "qmax": qmax,
+            },
             inputs={
                 "X": x_node,
                 "Scale": scale_node,
@@ -3123,7 +3130,12 @@ class ReplaceFakeQuantDequantPass:
         graph.link_to(quant_op_node, quant_var_node)
         dequant_op_node = graph.create_op_node(
             op_type="dequantize_linear",
-            attrs={"quant_axis": quant_axis, "bit_length": bit_length},
+            attrs={
+                "quant_axis": quant_axis,
+                "bit_length": bit_length,
+                "qmin": qmin,
+                "qmax": qmax,
+            },
             inputs={
                 "X": quant_var_node,
                 "Scale": scale_node,
@@ -3363,10 +3375,7 @@ class AddQuantDequantForInferencePass:
             else:
                 var_names = utils._get_op_input_var_names(op_node)
                 for var_name in var_names:
-                    if (
-                        var_name in dequant_node_map
-                        and dequant_node_map[var_name]
-                    ):
+                    if dequant_node_map.get(var_name):
                         in_node = graph._find_node_by_name(
                             op_node.inputs, var_name
                         )

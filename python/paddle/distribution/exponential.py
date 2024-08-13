@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -21,6 +24,11 @@ from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.framework import Variable
 from paddle.distribution import exponential_family
 from paddle.framework import in_dynamic_mode
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor, dtype
 
 
 class Exponential(exponential_family.ExponentialFamily):
@@ -59,7 +67,10 @@ class Exponential(exponential_family.ExponentialFamily):
                    [1.69314718])
     """
 
-    def __init__(self, rate):
+    rate: Tensor
+    dtype: dtype
+
+    def __init__(self, rate: float | Tensor) -> None:
         if not in_dynamic_mode():
             check_type(
                 rate,
@@ -79,7 +90,7 @@ class Exponential(exponential_family.ExponentialFamily):
         super().__init__(self.rate.shape)
 
     @property
-    def mean(self):
+    def mean(self) -> Tensor:
         """Mean of exponential distribution.
 
         Returns:
@@ -88,7 +99,7 @@ class Exponential(exponential_family.ExponentialFamily):
         return self.rate.reciprocal()
 
     @property
-    def variance(self):
+    def variance(self) -> Tensor:
         """Variance of exponential distribution.
 
         Returns:
@@ -96,7 +107,7 @@ class Exponential(exponential_family.ExponentialFamily):
         """
         return self.rate.pow(-2)
 
-    def sample(self, shape=()):
+    def sample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate samples of the specified shape.
 
         Args:
@@ -108,7 +119,7 @@ class Exponential(exponential_family.ExponentialFamily):
         with paddle.no_grad():
             return self.rsample(shape)
 
-    def rsample(self, shape=()):
+    def rsample(self, shape: Sequence[int] = ()) -> Tensor:
         """Generate reparameterized samples of the specified shape.
 
         Args:
@@ -130,7 +141,7 @@ class Exponential(exponential_family.ExponentialFamily):
 
         return -paddle.log(uniform) / self.rate
 
-    def prob(self, value):
+    def prob(self, value: float | Tensor) -> Tensor:
         r"""Probability density function evaluated at value.
 
         .. math::
@@ -145,7 +156,7 @@ class Exponential(exponential_family.ExponentialFamily):
         """
         return self.rate * paddle.exp(-self.rate * value)
 
-    def log_prob(self, value):
+    def log_prob(self, value: float | Tensor) -> Tensor:
         """Log probability density function evaluated at value.
 
         Args:
@@ -156,7 +167,7 @@ class Exponential(exponential_family.ExponentialFamily):
         """
         return paddle.log(self.rate) - self.rate * value
 
-    def entropy(self):
+    def entropy(self) -> Tensor:
         """Entropy of exponential distribution.
 
         Returns:
@@ -164,7 +175,7 @@ class Exponential(exponential_family.ExponentialFamily):
         """
         return 1.0 - paddle.log(self.rate)
 
-    def cdf(self, value):
+    def cdf(self, value: float | Tensor) -> Tensor:
         r"""Cumulative distribution function(CDF) evaluated at value.
 
         .. math::
@@ -180,7 +191,7 @@ class Exponential(exponential_family.ExponentialFamily):
         """
         return 1.0 - paddle.exp(-self.rate * value)
 
-    def icdf(self, value):
+    def icdf(self, value: float | Tensor) -> Tensor:
         r"""Inverse cumulative distribution function(CDF) evaluated at value.
 
         .. math::
@@ -196,7 +207,7 @@ class Exponential(exponential_family.ExponentialFamily):
         """
         return -paddle.log1p(-value) / self.rate
 
-    def kl_divergence(self, other):
+    def kl_divergence(self, other: Exponential) -> Tensor:
         """The KL-divergence between two exponential distributions.
 
         Args:
@@ -215,8 +226,8 @@ class Exponential(exponential_family.ExponentialFamily):
         return t1 + rate_ratio - 1
 
     @property
-    def _natural_parameters(self):
+    def _natural_parameters(self) -> tuple[Tensor]:
         return (-self.rate,)
 
-    def _log_normalizer(self, x):
+    def _log_normalizer(self, x: Tensor) -> Tensor:
         return -paddle.log(-x)

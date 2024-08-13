@@ -1143,7 +1143,7 @@ def get_package_data_and_package_dir():
                 shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
                 package_data['paddle.libs'] += ['libopenblas.so.0']
 
-    if env_dict.get("WITH_GPU") == 'ON':
+    if env_dict.get("WITH_GPU") == 'ON' or env_dict.get("WITH_ROCM") == 'ON':
         if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
             package_data['paddle.libs'] += [
                 os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
@@ -1161,8 +1161,14 @@ def get_package_data_and_package_dir():
             + '/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
             libs_path,
         )
+        shutil.copy(
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h',
+            libs_path,
+        )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+        package_data['paddle.libs'] += ['cinn_hip_runtime_source.h']
 
         cinn_fp16_file = (
             env_dict.get("CINN_INCLUDE_DIR")
@@ -1504,6 +1510,14 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'interface.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/serialize_deserialize/include',
+                recursive=True,
+            )
+        )
     )
 
     jit_layer_headers = [
@@ -1584,6 +1598,7 @@ def get_setup_parameters():
         'paddle.incubate.tensor',
         'paddle.incubate.multiprocessing',
         'paddle.incubate.nn',
+        'paddle.incubate.jit',
         'paddle.incubate.asp',
         'paddle.incubate.passes',
         'paddle.incubate.framework',
@@ -1669,6 +1684,7 @@ def get_setup_parameters():
         'paddle.text.datasets',
         'paddle.incubate',
         'paddle.incubate.nn',
+        'paddle.incubate.jit',
         'paddle.incubate.nn.functional',
         'paddle.incubate.nn.layer',
         'paddle.incubate.optimizer.functional',
@@ -1826,7 +1842,7 @@ def check_submodules():
         with open(git_submodules_path) as f:
             return [
                 os.path.join(TOP_DIR, line.split("=", 1)[1].strip())
-                for line in f.readlines()
+                for line in f
                 if line.strip().startswith("path")
             ]
 
@@ -1954,7 +1970,15 @@ def main():
         )
 
     # generate stub file `tensor.pyi`
-    generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
+    if os.getenv("SKIP_STUB_GEN", '').lower() not in [
+        'y',
+        'yes',
+        't',
+        'true',
+        'on',
+        '1',
+    ]:
+        generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,

@@ -20,7 +20,7 @@
 #include <mutex>
 #include <string>
 
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/common/macros.h"
 
 namespace py = pybind11;
 

@@ -22,6 +22,7 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle.base.framework import use_pir_api
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
@@ -830,24 +831,46 @@ def get_dist_attr(program, dist_context=None):
     Args:
         program(Program): main program for training
     """
-    from .dist_context import get_default_distributed_context
-
-    assert isinstance(program, paddle.static.Program)
-    if dist_context is None:
-        dist_context = get_default_distributed_context()
     dist_attr = {}
-    for var in program.list_vars():
-        if is_parameter(var) or is_belong_to_optimizer(var):
-            tensor_dist_attr = dist_context.get_tensor_dist_attr_for_program(
-                var
-            )
-            process_mesh = tensor_dist_attr.process_mesh
-            dims_mapping = tensor_dist_attr.dims_mapping
-            dist_attr[var.name] = {
-                "process_shape": process_mesh.shape,
-                "process_group": process_mesh.process_ids,
-                "dims_mapping": dims_mapping,
-            }
+    if use_pir_api():
+        ops = program.global_block().ops
+        for op in ops:
+            if op.name() == "builtin.parameter" or (
+                op.name() == "pd_op.data"
+                and op.has_attr("persistable")
+                and op.attrs()["persistable"]
+            ):
+                op_dist_attr = op.dist_attr
+                var_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
+                var_name = (
+                    op.str_attr("parameter_name")
+                    if op.name() == "builtin.parameter"
+                    else op.str_attr("name")
+                )
+                process_mesh = var_dist_attr.process_mesh
+                dist_attr[var_name] = {
+                    "process_shape": process_mesh.shape,
+                    "process_group": process_mesh.process_ids,
+                    "dims_mapping": var_dist_attr.dims_mapping,
+                }
+    else:
+        from .dist_context import get_default_distributed_context
+
+        assert isinstance(program, paddle.static.Program)
+        if dist_context is None:
+            dist_context = get_default_distributed_context()
+        for var in program.list_vars():
+            if is_parameter(var) or is_belong_to_optimizer(var):
+                tensor_dist_attr = (
+                    dist_context.get_tensor_dist_attr_for_program(var)
+                )
+                process_mesh = tensor_dist_attr.process_mesh
+                dims_mapping = tensor_dist_attr.dims_mapping
+                dist_attr[var.name] = {
+                    "process_shape": process_mesh.shape,
+                    "process_group": process_mesh.process_ids,
+                    "dims_mapping": dims_mapping,
+                }
     return dist_attr
 
 
@@ -1285,10 +1308,10 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
         raise ValueError(
             f"{process_mesh} must be a instance of ProcessMesh or list, but receive {type(process_mesh)}"
         )
-    if "mark_annotated" in kwargs and kwargs["mark_annotated"]:
+    if kwargs.get("mark_annotated"):
         tensor_dist_attr.mark_annotated("dims_mapping")
         tensor_dist_attr.mark_annotated("process_mesh")
-    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+    if kwargs.get("chunk_id"):
         tensor_dist_attr.chunk_id = kwargs["chunk_id"]
     dist_context.set_tensor_dist_attr_for_program(var, tensor_dist_attr)
     return tensor_dist_attr
@@ -1308,7 +1331,7 @@ def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op_dist_attr.set_output_dims_mapping(output_varname, ref_mapping)
 
     new_op_dist_attr.process_mesh = process_mesh
-    if "chunk_id" in kwargs and kwargs["chunk_id"]:
+    if kwargs.get("chunk_id"):
         new_op_dist_attr.chunk_id = kwargs["chunk_id"]
     ctx.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
 
@@ -2318,6 +2341,14 @@ def get_pp_stage(dist_context, rank):
     return pp_idx
 
 
+def get_pp_stage_by_pp_degree(pp_degree):
+    cur_rank = paddle.distributed.get_rank()
+    word_size = paddle.distributed.get_world_size()
+    pp_group_size = word_size // pp_degree
+    pp_stage = cur_rank // pp_group_size
+    return pp_stage
+
+
 def wrap_data_for_completion(
     dist_op, input_names: list, output_names: list, attr_names: list
 ):
@@ -2428,19 +2459,32 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
                 "cast",
                 "c_concat",
                 "concat",
-                "c_allgather",
                 "slice",
+                "all_gather",
             ]
             if op.desc.type() in reshard_op_types:
                 input_names = op.desc.input_names()
-                if "X" in input_names or "Input" in input_names:
+                if (
+                    "X" in input_names
+                    or "Input" in input_names
+                    or "x" in input_names
+                ):
                     inputs = (
                         op.desc.input("X")
                         if "X" in input_names
-                        else op.desc.input("Input")
+                        else (
+                            op.desc.input("Input")
+                            if "Input" in input_names
+                            else op.desc.input("x")
+                        )
                     )
-                if "Out" in op.desc.output_names():
-                    outputs = op.desc.output("Out")
+                output_names = op.desc.output_names()
+                if "Out" in output_names or "out" in output_names:
+                    outputs = (
+                        op.desc.output("Out")
+                        if "Out" in output_names
+                        else op.desc.output("out")
+                    )
                 if inputs[0] in grad_var_to_var.keys():
                     for output in outputs:
                         grad_var_to_var[output] = grad_var_to_var[inputs[0]]

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/phi/core/memory/allocation/aligned_allocator.h"
 
 namespace paddle {
 namespace memory {
@@ -34,7 +34,7 @@ struct StubAllocator : public Allocator {
  protected:
   phi::Allocation *AllocateImpl(size_t size) override {
     ++alloc_num_;
-    return new Allocation(new uint8_t[size], size, platform::CPUPlace());
+    return new Allocation(new uint8_t[size], size, phi::CPUPlace());
   }
 
   void FreeImpl(phi::Allocation *allocation) override {

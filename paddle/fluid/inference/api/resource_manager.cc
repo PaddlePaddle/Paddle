@@ -21,8 +21,6 @@
 #include <utility>
 
 #include "paddle/common/errors.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -30,6 +28,8 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "paddle/fluid/platform/enforce.h"
@@ -392,7 +392,7 @@ void ResourceManager::InitCPUResource() {
 CPUContextResource* ResourceManager::GetCPUResource() const {
   PADDLE_ENFORCE_NOT_NULL(
       cpu_resource_.get(),
-      platform::errors::PreconditionNotMet("cpu_resource should be not null!"));
+      common::errors::PreconditionNotMet("cpu_resource should be not null!"));
   return cpu_resource_.get();
 }
 
@@ -415,7 +415,7 @@ void* ResourceManager::InitGPUResource(const phi::Place& place, void* stream) {
 void ResourceManager::DestroyGPUResource(void* stream) {
   PADDLE_ENFORCE_EQ(gpu_resources_.count(stream),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The stream[%p] not found in gpu_resources.", stream));
   Decrease(stream);
 }
@@ -435,7 +435,7 @@ void ResourceManager::Increase(void* stream) { ++ref_count_[stream]; }
 GPUContextResource* ResourceManager::GetGPUResource(void* stream) const {
   PADDLE_ENFORCE_EQ(gpu_resources_.count(stream),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The stream[%p] not found in gpu_resources.", stream));
   return gpu_resources_.at(stream).get();
 }
@@ -448,7 +448,7 @@ void ResourceManager::GpuResourceSwitchStream(void* old_stream,
   PADDLE_ENFORCE_EQ(
       gpu_resources_.count(old_stream),
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The stream[%p] not found in gpu_resources.", old_stream));
 
   // NOTE: stream may be used by multiple predictor, skip resource

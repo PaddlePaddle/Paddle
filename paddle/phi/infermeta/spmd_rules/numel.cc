@@ -28,13 +28,13 @@ SpmdInfo NumelInferSpmd(const DistMetaTensor& x) {
   int x_ndim = x_shape.size();
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      x_ndim,
-      x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Input's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(x_ndim,
+                    x_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "The Tensor Input's rank [%d] and Input's "
+                        "dims_mapping size [%d] are not matched.",
+                        x_ndim,
+                        x_dims_mapping.size()));
   TensorDistAttr out_dist_attr;
   out_dist_attr.set_dims_mapping({});
   std::vector<int64_t> partial_on_dims;

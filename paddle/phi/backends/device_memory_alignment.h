@@ -41,7 +41,7 @@ inline size_t Alignment(size_t size,
 #elif defined(PADDLE_WITH_XPU)
       alignment = phi::backends::xpu::XPUMinChunkSize();
 #else
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "Fluid is not compiled with CUDA/XPU."));
 #endif
     }

@@ -152,8 +152,8 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType(),
       phi::AllocationType::GPU,
-      phi::errors::Unavailable("softmax_with_cross_entropy operator's "
-                               "CUDA kernel only runs on GPU device."));
+      common::errors::Unavailable("softmax_with_cross_entropy operator's "
+                                  "CUDA kernel only runs on GPU device."));
   const T* loss_grad_data = loss_grad.data<T>();
   DenseTensor* logit_grad = logits_grad;
 
@@ -246,8 +246,8 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         dtype,
         phi::CppTypeToDataType<T>::Type(),
-        phi::errors::InvalidArgument("The Input(Label) should be with the "
-                                     "same data type as kernel data type."));
+        common::errors::InvalidArgument("The Input(Label) should be with the "
+                                        "same data type as kernel data type."));
     CrossEntropyWithSoftmaxGradGPUKernel<T, T>(dev_ctx,
                                                label,
                                                softmax,

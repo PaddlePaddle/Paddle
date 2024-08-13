@@ -42,7 +42,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
   int64_t head_dim = dout_q.dims()[3];
   PADDLE_ENFORCE_EQ(head_dim % 2,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The head_dim of input must be a multiple of 2."));
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
@@ -53,7 +53,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     if (sin.get_ptr() && cos.get_ptr()) {
       PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
                         cos.get_ptr()->dims(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The dims of sin and cos must be the same. But "
                             "received sin's dims is {%s}, cos's dims is {%s}.",
                             sin.get_ptr()->dims(),
@@ -64,31 +64,61 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     XPUGetSinCosData<XPUType, Context>(
         dev_ctx, cos, position_ids, cos_data, batch_size, seq_len, head_dim);
     if (!dout_k.get_ptr()) {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "XPU do not support rotary_embedding_grad without qk when "
-          "use_neox_rotary_style == True."));
+      auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
+      int ret = xpu::rotary_embedding_v3_single_grad<XPUType, XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dout_q.data<T>()),
+          cos_data,
+          sin_data,
+          dq_data,
+          batch_size,
+          seq_len,
+          num_heads,
+          head_dim,
+          {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_embedding_v3_single_grad");
+    } else {
+      int64_t num_heads_k = dout_k->dims()[2];
+      auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
+      auto* dk_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dk));
+      int ret = xpu::rotary_embedding_v3_grad<XPUType, XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dout_q.data<T>()),
+          reinterpret_cast<const XPUType*>(dout_k->data<T>()),
+          cos_data,
+          sin_data,
+          dq_data,
+          dk_data,
+          batch_size,
+          seq_len,
+          num_heads,
+          head_dim,
+          {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
+          {seq_len * num_heads_k * head_dim,
+           num_heads_k * head_dim,
+           head_dim,
+           1},
+          num_heads_k);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_embedding_v3_grad");
     }
-    auto* dq_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dq));
-    auto* dk_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dk));
-    int ret = xpu::rotary_embedding_v3_grad<XPUType, XPUType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(dout_q.data<T>()),
-        reinterpret_cast<const XPUType*>(dout_k->data<T>()),
-        cos_data,
-        sin_data,
-        dq_data,
-        dk_data,
-        batch_size,
-        seq_len,
-        num_heads,
-        head_dim,
-        {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
-        {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1});
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_embedding_v3_grad");
     if (dout_v.get_ptr()) {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "XPU do not support rotary_embedding_grad with v when "
-          "use_neox_rotary_style == True."));
+      int64_t num_heads_v = dout_v->dims()[2];
+      auto* dv_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(dv));
+      int ret = xpu::rotary_embedding_v3_single_grad<XPUType, XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dout_v->data<T>()),
+          cos_data,
+          sin_data,
+          dv_data,
+          batch_size,
+          seq_len,
+          num_heads_v,
+          head_dim,
+          {seq_len * num_heads_v * head_dim,
+           num_heads_v * head_dim,
+           head_dim,
+           1});
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_embedding_v3_single_grad");
     }
   } else {
     auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
@@ -96,7 +126,7 @@ void FusedRopeGradKernel(const Context& dev_ctx,
     if (sin.get_ptr() && cos.get_ptr()) {
       PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
                         cos.get_ptr()->dims(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The dims of sin and cos must be the same. But "
                             "received sin's dims is {%s}, cos's dims is {%s}.",
                             sin.get_ptr()->dims(),

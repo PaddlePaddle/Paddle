@@ -46,7 +46,7 @@ Node *cross_entropy_general_handler(Graph *graph,
   Node *cast_and_reshape = nullptr;
   Node *final_loss_node = nullptr;
   if (soft_label) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "soft_label is not supported yet in IPU"));
   }
   bool append_identity_loss = is_dynamic_graph();
@@ -559,7 +559,7 @@ Node *warpctc_handler(Graph *graph, Node *node) {
   bool append_identity_loss =
       is_dynamic_graph() && IsLastVarNode(GetOutputVarNode("Loss", node));
   if (norm_by_times) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "norm_by_times is not supported yet in IPU"));
   }
 

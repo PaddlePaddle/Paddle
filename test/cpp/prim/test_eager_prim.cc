@@ -34,14 +34,14 @@ namespace prim {
 
 TEST(EagerPrim, TanhBackwardTest) {
   // 1. Initialized
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
   FLAGS_tensor_operants_mode = "eager";
   paddle::prim::InitTensorOperants();
   // 2. pre
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,
@@ -49,7 +49,7 @@ TEST(EagerPrim, TanhBackwardTest) {
   ::egr::egr_utils_api::RetainGradForTensor(tensor0);
   paddle::Tensor tensor1 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::FLOAT32,
                                         phi::DataLayout::NCHW,
                                         5.0 /*value*/,
@@ -91,14 +91,14 @@ TEST(EagerPrim, TanhBackwardTest) {
 
 TEST(EagerPrim, LogicalOperantsTest) {
   // 1. Initialized
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
   FLAGS_tensor_operants_mode = "eager";
   paddle::prim::InitTensorOperants();
   // 2. pre
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::INT32,
                                         phi::DataLayout::NCHW,
                                         1 /*value*/,
@@ -106,7 +106,7 @@ TEST(EagerPrim, LogicalOperantsTest) {
   ::egr::egr_utils_api::RetainGradForTensor(tensor0);
   paddle::Tensor tensor1 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::INT32,
                                         phi::DataLayout::NCHW,
                                         0 /*value*/,
@@ -129,14 +129,14 @@ TEST(EagerPrim, LogicalOperantsTest) {
 
 TEST(EagerPrim, CompareOperantsTest) {
   // 1. Initialized
-  eager_test::InitEnv(paddle::platform::CPUPlace());
+  eager_test::InitEnv(phi::CPUPlace());
   FLAGS_tensor_operants_mode = "eager";
   paddle::prim::InitTensorOperants();
   // 2. pre
-  paddle::framework::DDim ddim = common::make_ddim({4, 16, 16, 32});
+  phi::DDim ddim = common::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::INT32,
                                         phi::DataLayout::NCHW,
                                         1 /*value*/,
@@ -144,7 +144,7 @@ TEST(EagerPrim, CompareOperantsTest) {
   ::egr::egr_utils_api::RetainGradForTensor(tensor0);
   paddle::Tensor tensor1 =
       eager_test::CreateTensorWithValue(ddim,
-                                        paddle::platform::CPUPlace(),
+                                        phi::CPUPlace(),
                                         phi::DataType::INT32,
                                         phi::DataLayout::NCHW,
                                         0 /*value*/,
