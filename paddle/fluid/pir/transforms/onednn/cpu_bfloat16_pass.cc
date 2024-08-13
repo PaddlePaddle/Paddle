@@ -1985,8 +1985,10 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
 
 class CpuBfloat16Pass : public pir::PatternRewritePass {
  public:
-  CpuBfloat16Pass() : pir::PatternRewritePass("cpu_bfloat16_pattern_pass", 3) {}
-
+  CpuBfloat16Pass()
+      : pir::PatternRewritePass("cpu_bfloat16_pattern_pass", 3),
+        use_onednn_bfloat16_(false) {}
+  // TODO: add function get onednn_bf16 flag
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     const std::vector<std::string> bfloat16_ops_two_one{
@@ -2188,6 +2190,12 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
 
     return ps;
   }
+  bool CanApplyOn(pir::Operation *op) const override {
+    return use_onednn_bfloat16_;
+  }
+
+ private:
+  int use_onednn_bfloat16_;
 };
 
 }  // namespace
