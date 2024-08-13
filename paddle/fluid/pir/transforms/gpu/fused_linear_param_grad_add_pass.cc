@@ -91,6 +91,85 @@ class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
+// (full_int_array + sum + full_int_array + reshpe + assign) + matmul_grad +
+// add_ -> matmul + fused_liner_param_gard_add
+class FusedMatmulPrimAddGradAddPattern : public paddle::drr::DrrPatternBase {
+ public:
+  std::string name() const override { return "FusedMatmulAddGradAddPattern"; }
+
+  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+    paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &matmul0 = pat.Op(paddle::dialect::MatmulOp::name(),
+                                 {{"transpose_x", pat.Attr("trans_x")},
+                                  {"transpose_y", pat.Attr("trans_y")}});
+    const auto &add0 = pat.Op(paddle::dialect::AddOp::name());
+
+    const auto &full_int_array0 =
+        pat.Op(paddle::dialect::FullIntArrayOp::name());
+    const auto &sum = pat.Op(paddle::dialect::SumOp::name());
+    const auto &full_int_array1 =
+        pat.Op(paddle::dialect::FullIntArrayOp::name());
+    const auto &reshape = pat.Op(paddle::dialect::ReshapeOp::name());
+    const auto &assign = pat.Op(paddle::dialect::AssignOp::name());
+
+    const auto &matmul_grad = pat.Op(paddle::dialect::MatmulGradOp::name(),
+                                     {{"transpose_x", pat.Attr("trans_x")},
+                                      {"transpose_y", pat.Attr("trans_y")}});
+    const auto &add_ = pat.Op(paddle::dialect::Add_Op::name());
+
+    pat.Tensor("out") = matmul0(pat.Tensor("x"), pat.Tensor("weight"));
+    pat.Tensor("fwd_add_out") = add0(pat.Tensor("out"), pat.Tensor("bias"));
+
+    sum({&pat.Tensor("fwd_add_out_grad"), &full_int_array0()},
+        {&pat.Tensor("out_grad_sum")});
+    reshape({&pat.Tensor("out_grad_sum"), &full_int_array1()},
+            {&pat.Tensor("out_grad_reshape")});
+    assign({&pat.Tensor("out_grad_reshape")}, {&pat.Tensor("out_grad")});
+    matmul_grad(
+        {&pat.Tensor("x"), &pat.Tensor("weight"), &pat.Tensor("out_grad")},
+        {&pat.Tensor("x_grad"), &pat.Tensor("weight_grad")});
+    pat.Tensor("add_out") =
+        add_(pat.Tensor("dweight"), pat.Tensor("weight_grad"));
+
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      const auto &x_trans = match_ctx.Attr<bool>("trans_x");
+      const auto &y_trans = match_ctx.Attr<bool>("trans_y");
+      auto weight_grad_dims =
+          pir::GetShapeFromValue(match_ctx.Tensor("weight_grad"));
+      auto dweight_dims = pir::GetShapeFromValue(match_ctx.Tensor("dweight"));
+      auto out_dims = pir::GetShapeFromValue(match_ctx.Tensor("out"));
+      auto fwd_add_out_grad_dims =
+          pir::GetShapeFromValue(match_ctx.Tensor("fwd_add_out_grad"));
+      return (weight_grad_dims == dweight_dims &&
+              out_dims == fwd_add_out_grad_dims && x_trans == false &&
+              y_trans == false);
+    });
+
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+    const auto &multi_precision_attr =
+        res.ComputeAttr([](const paddle::drr::MatchContext &match_ctx) -> bool {
+          return !(pir::GetDataTypeFromValue(match_ctx.Tensor("dweight")) ==
+                   pir::GetDataTypeFromValue(match_ctx.Tensor("weight_grad")));
+        });
+
+    const auto &matmul = res.Op(paddle::dialect::MatmulOp::name(),
+                                {{"transpose_x", res.BoolAttr(false)},
+                                 {"transpose_y", res.BoolAttr(true)}});
+    const auto &fused_linear_param_grad_add =
+        res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
+               {{{"multi_precision", multi_precision_attr},
+                 {"has_bias", res.BoolAttr(true)}}});
+
+    matmul({&res.Tensor("fwd_add_out_grad"), &res.Tensor("weight")},
+           {&res.Tensor("x_grad")});
+    fused_linear_param_grad_add({&res.Tensor("x"),
+                                 &res.Tensor("fwd_add_out_grad"),
+                                 &res.Tensor("dweight"),
+                                 &res.InputNoneTensor()},
+                                {&res.Tensor("add_out"), &res.Tensor("dbias")});
+  }
+};
+
 // matmul_grad + add_ -> matmul + fused_liner_param_gard_add
 class FusedMatmulGradAddPattern : public paddle::drr::DrrPatternBase {
  public:
