@@ -730,27 +730,29 @@ phi::distributed::GlooCommContext* ProcessGroupGloo::GetCommContext() {
   return comm_context;
 }
 
-std::vector<char> GlooStore::get(const std::string& key) {
+std::vector<char> ProcessGroupGloo::GlooStore::get(const std::string& key) {
   VLOG(3) << "GlooStore::get";
   auto value = _store->get(key);
   return std::vector<char>(value.begin(), value.end());
 }
 
-void GlooStore::wait(const std::vector<std::string>& keys) {
+void ProcessGroupGloo::GlooStore::wait(const std::vector<std::string>& keys) {
   VLOG(3) << "GlooStore::wait";
   for (auto& key : keys) {
     _store->wait(key);
   }
 }
 
-void GlooStore::set(const std::string& key, const std::vector<char>& value) {
+void ProcessGroupGloo::GlooStore::set(const std::string& key,
+                                      const std::vector<char>& value) {
   VLOG(3) << "GlooStore::set";
   std::vector<uint8_t> tmp(value.begin(), value.end());
   _store->set(key, tmp);
 }
 
-void GlooStore::wait(const std::vector<std::string>& keys,
-                     const std::chrono::milliseconds& timeout) {
+void ProcessGroupGloo::GlooStore::wait(
+    const std::vector<std::string>& keys,
+    const std::chrono::milliseconds& timeout) {
   VLOG(3) << "GlooStore::wait";
   for (auto& key : keys) {
     _store->wait(key);
