@@ -960,7 +960,7 @@ bool SequenceMaskOpInferSymbolicShape(
 
   const auto &max_len_tensor =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  int max_len = max_len_tensor.AsScalar().to<int>();
+  int max_len = max_len_tensor.data().to<int>();
 
   std::vector<symbol::DimExpr> y_dims = x_dims;
   y_dims.push_back(max_len > 0 ? symbol::DimExpr(max_len)
