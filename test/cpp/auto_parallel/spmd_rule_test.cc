@@ -1102,7 +1102,7 @@ TEST(FlashAtt, Ctor) {
   check_dim_mapping(spmd1.second[0], {0, -1, -1, -1});
   check_dim_mapping(spmd1.second[1], {0, -1, -1, -1});
   check_dim_mapping(spmd1.second[2], {0, -1, -1});
-  check_dim_mapping(spmd1.second[3], {});
+  check_dim_mapping(spmd1.second[3], {-1});
 
   auto out = build_input(qkv_shape, {0, -1, 1, -1});
   auto softmax_lse = build_input({2, 2, 256}, {0, 1, -1});
@@ -1699,7 +1699,7 @@ TEST(ScatterGradInferSpmd, Ctor) {
             std::vector<int64_t>({-1, -1, 1}));
 
   // [0], [0, -1, 1], [-1, 0, 1] -->
-  // inputs: [-1], [0, -1, 1], [-1, 0, 1]
+  // inputs: [-1], [-1, -1, 1], [-1, 0, 1]
   // x_grad: [-1, 0, 1], updates_grad: [-1, 0, 1]
   index_dist_attr.set_dims_mapping({0});
   updates_dist_attr.set_dims_mapping({0, -1, 1});
@@ -1716,7 +1716,7 @@ TEST(ScatterGradInferSpmd, Ctor) {
 
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({-1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
-            std::vector<int64_t>({0, -1, 1}));
+            std::vector<int64_t>({-1, -1, 1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
             std::vector<int64_t>({-1, 0, 1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),

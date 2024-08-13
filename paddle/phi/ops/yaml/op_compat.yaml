@@ -3605,6 +3605,12 @@
   outputs :
     out : Out
 
+- op : straight_through_estimator_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : strided_slice
   backward : strided_slice_grad
   inputs :

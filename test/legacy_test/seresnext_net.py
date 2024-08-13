@@ -131,7 +131,7 @@ img_shape = [3, 224, 224]
 
 def SE_ResNeXt50Small(use_feed):
     img = paddle.static.data(
-        name='image', shape=[-1] + img_shape, dtype='float32'
+        name='image', shape=[-1, *img_shape], dtype='float32'
     )
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 

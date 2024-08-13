@@ -304,6 +304,16 @@ class TestSolveOpError(unittest.TestCase):
             y7 = paddle.static.data(name="y7", shape=[2, 4, 3], dtype="float64")
             self.assertRaises(ValueError, paddle.linalg.solve, x7, y7)
 
+            # The shape of y should not be 1 when left = False. (if y is vector it should be a row vector)
+            x8 = paddle.static.data(name="x8", shape=[3, 3], dtype="float64")
+            y8 = paddle.static.data(name="y8", shape=[3], dtype="float64")
+            self.assertRaises(ValueError, paddle.linalg.solve, x8, y8, False)
+
+            # The height of x should equal the width of y when left = False.
+            x9 = paddle.static.data(name="x9", shape=[2, 5, 5], dtype="float64")
+            y9 = paddle.static.data(name="y9", shape=[5, 3], dtype="float64")
+            self.assertRaises(ValueError, paddle.linalg.solve, x9, y9, False)
+
 
 # 2D + vector case, FP64
 class TestSolveOpAPI_1(unittest.TestCase):
@@ -560,6 +570,294 @@ class TestSolveOpAPI_4(unittest.TestCase):
 
             numpy_output = np.linalg.solve(input_x_np, input_y_np)
             paddle_output = paddle.linalg.solve(tensor_input_x, tensor_input_y)
+            np.testing.assert_allclose(
+                numpy_output, paddle_output.numpy(), rtol=1e-05
+            )
+            self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+def np_transpose_last_2dim(x):
+    x_new_dims = list(range(len(x.shape)))
+    x_new_dims[-1], x_new_dims[-2] = x_new_dims[-2], x_new_dims[-1]
+    x = np.transpose(x, x_new_dims)
+    return x
+
+
+def np_solve_right(x, y):
+    x = np_transpose_last_2dim(x)
+    y = np_transpose_last_2dim(y)
+    out = np.linalg.solve(x, y)
+    out = np_transpose_last_2dim(out)
+    return out
+
+
+# 2D + vector right case, FP64
+class TestSolveOpAPIRight_1(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2021)
+        self.place = []
+        self.dtype = "float64"
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with base.program_guard(base.Program(), base.Program()):
+            paddle_input_x = paddle.static.data(
+                name="input_x", shape=[3, 3], dtype=self.dtype
+            )
+            paddle_input_y = paddle.static.data(
+                name="input_y", shape=[1, 3], dtype=self.dtype
+            )
+            paddle_result = paddle.linalg.solve(
+                paddle_input_x, paddle_input_y, left=False
+            )
+
+            np_input_x = np.random.random([3, 3]).astype(self.dtype)
+            np_input_y = np.random.random([1, 3]).astype(self.dtype)
+
+            np_result = np_solve_right(np_input_x, np_input_y)
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={"input_x": np_input_x, "input_y": np_input_y},
+                fetch_list=[paddle_result],
+            )
+            np.testing.assert_allclose(fetches[0], np_result, rtol=1e-05)
+
+    def test_static(self):
+        for place in self.place:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            np.random.seed(2021)
+            input_x_np = np.random.random([3, 3]).astype(self.dtype)
+            input_y_np = np.random.random([1, 3]).astype(self.dtype)
+
+            tensor_input_x = paddle.to_tensor(input_x_np)
+            tensor_input_y = paddle.to_tensor(input_y_np)
+
+            numpy_output = np_solve_right(input_x_np, input_y_np)
+            paddle_output = paddle.linalg.solve(
+                tensor_input_x, tensor_input_y, left=False
+            )
+            np.testing.assert_allclose(
+                numpy_output, paddle_output.numpy(), rtol=1e-05
+            )
+            self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+# 2D normal right case, FP64
+class TestSolveOpAPIRight_2(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2021)
+        self.place = []
+        self.dtype = "float64"
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            paddle_input_x = paddle.static.data(
+                name="input_x", shape=[10, 10], dtype=self.dtype
+            )
+            paddle_input_y = paddle.static.data(
+                name="input_y", shape=[4, 10], dtype=self.dtype
+            )
+            paddle_result = paddle.linalg.solve(
+                paddle_input_x, paddle_input_y, left=False
+            )
+
+            np_input_x = np.random.random([10, 10]).astype(self.dtype)
+            np_input_y = np.random.random([4, 10]).astype(self.dtype)
+
+            np_result = np_solve_right(np_input_x, np_input_y)
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={"input_x": np_input_x, "input_y": np_input_y},
+                fetch_list=[paddle_result],
+            )
+            np.testing.assert_allclose(fetches[0], np_result, rtol=1e-05)
+
+    def test_static(self):
+        for place in self.place:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            np.random.seed(2021)
+            input_x_np = np.random.random([10, 10]).astype(self.dtype)
+            input_y_np = np.random.random([4, 10]).astype(self.dtype)
+            tensor_input_x = paddle.to_tensor(input_x_np)
+            tensor_input_y = paddle.to_tensor(input_y_np)
+
+            numpy_output = np_solve_right(input_x_np, input_y_np)
+            paddle_output = paddle.linalg.solve(
+                tensor_input_x, tensor_input_y, left=False
+            )
+            np.testing.assert_allclose(
+                numpy_output, paddle_output.numpy(), rtol=1e-05
+            )
+            self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+# 2D normal right case, FP32
+class TestSolveOpAPIRight_3(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2021)
+        self.place = []
+        self.dtype = "float32"
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        paddle.enable_static()
+        with base.program_guard(base.Program(), base.Program()):
+            paddle_input_x = paddle.static.data(
+                name="input_x", shape=[10, 10], dtype=self.dtype
+            )
+            paddle_input_y = paddle.static.data(
+                name="input_y", shape=[6, 10], dtype=self.dtype
+            )
+            paddle_result = paddle.linalg.solve(
+                paddle_input_x, paddle_input_y, left=False
+            )
+
+            np_input_x = np.random.random([10, 10]).astype(self.dtype)
+            np_input_y = np.random.random([6, 10]).astype(self.dtype)
+
+            np_result = np_solve_right(np_input_x, np_input_y)
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={"input_x": np_input_x, "input_y": np_input_y},
+                fetch_list=[paddle_result],
+            )
+            np.testing.assert_allclose(fetches[0], np_result, rtol=0.0001)
+
+    def test_static(self):
+        for place in self.place:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            np.random.seed(2021)
+            input_x_np = np.random.random([10, 10]).astype(self.dtype)
+            input_y_np = np.random.random([6, 10]).astype(self.dtype)
+
+            tensor_input_x = paddle.to_tensor(input_x_np)
+            tensor_input_y = paddle.to_tensor(input_y_np)
+
+            numpy_output = np_solve_right(input_x_np, input_y_np)
+            paddle_output = paddle.linalg.solve(
+                tensor_input_x, tensor_input_y, left=False
+            )
+            np.testing.assert_allclose(
+                numpy_output, paddle_output.numpy(), rtol=0.0001
+            )
+            self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+# 3D + y broadcast right case, FP64
+class TestSolveOpAPIRight_4(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2021)
+        self.place = []
+        self.dtype = "float64"
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with base.program_guard(base.Program(), base.Program()):
+            paddle_input_x = paddle.static.data(
+                name="input_x", shape=[2, 3, 3], dtype=self.dtype
+            )
+            paddle_input_y = paddle.static.data(
+                name="input_y", shape=[1, 3, 3], dtype=self.dtype
+            )
+            paddle_result = paddle.linalg.solve(
+                paddle_input_x, paddle_input_y, left=False
+            )
+
+            np_input_x = np.random.random([2, 3, 3]).astype(self.dtype)
+            np_input_y = np.random.random([1, 3, 3]).astype(self.dtype)
+
+            np_result = np_solve_right(np_input_x, np_input_y)
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                base.default_main_program(),
+                feed={"input_x": np_input_x, "input_y": np_input_y},
+                fetch_list=[paddle_result],
+            )
+            np.testing.assert_allclose(fetches[0], np_result, rtol=1e-05)
+
+    def test_static(self):
+        for place in self.place:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            np.random.seed(2021)
+            input_x_np = np.random.random([2, 3, 3]).astype(self.dtype)
+            input_y_np = np.random.random([1, 3, 3]).astype(self.dtype)
+
+            tensor_input_x = paddle.to_tensor(input_x_np)
+            tensor_input_y = paddle.to_tensor(input_y_np)
+
+            numpy_output = np_solve_right(input_x_np, input_y_np)
+            paddle_output = paddle.linalg.solve(
+                tensor_input_x, tensor_input_y, left=False
+            )
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )

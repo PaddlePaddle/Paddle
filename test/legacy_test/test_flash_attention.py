@@ -567,10 +567,10 @@ class TestFlashAttentionGQA(unittest.TestCase):
             low=1, high=self.seq_len, size=[self.batch_size]
         )
         cu_seqlen_q = paddle.to_tensor(
-            [0, *np.cumsum(seq_len_q)], dtype=paddle.int32
+            [0, *np.cumsum(seq_len_q).tolist()], dtype=paddle.int32
         )
         cu_seqlen_k = paddle.to_tensor(
-            [0, *np.cumsum(seq_len_k)], dtype=paddle.int32
+            [0, *np.cumsum(seq_len_k).tolist()], dtype=paddle.int32
         )
 
         qs, ks, vs = [], [], []
@@ -966,7 +966,7 @@ class TestFlashAttentionVarlenQKVPackedGQA(TestFlashAttentionGQA):
         )
         seq_len_k = seq_len_q
         cu_seqlen_q = paddle.to_tensor(
-            [0, *np.cumsum(seq_len_q)], dtype=paddle.int32
+            [0, *np.cumsum(seq_len_q).tolist()], dtype=paddle.int32
         )
         cu_seqlen_k = cu_seqlen_q
 
