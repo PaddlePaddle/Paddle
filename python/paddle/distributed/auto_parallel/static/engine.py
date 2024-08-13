@@ -2583,6 +2583,8 @@ class Engine:
         return global_cost.time, max_memory
 
     def get_dist_main_program(self, mode: _Mode) -> Program:
+        if self._in_pir_mode:
+            return self._pir_dist_main_progs[self._mode]
         return self._dist_contexts[mode].dist_main_programs[self._cur_rank]
 
     def get_dist_startup_program(self, mode: _Mode) -> Program:
