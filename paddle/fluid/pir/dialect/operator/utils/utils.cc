@@ -39,7 +39,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     LoadCombineOp::name(),
     CConcatOp::name(),
     CBroadcast_Op::name(),
-    CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
     DistributedPushSparseOp::name(),
     SendV2Op::name(),
@@ -49,6 +48,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceSum_Op::name(),
     CAllreduceAvgOp::name(),
     CAllreduceAvg_Op::name(),
+    CReducescatterOp::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
     CAllreduceMax_Op::name(),
@@ -61,8 +61,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushDenseOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
-    MovingAverageAbsMaxScaleOp::name(),
-    MovingAverageAbsMaxScale_Op::name(),
     CReduceAvgOp::name(),
     CReduceAvg_Op::name(),
     CReduceMaxOp::name(),
@@ -72,7 +70,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PullBoxSparseOp::name(),
     PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
-    PartialSendOp::name(),
     PartialRecvOp::name(),
     SendAndRecvOp::name()};
 
@@ -120,7 +117,7 @@ static inline AttrType GetAttributeType(const pir::Attribute& attr) {
   } else if (attr.isa<paddle::dialect::PlaceAttribute>()) {
     return AttrType::PLACE;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported ir Attribute type when casting it into "
         "AttrType."));
   }
@@ -227,7 +224,7 @@ static std::function<T(const pir::Attribute& attr)> GetAttrCast(
                }
                return T{vec_string};
              } else {
-               PADDLE_THROW(phi::errors::Unimplemented(
+               PADDLE_THROW(common::errors::Unimplemented(
                    "Unsupported ir Attribute type when casting it into "
                    "vector."));
              }
@@ -255,7 +252,7 @@ bool IsEmptyValue(const pir::Value& value) {
 std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr) {
   PADDLE_ENFORCE_EQ(attr.isa<pir::ArrayAttribute>(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "attribute MUST be a pir::ArrayAttribute"));
   auto attr_vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
 
@@ -264,7 +261,7 @@ std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr) {
     PADDLE_ENFORCE_EQ(
         vec_element.isa<pir::Int64Attribute>(),
         true,
-        phi::errors::PreconditionNotMet("element MUST be a Int64Attribute"));
+        common::errors::PreconditionNotMet("element MUST be a Int64Attribute"));
     vec_int64.push_back(vec_element.dyn_cast<pir::Int64Attribute>().data());
   }
 
@@ -320,11 +317,11 @@ phi::DataType GetValueDataType(const pir::Type& type) {
       return phi::DataType::UNDEFINED;
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidType(
+    PADDLE_THROW(common::errors::InvalidType(
         "Not support op type %s in ConvertOpTypeToKernelType.", type));
     PADDLE_THROW(
-        phi::errors::InvalidType("Currently, we can only get dtype for "
-                                 "DenseTensorType and SelectedRowsType."));
+        common::errors::InvalidType("Currently, we can only get dtype for "
+                                    "DenseTensorType and SelectedRowsType."));
   }
 }
 
@@ -345,7 +342,7 @@ void DoValueCheck(const pir::Value& value,
     std::copy(expected_dtype.begin(),
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
-    PADDLE_THROW(phi::errors::InvalidType(
+    PADDLE_THROW(common::errors::InvalidType(
         "Check data type error for op: %s, input: %s, %s.dtype: %s, and "
         "expected_dtype: %s",
         op_name,
@@ -386,7 +383,7 @@ void CheckVectorOfValueDataType(const std::vector<pir::Value>& vector_value,
     return;
   }
   if (!IsSameDataTypeForValues(vector_value)) {
-    PADDLE_THROW(phi::errors::InvalidType(
+    PADDLE_THROW(common::errors::InvalidType(
         "All the Values in the input must have the same data type."));
   }
   std::set<std::string> expected_dtype = GetRegisterDataType(op_name);
@@ -405,7 +402,7 @@ void CheckDataType(const phi::DataType& dtype,
     std::copy(expected_dtype.begin(),
               expected_dtype.end(),
               std::ostream_iterator<std::string>(joined, ", "));
-    PADDLE_THROW(phi::errors::InvalidType(
+    PADDLE_THROW(common::errors::InvalidType(
         "Check data type error for op: %s, dtype: %s, and "
         "expected_dtype: %s",
         op_name,
@@ -488,9 +485,9 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
     vec_shape = std::vector<int64_t>(shape_size, -1);
     *is_from_tensor = true;
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Only support VectorType or DenseTensorType "
-                                   "or AllocatedDenseTensorType"));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Only support VectorType or DenseTensorType "
+        "or AllocatedDenseTensorType"));
   }
   return vec_shape;
 }

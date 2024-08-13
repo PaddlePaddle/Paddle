@@ -17,13 +17,13 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_concat_op.h"
 #include "paddle/fluid/operators/load_combine_op.h"
 #include "paddle/fluid/operators/save_combine_op.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/api/backward/backward_api.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 
 #define REGISTER_OP_CUSTOM_DEVICE_KERNEL(op_type, dev_type, ...)             \

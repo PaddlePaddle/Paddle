@@ -65,12 +65,12 @@ void GatherTreeKernel(const Context &dev_ctx,
   T *out_data = dev_ctx.template Alloc<T>(out);
 
   PADDLE_ENFORCE_NOT_NULL(ids_data,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Input(Ids) of gather_tree should not be null."));
 
   PADDLE_ENFORCE_NOT_NULL(
       parents_data,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(Parents) of gather_tree should not be null."));
 
   auto &ids_dims = ids.dims();

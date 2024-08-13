@@ -63,11 +63,11 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
 
   PADDLE_ENFORCE_NOT_NULL(
       input_tensor_ptr,
-      phi::errors::Fatal(
+      common::errors::Fatal(
           "LoDTensor creation failed. DistModel loaded data failed."));
   PADDLE_ENFORCE_NOT_NULL(
       input_data.data.data(),
-      phi::errors::InvalidArgument("DistModelTensor contains no data."));
+      common::errors::InvalidArgument("DistModelTensor contains no data."));
 
   if (phi::is_cpu_place(place)) {
     VLOG(3) << "Loading data for CPU.";
@@ -87,7 +87,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                  input_data.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Paddle wasn't compiled with CUDA, but place is GPU."));
 #endif
   } else if (phi::is_xpu_place(place)) {
@@ -100,7 +100,7 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                  input_data.data.data(),
                  input_data.data.length());
 #else
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Paddle wasn't compiled with XPU, but place is XPU."));
 #endif
   } else if (phi::is_custom_place(place)) {
@@ -116,12 +116,12 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
                  input_data.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Paddle wasn't compiled with custom_device, but place is "
         "CustomPlace."));
 #endif
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "DistModel only supports CPU and GPU and XPU and CustomDevice."));
   }
 
@@ -174,13 +174,13 @@ bool DistModel::Init() {
   bool init_method = (!config_.model_dir.empty() || config_.program_desc);
   PADDLE_ENFORCE_EQ(init_method,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "One of model dir or program desc must be provided to "
                         "dist model inference."));
   if (config_.program_desc) {
     PADDLE_ENFORCE_NOT_NULL(
         config_.scope,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Scope must be provided to dist model inference if "
             "program desc has been provided."));
   }
@@ -224,7 +224,7 @@ bool DistModel::PreparePlace() {
   } else if (config_.place == "CUSTOM_DEVICE") {
     place_ = phi::CustomPlace(config_.device_type, config_.device_id);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Place must be choosen from GPU or CPU or XPU, but got %s.",
         config_.place));
   }
@@ -400,7 +400,7 @@ bool DistModel::LoadProgram() {
   PADDLE_ENFORCE_NE(
       config_.model_dir,
       "",
-      phi::errors::InvalidArgument("Model dir must be provided."));
+      common::errors::InvalidArgument("Model dir must be provided."));
   std::string model_path = config_.model_dir + ".pdmodel";
   framework::proto::ProgramDesc program_proto;
   std::string pb_content;
@@ -409,7 +409,7 @@ bool DistModel::LoadProgram() {
   PADDLE_ENFORCE_EQ(
       static_cast<bool>(fin.is_open()),
       true,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Cannot open file %s, please confirm whether the file is normal.",
           model_path));
   fin.seekg(0, std::ios::end);
@@ -425,9 +425,9 @@ bool DistModel::LoadProgram() {
 
 bool DistModel::LoadParameters() {
   VLOG(3) << "Loading parameters from " << config_.model_dir;
-  PADDLE_ENFORCE_NOT_NULL(
-      program_.get(),
-      phi::errors::PreconditionNotMet("The program should be loaded first."));
+  PADDLE_ENFORCE_NOT_NULL(program_.get(),
+                          common::errors::PreconditionNotMet(
+                              "The program should be loaded first."));
   const auto &global_block = program_->MutableBlock(0);
 
   // create a temporary program to load parameters.
@@ -605,7 +605,7 @@ bool DistModel::FetchResults(std::vector<DistModelTensor> *output_data,
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(idx),
         i,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Fetch op's col attr(%d) should be equal to the index(%d)",
             idx,
             i));

@@ -165,8 +165,8 @@ class OpConverter {
         break;
 
       default:
-        PADDLE_THROW(phi::errors::Unimplemented("No OpConverter for optype %s",
-                                                op_desc.Type()));
+        PADDLE_THROW(common::errors::Unimplemented(
+            "No OpConverter for optype %s", op_desc.Type()));
     }
 
     PADDLE_ENFORCE_NOT_NULL(

@@ -237,13 +237,13 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         num_classes = 20
         self.inputs = {
             'X': logit(
-                np.random.uniform(
-                    0, 1, tuple(batch_size + [num_classes])
-                ).astype("float64")
+                np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                    "float64"
+                )
             ),
-            'Label': np.random.uniform(
-                0, 1, tuple(batch_size + [num_classes])
-            ).astype("float64"),
+            'Label': np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                "float64"
+            ),
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -272,12 +272,12 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
         ignore_index = -1
         self.inputs = {
             'X': logit(
-                np.random.uniform(
-                    0, 1, tuple(batch_size + [num_classes])
-                ).astype("float64")
+                np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                    "float64"
+                )
             ),
             'Label': np.random.randint(
-                -1, 2, tuple(batch_size + [num_classes])
+                -1, 2, (*batch_size, num_classes)
             ).astype("float64"),
         }
         self.attrs = {'ignore_index': ignore_index, 'normalize': True}
@@ -311,13 +311,13 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         num_classes = 20
         self.inputs = {
             'X': logit(
-                np.random.uniform(
-                    0, 1, tuple(batch_size + [num_classes])
-                ).astype("float64")
+                np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                    "float64"
+                )
             ),
-            'Label': np.random.randint(
-                0, 2, tuple(batch_size + [num_classes])
-            ).astype("float64"),
+            'Label': np.random.randint(0, 2, (*batch_size, num_classes)).astype(
+                "float64"
+            ),
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by

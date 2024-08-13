@@ -21,11 +21,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Generator,
     Generic,
-    Iterable,
-    Iterator,
-    Sequence,
     Tuple,
     TypeVar,
 )
@@ -37,6 +33,8 @@ import paddle
 from ... import framework
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable, Iterator, Sequence
+
     from paddle import Tensor
 
 _T = TypeVar('_T')
@@ -102,8 +100,7 @@ class Dataset(Generic[_T]):
 
     if TYPE_CHECKING:
         # A virtual method for type checking only
-        def __iter__(self) -> Iterator[_T]:
-            ...
+        def __iter__(self) -> Iterator[_T]: ...
 
 
 class IterableDataset(Dataset[_T]):

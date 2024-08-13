@@ -158,7 +158,7 @@ class TestCooSoftmax(unittest.TestCase):
                     i2p[c] = len(i2p)
                 pool[i] = i2p[c]
 
-            mx = paddle.empty((pool.max() + 1,) + dense_size).numpy()
+            mx = paddle.empty((pool.max() + 1, *dense_size)).numpy()
             mx[:] = -inf
             np_values = values.numpy()
             for n in range(nnz):

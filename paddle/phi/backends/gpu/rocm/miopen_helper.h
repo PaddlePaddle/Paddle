@@ -105,7 +105,7 @@ inline miopenPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
       return miopenPoolingMax;
     default:
       PADDLE_THROW(
-          phi::errors::Unimplemented("Unexpected MIOPEN pooling mode."));
+          common::errors::Unimplemented("Unexpected MIOPEN pooling mode."));
   }
 }
 
@@ -125,7 +125,7 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
   } else if (str == "bandpass") {
     return ActivationMode::kBandPass;
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unknown MIOPEN activation string: %s.", str));
   }
 }
@@ -194,7 +194,7 @@ inline miopenTensorFormat_t GetCudnnTensorFormat(const DataLayout& order) {
     case DataLayout::kNDHWC:
       return MIOPEN_TENSOR_NHWC;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "MIOPEN has no equivalent dataLayout for input order."));
   }
   return MIOPEN_TENSOR_NCHW;
@@ -229,10 +229,10 @@ class ScopedTensorDescriptor {
     }
 
     // MIOPEN ONLY support data layout of NCHW
-    PADDLE_ENFORCE_EQ(
-        format,
-        MIOPEN_TENSOR_NCHW,
-        phi::errors::InvalidArgument("format should ONLY be NCHW in MIOPEN."));
+    PADDLE_ENFORCE_EQ(format,
+                      MIOPEN_TENSOR_NCHW,
+                      common::errors::InvalidArgument(
+                          "format should ONLY be NCHW in MIOPEN."));
     if (dims.size() == 4) {
       PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetTensorDescriptor(
           desc_,
@@ -437,7 +437,7 @@ class ScopedConvolutionDescriptor {
       const std::vector<int>& dilations) {
     PADDLE_ENFORCE_EQ(pads.size(),
                       strides.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of pads and strides should be equal. But "
                           "received size of pads is %d, size of strides is %d.",
                           pads.size(),
@@ -445,7 +445,7 @@ class ScopedConvolutionDescriptor {
     PADDLE_ENFORCE_EQ(
         pads.size(),
         dilations.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of pads and dilations should be equal. But received size "
             "of pads is %d, size of dilations is %d.",
             pads.size(),
@@ -490,7 +490,7 @@ class ScopedPoolingDescriptor {
                                               const std::vector<int>& strides) {
     PADDLE_ENFORCE_EQ(kernel.size(),
                       pads.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of kernel and pads should be equal. But "
                           "received size of kernel is %d, size of pads is %d.",
                           kernel.size(),
@@ -498,7 +498,7 @@ class ScopedPoolingDescriptor {
     PADDLE_ENFORCE_EQ(
         kernel.size(),
         strides.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of kernel and strides should be equal. But "
             "received size of kernel is %d, size of strides is %d.",
             kernel.size(),
@@ -557,7 +557,7 @@ class ScopedActivationDescriptor {
         mode = miopenActivationTANH;
         break;
       default:
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Unrecognized MIOPEN activation mode: %d.",
             static_cast<int>(activation_mode)));
     }

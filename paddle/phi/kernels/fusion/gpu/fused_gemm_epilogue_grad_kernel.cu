@@ -35,7 +35,7 @@ void FusedGemmEpilogueGradKernel(
     DenseTensor* y_grad,
     DenseTensor* bias_grad) {
 #if CUDA_VERSION < 11060
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "The fused_gemm_epilogue operator only support CUDA 11.6 "
       "or higher version."));
 #endif

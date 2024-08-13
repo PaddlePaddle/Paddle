@@ -309,8 +309,10 @@ def set_pir_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
                 # if a value is renamed by shadow_output,
                 # it will be used by other sub_programs
                 type_to_var_names[type].add(op.attrs()["output_name"])
-    # NOTE(lizhiyu): After finishing the gradient merge, enbale this checking.
-    # assert "backward" not in type_to_var_names.keys(), f"The backward sub_program can't have skip_gc_vars."
+
+    assert (
+        len(type_to_var_names["backward"]) == 0
+    ), "The backward sub_program can't have skip_gc_vars."
 
     for job in jobs:
         job_type = job.type()

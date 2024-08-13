@@ -36,6 +36,9 @@
 - enable_check_model_nan_inf
 - exponential_
 - eye
+# FIXME(dev): Remove flatten after deprecate flatten_contiguous_range in old IR system.
+# flatten is alias name of flatten_contiguous_range.
+- flatten
 - frobenius_norm
 - full
 - full_
@@ -72,6 +75,7 @@
 - read_file
 - repeat_interleave
 - repeat_interleave_with_tensor_index
+- reshape
 - rnn
 - sequence_mask
 - set_value_with_tensor

@@ -289,6 +289,16 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
     group = p2p_op_list[0].group
     if _warn_cur_rank_not_in_group(group):
         return
+
+    need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
+    naninf_checker = []
+    if need_check:
+        naninf_checker = [
+            paddle.isfinite(p2p_op.tensor).all()
+            for p2p_op in p2p_op_list
+            if p2p_op.op == _send_on_calc_stream
+        ]
+
     group = _get_global_group() if group is None else group
     backend = group.backend
     tasks = []
@@ -301,6 +311,13 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
             nranks = p2p_op.nranks
             rank_id = p2p_op.rank_id
             op(tensor, comm_group, peer, nranks, rank_id)
+
+    if need_check:
+        for idx, t in enumerate(naninf_checker):
+            if not t.item():
+                raise ValueError(
+                    f"Tensor at index {idx} contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                )
 
 
 def _batch_p2p_tuple_or_tensor(

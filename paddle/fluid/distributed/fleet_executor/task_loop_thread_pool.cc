@@ -32,11 +32,11 @@ void TaskLoopThreadPool::Start() {
   PADDLE_ENFORCE_EQ(
       start_,
       false,
-      phi::errors::PreconditionNotMet("thread pool is already start."));
+      common::errors::PreconditionNotMet("thread pool is already start."));
   PADDLE_ENFORCE_GT(
       thread_num_,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "thread num must greater than 0, but now is %d", thread_num_));
 
   start_ = true;
@@ -50,12 +50,12 @@ TaskLoop* TaskLoopThreadPool::GetLoop(int tid) {
   PADDLE_ENFORCE_EQ(
       start_,
       true,
-      phi::errors::PreconditionNotMet("thread pool must start first."));
+      common::errors::PreconditionNotMet("thread pool must start first."));
   PADDLE_ENFORCE_GE(
-      tid, 0, phi::errors::OutOfRange("tid must >= 0, but now is %d", tid));
+      tid, 0, common::errors::OutOfRange("tid must >= 0, but now is %d", tid));
   PADDLE_ENFORCE_LT(tid,
                     thread_num_,
-                    phi::errors::OutOfRange(
+                    common::errors::OutOfRange(
                         "tid must < thread_num, but now tid=%d thread_num=%d",
                         tid,
                         thread_num_));
@@ -66,7 +66,7 @@ std::vector<TaskLoop*> TaskLoopThreadPool::GetAllLoops() {
   PADDLE_ENFORCE_EQ(
       start_,
       true,
-      phi::errors::PreconditionNotMet("thread pool must start first."));
+      common::errors::PreconditionNotMet("thread pool must start first."));
   return loops_;
 }
 

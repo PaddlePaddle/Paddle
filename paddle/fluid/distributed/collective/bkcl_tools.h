@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/distributed/types.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace distributed {
@@ -69,13 +69,13 @@ class XPUEventManager {
     if (!is_created_) {
       CreateEvent(device_index);
     }
-    PADDLE_ENFORCE_EQ(
-        device_index,
-        device_index_,
-        phi::errors::PreconditionNotMet("XPUContext's device %d does not match"
-                                        "Event's device %d",
-                                        device_index,
-                                        device_index_));
+    PADDLE_ENFORCE_EQ(device_index,
+                      device_index_,
+                      common::errors::PreconditionNotMet(
+                          "XPUContext's device %d does not match"
+                          "Event's device %d",
+                          device_index,
+                          device_index_));
 
     phi::backends::xpu::XPUDeviceGuard guard(device_index_);
     // TODO(zhangxiaoci) temporary solution: xpu::event seems buggy

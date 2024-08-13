@@ -21,6 +21,7 @@ from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
 from .reshard_funcs.reshard_func_register import register_reshard_funcs
+from .utils import get_pp_stage_by_pp_degree
 
 register_reshard_funcs()
 
@@ -229,9 +230,23 @@ def apply_reshard_pass(dist_program):
                 op.erase()
 
 
-# pruning op and value not belong to cur rank
-def remove_other_rank_op_pass(dist_program):
+def _remove_other_rank_params_grads(dist_params_grads):
     cur_rank = paddle.distributed.get_rank()
+    need_remove_idx = []
+    for idx, (_, grad) in enumerate(dist_params_grads):
+        if grad is None:
+            continue
+        if cur_rank not in grad.dist_attr().process_mesh.process_ids:
+            need_remove_idx.append(idx)
+    for idx in need_remove_idx[::-1]:
+        dist_params_grads.pop(idx)
+
+
+# pruning op and value not belong to cur rank
+def remove_other_rank_op_pass(dist_program, dist_params_grads):
+    cur_rank = paddle.distributed.get_rank()
+
+    _remove_other_rank_params_grads(dist_params_grads)
     for op in dist_program.global_block().ops[::-1]:
         if op.name() in partition_skip_op_list:
             can_delete = True
@@ -392,10 +407,15 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     pass_name = pipeline_strategy.schedule_mode
     assert pass_name in [
         "FThenB",
+        "1F1B",
     ], f"pipeline scheduler only support FThenB now, but receive {pass_name}"
 
     pass_attr = {}
     pass_attr["num_micro_batches"] = pipeline_strategy.accumulate_steps
+    pass_attr["pp_degree"] = pipeline_strategy.pp_degree
+    pass_attr["pp_stage"] = get_pp_stage_by_pp_degree(
+        pipeline_strategy.pp_degree
+    )
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
