@@ -1033,7 +1033,8 @@ bool IndexSelectOpInferSymbolicShape(
                         index_shape,
                         index_shape.size()));
 
-  if (index_rank == 2) AddEqualCstr(index_shape[1], symbol::DimExpr{1});
+  if (index_rank == 2)
+    infer_context->AddEqualCstr(index_shape[1], symbol::DimExpr{1});
 
   if (dim < 0) {
     dim += input_rank;
