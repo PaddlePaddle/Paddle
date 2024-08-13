@@ -211,7 +211,7 @@ class TestGammaSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': (*paddle.squeeze(self._paddle_gamma.rate).shape,),
+                'expect': tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
             },
             {
                 'input': (3, 2),
@@ -232,7 +232,7 @@ class TestGammaSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': (*paddle.squeeze(self._paddle_gamma.rate).shape,),
+                'expect': tuple(paddle.squeeze(self._paddle_gamma.rate).shape),
             },
             {
                 'input': (3, 2),

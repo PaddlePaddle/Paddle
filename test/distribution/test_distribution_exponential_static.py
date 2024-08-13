@@ -230,7 +230,7 @@ class TestExponentialSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': (*np.squeeze(self.rate).shape,),
+                'expect': tuple(np.squeeze(self.rate).shape),
             },
             {
                 'input': (4, 2),
@@ -251,7 +251,7 @@ class TestExponentialSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': (*np.squeeze(self.rate).shape,),
+                'expect': tuple(np.squeeze(self.rate).shape),
             },
             {
                 'input': (3, 2),
