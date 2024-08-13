@@ -21,7 +21,7 @@ import paddle
 from paddle.base import core
 
 
-class TestFlattenConCatTRTPattern(PassTest):
+class TestFlattenTRTPattern(PassTest):
     def is_program_valid(self, program=None):
         return True
 
@@ -38,8 +38,7 @@ class TestFlattenConCatTRTPattern(PassTest):
                     flatten_out = flatten(
                         paddle.transpose(x, perm=[0, 3, 1, 2])
                     )
-                    out = paddle.concat([flatten_out], axis=1)
-                    out = paddle.assign(out)
+                    out = paddle.assign(flatten_out)
                     self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                     self.feeds = {
                         "x": np.random.random(x_shape).astype("float32"),
@@ -53,6 +52,7 @@ class TestFlattenConCatTRTPattern(PassTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
+        self.trt_expected_ops = {"pd_op.flatten"}
 
     def test_check_output(self):
         self.check_pass_correct()

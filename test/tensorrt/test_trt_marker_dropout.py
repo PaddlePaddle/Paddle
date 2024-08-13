@@ -49,6 +49,7 @@ class TestDropoutTRTPattern(PassTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
+        self.trt_expected_ops = {"pd_op.dropout"}
 
     def test_check_output(self):
         self.check_pass_correct()
