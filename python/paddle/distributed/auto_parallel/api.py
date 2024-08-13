@@ -2284,9 +2284,9 @@ class DistModel:
 
         if use_pir_api():
             scope = paddle.static.global_scope()
-            local_state_dict = self._engine._pir_dist_main_progs[
-                self._engine._mode
-            ].state_dict(mode, scope)
+            local_state_dict = self.dist_main_program(
+                mode=self._engine._mode
+            ).state_dict(mode, scope)
         else:
             local_state_dict = self.dist_main_program(
                 mode=self._engine._mode
@@ -2312,14 +2312,10 @@ class DistModel:
         Args:
             local_state_dict(Dict[str, libpaddle.Tensor]): The state dict from program.
         """
+        dist_main_program = self.dist_main_program(mode=self._engine._mode)
         if use_pir_api():
-            dist_main_program = self._engine._pir_dist_main_progs[
-                self._engine._mode
-            ]
             dist_attrs = get_dist_attr(dist_main_program)
-
         else:
-            dist_main_program = self.dist_main_program(mode=self._engine._mode)
             # Dict[var.name, Dict["process_shape": process_mesh.shape, "process_group": process_mesh.process_ids, "dims_mapping": dims_mapping]]
             dist_attrs = get_dist_attr(
                 dist_main_program, self._engine._dist_contexts[self._mode]
