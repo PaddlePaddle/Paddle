@@ -753,6 +753,7 @@ bool IsStaticShape(const Value& value) {
 static const char* kOpCallStack = "op_callstack";
 static const char* kSymShapeStr = "sym_shape_str";
 static const char* kResultName = "name";
+static const char* kStopGradient = "stop_gradient";
 
 InferSymbolicShapeCacheKey::InferSymbolicShapeCacheKey(
     const Operation& op,
@@ -771,7 +772,7 @@ InferSymbolicShapeCacheKey::InferSymbolicShapeCacheKey(
   attributes_.reserve(attributes.size());
   for (const auto& [attr_name, attr_value] : order_attributes) {
     if (!attr_value || attr_name == kOpCallStack || attr_name == kSymShapeStr ||
-        attr_name == kResultName)
+        attr_name == kStopGradient || attr_name == kResultName)
       continue;
     attributes_.emplace_back(attr_name, attr_value);
   }

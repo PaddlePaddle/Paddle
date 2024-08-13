@@ -28,7 +28,7 @@
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_without_stream.h"
 #include "paddle/fluid/distributed/collective/types.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #if defined(PADDLE_WITH_MPI)
 #include "paddle/fluid/distributed/collective/mpi_tools.h"

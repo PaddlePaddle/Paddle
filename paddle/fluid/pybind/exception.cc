@@ -46,33 +46,33 @@ void BindException(pybind11::module* m) {
       PyErr_SetString(PyExc_MemoryError, e.what());
     } catch (const platform::EnforceNotMet& e) {
       switch (e.code()) {
-        case phi::ErrorCode::INVALID_ARGUMENT:
+        case common::ErrorCode::INVALID_ARGUMENT:
           PyErr_SetString(PyExc_ValueError, e.what());
           break;
-        case phi::ErrorCode::NOT_FOUND:
-        case phi::ErrorCode::ALREADY_EXISTS:
-        case phi::ErrorCode::PRECONDITION_NOT_MET:
-        case phi::ErrorCode::PERMISSION_DENIED:
-        case phi::ErrorCode::EXECUTION_TIMEOUT:
-        case phi::ErrorCode::UNAVAILABLE:
+        case common::ErrorCode::NOT_FOUND:
+        case common::ErrorCode::ALREADY_EXISTS:
+        case common::ErrorCode::PRECONDITION_NOT_MET:
+        case common::ErrorCode::PERMISSION_DENIED:
+        case common::ErrorCode::EXECUTION_TIMEOUT:
+        case common::ErrorCode::UNAVAILABLE:
           PyErr_SetString(PyExc_RuntimeError, e.what());
           break;
-        case phi::ErrorCode::OUT_OF_RANGE:
+        case common::ErrorCode::OUT_OF_RANGE:
           PyErr_SetString(PyExc_IndexError, e.what());
           break;
-        case phi::ErrorCode::RESOURCE_EXHAUSTED:
+        case common::ErrorCode::RESOURCE_EXHAUSTED:
           PyErr_SetString(PyExc_MemoryError, e.what());
           break;
-        case phi::ErrorCode::UNIMPLEMENTED:
+        case common::ErrorCode::UNIMPLEMENTED:
           PyErr_SetString(PyExc_NotImplementedError, e.what());
           break;
-        case phi::ErrorCode::FATAL:
+        case common::ErrorCode::FATAL:
           PyErr_SetString(PyExc_SystemError, e.what());
           break;
-        case phi::ErrorCode::EXTERNAL:
+        case common::ErrorCode::EXTERNAL:
           PyErr_SetString(PyExc_OSError, e.what());
           break;
-        case phi::ErrorCode::INVALID_TYPE:
+        case common::ErrorCode::INVALID_TYPE:
           PyErr_SetString(PyExc_TypeError, e.what());
           break;
         default:
@@ -101,33 +101,33 @@ void ThrowExceptionToPython(std::exception_ptr p) {
     PyErr_SetString(PyExc_MemoryError, e.what());
   } catch (const platform::EnforceNotMet& e) {
     switch (e.code()) {
-      case phi::ErrorCode::INVALID_ARGUMENT:
+      case common::ErrorCode::INVALID_ARGUMENT:
         PyErr_SetString(PyExc_ValueError, e.what());
         break;
-      case phi::ErrorCode::NOT_FOUND:
-      case phi::ErrorCode::ALREADY_EXISTS:
-      case phi::ErrorCode::PRECONDITION_NOT_MET:
-      case phi::ErrorCode::PERMISSION_DENIED:
-      case phi::ErrorCode::EXECUTION_TIMEOUT:
-      case phi::ErrorCode::UNAVAILABLE:
+      case common::ErrorCode::NOT_FOUND:
+      case common::ErrorCode::ALREADY_EXISTS:
+      case common::ErrorCode::PRECONDITION_NOT_MET:
+      case common::ErrorCode::PERMISSION_DENIED:
+      case common::ErrorCode::EXECUTION_TIMEOUT:
+      case common::ErrorCode::UNAVAILABLE:
         PyErr_SetString(PyExc_RuntimeError, e.what());
         break;
-      case phi::ErrorCode::OUT_OF_RANGE:
+      case common::ErrorCode::OUT_OF_RANGE:
         PyErr_SetString(PyExc_IndexError, e.what());
         break;
-      case phi::ErrorCode::RESOURCE_EXHAUSTED:
+      case common::ErrorCode::RESOURCE_EXHAUSTED:
         PyErr_SetString(PyExc_MemoryError, e.what());
         break;
-      case phi::ErrorCode::UNIMPLEMENTED:
+      case common::ErrorCode::UNIMPLEMENTED:
         PyErr_SetString(PyExc_NotImplementedError, e.what());
         break;
-      case phi::ErrorCode::FATAL:
+      case common::ErrorCode::FATAL:
         PyErr_SetString(PyExc_SystemError, e.what());
         break;
-      case phi::ErrorCode::EXTERNAL:
+      case common::ErrorCode::EXTERNAL:
         PyErr_SetString(PyExc_OSError, e.what());
         break;
-      case phi::ErrorCode::INVALID_TYPE:
+      case common::ErrorCode::INVALID_TYPE:
         PyErr_SetString(PyExc_TypeError, e.what());
         break;
       default:

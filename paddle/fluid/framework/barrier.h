@@ -39,14 +39,14 @@ class Barrier {
     PADDLE_ENFORCE_GE(
         count,
         1UL,
-        phi::errors::InvalidArgument("The count of barrier must not be less "
-                                     "than 1. But received count = %d.",
-                                     count));
+        common::errors::InvalidArgument("The count of barrier must not be less "
+                                        "than 1. But received count = %d.",
+                                        count));
     int ret = pthread_barrier_init(&_barrier, NULL, count);
     PADDLE_ENFORCE_EQ(
         0UL,
         ret,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Fail to initialize the barrier with error code %d.", ret));
 #endif
   }
@@ -58,23 +58,23 @@ class Barrier {
   }
   void reset(int count) {
 #ifdef _LINUX
-    PADDLE_ENFORCE_GE(
-        count,
-        1UL,
-        phi::errors::InvalidArgument("The count of reset must not be less than "
-                                     "1. But received count = %d.",
-                                     count));
+    PADDLE_ENFORCE_GE(count,
+                      1UL,
+                      common::errors::InvalidArgument(
+                          "The count of reset must not be less than "
+                          "1. But received count = %d.",
+                          count));
     int ret = pthread_barrier_destroy(&_barrier);
     PADDLE_ENFORCE_EQ(
         0UL,
         ret,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Fail to destroy the barrier with error code %d.", ret));
     ret = pthread_barrier_init(&_barrier, NULL, count);
     PADDLE_ENFORCE_EQ(
         0UL,
         ret,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Fail to initialize the barrier with error code %d.", ret));
 #endif
   }
@@ -86,7 +86,7 @@ class Barrier {
     PADDLE_ENFORCE_EQ(
         true,
         (err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "pthread_barrier_wait failed. Expected err to be 0 or "
             "PTHREAD_BARRIER_SERIAL_THREAD, but got %d. This indicates a "
             "problem with the pthread barrier synchronization.",
@@ -121,7 +121,7 @@ class Semaphore {
     PADDLE_ENFORCE_EQ(
         0UL,
         ret,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Fail to initialize the semaphore with error code %d.", ret));
 #endif
   }
@@ -137,19 +137,19 @@ class Semaphore {
     PADDLE_ENFORCE_EQ(
         0UL,
         ret,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Fail to post the semaphore with error code %d.", ret));
 #endif
   }
   void wait() {
 #ifdef _LINUX
     int ret = ignore_signal_call(sem_wait, &_sem);
-    PADDLE_ENFORCE_EQ(
-        0UL,
-        ret,
-        phi::errors::InvalidArgument("Fail to ignore signal call to wait for "
-                                     "semaphore with error code %d.",
-                                     ret));
+    PADDLE_ENFORCE_EQ(0UL,
+                      ret,
+                      common::errors::InvalidArgument(
+                          "Fail to ignore signal call to wait for "
+                          "semaphore with error code %d.",
+                          ret));
 #endif
   }
   bool try_wait() {
@@ -158,7 +158,7 @@ class Semaphore {
     err = ignore_signal_call(sem_trywait, &_sem);
     PADDLE_ENFORCE_EQ(true,
                       (err == 0 || errno == EAGAIN),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Call to sem_trywait failed. Expected err to be 0 or "
                           "errno to be EAGAIN, but got err=%d and errno=%d. "
                           "This indicates a problem with semaphore operation.",

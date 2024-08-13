@@ -15,9 +15,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 TEST(Device, Init) {
   using phi::DeviceContext;

@@ -68,12 +68,12 @@ TEST(Forward, SingleNode) {
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta->OutRankInfo().first),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta->OutRankInfo().first) is not 0"));
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta->OutRankInfo().second),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta->OutRankInfo().second) is not 0"));
   }
 }
@@ -138,12 +138,12 @@ TEST(Forward, LinearNodes) {
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta0->OutRankInfo().first),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta0->OutRankInfo().first) is not 0"));
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta0->OutRankInfo().second),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta0->OutRankInfo().second) is not 0"));
 
     // Node 1
@@ -155,12 +155,12 @@ TEST(Forward, LinearNodes) {
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta1->OutRankInfo().first),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta1->OutRankInfo().first) is not 0"));
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta1->OutRankInfo().second),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta1->OutRankInfo().second) is not 0"));
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
@@ -173,18 +173,18 @@ TEST(Forward, LinearNodes) {
     PADDLE_ENFORCE_EQ(
         static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().first),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().first)"
             "is not 0"));
     PADDLE_ENFORCE_EQ(
         static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(node1_meta[0].GetEdge().GetEdgeRankInfo().second)"
             "is not 0"));
     PADDLE_ENFORCE_EQ(node1_meta[0].GetEdge().GetGradNode(),
                       grad_node0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "node1_meta[0].GetEdge().GetGradNode()"
                           "is not equal with grad_node0"
                           "the value of grad_node0 is %d"
@@ -264,12 +264,12 @@ TEST(Forward, BranchedNodes) {
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta0->OutRankInfo().first),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta0->OutRankInfo().first) is not 0"));
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta0->OutRankInfo().second),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta0->OutRankInfo().second) is not 0"));
 
     // Node 1
@@ -281,12 +281,12 @@ TEST(Forward, BranchedNodes) {
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta1->OutRankInfo().first),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta1->OutRankInfo().first) is not 0"));
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta1->OutRankInfo().second),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta1->OutRankInfo().second) is not 0"));
 
     // Node 2
@@ -298,12 +298,12 @@ TEST(Forward, BranchedNodes) {
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta2->OutRankInfo().first),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta2->OutRankInfo().first) is not 0"));
     PADDLE_ENFORCE_EQ(
         static_cast<int>(meta2->OutRankInfo().second),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(meta2->OutRankInfo().second) is not 0"));
 
     // 2. TensorWrapper: No TensorWrapper for ScaleNode
@@ -316,17 +316,17 @@ TEST(Forward, BranchedNodes) {
     PADDLE_ENFORCE_EQ(
         static_cast<int>(node1_edge.GetEdgeRankInfo().first),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(node1_edge.GetEdgeRankInfo().first) is not 0"));
     PADDLE_ENFORCE_EQ(
         static_cast<int>(node1_edge.GetEdgeRankInfo().second),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(node1_edge.GetEdgeRankInfo().second) is not 0"));
     PADDLE_ENFORCE_EQ(
         node1_edge.GetGradNode(),
         grad_node0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "node1_edge.GetGradNode() is not equal with grad_node0"
             "the value of node1_edge.GetGradNode() is %d and grad_node0 is %d",
             node1_edge.GetGradNode(),
@@ -341,17 +341,17 @@ TEST(Forward, BranchedNodes) {
     PADDLE_ENFORCE_EQ(
         static_cast<int>(node2_edge.GetEdgeRankInfo().first),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(node2_edge.GetEdgeRankInfo().first) is not 0"));
     PADDLE_ENFORCE_EQ(
         static_cast<int>(node2_edge.GetEdgeRankInfo().second),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "static_cast<int>(node2_edge.GetEdgeRankInfo().second) is not 0"));
     PADDLE_ENFORCE_EQ(
         node2_edge.GetGradNode(),
         grad_node0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "node2_edge.GetGradNode() is not equal with grad_node0"
             "the value of node2_edge.GetGradNode() is %d and grad_node0 is %d",
             node2_edge.GetGradNode(),

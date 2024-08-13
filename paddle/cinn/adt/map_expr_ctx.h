@@ -41,7 +41,12 @@ class MapExprCtx final {
       ::pir::Operation* node,
       const std::vector<ir::LoweredFunc>& lowered_funcs) {
     Node2LoweredFuncs* map = &node2lowered_funcs_;
-    CHECK(map->emplace(node, ir::ir_utils::IRCopy(lowered_funcs)).second);
+    PADDLE_ENFORCE_EQ(
+        map->emplace(node, ir::ir_utils::IRCopy(lowered_funcs)).second,
+        true,
+        ::common::errors::InvalidArgument(
+            "Failed to emplace the node in the map. Ensure that the node is "
+            "valid and the operation is correct."));
   }
 
   const Node2LoweredFuncs& node2lowered_funcs() const {

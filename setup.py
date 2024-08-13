@@ -1161,8 +1161,14 @@ def get_package_data_and_package_dir():
             + '/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
             libs_path,
         )
+        shutil.copy(
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h',
+            libs_path,
+        )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+        package_data['paddle.libs'] += ['cinn_hip_runtime_source.h']
 
         cinn_fp16_file = (
             env_dict.get("CINN_INCLUDE_DIR")
@@ -1392,15 +1398,18 @@ def get_package_data_and_package_dir():
         ext_modules = []
 
     # type hints
-    package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
-    package_data['paddle.framework'] = package_data.get(
-        'paddle.framework', []
-    ) + ['*.pyi']
-    package_data['paddle.base'] = package_data.get('paddle.base', []) + [
-        '*.pyi'
+    package_data['paddle'] = [*package_data.get('paddle', []), 'py.typed']
+    package_data['paddle.framework'] = [
+        *package_data.get('paddle.framework', []),
+        '*.pyi',
     ]
-    package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
-        'tensor.pyi'
+    package_data['paddle.base'] = [
+        *package_data.get('paddle.base', []),
+        '*.pyi',
+    ]
+    package_data['paddle.tensor'] = [
+        *package_data.get('paddle.tensor', []),
+        'tensor.pyi',
     ]
 
     return package_data, package_dir, ext_modules
@@ -1836,7 +1845,7 @@ def check_submodules():
         with open(git_submodules_path) as f:
             return [
                 os.path.join(TOP_DIR, line.split("=", 1)[1].strip())
-                for line in f.readlines()
+                for line in f
                 if line.strip().startswith("path")
             ]
 

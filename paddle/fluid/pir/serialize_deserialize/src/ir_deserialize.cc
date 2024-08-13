@@ -25,6 +25,17 @@ void ProgramReader::RecoverProgram(Json* program_json,
   VLOG(6) << "Finish json to program.";
   return;
 }
+
+pir::Type ProgramReader::RecoverType(Json* type_json) {
+  return ReadType(type_json);
+}
+
+pir::AttributeMap ProgramReader::RecoverOpAttributesMap(Json* attrs_json) {
+  Json empty_json = Json::array();
+  std::unordered_map<std::string, Json> attr_patch;
+  return ReadAttributesMap(attrs_json, &empty_json, attr_patch);
+}
+
 void ProgramReader::ReadProgram(Json* program_json, pir::Program* program) {
   auto top_level_op = program->module_op();
   PADDLE_ENFORCE_EQ(
@@ -136,6 +147,18 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
   attributes.insert({"parameter_name",
                      pir::StrAttribute::get(
                          ctx, attrs_json.at(3).template get<std::string>())});
+
+  if (op_json->contains(DIST_ATTRS)) {
+    Json& dist_attrs_json = op_json->at(DIST_ATTRS);
+    for (auto& attr_json : dist_attrs_json) {
+      auto attr_name = attr_json.at(NAME).template get<std::string>();
+      if (attr_json.contains(ATTR_TYPE)) {
+        attributes.insert({attr_name, ReadAttribute(&attr_json)});
+      } else {
+        VLOG(6) << "Attribute " << attr_name << " Deleted.";
+      }
+    }
+  }
 
   if (op_json->contains(OPRESULTS_ATTRS)) {
     Json& other_attrs_json = op_json->at(OPRESULTS_ATTRS);
@@ -297,7 +320,7 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(
 pir::Attribute ProgramReader::ReadAttribute(Json* attr_json) {
   VLOG(6) << "Begin Read Attribute. ";
   auto attr_type = attr_json->at(ATTR_TYPE).at(ID).template get<std::string>();
-  if (patch_builder->HasAttrPatch(attr_type)) {
+  if (patch_builder && patch_builder->HasAttrPatch(attr_type)) {
     VLOG(8) << attr_type << " brefore: " << *attr_json;
     Json attr_patch = patch_builder->GetJsonAttrPatch(attr_type);
     patch_builder->ApplyAttrTypePatches(
@@ -310,7 +333,7 @@ pir::Attribute ProgramReader::ReadAttribute(Json* attr_json) {
 pir::Type ProgramReader::ReadType(Json* type_json) {
   VLOG(6) << "Begin Read Type. ";
   auto type_name = type_json->at(ID).template get<std::string>();
-  if (patch_builder->HasOpPatch(type_name)) {
+  if (patch_builder && patch_builder->HasOpPatch(type_name)) {
     VLOG(8) << type_name << " brefore: " << *type_json;
     Json type_patch = patch_builder->GetJsonTypePatch(type_name);
     patch_builder->ApplyTypePatches(type_name, type_json, type_patch);

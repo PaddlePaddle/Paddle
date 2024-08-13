@@ -56,7 +56,8 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
         reinterpret_cast<XPUType *>(const_cast<T *>(x.data<T>())),
         {rows, cols},
         {1, cols});
-    PD_CHECK(r == 0, "baidu::xpu::api::broadcast_add failed.");
+    PADDLE_ENFORCE_EQ(
+        r, 0, common::errors::Fatal("baidu::xpu::api::broadcast_add failed."));
   }
   if (act_method == "geglu") {
     PD_THROW(
@@ -70,21 +71,24 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
         {rows, cols},
         1,
         true);
-    PD_CHECK(r == 0, "baidu::xpu::api::swiglu failed.");
+    PADDLE_ENFORCE_EQ(
+        r, 0, common::errors::Fatal("baidu::xpu::api::swiglu failed."));
   } else if (act_method == "gelu") {
     r = baidu::xpu::api::gelu<XPUType>(
         xpu_ctx->x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         reinterpret_cast<XPUType *>(out->data<T>()),
         rows * cols);
-    PD_CHECK(r == 0, "baidu::xpu::api::gelu failed.");
+    PADDLE_ENFORCE_EQ(
+        r, 0, common::errors::Fatal("baidu::xpu::api::gelu failed."));
   } else if (act_method == "relu") {
     r = baidu::xpu::api::relu<XPUType>(
         xpu_ctx->x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         reinterpret_cast<XPUType *>(out->data<T>()),
         rows * cols);
-    PD_CHECK(r == 0, "baidu::xpu::api::relu failed.");
+    PADDLE_ENFORCE_EQ(
+        r, 0, common::errors::Fatal("baidu::xpu::api::relu failed."));
   } else {
     PD_THROW(
         "NOT supported. "

@@ -62,7 +62,7 @@ void DistributedFusedLambKernel(const Context &dev_ctx,
                                 DenseTensor *acc_step,
                                 DenseTensor *stop_update,
                                 DenseTensor *step) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "The distributed_fused_lamb operator does not support CPU yet."));
 }
 

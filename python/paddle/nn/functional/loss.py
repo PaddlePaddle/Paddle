@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
@@ -34,6 +34,7 @@ from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Callable, TypeAlias
 
     from paddle import Tensor
@@ -2188,8 +2189,7 @@ def margin_cross_entropy(
     group=...,
     return_softmax: Literal[True] = ...,
     reduction: _ReduceMode | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -2203,8 +2203,7 @@ def margin_cross_entropy(
     group=...,
     return_softmax: Literal[False] = ...,
     reduction: _ReduceMode | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -2218,8 +2217,7 @@ def margin_cross_entropy(
     group=...,
     return_softmax: bool = ...,
     reduction: _ReduceMode | None = ...,
-) -> Tensor | tuple[Tensor, Tensor]:
-    ...
+) -> Tensor | tuple[Tensor, Tensor]: ...
 
 
 def margin_cross_entropy(
@@ -2531,8 +2529,7 @@ def softmax_with_cross_entropy(
     numeric_stable_mode: bool = ...,
     return_softmax: Literal[True] = ...,
     axis: int = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -2544,8 +2541,7 @@ def softmax_with_cross_entropy(
     numeric_stable_mode: bool = ...,
     return_softmax: Literal[False] = ...,
     axis: int = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 @overload
@@ -2557,8 +2553,7 @@ def softmax_with_cross_entropy(
     numeric_stable_mode: bool = ...,
     return_softmax: bool = ...,
     axis: int = ...,
-) -> Tensor | tuple[Tensor, Tensor]:
-    ...
+) -> Tensor | tuple[Tensor, Tensor]: ...
 
 
 @deprecated(
@@ -4551,7 +4546,7 @@ def adaptive_log_softmax_with_loss(
     output = paddle.zeros([batch_size], dtype=input.dtype)
     gather_inds = paddle.empty([batch_size], dtype=label.dtype)
 
-    cutoff_values = [0] + cutoffs
+    cutoff_values = [0, *cutoffs]
     for i in range(len(cutoff_values) - 1):
         low_idx = cutoff_values[i]
         high_idx = cutoff_values[i + 1]

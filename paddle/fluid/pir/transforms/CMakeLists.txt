@@ -23,7 +23,8 @@ set(transforms_deps
     standalone_executor
     pir
     pir_general_functions
-    device_event_base)
+    phi
+    common)
 
 if(WITH_CINN)
   set(transforms_deps ${transforms_deps} cinnapi)
