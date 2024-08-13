@@ -882,7 +882,7 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-bool PullGpuPsSparseOpInferSymbolicShape(
+bool PullGpupsSparseOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &ids_list_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
