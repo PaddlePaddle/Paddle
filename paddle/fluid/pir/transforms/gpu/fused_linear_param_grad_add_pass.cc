@@ -91,7 +91,7 @@ class FusedMatmulAddGradAddPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-// (full_int_array + sum + full_int_array + reshpe + assign) + matmul_grad +
+// (full_int_array + sum + full_int_array + reshape + assign) + matmul_grad +
 // add_ -> matmul + fused_liner_param_gard_add
 class FusedMatmulPrimAddGradAddPattern : public paddle::drr::DrrPatternBase {
  public:
@@ -509,6 +509,7 @@ class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
     ps.Add(paddle::drr::Create<FusedMatmulAddGradAddaPattern>(context));
     ps.Add(paddle::drr::Create<FusedMatmulAddGradAddbPattern>(context));
     ps.Add(paddle::drr::Create<FusedMatmulReshapeMatmulAddPattern>(context));
+    ps.Add(paddle::drr::Create<FusedMatmulPrimAddGradAddPattern>(context));
 
     return ps;
   }
