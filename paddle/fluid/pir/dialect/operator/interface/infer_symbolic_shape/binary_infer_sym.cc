@@ -1023,14 +1023,15 @@ bool IndexSelectOpInferSymbolicShape(
           input_rank - 1,
           dim));
 
-  PADDLE_ENFORCE_EQ(index_rank == 1 || index_rank == 2), true,
-      common::errors::InvalidArgument(
-          "The 'shape' of Input(Index) must be 1-D tensor or 2-D "
-          "tensor where second dimension is 1. "
-          "But received: the 'shape' of Input(Index) is [%s], "
-          "the dimension of Input(Index) is [%d].",
-          index_shape,
-          index_shape.size());
+  PADDLE_ENFORCE_EQ(index_rank == 1 || index_rank == 2,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The 'shape' of Input(Index) must be 1-D tensor or 2-D "
+                        "tensor where second dimension is 1. "
+                        "But received: the 'shape' of Input(Index) is [%s], "
+                        "the dimension of Input(Index) is [%d].",
+                        index_shape,
+                        index_shape.size()));
 
   if (index_rank == 2) AddEqualCstr(index_shape[1], symbol::DimExpr{1});
 
