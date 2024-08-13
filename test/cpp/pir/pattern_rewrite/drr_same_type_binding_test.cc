@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/common/errors.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
