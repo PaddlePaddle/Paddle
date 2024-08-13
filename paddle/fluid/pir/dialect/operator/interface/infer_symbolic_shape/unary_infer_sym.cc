@@ -1542,26 +1542,6 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool SetValueOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &input_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  PADDLE_ENFORCE_LT(
-      input_shape_or_data.shape().size(),
-      7,
-      phi::errors::InvalidArgument(
-          "Input(x) of SetValueOp must have rank less than 7, but received %d.",
-          input_shape_or_data.shape().size()));
-  infer_context->SetShapeOrDataForValue(op->result(0), input_shape_or_data);
-
-  return true;
-}
-
-bool SetValue_OpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return SetValueOpInferSymbolicShape(op, infer_context);
-}
-
 bool RreluOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   float lower = op->attribute<pir::FloatAttribute>("lower").data();
