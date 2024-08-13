@@ -1827,12 +1827,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 if grad.name != grad_var_name(self.table_name)
             ]
             self.table_param_grad = next(
-                (
-                    param_grad
-                    for param_grad in params_grads
-                    if param_grad[0].name == self.table_name
-                ),
-                None,  # Default value if no matching param_grad is found
+                param_grad
+                for param_grad in params_grads
+                if param_grad[0].name == self.table_name
             )
             table_grad_var = self.table_param_grad[1]
             if self.sync_mode:
@@ -2136,13 +2133,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # create table param and grad var in pserver program
         # create table optimize block in pserver program
         table_opt_op = next(
-            (
-                op
-                for op in self.optimize_ops
-                if 'Param' in op.input_names
-                and op.input("Param")[0] == self.table_name
-            ),
-            None,
+            op
+            for op in self.optimize_ops
+            if 'Param' in op.input_names
+            and op.input("Param")[0] == self.table_name
         )
 
         origin_param_var = self.origin_program.global_block().vars[
