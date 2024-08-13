@@ -2881,7 +2881,7 @@ def tensor_split(
 
         starts = 0
         ends = 0
-        for idx in list(indices) + [total_n]:
+        for idx in [*list(indices), total_n]:
             ends = idx
             # convert index < 0 to positive
             starts_index = starts if starts >= 0 else total_n + starts

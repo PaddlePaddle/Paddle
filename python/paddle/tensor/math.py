@@ -2310,9 +2310,9 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
-            x_shape = [1] + x_shape
+            x_shape = [1, *x_shape]
         if len(y_shape) == 1:
-            y_shape = y_shape + [1]
+            y_shape = [*y_shape, 1]
 
         # check the inner 2 dimensions
         if x_shape[-1] != y_shape[-2]:
