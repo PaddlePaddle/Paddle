@@ -25,6 +25,11 @@ from paddle.base.core import TracerEventType, _RecordEvent
 
 if TYPE_CHECKING:
     import types
+    from typing import Generator
+
+    from typing_extensions import Self
+
+    from paddle.nn.layer import Layer
 
 _is_profiler_used = False
 _has_optimizer_wrapped = False
@@ -78,12 +83,12 @@ class RecordEvent(ContextDecorator):
         self,
         name: str,
         event_type: TracerEventType = TracerEventType.PythonUserDefined,
-    ):
+    ) -> None:
         self.name = name
         self.event_type = event_type
         self.event = None
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         self.begin()
         return self
 
@@ -92,10 +97,10 @@ class RecordEvent(ContextDecorator):
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: types.TracebackType | None,
-    ):
+    ) -> None:
         self.end()
 
-    def begin(self):
+    def begin(self) -> None:
         r"""
         Record the time of beginning.
 
@@ -127,7 +132,7 @@ class RecordEvent(ContextDecorator):
         else:
             self.event = _RecordEvent(self.name, self.event_type)
 
-    def end(self):
+    def end(self) -> None:
         r"""
         Record the time of ending.
 
@@ -150,7 +155,7 @@ class RecordEvent(ContextDecorator):
             self.event.end()
 
 
-def load_profiler_result(filename: str):
+def load_profiler_result(filename: str) -> core.ProfilerResult:
     r"""
     Load dumped profiler data back to memory.
 
@@ -179,11 +184,11 @@ def load_profiler_result(filename: str):
     return core.load_profiler_result(filename)
 
 
-def in_profiler_mode():
+def in_profiler_mode() -> bool:
     return _is_profiler_used
 
 
-def wrap_optimizers():
+def wrap_optimizers() -> None:
     def optimizer_wrapper(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -244,7 +249,9 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
 
 
 @contextmanager
-def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
+def job_schedule_profiler_range(
+    iter_id: int, start: int, end: int, exit_after_prof: bool = True
+) -> Generator[bool, None, None]:
     if start >= end:
         yield False
         return
@@ -261,8 +268,12 @@ def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
 
 
 def switch_job_schedule_profiler(
-    model, iter_id, start, end, exit_after_prof=True
-):
+    model: Layer,
+    iter_id: int,
+    start: int,
+    end: int,
+    exit_after_prof: bool = True,
+) -> None:
     with job_schedule_profiler_range(
         iter_id, start, end, exit_after_prof
     ) as status:

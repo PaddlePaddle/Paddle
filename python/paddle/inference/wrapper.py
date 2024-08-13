@@ -43,7 +43,7 @@ Tensor = PaddleInferTensor
 Predictor = PaddleInferPredictor
 
 
-def tensor_copy_from_cpu(self, data):
+def tensor_copy_from_cpu(self, data: np.ndarray) -> None:
     '''
     Support input type check based on tensor.copy_from_cpu.
     '''
@@ -57,7 +57,9 @@ def tensor_copy_from_cpu(self, data):
         )
 
 
-def tensor_share_external_data(self, data):
+def tensor_share_external_data(
+    self, data: core.LoDTensor | paddle.base.framework.Variable
+) -> None:
     '''
     Support input type check based on tensor.share_external_data.
     '''
@@ -87,7 +89,7 @@ def convert_to_mixed_precision(
     keep_io_types: bool = True,
     black_list: set[str] = set(),
     **kwargs,
-):
+) -> None:
     '''
     Convert a fp32 model to mixed precision model.
 
