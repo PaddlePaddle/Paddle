@@ -52,9 +52,11 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.upper_1 = 0.33
 
         self.places = [
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
+            (
+                base.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else base.CPUPlace()
+            )
         ]
 
     @test_with_pir_api

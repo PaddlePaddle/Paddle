@@ -44,8 +44,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/heter_util.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/dynload/nccl.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/enforce_xpu.h"

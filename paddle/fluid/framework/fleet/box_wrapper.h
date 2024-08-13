@@ -42,9 +42,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/utils/string/string_helper.h"
 #define BUF_SIZE 1024 * 1024
 

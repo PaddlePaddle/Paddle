@@ -47,7 +47,7 @@ FindUselessOpPattern::FindUselessOpPattern(PDPattern* pattern,
             for (auto* op : x->inputs) {
               PADDLE_ENFORCE_EQ(op->IsOp(),
                                 true,
-                                phi::errors::InvalidArgument(
+                                common::errors::InvalidArgument(
                                     "op->IsOp() is False, which means that "
                                     "%p may be an invalid option.",
                                     op));
@@ -122,7 +122,7 @@ FindTwoCastOpPattern::FindTwoCastOpPattern(PDPattern* pattern,
             for (auto* op : x->inputs) {
               PADDLE_ENFORCE_EQ(op->IsOp(),
                                 true,
-                                phi::errors::InvalidArgument(
+                                common::errors::InvalidArgument(
                                     "op->IsOp() is False, which means that "
                                     "%p may be an invalid option.",
                                     op));
@@ -166,20 +166,20 @@ int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
         PADDLE_ENFORCE_EQ(
             useless_op_in->IsVar(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "useless_op_in->IsVar() is False, which means that "
                 "the input of the option %p is not a valid variable.",
                 useless_op));
         PADDLE_ENFORCE_EQ(
             useless_op_out->IsVar(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "useless_op_out->IsVar() is False, which means that "
                 "the output of the option %p is not a valid variable.",
                 useless_op));
         PADDLE_ENFORCE_EQ(useless_op->IsOp(),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "op->IsOp() is False, which means that "
                               "%p may be an invalid option.",
                               useless_op));
@@ -187,7 +187,7 @@ int IdentityOpCleanPass::CleanUselessOp(ir::Graph* graph) const {
         for (auto* prev_op : useless_op_in->inputs) {
           PADDLE_ENFORCE_EQ(prev_op->IsOp(),
                             true,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "prev_op->IsOp() is False, which means that "
                                 "%p may be an invalid option.",
                                 prev_op));
@@ -219,32 +219,32 @@ int IdentityOpCleanPass::CleanTwoCastOp(ir::Graph* graph) const {
         PADDLE_ENFORCE_EQ(
             pre_op_out->IsVar(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "pre_op_out->IsVar() is False, which means that "
                 "the output of the option is not a valid variable."));
         PADDLE_ENFORCE_EQ(
             cast_op_1_out->IsVar(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "cast_op_1_out->IsVar() is False, which means that "
                 "the output of the option %p is not a valid variable.",
                 cast_op_1));
         PADDLE_ENFORCE_EQ(
             cast_op_2_out->IsVar(),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "cast_op_2_out->IsVar() is False, which means that "
                 "the output of the option %p is not a valid variable.",
                 cast_op_2));
         PADDLE_ENFORCE_EQ(cast_op_1->IsOp(),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "cast_op_1->IsOp() is False, which means that "
                               "%p may be an invalid option.",
                               cast_op_1));
         PADDLE_ENFORCE_EQ(cast_op_2->IsOp(),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "cast_op_2->IsOp() is False, which means that "
                               "%p may be an invalid option.",
                               cast_op_2));
@@ -253,7 +253,7 @@ int IdentityOpCleanPass::CleanTwoCastOp(ir::Graph* graph) const {
           for (auto* prev_op : pre_op_out->inputs) {
             PADDLE_ENFORCE_EQ(prev_op->IsOp(),
                               true,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "prev_op->IsOp() is False, which means that "
                                   "%p may be an invalid option.",
                                   prev_op));

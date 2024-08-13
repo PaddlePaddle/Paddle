@@ -125,11 +125,11 @@ class Pool2dOpConverter : public OpConverter {
     }
 
     if (op_desc.HasAttr("enable_int8")) {
-      PADDLE_ENFORCE_EQ(
-          op_desc.HasAttr("Input_scale"),
-          true,
-          phi::errors::InvalidArgument("Expected attribute 'Input_scale' to be "
-                                       "present when 'enable_int8' is set."));
+      PADDLE_ENFORCE_EQ(op_desc.HasAttr("Input_scale"),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Expected attribute 'Input_scale' to be "
+                            "present when 'enable_int8' is set."));
 
       float input_scale =
           PADDLE_GET_CONST(float, op_desc.GetAttr("Input_scale"));

@@ -76,16 +76,16 @@ class ConvBNLayer(nn.Layer):
             num_filters,
             param_attr=ParamAttr(
                 learning_rate=lr_mult,
-                regularizer=None
-                if bn_weight_decay
-                else paddle.regularizer.L2Decay(0.0),
+                regularizer=(
+                    None if bn_weight_decay else paddle.regularizer.L2Decay(0.0)
+                ),
                 initializer=Constant(1.0),
             ),
             bias_attr=ParamAttr(
                 learning_rate=lr_mult,
-                regularizer=None
-                if bn_weight_decay
-                else paddle.regularizer.L2Decay(0.0),
+                regularizer=(
+                    None if bn_weight_decay else paddle.regularizer.L2Decay(0.0)
+                ),
                 initializer=Constant(0.0),
             ),
             data_layout=data_format,

@@ -227,9 +227,9 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
 
                 if i == batch_num - 1:
                     for k in range(3, len(out)):
-                        static_param_updated[
-                            static_param_name_list[k - 3]
-                        ] = out[k]
+                        static_param_updated[static_param_name_list[k - 3]] = (
+                            out[k]
+                        )
 
         np.testing.assert_array_equal(static_loss_value, dy_loss_value)
         np.testing.assert_array_equal(

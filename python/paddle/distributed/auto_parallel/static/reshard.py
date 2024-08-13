@@ -14,12 +14,13 @@
 
 
 import copy
+import operator
 from collections import OrderedDict
 from functools import reduce
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
+from paddle.distributed.utils.stream_utils import ExecutionStreamType
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
 
@@ -701,7 +702,7 @@ class Inserter:
         )
         allgather_op._set_attr('op_namescope', "/auto_parallel/reshard")
         allgather_op.dist_attr.execution_stream = (
-            AutoParallelStreamType.CALC_STREAM.value
+            ExecutionStreamType.DefaultStream.value
         )
         idx_offset += 1
 
@@ -976,7 +977,9 @@ class Remover:
         )
         # 'feed_var_names' cannot be removed from auto_parallel_main_prog
         feed_var_names = []
-        for var in sum(list(dist_context.serial_feed_vars.values()), []):
+        for var in reduce(
+            operator.iadd, list(dist_context.serial_feed_vars.values()), []
+        ):
             feed_var_names.append(var.name)
         Remover.remove_no_need_vars(
             auto_parallel_main_prog, dist_params_grads, feed_var_names
@@ -1508,7 +1511,7 @@ class Resharder:
         if is_union_process_mesh_tensor:
             assert (
                 len(set(source_dims_mapping)) == 1
-                and list(set(source_dims_mapping))[0] == -1
+                and next(iter(set(source_dims_mapping))) == -1
             )
             if set(target_process_group).intersection(
                 set(source_process_group)

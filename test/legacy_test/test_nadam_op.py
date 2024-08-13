@@ -52,9 +52,7 @@ def nadam_step(inputs, attributes, dtype='float32'):
     mu_t = beta1 * (1.0 - 0.5 * (momentum_decay_pow**momentum_decay))
     mu_t_1 = beta1 * (
         1.0
-        - 0.5
-        * (momentum_decay_pow**momentum_decay)
-        * (0.96**momentum_decay)
+        - 0.5 * (momentum_decay_pow**momentum_decay) * (0.96**momentum_decay)
     )
 
     mu_product *= mu_t
@@ -137,9 +135,7 @@ class TestNAdamOp(OpTest):
         self._init_param()
 
         # accumulators
-        momentum_decay_pow = (np.ones((102, 105)) * (0.96**3)).astype(
-            "float32"
-        )
+        momentum_decay_pow = (np.ones((102, 105)) * (0.96**3)).astype("float32")
         # use beta1 to fake mu_product
         mu_product = (np.ones((102, 105)) * (self.beta1**3)).astype("float32")
         beta2_pow = (np.ones((102, 105)) * (self.beta2**3)).astype("float32")

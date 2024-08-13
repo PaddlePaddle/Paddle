@@ -1041,10 +1041,7 @@ class OpInfoParser:
             return None
 
     def parse_data_transform_info(self):
-        if (
-            'data_transform' in self.op_yaml_item
-            and self.op_yaml_item['data_transform']
-        ):
+        if self.op_yaml_item.get('data_transform'):
             data_trans_item = self.op_yaml_item['data_transform']
             return data_trans_item
         return None
@@ -1390,7 +1387,7 @@ def AutoCodeGen(
                     and dialect_name != "onednn_op"
                 ):
                     if decomp_interface_str not in op_interfaces:
-                        op_interfaces = op_interfaces + [decomp_interface_str]
+                        op_interfaces = [*op_interfaces, decomp_interface_str]
                     if (
                         decomp_interface_declare_str
                         not in exclusive_interface_str
@@ -1403,8 +1400,9 @@ def AutoCodeGen(
                     and dialect_name != "onednn_op"
                 ):
                     if decomp_vjp_interface_str not in op_interfaces:
-                        op_interfaces = op_interfaces + [
-                            decomp_vjp_interface_str
+                        op_interfaces = [
+                            *op_interfaces,
+                            decomp_vjp_interface_str,
                         ]
                     if (
                         decomp_vjp_interface_declare_str
@@ -1775,10 +1773,7 @@ def AutoCodeGen(
                 if op_kernel_map is not None:
                     kernel_func_str = kernel_func_name
                     kernel_param_str = '", "'.join(op_kernel_map['param'])
-                    if (
-                        'data_type' in op_kernel_map
-                        and op_kernel_map['data_type']
-                    ):
+                    if op_kernel_map.get('data_type'):
                         for idx in range(
                             len(op_kernel_map['data_type']['candidates'])
                         ):
@@ -1804,7 +1799,7 @@ def AutoCodeGen(
                                 )
                         if kernel_key_dtype != "":
                             kernel_key_dtype = '"' + kernel_key_dtype[:-3]
-                    if 'backend' in op_kernel_map and op_kernel_map['backend']:
+                    if op_kernel_map.get('backend'):
                         kernel_key_backend = '", "'.join(
                             op_kernel_map['backend']['candidates']
                         )
@@ -2219,7 +2214,7 @@ def OpGenerator(
             if dialect_name == "onednn_op":
                 if first_file:
                     op["is_onednn_only"] = True
-                    onednn_only_op_list.append("\"" + op['name'] + "\"")
+                    onednn_only_op_list.append('"' + op['name'] + '"')
                     if op['name'] in ops_onednn_extra_map:
                         onednn_item = ops_onednn_extra_map[op['name']]
                         op["is_onednn_only"] = onednn_item["is_onednn_only"]
@@ -2416,7 +2411,7 @@ def OpGenerator(
 
         if dialect_name == "onednn_op":
             op_def_h_file_tmp = (
-                "paddle/fluid/pir/dialect/operator/ir/pd_op.h\"\n#include \""
+                'paddle/fluid/pir/dialect/operator/ir/pd_op.h"\n#include "'
                 + op_def_h_file
             )
         else:

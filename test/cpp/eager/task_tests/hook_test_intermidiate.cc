@@ -121,7 +121,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
         std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
             ->data<float>()[i],
         static_cast<float>(100.0f),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required tensor.impl()->data[%d] should be equal to 100.0 . ", i));
   }
   VLOG(6) << "After Tests";
@@ -186,7 +186,7 @@ void test_elementwiseAdd(bool is_remove_gradient_hook) {
     PADDLE_ENFORCE_EQ(
         std::dynamic_pointer_cast<phi::DenseTensor>(Y.impl())->data<float>()[i],
         static_cast<float>(100.0f),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required Y.impl()->data[%d] should be equal to 100.0 . ", i));
   }
 }
@@ -251,7 +251,7 @@ void test_matmul(bool is_remove_gradient_hook) {
     PADDLE_ENFORCE_EQ(
         std::dynamic_pointer_cast<phi::DenseTensor>(Y.impl())->data<float>()[i],
         static_cast<float>(100.0f),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required Y.impl()->data[%d] should be equal to 100.0 . ", i));
   }
 }

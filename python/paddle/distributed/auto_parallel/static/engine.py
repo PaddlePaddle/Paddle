@@ -30,6 +30,10 @@ from paddle import static, utils
 from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
 from paddle.distributed.passes.pass_base import new_pass
+from paddle.distributed.passes.pass_utils import (
+    _split_program_into_forward_backward_optimize,
+    set_pir_skip_gc_vars,
+)
 from paddle.framework import (
     IrGraph,
     _current_expected_place_ as _get_device,
@@ -283,7 +287,7 @@ class Engine:
         self._dygraph_mode = False
         self._tuning = self._strategy.tuning
         self._acc_steps = 1
-        self._pipeline_plan = None
+        self._job_plan = None
         self._in_pir_mode = paddle.base.framework.get_flags(
             "FLAGS_enable_pir_api"
         )["FLAGS_enable_pir_api"]
@@ -821,8 +825,13 @@ class Engine:
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        apply_reshard_pass(dist_program)
+        gradient_sync_after_accumulate = (
+            self._strategy.dp_optimization.gradient_sync_after_accumulate
+        )
+        if gradient_sync_after_accumulate:
+            global_params_grads = params_grads
 
+        apply_reshard_pass(dist_program, params_grads)
         # print('after reshard', dist_program, flush=1)
 
         remove_other_rank_input_output_pass(dist_program)
@@ -836,11 +845,6 @@ class Engine:
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
-        gradient_sync_after_accumulate = (
-            self._strategy.dp_optimization.gradient_sync_after_accumulate
-        )
-        if gradient_sync_after_accumulate:
-            global_params_grads = params_grads
 
         # TODO(xxxx) Step 4.1 DP Optimization Pass
         if self._strategy.dp_optimization.enable:
@@ -857,11 +861,18 @@ class Engine:
             # dist_program = apply_sharding_optimization_pass(dist_program)
             pass
 
+        if mode == "train" and self._strategy.pipeline.enable:
+            self._strategy.gradient_merge.enable = True
+            self._strategy.gradient_merge.k_steps = (
+                self._strategy.pipeline.accumulate_steps
+            )
+            self._strategy.gradient_merge.avg = True
+
         if mode == "train" and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
-            config[
-                "gradient_sync_after_accumulate"
-            ] = gradient_sync_after_accumulate
+            config["gradient_sync_after_accumulate"] = (
+                gradient_sync_after_accumulate
+            )
             config["params_grads"] = (
                 global_params_grads
                 if gradient_sync_after_accumulate
@@ -882,9 +893,38 @@ class Engine:
         remove_unuseful_comm_op_pass(dense_program)
 
         if self._strategy.pipeline.enable:
-            self._pipeline_plan = pipeline_pass(
+            self._job_plan = pipeline_pass(
                 [dense_program], [dense_program], self._strategy.pipeline
             )
+        elif mode == "train" and self._strategy.gradient_merge.enable:
+            sub_programs = _split_program_into_forward_backward_optimize(
+                dense_program
+            )
+            job_types = ["forward", "backward", "optimize"]
+
+            # If gradient_merge is enabled, we need to multiply the job list by k_steps.
+            # When k_steps is 2, the jobs will be [forward, backward, forward, backward, optimize].
+            jobs = []
+            for i in range(self._strategy.gradient_merge.k_steps):
+                forward_job = core.Job("forward")
+                forward_job.set_micro_batch_id(i)
+                jobs.append(forward_job)
+
+                backward_job = core.Job("backward")
+                backward_job.set_micro_batch_id(i)
+                jobs.append(backward_job)
+
+            opt_job = core.Job("optimize")
+            opt_job.set_micro_batch_id(0)
+            jobs.append(opt_job)
+
+            type_to_program = set_pir_skip_gc_vars(
+                self._strategy.gradient_merge.k_steps,
+                job_types,
+                sub_programs,
+                jobs,
+            )
+            self._job_plan = core.Plan(jobs, type_to_program)
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
@@ -1091,9 +1131,7 @@ class Engine:
             self._json_config,
         )
         self._dist_contexts[mode].gradient_scale = self._strategy.gradient_scale
-        self._dist_contexts[
-            mode
-        ].gradient_scale_using_allreduce_avg = (
+        self._dist_contexts[mode].gradient_scale_using_allreduce_avg = (
             self._strategy.gradient_scale_using_allreduce_avg
         )
         self._fwd_main_progs[mode] = serial_main_prog.clone()
@@ -1126,9 +1164,9 @@ class Engine:
 
         if self._tuning.run_after_tuning:
             # update the strategy
-            self._dist_contexts[
-                mode
-            ]._strategy = self._optimization_tuner.get_best_config()
+            self._dist_contexts[mode]._strategy = (
+                self._optimization_tuner.get_best_config()
+            )
 
     def _plan(self, mode):
         if self._planned_mode is None:
@@ -1306,11 +1344,11 @@ class Engine:
                 for del_op in del_ops:
                     del_op.erase()
                 self._executor.run(startup_prog)
-                if self._pipeline_plan is not None:
+                if self._job_plan is not None:
                     # pipeline scheduling should be enabled after running
                     # startup program, otherwise the startup program cannot
                     # run correctly.
-                    self._executor._set_plan(self._pipeline_plan)
+                    self._executor._set_plan(self._job_plan)
             return
 
         if self._strategy.seed:
@@ -1769,9 +1807,9 @@ class Engine:
         test_data: Dataset,
         test_sample_split: int | None = None,
         batch_size: int = 1,
-        steps: int = None,
+        steps: int | None = None,
         collate_fn: _CollateFn | None = None,
-        callbacks: Sequence[Callback] = None,
+        callbacks: Sequence[Callback] | None = None,
         verbose: int = 2,
     ) -> list[Any]:
         """
@@ -1897,7 +1935,7 @@ class Engine:
         use_buffer_reader: bool = True,
         use_shared_memory: bool = True,
         timeout: int = 0,
-        worker_init_fn: Callable[[int], None] = None,
+        worker_init_fn: Callable[[int], None] | None = None,
         epochs: int = 1,
         steps_per_epoch: int | None = None,
         sample_split: int = 1,
@@ -2060,7 +2098,7 @@ class Engine:
         if self._in_pir_mode:
             use_cache = False
             no_fetch = False  # not last rank should not fetch loss in pipeline parallel
-            if self._pipeline_plan is None:
+            if self._job_plan is None:
                 program_for_executor = self.main_program
             else:
                 # NOTE: If pipeline scheduling is enabled, The program_for_executor
@@ -2068,7 +2106,7 @@ class Engine:
                 # not the program to be executed. The ``plan`` object is already
                 # constructed, and the programs to be executed are  stored in the
                 # ``plan`` object.
-                program_for_executor = self._pipeline_plan.ir_program("forward")
+                program_for_executor = self._job_plan.ir_program("forward")
 
             loss_value = program_for_executor.get_output_value_by_name(
                 self._loss_names[0]

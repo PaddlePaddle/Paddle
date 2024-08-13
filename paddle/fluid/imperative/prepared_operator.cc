@@ -30,10 +30,10 @@
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(benchmark);
@@ -519,10 +519,10 @@ static void PreparedOpRunImpl(
   // TODO(zjl): remove scope in dygraph
 
   {
-    platform::RecordEvent record_event("infer_shape",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       phi::EventRole::kInnerOp);
+    phi::RecordEvent record_event("infer_shape",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
                                                       &outs,
                                                       &attrs,
@@ -538,10 +538,10 @@ static void PreparedOpRunImpl(
   }
 
   {
-    platform::RecordEvent record_event("compute",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       phi::EventRole::kInnerOp);
+    phi::RecordEvent record_event("compute",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
 
     func(DygraphExecutionContext<VarType>(
         op, empty_scope, *dev_ctx, ctx, ins, outs, attrs, default_attrs));
@@ -592,10 +592,10 @@ static void PreparedOpRunPtImpl(
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs) {
   {
-    platform::RecordEvent record_event("infer_shape",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       phi::EventRole::kInnerOp);
+    phi::RecordEvent record_event("infer_shape",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
                                                       &outs,
                                                       &attrs,
@@ -611,10 +611,10 @@ static void PreparedOpRunPtImpl(
   }
 
   {
-    platform::RecordEvent record_event("compute",
-                                       platform::TracerEventType::OperatorInner,
-                                       1,
-                                       phi::EventRole::kInnerOp);
+    phi::RecordEvent record_event("compute",
+                                  platform::TracerEventType::OperatorInner,
+                                  1,
+                                  phi::EventRole::kInnerOp);
 
     if (phi_kernel.GetKernelRegisteredType() ==
         phi::KernelRegisteredType::FUNCTION) {

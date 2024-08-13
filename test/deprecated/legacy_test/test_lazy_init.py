@@ -150,7 +150,7 @@ class TestNestModelLazy(TestInitializerBase):
         self.assertEqual(whole_program.block(0).var("weight").shape, (10, 10))
         self.assertEqual(whole_program.block(0).var("bias").shape, (10,))
         ops = [op.type for op in whole_program.block(0).ops]
-        init_ops = self.init_ops + ['uniform_random', 'fill_constant']
+        init_ops = [*self.init_ops, 'uniform_random', 'fill_constant']
         self.assertEqual(ops, init_ops)
 
         # verify base_model startup_program

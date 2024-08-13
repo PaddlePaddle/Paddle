@@ -78,7 +78,7 @@ class GradClipDecorator(ClipGradBase):
         self.clip_after_allreduce = clip_after_allreduce
 
     def _dygraph_clip(self, params_grads):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _insert_allreduce_ops(self, params_grads):
         world_size = paddle.distributed.get_world_size()

@@ -25,7 +25,7 @@ from paddle.pir_utils import test_with_pir_api
 
 class LAMBOptimizer(paddle.optimizer.Lamb):
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, base.framework.Block)
+        assert isinstance(block, (base.framework.Block, paddle.pir.Block))
         block.program._use_lamb = True
 
         m = moment1 = self._get_accumulator(

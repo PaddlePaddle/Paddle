@@ -24,8 +24,8 @@
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 
 namespace paddle::memory::allocation {
 

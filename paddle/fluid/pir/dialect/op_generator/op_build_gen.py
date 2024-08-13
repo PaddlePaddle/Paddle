@@ -65,11 +65,13 @@ _INFERMETA_NEED_META_CONFIG = {
     'StackInferMeta',
     'FusedConvInferMeta',
     # nullary.h
+    'CreateInferMeta',
     'EyeInferMeta',
     # ternary.h
     'AccuracyInferMeta',
     'BoxCoderInferMeta',
     'InstanceNormInferMeta',
+    'GroupNormInferMeta',
     'LayerNormInferMeta',
     'MatchMatrixTensorInferMeta',
     'MultiClassNMSInferMeta',
