@@ -28,18 +28,29 @@ template <typename T>
 static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const int ring_id,
                       const phi::GPUContext &dev_ctx) {
+  if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  gpuStream_t stream = nullptr;
-  auto comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
-      dev_ctx.GetCommContext());
-  PADDLE_ENFORCE_NE(comm_ctx,
-                    nullptr,
-                    common::errors::Unavailable(
-                        "NCCLCommContext is nullptr, collective op should "
-                        "has ring_id attr."));
+  auto map = phi::distributed::ProcessGroupMapFromGid::getInstance();
 
-  stream = comm_ctx->GetStream();
-  comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
+  if (map->has(ring_id)) {
+    phi::distributed::ProcessGroup *pg = map->get(ring_id);
+    phi::distributed::AllreduceOptions opts;
+    opts.reduce_op = phi::distributed::ReduceOp::SUM;
+    auto task = pg->AllReduce(&tensor, tensor, opts, true, true);
+    task->Wait();
+  } else {
+    gpuStream_t stream = nullptr;
+    auto comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+        dev_ctx.GetCommContext());
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      common::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+
+    stream = comm_ctx->GetStream();
+    comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
+  }
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
