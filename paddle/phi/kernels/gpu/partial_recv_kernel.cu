@@ -19,6 +19,7 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
+#include "paddle/phi/core/distributed/utils.h"
 namespace phi {
 
 template <typename T, typename Context>
