@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import numpy as np
-
-from paddle.tensorrt.converter import PaddleToTensorRTConverter
-from paddle.tensorrt.get_program import (
+from get_program import (
     get_r50_program,
 )
+
+from paddle.tensorrt.converter import PaddleToTensorRTConverter
 from paddle.tensorrt.util import (
     predict_program,
     run_pir_pass,
@@ -33,6 +33,7 @@ def test_paddle_to_tensorrt_conversion_r50():
 
     # Step1.1: get original results(for tests only)
     output_var = program.list_vars()[-1]
+
     output_expected = predict_program(
         program, {"input": input_data_min_shape}, [output_var]
     )

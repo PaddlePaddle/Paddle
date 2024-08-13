@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+from get_program import (
+    get_dummy_program,
+)
 
 import paddle
 from paddle.tensorrt.converter import PaddleToTensorRTConverter
-from paddle.tensorrt.get_program import (
-    get_dummy_program,
-)
 from paddle.tensorrt.util import (
     run_pir_pass,
 )

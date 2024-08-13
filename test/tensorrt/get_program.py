@@ -14,11 +14,11 @@
 
 
 import numpy as np
-from util import run_pir_pass
 
 import paddle
 from paddle import nn, static
 from paddle.nn import TransformerEncoder, TransformerEncoderLayer
+from paddle.tensorrt.util import run_pir_pass
 
 
 def get_r50_program():
