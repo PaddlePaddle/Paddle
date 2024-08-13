@@ -2505,38 +2505,9 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if !IS_TRT_VERSION_GE(8200)
       return false;
 #endif
-      auto inputs = desc.Inputs();
-      if (inputs.find("StartsTensorList") != inputs.end()) {
-        if (!desc.Input("StartsTensorList").empty()) {
-          return false;
-        }
-      }
-      if (inputs.find("EndsTensorList") != inputs.end()) {
-        if (!desc.Input("EndsTensorList").empty()) {
-          return false;
-        }
-      }
-      if (inputs.find("StepsTensorList") != inputs.end()) {
-        if (!desc.Input("StepsTensorList").empty()) {
-          return false;
-        }
-      }
-      if (!(desc.HasAttr("axes") && desc.HasAttr("starts") &&
-            desc.HasAttr("steps"))) {
-        VLOG(3) << "the " << op_type
-                << " does not have attr (axes or "
-                   "starts or steps)";
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the set_value op does not support static shape in tensorrt";
         return false;
-      }
-      if (desc.HasAttr("axes")) {
-        auto axes =
-            PADDLE_GET_CONST(std::vector<int64_t>, desc.GetAttr("axes"));
-        if (axes.size() != 1UL) {
-          VLOG(3) << "the set_value op"
-                  << "has more than one element in attribute axes, it can not "
-                     "enter into trt.";
-          return false;
-        }
       }
     }
 
