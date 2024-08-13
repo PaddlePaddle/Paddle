@@ -809,6 +809,36 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool FakeQuantizeRangeAbsMaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  int window_size = op->attribute<pir::Int32Attribute>("window_size").data();
+  int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
+
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    common::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  const auto &out_scale = symbol::DimExpr(1);
+  const auto &out_scales = symbol::DimExpr(window_size);
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({out_scale})});
+  if (op->result(2)) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs({out_scales})});
+  }
+  return true;
+}
+
 bool EditDistanceOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &hyps_shape_or_data =
@@ -897,6 +927,11 @@ bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
   }
 
   return true;
+}
+
+bool FakeQuantizeRangeAbsMax_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FakeQuantizeRangeAbsMaxOpInferSymbolicShape(op, infer_context);
 }
 
 bool FakeQuantizeMovingAverageAbsMax_OpInferSymbolicShape(
