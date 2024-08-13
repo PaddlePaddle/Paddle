@@ -18,6 +18,7 @@ from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
     IdentityOpCost,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 from paddle.framework import core
 from paddle.utils import unique_name
 
@@ -556,16 +557,18 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                     )
                     sync_group = new_process_group(group_ranks)
 
-                    startup_block.append_op(
-                        type='c_broadcast',
-                        inputs={'X': param},
-                        outputs={'Out': param},
+                    broadcast_op = startup_block.append_op(
+                        type='broadcast',
+                        inputs={'x': param},
+                        outputs={'out': param},
                         attrs={
                             'ring_id': sync_group.id,
                             'root': 0,
-                            'use_calc_stream': True,
                             OP_ROLE_KEY: OpRole.Forward,
                         },
+                    )
+                    broadcast_op.dist_attr.execution_stream = (
+                        AutoParallelStreamType.CALC_STREAM.value
                     )
 
     @staticmethod

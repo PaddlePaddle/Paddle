@@ -20,14 +20,14 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 
+paddle.enable_static()
+
 
 def init_process_group(strategy=None):
     nranks = paddle.distributed.ParallelEnv().nranks
     rank = dist.ParallelEnv().local_rank
     is_master = True if rank == 0 else False
-    pg_group = dist.init_parallel_env()
-
-    return pg_group.process_group
+    dist.collective._init_parallel_env("nccl")
 
 
 class TestProcessGroupFp32(unittest.TestCase):
@@ -40,25 +40,20 @@ class TestProcessGroupFp32(unittest.TestCase):
     def config(self):
         self.dtype = "float32"
         self.shape = (2, 10, 5)
+        self.rank = dist.ParallelEnv().local_rank
 
     @classmethod
     def setUpClass(cls):
         device_id = paddle.distributed.ParallelEnv().dev_id
         paddle.set_device('gpu:%d' % device_id)
-
         assert paddle.distributed.is_available()
-
-        pg = init_process_group()
-
-        assert paddle.distributed.get_backend() == "NCCL"
-        cls.pg = pg
+        init_process_group()
 
     @classmethod
     def tearDownClass(cls):
-        del cls.pg
+        pass
 
     def test_allreduce_sum(self):
-        pg = self.pg
         # rank 0
         x_np = np.random.random(self.shape).astype(self.dtype)
         # rank 1
@@ -75,24 +70,24 @@ class TestProcessGroupFp32(unittest.TestCase):
                 )
                 exe = paddle.static.Executor()
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     dist.all_reduce(x)
                 else:
                     dist.all_reduce(y)
 
+                exe.run(startup_program)
                 (x_out, y_out) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[x, y],
                 )
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     np.testing.assert_array_equal(x_np + y_np, x_out)
                 else:
                     np.testing.assert_array_equal(x_np + y_np, y_out)
 
     def test_allreduce_sum_with_0d_input(self):
-        pg = self.pg
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)
         # rank 1
@@ -105,24 +100,24 @@ class TestProcessGroupFp32(unittest.TestCase):
                 y = paddle.static.data(name="y", shape=[], dtype=self.dtype)
                 exe = paddle.static.Executor()
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     dist.all_reduce(x)
                 else:
                     dist.all_reduce(y)
 
+                exe.run(startup_program)
                 (x_out, y_out) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[x, y],
                 )
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     np.testing.assert_array_equal(x_np + y_np, x_out)
                 else:
                     np.testing.assert_array_equal(x_np + y_np, y_out)
 
     def test_allreduce_max(self):
-        pg = self.pg
         # rank 0
         x_np = np.random.random(self.shape).astype(self.dtype)
         # rank 1
@@ -139,24 +134,24 @@ class TestProcessGroupFp32(unittest.TestCase):
                 )
                 exe = paddle.static.Executor()
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     dist.all_reduce(x, dist.ReduceOp.MAX)
                 else:
                     dist.all_reduce(y, dist.ReduceOp.MAX)
 
+                exe.run(startup_program)
                 (x_out, y_out) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[x, y],
                 )
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     np.testing.assert_array_equal(np.maximum(x_np, y_np), x_out)
                 else:
                     np.testing.assert_array_equal(np.maximum(x_np, y_np), y_out)
 
     def test_allreduce_max_with_0d_input(self):
-        pg = self.pg
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)
         # rank 1
@@ -169,24 +164,24 @@ class TestProcessGroupFp32(unittest.TestCase):
                 y = paddle.static.data(name="y", shape=[], dtype=self.dtype)
                 exe = paddle.static.Executor()
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     dist.all_reduce(x, dist.ReduceOp.MAX)
                 else:
                     dist.all_reduce(y, dist.ReduceOp.MAX)
 
+                exe.run(startup_program)
                 (x_out, y_out) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[x, y],
                 )
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     np.testing.assert_array_equal(np.maximum(x_np, y_np), x_out)
                 else:
                     np.testing.assert_array_equal(np.maximum(x_np, y_np), y_out)
 
     def test_allreduce_min(self):
-        pg = self.pg
         # rank 0
         x_np = np.random.random(self.shape).astype(self.dtype)
         # rank 1
@@ -203,24 +198,24 @@ class TestProcessGroupFp32(unittest.TestCase):
                 )
                 exe = paddle.static.Executor()
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     dist.all_reduce(x, dist.ReduceOp.MIN)
                 else:
                     dist.all_reduce(y, dist.ReduceOp.MIN)
 
+                exe.run(startup_program)
                 (x_out, y_out) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[x, y],
                 )
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     np.testing.assert_array_equal(np.minimum(x_np, y_np), x_out)
                 else:
                     np.testing.assert_array_equal(np.minimum(x_np, y_np), y_out)
 
     def test_allreduce_min_with_0d_input(self):
-        pg = self.pg
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)
         # rank 1
@@ -233,24 +228,24 @@ class TestProcessGroupFp32(unittest.TestCase):
                 y = paddle.static.data(name="y", shape=[], dtype=self.dtype)
                 exe = paddle.static.Executor()
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     dist.all_reduce(x, dist.ReduceOp.MIN)
                 else:
                     dist.all_reduce(y, dist.ReduceOp.MIN)
 
+                exe.run(startup_program)
                 (x_out, y_out) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[x, y],
                 )
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     np.testing.assert_array_equal(np.minimum(x_np, y_np), x_out)
                 else:
                     np.testing.assert_array_equal(np.minimum(x_np, y_np), y_out)
 
     def test_allreduce_prod(self):
-        pg = self.pg
         # rank 0
         x_np = np.random.random(self.shape).astype(self.dtype)
         # rank 1
@@ -267,18 +262,19 @@ class TestProcessGroupFp32(unittest.TestCase):
                 )
                 exe = paddle.static.Executor()
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     dist.all_reduce(x, dist.ReduceOp.PROD)
                 else:
                     dist.all_reduce(y, dist.ReduceOp.PROD)
 
+                exe.run(startup_program)
                 (x_out, y_out) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[x, y],
                 )
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     np.testing.assert_array_equal(
                         np.multiply(x_np, y_np), x_out
                     )
@@ -288,7 +284,6 @@ class TestProcessGroupFp32(unittest.TestCase):
                     )
 
     def test_allreduce_prod_with_0d_input(self):
-        pg = self.pg
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)
         # rank 1
@@ -301,18 +296,19 @@ class TestProcessGroupFp32(unittest.TestCase):
                 y = paddle.static.data(name="y", shape=[], dtype=self.dtype)
                 exe = paddle.static.Executor()
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     dist.all_reduce(x, dist.ReduceOp.PROD)
                 else:
                     dist.all_reduce(y, dist.ReduceOp.PROD)
 
+                exe.run(startup_program)
                 (x_out, y_out) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[x, y],
                 )
 
-                if pg.rank() == 0:
+                if self.rank == 0:
                     np.testing.assert_array_equal(
                         np.multiply(x_np, y_np), x_out
                     )
@@ -325,7 +321,6 @@ class TestProcessGroupFp32(unittest.TestCase):
         # to_tensor dose not support float16 input
         if self.dtype == "float16":
             return
-        pg = self.pg
         # rank 0
         x_np = np.random.random(self.shape).astype(self.dtype)
         # rank 1
@@ -334,12 +329,13 @@ class TestProcessGroupFp32(unittest.TestCase):
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(main_program, startup_program):
-                if pg.rank() == 0:
+                if self.rank == 0:
                     data = paddle.to_tensor(x_np)
                 else:
                     data = paddle.to_tensor(y_np)
                 dist.broadcast(data, 1)
                 exe = paddle.static.Executor()
+                exe.run(startup_program)
                 (data,) = exe.run(
                     main_program,
                     feed={},
@@ -351,7 +347,6 @@ class TestProcessGroupFp32(unittest.TestCase):
         # to_tensor dose not support float16 input
         if self.dtype == "float16":
             return
-        pg = self.pg
         # rank 0
         x_np = np.random.random([]).astype(self.dtype)
         # rank 1
@@ -360,12 +355,13 @@ class TestProcessGroupFp32(unittest.TestCase):
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             with paddle.static.program_guard(main_program, startup_program):
-                if pg.rank() == 0:
+                if self.rank == 0:
                     data = paddle.to_tensor(x_np)
                 else:
                     data = paddle.to_tensor(y_np)
                 dist.broadcast(data, 1)
                 exe = paddle.static.Executor()
+                exe.run(startup_program)
                 (data,) = exe.run(
                     main_program,
                     feed={},
@@ -384,6 +380,7 @@ class TestProcessGroupFp16(TestProcessGroupFp32):
     def config(self):
         self.dtype = "float16"
         self.shape = (4, 20, 20)
+        self.rank = dist.ParallelEnv().local_rank
 
 
 if __name__ == "__main__":

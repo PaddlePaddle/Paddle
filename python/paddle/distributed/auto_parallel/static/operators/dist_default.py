@@ -14,6 +14,7 @@
 
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 
 from ..completion import contains_spmd_rule, get_phi_spmd_rule
 from ..cost import (
@@ -80,17 +81,18 @@ def prim_operator_data_parallel_functor(ctx, src_op):
         param = ctx.grads_params[var_name]
         startup_block = dist_op_context.startup_block
         new_op = startup_block.append_op(
-            type='c_broadcast',
-            inputs={'X': [param]},
-            outputs={'Out': [param]},
+            type='broadcast',
+            inputs={'x': [param]},
+            outputs={'out': [param]},
             attrs={
                 'ring_id': sync_group.id,
                 'root': 0,
-                'use_calc_stream': True,
                 OP_ROLE_KEY: OpRole.Forward,
             },
         )
-
+        new_op.dist_attr.execution_stream = (
+            AutoParallelStreamType.CALC_STREAM.value
+        )
         grad_var = main_block._var_recursive(var_name)
         dims_mapping = ctx.get_tensor_dist_attr_for_program(
             grad_var
@@ -610,15 +612,17 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         sync_group = new_process_group(group_ranks)
 
                         new_op = startup_block.append_op(
-                            type='c_broadcast',
-                            inputs={'X': param},
-                            outputs={'Out': param},
+                            type='broadcast',
+                            inputs={'x': param},
+                            outputs={'out': param},
                             attrs={
                                 'ring_id': sync_group.id,
                                 'root': 0,
-                                'use_calc_stream': True,
                                 OP_ROLE_KEY: OpRole.Forward,
                             },
+                        )
+                        new_op.dist_attr.execution_stream = (
+                            AutoParallelStreamType.CALC_STREAM.value
                         )
                         set_comm_op_dist_attr_for_program(
                             new_op,

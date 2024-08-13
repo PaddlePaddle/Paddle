@@ -490,15 +490,17 @@ class ShardingPass(PassBase):
                 assert startup_block.has_var(param.name)
 
                 new_op = main_block.append_op(
-                    type='c_broadcast',
-                    inputs={'X': param},
-                    outputs={'Out': param},
+                    type='broadcast',
+                    inputs={'x': param},
+                    outputs={'out': param},
                     attrs={
                         'ring_id': sharding_info.group.id,
                         'root': sharding_info.get_var_rank(param.name),
-                        'use_calc_stream': True,
                         OP_ROLE_KEY: OpRole.Optimize,
                     },
+                )
+                new_op.dist_attr.execution_stream = (
+                    AutoParallelStreamType.CALC_STREAM.value
                 )
                 new_op._set_attr(
                     'op_namescope', '/' + ParallelMode.DataParallel
@@ -674,7 +676,7 @@ class ShardingPass(PassBase):
                 assert len(op.output_arg_names) == 1
                 output_name = op.output_arg_names[0]
 
-                if op.type == "c_broadcast":
+                if op.type == "broadcast":
                     if op.attr("ring_id") in dp_ring_ids:
                         if (
                             self.outer_dp_group
@@ -684,7 +686,7 @@ class ShardingPass(PassBase):
                             op._set_attr("ring_id", self.outer_dp_group.id)
                         else:
                             startup_block._remove_op(idx, sync=False)
-                    else:  # We should remove the `c_broadcast` between `TensorParallel` mesh dim.
+                    else:  # We should remove the `broadcast` between `TensorParallel` mesh dim.
                         if (
                             sharding_info.get_var_rank(output_name)
                             != sharding_info.local_rank
@@ -693,7 +695,7 @@ class ShardingPass(PassBase):
                     continue
 
                 if (
-                    op.type != "c_broadcast"
+                    op.type != "broadcast"
                     and output_name in param_usage
                     and sharding_info.get_var_rank(output_name)
                     != sharding_info.local_rank
@@ -845,15 +847,17 @@ class ShardingPass(PassBase):
                 'comm_stream'
             ]
             new_op = main_block.append_op(
-                type='c_broadcast',
-                inputs={'X': param_group.coalesce_var},
-                outputs={'Out': param_group.coalesce_var},
+                type='broadcast',
+                inputs={'x': param_group.coalesce_var},
+                outputs={'out': param_group.coalesce_var},
                 attrs={
                     'ring_id': comm_group.id,
                     'root': param_group.rank,
-                    'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
+            )
+            new_op.dist_attr.execution_stream = (
+                AutoParallelStreamType.CALC_STREAM.value
             )
             self.op_to_stream_idx[new_op] = comm_stream_idx
             new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
@@ -1494,9 +1498,9 @@ def _insert_init_and_broadcast_op(
 
     new_op = block._insert_op_without_sync(
         insert_idx,
-        type='c_broadcast',
-        inputs={'X': varname},
-        outputs={'Out': varname},
+        type='broadcast',
+        inputs={'x': varname},
+        outputs={'out': varname},
         attrs={
             'ring_id': ring_id,
             'root': root_rank,
@@ -1504,6 +1508,7 @@ def _insert_init_and_broadcast_op(
             OP_ROLE_KEY: op_role,
         },
     )
+    new_op.dist_attr.execution_stream = AutoParallelStreamType.CALC_STREAM.value
     new_op._set_attr('op_namescope', '/' + ParallelMode.DataParallel)
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op,
@@ -1683,7 +1688,7 @@ def _is_param_grad_sum_op(op, block):
 
 def is_sharding_param_broadcast_op(op):
     return (
-        op.type == "c_broadcast"
+        op.type == "broadcast"
         and op.desc.has_attr("op_namescope")
         and ParallelMode.DataParallel in op.desc.attr("op_namescope")
     )
