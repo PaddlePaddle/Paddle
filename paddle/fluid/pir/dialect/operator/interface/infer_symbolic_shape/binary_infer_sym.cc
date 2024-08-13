@@ -643,6 +643,51 @@ bool IndexSampleOpInferSymbolicShape(
   return true;
 }
 
+bool KldivLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &x_shape = x_shape_or_data.shape();
+  const auto &label_shape = label_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    label_shape.size(),
+                    common::errors::InvalidArgument(
+                        "Input(X) rank and Input(Target) rank should be same, "
+                        "but received X rank(%d) != Target rank(%d)",
+                        x_shape.size(),
+                        label_shape.size()));
+
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    infer_context->AddEqualCstr(x_shape[i], label_shape[i]);
+  }
+
+  std::string reduction =
+      op->attribute<pir::StrAttribute>("reduction").AsString();
+  bool reduction_valid = (reduction == "mean" || reduction == "sum" ||
+                          reduction == "batchmean" || reduction == "none");
+  PADDLE_ENFORCE_EQ(
+      reduction_valid,
+      true,
+      common::errors::InvalidArgument(
+          "Attr(reduction) can only be 'none'|'batchmean'|'sum'|'mean'."));
+
+  std::vector<symbol::DimExpr> out_shape;
+  if (reduction == "none") {
+    out_shape = x_shape;
+  } else {
+    out_shape = std::vector<symbol::DimExpr>{};
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  return true;
+}
+
 bool KronOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =

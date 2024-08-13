@@ -15,7 +15,7 @@
 import copy
 
 from paddle.common_ops_import import check_dtype, check_variable_and_dtype
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
+from paddle.distributed.utils.stream_utils import ExecutionStreamType
 from paddle.framework import core
 from paddle.static import Operator
 
@@ -243,7 +243,7 @@ class DistributedPNormImpl0(DistributedOperatorImpl):
             allgather_out.name, allgather_out_dist_attr.dims_mapping
         )
         allgather_op_dist_attr.execution_stream = (
-            AutoParallelStreamType.CALC_STREAM.value
+            ExecutionStreamType.DefaultStream.value
         )
         ctx.set_op_dist_attr_for_program(all_gather_op, allgather_op_dist_attr)
 

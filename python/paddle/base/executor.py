@@ -62,6 +62,9 @@ if TYPE_CHECKING:
     from paddle._typing import PlaceLike
     from paddle._typing.device_like import _Place
     from paddle.base.dataset import DatasetBase
+    from paddle.distributed.fleet.dataset.dataset import (
+        DatasetBase as _FleetDatasetBase,
+    )
     from paddle.static import CompiledProgram
 
 __all__ = []
@@ -3156,7 +3159,7 @@ class Executor:
     def infer_from_dataset(
         self,
         program: Program | CompiledProgram | None = None,
-        dataset: DatasetBase | None = None,
+        dataset: DatasetBase | _FleetDatasetBase | None = None,
         scope: core.Scope | None = None,
         thread: int = 0,
         debug: bool = False,
@@ -3279,7 +3282,7 @@ class Executor:
     def train_from_dataset(
         self,
         program: Program | CompiledProgram | None = None,
-        dataset: DatasetBase | None = None,
+        dataset: DatasetBase | _FleetDatasetBase | None = None,
         scope: core.Scope | None = None,
         thread: int = 0,
         debug: bool = False,

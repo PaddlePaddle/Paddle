@@ -761,19 +761,51 @@ bool EigvalshOpInferSymbolicShape(
   return EighOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FractionalMaxPool2DOpInferSymbolicShape(pir::Operation *op,
-//                                              pir::InferSymbolicShapeContext
-//                                              *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FractionalMaxPoolOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
-// bool FractionalMaxPool3DOpInferSymbolicShape(pir::Operation *op,
-//                                              pir::InferSymbolicShapeContext
-//                                              *infer_context) {
-//   // pass
-//   return true;
-// }
+  PADDLE_ENFORCE_EQ(
+      (x_dims.size() == 4 || x_dims.size() == 5),
+      true,
+      phi::errors::InvalidArgument(
+          "Pooling input should be 4-D or 5-D tensor but received %dD-Tensor",
+          x_dims.size()));
+
+  std::vector<int> output_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+  std::vector<int> kernel_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
+
+  std::vector<symbol::DimExpr> output_shape = {x_dims[0], x_dims[1]};
+  for (const auto &dim : output_size) {
+    output_shape.emplace_back(symbol::DimExpr(dim));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
+
+bool FractionalMaxPool3dOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FractionalMaxPoolOpInferSymbolicShape(op, infer_context);
+}
+
+bool FractionalMaxPool2dOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FractionalMaxPoolOpInferSymbolicShape(op, infer_context);
+}
 
 bool FakeChannelWiseQuantizeAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
