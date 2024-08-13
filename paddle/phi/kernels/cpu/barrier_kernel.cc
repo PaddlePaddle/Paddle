@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/barrier.h>
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 namespace phi {
@@ -25,19 +25,15 @@ namespace phi {
 template <typename T, typename Context>
 void BarrierKernel(const Context& dev_ctx,
                    const DenseTensor& x_in,
-                   int ring_id,
                    DenseTensor* out) {
 #if defined(PADDLE_WITH_GLOO)
-  const auto& comm_context_manager =
-      phi::distributed::CommContextManager::GetInstance();
-  if (comm_context_manager.Has(std::to_string(ring_id))) {
-    auto* comm_context = static_cast<phi::distributed::GlooCommContext*>(
-        comm_context_manager.Get(std::to_string(ring_id)));
-    comm_context->Barrier();
-  } else {
-    PADDLE_THROW(phi::errors::Unavailable(
-        "You must initialize the gloo environment first to use it."));
-  }
+  auto comm_ctx =
+      static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
+  PADDLE_ENFORCE_NE(
+      comm_ctx,
+      nullptr,
+      errors::Unavailable("NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
 #else
   PADDLE_THROW(phi::errors::Unavailable(
       "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));

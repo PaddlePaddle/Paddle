@@ -15,7 +15,6 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -29,10 +28,9 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 namespace phi {
 
 template <typename T, typename Context>
-void BarrierOpCUDAKernel(const Context& dev_ctx,
-                         const DenseTensor& x_in,
-                         int ring_id,
-                         DenseTensor* out) {
+void BarrierKernel(const Context& dev_ctx,
+                   const DenseTensor& x_in,
+                   DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto place = dev_ctx.GetPlace();
   ncclDataType_t dtype = phi::ToNCCLDataType(x_in.dtype());
@@ -52,8 +50,8 @@ void BarrierOpCUDAKernel(const Context& dev_ctx,
                           "But ring_id(%d) is "
                           "not found in comm_context_manager.",
                           std::to_string(ring_id)));
-    auto comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
-        comm_context_manager.Get(std::to_string(ring_id)));
+    auto comm_ctx =
+        static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
     PADDLE_ENFORCE_NOT_NULL(
         comm_ctx,
         phi::errors::Unavailable(
@@ -64,15 +62,6 @@ void BarrierOpCUDAKernel(const Context& dev_ctx,
     comm_ctx->AllReduce(out, x_in, nccl_red_type, stream);
     phi::backends::gpu::GpuStreamSync(stream);
     VLOG(3) << "new NCCLCommContext has rid " << ring_id;
-  } else {
-    auto comm =
-        paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
-    auto stream = dev_ctx.stream();
-    ncclRedOp_t nccl_red_type = ncclSum;
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-        sendbuff, recvbuff, numel, dtype, nccl_red_type, comm->comm(), stream));
-    phi::backends::gpu::GpuStreamSync(stream);
-    VLOG(3) << "old NCCLCommContext has rid " << ring_id;
   }
 #else
   PADDLE_THROW(
@@ -82,4 +71,4 @@ void BarrierOpCUDAKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(barrier, GPU, ALL_LAYOUT, phi::BarrierOpCUDAKernel, int) {}
+PD_REGISTER_KERNEL(barrier, GPU, ALL_LAYOUT, phi::BarrierKernel, int) {}
