@@ -180,9 +180,6 @@ inline bool NeedTypePromotion(
     const DataType& y_dtype,
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
-  // std::cout << "need type promotion? " <<
-  // (support_promotion_ops.find(op_name) != support_promotion_ops.end()) << " "
-  // << x_shape.size() << " " << y_shape.size() << std::endl;
   if (x_dtype == y_dtype) {
     if (op_name == "divide" || op_name == "divide_") {
       if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
