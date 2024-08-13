@@ -956,6 +956,9 @@ void NumberCountInferMeta(const MetaTensor& x,
 
 void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void StraightThroughEstimatorInferMeta(const MetaTensor& out_grad,
+                                       MetaTensor* x_grad);
+
 void LrnInferMeta(const MetaTensor& x,
                   int n,
                   MetaTensor* out,

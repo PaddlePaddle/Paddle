@@ -227,6 +227,9 @@ limitations under the License. */
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 #include "pybind11/stl.h"
+#ifdef PADDLE_WITH_TENSORRT
+#include "paddle/fluid/inference/tensorrt/pir/declare_plugin.h"
+#endif
 
 COMMON_DECLARE_bool(use_mkldnn);
 

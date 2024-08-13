@@ -102,8 +102,10 @@ class TestWeightNormalization(unittest.TestCase):
                 ).tolist()
                 data_lod.append(lod_level_i)
             data_value = np.random.random(
-                size=[sum(data_lod[-1]) if data_lod else self.batch_size]
-                + data_shape
+                size=[
+                    sum(data_lod[-1]) if data_lod else self.batch_size,
+                    *data_shape,
+                ]
             ).astype('float32')
             self.data[data_name] = (data_value, data_lod)
 

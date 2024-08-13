@@ -35,10 +35,10 @@ class PolicyManager {
   template <typename POLICY>
   std::shared_ptr<POLICY> GetPolicy() const {
     auto key = POLICY::Kind;
-    PADDLE_ENFORCE_NE(
-        policies.find(key),
-        policies.end(),
-        phi::errors::NotFound("Can not find Policy %d, please set it.", key));
+    PADDLE_ENFORCE_NE(policies.find(key),
+                      policies.end(),
+                      ::common::errors::NotFound(
+                          "Can not find Policy %d, please set it.", key));
     return std::static_pointer_cast<POLICY>(policies.at(key));
   }
 

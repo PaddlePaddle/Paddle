@@ -303,7 +303,7 @@ class PrimForwardChecker:
     def init_checker(self):
         assert hasattr(
             self.op_test, 'prim_op_type'
-        ), "if you want to test comp op, please set prim_op_type with \'prim\' or \'comp\' in setUp function."
+        ), "if you want to test comp op, please set prim_op_type with 'prim' or 'comp' in setUp function."
         assert self.op_test.prim_op_type in [
             "comp",
             "prim",

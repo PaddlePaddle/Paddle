@@ -57,10 +57,10 @@ static size_t GetCompitableRank(pir::Value value) {
 static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
   const auto& attr_val = reduce_op->attributes().at("axis");
-  PADDLE_ENFORCE_EQ(
-      attr_val.isa<::pir::ArrayAttribute>(),
-      true,
-      phi::errors::InvalidArgument("The axis attribute should be an array."));
+  PADDLE_ENFORCE_EQ(attr_val.isa<::pir::ArrayAttribute>(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The axis attribute should be an array."));
   const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
   if (axis_attr.empty()) {
     // dim: [] means reduce_all.
@@ -79,13 +79,13 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
     PADDLE_ENFORCE_GE(
         axis,
         0,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The 'axis' must be greater than or equal to 0, but received %d.",
             axis));
 
     PADDLE_ENFORCE_LT(axis,
                       input_rank,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The 'axis' must be less than 'input_rank', but "
                           "received axis = %d and input_rank = %d.",
                           axis,
@@ -99,10 +99,10 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
 
 static bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
   const auto& attr_val = reduce_op->attributes().at("keepdim");
-  PADDLE_ENFORCE_EQ(
-      attr_val.isa<::pir::BoolAttribute>(),
-      true,
-      phi::errors::InvalidArgument("The keepdim attribute should be a bool."));
+  PADDLE_ENFORCE_EQ(attr_val.isa<::pir::BoolAttribute>(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The keepdim attribute should be a bool."));
   return attr_val.dyn_cast<::pir::BoolAttribute>().data();
 }
 
@@ -428,7 +428,7 @@ static const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op) {
       return i;
     }
   }
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(::common::errors::NotFound(
       "Can not find the usage of value %s in op %s", v.impl(), op->name()));
 }
 
@@ -438,7 +438,7 @@ static const size_t GetOperandIdx(const pir::Value& v, pir::Operation* op) {
       return i;
     }
   }
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(::common::errors::NotFound(
       "Can not find the value %s as operand of op %s", v.impl(), op->name()));
 }
 
@@ -449,7 +449,7 @@ static const size_t GetResultIdx(const pir::Value& v, pir::Operation* op) {
       return i;
     }
   }
-  PADDLE_THROW(phi::errors::NotFound(
+  PADDLE_THROW(::common::errors::NotFound(
       "Can not find the value %s as result of op %s", v.impl(), op->name()));
 }
 

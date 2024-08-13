@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import copy
 import warnings
-from sqlite3 import NotSupportedError
 from typing import TYPE_CHECKING
 
 import paddle
@@ -1006,7 +1005,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         sum_square_list.append(sum_square)
 
             if len(sum_square_list_fp16) > 0 and len(sum_square_list_bf16) > 0:
-                raise NotSupportedError(
+                raise NotImplementedError(
                     'FP16 and BF16 are not supported at the same time.'
                 )
 

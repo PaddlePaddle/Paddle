@@ -1137,7 +1137,7 @@ class DeformConv2D(Layer):
 
         self._padding = convert_to_list(padding, 2, 'padding')
 
-        filter_shape = [out_channels, in_channels // groups] + self._kernel_size
+        filter_shape = [out_channels, in_channels // groups, *self._kernel_size]
 
         def _get_default_param_initializer():
             filter_elem_num = np.prod(self._kernel_size) * self._in_channels
@@ -2095,7 +2095,7 @@ def nms(
         return keep_boxes_idxs[sorted_sub_indices]
 
     if in_dygraph_mode():
-        top_k = shape if shape < top_k else top_k
+        top_k = min(top_k, shape)
         _, topk_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
         return keep_boxes_idxs[topk_sub_indices]
 
