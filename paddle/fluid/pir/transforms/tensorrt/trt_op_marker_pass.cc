@@ -924,7 +924,6 @@ class MultiplyOpPattern
   }
 };
 
-<<<<<<< HEAD
  class SubtractOpPattern : public pir::OpRewritePattern<paddle::dialect::SubtractOp> {
   public:
    using pir::OpRewritePattern<paddle::dialect::SubtractOp>::OpRewritePattern;
@@ -1084,8 +1083,6 @@ class RemainderOpPattern : public pir::OpRewritePattern<paddle::dialect::Remaind
      return true;
    }
  };
-=======
->>>>>>> a325d64cacda84d45cc95a602a4b4e7c7ab2aeb9
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1115,12 +1112,9 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ADD_PATTERN(DepthwiseConv2d)
     ADD_PATTERN(Nonzero)
     ADD_PATTERN(Gelu)
-<<<<<<< HEAD
     ADD_PATTERN(Shape)
     ADD_PATTERN(Expand)
-=======
     ADD_PATTERN(Sigmoid)
->>>>>>> a325d64cacda84d45cc95a602a4b4e7c7ab2aeb9
 
 #undef ADD_PATTERN
     ps.Add(std::make_unique<Pool2dOpPattern>(context));
