@@ -51,9 +51,16 @@ TEST(save_load_version_compat, op_patch_test) {
   pir::Program program(ctx);
   //   pir::Program *program = new pir::Program();
   EXPECT_EQ(program.block()->empty(), true);
-  const uint64_t pir_version = 2;
+  const uint64_t pir_version = 0;
   pir::PatchBuilder builder(pir_version);
   builder.SetFileVersion(1);
-  std::filesystem::path path = std::filesystem::current_path() / "patch";
-  builder.BuildPatch(path.string());
+  std::string current_path = std::filesystem::current_path().string();
+  std::string paddle_root =
+      current_path.substr(0, current_path.find("Paddle") + 7);
+  VLOG(8) << "Paddle path: " << paddle_root;
+  std::filesystem::path patch_path =
+      std::filesystem::path(paddle_root.c_str()) / "test" / "cpp" / "pir" /
+      "serialize_deserialize" / "patch";
+  VLOG(8) << "Patch path: " << patch_path;
+  builder.BuildPatch(patch_path.string());
 }
