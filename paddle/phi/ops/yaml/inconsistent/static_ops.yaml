@@ -636,6 +636,7 @@
     data_type : PullGpupsSparseKernelKey
   optional : w
   backward: push_gpups_sparse
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pull_sparse_v2
   args : (Tensor[] ids, Tensor[] w, int embedding_dim = 11, int table_id = 0, str accessor_class = "", str ctr_label_name = "", int padding_id = 0, bool scale_sparse_grad = true, str[] input_names = {}, bool is_distributed = true)

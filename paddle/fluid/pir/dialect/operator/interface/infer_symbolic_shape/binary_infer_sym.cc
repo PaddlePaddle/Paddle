@@ -882,12 +882,40 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-// bool PullGpuPsSparseOpInferSymbolicShape(pir::Operation *op,
-//                                          pir::InferSymbolicShapeContext
-//                                          *infer_context) {
-//   // pass
-//   return true;
-// }
+bool PullGpuPsSparseOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &w_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &ids_list_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<int> size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "size");
+  PADDLE_ENFORCE_EQ(
+      ids_list_shape_or_data.isa<symbol::TensorListShapeOrDataDimExprs>(),
+      true,
+      common::errors::InvalidArgument(
+          "The type of ids shape should be TensorListShapeOrDataDimExprs"));
+  const auto &ids_shape_or_data =
+      ids_list_shape_or_data.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+  PADDLE_ENFORCE_GE(
+      ids_shape_or_data.size(),
+      1,
+      common::errors::InvalidArgument(
+          "Inputs(Ids) of PullGpuPSSparseOp should not be empty."));
+  PADDLE_ENFORCE_EQ(
+      ids_shape_or_data.size(),
+      size.size(),
+      common::errors::InvalidArgument("The ids size: %lu must be equal to "
+                                      "the length of embedding size: %lu.",
+                                      ids_shape_or_data.size(),
+                                      size.size()));
+  const size_t n_ids = ids_shape_or_data.size();
+  symbol::TensorShapeOrDataDimExprs out_shape_or_data;
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{out_shape_or_data});
+  return true;
+}
 
 // bool PullSparseV2OpInferSymbolicShape(pir::Operation *op,
 //                                       pir::InferSymbolicShapeContext
