@@ -4210,6 +4210,7 @@
   kernel :
     func : shuffle_channel
   backward : shuffle_channel_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sigmoid
   args : (Tensor x)
