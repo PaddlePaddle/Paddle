@@ -1171,6 +1171,16 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
   const symbol::ShapeOrDataDimExprs &input_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &input_shape = input_shape_or_data.shape();
+  const symbol::ShapeOrDataDimExprs &weight_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const auto &weight_shape = weight_shape_or_data.shape();
+  const symbol::ShapeOrDataDimExprs &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+  const auto &bias_shape = bias_shape_or_data.shape();
+  bool use_peepholes =
+      op->attribute<pir::BoolAttribute>("use_peepholes").data();
+  bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
+
   PADDLE_ENFORCE_EQ(
       input_shape.size(),
       2,
@@ -1187,12 +1197,7 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
                                   c0_shape_or_data.shape()[i]);
     }
   }
-  const symbol::ShapeOrDataDimExprs &weight_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(3));
-  const auto &weight_shape = weight_shape_or_data.shape();
-  const symbol::ShapeOrDataDimExprs &bias_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(3));
-  const auto &bias_shape = bias_shape_or_data.shape();
+
   PADDLE_ENFORCE_EQ(
       weight_shape_or_data.shape().size(),
       2,
@@ -1208,9 +1213,6 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
                         "The rank of Input(Bias) should be 2, but received %d.",
                         bias_shape.size()));
   infer_context->AddEqualCstr(bias_shape[0], symbol::DimExpr{1});
-  bool use_peepholes =
-      op->attribute<pir::BoolAttribute>("use_peepholes").data();
-  bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
 
   if (use_peepholes) {
     infer_context->AddEqualCstr(bias_shape[1], frame_size * symbol::DimExpr{7});

@@ -652,7 +652,7 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
 
   for (size_t i = 0; i < ndim_x - 2; ++i) {
     infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
-    batch_dims.push_back(x_shape[i]);
+    batch_dims.emplace_back(x_shape[i]);
   }
 
   infer_context->AddEqualCstr(x_shape[ndim_x - 2], y_shape[ndim_y - 2]);
@@ -665,7 +665,7 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
     int m_value = static_cast<int>(m.Get<std::int64_t>());
     int n_value = static_cast<int>(n.Get<std::int64_t>());
     if (m_value > n_value) {
-      batch_dims.push_back(nrhs);
+      batch_dims.emplace_back(nrhs);
       symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
           symbol::TensorShapeOrDataDimExprs(batch_dims)};
       infer_context->SetShapeOrDataForValue(op->result(1),
@@ -679,14 +679,14 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
     }
   }
 
-  batch_dims.push_back(builder.Min(m, n));
+  batch_dims.emplace_back(builder.Min(m, n));
   symbol::ShapeOrDataDimExprs singular_batch_shape_or_data{
       symbol::TensorShapeOrDataDimExprs(batch_dims)};
   infer_context->SetShapeOrDataForValue(op->result(3),
                                         singular_batch_shape_or_data);
 
   batch_dims[ndim_x - 2] = n;
-  batch_dims.push_back(nrhs);
+  batch_dims.emplace_back(nrhs);
   symbol::ShapeOrDataDimExprs solution_batch_shape_or_data{
       symbol::TensorShapeOrDataDimExprs(batch_dims)};
   infer_context->SetShapeOrDataForValue(op->result(0),
