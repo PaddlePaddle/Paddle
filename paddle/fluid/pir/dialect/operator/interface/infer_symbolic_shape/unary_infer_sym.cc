@@ -1309,9 +1309,19 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
 
-  pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
-  const std::vector<int64_t> axis = details::GetVectorAttr(
-      axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+  const std::vector<int64_t> axis = [&] {
+    pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
+    std::vector<int64_t> axis_vec;
+    if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
+      axis_vec = details::GetVectorAttr(
+          axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+    } else {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "MaxOpInferSymbolicShape: 'axis' only "
+          "support FullIntArrayOp's result now."));
+    }
+    return axis_vec;
+  }();
 
   bool reduce_all = axis.size() == 0 ? true : false;
 
@@ -1460,27 +1470,32 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
-  const auto &depth_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  int depth;
-  if (depth_shape_or_data.data().has_value()) {
-    depth = depth_shape_or_data.data().value().at(0).Get<int64_t>();
-  } else {
-    PADDLE_ENFORCE_EQ(!depth_shape_or_data.data().has_value(),
-                      true,
-                      common::errors::InvalidArgument(
-                          "The depth should have data! Please check."));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  int64_t num_classes;
+  if (op->operand_source(1)) {
+    const auto &num_classes_shape_or_date =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    if (attributes.find("num_classes") != attributes.end()) {
+      num_classes = op->attribute<pir::Int64Attribute>("num_classes").data();
+    } else if (num_classes_shape_or_date.data().has_value()) {
+      num_classes =
+          num_classes_shape_or_date.data().value().at(0).Get<int64_t>();
+    } else {
+      PADDLE_ENFORCE_EQ(!num_classes_shape_or_date.data().has_value(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "The depth should have data! Please check."));
+    }
   }
 
-  const std::vector<symbol::DimExpr> &out_dims = [&] {
-    std::vector<symbol::DimExpr> out_dims = x_dims;
-    out_dims.push_back(symbol::DimExpr(depth));
-    return out_dims;
+  const std::vector<symbol::DimExpr> &out_shape = [&] {
+    std::vector<symbol::DimExpr> out_shape = x_shape;
+    out_dims.push_back(symbol::DimExpr(num_classes));
+    return out_shape;
   }();
 
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
 
   return true;
 }
