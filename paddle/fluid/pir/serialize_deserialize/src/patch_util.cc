@@ -440,9 +440,8 @@ Json YamlParser(const std::string &yaml_file) {
   VLOG(8) << yaml_file;
   fin.open(yaml_file);
   if (!fin) {
-    std::string file = "../patch" + yaml_file.substr(yaml_file.rfind("/"));
-    VLOG(8) << "Not Fin and create new: " << file;
-    fin.open(file);
+    VLOG(8) << yaml_file << " is not fin and return empty. ";
+    return Json::object();
   }
   YAML::Node root = YAML::Load(fin);
   Json json_patch;
