@@ -888,6 +888,13 @@ class Engine:
             auto_parallel_gradient_merge_pass.apply(
                 [dist_program], [startup_program]
             )
+        if self._strategy.mp_optimization.replace_with_c_embedding:
+            auto_parallel_c_embedding_pass = new_pass(
+                "auto_parallel_c_embedding", None
+            )
+            auto_parallel_gradient_merge_pass.apply(
+                [dist_program], [startup_program]
+            )
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
