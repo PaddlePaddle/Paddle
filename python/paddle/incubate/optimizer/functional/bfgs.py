@@ -20,17 +20,17 @@ import numpy as np
 
 import paddle
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from paddle import Tensor
-
 from .line_search import strong_wolfe
 from .utils import (
     _value_and_gradient,
     check_initial_inverse_hessian_estimate,
     check_input_type,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from paddle import Tensor
 
 
 def minimize_bfgs(

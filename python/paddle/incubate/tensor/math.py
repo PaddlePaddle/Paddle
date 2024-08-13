@@ -16,14 +16,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from paddle import Tensor
-
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.utils import deprecated
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 

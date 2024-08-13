@@ -16,11 +16,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-if TYPE_CHECKING:
-    from paddle import Tensor
-
 from paddle.incubate.nn import functional as F
 from paddle.nn import Layer
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 class FusedDropoutAdd(Layer):

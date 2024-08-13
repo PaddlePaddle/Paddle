@@ -16,11 +16,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from paddle import Tensor
-
 import numpy as np
 
 import paddle
@@ -31,6 +26,11 @@ from .utils import (
     check_initial_inverse_hessian_estimate,
     check_input_type,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from paddle import Tensor
 
 
 def minimize_lbfgs(
