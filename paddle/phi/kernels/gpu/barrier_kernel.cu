@@ -33,10 +33,6 @@ void BarrierKernel(const Context& dev_ctx,
                    DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto place = dev_ctx.GetPlace();
-  ncclDataType_t dtype = phi::ToNCCLDataType(x_in.dtype());
-  int64_t numel = x_in.numel();
-  const void* sendbuff = x_in.data();
-  void* recvbuff = dev_ctx.template Alloc<T>(out);
 
   const auto& comm_context_manager =
       phi::distributed::CommContextManager::GetInstance();
