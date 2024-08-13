@@ -30,8 +30,6 @@ from paddle.distributed.fleet.utils.log_util import logger
 if TYPE_CHECKING:
     from paddle.distributed.auto_parallel.static import graph as Graph
     from paddle.hapi.static_flops import Table
-
-if TYPE_CHECKING:
     from paddle.static import BuildStrategy
 
 __all__ = []
