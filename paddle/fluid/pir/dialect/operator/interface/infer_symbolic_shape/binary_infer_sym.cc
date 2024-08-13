@@ -884,8 +884,6 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
 
 bool PullGpuPsSparseOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &w_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &ids_list_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const std::vector<int> size =
@@ -911,7 +909,7 @@ bool PullGpuPsSparseOpInferSymbolicShape(
                                       size.size()));
   const size_t n_ids = ids_shape_or_data.size();
   symbol::TensorListShapeOrDataDimExprs out_list_shape_or_data;
-  for (size_t = 0; i < n_ids; ++i) {
+  for (size_t i = 0; i < n_ids; ++i) {
     int embedding_size = size[i];
     const auto ids_dims_shape = ids_shape_or_data[i].shape();
     int ids_rank = ids_dims_shape.size();
