@@ -958,7 +958,7 @@ bool SequenceMaskOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
-  if (attributes.find("maxlen") == attributes.end()) {
+  if (attribute.find("maxlen") == attribute.end()) {
     int maxlen = op->attribute<pir::Int32Attribute>("maxlen").data();
   }
   std::vector<symbol::DimExpr> y_dims = x_dims;
