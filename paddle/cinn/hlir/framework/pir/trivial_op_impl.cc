@@ -365,7 +365,6 @@ std::vector<FusibleOp> TransformReduceLoopRange(
   ir::Expr modified_downstream_compute_body = GetComputeBody(*downstream);
   const auto& load_upstream_expr = ComposeUtils::GetEachTensorLoadExpr(
       modified_downstream_compute_body, GetOutputTensor(upstream));
-  VLOG(4) << "RRTransform load_upstream_expr is " << load_upstream_expr;
   std::vector<FusibleOp> results;
   ir::Tensor downstream_output_tensor = GetOutputTensor(*downstream);
 
