@@ -45,6 +45,10 @@ static OpPatternKind GetOpPatternKind(const ::pir::Operation* op) {
 }
 
 static size_t GetRank(pir::Value value) {
+  PADDLE_ENFORCE_EQ(value.type().isa<pir::DenseTensorType>(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The type of value should be a DenseTensorType."));
   return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
 }
 
