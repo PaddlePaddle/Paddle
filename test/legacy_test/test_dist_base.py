@@ -112,6 +112,7 @@ def _insert_comm_op(opt, loss, build_strategy=None):
     opt.nranks = opt.role_maker._worker_num()
     startup_program = paddle.static.default_startup_program()
     opt.startup_program = startup_program
+    paddle.distributed.collective._init_parallel_env("nccl")
 
     block = loss.block
     program = block.program
@@ -293,7 +294,7 @@ class TestDistRunnerBase:
         eprint("feed_var_list:", feed_var_list)
 
         if feed_var_list[0].name == 'label':
-            feed_var_list.reverse()
+            feed_var_list = feed_var_list[::-1]
 
         feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
@@ -332,6 +333,7 @@ class TestDistRunnerBase:
 
     def run_use_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2" or "bkcl"
+        paddle.distributed.collective._init_parallel_env("nccl")
 
         self.lr = args.lr
 
@@ -391,7 +393,7 @@ class TestDistRunnerBase:
         # tmp add this code to pass python35 gcc8 CI
         # Fixme(gongweibao, wangxi), need fix fleet api program order
         if feed_var_list[0].name == 'label':
-            feed_var_list.reverse()
+            feed_var_list = feed_var_list[::-1]
 
         feeder = base.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
@@ -1112,6 +1114,7 @@ class TestDistBase(unittest.TestCase):
         devices="1",
     ):
         cmd = self._python_interp
+        envs['PADDLE_TRAINER_ENDPOINTS'] = self._ps_endpoints
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
@@ -1669,7 +1672,6 @@ class TestDistBase(unittest.TestCase):
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1",
             "FLAGS_new_executor_static_build": "1",
-            "FLAGS_dynamic_static_unified_comm": "0",
         }
 
         if check_error_log:
