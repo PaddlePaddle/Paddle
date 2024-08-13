@@ -299,7 +299,7 @@ def _gen_layer_flops(node: list[HostStatisticNode], repeat: int = 1) -> str:
     return "".join(ret)
 
 
-def gen_layer_flows(
+def gen_layer_flops(
     nodetrees: dict[int, TracerEventType], repeat: int = 1
 ) -> str:
     r'''
