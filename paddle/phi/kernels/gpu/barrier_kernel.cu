@@ -45,7 +45,6 @@ void BarrierKernel(const Context& dev_ctx,
     ncclRedOp_t nccl_red_type = ncclSum;
     comm_ctx->AllReduce(out, x_in, nccl_red_type, stream);
     phi::backends::gpu::GpuStreamSync(stream);
-    VLOG(3) << "new NCCLCommContext has rid " << ring_id;
   }
 #else
   PADDLE_THROW(
