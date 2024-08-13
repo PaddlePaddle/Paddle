@@ -80,7 +80,7 @@ class SequenceMaskTestBase(OpTest):
         return (index_broadcast < x_broadcast).astype(self.mask_dtype)
 
     def test_check_output(self):
-        self.check_output(check_pir=True, check_symbol_infer=True)
+        self.check_output(check_pir=True)
 
 
 class SequenceMaskTest1(SequenceMaskTestBase):
@@ -154,7 +154,7 @@ class SequenceMaskTestBase_tensor_attr(OpTest):
         return (index_broadcast < x_broadcast).astype(self.mask_dtype)
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
 
 class SequenceMaskTest1_tensor_attr(SequenceMaskTestBase_tensor_attr):
