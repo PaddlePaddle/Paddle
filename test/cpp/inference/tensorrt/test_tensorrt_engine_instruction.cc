@@ -23,10 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/tensorrt/pir/declare_plugin.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
@@ -38,6 +40,8 @@ limitations under the License. */
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(assign, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(memcpy_h2d, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(arange, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(argsort, GPU, ALL_LAYOUT);
 
 TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   // 1. Init env
@@ -299,4 +303,163 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
   ASSERT_EQ(result.dims()[2], 4);
   auto *result_data = result.data<float>();
   ASSERT_EQ(result_data[0], 1);
+}
+
+TEST(PluginTest, test_generic_plugin) {
+  // 1. Init env
+  paddle::framework::InitMemoryMethod();
+  paddle::framework::InitDevices();
+  paddle::framework::InitDefaultKernelSignatureMap();
+  std::unique_ptr<paddle::framework::Scope> scope =
+      std::make_unique<paddle::framework::Scope>();
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+  pir::Program program(ctx);
+  pir::Builder builder(ctx, program.block());
+  auto x_value = builder.Build<paddle::dialect::ArangeOp>(0, 10, 1).out();
+  std::vector<int64_t> x_shape{1, 10};
+  auto reshape_value =
+      builder.Build<paddle::dialect::ReshapeOp>(x_value, x_shape).out();
+  auto argsort_out =
+      builder.Build<paddle::dialect::ArgsortOp>(reshape_value, -1, true, false)
+          .out();
+  auto dev_ctx =
+      paddle::platform::DeviceContextPool::Instance().Get(phi::GPUPlace());
+  auto y_tensor = scope->Var("y")->GetMutable<phi::DenseTensor>();
+  y_tensor->Resize({1, 10});
+  dev_ctx->Alloc<float>(y_tensor);
+
+  // 2. construct trt engine
+  std::map<std::string, std::vector<int>> min_input_shape = {{"x", {1, 10}}};
+  std::map<std::string, std::vector<int>> max_input_shape = {{"x", {10, 10}}};
+  std::map<std::string, std::vector<int>> optim_input_shape = {{"x", {5, 10}}};
+
+  paddle::platform::EngineParams params;
+  params.max_workspace_size = 1 << 10;
+  params.min_input_shape = min_input_shape;
+  params.max_input_shape = max_input_shape;
+  params.optim_input_shape = optim_input_shape;
+  auto engine = std::make_unique<paddle::platform::TensorRTEngine>(params);
+  engine->InitNetwork();
+
+  auto *x = engine->DeclareInput(
+      "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims2{-1, 10});
+
+  auto creator = paddle::platform::GetPluginRegistry()->getPluginCreator(
+      "pir_generic_plugin", "1");
+  assert(creator != nullptr);
+  auto op = argsort_out.defining_op();
+  ::pir::ProgramWriter writer(1, false);
+
+  std::string op_name = op->name();
+  auto attrs_map_info = writer.GetAttributesMapJson(op->attributes()).dump();
+  std::stringstream inputs_type_info_ss;
+  for (auto operand : op->operands_source()) {
+    inputs_type_info_ss << (writer.GetTypeJson(operand.type()).dump())
+                        << '\n';  // use '\n' as separator
+  }
+  std::stringstream outputs_type_info_ss;
+  for (auto result : op->results()) {
+    outputs_type_info_ss << (writer.GetTypeJson(result.type()).dump())
+                         << '\n';  // use '\n' as separator
+  }
+  std::string inputs_type_info = inputs_type_info_ss.str();
+
+  std::string outputs_type_info = outputs_type_info_ss.str();
+  std::vector<nvinfer1::PluginField> fields{
+      {"op_name",
+       op_name.c_str(),
+       nvinfer1::PluginFieldType::kCHAR,
+       static_cast<int>(op_name.size())},
+      {"attrs_map_info",
+       attrs_map_info.c_str(),
+       nvinfer1::PluginFieldType::kCHAR,
+       static_cast<int>(attrs_map_info.size())},
+      {"inputs_type_info",
+       inputs_type_info.c_str(),
+       nvinfer1::PluginFieldType::kCHAR,
+       static_cast<int>(inputs_type_info.size())},
+      {"outputs_type_info",
+       outputs_type_info.c_str(),
+       nvinfer1::PluginFieldType::kCHAR,
+       static_cast<int>(outputs_type_info.size())}};
+  std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
+      new nvinfer1::PluginFieldCollection);
+
+  plugin_collection->nbFields = static_cast<int>(fields.size());
+  plugin_collection->fields = fields.data();
+  auto generic_plugin =
+      creator->createPlugin("pir_generic_plugin", plugin_collection.get());
+  PADDLE_ENFORCE_NOT_NULL(
+      generic_plugin,
+      common::errors::InvalidArgument("TRT create generic plugin failed."));
+  std::vector<nvinfer1::ITensor *> plugin_inputs;
+  plugin_inputs.emplace_back(x);
+  auto plugin_layer = engine->network()->addPluginV2(
+      plugin_inputs.data(), plugin_inputs.size(), *generic_plugin);
+  PADDLE_ENFORCE_NOT_NULL(plugin_layer,
+                          common::errors::InvalidArgument(
+                              "TRT generic plugin layer building failed."));
+
+  engine->DeclareOutput(plugin_layer, 0, "y");
+  std::vector<std::string> input_names = {"x"};
+  std::vector<std::string> output_names = {"y"};
+  std::vector<std::vector<int64_t>> outputs_shape = {{1}};
+  std::vector<phi::DataType> outputs_dtype = {phi::DataType::FLOAT32};
+  LOG(INFO) << "freeze network";
+  engine->FreezeNetwork();
+  ASSERT_EQ(engine->engine()->getNbBindings(), 2);
+  nvinfer1::IHostMemory *serialized_engine_data = engine->Serialize();
+  auto trt_engine_serialized_data =
+      std::string((const char *)serialized_engine_data->data(),
+                  serialized_engine_data->size());
+  params.engine_serialized_data = trt_engine_serialized_data;
+
+  // 3. Build PIR Program
+  // x ------> trt_op(argsort) -> pd_op.assign -> output value
+
+  auto y_value =
+      builder.Build<pir::ParameterOp>("y", reshape_value.type())
+          .result(0);  // Use for load y, although y is not a parameter
+  std::vector<pir::Value> combine_input = {reshape_value};
+  auto tensorrt_input = builder.Build<pir::CombineOp>(combine_input).out();
+  auto tensorrt_result =
+      builder
+          .Build<paddle::dialect::TensorRTEngineOp>(tensorrt_input,
+                                                    params,
+                                                    input_names,
+                                                    output_names,
+                                                    outputs_shape,
+                                                    outputs_dtype,
+                                                    "NO DEBUG INFO")
+          .out();
+  auto assign_input = builder.Build<pir::SplitOp>(tensorrt_result).outputs()[0];
+  builder.Build<paddle::dialect::AssignOut_Op>(assign_input, y_value);
+  y_value.set_attribute(
+      "persistable", pir::BoolAttribute::get(pir::IrContext::Instance(), true));
+
+  // 4. Run Program
+  auto kernel_program =
+      paddle::dialect::PdOpLowerToKernelPass(&program, phi::GPUPlace());
+  std::unique_ptr<paddle::framework::NaiveExecutor> executor =
+      std::make_unique<paddle::framework::NaiveExecutor>(phi::GPUPlace());
+  paddle::framework::interpreter::ExecutionConfig execution_config;
+  execution_config.create_local_scope = false;
+  execution_config.used_for_inference = true;
+  executor->PrepareInterpreterCore(
+      scope.get(), *(kernel_program.get()), execution_config);
+  executor->RunInterpreterCore();
+
+  // check
+  auto y = scope->Var("y")->Get<phi::DenseTensor>();
+  phi::DenseTensor result;
+  phi::Copy(*(static_cast<phi::CPUContext *>(dev_ctx)),
+            y,
+            phi::CPUPlace(),
+            true,
+            &result);
+  auto *result_data = result.data<float>();
+  ASSERT_EQ(result_data[0], 9);
 }

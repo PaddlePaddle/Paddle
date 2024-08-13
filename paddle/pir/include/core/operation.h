@@ -77,7 +77,8 @@ class IR_API alignas(8) Operation final
                            const std::vector<pir::Type> &output_types,
                            pir::OpInfo op_info,
                            size_t num_regions = 0,
-                           const std::vector<Block *> &successors = {});
+                           const std::vector<Block *> &successors = {},
+                           bool verify = true);
   static Operation *Create(OperationArgument &&op_argument);
 
   ///

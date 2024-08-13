@@ -725,7 +725,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                     if not path_patched:
                         prev_path = os.environ['PATH']
                         os.environ['PATH'] = ';'.join(
-                            dll_paths + [os.environ['PATH']]
+                            [*dll_paths, os.environ['PATH']]
                         )
                         path_patched = True
                     res = kernel32.LoadLibraryW(dll)

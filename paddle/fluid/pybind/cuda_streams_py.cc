@@ -17,8 +17,8 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/core/platform/device_event_base.h"
 
 namespace py = pybind11;
 

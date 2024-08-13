@@ -1913,21 +1913,21 @@ def pad(
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
-                pad = [0, 0, 0, 0] + pad
+                pad = [0, 0, 0, 0, *pad]
                 unsqueezed_dim = [3, 4]
                 x = unsqueeze(x, axis=unsqueezed_dim)
             elif x_dim == 4:
-                pad = pad + [0, 0]
+                pad = [*pad, 0, 0]
                 unsqueezed_dim = [2]
                 x = unsqueeze(x, axis=unsqueezed_dim)
         elif data_format in ["NLC", "NHWC", "NDHWC"]:
             data_format = "NDHWC"
             if x_dim == 3:
-                pad = [0, 0, 0, 0] + pad
+                pad = [0, 0, 0, 0, *pad]
                 unsqueezed_dim = [2, 3]
                 x = unsqueeze(x, axis=unsqueezed_dim)
             elif x_dim == 4:
-                pad = pad + [0, 0]
+                pad = [*pad, 0, 0]
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 

@@ -108,9 +108,7 @@ def fused_embedding_seq_pool(
     padding_idx = (
         -1
         if padding_idx is None
-        else padding_idx
-        if padding_idx >= 0
-        else (size[0] + padding_idx)
+        else padding_idx if padding_idx >= 0 else (size[0] + padding_idx)
     )
     helper.append_op(
         type='fused_embedding_seq_pool',
@@ -798,8 +796,7 @@ def tdm_sampler(
     seed: int = ...,
     tree_dtype: DTypeLike = ...,
     dtype: DTypeLike = ...,
-) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
-    ...
+) -> tuple[list[Tensor], list[Tensor], list[Tensor]]: ...
 
 
 @overload
@@ -815,8 +812,7 @@ def tdm_sampler(
     seed: int = ...,
     tree_dtype: DTypeLike = ...,
     dtype: DTypeLike = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -835,8 +831,7 @@ def tdm_sampler(
 ) -> (
     tuple[Tensor, Tensor, Tensor]
     | tuple[list[Tensor], list[Tensor], list[Tensor]]
-):
-    ...
+): ...
 
 
 def tdm_sampler(

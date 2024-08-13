@@ -82,7 +82,7 @@ def train(
             data, label, input_dim=dict_dim, class_dim=class_dim
         )
     else:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     adagrad = paddle.optimizer.Adagrad(learning_rate=0.002)
     adagrad.minimize(cost)

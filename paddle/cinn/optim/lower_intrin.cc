@@ -81,11 +81,11 @@ void LowerIntrinImpl(common::X86Arch, const Target &target, Expr *e) {
         PADDLE_ENFORCE_EQ(
             !node->name.empty(),
             true,
-            phi::errors::InvalidArgument("The node name is empty."));
+            ::common::errors::InvalidArgument("The node name is empty."));
         auto *func_ptr = ir::Registry::Get("lower_cpu_intrinsic_" + node->name);
         PADDLE_ENFORCE_NOT_NULL(
             func_ptr,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "find no rule to lower cpu intrinsic for lower_cpu_intrinsic_" +
                 node->name));
         Expr ret = (*func_ptr)(Expr(node));

@@ -511,19 +511,19 @@ class PyCodeGen:
 
     def update_code_name(self, fn_name, is_resumed_fn):
         if is_resumed_fn:
-            self._code_options[
-                'co_name'
-            ] = f"${fn_name}@{self._code_options['co_name'][1:]}"
+            self._code_options['co_name'] = (
+                f"${fn_name}@{self._code_options['co_name'][1:]}"
+            )
         else:
             if self._code_options['co_name'].startswith("$"):
-                self._code_options[
-                    'co_name'
-                ] = f"#{self._code_options['co_name']}"
+                self._code_options['co_name'] = (
+                    f"#{self._code_options['co_name']}"
+                )
             elif not self._code_options['co_name'].startswith("#"):
                 random_number = int(CODE_NAME_RNG.random() * 100000000)
-                self._code_options[
-                    'co_name'
-                ] = f"#{self._code_options['co_name']}_{hex(random_number & 0xFFFFF)[2:]:0>5}"
+                self._code_options['co_name'] = (
+                    f"#{self._code_options['co_name']}_{hex(random_number & 0xFFFFF)[2:]:0>5}"
+                )
 
     def gen_pycode(self) -> types.CodeType:
         """
