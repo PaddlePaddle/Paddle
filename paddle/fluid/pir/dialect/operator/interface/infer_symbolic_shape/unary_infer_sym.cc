@@ -1471,6 +1471,8 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  const auto &attributes = op->attribute();
   int64_t num_classes;
   if (op->operand_source(1)) {
     const auto &num_classes_shape_or_date =
@@ -1490,7 +1492,7 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
 
   const std::vector<symbol::DimExpr> &out_shape = [&] {
     std::vector<symbol::DimExpr> out_shape = x_shape;
-    out_dims.push_back(symbol::DimExpr(num_classes));
+    out_shape.push_back(symbol::DimExpr(num_classes));
     return out_shape;
   }();
 
