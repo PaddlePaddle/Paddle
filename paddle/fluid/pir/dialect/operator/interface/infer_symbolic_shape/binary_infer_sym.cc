@@ -956,19 +956,19 @@ bool SequenceMaskOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
   const auto &attributes = op->attributes();
-  int maxlen = -1;
-  if (attributes.find("maxlen") == attributes.end()) {
-    maxlen = attributes.at("maxlen").dyn_cast<pir::Int32Attribute>().data();
-  }
-  std::vector<symbol::DimExpr> y_dims = x_dims;
-  if (op->operand_source(1)) {
-    y_dims.push_back(symbol::DimExpr(-1));
-  } else {
+  std::vector<symbol::DimExpr> y_dims = x_shape;
+  if (attributes.find("maxlen") != attributes.end()) {
+    maxlen = op->attribute<pir::Int32Attribute>("maxlen").data();
     y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
                                 : symbol::DimExpr(-1));
+  } else if (op->operand_source(1)) {
+    y_dims.push_back(symbol::DimExpr(-1));
+  } else {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "Find maxlen or max_len_tensor Failed"));
   }
 
   infer_context->SetShapeOrDataForValue(
