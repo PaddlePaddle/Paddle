@@ -345,10 +345,7 @@ def try_load_model_vars(
                     feed_tensors.append(
                         np.array(
                             np.random.random(
-                                tuple(
-                                    batch_size,
-                                    *list(feed_config.feeded_vars_dims[i]),
-                                )
+                                (batch_size, *list(feed_config.feeded_vars_dims[i]))
                             ),
                             dtype=feed_config.feeded_vars_types[i],
                         )
@@ -356,10 +353,7 @@ def try_load_model_vars(
                 elif var.lod_level == 1:
                     t = np.array(
                         np.random.random(
-                            tuple(
-                                batch_size,
-                                *list(feed_config.feeded_vars_dims[i]),
-                            )
+                            (batch_size, *list(feed_config.feeded_vars_dims[i]))
                         ),
                         dtype=feed_config.feeded_vars_types[i],
                     )
