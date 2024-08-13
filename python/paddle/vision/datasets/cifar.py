@@ -15,18 +15,18 @@ from __future__ import annotations
 
 import pickle
 import tarfile
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Tuple
 
 import numpy as np
 import numpy.typing as npt
 from PIL import Image
 
 import paddle
-from paddle import Tensor
 from paddle.dataset.common import _check_exists_and_download
 from paddle.io import Dataset
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
 
     from paddle._typing.dtype_like import _DTypeLiteral
     from paddle.vision.transforms.transforms import _Transform
@@ -51,7 +51,7 @@ MODE_FLAG_MAP = {
 }
 
 
-class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
+class Cifar10(Dataset[Tuple["_ImageDataType", "npt.NDArray[Any]"]]):
     """
     Implementation of `Cifar-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_
     dataset, which has 10 categories.
@@ -185,9 +185,7 @@ class Cifar10(Dataset[tuple["_ImageDataType", "npt.NDArray[Any]"]]):
                 for sample, label in zip(data, labels):
                     self.data.append((sample, label))
 
-    def __getitem__(
-        self, idx: int
-    ) -> tuple[Tensor | Image | npt.NDArray[Any], npt.NDArray[Any]]:
+    def __getitem__(self, idx: int) -> tuple[_ImageDataType, npt.NDArray[Any]]:
         image, label = self.data[idx]
         image = np.reshape(image, [3, 32, 32])
         image = image.transpose([1, 2, 0])
