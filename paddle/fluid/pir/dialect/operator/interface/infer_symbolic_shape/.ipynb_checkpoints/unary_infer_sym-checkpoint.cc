@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/unary_infer_sym.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_slice_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/unary_infer_sym.h"
 
 namespace {
 std::vector<symbol::DimExpr> GetRealPadding(
@@ -907,77 +907,18 @@ bool Flatten_OpInferSymbolicShape(
 
 bool FoldOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape =
+  const auto &in_dims =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
 
-  std::vector<symbol::DimExpr> out_shape;
-  out_shape.push_back(x_shape[0]);
-
-  const std::vector<int> &output_sizes =
-      paddle::dialect::details::GetVectorAttr<int>(op, "output_sizes");
-  PADDLE_ENFORCE_EQ(
-      output_sizes.size(),
-      2,
-      common::errors::InvalidArgument(
-          "It is expected output_size equals to 2, but got size %d",
-          output_sizes.size()));
-  infer_context->AddGreatThanOneCstr(output_sizes[0]);
-  infer_context->AddGreatThanOneCstr(output_sizes[1]);
-
-  const std::vector<int> &kernel_sizes =
+  std::vector<symbol::DimExpr> out_dims;
+  out_dims.push_back(in_dims[0]);
+  std::vector<int> kernel_sizes =
       paddle::dialect::details::GetVectorAttr<int>(op, "kernel_sizes");
-  const std::vector<int> &dilations =
-      paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
-  const std::vector<int> &strides =
-      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
-  const std::vector<int> &paddings =
-      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-
-  PADDLE_ENFORCE_EQ(
-      kernel_sizes.size(),
-      2,
-      common::errors::InvalidArgument(
-          "It is expected kernel_size equals to 2, but got size %d",
-          kernel_sizes.size()));
-  PADDLE_ENFORCE_EQ(
-      strides.size(),
-      2,
-      common::errors::InvalidArgument(
-          "It is expected strides_size equals to 2, but got size %d",
-          strides.size()));
-  PADDLE_ENFORCE_EQ(
-      paddings.size(),
-      4,
-      common::errors::InvalidArgument(
-          "It is expected paddings_size equals to 4, but got size %d",
-          paddings.size()));
-  PADDLE_ENFORCE_EQ(
-      dilations.size(),
-      2,
-      common::errors::InvalidArgument(
-          "It is expected dilations_size equals to 2, but got size %d",
-          dilations.size()));
-
-  int blocks_height = (output_sizes[0] + 2 * paddings[0] -
-                       (dilations[0] * (kernel_sizes[0] - 1) + 1)) /
-                          strides[0] +
-                      1;
-  int blocks_width = (output_sizes[1] + 2 * paddings[1] -
-                      (dilations[1] * (kernel_sizes[1] - 1) + 1)) /
-                         strides[1] +
-                     1;
-
-  infer_context->AddEqualCstr((blocks_height * blocks_width), x_shape[2]);
-
-  out_shape.push_back(x_shape[1] / (kernel_sizes[0] * kernel_sizes[1]));
-
-  out_shape.push_back(symbol::DimExpr(output_sizes[0]));
-  out_shape.push_back(symbol::DimExpr(output_sizes[1]));
+  out_dims.push_back(in_dims[1] / (kernel_sizes[0] * kernel_sizes[1]));
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(out_shape)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
   return true;
 }
