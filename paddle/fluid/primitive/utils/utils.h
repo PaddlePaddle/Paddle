@@ -77,7 +77,7 @@ static std::vector<int64_t> get_expand_dims(const Tensor& origin,
   return result;
 }
 
-// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+// This function compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
     const Tensor& origin, const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();
@@ -103,7 +103,42 @@ static std::vector<int64_t> get_unsqueeze_dims(
   return result;
 }
 
-// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+// This function compute `dynamic` unsqueeze dims for reshape to replace
+// unsqueeze. And should used only on `dynamic`.
+template <typename T>
+Tensor get_unsqueeze_dims(const Tensor& origin_shape,
+                          const std::vector<int64_t>& axis) {
+  auto total_shape_size = origin_shape.numel() + axis.size();
+  const Tensor one = full<T>({1}, 1, origin_shape.dtype());
+
+  std::vector<Tensor> result(total_shape_size, one);
+  // to support axis not in increasing order.
+  std::vector<bool> is_set(total_shape_size, false);
+
+  for (size_t i = 0; i < axis.size(); ++i) {
+    PADDLE_ENFORCE_LT(
+        axis[i],
+        total_shape_size,
+        common::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                   "elements in origin_dims[%lu].",
+                                   axis[i],
+                                   total_shape_size));
+    is_set[axis[i]] = true;
+  }
+
+  size_t j = 0;
+  for (size_t i = 0; i < total_shape_size; ++i) {
+    if (is_set[i]) {
+      continue;
+    }
+    result[i] = get_slice<T>(origin_shape, int64_t(j));
+    is_set[i] = true;
+    ++j;
+  }
+  return concat<T>(result);
+}
+
+// This function compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
                                              const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();

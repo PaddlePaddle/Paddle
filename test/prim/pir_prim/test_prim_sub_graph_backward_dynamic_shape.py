@@ -175,6 +175,30 @@ def reduce_as_net(x, y):
     return paddle.reduce_as(x, y)
 
 
+def max_net1(x):
+    return paddle.max(x, keepdim=True)
+
+
+def max_net2(x):
+    return paddle.max(x, keepdim=False)
+
+
+def max_net3(x):
+    return paddle.max(x, axis=[0, 1], keepdim=False)
+
+
+def max_net4(x):
+    return paddle.max(x, axis=[-1, -2], keepdim=False)
+
+
+def max_net5(x):
+    return paddle.max(x, axis=[-1, 0], keepdim=False)
+
+
+def max_net6(x):
+    return paddle.max(x)
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -1964,6 +1988,90 @@ class TestPrimReduceAsWithGrad4(TestPrimBaseOneGradTwoInputs):
         self.enable_cinn = False
         self.tol = 1e-5
         self.y_without_grad = True
+
+
+class TestPrimMaxWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = max_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimMaxWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30]
+        self.init_x_shape = [None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = max_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimMaxWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = max_net2
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimMaxWithGrad4(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = max_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimMaxWithGrad5(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = max_net4
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimMaxWithGrad6(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = max_net5
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimMaxWithGrad7(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2024)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = max_net6
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 if __name__ == "__main__":
