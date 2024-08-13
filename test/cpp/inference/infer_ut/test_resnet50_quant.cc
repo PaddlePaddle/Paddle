@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/fluid/platform/enforce.h"
 
 #include "test_suite.h"  // NOLINT
 
@@ -31,7 +32,10 @@ paddle::test::Record PrepareInput(int batch_size) {
   // load from binary data
   std::ifstream fs(FLAGS_datadir, std::ifstream::binary);
   EXPECT_TRUE(fs.is_open());
-  CHECK(fs.is_open());
+  PADDLE_ENFORCE_EQ(fs.is_open(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "File system is not open! Please check."));  // NOLINT
 
   float* input = new float[input_num];
   memset(input, 0, input_num * sizeof(float));

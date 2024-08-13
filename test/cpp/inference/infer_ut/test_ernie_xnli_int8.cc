@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/fluid/platform/enforce.h"
 
 #include "test_helper.h"  // NOLINT
 #include "test_suite.h"   // NOLINT
@@ -91,7 +92,9 @@ std::vector<T> ParseTensor(const std::string &field) {
 void run(Predictor *predictor, std::vector<float> *out_data) {
   clock_t start, end;
   start = clock();
-  CHECK(predictor->Run());
+  PADDLE_ENFORCE_NOT_NULL(predictor->Run(),
+                          common::errors::InvalidArgument(
+                              "Predictor is not running! Please check."));
   end = clock();
 
   auto output_names = predictor->GetOutputNames();
