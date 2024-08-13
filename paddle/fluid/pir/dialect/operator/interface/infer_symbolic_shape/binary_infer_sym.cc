@@ -369,19 +369,15 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
 
 bool DropoutOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
 
   if (op->result(1)) {
+    symbol::TensorShapeOrDataDimExprs mask_shape(x_shape_or_data.shape());
     infer_context->SetShapeOrDataForValue(
-        op->result(1),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(x_shape)});
+        op->result(1), symbol::ShapeOrDataDimExprs{mask_shape});
   }
 
   return true;
