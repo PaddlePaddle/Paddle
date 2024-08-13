@@ -914,12 +914,30 @@ bool SearchsortedOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool SwigluOpInferSymbolicShape(pir::Operation *op,
-//                                 pir::InferSymbolicShapeContext
-//                                 *infer_context) {
-//   // pass
-//   return true;
-// }
+bool SwigluOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  size_t rank = x_shape_or_data.shape().size();
+  if (op->operand_source(1)) {
+    const auto &y_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    for (size_t i = 0; i < rank; ++i) {
+      infer_context->AddEqualCstr(x_shape_or_data.shape()[i],
+                                  y_shape_or_data.shape()[i]);
+    }
+    infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  } else {
+    std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+    // TODO(CINN): Add distribute constraint
+    x_shape[rank - 1] = x_shape[rank - 1] / symbol::DimExpr{2};
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(x_shape)});
+  }
+  return true;
+}
 
 bool IscloseOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

@@ -286,6 +286,18 @@
     func: fetch_barrier
   optional: x
 
+- op : flatten
+  args : (Tensor x, int start_axis, int stop_axis)
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : FlattenWithXShapeInferMeta
+  kernel :
+    func : flatten_with_xshape
+    backend : x
+  inplace : (x -> out)
+  view : (x -> out)
+  backward : flatten_grad
+
 - op : flatten2
   args: (Tensor x, int axis = 1)
   output: Tensor (out), Tensor (x_shape)

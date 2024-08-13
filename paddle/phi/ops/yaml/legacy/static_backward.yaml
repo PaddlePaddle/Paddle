@@ -132,6 +132,19 @@
   inplace: (out_grad -> x_grad)
   no_need_buffer: x
 
+- backward_op : flatten_grad
+  forward : flatten(Tensor x, int start_axis, int stop_axis) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func :  KernelWithXShapeInferMeta
+    param : [xshape]
+  kernel :
+    func : flatten_grad
+    data_type: out_grad
+    layout: out_grad
+  inplace : (out_grad -> x_grad)
+
 - backward_op : frobenius_norm_grad
   forward: frobenius_norm (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
