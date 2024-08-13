@@ -3394,6 +3394,7 @@
   kernel :
     func : norm
   backward : norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : npu_identity
   args : (Tensor x, int format = -1)
@@ -3455,6 +3456,7 @@
   kernel :
     func : p_norm
   backward : p_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pad
   args : (Tensor x, int[] paddings, Scalar pad_value)
