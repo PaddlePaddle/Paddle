@@ -1307,31 +1307,10 @@ bool MinOpInferSymbolicShape(pir::Operation *op,
 
 bool MeanOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &axis_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
   bool keepdim = GetBoolAttr(op, "keepdim");
 
-  const std::vector<int64_t> axis = [&] {
-    pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
-    std::vector<int64_t> axis_vec;
-    if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
-      ExprVec axis_expr_vec = details::GetOrCreateExprVecFromData(
-          axis_shape_or_data, infer_context);
-      auto optional_axis_vec = details::VecExpr2Int64(axis_expr_vec);
-
-      if (optional_axis_vec.has_value()) {
-        axis_vec = optional_axis_vec.value();
-      } else {
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "VecExpr2Int64 returned an empty optional."));
-      }
-    } else {
-      PADDLE_THROW(common::errors::Unimplemented(
-          "MeanOpInferSymbolicShape: 'axis' only support FullIntArrayOp's "
-          "result now."));
-    }
-    return axis_vec;
-  }();
+  const std::vector<int64_t> axis = details::GetVectorAttr(
+      axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
 
   bool reduce_all = axis.size() == 0 ? true : false;
 
