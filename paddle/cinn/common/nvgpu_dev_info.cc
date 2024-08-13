@@ -45,6 +45,10 @@ int NVGPUDevInfo::GetMaxThreadsPerBlock() const {
   return prop_.maxThreadsPerBlock;
 }
 
+size_t NVGPUDevInfo::GetMaxSharedMemPerBlock() const {
+  return prop_.sharedMemPerBlock;
+}
+
 }  // namespace common
 }  // namespace cinn
 #endif

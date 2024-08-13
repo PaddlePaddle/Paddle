@@ -18,14 +18,13 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace phi {
-namespace distributed {
-namespace auto_parallel {
+namespace phi::distributed::auto_parallel {
 
 void DistributedMapper::set_process_id_to_device_ids(
     const std::map<int64_t, std::pair<std::string, std::vector<int64_t>>>&
         process_id_to_device_ids) {
   std::vector<std::string> device_mesh_names;
+  device_mesh_names.reserve(device_meshes_.size());
   for (const auto& item : device_meshes_) {
     device_mesh_names.push_back(item.first);
   }
@@ -83,6 +82,7 @@ DistributedMapper DistributedMapper::from_proto(
         proto.process_id_to_device_ids(i).device_mesh_name();
     std::vector<int64_t> device_ids;
     int num_devices = proto.process_id_to_device_ids(i).device_ids_size();
+    device_ids.reserve(num_devices);
     for (int j = 0; j < num_devices; ++j) {
       device_ids.push_back(proto.process_id_to_device_ids(i).device_ids(j));
     }
@@ -141,6 +141,4 @@ bool operator==(const DistributedMapper& lhs, const DistributedMapper& rhs) {
   return true;
 }
 
-}  // namespace auto_parallel
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed::auto_parallel

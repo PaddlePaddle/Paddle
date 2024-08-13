@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import framework
 
 paddle.enable_static()
 
@@ -31,19 +31,15 @@ class TestPythonOperatorOverride(unittest.TestCase):
         y_data = np.random.random(size=shape).astype(dtype)
         python_out = fn(x_data, y_data)
 
-        x_var = paddle.static.create_global_var(
-            name='x', shape=shape, value=0.0, dtype=dtype, persistable=True
-        )
-        y_var = paddle.static.create_global_var(
-            name='y', shape=shape, value=0.0, dtype=dtype, persistable=True
-        )
+        x_var = paddle.static.data(name='x', shape=shape, dtype=dtype)
+        y_var = paddle.static.data(name='y', shape=shape, dtype=dtype)
         out = fn(x_var, y_var)
 
-        exe = base.Executor(place)
+        exe = paddle.static.Executor(place)
 
-        exe.run(base.default_startup_program())
+        exe.run(paddle.static.default_startup_program())
         base_out = exe.run(
-            base.default_main_program(),
+            paddle.static.default_main_program(),
             feed={'x': x_data, 'y': y_data},
             fetch_list=[out],
         )
@@ -62,7 +58,13 @@ class TestPythonOperatorOverride(unittest.TestCase):
         ]
 
         # places to check
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if base.core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
 
@@ -72,8 +74,8 @@ class TestPythonOperatorOverride(unittest.TestCase):
         for place in places:
             for dtype in dtypes:
                 for compare_fn in compare_fns:
-                    with framework.program_guard(
-                        framework.Program(), framework.Program()
+                    with paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
                     ):
                         self.check_result(compare_fn, place, dtype)
 

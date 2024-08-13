@@ -191,7 +191,7 @@ int32_t EmbLayerNormPlugin::enqueue(
   int32_t batchSize = inputDesc[0].dims.d[0];
   int32_t const maxSeqlen = inputDesc[0].dims.d[1];
   if (maxSeqlen > 512) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "EmbLayerNormPlugin support maxSeqlen is 512"));
   }
   const float* beta = mBetaDev.get();
@@ -256,7 +256,7 @@ int32_t EmbLayerNormPlugin::enqueue(
           mIdsVocabSize[3],
           output);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support 2,3,4 lookup_tables fused "));
     }
   } else if (mType == nvinfer1::DataType::kHALF) {
@@ -316,11 +316,11 @@ int32_t EmbLayerNormPlugin::enqueue(
                                       mIdsVocabSize[3],
                                       output);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support 2,3,4 lookup_tables fused "));
     }
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupported type error, expected [kHALF,kFLOAT]"));
   }
   return STATUS_SUCCESS;

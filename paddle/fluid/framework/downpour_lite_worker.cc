@@ -117,7 +117,7 @@ void DownpourLiteWorker::Initialize(const TrainerDesc& desc) {
             << dest_table;
     copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
   }
-  for (auto& m : copy_table_config_.table_denpendency_map()) {
+  for (auto& m : copy_table_config_.table_dependency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
       // currently only support one dependency
       for (auto& value : m.values()) {
@@ -313,11 +313,11 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains NAN.", var_name));
     }
 
@@ -410,7 +410,8 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
         fprintf(stderr,
                 "push dense time percent: %f\n",
                 push_dense_time / total_time * 100);
-        fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
+        fprintf(
+            stderr, "%6.2f instances/s\n", total_inst / total_time);  // NOLINT
       }
     }
     timeline.Start();
@@ -426,7 +427,7 @@ void DownpourLiteWorker::TrainFilesWithProfiler() {
 /**
  * @brief add auc monitor
  */
-inline void AddAucMonitor(const Scope* scope, const platform::Place& place) {
+inline void AddAucMonitor(const Scope* scope, const phi::Place& place) {
   auto metric_ptr = Metric::GetInstance();
   auto& metric_list = metric_ptr->GetMetricList();
   for (auto& metric_item : metric_list) {
@@ -533,11 +534,11 @@ void DownpourLiteWorker::TrainFiles() {
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains NAN.", var_name));
     }
 

@@ -108,5 +108,9 @@ phi::KernelKey GetBincountExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetMulticlassNmsExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
 }  // namespace operators
 }  // namespace paddle

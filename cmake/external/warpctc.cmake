@@ -26,14 +26,34 @@ set(WARPCTC_TAG bdc2b4550453e0ef2d3b5190f9c6103a84eff184)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/warpctc)
 set(WARPCTC_PATCH_COMMAND "")
 set(WARPCTC_CCBIN_OPTION "")
+if(WIN32)
+  set(WARPCTC_PATCH_CUDA_COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different
+      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.cuda.patch
+      "<SOURCE_DIR>/")
+else()
+  set(WARPCTC_PATCH_CUDA_COMMAND
+      git checkout -- . && git checkout ${WARPCTC_TAG} && patch -Nd
+      ${SOURCE_DIR} <
+      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.cuda.patch)
+endif()
+
 if(NOT WIN32 AND WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
                                                   VERSION_GREATER 12.0)
     file(TO_NATIVE_PATH
          ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.patch native_src)
-    set(WARPCTC_PATCH_COMMAND patch -d ${SOURCE_DIR} < ${native_src})
+    set(WARPCTC_PATCH_COMMAND git checkout -- . && git checkout ${WARPCTC_TAG}
+                              && patch -Nd ${SOURCE_DIR} < ${native_src} &&)
     set(WARPCTC_CCBIN_OPTION -DCCBIN_COMPILER=${CCBIN_COMPILER})
   endif()
+endif()
+
+if(WITH_ROCM)
+  set(WARPCTC_PATHCH_ROCM_COMMAND
+      patch -p1 <
+      ${PADDLE_SOURCE_DIR}/patches/warpctc/CMakeLists.txt.rocm.patch && patch
+      -p1 < ${PADDLE_SOURCE_DIR}/patches/warpctc/devicetypes.cuh.patch)
 endif()
 
 set(WARPCTC_INCLUDE_DIR
@@ -87,7 +107,10 @@ ExternalProject_Add(
   SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${WARPCTC_PREFIX_DIR}
   UPDATE_COMMAND ""
-  PATCH_COMMAND ${WARPCTC_PATCH_COMMAND}
+  PATCH_COMMAND
+  COMMAND ${WARPCTC_PATCH_COMMAND}
+  COMMAND ${WARPCTC_PATCH_CUDA_COMMAND}
+  COMMAND ${WARPCTC_PATHCH_ROCM_COMMAND}
   #BUILD_ALWAYS    1
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -101,6 +124,7 @@ ExternalProject_Add(
              -DWITH_GPU=${WITH_GPU}
              -DWITH_ROCM=${WITH_ROCM}
              -DWITH_OMP=${USE_OMP}
+             -DNVCC_FLAGS_EXTRA=${NVCC_FLAGS_EXTRA}
              -DWITH_TORCH=OFF
              -DCMAKE_DISABLE_FIND_PACKAGE_Torch=ON
              -DBUILD_SHARED=ON

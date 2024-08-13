@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class LookupTableOpConverter : public OpConverter {
  public:
@@ -47,7 +45,7 @@ class LookupTableOpConverter : public OpConverter {
 
     auto* gather_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Gather, *w_tensor, *reshape_layer->getOutput(0), 0);
-    RreplenishLayerAndOutput(gather_layer, "gather", {out_name}, test_mode);
+    ReplenishLayerAndOutput(gather_layer, "gather", {out_name}, test_mode);
   }
 };
 
@@ -68,13 +66,11 @@ class LookupTableV2OpConverter : public OpConverter {
 
     auto* gather_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Gather, *w_tensor, *ids_tensor, 0);
-    RreplenishLayerAndOutput(gather_layer, "gather", {out_name}, test_mode);
+    ReplenishLayerAndOutput(gather_layer, "gather", {out_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(lookup_table, LookupTableOpConverter);
 REGISTER_TRT_OP_CONVERTER(lookup_table_v2, LookupTableV2OpConverter);

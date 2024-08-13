@@ -45,7 +45,7 @@ class TestIndexSelectOp(OpTest):
         self.inputs = {'X': x_np, 'Index': index_np}
         self.attrs = {'dim': self.dim}
         outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_reshape = [outer_loop, *self.x_shape[self.dim :]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -130,7 +130,7 @@ class TestIndexSelectBF16Op(OpTest):
         self.inputs = {'X': convert_float_to_uint16(x_np), 'Index': index_np}
         self.attrs = {'dim': self.dim}
         outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_reshape = [outer_loop, *self.x_shape[self.dim :]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -237,8 +237,8 @@ class TestIndexSelectAPI(unittest.TestCase):
         self.input_data()
         # case 1:
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            index = base.dygraph.to_variable(self.data_index)
+            x = paddle.to_tensor(self.data_x)
+            index = paddle.to_tensor(self.data_index)
             z = paddle.index_select(x, index)
             np_z = z.numpy()
         expect_out = np.array(
@@ -248,8 +248,8 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 2:
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            index = base.dygraph.to_variable(self.data_index)
+            x = paddle.to_tensor(self.data_x)
+            index = paddle.to_tensor(self.data_index)
             z = paddle.index_select(x, index, axis=1)
             np_z = z.numpy()
         expect_out = np.array(

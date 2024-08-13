@@ -22,11 +22,11 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace imperative {
@@ -130,7 +130,7 @@ class GradOpBaseMakerBase {
     PADDLE_ENFORCE_EQ(
         it != attrs_.end(),
         true,
-        platform::errors::NotFound(
+        common::errors::NotFound(
             "Cannot find attribute [%s] in operator [%s]", name, type_));
     return it->second;
   }
@@ -238,7 +238,7 @@ class TracedGradOp {
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
         VLOG(6) << "SetInput var name: " << var->Name();
-        if (var && !var->OverridedStopGradient()) {
+        if (var && !var->OverriddenStopGradient()) {
           var->SetGraphIsFreed(false);
           auto dirty_grad_node = var->GradNode();
           if (dirty_grad_node) {
@@ -265,11 +265,11 @@ class TracedGradOp {
     }
 
     if (kRole == TracedVarRole::kBackward) {
-      if (vars.size() == 1 && vars.front()->OverridedStopGradient()) {
+      if (vars.size() == 1 && vars.front()->OverriddenStopGradient()) {
         return;
       } else {
         for (auto& var : vars) {
-          if (var && !var->OverridedStopGradient() && var->GradNode()) {
+          if (var && !var->OverriddenStopGradient() && var->GradNode()) {
             VLOG(6) << "SetOutput var name: " << var->Name();
             if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
               // Because inplace var isn't a leaf var, it should have
@@ -334,7 +334,7 @@ class TracedGradOp {
     bool has_valid = false;
     for (auto& var : vars) {
       if (UNLIKELY(!var || (kRole == TracedVarRole::kBackward &&
-                            var->OverridedStopGradient()))) {
+                            var->OverriddenStopGradient()))) {
         result.emplace_back();
       } else {
         auto var_wrapper = SnapshotVarWrapper(var->SharedVar());

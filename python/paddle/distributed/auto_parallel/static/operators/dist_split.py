@@ -49,7 +49,7 @@ class DistributedSplit(DistributedOperatorImplContainer):
 
         num = op_desc.attr('num')
         sections = op_desc.attr('sections')
-        if num is not None:
+        if num:
             assert (sections is None) or (
                 len(sections) == 0
             ), f"Both Attributes of num: {num} and sections: {sections} are specified."
@@ -57,7 +57,7 @@ class DistributedSplit(DistributedOperatorImplContainer):
             rule_type = "split_with_num"
         else:
             assert (
-                num is None
+                not num
             ), f"Both Attributes of num: {num} and sections: {sections} are specified."
             first_attr = sections
             rule_type = "split"

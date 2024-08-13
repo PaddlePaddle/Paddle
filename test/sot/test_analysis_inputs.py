@@ -20,7 +20,7 @@ import unittest
 
 import paddle
 from paddle.jit.sot.opcode_translator.instruction_utils import (
-    analysis_inputs,
+    analysis_used_names,
     calc_offset_from_bytecode_offset,
     get_instructions,
 )
@@ -36,12 +36,12 @@ def assert_inputs_equals(instruction_offset: int, expected_inputs: set[str]):
     current_instr_idx = calc_offset_from_bytecode_offset(
         test_frame.f_lasti + 2, instructions
     )
-    actual_inputs = analysis_inputs(
+    reads, writes = analysis_used_names(
         instructions, current_instr_idx + instruction_offset
     )
     assert (
-        set(actual_inputs) == expected_inputs
-    ), f"actual_inputs: {actual_inputs}, expected_inputs: {expected_inputs}"
+        set(reads) == expected_inputs
+    ), f"actual_inputs: {reads}, expected_inputs: {expected_inputs}"
 
 
 def case1(x):
@@ -144,7 +144,11 @@ def case8(x):
     return x
 
 
-case9_offset = -9 if sys.version_info >= (3, 11) else -7
+# NOTE(SigureMo): The offset should be between index of CALL instruction of assert_inputs_equals
+# and the index of the CALL instruction of breakgraph_api
+case9_offset = -7
+case9_offset = -9 if sys.version_info >= (3, 11) else case9_offset
+case9_offset = -6 if sys.version_info >= (3, 12) else case9_offset
 
 
 def case9(x):

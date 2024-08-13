@@ -14,8 +14,10 @@
 
 #include "paddle/phi/core/device_context.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #endif
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -33,7 +35,7 @@ struct DeviceContext::Impl {
   void SetAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required allocator shall not be nullptr, but received nullptr."));
     device_allocator_ = allocator;
   }
@@ -41,7 +43,7 @@ struct DeviceContext::Impl {
   void SetHostAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required allocator shall not be nullptr, but received nullptr."));
     host_allocator_ = allocator;
   }
@@ -49,7 +51,7 @@ struct DeviceContext::Impl {
   void SetZeroAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required allocator shall not be nullptr, but received nullptr."));
     zero_allocator_ = allocator;
   }
@@ -57,7 +59,7 @@ struct DeviceContext::Impl {
   void SetHostZeroAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required allocator shall not be nullptr, but received nullptr."));
     host_zero_allocator_ = allocator;
   }
@@ -65,12 +67,12 @@ struct DeviceContext::Impl {
   void SetPinnedAllocator(const Allocator* allocator) {
     PADDLE_ENFORCE_NOT_NULL(
         allocator,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required allocator shall not be nullptr, but received nullptr."));
     pinned_allocator_ = allocator;
   }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void SetCUDAGraphAllocator(const Allocator* allocator) {
     // NOTE (Yuang): cuda graph allocator can be set to nullptr, so don't check
     // validation of the allocator here
@@ -79,7 +81,7 @@ struct DeviceContext::Impl {
 
   const Allocator& GetCUDAGraphAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "Required cuda_graph_allocator_ shall not be "
                                 "nullptr, but received nullptr."));
     return *cuda_graph_allocator_;
@@ -91,42 +93,42 @@ struct DeviceContext::Impl {
 #endif
 
   const Allocator& GetAllocator() const {
-    PADDLE_ENFORCE_NOT_NULL(
-        device_allocator_,
-        phi::errors::InvalidArgument("Required device_allocator_ shall not be "
-                                     "nullptr, but received nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(device_allocator_,
+                            common::errors::InvalidArgument(
+                                "Required device_allocator_ shall not be "
+                                "nullptr, but received nullptr."));
     return *device_allocator_;
   }
 
   const Allocator& GetHostAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         host_allocator_,
-        phi::errors::InvalidArgument("Required host_allocator_ shall not be "
-                                     "nullptr, but received nullptr."));
+        common::errors::InvalidArgument("Required host_allocator_ shall not be "
+                                        "nullptr, but received nullptr."));
     return *host_allocator_;
   }
 
   const Allocator& GetZeroAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         zero_allocator_,
-        phi::errors::InvalidArgument("Required zero_allocator_ shall not be "
-                                     "nullptr, but received nullptr."));
+        common::errors::InvalidArgument("Required zero_allocator_ shall not be "
+                                        "nullptr, but received nullptr."));
     return *zero_allocator_;
   }
 
   const Allocator& GetHostZeroAllocator() const {
     PADDLE_ENFORCE_NOT_NULL(
         host_zero_allocator_,
-        phi::errors::InvalidArgument("Required zero_allocator_ shall not be "
-                                     "nullptr, but received nullptr."));
+        common::errors::InvalidArgument("Required zero_allocator_ shall not be "
+                                        "nullptr, but received nullptr."));
     return *host_zero_allocator_;
   }
 
   const Allocator& GetPinnedAllocator() const {
-    PADDLE_ENFORCE_NOT_NULL(
-        pinned_allocator_,
-        phi::errors::InvalidArgument("Required pinned_allocator_ shall not be "
-                                     "nullptr, but received nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(pinned_allocator_,
+                            common::errors::InvalidArgument(
+                                "Required pinned_allocator_ shall not be "
+                                "nullptr, but received nullptr."));
     return *pinned_allocator_;
   }
 
@@ -138,7 +140,7 @@ struct DeviceContext::Impl {
               bool fake_alloc = false) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required tensor shall not be nullptr, but received nullptr."));
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
@@ -163,14 +165,14 @@ struct DeviceContext::Impl {
         (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? zero_allocator_
             : (pinned ? pinned_allocator_ : device_allocator_);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     bool must_cuda_graph_allocator =
         (!fake_alloc && tensor->numel() != 0) && !pinned;
     if (must_cuda_graph_allocator &&
         place.GetType() == phi::AllocationType::GPU &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
       PADDLE_ENFORCE_NOT_NULL(cuda_graph_allocator_,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Required cuda_graph_allocator_ shall not be "
                                   "nullptr, but received nullptr."));
       allocator = cuda_graph_allocator_;
@@ -197,7 +199,7 @@ struct DeviceContext::Impl {
                   bool fake_alloc = false) const {
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required tensor shall not be nullptr, but received nullptr."));
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
@@ -235,7 +237,7 @@ struct DeviceContext::Impl {
   void SetGenerator(Generator* gen) {
     PADDLE_ENFORCE_NOT_NULL(
         gen,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required generator shall not be nullptr, but received nullptr."));
     device_generator_ = gen;
   }
@@ -243,15 +245,15 @@ struct DeviceContext::Impl {
   Generator* GetGenerator() const {
     PADDLE_ENFORCE_NOT_NULL(
         device_generator_,
-        phi::errors::InvalidArgument("Required generator_ shall not be "
-                                     "nullptr, but received nullptr."));
+        common::errors::InvalidArgument("Required generator_ shall not be "
+                                        "nullptr, but received nullptr."));
     return device_generator_;
   }
 
   void SetHostGenerator(Generator* gen) {
     PADDLE_ENFORCE_NOT_NULL(
         gen,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required generator shall not be nullptr, but received nullptr."));
     host_generator_ = gen;
   }
@@ -259,8 +261,8 @@ struct DeviceContext::Impl {
   Generator* GetHostGenerator() const {
     PADDLE_ENFORCE_NOT_NULL(
         host_generator_,
-        phi::errors::InvalidArgument("Required generator_ shall not be "
-                                     "nullptr, but received nullptr."));
+        common::errors::InvalidArgument("Required generator_ shall not be "
+                                        "nullptr, but received nullptr."));
     return host_generator_;
   }
 
@@ -289,7 +291,7 @@ struct DeviceContext::Impl {
   const Allocator* zero_allocator_{nullptr};
   const Allocator* host_zero_allocator_{nullptr};
   const Allocator* pinned_allocator_{nullptr};
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   const Allocator* cuda_graph_allocator_{nullptr};
 #endif
   Generator* device_generator_{nullptr};
@@ -309,7 +311,7 @@ DeviceContext::DeviceContext(const DeviceContext& other) {
   impl_->SetPinnedAllocator(&other.GetPinnedAllocator());
   impl_->SetHostGenerator(other.GetHostGenerator());
   impl_->SetGenerator(other.GetGenerator());
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (other.IsCUDAGraphAllocatorValid()) {
     impl_->SetCUDAGraphAllocator(&other.GetCUDAGraphAllocator());
   }
@@ -340,7 +342,7 @@ const Allocator& DeviceContext::GetHostAllocator() const {
   return impl_->GetHostAllocator();
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void DeviceContext::SetCUDAGraphAllocator(const Allocator* allocator) {
   impl_->SetCUDAGraphAllocator(allocator);
 }
@@ -415,7 +417,7 @@ T* DeviceContext::HostAlloc(TensorBase* tensor, size_t requested_size) const {
 }
 
 #define DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(dtype)              \
-  template dtype* DeviceContext::Alloc(                              \
+  template TEST_API dtype* DeviceContext::Alloc(                     \
       TensorBase* tensor, size_t requested_size, bool pinned) const; \
   template dtype* DeviceContext::HostAlloc(TensorBase* tensor,       \
                                            size_t requested_size) const;
@@ -428,6 +430,8 @@ DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int32_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int64_t)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(float)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(double)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::float8_e4m3fn)
+DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::float8_e5m2)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::bfloat16)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::float16)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(::phi::complex64)

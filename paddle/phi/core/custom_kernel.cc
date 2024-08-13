@@ -23,7 +23,7 @@ void CustomKernelMap::RegisterCustomKernel(const std::string& name,
                                            const Kernel& kernel) {
   PADDLE_ENFORCE_EQ(kernels_[name].find(key),
                     kernels_[name].end(),
-                    phi::errors::AlreadyExists(
+                    common::errors::AlreadyExists(
                         "The custom kernel [%s:%s] has been already existed in "
                         "CustomKernelMap, please check if any duplicate kernel "
                         "info in your lib(s) before load again.",
@@ -45,7 +45,7 @@ void CustomKernelMap::RegisterCustomKernels() {
       PADDLE_ENFORCE_EQ(
           kernels[pair.first].find(info_pair.first),
           kernels[pair.first].end(),
-          phi::errors::AlreadyExists(
+          common::errors::AlreadyExists(
               "The kernel [%s:%s] has been already existed "
               "in Paddle, please contribute PR if it is necessary "
               "to optimize the kernel code. Custom kernel does NOT support "
@@ -55,12 +55,12 @@ void CustomKernelMap::RegisterCustomKernels() {
 
       kernels[pair.first][info_pair.first] = info_pair.second;
 
-      VLOG(3) << "Successed in registering kernel [" << pair.first << ":"
+      VLOG(3) << "Succeed in registering kernel [" << pair.first << ":"
               << info_pair.first
               << "] to Paddle. It will be used like native ones.";
     }
   }
-  LOG(INFO) << "Successed in loading " << kernels_.size()
+  LOG(INFO) << "Succeed in loading " << kernels_.size()
             << " custom kernel(s) from loaded lib(s), will be "
             << "used like native ones.";
   kernels_.clear();

@@ -17,8 +17,8 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
-#include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 #include "test/cpp/fluid/fused/fused_dropout_test.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -46,14 +46,14 @@ struct TestFusedLayernormResidualDropoutBias {
   phi::DenseTensor dsrc, dbias;
 
   std::vector<T> src_vec, residual_vec, bias_vec;
-  std::vector<LayerNormParamType<T>> means_vec, vars_vec, scale_vec,
+  std::vector<phi::funcs::LayerNormParamType<T>> means_vec, vars_vec, scale_vec,
       layernorm_bias_vec;
   std::vector<T> correct_out, correct_dsrc, correct_dbias,
       correct_layernorm_out;
-  std::vector<LayerNormParamType<T>> correct_means, correct_vars;
+  std::vector<phi::funcs::LayerNormParamType<T>> correct_means, correct_vars;
   std::vector<uint8_t> correct_mask;
 
-  platform::CUDAPlace place;
+  phi::GPUPlace place;
   phi::GPUContext *ctx;
 
   TestFusedLayernormResidualDropoutBias() {
@@ -67,7 +67,7 @@ struct TestFusedLayernormResidualDropoutBias {
     has_scale = true;
     has_layernorm_bias = true;
     epsilon = 0.00001f;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
@@ -90,7 +90,7 @@ struct TestFusedLayernormResidualDropoutBias {
     has_bias = _has_bias;
     has_scale = true;
     has_layernorm_bias = true;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto devicectx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(devicectx);
   }
@@ -98,7 +98,7 @@ struct TestFusedLayernormResidualDropoutBias {
   ~TestFusedLayernormResidualDropoutBias() = default;
 
   void SetUp() {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     const int n = rows * cols;
     correct_out.resize(n);
     correct_mask.resize(n);
@@ -179,7 +179,7 @@ struct TestFusedLayernormResidualDropoutBias {
   }
 
   void BaseForward() {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     std::vector<T> out1(rows * cols), out2(rows * cols);
     if (has_bias) {
       // add bias
@@ -230,7 +230,7 @@ struct TestFusedLayernormResidualDropoutBias {
   }
 
   void FusedForward() {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     int VecSize = MAX_CACHE_BYTES / sizeof(T);
     if (cols % 4 != 0) {
       VecSize = 1;
@@ -251,7 +251,7 @@ struct TestFusedLayernormResidualDropoutBias {
       layernorm_bias_ptr = layernorm_bias.data<U>();
     }
 
-    paddle::operators::LaunchLayernormResidualDropoutBias<T, uint8_t, U, false>(
+    phi::fusion::LaunchLayernormResidualDropoutBias<T, uint8_t, U, false>(
         rows,
         cols,
         increment,
@@ -281,7 +281,7 @@ struct TestFusedLayernormResidualDropoutBias {
   }
 
   void CheckOut(const T diff) {
-    using U = LayerNormParamType<T>;
+    using U = phi::funcs::LayerNormParamType<T>;
     const int n = rows * cols;
     std::vector<T> _out(n), _layernorm_out(n);
     std::vector<U> _means(rows), _vars(cols);
@@ -335,7 +335,7 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasDouble) {
 }
 
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasFp16) {
-  BaseTest<platform::float16>(true);
+  BaseTest<phi::dtype::float16>(true);
 }
 
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasIsUpscaleInTrain) {
@@ -378,8 +378,8 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutLargeShape) {
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutFp16MLperf) {
   const int rows = 512;
   const int cols = 1024;
-  TestFusedLayernormResidualDropoutBias<platform::float16> test(
+  TestFusedLayernormResidualDropoutBias<phi::dtype::float16> test(
       rows, cols, 0, 0, 0.00001f, false, false, false);
   test.Run();
-  test.CheckOut(static_cast<platform::float16>(1e-2));
+  test.CheckOut(static_cast<phi::dtype::float16>(1e-2));
 }

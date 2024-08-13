@@ -365,7 +365,7 @@ int BertTokenizer::Encode(
   vector<int64_t> token_type_ids;
   CreateTokenTypeIdsFromSequences(&token_type_ids, ids, pair_ids);
 
-  // Build output dictionnary
+  // Build output dictionary
   encoded_inputs->emplace("input_ids", sequence);
   encoded_inputs->emplace("token_type_ids", token_type_ids);
   // Check lengths
@@ -464,8 +464,7 @@ class FasterTokenizerOp : public framework::OperatorWithKernel {
  protected:
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return phi::KernelKey(framework::proto::VarType::INT64,
-                          paddle::platform::CPUPlace());
+    return phi::KernelKey(framework::proto::VarType::INT64, phi::CPUPlace());
   }
 
   phi::KernelKey GetKernelTypeForVar(

@@ -84,5 +84,10 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    mean_grad, XPU, ALL_LAYOUT, phi::ReduceMeanGradKernel, float) {}
+PD_REGISTER_KERNEL(mean_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ReduceMeanGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

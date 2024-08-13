@@ -484,17 +484,17 @@ class TestFractionalMaxPool3DClassAPI(unittest.TestCase):
             out_5 = fractional_max_pool(x=x)
 
             exe = paddle.static.Executor(place=place)
-            [res_1, res_2, res_3, res_4, res_5] = exe.run(
+            res = exe.run(
                 base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
 
-            np.testing.assert_allclose(res_1, self.res_1_np)
-            np.testing.assert_allclose(res_2, self.res_2_np)
-            np.testing.assert_allclose(res_3, self.res_3_np)
-            np.testing.assert_allclose(res_4, self.res_4_np)
-            np.testing.assert_allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(res[0], self.res_1_np)
+            np.testing.assert_allclose(res[1], self.res_2_np)
+            np.testing.assert_allclose(res[2], self.res_3_np)
+            np.testing.assert_allclose(res[3], self.res_4_np)
+            np.testing.assert_allclose(res[4], self.res_5_np)
 
     def test_dynamic_graph(self):
         for use_cuda in (

@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.autograd import PyLayer
@@ -22,6 +26,10 @@ from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import ParamAttrLike, Size2
 
 
 class c_identity_eager(PyLayer):
@@ -290,7 +298,7 @@ def _mp_allreduce(
     use_model_parallel=True,
     skip_c_identity_dynamic=False,
 ):
-    """[it is same as allreduce above, but it supports model parallel. And it support inplace startegy]"""
+    """[it is same as allreduce above, but it supports model parallel. And it support inplace strategy]"""
     if group is not None and not group.is_member():
         return
 
@@ -400,9 +408,7 @@ class _Linear(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'in_features={}, out_features={}, dtype={}{}'.format(
-            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
-        )
+        return f'in_features={self.weight.shape[0]}, out_features={self.weight.shape[1]}, dtype={self._dtype}{name_str}'
 
 
 def _c_softmax_with_cross_entropy(
@@ -475,7 +481,7 @@ def _c_softmax_with_cross_entropy(
 
 def _linear(x, weight, bias=None, name=None):
     """
-    Fuction Linear
+    Function Linear
     """
     if in_dynamic_mode():
         pre_bias = _create_tensor(dtype=x.dtype)
@@ -698,16 +704,16 @@ def _parallel_embedding(
 
 
 def split(
-    x,
-    size,
-    operation,
-    axis=0,
-    num_partitions=1,
-    gather_out=True,
-    weight_attr=None,
-    bias_attr=None,
-    name=None,
-):
+    x: Tensor,
+    size: Size2,
+    operation: Literal['linear', 'embedding'],
+    axis: int = 0,
+    num_partitions: int = 1,
+    gather_out: bool = True,
+    weight_attr: ParamAttrLike | None = None,
+    bias_attr: ParamAttrLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
 
     Split the weight of the specified operation into multiple devices
@@ -721,7 +727,7 @@ def split(
         of which is a matrix with (N/num_partitions + 1) rows and M column where the last
         row as the padding idx.
 
-        Suppose we split the NxM weight into two partitons on device_0 and device_1
+        Suppose we split the NxM weight into two partitions on device_0 and device_1
         respectively. Then, one each device, the final weight has (N/2 + 1) rows with the
         index range from 0 to N/2. On device_0, all values in the input within [0, N/2 -1]
         keep unchanged and all other values are changed to N/2 which is the padding index and
@@ -751,7 +757,7 @@ def split(
         of which is a matrix with N/num_partitions rows and M column.
 
         The linear layer put on single card is shown as below, the input variable is represented by X,
-        the weight matrix is represented by W and the output vaiable is O. The linear layer on single card is
+        the weight matrix is represented by W and the output variable is O. The linear layer on single card is
         simple matrix multiplication operation, O = X * W.
 
         .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_single.png
@@ -770,7 +776,7 @@ def split(
 
     Case 3: Column Parallel Linear
         The weight of the linear operation is a NxM matrix with N rows and M columns.
-        With column parallel linear, the weight is split into num_paratitions partitions, each
+        With column parallel linear, the weight is split into num_partitions partitions, each
         of which is a matrix with N rows and M/num_partitions column.
 
         The linear layer put on single card has been illustrated on case 2 and Column Parallel Linear
@@ -783,7 +789,7 @@ def split(
             :align: center
 
     As observed, the column parallel linear and row parallel linear can be combined to skip one ALLGATHER communication
-    operator. Furthermore the Attention and MLP can be combined to imporve the performance as shown below.
+    operator. Furthermore the Attention and MLP can be combined to improve the performance as shown below.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/split_col_row.png
             :width: 800
@@ -816,7 +822,7 @@ def split(
             >>> import paddle.distributed.fleet as fleet
 
             >>> paddle.enable_static()
-            >>> paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            >>> paddle.set_device(f'gpu:{paddle.distributed.ParallelEnv().dev_id}')
             >>> fleet.init(is_collective=True)
             >>> data = paddle.randint(0, 8, shape=[10,4])
             >>> emb_out = paddle.distributed.split(
@@ -847,7 +853,7 @@ def split(
     if in_dynamic_mode():
         raise ValueError(
             "paddle.distributed.split cannot be used in dynamic "
-            "graph mode, plese use ParallelEmbedding, ParallelRowLinear, "
+            "graph mode, please use ParallelEmbedding, ParallelRowLinear, "
             "ParallelColumnLinear instead."
         )
     else:

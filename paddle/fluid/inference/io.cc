@@ -57,7 +57,7 @@ void ReadBinaryFile(const std::string& filename, std::string* contents) {
   PADDLE_ENFORCE_EQ(
       fin.is_open(),
       true,
-      platform::errors::Unavailable("Failed to open file %s.", filename));
+      common::errors::Unavailable("Failed to open file %s.", filename));
   fin.seekg(0, std::ios::end);
   contents->clear();
   contents->resize(fin.tellg());
@@ -86,7 +86,7 @@ void LoadPersistables(framework::Executor* executor,
 
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
   framework::BlockDesc* load_block = load_program->MutableBlock(0);
-  std::vector<std::string> paramlist;
+  std::vector<std::string> param_list;
 
   for (auto* var : global_block.AllVars()) {
     if (IsPersistable(var)) {
@@ -107,7 +107,7 @@ void LoadPersistables(framework::Executor* executor,
       new_var->SetPersistable(true);
 
       if (!param_filename.empty()) {
-        paramlist.push_back(new_var->Name());
+        param_list.push_back(new_var->Name());
       } else {
         // append_op
         framework::OpDesc* op = load_block->AppendOp();
@@ -120,12 +120,12 @@ void LoadPersistables(framework::Executor* executor,
   }
 
   if (!param_filename.empty()) {
-    // sort paramlist to have consistent ordering
-    std::sort(paramlist.begin(), paramlist.end());
+    // sort param_list to have consistent ordering
+    std::sort(param_list.begin(), param_list.end());
     // append just the load_combine op
     framework::OpDesc* op = load_block->AppendOp();
     op->SetType("load_combine");
-    op->SetOutput("Out", paramlist);
+    op->SetOutput("Out", param_list);
     op->SetAttr("file_path", {param_filename});
     op->SetAttr("model_from_memory", {model_from_memory});
     op->CheckAttrs();
@@ -149,8 +149,8 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
   PADDLE_ENFORCE_EQ(
       framework::IsProgramVersionSupported(main_program->Version()),
       true,
-      platform::errors::Unavailable("Model version %ld is not supported.",
-                                    main_program->Version()));
+      common::errors::Unavailable("Model version %ld is not supported.",
+                                  main_program->Version()));
 
   // model_from_memory is false in separate parameters.
   LoadPersistables(executor,
@@ -175,8 +175,8 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
   PADDLE_ENFORCE_EQ(
       framework::IsProgramVersionSupported(main_program->Version()),
       true,
-      platform::errors::Unavailable("Model version %ld is not supported.",
-                                    main_program->Version()));
+      common::errors::Unavailable("Model version %ld is not supported.",
+                                  main_program->Version()));
   if (load_params) {
     LoadPersistables(executor,
                      scope,
@@ -198,8 +198,8 @@ std::unique_ptr<framework::ProgramDesc> LoadFromMemory(
   PADDLE_ENFORCE_EQ(
       framework::IsProgramVersionSupported(main_program->Version()),
       true,
-      platform::errors::Unavailable("Model version %ld is not supported.",
-                                    main_program->Version()));
+      common::errors::Unavailable("Model version %ld is not supported.",
+                                  main_program->Version()));
 
   LoadPersistables(executor,
                    scope,
@@ -222,7 +222,7 @@ void SaveVars(const framework::Scope& scope,
   op->SetAttr("file_path", dirname + "/param");
   op->CheckAttrs();
 
-  platform::CPUPlace place;
+  phi::CPUPlace place;
   framework::Executor exe(place);
   exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
 }

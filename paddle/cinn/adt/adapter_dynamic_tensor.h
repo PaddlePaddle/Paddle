@@ -18,13 +18,13 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/dim_expr.h"
 #include "paddle/cinn/adt/symbolic_dim.h"
-#include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
 namespace cinn::adt::adapter {
 
 struct DynamicTensor final {
   ::pir::Value node_data;
-  const hlir::framework::pir::Group* group;
+  const hlir::framework::pir::OpLoweringGroup* group;
 
   bool operator==(const DynamicTensor& other) const {
     return this->node_data == other.node_data;

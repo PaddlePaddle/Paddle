@@ -25,6 +25,8 @@ if base.is_compiled_with_cuda():
         {
             'FLAGS_allocator_strategy': 'auto_growth',
             'FLAGS_auto_growth_chunk_size_in_mb': 10,
+            # Async allocator does not support auto growth allocator.
+            'FLAGS_use_cuda_malloc_async_allocator': 0,
         }
     )
 

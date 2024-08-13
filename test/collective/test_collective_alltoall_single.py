@@ -14,12 +14,14 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestCollectiveAllToAllSingle(TestMultipleGpus):
+class TestCollectiveAllToAllSingle(TestMultipleAccelerators):
     def test_collective_alltoall_single(self):
-        self.run_mnist_2gpu('collective_alltoall_single.py')
+        self.run_mnist_2accelerators('collective_alltoall_single.py')
 
 
 if __name__ == "__main__":

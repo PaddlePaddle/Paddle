@@ -54,11 +54,11 @@ static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
         memory_utils::DeviceMemoryStatCurrentValue("Allocated", device_id);
     int64_t reserved =
         memory_utils::DeviceMemoryStatCurrentValue("Reserved", device_id);
-    int64_t availble = phi::backends::gpu::GpuAvailableMemToAlloc();
+    int64_t available = phi::backends::gpu::GpuAvailableMemToAlloc();
     VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
             << " MB, reserved=" << ToMegaBytes(reserved)
-            << " MB, available_to_alloc=" << ToMegaBytes(availble) << " MB.";
-    return std::max(availble, reserved - allocated);
+            << " MB, available_to_alloc=" << ToMegaBytes(available) << " MB.";
+    return std::max(available, reserved - allocated);
   } else {
     return FLAGS_conv_workspace_size_limit * 1024 * 1024;
   }

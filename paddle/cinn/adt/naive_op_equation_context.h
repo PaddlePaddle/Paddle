@@ -27,7 +27,6 @@
 #include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/adt/op_arg_pos.h"
 #include "paddle/cinn/adt/op_equation_context.h"
-#include "paddle/cinn/hlir/framework/node.h"
 
 namespace cinn::adt::config {
 

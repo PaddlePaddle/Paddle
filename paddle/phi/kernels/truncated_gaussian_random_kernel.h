@@ -25,6 +25,8 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    float mean,
                                    float std,
                                    int seed,
+                                   float a,
+                                   float b,
                                    DataType dtype,
                                    DenseTensor* out);
 

@@ -17,17 +17,17 @@
 
 #include <chrono>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_HETERPS
 
-PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
-PHI_DECLARE_bool(multi_node_sample_use_gpu_table);
+COMMON_DECLARE_double(gpugraph_hbm_table_load_factor);
+COMMON_DECLARE_bool(multi_node_sample_use_gpu_table);
 
 namespace paddle {
 namespace framework {

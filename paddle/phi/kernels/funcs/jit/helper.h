@@ -88,7 +88,7 @@ inline const Kernel* GetReferKernel() {
   PADDLE_ENFORCE_NE(
       ref_iter,
       ref_pool.end(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Every Refer Kernel of jitcode should have reference function."));
   auto& ref_impls = ref_iter->second;
   for (auto& impl : ref_impls) {
@@ -104,10 +104,10 @@ template <typename KernelTuple>
 inline typename KernelTuple::func_type GetReferFunc() {
   auto ker = GetReferKernel<KernelTuple>();
   auto p = dynamic_cast<const ReferKernel<KernelTuple>*>(ker);
-  PADDLE_ENFORCE_NOT_NULL(
-      p,
-      phi::errors::InvalidArgument("Get the reference code of kernel in CPU "
-                                   "failed. The Refer kernel should exsit."));
+  PADDLE_ENFORCE_NOT_NULL(p,
+                          common::errors::InvalidArgument(
+                              "Get the reference code of kernel in CPU "
+                              "failed. The Refer kernel should exist."));
   return p->GetFunc();
 }
 
@@ -115,7 +115,7 @@ inline typename KernelTuple::func_type GetReferFunc() {
 template <typename KernelTuple, typename PlaceType>
 std::vector<const Kernel*> GetAllCandidateKernels(
     const typename KernelTuple::attr_type& attr) {
-  // the search order shoudl be jitcode > more > refer
+  // the search order should be jitcode > more > refer
   std::vector<const Kernel*> res;
   auto jitker = GetJitCode<KernelTuple, PlaceType>(attr);
   if (jitker) {
@@ -140,8 +140,8 @@ std::vector<const Kernel*> GetAllCandidateKernels(
   auto ref = GetReferKernel<KernelTuple>();
   PADDLE_ENFORCE_NOT_NULL(
       ref,
-      phi::errors::InvalidArgument("Get all candicate kernel in CPU failed. "
-                                   "The Refer Kernel can not be empty."));
+      common::errors::InvalidArgument("Get all candidate kernel in CPU failed. "
+                                      "The Refer Kernel can not be empty."));
   res.emplace_back(ref);
   return res;
 }
@@ -157,13 +157,14 @@ GetAllCandidateFuncsWithTypes(const typename KernelTuple::attr_type& attr) {
     if (name == "JitCode") {
       auto i = dynamic_cast<const GenBase*>(k);
       PADDLE_ENFORCE_NOT_NULL(i,
-                              phi::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "Generate jitcode kernel (GenBase) failed."));
       res.emplace_back(std::make_pair(name, i->template getCode<Func>()));
     } else {
       auto i = dynamic_cast<const KernelMore<KernelTuple>*>(k);
       PADDLE_ENFORCE_NOT_NULL(
-          i, phi::errors::InvalidArgument("Kernel cast (KernelMore) failed."));
+          i,
+          common::errors::InvalidArgument("Kernel cast (KernelMore) failed."));
       res.emplace_back(std::make_pair(name, i->GetFunc()));
     }
   }
@@ -187,8 +188,8 @@ typename KernelTuple::func_type GetDefaultBestFunc(
   auto funcs = GetAllCandidateFuncs<KernelTuple, PlaceType>(attr);
   PADDLE_ENFORCE_GE(funcs.size(),
                     1UL,
-                    phi::errors::InvalidArgument(
-                        "The candicate jit kernel is at least one in CPU."));
+                    common::errors::InvalidArgument(
+                        "The candidate jit kernel is at least one in CPU."));
   // Here could do some runtime benchmark of this attr and return the best one.
   // But yet just get the first one as the default best one,
   // which is searched in order and tuned by offline.

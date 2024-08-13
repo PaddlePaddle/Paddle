@@ -12,26 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/flatten_grad_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
 template <typename Context>
 void FlattenGradStridedKernel(const Context& dev_ctx,
-                              const DenseTensor& xshape,
+                              const DenseTensor& x,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad) {
-  auto xshape_dims = xshape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
-  ReshapeStridedKernel<Context>(dev_ctx,
-                                out_grad,
-                                IntArray(common::vectorize<int64_t>(x_dims)),
-                                x_grad,
-                                nullptr);
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+  ReshapeStridedKernel<Context>(
+      dev_ctx,
+      out_grad,
+      IntArray(common::vectorize<int64_t>(x_grad->dims())),
+      x_grad);
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    flatten_grad, STRIDED, phi::FlattenGradStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten_grad,
+                                         STRIDED,
+                                         phi::FlattenGradStridedKernel) {}

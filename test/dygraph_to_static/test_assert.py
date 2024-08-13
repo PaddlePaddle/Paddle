@@ -26,7 +26,7 @@ from paddle import base
 
 
 def dyfunc_assert_variable(x):
-    x_v = base.dygraph.to_variable(x)
+    x_v = paddle.to_tensor(x)
     assert x_v
 
 

@@ -26,7 +26,6 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle.framework import use_pir_api
 from paddle.static import InputSpec
 
 SEED = 2020
@@ -47,7 +46,7 @@ def test_slice_in_if(x):
     if x.numpy()[0] > 0:
         a.append(x)
     else:
-        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="int32"))
+        a.append(paddle.full(shape=[1, 2], fill_value=9, dtype="float32"))
 
     if x.numpy()[0] > 0:
         a[0] = x
@@ -116,7 +115,7 @@ class TestSliceBase(Dy2StTestBase):
         self.dygraph_func = None
 
     def init_input(self):
-        self.input = np.random.random(3).astype('int32')
+        self.input = np.random.random(3).astype('float32')
 
     def init_dygraph_func(self):
         raise NotImplementedError(
@@ -155,6 +154,7 @@ class TestSliceInIf(TestSliceBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_slice_in_if
 
+    @test_legacy_and_pt_and_pir
     def test_transformed_static_result(self):
         self.init_dygraph_func()
         static_res = self.run_static_mode()
@@ -179,14 +179,6 @@ class TestSetValue(TestSliceInIf):
     def init_dygraph_func(self):
         self.dygraph_func = test_set_value
 
-    # TODO(pir-control-flow): Delete this code after supporting control flow
-    @test_legacy_and_pt_and_pir
-    def test_transformed_static_result(self):
-        self.init_dygraph_func()
-        static_res = self.run_static_mode()
-        dygraph_res = self.run_dygraph_mode()
-        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
-
 
 class TestSetValueWithLayerAndSave(Dy2StTestBase):
     def setUp(self):
@@ -206,14 +198,12 @@ class TestSetValueWithLayerAndSave(Dy2StTestBase):
                 LayerWithSetValue(input_dim=10, hidden=1)
             )
             x = paddle.full(shape=[5, 10], fill_value=5.0, dtype="float32")
-            # TODO(pir-save-load): Fix this after we support save/load in PIR
-            if not use_pir_api():
-                paddle.jit.save(
-                    layer=model,
-                    path=self.model_path,
-                    input_spec=[x],
-                    output_spec=None,
-                )
+            paddle.jit.save(
+                layer=model,
+                path=self.model_path,
+                input_spec=[x],
+                output_spec=None,
+            )
 
 
 class TestSliceSupplementSpecialCase(Dy2StTestBase):

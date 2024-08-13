@@ -43,7 +43,7 @@ def custom_relu_static(
             out_v = exe.run(
                 static.default_main_program(),
                 feed={'X': np_x},
-                fetch_list=[out.name],
+                fetch_list=[out],
             )
 
     paddle.disable_static()
@@ -103,9 +103,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         # install mixed custom_op and extension
         # compile, install the custom op egg into site-packages under background
-        cmd = 'cd {} && {} mix_relu_and_extension_setup.py install'.format(
-            cur_dir, sys.executable
-        )
+        cmd = f'cd {cur_dir} && {sys.executable} mix_relu_and_extension_setup.py install'
         run_cmd(cmd)
 
         site_dir = site.getsitepackages()[0]
@@ -213,9 +211,7 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 dx_grad,
                 pd_dx_grad,
-                err_msg='custom op dx grad: {},\n paddle api dx grad: {}'.format(
-                    dx_grad, pd_dx_grad
-                ),
+                err_msg=f'custom op dx grad: {dx_grad},\n paddle api dx grad: {pd_dx_grad}',
             )
 
 

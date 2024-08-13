@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base.dygraph.base import to_variable
 
 paddle.enable_static()
 
@@ -130,9 +129,7 @@ class TestCorrelationOp(unittest.TestCase):
 
         place = base.CUDAPlace(0)
         exe = base.Executor(place)
-        res = exe.run(
-            feed={'x1': x1_np, 'x2': x2_np}, fetch_list=[out.name, loss.name]
-        )
+        res = exe.run(feed={'x1': x1_np, 'x2': x2_np}, fetch_list=[out, loss])
 
         np.testing.assert_allclose(res[0], out_np, rtol=1e-05, atol=1e-8)
 
@@ -176,8 +173,8 @@ class TestCorrelationOpDyGraph(unittest.TestCase):
                 stride2=1,
             )
 
-            x1 = to_variable(x1_np)
-            x2 = to_variable(x2_np)
+            x1 = paddle.to_tensor(x1_np)
+            x2 = paddle.to_tensor(x2_np)
             corr_pd = Net('corr_pd')
             y = corr_pd(x1, x2)
             out = y.numpy()

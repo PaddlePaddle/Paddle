@@ -18,17 +18,17 @@ limitations under the License. */
 
 namespace phi {
 
-#define DECLEAR_LOGICAL_BINARY_KERNEL(type)          \
+#define DECLARE_LOGICAL_BINARY_KERNEL(type)          \
   template <typename T, typename Context>            \
   void Logical##type##Kernel(const Context& dev_ctx, \
                              const DenseTensor& x,   \
                              const DenseTensor& y,   \
                              DenseTensor* out);
 
-DECLEAR_LOGICAL_BINARY_KERNEL(And)
-DECLEAR_LOGICAL_BINARY_KERNEL(Or)
-DECLEAR_LOGICAL_BINARY_KERNEL(Xor)
-#undef DECLEAR_LOGICAL_BINARY_KERNEL
+DECLARE_LOGICAL_BINARY_KERNEL(And)
+DECLARE_LOGICAL_BINARY_KERNEL(Or)
+DECLARE_LOGICAL_BINARY_KERNEL(Xor)
+#undef DECLARE_LOGICAL_BINARY_KERNEL
 
 template <typename T, typename Context>
 void LogicalNotKernel(const Context& dev_ctx,

@@ -53,6 +53,12 @@ def DataTypeCast(date_type):
     return np_dtype
 
 
+def dump_output(x):
+    dump_file = os.environ['DUMP_FILE']
+    with open(dump_file, 'wb') as f:
+        pickle.dump(x, f)
+
+
 class TestCollectiveRunnerBase:
     def get_model(self, train_prog, startup_prog, dtype=None):
         raise NotImplementedError(
@@ -154,7 +160,7 @@ class TestCollectiveRunnerBase:
         out = exe.run(
             train_prog, feed={'tindata': indata}, fetch_list=[result.name]
         )
-        sys.stdout.buffer.write(pickle.dumps(out[0]))
+        dump_output(out[0])
 
 
 def runtime_main(test_class, col_type, sub_type):
@@ -167,8 +173,9 @@ def runtime_main(test_class, col_type, sub_type):
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
     args["dtype"] = os.getenv("DTYPE")
+    args["batch_size"] = os.getenv("BATCH_SIZE")
     args["dynamic_static_unified_comm"] = bool(
-        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+        int(os.getenv("FLAGS_dynamic_static_unified_comm", "1"))
     )
     model.run_trainer(args)
 
@@ -177,10 +184,7 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-            self._find_free_port(),
-            self._find_free_port(),
-        )
+        self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
         self._python_interp = sys.executable
 
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -223,6 +227,14 @@ class TestDistBase(unittest.TestCase):
         # update environment
         env0.update(envs)
         env1.update(envs)
+
+        # setup out dump path
+        cur_pid = os.getpid()
+        dump_file_0 = f'./out_data_0_{cur_pid}.pickled'
+        dump_file_1 = f'./out_data_1_{cur_pid}.pickled'
+        env0['DUMP_FILE'] = dump_file_0
+        env1['DUMP_FILE'] = dump_file_1
+
         tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
@@ -246,14 +258,21 @@ class TestDistBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
-        sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
+        sys.stderr.write(f'trainer 0 stderr: {tr0_err}\n')
+        sys.stderr.write(f'trainer 1 stderr: {tr1_err}\n')
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
+
+        def load_and_remove(path):
+            with open(path, 'rb') as f:
+                out = pickle.load(f)
+            os.remove(path)
+            return out
+
         return (
-            pickle.loads(tr0_out),
-            pickle.loads(tr1_out),
+            load_and_remove(dump_file_0),
+            load_and_remove(dump_file_1),
             tr0_proc.pid,
             tr1_proc.pid,
         )
@@ -274,7 +293,6 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
             "DTYPE": dtype,
-            "FLAGS_dynamic_static_unified_comm": "0",
         }
         required_envs.update(need_envs)
         if check_error_log:
@@ -339,12 +357,12 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr0_out, need_result1, rtol=0, atol=0)
             np.testing.assert_allclose(tr1_out, need_result2, rtol=0, atol=0)
         elif col_type == "reduce_slicegather":
-            slicesize = input1.shape[0] // 2
-            tmp10 = input1[0:slicesize]
-            tmp11 = input2[0:slicesize]
+            slice_size = input1.shape[0] // 2
+            tmp10 = input1[0:slice_size]
+            tmp11 = input2[0:slice_size]
             need_result1 = np.concatenate((tmp10, tmp11), axis=1)
-            tmp20 = input1[slicesize:]
-            tmp21 = input2[slicesize:]
+            tmp20 = input1[slice_size:]
+            tmp21 = input2[slice_size:]
             need_result2 = np.concatenate((tmp20, tmp21), axis=1)
             np.testing.assert_allclose(tr0_out, need_result1)
             np.testing.assert_allclose(tr1_out, need_result2)

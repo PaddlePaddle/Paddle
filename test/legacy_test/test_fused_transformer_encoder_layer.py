@@ -14,9 +14,10 @@
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
-from paddle.base.framework import default_main_program, in_dygraph_mode
+from paddle.base.framework import in_dygraph_mode
 from paddle.incubate.nn import FusedTransformerEncoderLayer
 from paddle.nn import TransformerEncoderLayer
 
@@ -73,7 +74,7 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
     def test_out(self):
         if in_dygraph_mode():
             return
-        default_main_program().random_seed = 42
+        paddle.seed(42)
         base_encoder = TransformerEncoderLayer(
             self.d_model,
             self.nhead,
@@ -172,30 +173,10 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
         )
         paddle.autograd.backward([fused_out], [paddle.to_tensor(dout)], True)
 
-        correct_ffn_str = 'd_model={}, dim_feedforward={}, dropout_rate={}, epsilon={}, activation={}, act_dropout_rate={}, normalize_before={}, dtype={}'.format(
-            self.d_model,
-            self.dim_feedforward,
-            self.dropout_rate,
-            fused_encoder.ffn._epsilon,
-            self.activation,
-            self.dropout_rate,
-            self.pre_layer_norm,
-            self.dtype,
-        )
+        correct_ffn_str = f'd_model={self.d_model}, dim_feedforward={self.dim_feedforward}, dropout_rate={self.dropout_rate}, epsilon={fused_encoder.ffn._epsilon}, activation={self.activation}, act_dropout_rate={self.dropout_rate}, normalize_before={self.pre_layer_norm}, dtype={self.dtype}'
         self.assertTrue(fused_encoder.ffn.extra_repr(), correct_ffn_str)
 
-        correct_attn_str = 'embed_dim={}, num_heads={}, dropout_rate={}, attn_dropout_rate={}, epsilon={}, kdim={}, vdim={}, normalize_before={}, need_weights={}, dtype={}'.format(
-            self.embed_dim,
-            self.num_heads,
-            self.dropout_rate,
-            self.dropout_rate,
-            fused_encoder.fused_attn._epsilon,
-            None,
-            None,
-            self.pre_layer_norm,
-            False,
-            self.dtype,
-        )
+        correct_attn_str = f'embed_dim={self.embed_dim}, num_heads={self.num_heads}, dropout_rate={self.dropout_rate}, attn_dropout_rate={self.dropout_rate}, epsilon={fused_encoder.fused_attn._epsilon}, kdim={None}, vdim={None}, normalize_before={self.pre_layer_norm}, need_weights={False}, dtype={self.dtype}'
         self.assertTrue(fused_encoder.fused_attn.extra_repr(), correct_attn_str)
 
         np.testing.assert_allclose(
@@ -236,6 +217,30 @@ class TestFusedTransformerEncoderLayerPreLnTrueAttnMaskIsNone(
 
     def setAttnMask(self):
         self.has_attn_mask = False
+
+
+class TestPirFusedTransformerEncoderLayer(unittest.TestCase):
+    def run_program(self):
+        with static_guard():
+            paddle.seed(1)
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                enc_input = paddle.rand((2, 4, 128))
+                attn_mask = paddle.rand((2, 2, 4, 4))
+                encoder_layer = FusedTransformerEncoderLayer(128, 2, 512)
+                enc_output = encoder_layer(enc_input, attn_mask)
+
+                exe = paddle.static.Executor()
+                exe.run(startup)
+                out = exe.run(feed={}, fetch_list=[enc_output])
+                return out
+
+    def test_pir(self):
+        out1 = self.run_program()
+        with paddle.pir_utils.IrGuard():
+            out2 = self.run_program()
+        np.testing.assert_allclose(out1, out2)
 
 
 if __name__ == "__main__":

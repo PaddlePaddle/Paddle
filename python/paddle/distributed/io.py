@@ -409,7 +409,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
         dirname(str, optional): The saving directory path.
                             When you need to save the parameter to the memory, set it to None.
-        main_program(Program, optional): The program whose persistbale variables will
+        main_program(Program, optional): The program whose persistable variables will
                                          be saved. You can refer to
                                          :ref:`api_guide_Program_en` for more details.
                                          If it is None, the default main program will
@@ -561,7 +561,7 @@ def load_inference_model_distributed(
     if dirname is not None:
         load_dirname = os.path.normpath(dirname)
         if not os.path.isdir(load_dirname):
-            raise ValueError("There is no directory named '%s'" % dirname)
+            raise ValueError(f"There is no directory named '{dirname}'")
 
         if model_filename is None:
             model_filename = '__model__'

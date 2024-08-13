@@ -14,7 +14,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_sync_comm_stream_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(
     c_sync_comm_stream, GPU, ALL_LAYOUT, ops::CSyncCommStreamKernel, float) {}

@@ -46,12 +46,12 @@ def threadPool(threadPoolNum):
 def getPyCovResult(params):
     rootPath = params[0]
     ut = params[1]
-    print("ut: %s" % ut)
+    print(f"ut: {ut}")
     startTime = int(time.time())
     path = f'{rootPath}/build/pytest/{ut}'
-    os.system('cd %s && coverage combine `ls python-coverage.data.*`' % path)
-    os.system('cd %s && pwd && coverage xml -i -o python-coverage.xml' % path)
-    xml_path = '%s/python-coverage.xml' % path
+    os.system(f'cd {path} && coverage combine `ls python-coverage.data.*`')
+    os.system(f'cd {path} && pwd && coverage xml -i -o python-coverage.xml')
+    xml_path = f'{path}/python-coverage.xml'
     os.system(f"python2.7 {rootPath}/tools/analysisPyXml.py {rootPath} {ut}")
     endTime = int(time.time())
     print('pyCov Time: %s' % (endTime - startTime))
@@ -66,7 +66,7 @@ def main(rootPath):
     1. get gcov file
     2. get gcov file not coverageratio = 0
     """
-    path = '%s/build/pytest' % rootPath
+    path = f'{rootPath}/build/pytest'
     dirs = os.listdir(path)
     pool = threadPool(23)
     for i in range(pool.__len__()):

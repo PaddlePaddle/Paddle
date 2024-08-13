@@ -48,9 +48,9 @@ TEST(TensorGroup, Easy) {
   ASSERT_EQ(tensor_group.Get("A")->name, "A");
   ASSERT_EQ(tensor_group.GetAllTensors().size(), 2UL);
 
-  ASSERT_EQ(tensor_group.GetCrtlDepTensors("A").size(), 0UL);
-  ASSERT_EQ(tensor_group.GetCrtlDepTensors("B").size(), 1UL);
-  ASSERT_TRUE(tensor_group.GetCrtlDepTensors("B").count(A));
+  ASSERT_EQ(tensor_group.GetCtrlDepTensors("A").size(), 0UL);
+  ASSERT_EQ(tensor_group.GetCtrlDepTensors("B").size(), 1UL);
+  ASSERT_TRUE(tensor_group.GetCtrlDepTensors("B").count(A));
 
   std::vector<ir::Tensor> topo_tensors =
       tensor_group.GetGenFuncTopoOrder({A.tensor(), B});
@@ -100,11 +100,11 @@ TEST(TensorGroup, GraphTopo) {
     ASSERT_EQ(tensor_group.Get(name)->name, name);
   }
 
-  ASSERT_TRUE(tensor_group.GetCrtlDepTensors("E").count(D));
-  ASSERT_TRUE(tensor_group.GetCrtlDepTensors("E").count(C));
-  ASSERT_TRUE(tensor_group.GetCrtlDepTensors("D").count(A));
-  ASSERT_TRUE(tensor_group.GetCrtlDepTensors("D").count(B));
-  ASSERT_TRUE(tensor_group.GetCrtlDepTensors("C").count(A));
+  ASSERT_TRUE(tensor_group.GetCtrlDepTensors("E").count(D));
+  ASSERT_TRUE(tensor_group.GetCtrlDepTensors("E").count(C));
+  ASSERT_TRUE(tensor_group.GetCtrlDepTensors("D").count(A));
+  ASSERT_TRUE(tensor_group.GetCtrlDepTensors("D").count(B));
+  ASSERT_TRUE(tensor_group.GetCtrlDepTensors("C").count(A));
 
   std::vector<ir::Tensor> topo_tensors = tensor_group.GetGenFuncTopoOrder();
   ASSERT_EQ(topo_tensors.size(), check_names.size());

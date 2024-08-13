@@ -28,12 +28,12 @@ class TestCloudRoleMaker(unittest.TestCase):
     def setUp(self):
         """Set up, set envs."""
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"
-        ] = "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = (
+            "127.0.0.1:36001,127.0.0.2:36001"
+        )
 
     def test_tr_rolemaker(self):
-        """Test tr rolenamer."""
+        """Test tr rolemaker."""
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "0"
 
@@ -105,26 +105,26 @@ class TestCloudRoleMaker(unittest.TestCase):
             return
         fleet.clear_one_table(0)
         from paddle.incubate.distributed.fleet.role_maker import (
-            MPISymetricRoleMaker,
+            MPISymmetricRoleMaker,
         )
 
         try:
-            role = MPISymetricRoleMaker()
+            role = MPISymmetricRoleMaker()
             role._all_reduce([1], [2])
         except:
             print("catch expected error of not inited")
         try:
-            role = MPISymetricRoleMaker()
+            role = MPISymmetricRoleMaker()
             role._all_reduce([1], [2], "min")
         except:
             print("catch expected error of not inited")
         try:
-            role = MPISymetricRoleMaker()
+            role = MPISymmetricRoleMaker()
             role._all_reduce([1], [2], "max")
         except:
             print("catch expected error of not inited")
         try:
-            role = MPISymetricRoleMaker()
+            role = MPISymmetricRoleMaker()
             role._all_reduce([1], [2], "unknown")
         except:
             print("catch expected error of unknown type")

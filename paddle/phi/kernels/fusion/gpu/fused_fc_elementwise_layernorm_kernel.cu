@@ -85,7 +85,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y,
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
     int index = i * N + threadIdx.x;
 
-    // The fisrt BlockDim elements will be saved to shared memory.
+    // The first BlockDim elements will be saved to shared memory.
     int save_index = threadIdx.x;
     T* save_ptr = shared_mem;
 
@@ -189,7 +189,7 @@ __global__ void InplaceAddReluAddLayerNormKernel(const float16* y_data,
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
     int index = i * N + threadIdx.x;
 
-    // The fisrt BlockDim elements will be saved to shared memory.
+    // The first BlockDim elements will be saved to shared memory.
     int save_index = threadIdx.x;
 #if defined(PADDLE_WITH_CUDA)
     half* save_ptr = shared_mem;
@@ -400,21 +400,21 @@ void FusedFCElementwiseLayerNormKernel(
   PADDLE_ENFORCE_GE(
       x_num_col_dims,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The x_num_col_dims must be  greater than or equal to 1, "
           "But received the x_num_col_dims is %d",
           x_num_col_dims));
   PADDLE_ENFORCE_GE(epsilon,
                     0.0f,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "'epsilon' should be between 0.0 and 0.001."));
   PADDLE_ENFORCE_LE(epsilon,
                     0.001f,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "'epsilon' should be between 0.0 and 0.001."));
   PADDLE_ENFORCE_GT(begin_norm_axis,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "'begin_norm_axis' should be greater than zero."));
 
   auto w_dims = w.dims();

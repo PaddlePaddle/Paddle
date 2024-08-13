@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from test_imperative_base import new_program_scope
 
 import paddle
 from paddle import base
@@ -53,21 +52,13 @@ class MLP(paddle.nn.Layer):
 
 
 class TestDygraphFramework(unittest.TestCase):
-    def test_dygraph_backward(self):
-        with new_program_scope():
-            mlp = MLP(input_size=2)
-            var_inp = paddle.static.data("input", shape=[2, 2], dtype="float32")
-            out = mlp(var_inp)
-            try:
-                out.backward()
-                raise AssertionError(
-                    "backward should not be usable in static graph mode"
-                )
-            except AssertionError as e:
-                self.assertTrue(e is not None)
-
     def test_dygraph_to_string(self):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         with base.dygraph.guard():
-            var_inp = base.dygraph.to_variable(np_inp)
+            var_inp = paddle.to_tensor(np_inp)
             print(str(var_inp))
+
+
+if __name__ == '__main__':
+    paddle.disable_static()
+    unittest.main()

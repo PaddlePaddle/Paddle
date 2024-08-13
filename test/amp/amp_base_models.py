@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 from paddle import nn
 from paddle.base import core
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def copy_bits_from_float_to_uint16(f):
@@ -68,7 +68,7 @@ def _build_optimizer(
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     else:
         grad_clip = None
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         assert model is not None
         parameters = model.parameters()
     else:
@@ -82,7 +82,7 @@ def _build_optimizer(
         epsilon=1e-4,
         weight_decay=0.01,
     )
-    if not in_dynamic_mode() and use_amp:
+    if not in_dynamic_or_pir_mode() and use_amp:
         optimizer = paddle.static.amp.decorate(
             optimizer,
             amp_lists,
@@ -178,7 +178,7 @@ class SimpleConvNet(nn.Layer):
 def build_conv_model(
     use_amp, amp_dtype="float16", amp_level="O1", use_promote=False
 ):
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         model = SimpleConvNet()
         optimizer = _build_optimizer(use_amp=False, model=model)
         if use_amp and amp_dtype == "float16":
@@ -370,8 +370,8 @@ def build_while_model():
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA and not support amp.",
+    not (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()),
+    "core is not compiled with CUDA or XPU and not support amp.",
 )
 class AmpTestBase(unittest.TestCase):
     def setUp(self):

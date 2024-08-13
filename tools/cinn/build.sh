@@ -32,24 +32,13 @@ cuda_config=OFF
 cudnn_config=OFF
 
 mklcblas_config=ON
-mkldnn_config=ON
+onednn_config=ON
 
 function mklcblas_off {
   mklcblas_config=OFF
 }
-function mkldnn_off {
-  mkldnn_config=OFF
-}
-
-
-function gpu_on {
-  cinn_whl_path=python/dist/cinn_gpu-0.0.0-py3-none-any.whl
-  cuda_config=ON
-  cudnn_config=ON
-}
-
-function cudnn_off {
-  cudnn_config=OFF
+function onednn_off {
+  onednn_config=OFF
 }
 
 set +x
@@ -93,7 +82,7 @@ function cmake_ {
     mkdir -p $build_dir
     cd $build_dir
     set -x
-    cmake ${workspace} -DCINN_ONLY=ON -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
+    cmake ${workspace} -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
       -DWITH_TESTING=ON  -DWITH_MKL=${mklcblas_config}  -DCINN_WITH_CUDNN=${cudnn_config} \
       -DPY_VERSION=${py_version}
     set +x
@@ -169,19 +158,6 @@ function run_test {
     fi
 }
 
-function CI {
-    mkdir -p $build_dir
-    cd $build_dir
-    export runtime_include_dir=$workspace/paddle/cinn/runtime/cuda
-
-    prepare_ci
-    cmake_
-    build
-    run_demo
-    prepare_model
-    run_test
-}
-
 function CINNRT {
     mkdir -p $build_dir
     cd $build_dir
@@ -192,7 +168,7 @@ function CINNRT {
     mkdir -p $build_dir
     cd $build_dir
     set -x
-    cmake ${workspace} -DCINN_ONLY=ON -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
+    cmake ${workspace} -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
       -DWITH_TESTING=ON  -DWITH_MKL=${mklcblas_config} -DPUBLISH_LIBS=ON
     set +x
     make cinnopt -j $JOBS
@@ -204,19 +180,11 @@ function main {
         case $i in
             mklcblas_off)
                 mklcblas_off
-                mkldnn_off
+                onednn_off
                 shift
                 ;;
-            mkldnn_off)
-                mkldnn_off
-                shift
-                ;;
-            gpu_on)
-                gpu_on
-                shift
-                ;;
-            cudnn_off)
-                cudnn_off
+            onednn_off)
+                onednn_off
                 shift
                 ;;
             check_style)
@@ -233,10 +201,6 @@ function main {
                 ;;
             test)
                 run_test
-                shift
-                ;;
-            ci)
-                CI
                 shift
                 ;;
             CINNRT)

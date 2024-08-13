@@ -43,8 +43,8 @@ else()
     set(CMAKE_CUDA_FLAGS_MINSIZEREL "-Xcompiler=\"-MD -O1 -Ob1\" -DNDEBUG")
   endif()
 
-  # It can specify CUDA compile flag manualy,
-  # its use is to remvoe /Zi to reduce GPU static library size. But it's dangerous
+  # It can specify CUDA compile flag manually,
+  # its use is to remove /Zi to reduce GPU static library size. But it's dangerous
   # because CUDA will update by nvidia, then error will occur.
   # Now, it's only used in VS2015 + CUDA:[10.0, 10.2]
   set(WIN_PROPS ${CMAKE_SOURCE_DIR}/cmake/paddle_win.props)

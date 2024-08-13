@@ -33,7 +33,7 @@ namespace ir {
 
 /*
 step1: fuse single ops to single_encoder_xpu
-step2: fuse mutitl single_encoder_xpu to multi_encoder_xpu
+step2: fuse multi single_encoder_xpu to multi_encoder_xpu
 
 1. step1
 Origin subgraph:
@@ -128,6 +128,8 @@ struct PatternParam {
   bool norm_before;
   bool with_q_scale;
   bool with_mask;
+  bool is_smooth_quant;
+  std::string relative_type;
 };
 
 class MultiEncoderXPUFusePass : public FusePassBase {
@@ -142,7 +144,9 @@ class MultiEncoderXPUFusePass : public FusePassBase {
                                 const std::string& matmul_type_2,
                                 bool norm_before,
                                 bool with_q_scale,
-                                bool with_mask) const;
+                                bool with_mask,
+                                bool is_smooth_qunat,
+                                const std::string& relative_type) const;
 
   bool ApplyMultiEncoderXPUFuse(ir::Graph* graph) const;
 
@@ -152,15 +156,29 @@ class MultiEncoderXPUFusePass : public FusePassBase {
   // 1. Transpose q_w, k_w, v_w
   // 2. Concat q_w, k_w, v_w
   // 3. Generate qkv_w_max tensor
-  // 4. Quant qkv_w to int16
-  void PrepareQKVWeight(Graph* graph,
-                        Scope* scope,
-                        BlockDesc* block,
-                        Node* q_w,
-                        Node* k_w,
-                        Node* v_w,
-                        Node** qkv_w,
-                        Node** qkv_w_max) const;
+  // 4. Quant qkv_w to int16/int8 or cast to float16 (local quant)
+  void PrepareQKVWeight(
+      Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      Node* q_w,
+      Node* k_w,
+      Node* v_w,
+      bool enable_int8,
+      bool local_quant,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+      Node** qkv_w,
+      Node** qkv_w_max,
+      Node** qkv_scale_max) const;
+  void PrepareInputMax(
+      Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      std::unordered_map<std::string, std::vector<Node*>>* node_maps,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+      std::vector<Node*>* input_max_nodes,
+      std::vector<std::string>* quant_types,
+      const std::string* act_type) const;
 
   // 1. Cast bias to fp32
   // 2. Concat q/k/v bias

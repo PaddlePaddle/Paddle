@@ -25,6 +25,13 @@ void CastKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DataType out_dtype,
                 DenseTensor* out) {
+  if (x.dtype() == out_dtype) {
+    if (!out->IsSharedWith(x)) {
+      phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+
   if (out->IsSharedWith(x)) {
     PD_VISIT_ALL_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
                          CastInplaceKernelImpl<T, data_t>(
@@ -51,6 +58,8 @@ PD_REGISTER_KERNEL(cast,
                    bool,
                    int8_t,
                    uint8_t,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,

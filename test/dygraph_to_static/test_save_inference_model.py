@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    compare_legacy_with_pt,
     test_ast_only,
+    test_legacy_and_pir,
     test_legacy_and_pt_and_pir,
 )
 
@@ -32,6 +32,7 @@ from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.dy2static.pir_partial_program import (
     partial_program_from as pir_partial_program_from,
 )
+from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
@@ -89,11 +90,11 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     @test_ast_only
+    @test_legacy_and_pir
     def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
-        base.default_startup_program().random_seed = SEED
-        base.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
 
         x = paddle.to_tensor(x_data)
         layer = paddle.jit.to_static(SimpleFcLayer(fc_size))
@@ -113,34 +114,35 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         infer_model_dir = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference_in_guard"
         )
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if not use_pir_api():
-            paddle.jit.save(
-                layer=layer,
-                path=infer_model_prefix,
-                input_spec=[x],
-                output_spec=[pred],
-            )
-            # Check the correctness of the inference
-            dygraph_out, _ = layer(x)
-            self.check_save_inference_model(
-                layer, [x_data], dygraph_out.numpy()
-            )
-            self.check_save_inference_model(
-                layer, [x_data], dygraph_out.numpy(), fetch=[loss]
-            )
-            self.check_save_inference_model(
-                layer, [x_data], dygraph_out.numpy(), feed=[x]
-            )
 
+        paddle.jit.save(
+            layer=layer,
+            path=infer_model_prefix,
+            input_spec=[x],
+            output_spec=[1] if use_pir_api() else [pred],
+        )
+        # Check the correctness of the inference
+        dygraph_out, _ = layer(x)
+        self.check_save_inference_model(layer, [x_data], dygraph_out.numpy())
+        self.check_save_inference_model(
+            layer,
+            [x_data],
+            dygraph_out.numpy(),
+            fetch=[0] if use_pir_api() else [loss],
+        )
+        self.check_save_inference_model(
+            layer, [x_data], dygraph_out.numpy(), feed=[x]
+        )
+
+    # TODO(MarioLulab): Disable PT test until we support PIR PyLayer
     @test_ast_only
+    @test_legacy_and_pir
     def test_save_pylayer_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
         paddle.framework._set_expected_place(place)
 
-        base.default_startup_program().random_seed = SEED
-        base.default_main_program().random_seed = SEED
+        paddle.seed(SEED)
         x = paddle.to_tensor(x_data)
         layer = paddle.jit.to_static(SimplePyLayerNet(fc_size))
         adam = paddle.optimizer.SGD(
@@ -156,30 +158,29 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         infer_model_prefix = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference_in_guard/model_pylayer"
         )
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if not use_pir_api():
-            paddle.jit.save(
-                layer=layer,
-                path=infer_model_prefix,
-                input_spec=[x],
-                output_spec=[pred],
-            )
-            # Check the correctness of the inference
-            loss_out, _ = layer(x)
+        paddle.jit.save(
+            layer=layer,
+            path=infer_model_prefix,
+            input_spec=[x],
+            output_spec=[1] if use_pir_api() else [pred],
+        )
+        # Check the correctness of the inference
+        loss_out, _ = layer(x)
 
-            loss_out_numpy = float(loss_out)
-            self.check_save_inference_model(
-                layer, [x_data], loss_out_numpy, enable_pir=False
-            )
-            self.check_save_inference_model(
-                layer, [x_data], loss_out_numpy, fetch=[loss], enable_pir=False
-            )
-            self.check_save_inference_model(
-                layer, [x_data], loss_out_numpy, feed=[x], enable_pir=False
-            )
+        loss_out_numpy = float(loss_out)
+        self.check_save_inference_model(layer, [x_data], loss_out_numpy)
+        self.check_save_inference_model(
+            layer,
+            [x_data],
+            loss_out_numpy,
+            fetch=[0] if use_pir_api() else [loss],
+        )
+        self.check_save_inference_model(
+            layer, [x_data], loss_out_numpy, feed=[x]
+        )
 
     def check_save_inference_model(
-        self, model, inputs, gt_out, feed=None, fetch=None, enable_pir=True
+        self, model, inputs, gt_out, feed=None, fetch=None
     ):
         expected_persistable_vars = {p.name for p in model.parameters()}
 
@@ -189,25 +190,21 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         infer_model_dir = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference"
         )
-        model_filename = "model" + INFER_MODEL_SUFFIX
+        if use_pir_api():
+            model_filename = "model" + PIR_INFER_MODEL_SUFFIX
+        else:
+            model_filename = "model" + INFER_MODEL_SUFFIX
         params_filename = "model" + INFER_PARAMS_SUFFIX
+
         paddle.jit.save(
             layer=model,
             path=infer_model_prefix,
             input_spec=feed if feed else None,
             output_spec=fetch if fetch else None,
         )
-        if enable_pir:
-            wrapped_load_and_run_inference = compare_legacy_with_pt(
-                self.load_and_run_inference
-            )
-            infer_out = wrapped_load_and_run_inference(
-                infer_model_dir, model_filename, params_filename, inputs
-            )
-        else:
-            infer_out = self.load_and_run_inference(
-                infer_model_dir, model_filename, params_filename, inputs
-            )
+        infer_out = self.load_and_run_inference(
+            infer_model_dir, model_filename, params_filename, inputs
+        )
 
         np.testing.assert_allclose(gt_out, infer_out, rtol=1e-05)
 

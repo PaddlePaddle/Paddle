@@ -293,7 +293,7 @@ DeviceInterface* DeviceManager::GetDeviceInterfaceWithType(
   PADDLE_ENFORCE_NE(
       dev_impl_map.find(device_type),
       dev_impl_map.end(),
-      phi::errors::NotFound("%s interface not found.", device_type));
+      common::errors::NotFound("%s interface not found.", device_type));
   return dev_impl_map.at(device_type).get();
 }
 
@@ -303,15 +303,15 @@ Device* DeviceManager::GetDeviceWithPlace(const Place& place) {
   auto& dev_map = Instance().device_map_;
   auto dev_type = place.GetDeviceType();
   auto dev_id = place.GetDeviceId();
-  PADDLE_ENFORCE_NE(
-      dev_map.find(dev_type),
-      dev_map.end(),
-      phi::errors::NotFound("Unable to find Device with type %s.", dev_type));
+  PADDLE_ENFORCE_NE(dev_map.find(dev_type),
+                    dev_map.end(),
+                    common::errors::NotFound(
+                        "Unable to find Device with type %s.", dev_type));
   auto& dev_vec = dev_map[dev_type];
   PADDLE_ENFORCE_LT(
       dev_id,
       dev_vec.size(),
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "The visible devices count of type %s is %d, but dev_id is %d.",
           dev_type,
           dev_vec.size(),
@@ -323,6 +323,7 @@ std::vector<std::string> DeviceManager::GetAllDeviceTypes() {
   phi::AutoRDLock lock(&_global_device_manager_rw_lock);
   auto& dev_impl_map = Instance().device_impl_map_;
   std::vector<std::string> devices;
+  devices.reserve(dev_impl_map.size());
   for (const auto& map_item : dev_impl_map) {
     devices.push_back(map_item.first);
   }
@@ -508,6 +509,13 @@ std::vector<size_t> DeviceManager::GetSelectedDeviceList(
   return device_list_map[device_type];
 }
 
+void DeviceManager::CCLCommName(const std::string& device_type,
+                                const ccl::CCLComm& ccl_comm,
+                                char* comm_name) {
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  return dev_impl->CCLCommName(ccl_comm, comm_name);
+}
+
 void DeviceManager::CCLDestroyComm(const std::string& device_type,
                                    ccl::CCLComm ccl_comm) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
@@ -532,7 +540,7 @@ void DeviceManager::CCLGetUniqueId(const std::string& device_type,
 void DeviceManager::CCLBroadcast(const std::string& device_type,
                                  void* data,
                                  size_t num,
-                                 ccl::CCLDataType data_type,
+                                 phi::DataType data_type,
                                  size_t root_id,
                                  const ccl::CCLComm& ccl_comm,
                                  const stream::Stream& stream) {
@@ -544,7 +552,7 @@ void DeviceManager::CCLAllReduce(const std::string& device_type,
                                  void* in_data,
                                  void* out_data,
                                  size_t num,
-                                 ccl::CCLDataType data_type,
+                                 phi::DataType data_type,
                                  ccl::CCLReduceOp reduce_op,
                                  const ccl::CCLComm& ccl_comm,
                                  const stream::Stream& stream) {
@@ -557,7 +565,7 @@ void DeviceManager::CCLReduce(const std::string& device_type,
                               void* in_data,
                               void* out_data,
                               size_t num,
-                              ccl::CCLDataType data_type,
+                              phi::DataType data_type,
                               ccl::CCLReduceOp reduce_op,
                               size_t root_id,
                               const ccl::CCLComm& ccl_comm,
@@ -571,7 +579,7 @@ void DeviceManager::CCLAllGather(const std::string& device_type,
                                  void* in_data,
                                  void* out_data,
                                  size_t num,
-                                 ccl::CCLDataType data_type,
+                                 phi::DataType data_type,
                                  const ccl::CCLComm& ccl_comm,
                                  const stream::Stream& stream) {
   auto dev_impl = GetDeviceInterfaceWithType(device_type);
@@ -582,7 +590,7 @@ void DeviceManager::CCLReduceScatter(const std::string& device_type,
                                      void* in_data,
                                      void* out_data,
                                      size_t num,
-                                     ccl::CCLDataType data_type,
+                                     phi::DataType data_type,
                                      ccl::CCLReduceOp op,
                                      const ccl::CCLComm& ccl_comm,
                                      const stream::Stream& stream) {
@@ -604,7 +612,7 @@ void DeviceManager::CCLGroupEnd(const std::string& device_type) {
 void DeviceManager::CCLSend(const std::string& device_type,
                             void* sendbuf,
                             size_t num,
-                            ccl::CCLDataType data_type,
+                            phi::DataType data_type,
                             size_t dst_rank,
                             const ccl::CCLComm& ccl_comm,
                             const stream::Stream& stream) {
@@ -615,7 +623,7 @@ void DeviceManager::CCLSend(const std::string& device_type,
 void DeviceManager::CCLRecv(const std::string& device_type,
                             void* recvbuf,
                             size_t num,
-                            ccl::CCLDataType data_type,
+                            phi::DataType data_type,
                             size_t src_rank,
                             const ccl::CCLComm& ccl_comm,
                             const stream::Stream& stream) {
@@ -626,10 +634,10 @@ void DeviceManager::CCLRecv(const std::string& device_type,
 void DeviceManager::CCLAllToAll(const std::string& device_type,
                                 const void** send_buf,
                                 const size_t* send_count,
-                                const ccl::CCLDataType* send_dtype,
+                                const phi::DataType* send_dtype,
                                 void** recv_buf,
                                 const size_t* recv_count,
-                                const ccl::CCLDataType* recv_dtype,
+                                const phi::DataType* recv_dtype,
                                 size_t rank,
                                 size_t nranks,
                                 const ccl::CCLComm& comm,

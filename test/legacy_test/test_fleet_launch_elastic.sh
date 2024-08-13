@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,11 +19,11 @@ rm -rf log*
 
 pids=`ps -ef | grep "python -m paddle.distributed.launch elastic_demo.[py]" | awk '{print $2}'`
 if [ -n "$pids" ]; then
-    echo $pids | xargs kill -9 
+    echo $pids | xargs kill -9
 fi
 pids=`ps -ef | grep "/usr/bin/python -u elastic_demo.[py]" | awk '{print $2}'`
 if [ -n "$pids" ]; then
-    echo $pids | xargs kill -9 
+    echo $pids | xargs kill -9
 fi
 
 python -m pip install --no-cache-dir etcd3 -i https://mirror.baidu.com/pypi/simple
@@ -102,7 +102,7 @@ check_env() {
         echo "PADDLE_TRAINERS error"
         exit -1
     fi
-    
+
     if grep -q "0-DISTRIBUTED_TRAINER_ENDPOINTS=$DISTRIBUTED_TRAINER_ENDPOINTS" $lw0 && grep -q "1-DISTRIBUTED_TRAINER_ENDPOINTS=$DISTRIBUTED_TRAINER_ENDPOINTS" $lw0; then
         echo "DISTRIBUTED_TRAINER_ENDPOINTS ok"
     else

@@ -19,7 +19,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 
@@ -32,7 +32,7 @@ struct Expr;
 namespace cinn {
 namespace common {
 
-//! Get the predifined axis name.
+//! Get the predefined axis name.
 std::string axis_name(int level);
 
 //! Generate `naxis` axis using the global names (i,j,k...).

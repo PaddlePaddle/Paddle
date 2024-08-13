@@ -367,7 +367,7 @@ IpuStrategy::IpuStrategy() {
                        "Fwd0", "Fwd1", "Bwd0", "PreAlias", "Final"};
                    if (std::find(valid_dot.begin(), valid_dot.end(), p.first) ==
                        valid_dot.end()) {
-                     PADDLE_THROW(platform::errors::InvalidArgument(
+                     PADDLE_THROW(common::errors::InvalidArgument(
                          "Unknown dot check: %s", p.first));
                    }
                    popart_options.dotChecks.insert(p.first);
@@ -528,8 +528,8 @@ void IpuStrategy::SetTensorLocation(const std::string& tensor,
   } else if (tensor == "location_accumulator") {
     settings = &popart_options.accumulatorTensorLocationSettings;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Unknown tensor location: %s", tensor));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Unknown tensor location: %s", tensor));
   }
 
   if (opt == "min_elements_for_off_chip") {
@@ -559,7 +559,7 @@ void IpuStrategy::SetTensorLocation(const std::string& tensor,
     settings->location.shardingDomain =
         popart::CommGroup(popart::CommGroupType::Orthogonal, value);
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unknown option ' %s' for tensor location: %s", opt, tensor));
   }
 }
@@ -574,7 +574,7 @@ void IpuStrategy::SetReplicatedCollectivesSettings(const std::string& opt,
     popart_options.replicatedCollectivesSettings.mergeAllReduceCollectives =
         value;
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unknown option ' %s' for replicated collectives settings", opt));
   }
 }

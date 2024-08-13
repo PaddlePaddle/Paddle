@@ -124,7 +124,7 @@ class TestRowConvOp2(OpTest):
         )
 
 
-def row_conv_foward_Tensor(x, wt):
+def row_conv_forward_Tensor(x, wt):
     out = np.zeros_like(x)
     num_sequence = x.shape[0]
     timesteps = x.shape[1]
@@ -153,7 +153,7 @@ class TestRowOpWithTensorInput(OpTest):
         wt = np.random.random((context_length, D)).astype("float32")
         self.inputs = {'X': x, 'Filter': wt}
 
-        out = row_conv_foward_Tensor(x, wt)
+        out = row_conv_forward_Tensor(x, wt)
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -184,7 +184,7 @@ class TestRowConvLayer(unittest.TestCase):
         self.w = np.random.random((self.context_length, self.C)).astype(
             "float32"
         )
-        self.out = row_conv_foward_Tensor(self.x, self.w)
+        self.out = row_conv_forward_Tensor(self.x, self.w)
 
     def check_identity(self):
         start = base.Program()

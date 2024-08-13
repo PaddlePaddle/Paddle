@@ -18,16 +18,16 @@
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/op_base.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/region.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_base.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/region.h"
 #include "test/cpp/pir/tools/test_dialect.h"
 #include "test/cpp/pir/tools/test_op.h"
 
@@ -64,7 +64,7 @@ TEST(op_test, region_test) {
   // (3) Test custom operation printer
   std::stringstream ss;
   op1->Print(ss);
-  EXPECT_EQ(ss.str(), " (%0) = \"test.operation1\" ()");
+  EXPECT_EQ(ss.str(), "(%0) = \"test.operation1\" ()");
 
   region.push_back(new pir::Block());
   region.push_front(new pir::Block());
@@ -84,11 +84,11 @@ TEST(op_test, module_op_death) {
   std::vector<pir::Type> output_types = {pir::Float32Type::get(ctx)};
 
   EXPECT_THROW(pir::Operation::Create(inputs, {}, {}, op_info),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
   EXPECT_THROW(pir::Operation::Create({}, attrs, {}, op_info),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
   EXPECT_THROW(pir::Operation::Create({}, {}, output_types, op_info),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 
   pir::Program program(ctx);
 
@@ -114,7 +114,8 @@ TEST(op_test, trait_and_interface) {
   EXPECT_EQ(op2->HasInterface<test::InferShapeInterface>(), true);
 
   pir::OperationArgument argument(&ctx, "test.region");
-  EXPECT_THROW(builder.Build(std::move(argument)), pir::IrNotMetException);
+  EXPECT_THROW(builder.Build(std::move(argument)),
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, op_traits_test) {
@@ -163,7 +164,7 @@ TEST(op_test, same_operands_shape_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsShapeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_shape_trait_test2) {
@@ -198,7 +199,7 @@ TEST(op_test, same_operands_shape_trait_test2) {
 
   EXPECT_THROW(builder.Build<test::SameOperandsShapeTraitOp2>(
                    op1->result(0), op2->result(0), dense_tensor_dtype),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_shape_trait_test1) {
@@ -211,7 +212,7 @@ TEST(op_test, same_operands_and_result_shape_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_shape_trait_test2) {
@@ -236,7 +237,7 @@ TEST(op_test, same_operands_and_result_shape_trait_test2) {
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp2>(
                    op1->result(0), op2->result(0)),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_shape_trait_test3) {
@@ -270,7 +271,7 @@ TEST(op_test, same_operands_and_result_shape_trait_test3) {
   block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultShapeTraitOp3>(
                    op1->result(0), op2->result(0), dense_tensor_dtype),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_element_type_trait_test1) {
@@ -283,7 +284,7 @@ TEST(op_test, same_operands_element_type_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsElementTypeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_element_type_trait_test2) {
@@ -315,7 +316,7 @@ TEST(op_test, same_operands_element_type_trait_test2) {
   block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsElementTypeTraitOp2>(
                    op1->result(0), op2->result(0), dense_tensor_dtype),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_element_type_trait_test1) {
@@ -328,7 +329,7 @@ TEST(op_test, same_operands_and_result_element_type_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_element_type_trait_test2) {
@@ -352,7 +353,7 @@ TEST(op_test, same_operands_and_result_element_type_trait_test2) {
   block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp2>(
                    op1->result(0), op2->result(0)),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_element_type_trait_test3) {
@@ -391,13 +392,13 @@ TEST(op_test, same_operands_and_result_element_type_trait_test3) {
                    op2->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype1),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultElementTypeTraitOp3>(
                    op1->result(0),
                    op1->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype2),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_type_trait_test1) {
@@ -410,7 +411,7 @@ TEST(op_test, same_operands_and_result_type_trait_test1) {
   pir::Builder builder(ctx, block);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp1>(),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_type_trait_test2) {
@@ -434,7 +435,7 @@ TEST(op_test, same_operands_and_result_type_trait_test2) {
   block->push_back(op2);
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp2>(
                    op1->result(0), op2->result(0)),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 }
 
 TEST(op_test, same_operands_and_result_type_trait_test3) {
@@ -477,26 +478,85 @@ TEST(op_test, same_operands_and_result_type_trait_test3) {
                    op2->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype2),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
                    op1->result(0),
                    op2->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype3),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
                    op1->result(0),
                    op2->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype1),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
 
   EXPECT_THROW(builder.Build<test::SameOperandsAndResultTypeTraitOp3>(
                    op2->result(0),
                    op1->result(0),
                    dense_tensor_dtype1,
                    dense_tensor_dtype1),
-               pir::IrNotMetException);
+               common::enforce::EnforceNotMet);
+}
+
+TEST(printer_test, custom_hooks) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Dialect *test_dialect = ctx->GetOrRegisterDialect<test::TestDialect>();
+  EXPECT_EQ(test_dialect != nullptr, true);
+
+  pir::OpInfo op1_info = ctx->GetRegisteredOpInfo(test::Operation1::name());
+  pir::OpInfo op2_info = ctx->GetRegisteredOpInfo(test::Operation2::name());
+
+  pir::Operation *op1 = pir::Operation::Create(
+      {},
+      test::CreateAttributeMap({"op1_attr1", "op1_attr2"},
+                               {"op1_attr1", "op1_attr2"}),
+      {pir::Float32Type::get(ctx)},
+      op1_info);
+  pir::Operation *op2 = pir::Operation::Create(
+      {op1->result(0)}, {}, {pir::Float32Type::get(ctx)}, op2_info);
+
+  pir::Program program(ctx);
+  program.block()->push_back(op1);
+  program.block()->push_back(op2);
+
+  pir::PrintHooks hooks;
+  // this one retains old printing and adds new info
+  hooks.value_print_hook = [](pir::Value v, pir::IrPrinter &printer) {
+    printer.IrPrinter::PrintValue(v);
+    printer.os << " [extra info]";
+  };
+  // this one overrides old printing
+  hooks.op_print_hook = [](pir::Operation *op, pir::IrPrinter &printer) {
+    printer.PrintOpResult(op);
+    printer.os << " :=";
+
+    printer.os << " \"" << op->name() << "\"";
+    printer.PrintOpOperands(op);
+    printer.PrintAttributeMap(op);
+    printer.os << " :";
+    printer.PrintOpReturnType(op);
+  };
+
+  hooks.attribute_print_hook = [](pir::Attribute attr,
+                                  pir::IrPrinter &printer) {
+    printer.os << "[PlaceHolder]";
+  };
+  hooks.type_print_hook = [](pir::Type type, pir::IrPrinter &printer) {
+    printer.os << "[" << type << "]";
+  };
+
+  std::stringstream ss;
+
+  ss << pir::CustomPrintHelper{program, hooks};
+  EXPECT_EQ(
+      ss.str(),
+      "{\n"
+      "(%0 [extra info]) := \"test.operation1\" () "
+      "{op1_attr1:[PlaceHolder],op1_attr2:[PlaceHolder]} :[f32]\n"
+      "(%1 [extra info]) := \"test.operation2\" (%0 [extra info]) {} :[f32]\n"
+      "}\n");
 }

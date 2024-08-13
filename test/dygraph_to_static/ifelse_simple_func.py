@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle import base
 
 
 def add_fn(x):
@@ -125,7 +124,7 @@ def dyfunc_with_if_else_early_return1():
         b = paddle.zeros([3, 3])
         return a, b
     a = paddle.zeros([2, 2]) + 1
-    return a, None
+    return a, paddle.zeros([3, 3]) + 1
 
 
 def dyfunc_with_if_else_early_return2():
@@ -139,7 +138,7 @@ def dyfunc_with_if_else_early_return2():
         d = paddle.zeros([3, 3]) + 1
         return c, d
     e = paddle.zeros([2, 2]) + 3
-    return e, None
+    return e, paddle.zeros([3, 3]) + 3
 
 
 def dyfunc_with_if_else_with_list_generator(x):
@@ -282,9 +281,7 @@ class NetWithControlFlowIf(paddle.nn.Layer):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:
             raise ValueError(
-                "hidden_dim {} of input is not equal to FC.weight[0]: {}".format(
-                    hidden_dim, self.hidden_dim
-                )
+                f"hidden_dim {hidden_dim} of input is not equal to FC.weight[0]: {self.hidden_dim}"
             )
 
         self.constant_vars['bias'] = paddle.tensor.fill_constant(
@@ -406,7 +403,7 @@ def if_with_class_var(x, y=None):
 
 
 def if_tensor_case(x):
-    x = base.dygraph.to_variable(x)
+    x = paddle.assign(x)
     mean = paddle.mean(x)
     # It is equivalent to `if mean != 0`
     if mean:

@@ -10,10 +10,11 @@ set(srcs
     bind.cc
     optim.cc
     pe.cc
-    frontend.cc
     framework.cc
     utils.cc
     schedule.cc)
+
+gather_srcs(cinnapi_src SRCS ${srcs})
 
 if(WITH_CUDA)
   message(STATUS "Compile core_api with CUDA support")

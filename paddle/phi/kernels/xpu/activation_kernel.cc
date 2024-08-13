@@ -582,8 +582,13 @@ void HardSwishKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    relu, XPU, ALL_LAYOUT, phi::ReluKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(relu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ReluKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(silu,
                    XPU,
                    ALL_LAYOUT,
@@ -606,6 +611,12 @@ PD_REGISTER_KERNEL(hardsigmoid,
                    XPU,
                    ALL_LAYOUT,
                    phi::HardSigmoidKernel,
+                   float,
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(hardswish,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::HardSwishKernel,
                    float,
                    phi::dtype::float16) {}
 PD_REGISTER_KERNEL(leaky_relu,
@@ -662,7 +673,6 @@ PD_REGISTER_KERNEL(
 
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)

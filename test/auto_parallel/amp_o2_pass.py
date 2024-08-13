@@ -22,7 +22,6 @@ from get_gpt_model import FakeDataset, generate_model
 
 import paddle
 from paddle.distributed.fleet import auto
-from paddle.framework import core
 
 paddle.enable_static()
 
@@ -98,11 +97,11 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         num_fp32 = 0
 
         for p in program.all_parameters():
-            if p.dtype == core.VarDesc.VarType.FP32:
+            if p.dtype == paddle.float32:
                 num_fp32 += 1
-            if p.dtype == core.VarDesc.VarType.FP16:
+            if p.dtype == paddle.float16:
                 num_fp16 += 1
-            if p.dtype == core.VarDesc.VarType.BF16:
+            if p.dtype == paddle.bfloat16:
                 num_bf16 += 1
 
         self.assertEqual(num_bf16, 26)
@@ -115,11 +114,11 @@ class TestShardingStage2WithNewEXE(unittest.TestCase):
         num_fp32 = 0
 
         for p in program.all_parameters():
-            if p.dtype == core.VarDesc.VarType.FP32:
+            if p.dtype == paddle.float32:
                 num_fp32 += 1
-            if p.dtype == core.VarDesc.VarType.FP16:
+            if p.dtype == paddle.float16:
                 num_fp16 += 1
-            if p.dtype == core.VarDesc.VarType.BF16:
+            if p.dtype == paddle.bfloat16:
                 num_bf16 += 1
 
         self.assertEqual(num_bf16, 0)

@@ -19,16 +19,16 @@
 #include "paddle/fluid/inference/capi_exp/utils_internal.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#define CHECK_NULL_POINTER_PARM(param)                                   \
-  PADDLE_ENFORCE_NOT_NULL(                                               \
-      param,                                                             \
-      paddle::platform::errors::InvalidArgument("The pointer of " #param \
-                                                " shouldn't be nullptr"))
+#define CHECK_NULL_POINTER_PARM(param)                         \
+  PADDLE_ENFORCE_NOT_NULL(                                     \
+      param,                                                   \
+      common::errors::InvalidArgument("The pointer of " #param \
+                                      " shouldn't be nullptr"))
 
 #define CHECK_AND_CONVERT_PD_CONFIG                              \
   PADDLE_ENFORCE_NOT_NULL(                                       \
       pd_config,                                                 \
-      paddle::platform::errors::InvalidArgument(                 \
+      common::errors::InvalidArgument(                           \
           "The pointer of paddle config shouldn't be nullptr")); \
   Config* config = reinterpret_cast<Config*>(pd_config)
 
@@ -43,7 +43,7 @@ static Config::Precision ConvertToCxxPrecisionType(PD_PrecisionType precision) {
     case PD_PRECISION_HALF:
       return Config::Precision::kHalf;
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupport paddle precision type %d.", precision));
       return Config::Precision::kFloat32;
   }
@@ -187,9 +187,11 @@ int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
 
 void PD_ConfigEnableCustomDevice(__pd_keep PD_Config* pd_config,
                                  char* device_type,
-                                 int32_t device_id) {
+                                 int32_t device_id,
+                                 PD_PrecisionType precision) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableCustomDevice(device_type, device_id);
+  config->EnableCustomDevice(
+      device_type, device_id, ConvertToCxxPrecisionType(precision));
 }
 PD_Bool PD_ConfigUseCustomDevice(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -357,31 +359,6 @@ PD_Bool PD_ConfigTensorRtDlaEnabled(__pd_keep PD_Config* pd_config) {
   return config->tensorrt_dla_enabled();  // NOLINT
 }
 
-void PD_ConfigEnableLiteEngine(__pd_keep PD_Config* pd_config,
-                               PD_PrecisionType precision,
-                               PD_Bool zero_copy,
-                               size_t passes_filter_num,
-                               const char** passes_filter,
-                               size_t ops_filter_num,
-                               const char** ops_filter) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  std::vector<std::string> passes_filters, ops_filters;
-  for (size_t index = 0; index < passes_filter_num; ++index) {
-    passes_filters.emplace_back(passes_filter[index]);
-  }
-  for (size_t index = 0; index < ops_filter_num; ++index) {
-    ops_filters.emplace_back(ops_filter[index]);
-  }
-  config->EnableLiteEngine(ConvertToCxxPrecisionType(precision),
-                           zero_copy,
-                           passes_filters,
-                           ops_filters);
-}
-PD_Bool PD_ConfigLiteEngineEnabled(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  return config->lite_engine_enabled();  // NOLINT
-}
-
 void PD_ConfigSwitchIrDebug(__pd_keep PD_Config* pd_config, PD_Bool x) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->SwitchIrDebug(x);
@@ -510,10 +487,7 @@ void PD_ConfigSetExecStream(__pd_keep PD_Config* pd_config, void* stream) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->SetExecStream(stream);
 }
-void PD_ConfigPartiallyRelease(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  config->PartiallyRelease();
-}
+
 void PD_ConfigDeletePass(__pd_keep PD_Config* pd_config, const char* pass) {
   CHECK_AND_CONVERT_PD_CONFIG;
   config->pass_builder()->DeletePass(pass);

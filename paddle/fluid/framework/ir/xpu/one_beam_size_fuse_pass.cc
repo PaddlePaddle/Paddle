@@ -400,7 +400,7 @@ void OneBeamSizeFusePass::RemoveBeamSearchAssociatedOps(
     auto* not_equal_y_tensor =
         scope->Var(not_equal_y_name)->GetMutable<phi::DenseTensor>();
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     not_equal_y_tensor->Resize({1});
     not_equal_y_tensor->set_type(phi::DataType::INT64);
     auto* not_equal_y_data = cpu_ctx->Alloc<int64_t>(not_equal_y_tensor);
@@ -572,7 +572,7 @@ void OneBeamSizeFusePass::RemoveGatherOps(ir::Graph* graph) const {
 
 void OneBeamSizeFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   if (!OnlyOneBeamSearchAndOneBeamSize(graph)) return;

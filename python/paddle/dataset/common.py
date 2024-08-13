@@ -18,6 +18,7 @@ import hashlib
 import importlib
 import os
 import pickle
+import re
 import shutil
 import sys
 import tempfile
@@ -71,6 +72,11 @@ def md5file(fname):
 
 
 def download(url, module_name, md5sum, save_name=None):
+    module_name = re.match("^[a-zA-Z0-9_/\\-]+$", module_name).group()
+    if isinstance(save_name, str):
+        save_name = re.match(
+            "^(?:(?!\\.\\.)[a-zA-Z0-9_/\\.-])+$", save_name
+        ).group()
     dirname = os.path.join(DATA_HOME, module_name)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
@@ -138,9 +144,9 @@ def fetch_all():
         x for x in dir(paddle.dataset) if not x.startswith("__")
     ]:
         if "fetch" in dir(
-            importlib.import_module("paddle.dataset.%s" % module_name)
+            importlib.import_module(f"paddle.dataset.{module_name}")
         ):
-            importlib.import_module('paddle.dataset.%s' % module_name).fetch()
+            importlib.import_module(f'paddle.dataset.{module_name}').fetch()
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
@@ -204,7 +210,7 @@ def cluster_files_reader(
         my_file_list = []
         for idx, fn in enumerate(file_list):
             if idx % trainer_count == trainer_id:
-                print("append file: %s" % fn)
+                print(f"append file: {fn}")
                 my_file_list.append(fn)
         for fn in my_file_list:
             with open(fn, "r") as f:

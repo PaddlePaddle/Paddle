@@ -30,7 +30,7 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -63,17 +63,17 @@ template <typename Dex>
 struct DivNRanksForAllReduce {
   phi::DenseTensor* in_;
   int64_t nranks_;
-  const platform::DeviceContext& ctx_;
+  const phi::DeviceContext& ctx_;
   DivNRanksForAllReduce(phi::DenseTensor* in,
                         int64_t nranks,
-                        const platform::DeviceContext& ctx)
+                        const phi::DeviceContext& ctx)
       : in_(in), nranks_(nranks), ctx_(ctx) {}
 
   template <typename T>
   void apply() const {
     T* data = in_->mutable_data<T>(ctx_.GetPlace());
-    platform::ForRange<Dex> for_range(static_cast<const Dex&>(ctx_),
-                                      static_cast<size_t>(in_->numel()));
+    phi::funcs::ForRange<Dex> for_range(static_cast<const Dex&>(ctx_),
+                                        static_cast<size_t>(in_->numel()));
     DivNRanksFunctor<T> functor(nranks_, data);
     for_range(functor);
   }
@@ -105,17 +105,17 @@ class Group {
   framework::proto::VarType::Type dtype_;
 
   // context is used to select the stream for concat
-  void ConcatTensors(const platform::DeviceContext& context);
+  void ConcatTensors(const phi::DeviceContext& context);
 
   // context is used to select the stream for split
-  void SplitTensors(const platform::DeviceContext& context);
+  void SplitTensors(const phi::DeviceContext& context);
 
   // use it in CUDA
   void DivNRanks(phi::DenseTensor* tensor,
                  int64_t nranks,
-                 const platform::DeviceContext& context);
+                 const phi::DeviceContext& context);
 
-  void DivNRanks(const platform::DeviceContext& context, int64_t nranks);
+  void DivNRanks(const phi::DeviceContext& context, int64_t nranks);
 
   friend std::ostream& operator<<(std::ostream&, const Group&);
 };
@@ -160,7 +160,7 @@ class Reducer {
 
   void FinalizeBackward();
 
-  std::vector<std::vector<size_t>> RebuildGruops();
+  std::vector<std::vector<size_t>> RebuildGroups();
 
   inline bool NeedRebuildGroup() {
     return !has_rebuilt_group_ && !find_unused_vars_each_step_;
@@ -178,7 +178,7 @@ class Reducer {
   std::vector<std::vector<size_t>> group_indices_;
   std::vector<Group> groups_;
   size_t next_group_ = 0;
-  platform::Place place_;
+  phi::Place place_;
   std::once_flag once_flag_;
   std::vector<bool> is_sparse_gradient_;
   std::shared_ptr<imperative::ParallelContext> parallel_ctx_;

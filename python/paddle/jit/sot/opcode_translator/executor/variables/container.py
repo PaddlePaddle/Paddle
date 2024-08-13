@@ -22,9 +22,8 @@ from typing import TYPE_CHECKING, Any
 from ....utils import ConstTypes
 from ....utils.exceptions import FallbackError, InnerError
 from ..dispatcher import Dispatcher
-from ..guard import StringifyExpression, check_guard
+from ..guard import StringifiedExpression, check_guard
 from ..mutable_data import MutableDictLikeData, MutableListLikeData
-from ..pycode_generator import PyCodeGen
 from ..tracker import (
     ConstTracker,
     DanglingTracker,
@@ -39,6 +38,7 @@ from .callable import BuiltinVariable, UserDefinedFunctionVariable
 
 if TYPE_CHECKING:
     from ..function_graph import FunctionGraph
+    from ..pycode_generator import PyCodeGen
 
 
 class ContainerVariable(VariableBase):
@@ -58,7 +58,7 @@ class ContainerVariable(VariableBase):
             "ContainerVariable.get_wrapped_items do not implement"
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         raise FallbackError('ContainerVariable.__len__ do not implement')
 
     def len(self):
@@ -71,15 +71,15 @@ class ContainerVariable(VariableBase):
         return ConstantVariable(bool(self), self.graph, DummyTracker([self]))
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
-        type_guard = StringifyExpression(
+        type_guard = StringifiedExpression(
             f"isinstance({{}}, {self.get_py_type().__name__})",
             [frame_value_tracer],
             frame_value_tracer.free_vars,
         )
-        len_guard = StringifyExpression(
+        len_guard = StringifiedExpression(
             f"len({{}}) == {len(self.init_value)}",
             [frame_value_tracer],
             frame_value_tracer.free_vars,
@@ -97,7 +97,11 @@ class ContainerVariable(VariableBase):
         return reduce(
             operator.add,
             [[type_guard, len_guard]]
-            + [item.make_stringify_guard() for item in guard_variables],
+            + [
+                item.make_stringified_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
         )
 
 
@@ -113,7 +117,7 @@ class ListVariable(ContainerVariable):
 
     def __init__(
         self,
-        val_list: list[VariableBase],
+        val_list: list[Any],
         graph: FunctionGraph,
         tracker: Tracker,
     ):
@@ -715,11 +719,11 @@ class RangeVariable(ContainerVariable):
         return None
 
     @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
+    def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
         return [
-            StringifyExpression(
+            StringifiedExpression(
                 "isinstance({0}, range) and "
                 + f"{{0}}.start == {self.init_value.start} and "
                 + f"{{0}}.stop == {self.init_value.stop} and "
@@ -796,7 +800,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: recieved {key} as key."
+                    f"[{self.__class__.__name__}]: received {key} as key."
                 )
             key_var = ConstantVariable.wrap_literal(key, self.graph)
             value_var = self[key]
@@ -809,7 +813,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: recieved {key} as key."
+                    f"[{self.__class__.__name__}]: received {key} as key."
                 )
             key_var = VariableFactory.from_value(
                 key, self.graph, tracker=ConstTracker(key)
@@ -823,7 +827,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: recieved {key} as key."
+                    f"[{self.__class__.__name__}]: received {key} as key."
                 )
             items[key] = self[key]
         return items
@@ -843,7 +847,7 @@ class DictVariable(ContainerVariable):
     def get(self, key, default=None):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {key} to get value."
+                f"[{self.__class__.__name__}]: received {key} to get value."
             )
 
         if default is None:
@@ -863,12 +867,12 @@ class DictVariable(ContainerVariable):
     def setitem(self, key, value):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {key} as key."
+                f"[{self.__class__.__name__}]: received {key} as key."
             )
 
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {value} to set value."
+                f"[{self.__class__.__name__}]: received {value} to set value."
             )
 
         self.proxy.set(key, value)
@@ -889,7 +893,7 @@ class DictVariable(ContainerVariable):
     def delitem(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: recieved {key} as key to delete."
+                f"[{self.__class__.__name__}]: received {key} as key to delete."
             )
         self.proxy.delete(key)
         self.graph.side_effects.record_proxy_variable(self)

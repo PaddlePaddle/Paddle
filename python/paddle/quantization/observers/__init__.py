@@ -1,4 +1,5 @@
 """Observers"""
+
 # Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +15,6 @@
 # limitations under the License.
 
 from .abs_max import AbsmaxObserver
+from .groupwise import GroupWiseWeightObserver
 
-__all__ = ["AbsmaxObserver"]
+__all__ = ["AbsmaxObserver", "GroupWiseWeightObserver"]

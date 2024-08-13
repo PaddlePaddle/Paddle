@@ -33,7 +33,7 @@ inline int getElementSize(nvinfer1::DataType type) {
     case nvinfer1::DataType::kINT8:
       return 1;
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "getElementSize only supports [FLOAT|HALF|INT8]"));
   }
 }
@@ -47,7 +47,7 @@ inline cudaDataType_t convertTrtType(nvinfer1::DataType type) {
     case nvinfer1::DataType::kINT8:
       return CUDA_R_8I;
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "getElementSize only supports [FLOAT|HALF|INT8]"));
   }
 }
@@ -59,7 +59,7 @@ inline void deserialize_value_size(void const** buffer,
   PADDLE_ENFORCE_GE(
       *buffer_size,
       value_size,
-      platform::errors::InvalidArgument("buffer_size must >= value_size"));
+      common::errors::InvalidArgument("buffer_size must >= value_size"));
   memcpy(value, *buffer, value_size);
   reinterpret_cast<char const*&>(*buffer) += value_size;
   *buffer_size -= value_size;
@@ -79,12 +79,12 @@ inline void convertAndCopy(const nvinfer1::Weights& src,
   PADDLE_ENFORCE_EQ(src.type == nvinfer1::DataType::kFLOAT ||
                         src.type == nvinfer1::DataType::kHALF,
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "convertAndCopy only supports src type [FLOAT|HALF]"));
   PADDLE_ENFORCE_EQ(
       type == nvinfer1::DataType::kFLOAT || type == nvinfer1::DataType::kHALF,
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "convertAndCopy only supports src type [FLOAT|HALF]"));
 
   if (type == nvinfer1::DataType::kFLOAT) {
@@ -113,11 +113,11 @@ inline void convertAndCopy(const nvinfer1::Weights& src,
 }
 
 SpmmPluginDynamic::cusparseLtContext::cusparseLtContext() {
-  paddle::platform::dynload::cusparseLtInit(&handle);
+  phi::dynload::cusparseLtInit(&handle);
 }
 
 SpmmPluginDynamic::cusparseLtContext::~cusparseLtContext() {
-  paddle::platform::dynload::cusparseLtDestroy(&handle);
+  phi::dynload::cusparseLtDestroy(&handle);
 }
 
 void SpmmPluginDynamic::cusparseLtContext::init(
@@ -137,7 +137,7 @@ void SpmmPluginDynamic::cusparseLtContext::init(
   PADDLE_ENFORCE_EQ(
       is_initialized,
       false,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Descriptor should be destroyed before calling create"));
   constexpr int alignment = 16;
   cusparseComputeType compute_type;
@@ -152,13 +152,13 @@ void SpmmPluginDynamic::cusparseLtContext::init(
       compute_type = CUSPARSE_COMPUTE_32I;
       break;
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "cusparLtContext only supports data type"
-          "[CUDA_R_32F|CUDA_R_16F|CUDA_R_8I]"));
+      PADDLE_THROW(
+          common::errors::Fatal("cusparLtContext only supports data type"
+                                "[CUDA_R_32F|CUDA_R_16F|CUDA_R_8I]"));
   }
-  paddle::platform::dynload::cusparseLtDenseDescriptorInit(
+  phi::dynload::cusparseLtDenseDescriptorInit(
       &handle, &matA, m, k, k, alignment, type, CUSPARSE_ORDER_ROW);
-  paddle::platform::dynload::cusparseLtStructuredDescriptorInit(
+  phi::dynload::cusparseLtStructuredDescriptorInit(
       &handle,
       &matB,
       n,
@@ -168,35 +168,34 @@ void SpmmPluginDynamic::cusparseLtContext::init(
       type,
       CUSPARSE_ORDER_ROW,
       CUSPARSELT_SPARSITY_50_PERCENT);
-  paddle::platform::dynload::cusparseLtDenseDescriptorInit(
+  phi::dynload::cusparseLtDenseDescriptorInit(
       &handle, &matC, m, n, n, alignment, type, CUSPARSE_ORDER_ROW);
-  paddle::platform::dynload::cusparseLtMatmulDescriptorInit(
-      &handle,
-      &matmul,
-      CUSPARSE_OPERATION_NON_TRANSPOSE,
-      CUSPARSE_OPERATION_TRANSPOSE,
-      &matA,
-      &matB,
-      &matC,
-      &matC,
-      compute_type);
+  phi::dynload::cusparseLtMatmulDescriptorInit(&handle,
+                                               &matmul,
+                                               CUSPARSE_OPERATION_NON_TRANSPOSE,
+                                               CUSPARSE_OPERATION_TRANSPOSE,
+                                               &matA,
+                                               &matB,
+                                               &matC,
+                                               &matC,
+                                               compute_type);
   if (activation == SpmmPluginDynamic::Activation::kRelu) {
     int true_value = 1;
     float relu_upper_bound = std::numeric_limits<float>::max();
     float relu_threshold = 0.0f;
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_ACTIVATION_RELU,
         &true_value,
         sizeof(true_value));
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_ACTIVATION_RELU_UPPERBOUND,
         &relu_upper_bound,
         sizeof(relu_upper_bound));
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_ACTIVATION_RELU_THRESHOLD,
@@ -204,7 +203,7 @@ void SpmmPluginDynamic::cusparseLtContext::init(
         sizeof(relu_threshold));
   } else if (activation == SpmmPluginDynamic::Activation::kGelu) {
     int true_value = 1;
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_ACTIVATION_GELU,
@@ -214,24 +213,24 @@ void SpmmPluginDynamic::cusparseLtContext::init(
     PADDLE_ENFORCE_EQ(
         activation,
         SpmmPluginDynamic::Activation::kNone,
-        platform::errors::InvalidArgument("Received unknown activation"));
+        common::errors::InvalidArgument("Received unknown activation"));
   }
   if (bias_ptr != nullptr) {
-    paddle::platform::dynload::cusparseLtMatmulDescSetAttribute(
+    phi::dynload::cusparseLtMatmulDescSetAttribute(
         &handle,
         &matmul,
         CUSPARSELT_MATMUL_BIAS_POINTER,
         &bias_ptr,
         sizeof(bias_ptr));
   }
-  paddle::platform::dynload::cusparseLtMatmulAlgSelectionInit(
+  phi::dynload::cusparseLtMatmulAlgSelectionInit(
       &handle, &alg_sel, &matmul, CUSPARSELT_MATMUL_ALG_DEFAULT);
   int alg = 0;
-  paddle::platform::dynload::cusparseLtMatmulAlgSetAttribute(
+  phi::dynload::cusparseLtMatmulAlgSetAttribute(
       &handle, &alg_sel, CUSPARSELT_MATMUL_ALG_CONFIG_ID, &alg, sizeof(alg));
-  paddle::platform::dynload::cusparseLtMatmulGetWorkspace(
+  phi::dynload::cusparseLtMatmulGetWorkspace(
       &handle, &alg_sel, &workspace_size);
-  paddle::platform::dynload::cusparseLtMatmulPlanInit(
+  phi::dynload::cusparseLtMatmulPlanInit(
       &handle, &plan, &matmul, &alg_sel, workspace_size);
   is_initialized = true;
 }
@@ -240,26 +239,26 @@ void SpmmPluginDynamic::cusparseLtContext::setAlgo(int alg) {
   PADDLE_ENFORCE_EQ(
       is_initialized,
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Descriptor should be initialized before setting algorithm"));
-  paddle::platform::dynload::cusparseLtMatmulAlgSetAttribute(
+  phi::dynload::cusparseLtMatmulAlgSetAttribute(
       &handle, &alg_sel, CUSPARSELT_MATMUL_ALG_CONFIG_ID, &alg, sizeof(alg));
-  paddle::platform::dynload::cusparseLtMatmulGetWorkspace(
+  phi::dynload::cusparseLtMatmulGetWorkspace(
       &handle, &alg_sel, &workspace_size);
-  paddle::platform::dynload::cusparseLtMatmulPlanDestroy(&plan);
-  paddle::platform::dynload::cusparseLtMatmulPlanInit(
+  phi::dynload::cusparseLtMatmulPlanDestroy(&plan);
+  phi::dynload::cusparseLtMatmulPlanInit(
       &handle, &plan, &matmul, &alg_sel, workspace_size);
 }
 
 void SpmmPluginDynamic::cusparseLtContext::destroy() {
   PADDLE_ENFORCE_EQ(is_initialized,
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "cusparseLtContext is destroy before init"));
-  paddle::platform::dynload::cusparseLtMatmulPlanDestroy(&plan);
-  paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matC);
-  paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matB);
-  paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matA);
+  phi::dynload::cusparseLtMatmulPlanDestroy(&plan);
+  phi::dynload::cusparseLtMatDescriptorDestroy(&matC);
+  phi::dynload::cusparseLtMatDescriptorDestroy(&matB);
+  phi::dynload::cusparseLtMatDescriptorDestroy(&matA);
   is_initialized = false;
 }
 
@@ -273,14 +272,14 @@ void SpmmPluginDynamic::cusparseLtContext::compressMatB(
   PADDLE_ENFORCE_EQ(
       is_initialized,
       false,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cusparseLtContext should not initialized before compressMatB"));
   PADDLE_ENFORCE_EQ(*dest,
                     nullptr,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "before compressMatB *dest must be nullptr"));
   constexpr int alignment = 16;
-  paddle::platform::dynload::cusparseLtStructuredDescriptorInit(
+  phi::dynload::cusparseLtStructuredDescriptorInit(
       &handle,
       &matB,
       n,
@@ -291,12 +290,11 @@ void SpmmPluginDynamic::cusparseLtContext::compressMatB(
       CUSPARSE_ORDER_ROW,
       CUSPARSELT_SPARSITY_50_PERCENT);
 
-  paddle::platform::dynload::cusparseLtSpMMACompressedSize2(
-      &handle, &matB, compressed_size);
+  phi::dynload::cusparseLtSpMMACompressedSize2(&handle, &matB, compressed_size);
   cudaMalloc(dest, *compressed_size);
-  paddle::platform::dynload::cusparseLtSpMMACompress2(
+  phi::dynload::cusparseLtSpMMACompress2(
       &handle, &matB, 0, CUSPARSE_OPERATION_TRANSPOSE, src, *dest, nullptr);
-  paddle::platform::dynload::cusparseLtMatDescriptorDestroy(&matB);
+  phi::dynload::cusparseLtMatDescriptorDestroy(&matB);
 }
 
 // Constructor for new plugin
@@ -339,14 +337,14 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   PADDLE_ENFORCE_EQ(
       weight.count % out_dim,
       0,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of weight should be divided by output dimension."));
   k_ = weight.count / out_dim;
   PADDLE_ENFORCE_EQ(
       weight.type == nvinfer1::DataType::kFLOAT ||
           weight.type == nvinfer1::DataType::kHALF,
       true,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "SpmmPluginDynamic only supports weight of type [FLOAT|HALF]"));
   nvinfer1::DataType weight_type;
   if (precision_ == nvinfer1::DataType::kINT8) {
@@ -398,7 +396,7 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string& layer_name,
   has_bias_ = (bias.count != 0);
   if (has_bias_) {
     if (bias.count != out_dim) {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The dimension of bias should be equal to output dimension"));
     }
     if (precision_ == nvinfer1::DataType::kHALF) {
@@ -500,10 +498,10 @@ SpmmPluginDynamic::SpmmPluginDynamic(const std::string name,
   DeserializeValue(&data, &length, &has_bias_);
   DeserializeValue(&data, &length, &activation_);
 
-  PADDLE_ENFORCE_EQ(is_configured_,
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Deserialize data should be configured"));
+  PADDLE_ENFORCE_EQ(
+      is_configured_,
+      true,
+      common::errors::InvalidArgument("Deserialize data should be configured"));
   weight_compressed_ = new char[compressed_size_];
   deserialize_value_size(&data, &length, weight_compressed_, compressed_size_);
   cudaMalloc(reinterpret_cast<void**>(&weight_compressed_dev_),
@@ -561,22 +559,22 @@ nvinfer1::DimsExprs SpmmPluginDynamic::getOutputDimensions(
   try {
     PADDLE_ENFORCE_EQ(nbInputs,
                       1,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "SpmmPluginDynamic's nbInputs is invalid"));
     PADDLE_ENFORCE_EQ(outputIndex,
                       0,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "SpmmPluginDynamic's outputIndex is invalid"));
     if (nbDims == 5) {
       int nbDims = inputs[0].nbDims;
       PADDLE_ENFORCE_EQ(
           inputs[0].d[3]->getConstantValue(),
           1,
-          platform::errors::InvalidArgument("now the input d[3] should be 1"));
+          common::errors::InvalidArgument("now the input d[3] should be 1"));
       PADDLE_ENFORCE_EQ(
           inputs[0].d[4]->getConstantValue(),
           1,
-          platform::errors::InvalidArgument("now the input d[4] should be 1"));
+          common::errors::InvalidArgument("now the input d[4] should be 1"));
       nvinfer1::DimsExprs ret;
       ret.nbDims = nbDims;
       ret.d[0] = inputs[0].d[0];
@@ -590,11 +588,11 @@ nvinfer1::DimsExprs SpmmPluginDynamic::getOutputDimensions(
       PADDLE_ENFORCE_EQ(
           inputs[0].d[2]->getConstantValue(),
           1,
-          platform::errors::InvalidArgument("now the input d[2] should be 1"));
+          common::errors::InvalidArgument("now the input d[2] should be 1"));
       PADDLE_ENFORCE_EQ(
           inputs[0].d[3]->getConstantValue(),
           1,
-          platform::errors::InvalidArgument("now the input d[3] should be 1"));
+          common::errors::InvalidArgument("now the input d[3] should be 1"));
       nvinfer1::DimsExprs ret;
       ret.nbDims = nbDims;
       ret.d[0] = inputs[0].d[0];
@@ -604,7 +602,7 @@ nvinfer1::DimsExprs SpmmPluginDynamic::getOutputDimensions(
 
       return ret;
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal("nbDims should be 4 or 5"));
+      PADDLE_THROW(common::errors::Fatal("nbDims should be 4 or 5"));
     }
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
@@ -619,11 +617,11 @@ bool SpmmPluginDynamic::supportsFormatCombination(
     int nbOutputs) noexcept {
   PADDLE_ENFORCE_EQ(nbInputs,
                     1,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "SpmmPluginDynamic's nbInputs should be 1"));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     1,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "SpmmPluginDynamic's nbOutputs should be 1"));
 
   const nvinfer1::PluginTensorDesc& in = inOut[pos];
@@ -650,34 +648,34 @@ void SpmmPluginDynamic::configurePlugin(
   try {
     PADDLE_ENFORCE_EQ(nbInputs,
                       1,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "SpmmPluginDynamic's nbInputs should be 1"));
     PADDLE_ENFORCE_EQ(nbOutputs,
                       1,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "SpmmPluginDynamic's nbOutputs should be 1"));
     PADDLE_ENFORCE_EQ(precision_,
                       inputs[0].desc.type,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "precision_ should be equal to inputs[0].desc.type"));
     const auto& inDims0 = inputs[0].desc.dims;
     if (inDims0.nbDims == 5) {
       PADDLE_ENFORCE_EQ(
           inDims0.nbDims,
           5,
-          platform::errors::InvalidArgument("inDims0.nbDims should be 5"));
+          common::errors::InvalidArgument("inDims0.nbDims should be 5"));
       PADDLE_ENFORCE_EQ(k_,
                         inDims0.d[2],
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "inDims0.d[2] should be equals to k"));
       PADDLE_ENFORCE_EQ(
           inDims0.d[3],
           1,
-          platform::errors::InvalidArgument("inDims0.d[3] should be 1"));
+          common::errors::InvalidArgument("inDims0.d[3] should be 1"));
       PADDLE_ENFORCE_EQ(
           inDims0.d[4],
           1,
-          platform::errors::InvalidArgument("inDims0.d[4] should be 1"));
+          common::errors::InvalidArgument("inDims0.d[4] should be 1"));
       const int BS = inputs->max.d[0];
       const int Seq = inputs->max.d[1];
       m_max_ = BS * Seq;
@@ -685,19 +683,19 @@ void SpmmPluginDynamic::configurePlugin(
       PADDLE_ENFORCE_EQ(
           inDims0.nbDims,
           4,
-          platform::errors::InvalidArgument("inDims0.nbDims should be 4"));
+          common::errors::InvalidArgument("inDims0.nbDims should be 4"));
       PADDLE_ENFORCE_EQ(k_,
                         inDims0.d[1],
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "inDims0.d[1] should be equals to k"));
       PADDLE_ENFORCE_EQ(
           inDims0.d[2],
           1,
-          platform::errors::InvalidArgument("inDims0.d[2] should be 1"));
+          common::errors::InvalidArgument("inDims0.d[2] should be 1"));
       PADDLE_ENFORCE_EQ(
           inDims0.d[3],
           1,
-          platform::errors::InvalidArgument("inDims0.d[3] should be 1"));
+          common::errors::InvalidArgument("inDims0.d[3] should be 1"));
       const int BS_Seq = inputs->max.d[0];
       m_max_ = BS_Seq;
     }
@@ -733,19 +731,18 @@ void SpmmPluginDynamic::configurePlugin(
                m_max_ * out_dim_ * sizeof(dataType));
     cudaMalloc(reinterpret_cast<void**>(&d_workspace),
                spmm_context_.workspace_size);
-    paddle::platform::dynload::cusparseLtMatmulSearch(
-        &spmm_context_.handle,
-        &spmm_context_.plan,
-        &alpha,
-        dA,
-        weight_compressed_dev_global_.get(),
-        &beta,
-        dC,
-        dC,
-        d_workspace,
-        nullptr,
-        0);
-    paddle::platform::dynload::cusparseLtMatmulAlgGetAttribute(
+    phi::dynload::cusparseLtMatmulSearch(&spmm_context_.handle,
+                                         &spmm_context_.plan,
+                                         &alpha,
+                                         dA,
+                                         weight_compressed_dev_global_.get(),
+                                         &beta,
+                                         dC,
+                                         dC,
+                                         d_workspace,
+                                         nullptr,
+                                         0);
+    phi::dynload::cusparseLtMatmulAlgGetAttribute(
         &spmm_context_.handle,
         &spmm_context_.alg_sel,
         CUSPARSELT_MATMUL_ALG_CONFIG_ID,
@@ -778,18 +775,18 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
   try {
     PADDLE_ENFORCE_EQ(is_configured_,
                       true,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The plugin is not configured before enqueue"));
     if (inputDesc->dims.nbDims == 5) {
       PADDLE_ENFORCE_EQ(
           k_,
           inputDesc->dims.d[2],
-          platform::errors::InvalidArgument("k_ == inputDesc->dims.d[2]"));
+          common::errors::InvalidArgument("k_ == inputDesc->dims.d[2]"));
     } else if (inputDesc->dims.nbDims == 4) {
       PADDLE_ENFORCE_EQ(
           k_,
           inputDesc->dims.d[1],
-          platform::errors::InvalidArgument("k_ == inputDesc->dims.d[1]"));
+          common::errors::InvalidArgument("k_ == inputDesc->dims.d[1]"));
     }
     float alpha = 1.0f;
     float beta = 0.0f;
@@ -798,34 +795,34 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       auto* output = static_cast<float*>(outputs[0]);
       auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
       cusparseStatus_t status =
-          paddle::platform::dynload::cusparseLtMatmul(&spmm_context_.handle,
-                                                      &spmm_context_.plan,
-                                                      &alpha,
-                                                      input,
-                                                      weight_compressed_dev_p_,
-                                                      &beta,
-                                                      output,
-                                                      output,
-                                                      workSpace,
-                                                      &stream,
-                                                      1);
+          phi::dynload::cusparseLtMatmul(&spmm_context_.handle,
+                                         &spmm_context_.plan,
+                                         &alpha,
+                                         input,
+                                         weight_compressed_dev_p_,
+                                         &beta,
+                                         output,
+                                         output,
+                                         workSpace,
+                                         &stream,
+                                         1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kHALF) {
       const auto* const input = static_cast<const half*>(inputs[0]);
       auto* output = static_cast<half*>(outputs[0]);
       auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
       cusparseStatus_t status =
-          paddle::platform::dynload::cusparseLtMatmul(&spmm_context_.handle,
-                                                      &spmm_context_.plan,
-                                                      &alpha,
-                                                      input,
-                                                      weight_compressed_dev_p_,
-                                                      &beta,
-                                                      output,
-                                                      output,
-                                                      workSpace,
-                                                      &stream,
-                                                      1);
+          phi::dynload::cusparseLtMatmul(&spmm_context_.handle,
+                                         &spmm_context_.plan,
+                                         &alpha,
+                                         input,
+                                         weight_compressed_dev_p_,
+                                         &beta,
+                                         output,
+                                         output,
+                                         workSpace,
+                                         &stream,
+                                         1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else if (inputDesc->type == nvinfer1::DataType::kINT8) {
       alpha = inputDesc->scale * weight_scale_ / outputDesc->scale;
@@ -833,20 +830,20 @@ int SpmmPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       auto* output = static_cast<int8_t*>(outputs[0]);
       auto* weight_compressed_dev_p_ = weight_compressed_dev_global_.get();
       cusparseStatus_t status =
-          paddle::platform::dynload::cusparseLtMatmul(&spmm_context_.handle,
-                                                      &spmm_context_.plan,
-                                                      &alpha,
-                                                      input,
-                                                      weight_compressed_dev_p_,
-                                                      &beta,
-                                                      output,
-                                                      output,
-                                                      workSpace,
-                                                      &stream,
-                                                      1);
+          phi::dynload::cusparseLtMatmul(&spmm_context_.handle,
+                                         &spmm_context_.plan,
+                                         &alpha,
+                                         input,
+                                         weight_compressed_dev_p_,
+                                         &beta,
+                                         output,
+                                         output,
+                                         workSpace,
+                                         &stream,
+                                         1);
       return status != CUSPARSE_STATUS_SUCCESS;
     } else {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "Unsupported type error, expected [kHALF,kFLOAT], but received %d",
           static_cast<int>(precision_)));
     }
@@ -860,19 +857,19 @@ nvinfer1::DataType SpmmPluginDynamic::getOutputDataType(
     int index,
     const nvinfer1::DataType* inputTypes,
     int nbInputs) const noexcept {
-  PADDLE_ENFORCE_EQ(index,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "SpmmPluginDynamic's index should be 0"));
+  PADDLE_ENFORCE_EQ(
+      index,
+      0,
+      common::errors::InvalidArgument("SpmmPluginDynamic's index should be 0"));
   PADDLE_ENFORCE_EQ(nbInputs,
                     1,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "SpmmPluginDynamic's nbInputs should be 1"));
   PADDLE_ENFORCE_EQ(inputTypes[0] == nvinfer1::DataType::kFLOAT ||
                         inputTypes[0] == nvinfer1::DataType::kHALF ||
                         inputTypes[0] == nvinfer1::DataType::kINT8,
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "SpmmPluginDynamic is not support this format now"));
 
   return inputTypes[0];
@@ -955,7 +952,7 @@ inline nvinfer1::DataType fieldTypeToDataType(
     case nvinfer1::PluginFieldType::kINT8:
       return nvinfer1::DataType::kINT8;
     default:
-      PADDLE_THROW(paddle::platform::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "No corresponding datatype for plugin field type"));
   }
 }
@@ -1015,29 +1012,29 @@ nvinfer1::IPluginV2* SpmmPluginDynamicCreator::createPlugin(
       } else if (field_name.compare("activation_id") == 0) {
         activation_id = static_cast<const int*>(fc->fields[i].data)[0];
       } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal("Unsupport plugin field"));
+        PADDLE_THROW(common::errors::Fatal("Unsupport plugin field"));
       }
     }
 
     PADDLE_ENFORCE_NE(
         type_id,
         -1,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "SpmmPluginDynamicCreator's type_id should not be -1"));
     PADDLE_ENFORCE_NE(
         out_dim,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "SpmmPluginDynamicCreator's out_dim should not be 0"));
     PADDLE_ENFORCE_NE(
         weight.count,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "SpmmPluginDynamicCreator's weight size should not be 0"));
     PADDLE_ENFORCE_NE(
         activation_id,
         -1,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "SpmmPluginDynamicCreator's activation_id should not be -1"));
     nvinfer1::DataType type = static_cast<nvinfer1::DataType>(type_id);
     SpmmPluginDynamic::Activation activation =

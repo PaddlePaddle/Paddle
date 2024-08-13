@@ -36,13 +36,12 @@ class WriteToArrayOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
     auto &x_tensor = x->Get<phi::DenseTensor>();
     size_t offset = GetOffset(scope, place);
-    auto *out =
-        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
+    auto *out = scope.FindVar(Output("Out"))->GetMutable<phi::TensorArray>();
     if (offset >= out->size()) {
       VLOG(10) << "Resize " << Output("Out") << " from " << out->size()
                << " to " << offset + 1;
@@ -51,8 +50,7 @@ class WriteToArrayOp : public ArrayOp {
     auto *out_tensor = &out->at(offset);
     out_tensor->set_lod(x_tensor.lod());
     if (x_tensor.memory_size() > 0) {
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
 
       paddle::framework::TensorCopy(x_tensor, place, dev_ctx, out_tensor);
@@ -94,7 +92,7 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasInput("I"),
         true,
-        platform::errors::NotFound("Input(I) of WriteToArrayOp is not found."));
+        common::errors::NotFound("Input(I) of WriteToArrayOp is not found."));
 
     // TODO(wangchaochaohu) control flow Op do not support runtime infer shape
     // Later we add [ontext->GetInputDim("I")) == 1] check when it's supported
@@ -105,7 +103,7 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
 
     PADDLE_ENFORCE_EQ(context->HasOutput("Out"),
                       true,
-                      platform::errors::NotFound(
+                      common::errors::NotFound(
                           "Output(Out) of WriteToArrayOp is not found."));
     context->SetOutputDim("Out", context->GetInputDim("X"));
 
@@ -146,22 +144,21 @@ class ReadFromArrayOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE_NOT_NULL(x,
-                            platform::errors::NotFound(
-                                "Input(X) of ReadFromArrayOp is not found."));
-    auto &x_array = x->Get<framework::LoDTensorArray>();
+    PADDLE_ENFORCE_NOT_NULL(
+        x,
+        common::errors::NotFound("Input(X) of ReadFromArrayOp is not found."));
+    auto &x_array = x->Get<phi::TensorArray>();
     auto *out = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE_NOT_NULL(
         out,
-        platform::errors::NotFound(
+        common::errors::NotFound(
             "Output(Out) of ReadFromArrayOp is not found."));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<phi::DenseTensor>();
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
       framework::TensorCopy(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());

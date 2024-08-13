@@ -19,7 +19,10 @@ function(cinn_cc_library TARGET_NAME)
     endif()
 
     if(cinn_cc_library_DEPS)
-      # Don't need link libwarpctc.so
+      if("${cinn_cc_library_DEPS};" MATCHES "python;")
+        list(REMOVE_ITEM cinn_cc_library_DEPS python)
+        add_dependencies(${TARGET_NAME} python)
+      endif()
       target_link_libraries(${TARGET_NAME} ${cinn_cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cinn_cc_library_DEPS})
     endif()
@@ -242,7 +245,7 @@ function(cinn_merge_static_libs TARGET_NAME)
       COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
       DEPENDS ${libs})
 
-    # Generate dummy staic lib
+    # Generate dummy static lib
     file(WRITE ${target_SRCS}
          "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
     add_library(${TARGET_NAME} STATIC ${target_SRCS})

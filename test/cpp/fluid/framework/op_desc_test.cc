@@ -29,6 +29,7 @@ TEST(OpDesc, SetScalarsAttr) {
   paddle::experimental::Scalar scalar(std::complex<double>(42.1, 42.1));
 
   std::vector<paddle::experimental::Scalar> scalars;
+  scalars.reserve(4);
   for (int i = 0; i < 4; i++) {
     scalars.emplace_back(i);
   }

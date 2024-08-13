@@ -40,6 +40,14 @@ class RuntimeSymbols {
     scalar_holder_ = std::move(rhs.scalar_holder_);
   }
 
+  RuntimeSymbols &operator=(RuntimeSymbols &&rhs) noexcept {
+    if (this != &rhs) {
+      symbols_ = std::move(rhs.symbols_);
+      scalar_holder_ = std::move(rhs.scalar_holder_);
+    }
+    return *this;
+  }
+
   /**
    * Register function address.
    * @param name Name of the symbol.
@@ -71,7 +79,7 @@ class RuntimeSymbols {
   /**
    * Lookup a symbol from the registry.
    * @param name Name of the symbol.
-   * @return The address if existes, or nullptr will return.
+   * @return The address if exists, or nullptr will return.
    */
   void *Lookup(absl::string_view name) const;
 

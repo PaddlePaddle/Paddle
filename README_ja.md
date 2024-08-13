@@ -50,7 +50,7 @@ pip install paddlepaddle-gpu
 
 - **総合的な展開環境に対応した高性能推論エンジン**
 
-   PaddlePaddle は、サードパーティのオープンソースフレームワークで学習されたモデルとの互換性があるだけでなく、様々な生産シナリオに対応した完全な推論エンジン、システム、スイートを提供しています。当社の推論エンジン、システム、スイートには、[Paddle Inference](https://paddle-inference.readthedocs.io/en/master/guides/introduction/index_intro.html) があります： [Paddle Serving](https://github.com/PaddlePaddle/Serving): 高性能なサーバーおよびクラウド推論用のネイティブ推論ライブラリ： [Paddle Serving](https://github.com/PaddlePaddle/Paddle-Lite): 分散型やパイプライン型プロダクションに適したサービス指向フレームワーク; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)： モバイルや IoT 環境向けの超軽量推論エンジン; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)： ブラウザやミニアプリのためのフロントエンド推論エンジンです。さらに、各シナリオの主要なハードウェアに最適化することで、Paddle の推論エンジンは他の主流フレームワークのほとんどを凌駕しています。
+   PaddlePaddle は、サードパーティのオープンソースフレームワークで学習されたモデルとの互換性があるだけでなく、様々な生産シナリオに対応した完全な推論エンジン、システム、スイートを提供しています。当社の推論エンジン、システム、スイートには、[Paddle Inference](https://www.paddlepaddle.org.cn/inference/master/guides/introduction/index_intro.html) があります：高性能なサーバーおよびクラウド推論用のネイティブ推論ライブラリ; [FastDeploy](https://github.com/PaddlePaddle/FastDeploy): オールシナリオで使いやすく、柔軟で非常に効率的なAI推論デプロイツールです; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)： モバイルや IoT 環境向けの超軽量推論エンジン; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)： ブラウザやミニアプリのためのフロントエンド推論エンジンです。さらに、各シナリオの主要なハードウェアに最適化することで、Paddle の推論エンジンは他の主流フレームワークのほとんどを凌駕しています。
 
 - **オープンソースリポジトリによる業界指向のモデルやライブラリ**
 

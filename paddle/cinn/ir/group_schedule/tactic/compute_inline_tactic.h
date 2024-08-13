@@ -22,18 +22,7 @@
 namespace cinn {
 namespace ir {
 
-class ComputeInlineTactic final : public ScheduleTactic {
- public:
-  void Init(ScheduleContext* context) override;
-
-  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
-
-  std::string TacticName() const override { return "ComputeInlineTactic"; }
-
- private:
-  std::unordered_set<std::string> output_names_;
-  cinn::common::Target target_;
-};
+std::unique_ptr<ScheduleTactic> CreateComputeInlineTactic();
 
 }  // namespace ir
 }  // namespace cinn

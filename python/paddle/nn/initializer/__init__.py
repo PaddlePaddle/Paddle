@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the initializers to create a Parameter in neural network
+
 from ...base.initializer import set_global_initializer
 from .assign import (
     Assign,
     NumpyArrayInitializer,  # noqa: F401
 )
-from .Bilinear import Bilinear
+from .bilinear import Bilinear
 from .constant import (
     Constant,
     ConstantInitializer,  # noqa: F401

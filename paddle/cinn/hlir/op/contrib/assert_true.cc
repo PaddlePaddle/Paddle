@@ -17,7 +17,6 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -26,8 +25,9 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace hlir {
@@ -44,19 +44,27 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(
     const Target &target) {
   framework::CINNCompute assert_true_compute([=](lang::Args args,
                                                  lang::RetValue *ret) {
-    CHECK(!args.empty())
-        << "The input argument of assert_true is empty! Please check.";
+    PADDLE_ENFORCE_EQ(!args.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The input argument of assert_true is "
+                          "empty! Please check."));
     CINNValuePack pack_args = args[0];
-    CHECK_GE(pack_args.size(), 2U)
-        << "Two input tensors are required for the computation of assert_true.";
+    PADDLE_ENFORCE_GE(
+        pack_args.size(),
+        2U,
+        ::common::errors::InvalidArgument("Two input tensors are required "
+                                          "for the computation of assert_true, "
+                                          "but received size %d.",
+                                          pack_args.size()));
+
     Expr a_expr = pack_args[0];
     Expr b_expr = pack_args[1];
     ir::Tensor a = a_expr.as_tensor_ref();
     ir::Tensor b = b_expr.as_tensor_ref();
     std::string tensor_name = "assert_true_out";
     auto out = pe::Identity(b, tensor_name).front();
-    auto stages = CreateStages({out});
-    std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+    std::vector<CINNValue> res{CINNValue(out)};
     *ret = CINNValuePack{res};
   });
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -65,17 +73,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssertTrue(
                     "strategy.assert_true.x86",
                     1);
   return strategy;
-}
-
-std::vector<framework::shape_t> InferShapeForAssertTrue(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  return inputs_shape;
-}
-
-std::vector<Type> InferDtypeForAssertTrue(const std::vector<Type> &inputs_type,
-                                          const framework::AttrMapType &attrs) {
-  return inputs_type;
 }
 
 }  // namespace op
@@ -89,10 +86,6 @@ CINN_REGISTER_HELPER(assert_true_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForAssertTrue)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForAssertTrue))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForAssertTrue))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

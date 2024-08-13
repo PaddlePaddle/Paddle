@@ -43,7 +43,7 @@ using AbstractAutogradMeta = paddle::AbstractAutogradMeta;
  * Hooks are some computation logic which only attached with backward operation,
  * it registered by user and run before accumulator.
  *
- * 4. overrided_stop_gradient_
+ * 4. overridden_stop_gradient_
  * This member is used to finish some auto-prune related work, which indicate
  * user set stop_gradient should override the result indicated by framework.
  * All non-parameter tensor's stop_gradient properties should be true. We will
@@ -71,7 +71,7 @@ class AutogradMeta : public AbstractAutogradMeta {
   const paddle::Tensor& Grad() const {
     PADDLE_ENFORCE_NOT_NULL(
         grad_.get(),
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Should Not get NULL from Grad pointer, since "
             "we should have default Tensor once we init AutoGradMeta. "
             "if you got this error may indicates framework error in "
@@ -86,7 +86,7 @@ class AutogradMeta : public AbstractAutogradMeta {
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(
         grad_node.get(),
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Should Not set NULL as GradNode pointer, since "
             "our default Edge and autogradMeta has nullptr for "
             "grad node. Set Nullptr will lead error."));

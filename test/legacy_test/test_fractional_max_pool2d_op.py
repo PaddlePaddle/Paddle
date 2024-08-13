@@ -102,7 +102,7 @@ def fractional_max_pool2D_forward_naive(
 
 
 # ----------------fractional_max_pool2d----------------
-def fractional_max_pool2d_wapper(
+def fractional_max_pool2d_wrapper(
     x,
     output_size=None,
     kernel_size=[0, 0],
@@ -121,7 +121,7 @@ def fractional_max_pool2d_wapper(
 class TestMaxPoolWithIndex_Op(OpTest):
     def setUp(self):
         self.op_type = "fractional_max_pool2d"
-        self.python_api = fractional_max_pool2d_wapper
+        self.python_api = fractional_max_pool2d_wrapper
         self.pool_forward_naive = fractional_max_pool2D_forward_naive
 
         self.init_test_case()

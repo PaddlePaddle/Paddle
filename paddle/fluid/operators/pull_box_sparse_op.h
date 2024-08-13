@@ -82,7 +82,7 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
     } else {
       PADDLE_ENFORCE_EQ(batch_size,
                         cur_batch_size,
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The batch size of all input slots should be same, "
                             "please cheack"));
     }

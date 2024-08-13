@@ -25,16 +25,16 @@ class GlobalVal final {
   static T* Get() {
     T* ptr = GetPPtr()->get();
     PADDLE_ENFORCE_NOT_NULL(
-        ptr, platform::errors::NotFound("This value is not global value."));
+        ptr, common::errors::NotFound("This value is not global value."));
     return ptr;
   }
   template <typename... Args>
   static T* Create(Args&&... args) {
     auto* ptr = GetPPtr();
-    PADDLE_ENFORCE_EQ(ptr->get(),
-                      nullptr,
-                      platform::errors::AlreadyExists(
-                          "This value is already a global value."));
+    PADDLE_ENFORCE_EQ(
+        ptr->get(),
+        nullptr,
+        common::errors::AlreadyExists("This value is already a global value."));
     T* item = new T(std::forward<Args>(args)...);
     ptr->reset(item);
     return item;
@@ -59,17 +59,17 @@ class GlobalMap final {
   static ValueT* Get(KeyT id) {
     ValueT* item = GetPPtr(id)->get();
     PADDLE_ENFORCE_NOT_NULL(
-        item, platform::errors::NotFound("This value is not in global map."));
+        item, common::errors::NotFound("This value is not in global map."));
     return item;
   }
 
   template <typename... Args>
   static ValueT* Create(KeyT id, Args&&... args) {
     auto* ptr = GetPPtr(id);
-    PADDLE_ENFORCE_EQ(ptr->get(),
-                      nullptr,
-                      platform::errors::AlreadyExists(
-                          "This value has already in global map."));
+    PADDLE_ENFORCE_EQ(
+        ptr->get(),
+        nullptr,
+        common::errors::AlreadyExists("This value has already in global map."));
     ValueT* item = new ValueT(std::forward<Args>(args)...);
     ptr->reset(item);
     return item;
@@ -89,7 +89,7 @@ class ThreadSafeGlobalMap final {
     ValueT* item = GetPPtr(id)->get();
     PADDLE_ENFORCE_NOT_NULL(
         item,
-        platform::errors::NotFound(
+        common::errors::NotFound(
             "This value is not in thread safe global map."));
     return item;
   }
@@ -98,7 +98,7 @@ class ThreadSafeGlobalMap final {
     auto* ptr = GetPPtr(id);
     PADDLE_ENFORCE_EQ(ptr->get(),
                       nullptr,
-                      platform::errors::AlreadyExists(
+                      common::errors::AlreadyExists(
                           "This value has already in thread safe global map."));
     ValueT* item = new ValueT(std::forward<Args>(args)...);
     ptr->reset(item);

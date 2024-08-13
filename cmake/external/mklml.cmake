@@ -35,7 +35,7 @@ if(WIN32)
 else()
   #TODO(intel-huying):
   #  Now enable csrmm function in mklml library temporarily,
-  #  it will be updated as offical version later.
+  #  it will be updated as official version later.
   set(MKLML_FILE
       "csrmm_mklml_lnx_2019.0.5.tgz"
       CACHE STRING "" FORCE)

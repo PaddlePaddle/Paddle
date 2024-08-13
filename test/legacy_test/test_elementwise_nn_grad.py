@@ -28,7 +28,7 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -58,7 +58,7 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -90,7 +90,7 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -120,7 +120,7 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -153,7 +153,7 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -190,7 +190,7 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -216,6 +216,211 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestElementwiseSubBroadcastDoubleGradCheck2(unittest.TestCase):
+    def subtract_wrapper(self, x):
+        return paddle.subtract(x[0], x[1])
+
+    @test_with_pir_api
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not include -1.
+        shape1 = [2, 1, 4, 5]
+        shape2 = [2, 3, 1, 1]
+        eps = 0.005
+        dtype = np.float64
+
+        x = paddle.static.data('x', shape1, dtype)
+        y = paddle.static.data('y', shape2, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = paddle.subtract(x, y)
+        x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape2).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.subtract_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseSubBroadcastDoubleGradCheck3(unittest.TestCase):
+    def subtract_wrapper(self, x):
+        return paddle.subtract(x[0], x[1])
+
+    @test_with_pir_api
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not include -1.
+        shape1 = [2, 1, 4, 5]
+        shape2 = [1, 1]
+        eps = 0.005
+        dtype = np.float64
+
+        x = paddle.static.data('x', shape1, dtype)
+        y = paddle.static.data('y', shape2, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = paddle.subtract(x, y)
+        x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape2).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.subtract_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseSubBroadcastDoubleGradCheck4(unittest.TestCase):
+    def subtract_wrapper(self, x):
+        return paddle.subtract(x[0], x[1])
+
+    @test_with_pir_api
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not include -1.
+        shape1 = [2, 1, 4, 5]
+        shape2 = []
+        eps = 0.005
+        dtype = np.float64
+
+        x = paddle.static.data('x', shape1, dtype)
+        y = paddle.static.data('y', shape2, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = paddle.subtract(x, y)
+        x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape2).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.subtract_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseSubBroadcastDoubleGradCheck5(unittest.TestCase):
+    def subtract_wrapper(self, x):
+        return paddle.subtract(x[0], x[1])
+
+    @test_with_pir_api
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not include -1.
+        shape1 = [2, 1, 4, 5]
+        shape2 = [4, 1]
+        eps = 0.005
+        dtype = np.float64
+
+        x = paddle.static.data('x', shape1, dtype)
+        y = paddle.static.data('y', shape2, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = paddle.subtract(x, y)
+        x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape2).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.subtract_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestElementwiseSubBroadcastDoubleGradCheck6(unittest.TestCase):
+    def subtract_wrapper(self, x):
+        return paddle.subtract(x[0], x[1])
+
+    @test_with_pir_api
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not include -1.
+        shape1 = [4, 1, 3]
+        shape2 = [3, 1]
+        eps = 0.005
+        dtype = np.float64
+
+        x = paddle.static.data('x', shape1, dtype)
+        y = paddle.static.data('y', shape2, dtype)
+        x.persistable = True
+        y.persistable = True
+        out = paddle.subtract(x, y)
+        x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, shape2).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.subtract_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
 class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
     def divide_wrapper(self, x):
         return paddle.divide(x[0], x[1])
@@ -223,7 +428,7 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.0001
         dtype = np.float64
@@ -262,7 +467,7 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.0001
         dtype = np.float64
@@ -295,7 +500,7 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -324,7 +529,7 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
 class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -357,7 +562,7 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64
@@ -393,7 +598,7 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
 class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         shape = [2, 3, 4, 5]
         eps = 0.005
         dtype = np.float64

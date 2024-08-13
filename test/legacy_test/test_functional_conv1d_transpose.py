@@ -35,12 +35,12 @@ class TestFunctionalConv1DError(TestCase):
 
     def dygraph_case(self):
         with dg.guard():
-            x = dg.to_variable(self.input, dtype=paddle.float32)
-            w = dg.to_variable(self.filter, dtype=paddle.float32)
+            x = paddle.to_tensor(self.input, dtype=paddle.float32)
+            w = paddle.to_tensor(self.filter, dtype=paddle.float32)
             b = (
                 None
                 if self.bias is None
-                else dg.to_variable(self.bias, dtype=paddle.float32)
+                else paddle.to_tensor(self.bias, dtype=paddle.float32)
             )
             y = F.conv1d_transpose(
                 x,

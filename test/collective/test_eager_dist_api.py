@@ -14,18 +14,18 @@
 
 import unittest
 
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from test_parallel_dygraph_dataparallel import TestMultipleAccelerators
 
 
-class TestProcessGroup(TestMultipleGpus):
+class TestProcessGroup(TestMultipleAccelerators):
     def test_process_group_nccl(self):
-        self.run_mnist_2gpu('process_group_nccl.py')
+        self.run_mnist_2accelerators('process_group_nccl.py')
 
     def test_process_group_gloo(self):
-        self.run_mnist_2gpu('process_group_gloo.py')
+        self.run_mnist_2accelerators('process_group_gloo.py')
 
     def test_init_process_group(self):
-        self.run_mnist_2gpu('init_process_group.py')
+        self.run_mnist_2accelerators('init_process_group.py')
 
 
 if __name__ == "__main__":

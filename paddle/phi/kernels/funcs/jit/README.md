@@ -35,7 +35,7 @@ PaddlePaddle/Paddle/paddle/phi/kernels/
 基本类的定义都放在根目录下，根目录下包括gen,more和refer三个目录。每个目录下都是一种或者多种实现，每种kernel算子都需要有reference的实现，用作单元测试的基准，其他的实现都是可选的。
 - gen: 代表使用jit生成的code，需要依赖xbyak库。该实现最关心的就是性能。
 - refer: 代表reference的实现，每种kernel算子都需要有在CPU上的reference的实现，他主要关心的算法逻辑的正确性。
-- more: 下面可以放入跟多实现，可以包括mkl，mkldnn，intrinsic，openblas等，也可以是自身已有的kernel组合。
+- more: 下面可以放入更多实现，可以包括mkl，mkldnn，intrinsic，openblas等，也可以是自身已有的kernel组合。
 
 ## 动态获取
 
@@ -79,7 +79,7 @@ PaddlePaddle/Paddle/paddle/phi/kernels/
 # 如何添加新的算子
 
 1. 在`KernelType` 中添加 `your_key` 。
-2. 实现Reference 的逻辑，这个是必须是在CPU上的实现，并且不能依赖任何第三方库。实现后在`refer/CmakeLists.txt`中添加`USE_JITKERNEL_REFER(your_key)`来使用该kernel。
+2. 实现Reference 的逻辑，这个是必须是在CPU上的实现，并且不能依赖任何第三方库。实现后在`refer/CMakeLists.txt`中添加`USE_JITKERNEL_REFER(your_key)`来使用该kernel。
 3. (optional) 实现更多的算法在`more`目录下，可以依赖mkl，intrinsic或者mkldnn等第三方库。
 4. (optional) 实现基于Xbyak的生成code，在`gen`目下。 jitcode需要实现自己的`JitCodeCreator`，并注册在与refer相同的`KernelType`上。
 5. 添加新的`KernelTuple`，需要与`KernelType`一一对应，是所有类型的一个打包，包括数据类型，属性的类型，以及返回的函数类型。可以参考`SeqPoolTuple`，新加的Attr类型需要特例化`JitCodeKey`方法。

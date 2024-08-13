@@ -159,6 +159,7 @@ class BadInputTest(unittest.TestCase):
 
 
 class TestIgnoreVarNameInWhile(unittest.TestCase):
+    @test_with_pir_api
     def test_ignore_var(self):
         def cond(i, ten, temp, y):
             return i < ten
@@ -189,9 +190,11 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         exe = base.Executor(base.CPUPlace())
         exe.run(base.default_startup_program())
 
-        input_x = numpy.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]])
+        input_x = numpy.array(
+            [[1.0, 2.0, 3.0, 4.0], [4.0, 5.0, 6.0, 7.0], [7.0, 8.0, 9.0, 10.0]]
+        ).astype('float32')
         input_x = input_x.reshape(3, 1, 4)
-        input_y = numpy.array([[10], [12], [33]])
+        input_y = numpy.array([[10.0], [12.0], [33.0]]).astype('float32')
         input_y = input_y.reshape(3, 1, 1)
 
         (res,) = exe.run(
@@ -235,7 +238,7 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
             x = paddle.static.data(shape=[-1], name='x', dtype='float32')
             func(x)
 
-        # NOTE(winter-wang): The while_op in pir mode  doesn't need following constrait, so hre only check when in non-pir mode.
+        # NOTE(winter-wang): The while_op in pir mode doesn't need following constraint, so here only check when in non-pir mode.
         if not in_pir_mode():
             for op in main_program.block(0).ops:
                 if op.type == "while":
@@ -244,9 +247,7 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
                             continue
                         self.assertTrue(
                             out_name in op.input("X"),
-                            "In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{}` not meet the precondition.".format(
-                                out_name
-                            ),
+                            f"In while op, the variable in output(`Out`) must exists in inputs(`X`), but the variable with name `{out_name}` not meet the precondition.",
                         )
 
 

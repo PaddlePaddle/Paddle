@@ -291,7 +291,7 @@ int TrtCrossMultiHeadMatmulFusePass::BuildCrossFusion(
                           Node* scale_out) {
     // get Device context
     auto* dev_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
 
     auto scale_attr = PADDLE_GET_CONST(float, scale->Op()->GetAttr("scale"));
 

@@ -23,7 +23,6 @@ using dnnl::engine;
 using dnnl::inner_product_forward;
 using dnnl::memory;
 using dnnl::prop_kind;
-using phi::ReshapeToMatrix;
 
 namespace phi {
 
@@ -125,7 +124,7 @@ void MatmulKernel(const Context &dev_ctx,
 
   auto x_dims = common::vectorize(x.dims());
   auto y_dims = common::vectorize(y.dims());
-  int ndims = std::max(x_dims.size(), y_dims.size());
+  int ndims = std::max(x_dims.size(), y_dims.size());  // NOLINT
   ndims = std::max(ndims, 3);
 
   std::vector<int64_t> x_bd_dims(ndims, 1);
@@ -267,7 +266,7 @@ class MulPrimitiveFactory {
     auto scale_out_data = force_fp32_output ? 1.0f : scale_out;
 
     bool is_multi_channel = scale_y_data.size() > 1;
-    int count = is_multi_channel ? scale_y_data.size() : 1;
+    int count = is_multi_channel ? scale_y_data.size() : 1;  // NOLINT
     std::vector<float> output_shift_scale(count);
     for (int i = 0; i < count; i++) {
       if (scale_y_data[i] == 0.0)

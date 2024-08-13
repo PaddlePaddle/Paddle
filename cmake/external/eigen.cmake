@@ -25,7 +25,7 @@ if(WIN32)
 elseif(LINUX)
   if(WITH_ROCM)
     # For HIPCC Eigen::internal::device::numeric_limits is not EIGEN_DEVICE_FUNC
-    # which will cause compiler error of using __host__ funciont
+    # which will cause compiler error of using __host__ function
     # in __host__ __device__
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Meta.h native_src)
     file(TO_NATIVE_PATH ${SOURCE_DIR}/Eigen/src/Core/util/Meta.h native_dst)
@@ -39,7 +39,7 @@ elseif(LINUX)
   endif()
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCC)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/TensorRandom.h.patch
        tensor_random_header)
   # See: [Why calling some `git` commands before `patch`?]
@@ -47,31 +47,31 @@ if(CMAKE_COMPILER_IS_GNUCC)
       git checkout -- . && git checkout ${EIGEN_TAG} && patch -Nd
       ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor <
       ${tensor_random_header})
-  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
-                  OUTPUT_VARIABLE GCC_VERSION)
-  string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
-  list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
-  list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
-  set(GCC_VERSION "${GCC_MAJOR}.${GCC_MINOR}")
-  if(GCC_VERSION GREATER_EQUAL 12.0)
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Complex.h.patch
-         complex_header)
-    set(EIGEN_PATCH_COMMAND
-        ${EIGEN_PATCH_COMMAND} && patch -d
-        ${SOURCE_DIR}/Eigen/src/Core/arch/SSE/ < ${complex_header})
-  endif()
+  file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Complex.h.patch
+       complex_header)
+  set(EIGEN_PATCH_COMMAND
+      ${EIGEN_PATCH_COMMAND} && patch -Nd
+      ${SOURCE_DIR}/Eigen/src/Core/arch/SSE/ < ${complex_header})
 endif()
 
 set(EIGEN_INCLUDE_DIR ${SOURCE_DIR})
 include_directories(${EIGEN_INCLUDE_DIR})
-
+if(NOT WIN32)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=maybe-uninitialized")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=maybe-uninitialized")
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=uninitialized")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=uninitialized")
+  endif()
+endif()
 ExternalProject_Add(
   extern_eigen3
   ${EXTERNAL_PROJECT_LOG_ARGS}
   SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${EIGEN_PREFIX_DIR}
-  CMAKE_ARGS -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}" -Wno-maybe-uninitialized"
-             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}" -Wno-maybe-uninitialized"
+  CMAKE_ARGS -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+             -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   UPDATE_COMMAND ""
   PATCH_COMMAND ${EIGEN_PATCH_COMMAND}
   CONFIGURE_COMMAND ""

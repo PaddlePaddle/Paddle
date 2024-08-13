@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import logging
 import os
-from typing import Set
 
 import numpy as np
 
@@ -84,7 +85,7 @@ def convert_to_mixed_precision(
     mixed_precision: PrecisionType,
     backend: PlaceType,
     keep_io_types: bool = True,
-    black_list: Set[str] = set(),
+    black_list: set[str] = set(),
     **kwargs,
 ):
     '''
@@ -104,7 +105,7 @@ def convert_to_mixed_precision(
     '''
     if backend is PlaceType.GPU and not core.is_compiled_with_cuda():
         _logger.error(
-            "You shoule use PaddlePaddle compiled with GPU when backend set to PlaceType.GPU"
+            "You should use PaddlePaddle compiled with GPU when backend set to PlaceType.GPU"
         )
 
     mixed_model_dirname = os.path.dirname(mixed_model_file)

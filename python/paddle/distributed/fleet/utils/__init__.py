@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable
 
 from paddle.distributed import fleet
 
@@ -24,10 +27,15 @@ from . import (  # noqa: F401
 from .fs import HDFSClient, LocalFS
 from .ps_util import DistributedInfer
 
+if TYPE_CHECKING:
+    from paddle.nn import Layer
+
 __all__ = ["LocalFS", "recompute", "DistributedInfer", "HDFSClient"]
 
 
-def recompute(function, *args, **kwargs):
+def recompute(
+    function: Layer | Callable[..., Any], *args: Any, **kwargs: Any
+) -> Any:
     """
     recompute intermediate activations to save the memory.
 

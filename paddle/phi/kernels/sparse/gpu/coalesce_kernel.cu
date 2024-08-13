@@ -171,6 +171,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
 
   out->SetMember(out_indices, out_values, x.dims(), true);
   out->SetIndicesDict(x.GetIndicesDict());
+  out->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>

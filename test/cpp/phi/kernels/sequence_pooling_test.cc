@@ -56,7 +56,7 @@ void TestSequencePoolingSum(const DeviceContext &context,
   PADDLE_ENFORCE_EQ(
       in_grad.dims().size(),
       out_grad.dims().size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The dimension of input and output shall be same. Expected %ld == "
           "%ld, but got %ld != %ld. Please check the input value.",
           in_grad.dims().size(),
@@ -67,7 +67,7 @@ void TestSequencePoolingSum(const DeviceContext &context,
     PADDLE_ENFORCE_EQ(
         in_grad.dims()[i],
         out_grad.dims()[i],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The dimension of input and output shall be same. Expected %ld == "
             "%ld, but got %ld != %ld. Please check the input value.",
             in_grad.dims()[i],

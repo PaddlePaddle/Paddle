@@ -20,7 +20,6 @@ from op_test_xpu import XPUOpTest
 import paddle
 import paddle.incubate.nn.functional as incubate_f
 import paddle.nn.functional as F
-from paddle.base.framework import default_main_program
 from paddle.nn.layer import transformer
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
@@ -165,7 +164,7 @@ class XPUTestFusedFFNOp(XPUOpTestWrapper):
             return out, x.grad
 
         def test_out_and_grad(self):
-            default_main_program().random_seed = 42
+            paddle.seed(42)
             base_out, base_grad = self.Base()
             fused_out, fused_grad = self.FusedFFN()
             np.testing.assert_allclose(
@@ -199,7 +198,7 @@ class XPUTestFusedFFNOp(XPUOpTestWrapper):
 class APITestStaticFusedFFN(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
-        default_main_program().random_seed = 42
+        paddle.seed(42)
         dtype = "float32"
         layer_norm_dtype = "float32"
         batch_size = 1

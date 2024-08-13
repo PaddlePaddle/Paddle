@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import os
-import pickle
 import sys
 
 import numpy as np
+
+sys.path.append("../legacy_test")
 from op_test import convert_float_to_uint16
 from test_collective_base_xpu import (
     DataTypeCast,
     TestCollectiveRunnerBase,
+    dump_output,
     runtime_main,
 )
 
@@ -34,22 +36,24 @@ paddle.enable_static()
 class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
-        self.batch_size = 10
+        self.batch_size = 1
+        self.seq_len = 10
         self.num_class = 1000
         self.nranks = 2
         self.ring_id = 0
         self.local_elements = int(self.num_class / self.nranks)
 
-    def get_model(self, main_prog, startup_program, rank):
+        self.logits_shape = [self.seq_len, self.local_elements]
+        self.label_shape = [self.seq_len, 1]
+
+    def get_model(self, main_prog, startup_program, rank, ignore_index):
         with program_guard(main_prog, startup_program):
             logits = data(
                 name="Logits",
-                shape=[self.batch_size, self.local_elements],
+                shape=self.logits_shape,
                 dtype=self.dtype,
             )
-            label = data(
-                name="Label", shape=[self.batch_size, 1], dtype='int32'
-            )
+            label = data(name="Label", shape=self.label_shape, dtype='int32')
             softmax = main_prog.current_block().create_var(
                 name="Softmax",
                 dtype=logits.dtype,
@@ -66,7 +70,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             )
             loss_grad = main_prog.current_block().create_var(
                 name="Loss@GRAD",
-                shape=[self.batch_size, 1],
+                shape=self.label_shape,
                 dtype=logits.dtype,
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
@@ -82,6 +86,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
                         'ring_id': self.ring_id,
                         'rank': rank,
                         'nranks': self.nranks,
+                        'ignore_index': ignore_index,
                     },
                 )
                 # generate backward op_desc
@@ -112,24 +117,41 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             startup_prog, rank, self.nranks, True, current_endpoint, endpoints
         )
         self.dtype = args["dtype"]
-        np_dtype = DataTypeCast(args["dtype"])
-        loss, softmax = self.get_model(train_prog, startup_prog, rank)
-        device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
-        place = paddle.XPUPlace(device_id)
-        exe = Executor(place)
-        exe.run(startup_prog)
+
+        # if batch_size = 1, we treat logits/labels as 2D tensors
+        # if batch_size > 1, we treat logits/labels as 3D tensors
+        if self.batch_size is not None:
+            self.batch_size = int(args["batch_size"])
+        if self.batch_size > 1:
+            self.logits_shape = [
+                self.batch_size,
+                self.seq_len,
+                self.local_elements,
+            ]
+            self.label_shape = [self.batch_size, self.seq_len, 1]
 
         # NOTE use uid here to assure that two xpus share the same label
         np.random.seed(os.getuid())
         label = np.random.randint(
             0,
             self.num_class,
-            size=(self.batch_size, 1),
+            size=self.label_shape,
             dtype='int32',
         )
+        ignore_index = label[0][0]
+
+        np_dtype = DataTypeCast(args["dtype"])
+        loss, softmax = self.get_model(
+            train_prog, startup_prog, rank, ignore_index
+        )
+        device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
+        place = paddle.XPUPlace(device_id)
+        exe = Executor(place)
+        exe.run(startup_prog)
+
         # use FAKE loss_grad here, only to examine the correctness of grad func
         loss_grad_fp32 = np.random.uniform(
-            low=-10.0, high=10.0, size=(self.batch_size, 1)
+            low=-10.0, high=10.0, size=self.label_shape
         ).astype(np.float32)
         if args["dtype"] == "bfloat16":
             loss_grad = convert_float_to_uint16(loss_grad_fp32)
@@ -139,7 +161,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
         # each xpu uses own half of logits
         np.random.seed(os.getpid())
         logits_fp32 = np.random.uniform(
-            low=-40.0, high=40.0, size=(self.batch_size, self.local_elements)
+            low=-40.0, high=40.0, size=self.logits_shape
         ).astype(np.float32)
         if args["dtype"] == "bfloat16":
             logits = convert_float_to_uint16(logits_fp32)
@@ -150,7 +172,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
             feed={'Logits': logits, 'Label': label, 'Loss@GRAD': loss_grad},
             fetch_list=[loss.name, softmax.name, 'Logits@GRAD'],
         )
-        sys.stdout.buffer.write(pickle.dumps(out))
+        dump_output(out)
 
 
 if __name__ == "__main__":

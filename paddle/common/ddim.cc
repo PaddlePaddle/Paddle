@@ -20,7 +20,7 @@ namespace common {
 
 DDim::DDim() : rank_(-1) { dim_[0] = 0; }
 
-DDim::DDim(const DDim& ddim) : dim_() { CopyFrom(ddim); }
+DDim::DDim(const DDim& ddim) : dim_(), rank_(-1) { CopyFrom(ddim); }
 
 DDim::DDim(const int* d, int n) : rank_(n) {
   dynamic_dim_assign(d, dim_.GetMutable(), n);
@@ -34,14 +34,14 @@ DDim::DDim(std::initializer_list<int64_t> init_list)
     : DDim(init_list.begin(), init_list.size()) {}
 
 int64_t& DDim::at(int idx) {
-  COMMON_ENFORCE_GE(idx,
+  PADDLE_ENFORCE_GE(idx,
                     0,
                     common::errors::InvalidArgument(
                         "Invalid DDim index to be accessed. The valid index "
                         "is between 0 and %d, but received index is %d.",
                         rank_,
                         idx));
-  COMMON_ENFORCE_LT(idx,
+  PADDLE_ENFORCE_LT(idx,
                     rank_,
                     common::errors::InvalidArgument(
                         "Invalid DDim index to be accessed. The valid index "
@@ -52,14 +52,14 @@ int64_t& DDim::at(int idx) {
 }
 
 int64_t DDim::at(int idx) const {
-  COMMON_ENFORCE_GE(idx,
+  PADDLE_ENFORCE_GE(idx,
                     0,
                     common::errors::InvalidArgument(
                         "Invalid DDim index to be accessed. The valid index "
                         "is between 0 and %d, but received index is %d.",
                         rank_,
                         idx));
-  COMMON_ENFORCE_LT(idx,
+  PADDLE_ENFORCE_LT(idx,
                     rank_,
                     common::errors::InvalidArgument(
                         "Invalid DDim index to be accessed. The valid index "
@@ -140,7 +140,7 @@ bool contain_unknown_dim(const DDim& ddim) {
 }
 
 DDim slice_ddim(const DDim& dim, int begin, int end) {
-  COMMON_ENFORCE_EQ(
+  PADDLE_ENFORCE_EQ(
       (begin >= 0 && end <= dim.size()),
       true,
       common::errors::InvalidArgument(
@@ -173,27 +173,27 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
 }
 
 DDim flatten_to_3d(const DDim& src, int num_row_dims, int num_col_dims) {
-  COMMON_ENFORCE_GE(src.size(),
+  PADDLE_ENFORCE_GE(src.size(),
                     3,
                     common::errors::InvalidArgument(
                         "The rank of src dim should be at least 3 "
                         "in flatten_to_3d, but received %d.",
                         src.size()));
-  COMMON_ENFORCE_EQ((num_row_dims >= 1 && num_row_dims < src.size()),
+  PADDLE_ENFORCE_EQ((num_row_dims >= 1 && num_row_dims < src.size()),
                     true,
                     common::errors::InvalidArgument(
                         "The num_row_dims should be inside [1, %d] "
                         "in flatten_to_3d, but received %d.",
                         src.size() - 1,
                         num_row_dims));
-  COMMON_ENFORCE_EQ((num_col_dims >= 2 && num_col_dims <= src.size()),
+  PADDLE_ENFORCE_EQ((num_col_dims >= 2 && num_col_dims <= src.size()),
                     true,
                     common::errors::InvalidArgument(
                         "The num_col_dims should be inside [2, %d] "
                         "in flatten_to_3d, but received %d.",
                         src.size(),
                         num_col_dims));
-  COMMON_ENFORCE_GE(
+  PADDLE_ENFORCE_GE(
       num_col_dims,
       num_row_dims,
       common::errors::InvalidArgument(
@@ -248,7 +248,7 @@ DDim DDim::reshape(std::vector<int>& shape) const {
   if (it != shape.end()) {
     int index = static_cast<int>(std::distance(shape.begin(), it));
     int reshape_out_product =
-        std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<int>());
+        std::accumulate(shape.begin(), shape.end(), -1, std::multiplies<>());
     shape[index] = static_cast<int>(product(in_dims)) / reshape_out_product;
   }
 
@@ -266,10 +266,11 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
 }
 
 DDim ComputeCompatibleDim(const DDim& dim1, const DDim& dim2) {
-  IR_ENFORCE(dim1.size() == dim2.size(),
-             "Does not support rank inconsistency: rank1=%d, rank2=%d",
-             dim1.size(),
-             dim2.size());
+  PADDLE_ENFORCE_EQ(dim1.size() == dim2.size(),
+                    true,
+                    "Does not support rank inconsistency: rank1=%d, rank2=%d",
+                    dim1.size(),
+                    dim2.size());
   std::vector<int64_t> result;
   for (int i = 0; i < dim1.size(); ++i) {
     if (dim1[i] != dim2[i]) {

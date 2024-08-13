@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/merge_layernorm_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 class MergeLayernormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -38,16 +36,16 @@ class MergeLayernormOpConverter : public OpConverter {
                           : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Bias) of layer_norm should not be null."));
     PADDLE_ENFORCE_NOT_NULL(
         Scale_v,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Scale) of layer_norm should not be null."));
     PADDLE_ENFORCE_EQ(
         begin_norm_axis,
         2,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The begin_norm_axis of LayernormShiftPartition should be %d",
             begin_norm_axis));
     auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
@@ -71,18 +69,16 @@ class MergeLayernormOpConverter : public OpConverter {
               with_fp16);
       merge_layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Currently, MergeLayernorm TRT Plugin only support dynamic shape "
           "mode."));
     }
     auto output_name = op_desc.Output("Y").front();
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         merge_layernorm_layer, "merge_layernorm", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(merge_layernorm, MergeLayernormOpConverter);

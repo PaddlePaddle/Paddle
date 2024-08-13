@@ -15,8 +15,7 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T, dnnl::algorithm BINARY_OP>
 void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
@@ -80,7 +79,7 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
 
   // For Inplace src and dst should be the same memory object.
   // So x should share buffer with z. But UT mechanics is testing inplace
-  // execution for this op not checking that x can be bradcasted to match in
+  // execution for this op not checking that x can be broadcasted to match in
   // shape y tensor.
   // This is wrong as when x is to be broadcasted then z(out) will match the
   // shape of y which is bigger than x. Hence if x is smaller in shape than z
@@ -177,8 +176,7 @@ DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedSubtract, dnnl::algorithm::binary_sub)
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedMultiply, dnnl::algorithm::binary_mul)
 DEFINE_ONEDNN_ELEMENTWISE_KERNEL(FusedDivide, dnnl::algorithm::binary_div)
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fused_elementwise_add,
                    OneDNN,

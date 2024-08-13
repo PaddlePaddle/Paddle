@@ -26,7 +26,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_weighted_sampler.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -135,7 +135,7 @@ class FeatureNode : public Node {
 
   virtual int get_feature_ids(std::vector<uint64_t> *res) const {
     PADDLE_ENFORCE_NOT_NULL(res,
-                            paddle::platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "get_feature_ids res should not be null"));
     errno = 0;
     for (auto &feature_item : feature) {
@@ -152,14 +152,14 @@ class FeatureNode : public Node {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
 
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
     PADDLE_ENFORCE_NOT_NULL(res,
-                            paddle::platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "get_feature_ids res should not be null"));
     res->clear();
     errno = 0;
@@ -178,7 +178,7 @@ class FeatureNode : public Node {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
@@ -202,7 +202,7 @@ class FeatureNode : public Node {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return num;
   }
@@ -331,7 +331,7 @@ class FloatFeatureNode : public FeatureNode {
 
   virtual int get_feature_ids(std::vector<uint64_t> *res) const {
     PADDLE_ENFORCE_NOT_NULL(res,
-                            paddle::platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "get_feature_ids res should not be null"));
     errno = 0;
     for (int slot_idx = 0; slot_idx < float_feature_start_idx; slot_idx++) {
@@ -350,14 +350,14 @@ class FloatFeatureNode : public FeatureNode {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
 
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
     PADDLE_ENFORCE_NOT_NULL(res,
-                            paddle::platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "get_feature_ids res should not be null"));
     res->clear();
     errno = 0;
@@ -376,7 +376,7 @@ class FloatFeatureNode : public FeatureNode {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return 0;
   }
@@ -400,7 +400,7 @@ class FloatFeatureNode : public FeatureNode {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return num;
   }
@@ -426,7 +426,7 @@ class FloatFeatureNode : public FeatureNode {
     PADDLE_ENFORCE_EQ(
         errno,
         0,
-        paddle::platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "get_feature_ids get errno should be 0, but got %d.", errno));
     return num;
   }

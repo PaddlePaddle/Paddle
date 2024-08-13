@@ -14,12 +14,14 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestCollectiveReduceScatter(TestMultipleGpus):
+class TestCollectiveReduceScatter(TestMultipleAccelerators):
     def test_collective_reduce_scatter(self):
-        self.run_mnist_2gpu('collective_reduce_scatter.py')
+        self.run_mnist_2accelerators('collective_reduce_scatter.py')
 
 
 if __name__ == "__main__":

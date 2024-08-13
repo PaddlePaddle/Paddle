@@ -173,7 +173,7 @@ void MultinomialKernel(const Context& dev_ctx,
           int_num_samples,
           valid_samples,
           errors::InvalidArgument("When replacement=False, 'num_samples' "
-                                  "must less than or eaqual to the number of "
+                                  "must less than or equal to the number of "
                                   "positive item of input"));
     }
 

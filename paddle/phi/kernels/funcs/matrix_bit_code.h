@@ -40,7 +40,7 @@ namespace funcs {
  *   return the maximal code length
  *
  * SimpleCode operator()(size_t i)
- *   return the i-th code. Code class is descriebed below.
+ *   return the i-th code. Code class is described below.
  *
  * SimpleCode class should support 3 functions:
  *

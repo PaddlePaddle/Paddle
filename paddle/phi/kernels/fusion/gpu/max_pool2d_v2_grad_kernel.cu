@@ -14,16 +14,16 @@ limitations under the License. */
 
 #include <array>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 #include "paddle/phi/kernels/gpudnn/pool_gpudnn.h"
 
-PHI_DECLARE_bool(cudnn_exhaustive_search);
+COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 
@@ -42,7 +42,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
                               DenseTensor* dx) {
   PADDLE_ENFORCE_GE(ctx.GetComputeCapability(),
                     80,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         ctx.GetComputeCapability()));
@@ -51,7 +51,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Can't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
   // Allocate output tensors
@@ -63,7 +63,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       channel_last,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "NCHW layout is currently not supported for max pooling bwd."));
   const std::string padding_algorithm = "EXPLICIT";
 
@@ -111,7 +111,7 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
         {"saved_idx", 0}, {"dout", 1}, {"dx", 2}};
     PADDLE_ENFORCE_GT(_uid.count(name),
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The tensor name %s is unknown. "
                           "Should be in one of [saved_idx, dout, dx].",
                           name));
@@ -165,9 +165,8 @@ void MaxPoolV2GradCUDNNKernel(const Context& ctx,
 
   // Create maxpooling descriptor
   auto const nan_opt = CUDNN_NOT_PROPAGATE_NAN;
-  auto const mode = cudnn_frontend::cudnnResampleMode_t::CUDNN_RESAMPLE_MAXPOOL;
-  auto const padding_mode =
-      cudnn_frontend::cudnnPaddingMode_t::CUDNN_NEG_INF_PAD;
+  auto const mode = cudnn_frontend::ResampleMode_t::MAXPOOL;
+  auto const padding_mode = cudnn_frontend::PaddingMode_t::NEG_INF_PAD;
   auto pool_desc = cudnn_frontend::ResampleDescBuilder_v8()
                        .setComputeType(CUDNN_DATA_FLOAT)
                        .setNanPropagation(nan_opt)

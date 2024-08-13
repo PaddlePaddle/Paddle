@@ -12,27 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_event.h"
+#include "paddle/phi/core/platform/device_event.h"
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 using ::paddle::platform::kCPU;
 using ::paddle::platform::kCUDA;
 
-using paddle::platform::DeviceContextPool;
 using paddle::platform::DeviceEvent;
+using phi::DeviceContextPool;
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 
 TEST(DeviceEvent, CUDA) {
   VLOG(1) << "In Test";
-  using paddle::platform::CUDAPlace;
+  using phi::GPUPlace;
 
   auto& pool = DeviceContextPool::Instance();
-  auto place = CUDAPlace(0);
+  auto place = GPUPlace(0);
   auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);
@@ -63,7 +63,7 @@ TEST(DeviceEvent, CUDA) {
   status = event.Query();
   ASSERT_EQ(status, false);  // async
 
-  event.Wait(kCPU, context);  // step 3. EventSynchornize
+  event.Wait(kCPU, context);  // step 3. EventSynchronize
   status = event.Query();
   ASSERT_EQ(status, true);  // sync
 
@@ -78,10 +78,10 @@ TEST(DeviceEvent, CUDA) {
 
 TEST(DeviceEvent, CUDA) {
   VLOG(1) << "In Test";
-  using paddle::platform::CUDAPlace;
+  using phi::GPUPlace;
 
   auto& pool = DeviceContextPool::Instance();
-  auto place = CUDAPlace(0);
+  auto place = GPUPlace(0);
   auto* context = static_cast<phi::GPUContext*>(pool.Get(place));
 
   ASSERT_NE(context, nullptr);
@@ -114,7 +114,7 @@ TEST(DeviceEvent, CUDA) {
   status = event.Query();
   ASSERT_EQ(status, false);  // async
 
-  event.Wait(kCPU, context);  // step 3. EventSynchornize
+  event.Wait(kCPU, context);  // step 3. EventSynchronize
   status = event.Query();
   ASSERT_EQ(status, true);  // sync
 
@@ -125,7 +125,7 @@ TEST(DeviceEvent, CUDA) {
 #endif
 
 TEST(DeviceEvent, CPU) {
-  using paddle::platform::CPUPlace;
+  using phi::CPUPlace;
   auto place = CPUPlace();
   DeviceEvent event(place, paddle::platform::GenerateDeviceEventFlag());
   auto& pool = DeviceContextPool::Instance();
@@ -133,7 +133,7 @@ TEST(DeviceEvent, CPU) {
 
   // TODO(Aurelius84): All DeviceContext should has Record/Wait
   event.Record(context);
-  event.SetFininshed();
+  event.SetFinished();
   bool status = event.Query();
   ASSERT_EQ(status, true);
 

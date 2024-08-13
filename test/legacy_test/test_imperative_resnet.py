@@ -21,7 +21,6 @@ from utils import DyGraphProgramDescTracerTestHelper
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 from paddle.base.layer_helper import LayerHelper
 from paddle.nn import BatchNorm
 
@@ -201,9 +200,11 @@ class ResNet(paddle.nn.Layer):
                 bottleneck_block = self.add_sublayer(
                     'bb_%d_%d' % (block, i),
                     BottleneckBlock(
-                        num_channels=num_channels[block]
-                        if i == 0
-                        else num_filters[block] * 4,
+                        num_channels=(
+                            num_channels[block]
+                            if i == 0
+                            else num_filters[block] * 4
+                        ),
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
                         shortcut=shortcut,
@@ -242,13 +243,13 @@ class ResNet(paddle.nn.Layer):
 
 class TestDygraphResnet(unittest.TestCase):
     def reader_decorator(self, reader):
-        def _reader_imple():
+        def _reader_simple():
             for item in reader():
                 doc = np.array(item[0]).reshape(3, 224, 224)
                 label = np.array(item[1]).astype('int64').reshape(1)
                 yield doc, label
 
-        return _reader_imple
+        return _reader_simple
 
     def test_resnet_float32(self):
         seed = 90
@@ -293,8 +294,8 @@ class TestDygraphResnet(unittest.TestCase):
                     .reshape(batch_size, 1)
                 )
 
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = paddle.to_tensor(dy_x_data)
+                label = paddle.to_tensor(y_data)
                 label.stop_gradient = True
 
                 out = None
@@ -329,9 +330,9 @@ class TestDygraphResnet(unittest.TestCase):
                         np_array = np.array(
                             param._grad_ivar().value().get_tensor()
                         )
-                        dy_grad_value[
-                            param.name + core.grad_var_suffix()
-                        ] = np_array
+                        dy_grad_value[param.name + core.grad_var_suffix()] = (
+                            np_array
+                        )
 
                 optimizer.minimize(avg_loss)
                 resnet.clear_gradients()

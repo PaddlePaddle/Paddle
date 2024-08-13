@@ -45,7 +45,7 @@ class Tracer;
 // Singleton implementation with C++ 11
 class AmpOperators {
  public:
-  ~AmpOperators();
+  ~AmpOperators() = default;
   AmpOperators(const AmpOperators& o) = delete;
   const AmpOperators& operator=(const AmpOperators& o) = delete;
 
@@ -84,10 +84,28 @@ class AmpOperators {
 
 std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 
+class AmpAttrs {
+ public:
+  AmpAttrs();
+  ~AmpAttrs() = default;
+  bool GetUsePromote() const;
+  void SetUsePromote(bool use_promote);
+  AmpLevel GetAmpLevel() const;
+  void SetAmpLevel(AmpLevel level);
+  std::string GetAmpDtype() const;
+  void SetAmpDtype(std::string amp_dtype);
+  phi::DataType GetAmpPhiDtype() const;
+
+ private:
+  static thread_local bool use_promote_;
+  static thread_local AmpLevel amp_level_;
+  static thread_local phi::DataType amp_dtype_;
+};
+
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
-  AutoCastGuard(std::shared_ptr<Tracer> tracer, AmpLevel guard_level);
+  AutoCastGuard(std::shared_ptr<AmpAttrs> state, AmpLevel guard_level);
 
   ~AutoCastGuard();
 
@@ -96,7 +114,7 @@ class AutoCastGuard {
   AutoCastGuard& operator=(const AutoCastGuard& guard) = delete;
 
  private:
-  std::shared_ptr<Tracer> tracer_;
+  std::shared_ptr<AmpAttrs> state_;
   AmpLevel pre_amp_level_;
 };
 

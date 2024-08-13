@@ -17,8 +17,8 @@
 #include "paddle/fluid/framework/new_executor/workqueue/event_count.h"
 #include "paddle/fluid/framework/new_executor/workqueue/run_queue.h"
 #include "paddle/fluid/framework/new_executor/workqueue/thread_environment.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/os_info.h"
 
 namespace paddle {
 namespace framework {
@@ -39,7 +39,6 @@ class ThreadPoolTempl {
         always_spinning_(always_spinning),
         global_steal_partition_(EncodePartition(0, num_threads)),
         blocked_(0),
-        num_tasks_(0),
         done_(false),
         cancelled_(false),
         ec_(num_threads),
@@ -56,7 +55,7 @@ class ThreadPoolTempl {
     assert(num_threads_ >= 1 && num_threads_ < kMaxThreads);
     all_coprimes_.reserve(num_threads_);
     for (int i = 1; i <= num_threads_; ++i) {
-      all_coprimes_.emplace_back();
+      all_coprimes_.emplace_back(i);
       ComputeCoprimes(i, &(all_coprimes_.back()));
     }
     for (int i = 0; i < num_threads_; i++) {
@@ -109,7 +108,6 @@ class ThreadPoolTempl {
   void AddTaskWithHint(std::function<void()> fn, int start, int limit) {
     Task t = env_.CreateTask(std::move(fn));
     PerThread* pt = GetPerThread();
-    uint64_t num_tasks = num_tasks_.fetch_add(1, std::memory_order_relaxed) + 1;
     if (pt->pool == this) {
       // Worker thread of this pool, push onto the thread's queue.
       Queue& q = thread_data_[pt->thread_id].queue;
@@ -125,6 +123,7 @@ class ThreadPoolTempl {
       Queue& q = thread_data_[start + rnd].queue;
       t = q.PushBack(std::move(t));
     }
+
     // Note: below we touch this after making w available to worker threads.
     // Strictly speaking, this can lead to a racy-use-after-free. Consider that
     // Schedule is called from a thread that is neither main thread nor a worker
@@ -134,14 +133,9 @@ class ThreadPoolTempl {
     // this is kept alive while any threads can potentially be in Schedule.
     if (!t.f) {
       // Allow 'false positive' which makes a redundant notification.
-      if (num_tasks > num_threads_ - blocked_) {
-        VLOG(6) << "Add task, Notify";
-        ec_.Notify(false);
-      } else {
-        VLOG(6) << "Add task, No Notify";
-      }
+      VLOG(6) << "Add task, Notify";
+      ec_.Notify(false);
     } else {
-      num_tasks_.fetch_sub(1, std::memory_order_relaxed);
       env_.ExecuteTask(t);  // Push failed, execute directly.
     }
   }
@@ -244,7 +238,6 @@ class ThreadPoolTempl {
   std::vector<std::vector<unsigned>> all_coprimes_;
   unsigned global_steal_partition_;
   std::atomic<unsigned> blocked_;
-  std::atomic<uint64_t> num_tasks_;
   std::atomic<bool> done_;
   std::atomic<bool> cancelled_;
   EventCount ec_;
@@ -256,7 +249,7 @@ class ThreadPoolTempl {
   void WorkerLoop(int thread_id) {
     std::string thr_name = name_ + "_thread_" + std::to_string(thread_id);
     VLOG(1) << thr_name << " started ";
-    platform::SetCurrentThreadName(thr_name);
+    phi::SetCurrentThreadName(thr_name);
     PerThread* pt = GetPerThread();
     pt->pool = this;
     pt->rand = GlobalThreadIdHash();
@@ -290,7 +283,6 @@ class ThreadPoolTempl {
         }
         if (t.f) {
           env_.ExecuteTask(t);
-          num_tasks_.fetch_sub(1, std::memory_order_relaxed);
         }
       }
     } else {
@@ -320,7 +312,6 @@ class ThreadPoolTempl {
         }
         if (t.f) {
           env_.ExecuteTask(t);
-          num_tasks_.fetch_sub(1, std::memory_order_relaxed);
         }
       }
     }
@@ -430,7 +421,7 @@ class ThreadPoolTempl {
     }
 
     // Wait for work
-    platform::RecordEvent record(
+    phi::RecordEvent record(
         "WaitForWork", platform::TracerEventType::UserDefined, 10);
     ec_.CommitWait(waiter);
     blocked_--;

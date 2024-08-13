@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import numpy as np
+
+import paddle
 from legacy_test.test_dist_base import (
     TestParallelDyGraphRunnerBase,
     runtime_main,
 )
-
-import paddle
-from paddle.base.dygraph.base import to_variable
 
 
 class SimpleImgConvPool(paddle.nn.Layer):
@@ -125,8 +124,8 @@ class TestMnist(TestParallelDyGraphRunnerBase):
             .astype('int64')
             .reshape(batch_size, 1)
         )
-        img = to_variable(dy_x_data)
-        label = to_variable(y_data)
+        img = paddle.to_tensor(dy_x_data)
+        label = paddle.to_tensor(y_data)
         label.stop_gradient = True
 
         avg_loss = model(img, label)

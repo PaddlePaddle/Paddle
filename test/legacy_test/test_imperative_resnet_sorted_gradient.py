@@ -21,7 +21,6 @@ from test_imperative_resnet import ResNet
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 
 batch_size = 8
 train_parameters = {
@@ -112,8 +111,8 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                     .reshape(batch_size, 1)
                 )
 
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = paddle.to_tensor(dy_x_data)
+                label = paddle.to_tensor(y_data)
                 label.stop_gradient = True
 
                 out = resnet(img)
@@ -137,9 +136,9 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                         np_array = np.array(
                             param._grad_ivar().value().get_tensor()
                         )
-                        dy_grad_value[
-                            param.name + core.grad_var_suffix()
-                        ] = np_array
+                        dy_grad_value[param.name + core.grad_var_suffix()] = (
+                            np_array
+                        )
 
                 optimizer.minimize(avg_loss)
                 resnet.clear_gradients()

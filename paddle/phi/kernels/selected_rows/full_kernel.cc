@@ -37,12 +37,12 @@ void FullKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FullWithTensorKernel(const Context& dev_ctx,
-                          const DenseTensor& shape,
                           const DenseTensor& value,
+                          const IntArray& shape,
                           DataType dtype,
                           SelectedRows* out) {
   phi::FullWithTensorKernel<T>(
-      dev_ctx, shape, value, dtype, out->mutable_value());
+      dev_ctx, value, shape, dtype, out->mutable_value());
 }
 
 }  // namespace sr
@@ -111,7 +111,6 @@ PD_REGISTER_KERNEL(full_with_tensor_sr,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
-  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -130,7 +129,6 @@ PD_REGISTER_KERNEL(full_with_tensor_sr,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
-  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }
 #endif
 
@@ -147,6 +145,5 @@ PD_REGISTER_KERNEL(full_with_tensor_sr,
                    bool,
                    phi::dtype::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
-  kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }
 #endif

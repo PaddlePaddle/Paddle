@@ -14,13 +14,12 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 namespace paddle {
 namespace distributed {
 
-using Place = paddle::platform::Place;
+using Place = phi::Place;
 // Get the list of devices from list of tensors
 std::vector<Place> GetPlaceList(const std::vector<phi::DenseTensor>& tensors);
 // Get the deviceList String from the list of devices

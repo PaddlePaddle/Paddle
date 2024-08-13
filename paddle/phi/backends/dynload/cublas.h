@@ -22,7 +22,7 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace phi {
 namespace dynload {
@@ -94,8 +94,14 @@ extern void *cublas_dso_handle;
   __macro(cublasSgetriBatched);           \
   __macro(cublasDgetrfBatched);           \
   __macro(cublasDgetriBatched);           \
+  __macro(cublasCgetrfBatched);           \
+  __macro(cublasCgetriBatched);           \
+  __macro(cublasZgetrfBatched);           \
+  __macro(cublasZgetriBatched);           \
   __macro(cublasSmatinvBatched);          \
   __macro(cublasDmatinvBatched);          \
+  __macro(cublasCmatinvBatched);          \
+  __macro(cublasZmatinvBatched);          \
   __macro(cublasSgetrsBatched);           \
   __macro(cublasDgetrsBatched);
 

@@ -115,8 +115,8 @@ class TestNNMseLoss(unittest.TestCase):
             with base.dygraph.guard():
                 mse_loss = paddle.nn.loss.MSELoss()
                 dy_ret = mse_loss(
-                    base.dygraph.to_variable(input_np),
-                    base.dygraph.to_variable(label_np),
+                    paddle.to_tensor(input_np),
+                    paddle.to_tensor(label_np),
                 )
                 dy_result = dy_ret.numpy()
 
@@ -160,8 +160,8 @@ class TestNNMseLoss(unittest.TestCase):
             with base.dygraph.guard():
                 mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
                 dy_ret = mse_loss(
-                    base.dygraph.to_variable(input_np),
-                    base.dygraph.to_variable(label_np),
+                    paddle.to_tensor(input_np),
+                    paddle.to_tensor(label_np),
                 )
                 dy_result = dy_ret.numpy()
 
@@ -205,8 +205,8 @@ class TestNNMseLoss(unittest.TestCase):
             with base.dygraph.guard():
                 mse_loss = paddle.nn.loss.MSELoss(reduction='none')
                 dy_ret = mse_loss(
-                    base.dygraph.to_variable(input_np),
-                    base.dygraph.to_variable(label_np),
+                    paddle.to_tensor(input_np),
+                    paddle.to_tensor(label_np),
                 )
                 dy_result = dy_ret.numpy()
 

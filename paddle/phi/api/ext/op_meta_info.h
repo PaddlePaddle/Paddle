@@ -21,7 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/exception.h"
-#include "paddle/phi/api/include/dll_decl.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/utils/any.h"
@@ -231,7 +231,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto& arg = ctx->InputAt(range.first);
-      if (!arg.is_initialized()) {
+      if (!arg.initialized()) {
         ComputeCallHelper<Tail...>::
             template Compute<in_idx + 1, attr_idx, out_idx>(
                 ctx, pargs..., paddle::none);
@@ -294,7 +294,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->InputRangeAt(in_idx);
       auto arg = ctx->InputsBetween(range.first, range.second);
-      if (arg.empty() || !arg[0].is_initialized()) {
+      if (arg.empty() || !arg[0].initialized()) {
         ComputeCallHelper<Tail...>::
             template Compute<in_idx + 1, attr_idx, out_idx>(
                 ctx, pargs..., paddle::none);
@@ -1035,6 +1035,10 @@ class PADDLE_API OpMetaInfo {
 
   // format: PD_INFER_SPMD_RULE(...)
   OpMetaInfo& SetInferSpmdFn(InferSpmdFunc&& func);
+
+  bool IsGradOp() const;
+
+  bool IsDoubleGradOp() const;
 
 #ifdef PADDLE_WITH_TENSORRT
   // format: PD_TRT_INFER_SHAPE(...)

@@ -158,8 +158,8 @@ TEST(HeterPipelineTrainerTest, GPU) {
   section_config3->set_allocated_program_desc(pd3);
 
   Scope root_scope, root_scope2, root_scope3;
-  paddle::platform::CPUPlace place;
-  paddle::platform::CUDAPlace place2;
+  phi::CPUPlace place;
+  phi::GPUPlace place2;
 
   // tmp1
   std::shared_ptr<TrainerBase> tmp1;

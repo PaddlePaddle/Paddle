@@ -150,7 +150,7 @@ class PD_INFER_DECL Predictor {
   ///
   /// \brief Get the Output Tensor object
   ///
-  /// \param[in] name otuput name
+  /// \param[in] name output name
   /// \return output tensor
   ///
   std::unique_ptr<Tensor> GetOutputHandle(const std::string& name);
@@ -192,7 +192,7 @@ class PD_INFER_DECL Predictor {
 
   ///
   /// \brief Register a output hook function to operate the intermediate tensor
-  /// of op output. when using this function, memory reuse should be tured off.
+  /// of op output. when using this function, memory reuse should be turned off.
   /// The hook function signature is void(const std::string&, const
   /// std::string&, const Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
@@ -267,7 +267,7 @@ class PD_INFER_DECL PredictorPool {
   explicit PredictorPool(const Config& config, size_t size = 1);
 
   /// \brief Get \param id-th predictor.
-  Predictor* Retrive(size_t idx);
+  Predictor* Retrieve(size_t idx);
 
  private:
   std::shared_ptr<Predictor> main_pred_;

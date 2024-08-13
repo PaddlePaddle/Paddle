@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.base.framework import in_dygraph_mode
 
 
 def run_adam_op(
@@ -47,16 +47,14 @@ def run_adam_op(
     paddle.disable_static()
     paddle.set_device(place)
 
-    param_vars = [paddle.base.dygraph.to_variable(p) for p in params]
-    grad_vars = [paddle.base.dygraph.to_variable(g) for g in grads]
-    lr_vars = [paddle.base.dygraph.to_variable(l) for l in lrs]
-    moment1_vars = [paddle.base.dygraph.to_variable(m) for m in moment1s]
-    moment2_vars = [paddle.base.dygraph.to_variable(m) for m in moment2s]
-    beta1_pow_vars = [paddle.base.dygraph.to_variable(b) for b in beta1_pows]
-    beta2_pow_vars = [paddle.base.dygraph.to_variable(b) for b in beta2_pows]
-    master_param_vars = [
-        paddle.base.dygraph.to_variable(m_p) for m_p in master_params
-    ]
+    param_vars = [paddle.to_tensor(p) for p in params]
+    grad_vars = [paddle.to_tensor(g) for g in grads]
+    lr_vars = [paddle.to_tensor(l) for l in lrs]
+    moment1_vars = [paddle.to_tensor(m) for m in moment1s]
+    moment2_vars = [paddle.to_tensor(m) for m in moment2s]
+    beta1_pow_vars = [paddle.to_tensor(b) for b in beta1_pows]
+    beta2_pow_vars = [paddle.to_tensor(b) for b in beta2_pows]
+    master_param_vars = [paddle.to_tensor(m_p) for m_p in master_params]
 
     if not use_merged:
         for i in range(len(param_vars)):
@@ -85,47 +83,21 @@ def run_adam_op(
                 multi_precision,
             )
     else:
-        if in_dygraph_mode():
-            _, _, _, _, _, _ = _C_ops.merged_adam_(
-                param_vars,
-                grad_vars,
-                lr_vars,
-                moment1_vars,
-                moment2_vars,
-                beta1_pow_vars,
-                beta2_pow_vars,
-                master_param_vars,
-                beta1,
-                beta2,
-                epsilon,
-                multi_precision,
-                False,
-            )
-        else:
-            _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
-                param_vars,
-                grad_vars,
-                lr_vars,
-                moment1_vars,
-                moment2_vars,
-                beta1_pow_vars,
-                beta2_pow_vars,
-                master_param_vars,
-                param_vars,
-                moment1_vars,
-                moment2_vars,
-                beta1_pow_vars,
-                beta2_pow_vars,
-                master_param_vars,
-                'epsilon',
-                epsilon,
-                'beta1',
-                beta1,
-                'beta2',
-                beta2,
-                'multi_precision',
-                multi_precision,
-            )
+        _, _, _, _, _, _ = _C_ops.merged_adam_(
+            param_vars,
+            grad_vars,
+            lr_vars,
+            moment1_vars,
+            moment2_vars,
+            beta1_pow_vars,
+            beta2_pow_vars,
+            master_param_vars,
+            beta1,
+            beta2,
+            epsilon,
+            multi_precision,
+            False,
+        )
 
     outputs = {
         'ParamOut': param_vars,
@@ -217,7 +189,13 @@ class TestMergedAdam(unittest.TestCase):
                     )
 
     def get_places(self):
-        places = ['cpu']
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            places.append('cpu')
         if paddle.is_compiled_with_cuda():
             places.append('gpu')
         return places

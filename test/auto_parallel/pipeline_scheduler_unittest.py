@@ -82,9 +82,7 @@ class Test1F1BPass(unittest.TestCase):
             check_losses,
             rtol=self.rtol,
             atol=self.atol,
-            err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                __class__, ref_losses, check_losses, ref_losses - check_losses
-            ),
+            err_msg=f'pass {__class__} has wrong results!, \nu={ref_losses}\nv={check_losses}\ndiff={ref_losses - check_losses}',
         )
 
     def test_pp_pass(self):
@@ -153,7 +151,7 @@ class Test1F1BPass(unittest.TestCase):
             assert losses_1f1b_overlap[0].shape[0] == 4
             # losses_fleet_1f1b is the last loss of accumulate_steps
             # losses_fthenb is all the losses of accumulate_steps
-            # losses_1f1b is alla the losses of accumulate_steps
+            # losses_1f1b is all the losses of accumulate_steps
             self.check_results(losses_fleet_1f1b[0], losses_fthenb[0][-1])
             self.check_results(losses_fleet_1f1b[0], losses_1f1b[0][-1])
             self.check_results(losses_fleet_1f1b[0], losses_eager1f1b[0][-1])

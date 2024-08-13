@@ -8,6 +8,7 @@ option(USE_TENSORRT "Compile demo with TensorRT." OFF)
 option(WITH_ONNXRUNTIME "Compile demo with ONNXRuntime" OFF)
 option(WITH_SHARED_PHI "Compile demo with phi shared lib" ON)
 option(CUSTOM_OPERATOR_FILES "List of file names for custom operators" "")
+option(CUSTOM_PASS_FILES "List of file names for custom passes" "")
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
@@ -43,6 +44,7 @@ include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}utf8proc/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/include")
+include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/include")
 
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib")
@@ -50,6 +52,7 @@ link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}utf8proc/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}cryptopp/lib")
+link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 if(WITH_ONNXRUNTIME)
   include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}onnxruntime/include")
@@ -85,7 +88,7 @@ else()
   if(WITH_MKL)
     set(FLAG_OPENMP "-fopenmp")
   endif()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${FLAG_OPENMP}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 ${FLAG_OPENMP}")
 endif()
 
 if(WITH_GPU)
@@ -154,13 +157,13 @@ if(WITH_MKL)
         ${MATH_LIB_PATH}/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
         ${MATH_LIB_PATH}/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
-  set(MKLDNN_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}mkldnn")
-  if(EXISTS ${MKLDNN_PATH})
-    include_directories("${MKLDNN_PATH}/include")
+  set(ONEDNN_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}onednn")
+  if(EXISTS ${ONEDNN_PATH})
+    include_directories("${ONEDNN_PATH}/include")
     if(WIN32)
-      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/mkldnn.lib)
+      set(ONEDNN_LIB ${ONEDNN_PATH}/lib/mkldnn.lib)
     else()
-      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libdnnl.so.3)
+      set(ONEDNN_LIB ${ONEDNN_PATH}/lib/libdnnl.so.3)
     endif()
   endif()
 else()
@@ -199,23 +202,31 @@ if(NOT WIN32)
   set(DEPS
       ${DEPS}
       ${MATH_LIB}
-      ${MKLDNN_LIB}
+      ${ONEDNN_LIB}
       glog
       gflags
       protobuf
       xxhash
       cryptopp
       utf8proc
+      ${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib/libyaml-cpp.a
       ${EXTERNAL_LIB})
   if(WITH_SHARED_PHI)
-    set(DEPS ${DEPS}
-             ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX})
+    set(DEPS
+        ${DEPS} ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${PADDLE_LIB}/paddle/lib/libphi_core${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${PADDLE_LIB}/paddle/lib/libcommon${CMAKE_SHARED_LIBRARY_SUFFIX})
+    if(WITH_GPU OR WITH_ROCM)
+      set(DEPS
+          ${DEPS}
+          ${PADDLE_LIB}/paddle/lib/libphi_gpu${CMAKE_SHARED_LIBRARY_SUFFIX})
+    endif()
   endif()
 else()
   set(DEPS
       ${DEPS}
       ${MATH_LIB}
-      ${MKLDNN_LIB}
+      ${ONEDNN_LIB}
       glog
       gflags_static
       libprotobuf
@@ -223,7 +234,8 @@ else()
       cryptopp-static
       utf8proc_static
       ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} shlwapi.lib)
+  set(DEPS ${DEPS} shlwapi.lib
+           ${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib/yaml-cpp.lib)
 endif()
 
 if(WITH_GPU)
@@ -261,8 +273,12 @@ if(CUSTOM_OPERATOR_FILES)
     include_directories("${CUDA_INCLUDE_DIRS}")
   endif()
   add_library(pd_infer_custom_op SHARED ${CUSTOM_OPERATOR_FILES})
-  target_link_libraries(pd_infer_custom_op ${DEPS})
   set(DEPS ${DEPS} pd_infer_custom_op)
+endif()
+
+if(CUSTOM_PASS_FILES)
+  add_library(pd_infer_custom_pass SHARED ${CUSTOM_PASS_FILES})
+  set(DEPS ${DEPS} pd_infer_custom_pass)
 endif()
 
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
@@ -303,7 +319,7 @@ if(WIN32)
               ${LIB_PATH}
       COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/libiomp5md.dll
               ${LIB_PATH}
-      COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_PATH}/lib/mkldnn.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_PATH}/lib/mkldnn.dll
               ${LIB_PATH})
   else()
     add_custom_command(

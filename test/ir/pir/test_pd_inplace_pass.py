@@ -37,9 +37,38 @@ class TestPdInplacePass(unittest.TestCase):
                 exe = paddle.static.Executor()
                 x_feed = np.ones([2, 2], dtype=np.float32) * 10
                 (sum_value,) = exe.run(feed={'x': x_feed}, fetch_list=[out])
-                self.assertEqual(
-                    (sum_value == np.ones([2, 2], dtype="float32") * 10).all(),
-                    True,
+                np.testing.assert_allclose(
+                    sum_value, np.ones([2, 2], dtype="float32") * 10
+                )
+
+
+class TestInputsHasBeenInplaced(unittest.TestCase):
+    def test_inputs_has_been_inplaced(self):
+        place = paddle.framework.core.Place()
+        place.set_place(paddle.CPUPlace())
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.static.data('x', [2, 2], dtype='float32')
+                y = paddle.static.data('y', [2, 2], dtype='float32')
+                z = paddle.add(x, y)
+
+                detached_z = z.detach()
+                out = detached_z + 1
+
+                exe = paddle.static.Executor()
+                x_feed = np.ones([2, 2], dtype=np.float32) * 1
+                y_feed = np.ones([2, 2], dtype=np.float32) * 2
+                (z_data, out_data) = exe.run(
+                    feed={"x": x_feed, "y": y_feed},
+                    fetch_list=[z, out],
+                )
+                np.testing.assert_allclose(
+                    z_data, np.ones([2, 2], dtype="float32") * 3
+                )
+                np.testing.assert_allclose(
+                    out_data, np.ones([2, 2], dtype="float32") * 4
                 )
 
 

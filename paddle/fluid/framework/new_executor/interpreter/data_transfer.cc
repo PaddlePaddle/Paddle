@@ -26,19 +26,17 @@
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
-bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
-                              const phi::KernelKey& expected_kernel_key,
-                              const phi::DenseTensor* tensor,
-                              const std::string& var_name,
-                              std::string* new_var_name,
-                              std::vector<OpFuncNode>* op_func_nodes,
-                              bool use_local_scope,
-                              bool is_fetch_v2,
-                              bool static_build) {
+bool DataTransferHelper::apply(const phi::KernelKey& kernel_type_for_var,
+                               const phi::KernelKey& expected_kernel_key,
+                               const phi::DenseTensor* tensor,
+                               const std::string& var_name,
+                               std::string* new_var_name,
+                               std::vector<OpFuncNode>* op_func_nodes,
+                               bool use_local_scope,
+                               bool is_fetch_v2,
+                               bool static_build) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
@@ -60,7 +58,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
     is_transferred = true;
   }
 
-  // 2. dype transform
+  // 2. dtype transform
   if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
     auto op = TransferDtype(
         *src_var_name,
@@ -95,7 +93,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
   return is_transferred;
 }
 
-void DataTranferHelper::RunAndConstructShareNode(
+void DataTransferHelper::RunAndConstructShareNode(
     const std::string& src_var_name,
     const std::string& dst_var_name,
     std::vector<OpFuncNode>* op_func_nodes,
@@ -116,7 +114,7 @@ void DataTranferHelper::RunAndConstructShareNode(
       op, src_var_name, dst_var_name, op_func_nodes, static_build);
 }
 
-void DataTranferHelper::RunAndConstructOpFuncNode(
+void DataTransferHelper::RunAndConstructOpFuncNode(
     const std::shared_ptr<OperatorBase>& op,
     const std::string& var_name,
     const std::string& new_var_name,
@@ -139,12 +137,12 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   // prepare a ptr to OperatorWithKernel
   OperatorBase* op_ptr = op.get();
   if (dynamic_cast<framework::OperatorWithKernel*>(op_ptr) == nullptr) {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "%s should be OperatorWithKernel type.", op_ptr->Type()));
   }
   auto op_with_kernel = static_cast<framework::OperatorWithKernel*>(op_ptr);
 
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place_);
   auto exec_ctx = ExecutionContext(*op, Scope(), *dev_ctx, runtime_context);
   VLOG(6) << "op_with_kernel Type() " << op_with_kernel->Type() << "\n";
@@ -168,7 +166,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     // their implementations are device-related.
     // For example, consider changing the layout of a gpu tensor
     // while the gpu kernel of transfer_layout op does not exist.
-    // To use the cpu kernel, you must insert memcpy_d2h/mepcpy_h2d op
+    // To use the cpu kernel, you must insert memcpy_d2h/memcpy_h2d op
     // in addition. But such operation should not be done here.
     // Maybe in future we will support this.
   }
@@ -182,15 +180,15 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   new_op_func_node.operator_base_ = op;
 
   const phi::Place& place = dev_ctx->GetPlace();
-  if (platform::is_cpu_place(place)) {
+  if (phi::is_cpu_place(place)) {
     new_op_func_node.type_ = OpFuncType::kCpuSync;
-  } else if (platform::is_gpu_place(place)) {
+  } else if (phi::is_gpu_place(place)) {
     // MemcpyD2H in gpu is synchronous, see
     // https://docs.nvidia.com/cuda/cuda-runtime-api/api-sync-behavior.html#api-sync-behavior__memcpy-async
     // for more detail.
     new_op_func_node.type_ =
         (op_type == kMemcpyD2H ? OpFuncType::kGpuSync : OpFuncType::kGpuAsync);
-  } else if (platform::is_xpu_place(place)) {
+  } else if (phi::is_xpu_place(place)) {
     // Memcpy in xpu is synchronous
     new_op_func_node.type_ = (op_type == kMemcpyD2H || op_type == kMemcpyH2D)
                                  ? OpFuncType::kGpuSync
@@ -227,7 +225,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 
   // NOTE(winter-wang): in custom device, D2H kernel is asynchronous.
   // need to explicit synchronization.
-  if ((platform::is_custom_place(place)) && op_type == kMemcpyD2H) {
+  if ((phi::is_custom_place(place)) && op_type == kMemcpyD2H) {
     dev_ctx->Wait();
   }
 
@@ -241,9 +239,9 @@ bool IsTensorOfVarInitialized(Variable* var) {
   if (var->IsInitialized()) {
     if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
       return GetLoDTensorOrSelectedRowsValueFromVar(*var)->IsInitialized();
-    } else if (var->IsType<LoDTensorArray>()) {
+    } else if (var->IsType<phi::TensorArray>()) {
       return static_cast<const phi::DenseTensor*>(
-                 &(var->Get<LoDTensorArray>()[0]))
+                 &(var->Get<phi::TensorArray>()[0]))
           ->IsInitialized();
     }
   }
@@ -357,11 +355,11 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   AttributeMap attr_map;
   attr_map["in_dtype"] = static_cast<int>(in_dtype);
   attr_map["out_dtype"] = static_cast<int>(out_dtype);
-  // NOTE(Aurelius84): In whice case use_mkldnn = true?
+  // NOTE(Aurelius84): In which case use_mkldnn = true?
   attr_map["use_mkldnn"] = false;
 
-  // 3. Create transfer_dtype_op
-  std::string op_type("transfer_dtype");
+  // 3. Create cast op
+  std::string op_type("cast");
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
@@ -377,8 +375,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
 
 std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
                                              std::string* new_var_name,
-                                             const platform::Place& src_place,
-                                             const platform::Place& dst_place,
+                                             const phi::Place& src_place,
+                                             const phi::Place& dst_place,
                                              VariableScope* var_scope,
                                              framework::Scope* local_scope) {
   // 1. Generate new_var_name and Initialize it
@@ -409,28 +407,28 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   // 3. Create memcpy_d2h_op or memcpy_h2d_op
   std::string op_type;
   AttributeMap attr_map;
-  PADDLE_ENFORCE_EQ(platform::is_same_place(src_place, dst_place),
+  PADDLE_ENFORCE_EQ(phi::is_same_place(src_place, dst_place),
                     false,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Required src_place shall be different with dst_place, "
                         "but received same place: %s",
                         src_place));
   if (IsSupportedHeterPlace(dst_place)) {
     op_type = kMemcpyH2D;
-    int dst_place_type = platform::is_gpu_place(dst_place)      ? 0
-                         : platform::is_ipu_place(dst_place)    ? 3
-                         : platform::is_xpu_place(dst_place)    ? 2
-                         : platform::is_custom_place(dst_place) ? 6
-                                                                : -1;
+    int dst_place_type = phi::is_gpu_place(dst_place)      ? 0
+                         : phi::is_ipu_place(dst_place)    ? 3
+                         : phi::is_xpu_place(dst_place)    ? 2
+                         : phi::is_custom_place(dst_place) ? 6
+                                                           : -1;
     attr_map = {{"dst_place_type", dst_place_type}};
   } else if (IsSupportedHeterPlace(src_place)) {
     op_type = kMemcpyD2H;
-    int dst_place_type = platform::is_cpu_place(dst_place)           ? 0
-                         : platform::is_cuda_pinned_place(dst_place) ? 1
-                                                                     : -1;
+    int dst_place_type = phi::is_cpu_place(dst_place)           ? 0
+                         : phi::is_cuda_pinned_place(dst_place) ? 1
+                                                                : -1;
     attr_map = {{"dst_place_type", dst_place_type}};
   } else {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Not support Memcpy typ : %s -> %s", src_place, dst_place));
   }
 
@@ -448,7 +446,7 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
 }
 
 void ApplyDataTransform(const OpKernelType& expected_kernel_key,
-                        const platform::Place& place,
+                        const phi::Place& place,
                         VariableValueMap* ins_map_temp,
                         VariableValueMap* outs_map_temp,
                         VariableScope* var_scope,
@@ -460,10 +458,10 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                        : var_scope->GetMutableScope();
 
   auto op_base = op_func_node->operator_base_.get();
-  PADDLE_ENFORCE_NOT_NULL(op_base,
-                          platform::errors::PreconditionNotMet(
-                              "op_base is null, please pass a valid "
-                              "op_base in apply_data_transform."));
+  PADDLE_ENFORCE_NOT_NULL(
+      op_base,
+      common::errors::PreconditionNotMet("op_base is null, please pass a valid "
+                                         "op_base in apply_data_transform."));
 
   VariableNameMap new_ins(op_base->Inputs());
   VariableNameMap new_outs(op_base->Outputs());
@@ -479,7 +477,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   }
 
   bool transfered = false;
-  DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
+  DataTransferHelper data_transfer_helper(place, var_scope, local_scope);
   phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
   auto has_infer_varkernel_fn =
       (phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr);
@@ -499,7 +497,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           std::vector<Variable*>* arguments) {
         PADDLE_ENFORCE_EQ(argument_names.size(),
                           arguments->size(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The size of argument_names (%d) should equal to "
                               "the size of arguments (%d).",
                               argument_names.size(),
@@ -512,12 +510,12 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           if (var->IsType<phi::DenseTensor>() ||
               var->IsType<phi::SelectedRows>()) {
             tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-          } else if (var->IsType<LoDTensorArray>()) {
-            if (var->Get<LoDTensorArray>().empty()) {
+          } else if (var->IsType<phi::TensorArray>()) {
+            if (var->Get<phi::TensorArray>().empty()) {
               continue;
             }
             tensor_in = static_cast<const phi::DenseTensor*>(
-                &(var->Get<LoDTensorArray>()[0]));
+                &(var->Get<phi::TensorArray>()[0]));
           } else {
             continue;
           }
@@ -532,7 +530,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               // for some situation like InferShape().
               // In this situation We cannot skip Var analysis, as
               // MKL-DNN shape of Var may differ from kNHWC Var
-              // In such situation corressponding resized Var
+              // In such situation corresponding resized Var
               // has to be created and registered
               if ((tensor_in->layout() == DataLayout::ONEDNN) &&
                   (var->IsType<phi::DenseTensor>() == true) &&
@@ -593,7 +591,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                    !(def_backend == phi::Backend::ONEDNN &&
                      tensor_backend == phi::Backend::CPU)) ||
                   tensor_in->place().GetType() == AllocationType::GPUPINNED ||
-                  (platform::is_xpu_place(expected_kernel_key.place_) &&
+                  (phi::is_xpu_place(expected_kernel_key.place_) &&
                    def_backend == tensor_backend)) {
                 expected_kernel_key_for_argument_def =
                     std::make_unique<phi::KernelKey>(
@@ -662,16 +660,16 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
           phi::KernelRegisteredType::FUNCTION) {
     framework::OperatorWithKernel* op_with_kernel =
         dynamic_cast<framework::OperatorWithKernel*>(op_base);
-    PADDLE_ENFORCE_NOT_NULL(
-        op_with_kernel,
-        phi::errors::Unavailable("Failed to cast op_base (%p) from Operator* "
-                                 "to OperatorWithKernel*.",
-                                 op_base));
+    PADDLE_ENFORCE_NOT_NULL(op_with_kernel,
+                            common::errors::Unavailable(
+                                "Failed to cast op_base (%p) from Operator* "
+                                "to OperatorWithKernel*.",
+                                op_base));
     const auto& input_names = op_with_kernel->PhiKernelSignature()->input_names;
     const auto& input_defs = phi_kernel->args_def().input_defs();
     PADDLE_ENFORCE_EQ(input_names.size(),
                       input_defs.size(),
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of inputs_args names (%d) must be equal to "
                           "the size of kernel input_defs (%d).",
                           input_names.size(),
@@ -702,7 +700,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                              &arguments);
     }
 #ifdef PADDLE_WITH_DNNL
-    // For input that is Extra, only MKLDNN will use Extra Inputs
+    // For input that is Extra, only OneDNN will use Extra Inputs
     auto& extra_input_names =
         paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
             op_with_kernel->Type());
@@ -736,7 +734,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   }
 
   if (transfered) {
-    // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
+    // NOTE(zhiqiu): UPDATE the corresponding OperatorBase to make it consistent
     // with instruction.
     op_base->Inputs() = new_ins;
     op_base->Outputs() = new_outs;
@@ -744,14 +742,14 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
 }
 
 void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
-                                 const platform::Place& place,
+                                 const phi::Place& place,
                                  const VariableNameMap& out_names,
                                  VariableValueMap* out_vars,
                                  VariableScope* var_scope,
                                  std::vector<OpFuncNode>* op_func_nodes,
                                  framework::Scope* local_scope,
                                  bool static_build) {
-  DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
+  DataTransferHelper data_transfer_helper(place, var_scope, local_scope);
   for (auto& var_name_item : out_names) {
     std::vector<Variable*>& vars = out_vars->at(var_name_item.first);
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
@@ -770,10 +768,10 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         VLOG(3) << "skip grad_var with nullptr";
         continue;
       }
-      // don't process LoDTensorArray temporarily,
+      // don't process phi::TensorArray temporarily,
       // add support if necessary for complex number calculations in the future
       if (!framework::VarIsTensor(*grad_var)) {
-        VLOG(3) << "skip grad_var with LoDTensorArray type";
+        VLOG(3) << "skip grad_var with phi::TensorArray type";
         continue;
       }
       auto* grad_tensor =
@@ -798,14 +796,14 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
         continue;
       }
       if (!framework::VarIsTensor(*var)) {
-        VLOG(3) << "skip " << orig_var_name << " with LoDTensorArray.";
+        VLOG(3) << "skip " << orig_var_name << " with phi::TensorArray.";
         continue;
       }
       const auto* tensor =
           framework::GetLoDTensorOrSelectedRowsValueFromVar(*var);
       PADDLE_ENFORCE_NOT_NULL(
           tensor,
-          platform::errors::Unavailable(
+          common::errors::Unavailable(
               "Forward tensor is nullptr when handle complex data to real."));
       // only need record type, the allocation may have been released
       auto dst_type = framework::TransToProtoVarType(tensor->dtype());
@@ -833,6 +831,4 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
   }
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

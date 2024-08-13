@@ -15,17 +15,14 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/collective/c_allreduce_op.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class OpDesc;
-}  // namespace framework
-namespace imperative {
+}  // namespace paddle::framework
+namespace paddle::imperative {
 class OpBase;
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class MpAllReduceSumOp : public framework::OperatorWithKernel {
  public:
@@ -75,11 +72,9 @@ DECLARE_INPLACE_OP_INFERER(MpAllReduceSumInplaceInferer, {"X", "Out"});
 
 DEFINE_C_ALLREDUCE_CPU_KERNEL(MpAllReduceSum, kRedSum);
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(mp_allreduce_sum,
                   ops::MpAllReduceSumOp,
@@ -96,4 +91,4 @@ PD_REGISTER_STRUCT_KERNEL(mp_allreduce_sum,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

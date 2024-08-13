@@ -39,7 +39,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
             data_name = desc[0]
             data_shape = desc[1]
             data_value = np.random.random(
-                size=[self.batch_size] + data_shape
+                size=[self.batch_size, *data_shape]
             ).astype('float32')
             self.data[data_name] = data_value
 
@@ -132,7 +132,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
         wn = weight_norm(linear, dim=self.dim)
         outputs = []
         for name, data in self.data.items():
-            output = linear(base.dygraph.to_variable(data))
+            output = linear(paddle.to_tensor(data))
             outputs.append(output.numpy())
         after_weight = linear.weight
         self.actual_outputs = [linear.weight_g.numpy(), linear.weight_v.numpy()]

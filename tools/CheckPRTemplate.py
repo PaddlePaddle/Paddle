@@ -21,7 +21,7 @@ import httpx
 PR_checkTemplate = ['Paddle']
 
 REPO_TEMPLATE = {
-    "Paddle": r'''### PR types(.*[^\s].*)### PR changes(.*[^\s].*)### Description(.*[^\s].*)'''
+    "Paddle": r'''### PR Category(.*[^\s].*)### PR Types(.*[^\s].*)### Description(.*[^\s].*)'''
 }
 
 
@@ -33,23 +33,42 @@ def re_rule(body, CHECK_TEMPLATE):
 
 def parameter_accuracy(body):
     PR_dic = {}
-    PR_types = [
+    PR_Category = [
+        'User Experience',
+        'Execute Infrastructure',
+        'Operator Mechanism',
+        'CINN',
+        'Custom Device',
+        'Performance Optimization',
+        'Distributed Strategy',
+        'Parameter Server',
+        'Communication Library',
+        'Auto Parallel',
+        'Inference',
+        'Environment Adaptation',
+    ]
+    PR_Types = [
         'New features',
         'Bug fixes',
-        'Function optimization',
-        'Performance optimization',
-        'Breaking changes',
+        'Improvements',
+        'Performance',
+        'BC Breaking',
+        'Deprecations',
+        'Docs',
+        'Devs',
+        'Not User Facing',
+        'Security',
+        'Deprecations',
         'Others',
     ]
-    PR_changes = ['OPs', 'APIs', 'Docs', 'Others']
     body = re.sub("\r\n", "", body)
-    type_end = body.find('### PR changes')
+    type_end = body.find('### PR Types')
     changes_end = body.find('### Description')
-    PR_dic['PR types'] = body[len('### PR types') : type_end]
-    PR_dic['PR changes'] = body[type_end + 14 : changes_end]
+    PR_dic['PR Category'] = body[len('### PR Category') : type_end]
+    PR_dic['PR Types'] = body[type_end + len('### PR Types') : changes_end]
     message = ''
     for key in PR_dic:
-        test_list = PR_types if key == 'PR types' else PR_changes
+        test_list = PR_Category if key == 'PR Category' else PR_Types
         test_list_lower = [l.lower() for l in test_list]
         value = PR_dic[key].strip().split(',')
         single_mess = ''
@@ -59,13 +78,9 @@ def parameter_accuracy(body):
             for i in value:
                 i = i.strip().lower()
                 if i not in test_list_lower:
-                    single_mess += '%s.' % i
+                    single_mess += f'{i}.'
             if len(single_mess) != 0:
-                message += '{} should be in {}. but now is [{}].'.format(
-                    key,
-                    test_list,
-                    single_mess,
-                )
+                message += f'{key} should be in {test_list}. but now is [{single_mess}].'
     return message
 
 
@@ -89,10 +104,10 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         res: True or False
     """
     res = False
-    note = r'<!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->\r\n|<!-- One of \[ New features \| Bug fixes \| Function optimization \| Performance optimization \| Breaking changes \| Others \] -->|<!-- One of \[ OPs \| APIs \| Docs \| Others \] -->|<!-- Describe what you’ve done -->'
+    comment_pattern = re.compile(r'<!--.*?-->', re.DOTALL)
     if body is None:
         body = ''
-    body = re.sub(note, "", body)
+    body = comment_pattern.sub('', body)
     result = re_rule(body, CHECK_TEMPLATE)
     message = ''
     if len(CHECK_TEMPLATE) == 0 and len(body) == 0:

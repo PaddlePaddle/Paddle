@@ -81,6 +81,7 @@ void BindDistFleetWrapper(py::module* m) {
       .def("push_fl_client_info_sync", &FleetWrapper::PushFLClientInfoSync)
       .def("pull_fl_strategy", &FleetWrapper::PullFlStrategy)
       .def("revert", &FleetWrapper::Revert)
+      .def("set_date", &FleetWrapper::SetDate)
       .def("check_save_pre_patch_done", &FleetWrapper::CheckSavePrePatchDone);
 }
 
@@ -169,8 +170,8 @@ void BindDistCommunicator(py::module* m) {
           Communicator::InitInstance<FLCommunicator>(
               send_ctx, recv_ctx, dist_desc, host_sign_list, param_scope, envs);
         } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "unsupported communicator MODE"));
+          PADDLE_THROW(
+              common::errors::InvalidArgument("unsupported communicator MODE"));
         }
         return Communicator::GetInstancePtr();
       }))
@@ -233,7 +234,6 @@ void BindGraphPyClient(py::module* m) {
       .def("add_table_feat_conf", &GraphPyClient::add_table_feat_conf)
       .def("pull_graph_list", &GraphPyClient::pull_graph_list)
       .def("start_client", &GraphPyClient::start_client)
-      .def("batch_sample_neighboors", &GraphPyClient::batch_sample_neighbors)
       .def("batch_sample_neighbors", &GraphPyClient::batch_sample_neighbors)
       // .def("use_neighbors_sample_cache",
       //      &GraphPyClient::use_neighbors_sample_cache)
@@ -446,7 +446,7 @@ void BindIndexSampler(py::module* m) {
         if (mode == "by_layerwise") {
           return IndexSampler::Init<LayerWiseSampler>(name);
         } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
+          PADDLE_THROW(common::errors::InvalidArgument(
               "Unsupported IndexSampler Type!"));
         }
       }))

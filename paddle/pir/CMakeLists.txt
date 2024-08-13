@@ -51,3 +51,7 @@ else()
   set(ir_targets pir)
   set_property(GLOBAL PROPERTY IR_TARGETS "${ir_targets}")
 endif()
+
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+  set_target_properties(pir PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized")
+endif()

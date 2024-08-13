@@ -74,7 +74,7 @@ endfunction()
 # If the source file does not hit any registed groups, use itself.
 # This function put the actual combination relationship in variables instead of
 # writing the unity source file. The reason is that writing unity source file
-# will change the timestampe and affect the effect of retaining the build
+# will change the timestamp and affect the effect of retaining the build
 # directory on Windows.
 # Here you need to specify the source type which belongs to cc or cu.
 function(compose_unity_target_sources TARGET TYPE)
@@ -84,7 +84,7 @@ function(compose_unity_target_sources TARGET TYPE)
                PROPERTY ${TARGET}_${TYPE}_group_index)
   foreach(src ${ARGN})
     set(unity_file "")
-    # Note(zhouwei25): UB use the path releative to CMAKE_SOURCE_DIR.
+    # Note(zhouwei25): UB use the path relative to CMAKE_SOURCE_DIR.
     # If use absolute path, sccache/ccache hit rate will be reduced.
     if(IS_ABSOLUTE ${src})
       set(src_absolute_path ${src})

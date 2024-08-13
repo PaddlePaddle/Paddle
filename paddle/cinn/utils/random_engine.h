@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include <random>
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace utils {
@@ -34,7 +35,7 @@ namespace utils {
 class LinearRandomEngine {
  public:
   using StateType = int64_t;
-  // the type name "resule_type" is needed by std::xxx_distribution
+  // the type name "result_type" is needed by std::xxx_distribution
   using result_type = uint32_t;
 
   // The minimum possible value of random state
@@ -69,7 +70,10 @@ class LinearRandomEngine {
     if (state == 0) {
       state = 1;
     }
-    CHECK_GE(state, 0) << "Random seed must be greater than 0";
+    PADDLE_ENFORCE_GE(state,
+                      0,
+                      ::common::errors::PreconditionNotMet(
+                          "Random seed must be greater than 0"));
 
     return state;
   }
@@ -109,7 +113,10 @@ double SampleUniformDouble(double min,
 template <typename T>
 int SampleDiscreteFromDistribution(const std::vector<T>& weights,
                                    LinearRandomEngine::StateType* rand_seed) {
-  CHECK_GT(weights.size(), 0);
+  PADDLE_ENFORCE_GT(
+      weights.size(),
+      0,
+      ::common::errors::PreconditionNotMet("Size of target weights is empty."));
   LinearRandomEngine engine(rand_seed);
   std::discrete_distribution<int> dist(weights.begin(), weights.end());
   return dist(engine);

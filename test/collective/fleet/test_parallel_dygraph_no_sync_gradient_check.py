@@ -14,12 +14,16 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestDataParallelLayer(TestMultipleGpus):
+class TestDataParallelLayer(TestMultipleAccelerators):
     def test_parallel_dygraph_dataparallel_no_sync(self):
-        self.run_mnist_2gpu('parallel_dygraph_no_sync_gradient_check.py')
+        self.run_mnist_2accelerators(
+            'parallel_dygraph_no_sync_gradient_check.py'
+        )
 
 
 if __name__ == "__main__":

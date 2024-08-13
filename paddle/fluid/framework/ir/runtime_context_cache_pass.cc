@@ -22,7 +22,7 @@ namespace framework {
 namespace ir {
 
 void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
-  static constexpr char kNotAllowInferShapeCahce[] =  // NOLINT
+  static constexpr char kNotAllowInferShapeCache[] =  // NOLINT
       "@NOT_ALLOW_INFERSHAPE_CACHE@";
   VLOG(3) << "Applies Runtime Context Cache strategy.";
   for (const Node* n : graph->Nodes()) {
@@ -42,7 +42,7 @@ void RuntimeContextCachePass::ApplyImpl(ir::Graph* graph) const {
   for (auto& it : var2ops) {
     if (it.second.size() > 1) {
       for (auto op_node : it.second) {
-        op_node->Op()->SetAttr(kNotAllowInferShapeCahce, true);
+        op_node->Op()->SetAttr(kNotAllowInferShapeCache, true);
       }
     }
   }

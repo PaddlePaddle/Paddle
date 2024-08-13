@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 from contextlib import contextmanager
 
 import numpy as np
-from op_test import OpTest, paddle_static_guard
+from op_test import OpTest
 
 import paddle
-from paddle import base
+from paddle import base, static
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseModOp(OpTest):
@@ -29,7 +31,9 @@ class TestElementwiseModOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_floordiv"
+        self.prim_op_type = "comp"
         self.python_api = paddle.floor_divide
+        self.public_python_api = paddle.floor_divide
         self.dtype = np.int32
         self.axis = -1
         self.init_dtype()
@@ -45,7 +49,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -104,20 +108,63 @@ def device_guard(device=None):
 
 
 class TestFloorDivideOp(unittest.TestCase):
-    def test_name(self):
+    @test_with_pir_api
+    def test_static(self):
         paddle.enable_static()
-        with paddle_static_guard():
-            with base.program_guard(base.Program()):
-                x = paddle.static.data(name="x", shape=[2, 3], dtype="int64")
-                y = paddle.static.data(name='y', shape=[2, 3], dtype='int64')
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            for dtype in (
+                'int32',
+                'int64',
+                'float16',
+                'float32',
+                'float64',
+            ):
+                np_x = np.array([2, 3, 8, 7]).astype(dtype)
+                np_y = np.array([1, 5, 3, 3]).astype(dtype)
+                mp, sp = static.Program(), static.Program()
+                with static.program_guard(mp, sp):
+                    x = static.data("x", shape=[4], dtype=dtype)
+                    y = static.data("y", shape=[4], dtype=dtype)
+                    z = paddle.floor_divide(x, y)
+                exe = static.Executor(p)
+                exe.run(sp)
+                [np_z] = exe.run(
+                    mp, feed={"x": np_x, "y": np_y}, fetch_list=[z]
+                )
+                z_expected = np.floor_divide(np_x, np_y)
+                self.assertEqual((np_z == z_expected).all(), True)
 
-                y_1 = paddle.floor_divide(x, y, name='div_res')
-                self.assertEqual(('div_res' in y_1.name), True)
-            paddle.disable_static()
+            np_x = np.array([2, 3, 8, 7]).astype("uint16")
+            np_y = np.array([1, 5, 3, 3]).astype("uint16")
+            mp, sp = static.Program(), static.Program()
+            with static.program_guard(mp, sp):
+                x = static.data("x", shape=[4], dtype="uint16")
+                y = static.data("y", shape=[4], dtype="uint16")
+                z = paddle.floor_divide(x, y)
+            exe = static.Executor(p)
+            exe.run(sp)
+            [np_z] = exe.run(mp, feed={"x": np_x, "y": np_y}, fetch_list=[z])
+            z_expected = np.array([16384, 0, 16384, 16384], dtype='uint16')
+            self.assertEqual((np_z == z_expected).all(), True)
 
     def test_dygraph(self):
         paddle.disable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not base.core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if base.core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:

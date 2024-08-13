@@ -27,9 +27,14 @@ std::shared_ptr<IndexExprInferContext> MakeIndexExprInferContext(
   const auto& anchor_iterators = igroup.GetAnchorIterators();
 
   for (std::size_t i = 0; i < anchor_iterators->size(); ++i) {
-    CHECK(anchor_iterator2value
-              .emplace(anchor_iterators->at(i), anchor_iterators->at(i))
-              .second);
+    PADDLE_ENFORCE_EQ(
+        anchor_iterator2value
+            .emplace(anchor_iterators->at(i), anchor_iterators->at(i))
+            .second,
+        true,
+        ::common::errors::InvalidArgument(
+            "The element in anchor iterators failed to insert in anchor "
+            "iterator2value! Please check."));
   }
 
   return std::make_shared<IndexExprInferContext>(anchor_iterator2value);
@@ -102,10 +107,10 @@ List<Iterator> IGroup::GetIndexIterators(const Index& index) const {
     } else if (arg_pos.Has<Undefined>()) {
       // do nothing
     } else {
-      LOG(FATAL) << "Dead code";
+      PADDLE_THROW(::common::errors::Fatal("Dead code"));
     }
   }
-  LOG(FATAL) << "Can not find anchor iterators";
+  PADDLE_THROW(::common::errors::Fatal("Can not find anchor iterators"));
 }
 
 }  // namespace cinn::adt

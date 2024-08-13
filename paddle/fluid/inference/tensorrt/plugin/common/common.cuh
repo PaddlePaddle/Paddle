@@ -18,7 +18,7 @@
 
 #include <cub/cub.cuh>
 #include "cublas_v2.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 using kv_float = cub::KeyValuePair<float, float>;
 using kv_half = cub::KeyValuePair<half, half>;
@@ -208,7 +208,7 @@ inline void TransposeQKV(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -222,7 +222,7 @@ inline void TransposeQKV(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -233,7 +233,7 @@ inline void TransposeQKV(const int batch,
     // limit head_size * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(head_size * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -260,7 +260,7 @@ inline void TransposeQKV(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -274,7 +274,7 @@ inline void TransposeQKV(const int batch,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,
@@ -285,7 +285,7 @@ inline void TransposeQKV(const int batch,
     // limit head_size * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(head_size * head_num,
                       1024,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "head_num (%d) * head_size (%d) should <= %d",
                           head_num,
                           head_size,

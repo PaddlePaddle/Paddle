@@ -113,7 +113,7 @@ struct BroadcastDimsSimplifier {
             extended_in_dim[out_idx] = in_dim[in_idx];
             out_idx++;
           } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "The %d-th dimension of input tensor is expected to be equal "
                 "with the %d-th dimension of output tensor %d or 1, but "
                 "received %d. The input's shape is {%s}, the output's shape is "
@@ -134,7 +134,7 @@ struct BroadcastDimsSimplifier {
           PADDLE_ENFORCE_EQ(
               in_dim[in_idx] == out_dims[in_idx] || in_dim[in_idx] == 1,
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "The %d-th dimension of input tensor is expected to be equal "
                   "with the %d-th dimension of output tensor %d or 1, but "
                   "received %d.",
@@ -334,11 +334,11 @@ struct DimsSimplifiedLogger {
     VLOG(6) << op_name << "`s dims after simplification is below :";
     for (size_t i = 0; i < ins.size(); ++i) {
       VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
-              << "}, simplied_dims={"
+              << "}, simplified_dims={"
               << ReversedVectorToString(dims_simplifier.in_dims[i]) << "}";
     }
     VLOG(6) << "output: origin_dims={" << (*outs)[0]->dims()
-            << "}, simplied_dims={"
+            << "}, simplified_dims={"
             << ReversedVectorToString(dims_simplifier.out_dims) << "}";
   }
 

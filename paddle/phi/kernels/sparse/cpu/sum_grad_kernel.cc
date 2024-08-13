@@ -82,6 +82,7 @@ void SumCooGradCPUKernel(const Context& dev_ctx,
   std::map<std::vector<IntT>, int64_t> indices_map;
   for (auto j = 0; j < dout_indices.dims()[1]; ++j) {
     std::vector<IntT> pos;
+    pos.reserve(dout_indices.dims()[0]);
     for (int i = 0; i < dout_indices.dims()[0]; ++i) {
       pos.push_back(dout_indices_data[j + i * dout_indices.dims()[1]]);
     }
@@ -140,7 +141,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
   }
   PADDLE_ENFORCE_EQ(axis[0],
                     -1,
-                    phi::errors::Unimplemented(
+                    common::errors::Unimplemented(
                         "`axis` of SumCsrKernel only support None or -1 now."
                         "More number will be supported in the future."));
 

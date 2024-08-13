@@ -21,8 +21,7 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void TransposeCooKernel(const Context& dev_ctx,
@@ -201,8 +200,7 @@ void TransposeCsrKernel(const Context& dev_ctx,
     }
   }
 }
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(transpose_coo,
                    CPU,

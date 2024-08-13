@@ -39,7 +39,7 @@ def merge_max_value(old, new):
             if isinstance(old[i], list):
                 new[i] = merge_max_value(old[i], new[i])
             else:
-                new[i] = old[i] if new[i] < old[i] else new[i]
+                new[i] = max(new[i], old[i])
     return new
 
 
@@ -69,14 +69,14 @@ def combine_abs_max_and_hist(
         # bin_width = origin_max / (bins * upsample_bins)
         #           = new_max / (bins * downsample_bins)
         bin_width = origin_max / (bins * upsample_bins)
-        downsampe_bins = int(math.ceil(new_max / (bins * bin_width)))
-        new_max = bins * bin_width * downsampe_bins
+        downsample_bins = int(math.ceil(new_max / (bins * bin_width)))
+        new_max = bins * bin_width * downsample_bins
 
         upsampled_hist = np.repeat(origin_hist, upsample_bins)
-        expanded_hist = np.zeros((bins * downsampe_bins), dtype=np.float32)
+        expanded_hist = np.zeros((bins * downsample_bins), dtype=np.float32)
         expanded_hist[0 : bins * upsample_bins] = upsampled_hist
         cumsumed_hist = np.cumsum(expanded_hist, dtype=np.float64)[
-            downsampe_bins - 1 :: downsampe_bins
+            downsample_bins - 1 :: downsample_bins
         ]
         shift_cumsumed_hist = np.zeros((bins), dtype=np.float64)
         shift_cumsumed_hist[1:] = cumsumed_hist[0:-1]

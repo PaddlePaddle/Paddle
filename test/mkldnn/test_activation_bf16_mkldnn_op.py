@@ -58,7 +58,9 @@ class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
         self.dx = self.op_grad(self.out, self.x)
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(
+            core.CPUPlace(), check_pir_onednn=self.check_pir_onednn
+        )
 
     def test_check_grad(self):
         self.calculate_grads()
@@ -68,12 +70,14 @@ class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
             "Out",
             user_defined_grads=[self.dx],
             user_defined_grad_outputs=[convert_float_to_uint16(self.out)],
+            check_pir_onednn=self.check_pir_onednn,
         )
 
 
 class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "sigmoid"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return 1 / (1 + np.exp(-x))
@@ -85,6 +89,7 @@ class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNSqrtBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "sqrt"
+        self.check_pir_onednn = True
 
     def init_data(self):
         self.x = np.random.uniform(1, 2, [2, 4, 3, 5]).astype(np.float32)
@@ -99,6 +104,7 @@ class TestMKLDNNSqrtBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "gelu"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return gelu(x, False)
@@ -119,6 +125,7 @@ class TestMKLDNNGeluErfDim2BF16Op(TestMKLDNNGeluErfBF16Op):
 class TestMKLDNNGeluTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "gelu"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return gelu(x, True)
@@ -151,6 +158,7 @@ class TestMKLDNNGeluTanhDim2BF16Op(TestMKLDNNGeluTanhBF16Op):
 class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "relu"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.maximum(x, 0)
@@ -162,6 +170,7 @@ class TestMKLDNNReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "mish"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return x * np.tanh(np.log(1 + np.exp(x)))
@@ -180,6 +189,7 @@ class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNRelu6BF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "relu6"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.clip(x, 0, 6)
@@ -191,6 +201,7 @@ class TestMKLDNNRelu6BF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "leaky_relu"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.where(x > 0, x, self.alpha * x)
@@ -206,6 +217,7 @@ class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "swish"
+        self.check_pir_onednn = True
 
     def expit(self, val):
         return 1 / (1 + np.exp(-self.beta * val))
@@ -224,6 +236,7 @@ class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNHardSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "hard_swish"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         result = np.where(x < -3, 0, x)
@@ -237,6 +250,7 @@ class TestMKLDNNHardSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "tanh"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.tanh(x)
@@ -248,6 +262,7 @@ class TestMKLDNNTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "abs"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.absolute(x)
@@ -259,6 +274,7 @@ class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNEluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "elu"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.where(x > 0, x, self.alpha * (np.exp(x) - 1))
@@ -274,6 +290,7 @@ class TestMKLDNNEluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 class TestMKLDNNExpBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
         self.op_type = "exp"
+        self.check_pir_onednn = True
 
     def op_forward(self, x):
         return np.exp(x)

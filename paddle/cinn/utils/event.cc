@@ -15,9 +15,9 @@
 #include "paddle/cinn/utils/event.h"
 
 #include <glog/logging.h>  // for GLog
-
 #include <unordered_map>
 
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace utils {
 inline std::string EventTypeToString(const EventType &type) {
@@ -43,7 +43,7 @@ inline std::string EventTypeToString(const EventType &type) {
     case EventType::kInstruction:
       return "Instruction";
     default:
-      LOG(FATAL) << "Unknown event type";
+      PADDLE_THROW(::common::errors::InvalidArgument("Unknown event type"));
   }
 }
 

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <assert.h>
 #include <immintrin.h>
-#include <math.h>
 #include <omp.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <new>
 #include <string>
@@ -44,8 +44,8 @@ void arraycpy(T* dst, const Tt* src, int n) {
   }
 }
 
-// batchs x tokens x 3 x head x heads ->  3 x batchs x head x tokens x heads (2
-// 0 3 1 4)
+// batches x tokens x 3 x head x heads ->  3 x batches x head x tokens x heads
+// (2 0 3 1 4)
 template <typename T, typename Tt>
 void transpose_before_bmm1(const T* qkvBuffer,
                            Tt* qkvTransBuffer,
@@ -108,7 +108,7 @@ void transpose_before_bmm1(const T* qkvBuffer,
   }
 }
 
-// batchs x head x tokens x heads -> batchs x tokens x head x heads (0 2 1 3)
+// batches x head x tokens x heads -> batches x tokens x head x heads (0 2 1 3)
 template <typename T, typename Tt>
 void transpose_after_bmm2(T* Buffer,
                           Tt* TransBuffer,
@@ -161,8 +161,8 @@ void sgemm(const float* A,
   int ldc = n;
   float alpha = 1;
   float beta = 0;
-  char ta[] = "N";
-  char tb[] = "N";
+  std::array<char, 2> ta = {"N"};
+  std::array<char, 2> tb = {"N"};
   if (transa) ta[0] = 'T';
   if (transb) tb[0] = 'T';
 
@@ -257,7 +257,9 @@ void softmax_sum_max(float* AB,
       __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
 
       __m512 vx = _mm512_maskz_loadu_ps(mask, buf + off);
-      vx = vexp(vx * vrefac - vmax);
+      vx = _mm512_mask_mul_ps(vx, mask, vx, vrefac);
+      vx = _mm512_mask_sub_ps(vx, mask, vx, vmax);
+      vx = vexp(vx);
 
       _mm512_mask_storeu_ps(buf + off, mask, vx);
 
@@ -275,8 +277,7 @@ void softmax_sum_max(float* AB,
       __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
 
       __m512 vx = _mm512_maskz_loadu_ps(mask, buf + off);
-      vx = vx * vrsum;
-
+      vx = _mm512_mask_mul_ps(vx, mask, vx, vrsum);
       _mm512_mask_storeu_ps(buf + off, mask, vx);
     }
   }
@@ -301,7 +302,10 @@ void update_out_blk(float* output,
       __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
       __m512 vout = _mm512_maskz_loadu_ps(mask, outbuf + off);
       __m512 vabc = _mm512_maskz_loadu_ps(mask, buf + off);
-      __m512 vupt = vout * merr * vfac + vabc;
+      vout = _mm512_mask_mul_ps(vout, mask, vout, merr);
+      vout = _mm512_mask_mul_ps(vout, mask, vout, vfac);
+      __m512 vupt = _mm512_set1_ps(0.0f);
+      vupt = _mm512_mask_add_ps(vupt, mask, vout, vabc);
       _mm512_mask_storeu_ps(outbuf + off, mask, vupt);
     }
     pre_sum[i] = sum[i];
@@ -472,9 +476,9 @@ void SelfDPAttenKernel(const Context& dev_ctx,
   auto input_dims = x.dims();
   // in shouble be (batch * seq * 3 * head_num * head_size)
   // out shouble be (batch * seq * head_num * head_size)
-  int batch_size = input_dims[0];
-  int seq_len = input_dims[1];
-  int head_size = input_dims[4];
+  int batch_size = static_cast<int>(input_dims[0]);
+  int seq_len = static_cast<int>(input_dims[1]);
+  int head_size = static_cast<int>(input_dims[4]);
 
   DenseTensor temp1, temp2;
   temp1.Resize(input_dims);

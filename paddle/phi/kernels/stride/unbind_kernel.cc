@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/unbind_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/slice_kernel.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 
@@ -24,6 +27,11 @@ void UnbindStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          int axis,
                          std::vector<DenseTensor*> outs) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
   int64_t num = static_cast<int64_t>(outs.size());
   int64_t start = 0;
 
@@ -43,5 +51,7 @@ void UnbindStridedKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    unbind, STRIDED, phi::UnbindStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(unbind,
+                                         STRIDED,
+                                         phi::UnbindStridedKernel) {}

@@ -25,15 +25,14 @@ REGISTER_GENERATE_PASS(generate_fc_fuse) {
       VLOG(3) << "exec lambda func.";
       auto mul = OP_(mul)({{"X", x}, {"Y", y}}).Out("Out");
       auto ewadd = OP_(elementwise_add)({{"X", mul}, {"Y", z}}).Out("Out");
-      if (with_relu) {
+      if (with_relu) {  // NOLINT
         return OP_(relu)({"X", ewadd}).Out("Out");
       } else {
         return ewadd;
       }
     };
     // replace
-    SUBGRAPH_(replace) = [subgraph = &replace, with_relu](
-                             VAR_(x), VAR_(y), VAR_(z)) {
+    SUBGRAPH_(replace) = [subgraph = &replace](VAR_(x), VAR_(y), VAR_(z)) {
       auto& fc = OP_(fc)({{"Input", x}, {"W", y}, {"Bias", z}});
       return fc.Out("Out");
     };
@@ -124,17 +123,17 @@ TEST(GeneratePass, generate_fc_fuse) {
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
                     num_nodes_after + 6,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
                         num_nodes_before,
                         num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fc_nodes_after,
                     2,
-                    platform::errors::InvalidArgument("num_fc_nodes_after=%d.",
-                                                      num_fc_nodes_after));
+                    common::errors::InvalidArgument("num_fc_nodes_after=%d.",
+                                                    num_fc_nodes_after));
   PADDLE_ENFORCE_EQ(num_mul_nodes_before,
                     num_fc_nodes_after,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "num_mul_nodes_before=%d, num_fc_nodes_after=%d.",
                         num_mul_nodes_before,
                         num_fc_nodes_after));
@@ -165,17 +164,17 @@ TEST(GeneratePass, generate_multi_add_to_addn) {
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
                     num_nodes_after + 2,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
                         num_nodes_before,
                         num_nodes_after));
   PADDLE_ENFORCE_EQ(num_addn_nodes_after,
                     1,
-                    platform::errors::InvalidArgument(
-                        "num_addn_nodes_after=%d.", num_addn_nodes_after));
+                    common::errors::InvalidArgument("num_addn_nodes_after=%d.",
+                                                    num_addn_nodes_after));
   PADDLE_ENFORCE_EQ(num_add_nodes_before,
                     num_addn_nodes_after + 1,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "num_add_nodes_before=%d, num_addn_nodes_after=%d.",
                         num_add_nodes_before,
                         num_addn_nodes_after));
@@ -206,18 +205,18 @@ TEST(GeneratePass, generate_combine_matmul) {
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
                     num_nodes_after - 4,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
                         num_nodes_before,
                         num_nodes_after));
   PADDLE_ENFORCE_EQ(num_matmul_nodes_after,
                     1,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "num_matmul_nodes_after=%d.", num_matmul_nodes_after));
   PADDLE_ENFORCE_EQ(
       num_matmul_nodes_before,
       num_matmul_nodes_after + 1,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "num_matmul_nodes_before=%d, num_matmul_nodes_after=%d.",
           num_matmul_nodes_before,
           num_matmul_nodes_after));

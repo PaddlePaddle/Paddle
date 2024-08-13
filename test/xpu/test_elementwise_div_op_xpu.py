@@ -84,9 +84,11 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
                 }
                 reshaped_y.astype(self.dtype)
                 self.outputs = {
-                    'Out': self.inputs['X'] // reshaped_y
-                    if self.dtype in INT_GROUP
-                    else np.divide(self.inputs['X'], reshaped_y)
+                    'Out': (
+                        self.inputs['X'] // reshaped_y
+                        if self.dtype in INT_GROUP
+                        else np.divide(self.inputs['X'], reshaped_y)
+                    )
                 }
 
         def test_check_output(self):
@@ -101,7 +103,7 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
                     place, ['X', 'Y'], 'Out', max_relative_error=0.05
                 )
 
-        def test_check_grad_ingore_x(self):
+        def test_check_grad_ignore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
@@ -112,7 +114,7 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
                     no_grad_set=set("X"),
                 )
 
-        def test_check_grad_ingore_y(self):
+        def test_check_grad_ignore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(

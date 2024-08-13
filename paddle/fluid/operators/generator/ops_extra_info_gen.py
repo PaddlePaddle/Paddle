@@ -95,15 +95,15 @@ def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
                 for attr in extra_args_map['attrs']:
                     attr_type, attr_name, default_val = parse_attr(attr)
                     attr_checker_func_list.append(
-                        f"[](framework::AttributeMap* attr_map, bool only_check_exist_value)-> void {{ ExtraAttrChecker<{attr_type}>(\"{attr_name}\", {default_val})(attr_map, only_check_exist_value);}}"
+                        f'[](framework::AttributeMap* attr_map, bool only_check_exist_value)-> void {{ ExtraAttrChecker<{attr_type}>("{attr_name}", {default_val})(attr_map, only_check_exist_value);}}'
                     )
                     if attr_type.startswith("std::vector"):
                         attr_map_list.append(
-                            f"{{\"{attr_name}\", {attr_type}{default_val}}}"
+                            f'{{"{attr_name}", {attr_type}{default_val}}}'
                         )
                     else:
                         attr_map_list.append(
-                            f"{{\"{attr_name}\", {attr_type}{{{default_val}}}}}"
+                            f'{{"{attr_name}", {attr_type}{{{default_val}}}}}'
                         )
                 api_extra_attr_map = ", ".join(attr_map_list)
                 api_extra_attr_checkers = ",\n      ".join(
@@ -119,10 +119,10 @@ def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
                     for bw_item in op_compat_args['backward'].split(','):
                         bw_op_name = get_op_name(bw_item)
                         extra_map_str_list.append(
-                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_map} }}}}"
+                            f'{{"{bw_op_name}", {{ {api_extra_attr_map} }}}}'
                         )
                         extra_checker_str_list.append(
-                            f"{{\"{bw_op_name}\", {{ {api_extra_attr_checkers} }}}}"
+                            f'{{"{bw_op_name}", {{ {api_extra_attr_checkers} }}}}'
                         )
 
     ops_extra_info_file = open(ops_extra_info_path, 'w')
@@ -142,7 +142,7 @@ def main():
     parser.add_argument(
         '--op_compat_yaml_path',
         help='path to api compat yaml file',
-        default='paddle/phi/api/yaml/op_compat.yaml',
+        default='paddle/phi/ops/yaml/op_compat.yaml',
     )
 
     parser.add_argument(

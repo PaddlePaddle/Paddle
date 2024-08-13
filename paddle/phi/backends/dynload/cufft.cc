@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 std::once_flag cufft_dso_flag;
 void* cufft_dso_handle = nullptr;
 
@@ -34,10 +33,9 @@ bool HasCUFFT() {
 void EnforceCUFFTLoaded(const char* fn_name) {
   PADDLE_ENFORCE_NOT_NULL(
       cufft_dso_handle,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Cannot load cufft shared library. Cannot invoke method %s.",
           fn_name));
 }
 
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload

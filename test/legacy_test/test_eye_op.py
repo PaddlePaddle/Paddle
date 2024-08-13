@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
+
+sys.path.append("../../legacy_test")
 
 import numpy as np
 from op_test import OpTest
@@ -22,7 +25,7 @@ from test_attribute_var import UnittestBase
 import paddle
 from paddle import base
 from paddle.base import core, framework
-from paddle.base.framework import Program, program_guard
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -40,7 +43,7 @@ class TestEyeOp(OpTest):
         self.attrs = {
             'num_rows': self.num_columns,
             'num_columns': self.num_columns,
-            'dtype': framework.convert_np_dtype_to_dtype_(self.dtype),
+            'dtype': framework.convert_np_dtype_to_proto_type(self.dtype),
         }
         self.outputs = {
             'Out': np.eye(self.num_rows, self.num_columns, dtype=self.dtype)
@@ -148,10 +151,11 @@ class TestEyeRowsCol(UnittestBase):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
+    @test_with_pir_api
     def test_static(self):
-        main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -162,10 +166,11 @@ class TestEyeRowsCol(UnittestBase):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
-            self.assertTrue(self.var_prefix() in str(main_prog))
+            if not in_pir_mode():
+                self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[tmp, out])
             gt = np.eye(3, 10)
             np.testing.assert_allclose(res[0], gt)
@@ -200,10 +205,24 @@ class TestEyeFP16OP(TestEyeOp):
         self.dtype = np.float16
 
 
+class TestEyeComplex64OP(TestEyeOp):
+    '''Test eye op with specified dtype'''
+
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestEyeComplex128OP(TestEyeOp):
+    '''Test eye op with specified dtype'''
+
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestEyeBF16OP(OpTest):
     def setUp(self):

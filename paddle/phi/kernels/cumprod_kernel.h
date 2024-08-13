@@ -22,5 +22,7 @@ template <typename T, typename Context>
 void CumprodKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int dim,
+                   bool exclusive,
+                   bool reverse,
                    DenseTensor* out);
 }  // namespace phi

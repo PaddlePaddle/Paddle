@@ -42,7 +42,7 @@ def _sharding_pass_applied(pass_ctx):
 class AutoParalSupplementDepPass(PassBase):
     """
     Functional Concern.
-    for strategies like amp & global norm, there is a collective communication to sync gradient inforation in every rank.
+    for strategies like amp & global norm, there is a collective communication to sync gradient information in every rank.
     after partition the gradients to each rank, the order of that collective communication is different in each rank
     and might cause hang problem in graph based random order executor. here supplement explicit dependencies for those cases.
 
@@ -50,7 +50,7 @@ class AutoParalSupplementDepPass(PassBase):
     global collective will introduce global synchronization which forces the fast workers to wait for slow ones.
     therefore we should conduct this collective when all the ranks reach a same stage.
     BUT the depend API offered by executor could only ensure "conduct-not-before" but not "conduct-right-after".
-    Some ranks might call the colletives first than other ranks while they still some local could be performed to wait for slow peers.
+    Some ranks might call the collectives first than other ranks while they still some local could be performed to wait for slow peers.
     IR Pass currently could not have the fully control of time the to perform these global collectives.
     """
 

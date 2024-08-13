@@ -40,7 +40,7 @@ extern "C" {
 /// \brief Create a new Predictor
 ///
 /// \param[in] Config config
-/// \return new predicor.
+/// \return new predictor.
 ///
 PADDLE_CAPI_EXPORT extern __pd_give PD_Predictor* PD_PredictorCreate(
     __pd_take PD_Config* pd_config);

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,29 +13,24 @@
 // limitations under the License.
 
 #pragma once
-
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES  // use M_2_SQRTPI on Windows
+#endif
+#include "paddle/phi/kernels/fusion/gpu/fused_bias_act_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_common.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_residual_dropout_bias.h"
 #include "paddle/phi/kernels/gpu/gelu_funcs.h"
 
 namespace phi {
 namespace fusion {
-
 template <typename T>
-struct GeluFunctor {
+struct LayerNormParamTypeGeluFunctor {
   inline __host__ __device__ T operator()(const T x) const {
     using U = phi::funcs::LayerNormParamType<T>;
     const U casted_x = static_cast<U>(x);
     const U temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
     const U out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
     return static_cast<T>(out);
-  }
-};
-
-template <typename T>
-struct FastGeluFunctor {
-  inline __device__ T operator()(const T x) const {
-    return phi::GeluFwd<T, true>(x);
   }
 };
 
@@ -92,8 +87,8 @@ __global__ void FusedDropoutActBias(
   int row_id = blockIdx.y;
   int idx = row_id * cols + col_id;
 
-  curandStatePhilox4_32_10_t state;
-  curand_init(seed, idx, increment, &state);
+  GPURAND(StatePhilox4_32_10_t) state;
+  GPURAND(_init)(seed, idx, increment, &state);
 
   const T factor =
       phi::fusion::GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);

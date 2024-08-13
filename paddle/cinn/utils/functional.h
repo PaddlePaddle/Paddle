@@ -18,10 +18,11 @@
 
 #include <algorithm>
 #include <functional>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace utils {
 

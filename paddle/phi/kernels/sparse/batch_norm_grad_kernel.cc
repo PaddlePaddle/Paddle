@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename Context>
 void BatchNormCooGradKernel(const Context& dev_ctx,
@@ -47,7 +46,7 @@ void BatchNormCooGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ((scale_grad == nullptr && bias_grad == nullptr) ||
                         (scale_grad != nullptr && bias_grad != nullptr),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Weight and bias's stop_gradient of BatchNorm must be "
                         "True or False at the same time."));
 
@@ -76,8 +75,7 @@ void BatchNormCooGradKernel(const Context& dev_ctx,
                                        bias_grad);
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(batch_norm_coo_grad,
                    CPU,

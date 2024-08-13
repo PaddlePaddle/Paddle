@@ -61,14 +61,14 @@ bool RemovePaddingPlugin::supportsFormatCombination(
     int nbOutputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(nbInputs,
                     3,
-                    platform::errors::InvalidArgument("Must have 3 inputs, "
-                                                      "but got %d input(s). ",
-                                                      nbInputs));
+                    common::errors::InvalidArgument("Must have 3 inputs, "
+                                                    "but got %d input(s). ",
+                                                    nbInputs));
   PADDLE_ENFORCE_EQ(nbOutputs,
                     getNbOutputs(),
-                    platform::errors::InvalidArgument("Must have 1 output, "
-                                                      "but got %d output(s). ",
-                                                      nbOutputs));
+                    common::errors::InvalidArgument("Must have 1 output, "
+                                                    "but got %d output(s). ",
+                                                    nbOutputs));
   if (pos == 1 || pos == 2) {  // pos_id, work_id
     return inOut[pos].type == nvinfer1::DataType::kINT32 &&
            inOut[pos].format == nvinfer1::TensorFormat::kLINEAR;
@@ -141,7 +141,7 @@ int RemovePaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
       input0_desc.dims.d[0],
       input0_desc.dims.d[1],
       vector_length /
-          num_threads);  //  batchs, max sequnce length, input0.dims.d[2]/***
+          num_threads);  //  batches, max sequnce length, input0.dims.d[2]/***
 
   RemovePaddingKernel<<<num_blocks, num_threads, 0, stream>>>(
       input0, input1, output);

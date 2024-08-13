@@ -352,7 +352,7 @@ class GradAllReduce(Collective):
                         )
                         offset += 1
 
-                    # As we search ops reversedly, we should insert c_allreduce_sum
+                    # As we search ops reversely, we should insert c_allreduce_sum
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(
@@ -517,7 +517,7 @@ class SingleProcessMultiThread(GradAllReduce):
         nodes_num = 0
         if len(self.endpoints) > 1:
             nodes_num = len({x.split(':')[0] for x in self.endpoints})
-        # diffent ip num is multi node
+        # different ip num is multi node
         if nodes_num > 1:
             self.nranks = nodes_num
             print("begin to _transpile_startup_program for multi-node")
@@ -553,7 +553,7 @@ class SingleProcessMultiThread(GradAllReduce):
             return
         # fuse allreduce
         if self.fuse_allreduce > 0:
-            print("begin used fuse_allreduce param count = %s" % (param_cnt))
+            print(f"begin used fuse_allreduce param count = {param_cnt}")
             # use fuse allreduce
             self._insert_fuse_allreduce_ops()
         else:
@@ -592,7 +592,7 @@ class SingleProcessMultiThread(GradAllReduce):
             scale = 1.0 / self.nranks / self.gpu_nums
         else:
             scale = 1.0 / self.gpu_nums
-        print("begin _insert_scale_loss_grad_ops scale = %s" % (scale))
+        print(f"begin _insert_scale_loss_grad_ops scale = {scale}")
         block = self.main_program.global_block()
         for idx, op in reversed(list(enumerate(block.ops))):
             if not self._is_loss_grad_op(op):
@@ -722,7 +722,7 @@ class SingleProcessMultiThread(GradAllReduce):
 class MultiThread(GradAllReduce):
     ''' '''
 
-    def __init__(self, nrings=1, trans_mode="all_reduce"):
+    def __init__(self, nrings=1, trans_mode="fuse_all_reduce"):
         GradAllReduce.__init__(self, nrings)
         self.mode = "box"
         self.trans_mode = trans_mode
@@ -834,7 +834,7 @@ class MultiThread(GradAllReduce):
                         )
                         offset += 1
 
-                    # As we search ops reversedly, we should insert c_allgather
+                    # As we search ops reversely, we should insert c_allgather
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(

@@ -120,11 +120,13 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
                 str(var_dtype), ", ".join(supported_var_dtypes)
             )
         )
-        logger.info(
-            '[+] var: "{}", shape={}, dtype="{}".\n'.format(
-                var_name, str(var_shape), str(var_dtype)
+        (
+            logger.info(
+                f'[+] var: "{var_name}", shape={var_shape}, dtype="{var_dtype}".\n'
             )
-        ) if verbose else None
+            if verbose
+            else None
+        )
         np_dtype = (
             convert_dtype(var_dtype)
             if isinstance(var_dtype, core.VarDesc.VarType)
@@ -170,9 +172,11 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
                 )
                 feed_names.append(out_var_name)
         if not has_feed_op:
-            logger.info(
-                "WARNING: program does not have any feed op.\n"
-            ) if verbose else None
+            (
+                logger.info("WARNING: program does not have any feed op.\n")
+                if verbose
+                else None
+            )
         return feed_names
 
     for var_name in _analyze_graph_and_collect_all_vars_with_zero_in_degree():
@@ -266,26 +270,23 @@ def measure_program_real_op_cost(
     >>> measure_program_real_op_cost(program, verbose_level=1)
     '''
 
-    assert isinstance(program, Program), (
-        '"program" should be a instance of "paddle.base.framework.Program" but got type "%s".'
-        % type(program).__name__
-    )
+    assert isinstance(
+        program, Program
+    ), f'"program" should be a instance of "paddle.base.framework.Program" but got type "{type(program).__name__}".'
     supported_places = [
         paddle.CUDAPlace,
     ]
     assert any(
         isinstance(place, supported_place)
         for supported_place in supported_places
-    ), 'Current place ({}) does not support runtime profiling. "place" should be one of the following: {}.'.format(
-        str(place), str(supported_places)
-    )
+    ), f'Current place ({place}) does not support runtime profiling. "place" should be one of the following: {supported_places}.'
     assert isinstance(run_iters, int) and run_iters >= 1, (
         'Invalid parameter run_iters set. run_iters '
         'should be an integer >= 1.'
     )
     if run_iters == 1:
         warnings.warn(
-            'run_iters was set to 1, profiling results might be inaccurate due to outilers.'
+            'run_iters was set to 1, profiling results might be inaccurate due to outliers.'
         )
 
     logger = get_logger(log_level=logging.INFO)
@@ -304,7 +305,11 @@ def measure_program_real_op_cost(
             and check_if_op_supports_runtime_profiling(op)
         ):
             op.dist_attr.run_time_us = op_runtime_us_final
-        logger.info(
-            "%4s %32s  %.1f us"
-            % (str(op_id), str(op.type), op_runtime_us_final)
-        ) if verbose_level >= 1 else None
+        (
+            logger.info(
+                "%4s %32s  %.1f us"
+                % (str(op_id), str(op.type), op_runtime_us_final)
+            )
+            if verbose_level >= 1
+            else None
+        )

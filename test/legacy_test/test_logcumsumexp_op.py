@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import itertools
 import unittest
-from typing import Optional
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
@@ -25,14 +26,14 @@ from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
-def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int] = None):
+def np_naive_logcumsumexp(x: np.ndarray, axis: int | None = None):
     return np.log(np.cumsum(np.exp(x), axis=axis))
 
 
 def np_logcumsumexp(
     x: np.ndarray,
-    axis: Optional[int] = None,
-    flatten: Optional[bool] = None,
+    axis: int | None = None,
+    flatten: bool | None = None,
     reverse: bool = False,
     exclusive: bool = False,
 ):
@@ -71,8 +72,8 @@ def np_logcumsumexp(
 def np_logcumsumexp_grad(
     x: np.ndarray,
     dout: np.ndarray,
-    axis: Optional[int] = None,
-    flatten: Optional[bool] = None,
+    axis: int | None = None,
+    flatten: bool | None = None,
     reverse: bool = False,
     exclusive: bool = False,
 ):
@@ -122,7 +123,7 @@ class TestLogcumsumexp(unittest.TestCase):
         np.testing.assert_allclose(z, y.numpy(), rtol=1e-05)
 
         y = paddle.logcumsumexp(data, dtype='float32')
-        self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
+        self.assertTrue(y.dtype == paddle.float32)
 
         y = paddle.logcumsumexp(data, axis=-2)
         z = np_logcumsumexp(data_np, axis=-2)
@@ -199,12 +200,14 @@ class TestLogcumsumexp(unittest.TestCase):
 
         self.run_static(use_gpu=True)
 
-    # @test_with_pir_api
     def test_name(self):
-        with base.program_guard(base.Program()):
-            x = paddle.static.data('x', [3, 4])
-            y = paddle.logcumsumexp(x, name='out')
-            self.assertTrue('out' in y.name)
+        paddle.enable_static()
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(base.Program()):
+                x = paddle.static.data('x', [3, 4])
+                y = paddle.logcumsumexp(x, name='out')
+                self.assertTrue('out' in y.name)
+        paddle.disable_static()
 
     @test_with_pir_api
     def test_type_error(self):
@@ -250,14 +253,14 @@ class BaseTestCases:
                     np_logcumsumexp_grad(
                         self.inputs['X'],
                         1 / self.inputs['X'].size,
-                        **self.attrs
+                        **self.attrs,
                     )
                 ],
                 check_pir=True,
             )
 
         def input_and_attrs(self):
-            raise NotImplementedError()
+            raise NotImplementedError
 
 
 class TestLogcumsumexpOp1(BaseTestCases.BaseOpTest):
@@ -326,7 +329,7 @@ class TestLogcumsumexpFP16(unittest.TestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestLogcumsumexpBF16Op(OpTest):
     def setUp(self):

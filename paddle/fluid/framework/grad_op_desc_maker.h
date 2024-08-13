@@ -102,11 +102,11 @@ class GradOpDescMakerBase {
     PADDLE_ENFORCE_LE(
         var_names.size(),
         1UL,
-        platform::errors::Unavailable(
+        common::errors::Unavailable(
             "BUG from operator developer:"
             " for input argument with a list of variables, "
             " drop_empty_grad is not allowed because it makes"
-            " the correspondence bewteen a variable and its gradient"
+            " the correspondence between a variable and its gradient"
             " ambiguous."));
 
     std::vector<std::string> dropped_ret_val;
@@ -171,7 +171,7 @@ class GradOpDescMakerBase {
     PADDLE_ENFORCE_NE(
         it,
         map.end(),
-        platform::errors::NotFound("Cannot find attribute (%s).", name));
+        common::errors::NotFound("Cannot find attribute (%s).", name));
     return it->second;
   }
 
@@ -240,7 +240,7 @@ class SingleGradOpMaker<imperative::OpBase>
       it = this->DefaultAttrsMap().find(name);
       PADDLE_ENFORCE_EQ(it != this->DefaultAttrsMap().end(),
                         true,
-                        platform::errors::NotFound(
+                        common::errors::NotFound(
                             "Cannot find attribute [%s] in operator [%s]",
                             name,
                             this->ForwardOpType()));

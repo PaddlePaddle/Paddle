@@ -408,7 +408,7 @@ class TestMathOpPatchesPir(unittest.TestCase):
             warnings.simplefilter("always")
             with paddle.pir_utils.IrGuard():
                 x = paddle.static.data(name='x', shape=[3, 2, 1])
-                x.place()
+                _ = x.place
                 self.assertTrue(len(w) == 1)
                 self.assertTrue("place" in str(w[-1].message))
 
@@ -464,12 +464,12 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     (output_x,) = exe.run(main_program, fetch_list=[x_T])
                     self.assertEqual(output_x.shape, tuple(out_shape))
 
-    def test_hash_error(self):
+    def test_hash(self):
         with paddle.pir_utils.IrGuard():
             _, _, program_guard = new_program()
             with program_guard:
                 x = paddle.static.data('x', [2, 3])
-                self.assertRaises(NotImplementedError, hash, x)
+                self.assertEqual(hash(x), hash(id(x)))
 
     def test_clone(self):
         x_np = np.random.random(size=[100, 10]).astype('float64')
@@ -488,22 +488,52 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 np.testing.assert_array_equal(x_np, a_np)
                 self.assertNotEqual(id(x), id(a))
 
-    def test_append(self):
+    def test_append_pop(self):
         with paddle.pir_utils.IrGuard():
-            _, _, program_guard = new_program()
+            main_program, exe, program_guard = new_program()
             with program_guard:
-                x = paddle.static.data(name='x', shape=[-1, 1], dtype="float32")
-                init_data = [
-                    np.random.random(shape).astype('float32')
-                    for shape in [[10, 4], [8, 12], [1]]
-                ]
-
-                array = paddle.tensor.create_array(
-                    'int64', [paddle.to_tensor(x) for x in init_data]
+                item_1 = paddle.static.data(
+                    name='item_1', shape=[2, 3], dtype="float32"
                 )
-                array.append(x)
+                item_2 = paddle.static.data(
+                    name='item_2', shape=[3, 3], dtype="float32"
+                )
+                item_3 = paddle.static.data(
+                    name='item_3', shape=[4, 3], dtype="float32"
+                )
+
+                item_1_np = np.random.random(size=[2, 3]).astype('float32')
+                item_2_np = np.random.random(size=[3, 3]).astype('float32')
+                item_3_np = np.random.random(size=[4, 3]).astype('float32')
+
+                array = paddle.tensor.create_array('float32')
+                array.append(item_1)
+                array.append(item_2)
+                array.append(item_3)
+
+                sliced_item_1 = array[0]
+                poped_item_3 = array.pop()
+                final_length = paddle.tensor.array_length(array)
+                (
+                    sliced_item_1_out,
+                    poped_item_3_out,
+                    final_length_out,
+                ) = exe.run(
+                    main_program,
+                    feed={
+                        "item_1": item_1_np,
+                        "item_2": item_2_np,
+                        "item_3": item_3_np,
+                    },
+                    fetch_list=[sliced_item_1, poped_item_3, final_length],
+                )
+
+                np.testing.assert_array_equal(sliced_item_1_out, item_1_np)
+                np.testing.assert_array_equal(poped_item_3_out, item_3_np)
+                np.testing.assert_array_equal(final_length_out.item(), 2)
+
                 with self.assertRaises(TypeError):
-                    x.append(array)
+                    item_1.append(array)
 
     def test_neg(self):
         x_np = np.random.uniform(-1, 1, [10, 1024]).astype(np.float32)
@@ -533,6 +563,8 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     int(x)
                 with self.assertRaises(TypeError):
                     float(x)
+                with self.assertRaises(TypeError):
+                    bool(x)
 
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
@@ -610,6 +642,32 @@ class TestMathOpPatchesPir(unittest.TestCase):
             self.assertTrue(inspect.ismethod(a.acosh_))
             self.assertTrue(inspect.ismethod(a.asinh_))
             self.assertTrue(inspect.ismethod(a.diag))
+
+    def test_binary_op_with_scalar(self):
+        with paddle.pir_utils.IrGuard():
+            main_program, exe, program_guard = new_program()
+            with program_guard:
+                x_np = np.array(10, dtype=np.int32)
+                x = paddle.static.data(name='x', shape=[], dtype="int32")
+                y1 = x / 2
+                y2 = x / 5.0
+                y3 = x // 2
+                y4 = x * 8.0
+                self.assertEqual(y1.dtype, paddle.pir.core.DataType.FLOAT32)
+                self.assertEqual(y2.dtype, paddle.pir.core.DataType.FLOAT32)
+                self.assertEqual(y3.dtype, paddle.pir.core.DataType.INT32)
+                self.assertEqual(y4.dtype, paddle.pir.core.DataType.FLOAT32)
+                (y1_out, y2_out, y3_out, y4_out) = exe.run(
+                    main_program,
+                    feed={
+                        "x": x_np,
+                    },
+                    fetch_list=[y1, y2, y3, y4],
+                )
+                np.testing.assert_allclose(x_np / 2, y1_out, rtol=1e-05)
+                np.testing.assert_allclose(x_np / 5.0, y2_out, rtol=1e-05)
+                np.testing.assert_allclose(x_np // 2, y3_out, atol=1e-05)
+                np.testing.assert_allclose(x_np * 8.0, y4_out, rtol=1e-05)
 
 
 if __name__ == '__main__':

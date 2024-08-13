@@ -56,8 +56,8 @@ TEST(Analyzer_int8_image_classification, quantization) {
         ::paddle::inference::GetWarmupData(input_slots_all);
 
     // INT8 implies FC oneDNN passes to be used
-    q_cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-    q_cfg.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
+    q_cfg.pass_builder()->AppendPass("fc_onednn_pass");
+    q_cfg.pass_builder()->AppendPass("fc_act_onednn_fuse_pass");
 
     // configure quantizer
     q_cfg.EnableMkldnnQuantizer();

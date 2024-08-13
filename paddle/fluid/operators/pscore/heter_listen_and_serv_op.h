@@ -31,7 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace distributed {
@@ -81,7 +81,7 @@ class HeterListenAndServOp : public framework::OperatorBase {
   void Stop() override;
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override;
+               const phi::Place& dev_place) const override;
 
  protected:
   mutable std::shared_ptr<paddle::distributed::HeterServer> heter_server_;

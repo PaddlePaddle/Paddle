@@ -11,13 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
+from typing import TYPE_CHECKING
 
-from paddle.nn import Layer
-
-from .config import QuantConfig
 from .quantize import Quantization
+
+if TYPE_CHECKING:
+    from paddle.nn import Layer
+
+    from .config import QuantConfig
 
 
 class QAT(Quantization):
@@ -36,10 +40,10 @@ class QAT(Quantization):
             >>> qat = QAT(q_config)
     """
 
-    def __init__(self, config: QuantConfig):
+    def __init__(self, config: QuantConfig) -> None:
         super().__init__(config)
 
-    def quantize(self, model: Layer, inplace=False):
+    def quantize(self, model: Layer, inplace: bool = False) -> Layer:
         r"""
         Create a model for quantization-aware training.
 
@@ -110,7 +114,7 @@ class QAT(Quantization):
         """
         assert (
             model.training
-        ), "Quantization-Aware Training shoud work on training models. Please set training mode by model.train()."
+        ), "Quantization-Aware Training should work on training models. Please set training mode by model.train()."
         _model = model if inplace else copy.deepcopy(model)
         self._config._specify(_model)
         self._convert_to_quant_layers(_model, self._config)

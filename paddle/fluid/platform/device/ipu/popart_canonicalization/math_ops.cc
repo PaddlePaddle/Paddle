@@ -130,7 +130,7 @@ Node *matmul_handler(Graph *graph, Node *node) {
     } else if (rank == 4) {
       perm = std::vector<int64_t>{0, 1, 3, 2};
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "op matmul with input rank == %d", rank));
     }
     return perm;
@@ -392,7 +392,7 @@ Node *matmul_v2_handler(Graph *graph, Node *node) {
     } else if (rank == 4) {
       perm = std::vector<int64_t>{0, 1, 3, 2};
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "op matmul with input rank == %d", rank));
     }
     return perm;

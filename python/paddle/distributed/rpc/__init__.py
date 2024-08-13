@@ -13,13 +13,13 @@
 # limitations under the License.
 
 from paddle.distributed.rpc.rpc import (
-    init_rpc,
-    shutdown,
-    rpc_async,
-    rpc_sync,
-    get_worker_info,
     get_all_worker_infos,
     get_current_worker_info,
+    get_worker_info,
+    init_rpc,
+    rpc_async,
+    rpc_sync,
+    shutdown,
 )
 
 __all__ = [

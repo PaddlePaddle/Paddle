@@ -15,9 +15,11 @@
 # Find the CBlas and lapack libraries
 #
 # It will search MKLML, OpenBlas, reference-cblas, extern-openblas in order.
+# On APPLE, accelerate framework (apple's blas implementation) will be
+# used, if applicable.
 #
 # If any cblas implementation found, the following variable will be set.
-#    CBLAS_PROVIDER  # one of MKLML, OPENBLAS, REFERENCE
+#    CBLAS_PROVIDER  # one of MKLML, ACCELERATE, OPENBLAS, REFERENCE
 #    CBLAS_INC_DIR   # the include directory for cblas.
 #    CBLAS_LIBS      # a list of libraries should be linked by paddle.
 #                    # Each library should be full path to object file.
@@ -43,6 +45,24 @@ if(WITH_MKLML)
 
   message(STATUS "Found cblas and lapack in MKLML "
                  "(include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+endif()
+
+## find accelerate on apple
+if(APPLE AND NOT DEFINED CBLAS_PROVIDER)
+  find_library(ACCELERATE_FRAMEWORK Accelerate)
+  if(ACCELERATE_FRAMEWORK)
+    message(STATUS "Accelerate framework found " "${ACCELERATE_FRAMEWORK}")
+
+    set(CBLAS_PROVIDER ACCELERATE)
+    # no need to setup include dir if it's accelerate
+    # set(CBLAS_INC_DIR "")
+    set(CBLAS_LIBRARIES ${ACCELERATE_FRAMEWORK})
+
+    add_definitions(-DPADDLE_USE_ACCELERATE)
+    add_definitions(-DLAPACK_FOUND)
+  else()
+    message(WARNING "Accelerate framework not found")
+  endif()
 endif()
 
 ## Then find openblas.

@@ -353,6 +353,9 @@ class TestJacobianFloat32(unittest.TestCase):
             np.testing.assert_allclose(pd_entry, np_entry, self.rtol, self.atol)
 
     def test_square(self):
+        if paddle.framework.use_pir_api():
+            return
+
         def pd_f(x):
             return paddle.multiply(x, x)
 

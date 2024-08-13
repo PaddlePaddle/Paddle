@@ -127,7 +127,7 @@ void GesvdjBatched<float>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -207,7 +207,7 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver SVD is not zero. [%d]", i, error_info));
   }
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -263,7 +263,7 @@ void SyevjBatched<float>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver eigenvalues is not zero. [%d]",
             i,
             error_info));
@@ -318,7 +318,7 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
     PADDLE_ENFORCE_EQ(
         error_info,
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "For batch [%d]: CUSolver eigenvalues is not zero. [%d]",
             i,
             error_info));
@@ -340,18 +340,18 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   auto dim_out = out->dims();
   int rows = dim_x[dim_x.size() - 2];
   int cols = dim_x[dim_x.size() - 1];
-  PADDLE_ENFORCE_NE(
-      rows,
-      0,
-      phi::errors::InvalidArgument("The input Tensor x's shape[-2] should not "
-                                   "be 0, but shape is %s now.",
-                                   dim_x));
-  PADDLE_ENFORCE_NE(
-      cols,
-      0,
-      phi::errors::InvalidArgument("The input Tensor x's shape[-1] should not "
-                                   "be 0, but shape is %s now.",
-                                   dim_x));
+  PADDLE_ENFORCE_NE(rows,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The input Tensor x's shape[-2] should not "
+                        "be 0, but shape is %s now.",
+                        dim_x));
+  PADDLE_ENFORCE_NE(cols,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The input Tensor x's shape[-1] should not "
+                        "be 0, but shape is %s now.",
+                        dim_x));
   int k = std::min(rows, cols);
   auto numel = x.numel();
   int batches = numel / (rows * cols);
@@ -361,7 +361,7 @@ void MatrixRankTolKernel(const Context& dev_ctx,
     rtol_T = std::numeric_limits<T>::epsilon() * std::max(rows, cols);
   }
 
-  // Must Copy X once, because the gesvdj will destory the content when exit.
+  // Must Copy X once, because the gesvdj will destroy the content when exit.
   DenseTensor x_tmp;
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
   auto info = phi::memory_utils::Alloc(

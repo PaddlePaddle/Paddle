@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,17 +30,16 @@ class TensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
             data = paddle.static.data(
                 name="data", shape=[-1, 4, 4, 32, 32], dtype="float32"
             )
-            conv_out = paddle.static.nn.conv3d_transpose(
-                input=data,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
+            conv_out = paddle.nn.Conv3DTranspose(
+                in_channels=4,
+                out_channels=self.conv_num_filters,
+                kernel_size=self.conv_filter_size,
                 groups=self.conv_groups,
                 padding=self.conv_padding,
                 bias_attr=False,
-                use_cudnn=self.use_cudnn,
                 stride=1,
-                act=None,
-            )
+                data_format="NCDHW",
+            )(data)
         self.feeds = {
             "data": np.random.random([1, 4, 4, 32, 32]).astype("float32"),
         }
@@ -97,17 +96,16 @@ class DynamicShapeTensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, -1, -1, -1], dtype="float32"
             )
-            conv_out = paddle.static.nn.conv3d_transpose(
-                input=data,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
+            conv_out = paddle.nn.Conv3DTranspose(
+                in_channels=6,
+                out_channels=self.conv_num_filters,
+                kernel_size=self.conv_filter_size,
                 groups=self.conv_groups,
                 padding=self.conv_padding,
                 bias_attr=False,
-                use_cudnn=self.use_cudnn,
                 stride=self.stride,
-                act=None,
-            )
+                data_format="NCDHW",
+            )(data)
         self.feeds = {
             "data": np.random.random([1, 6, 32, 32, 8]).astype("float32"),
         }

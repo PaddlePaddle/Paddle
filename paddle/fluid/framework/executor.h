@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {
@@ -60,10 +60,10 @@ struct TEST_API ExecutorPrepareContext {
 class TEST_API Executor {
  public:
   // TODO(dzhwinter) : Do not rely on this function, it will be removed
-  explicit Executor(const platform::DeviceContext& device)
+  explicit Executor(const phi::DeviceContext& device)
       : Executor(device.GetPlace()) {}
 
-  explicit Executor(const platform::Place& place);
+  explicit Executor(const phi::Place& place);
 
   ~Executor();
   /*
@@ -157,10 +157,10 @@ class TEST_API Executor {
 
   void ReleaseTrainer(std::shared_ptr<TrainerBase> trainer);
 
-  const platform::Place GetPlace() const { return place_; }
+  const phi::Place GetPlace() const { return place_; }
 
  private:
-  const platform::Place place_;
+  const phi::Place place_;
 };
 
 }  // namespace framework

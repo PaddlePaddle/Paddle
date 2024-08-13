@@ -22,12 +22,14 @@ namespace phi {
 
 template <typename T, typename Context>
 void FlattenGradKernel(const Context& dev_ctx,
-                       const DenseTensor& xshape,
+                       const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
-  auto xshape_dims = xshape.dims();
+  // NOTE: [Why not to use x.dims() ?]
+  // Because inplace strategy is different between old IR and PIR,
+  // we need fix it into x.dims() after cleaning old IR system.
+  auto x_dims = x_grad->dims();
   dev_ctx.Alloc(x_grad, out_grad.dtype());
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
   phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x_dims);
 }
@@ -69,6 +71,7 @@ PD_REGISTER_KERNEL(flatten_grad,
                    phi::FlattenGradKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int8_t,
                    int,
                    int64_t) {}

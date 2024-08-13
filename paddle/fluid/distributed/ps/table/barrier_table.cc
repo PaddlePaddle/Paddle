@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/table/common_table.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int32_t BarrierTable::Initialize() {
   auto trainers = _config.common().trainer_num();
@@ -74,5 +73,4 @@ int32_t BarrierTable::SetTableMap(
   return 0;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

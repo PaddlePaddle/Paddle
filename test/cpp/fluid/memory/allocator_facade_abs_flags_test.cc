@@ -14,17 +14,17 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PD_DECLARE_int64(gpu_allocator_retry_time);
 #endif
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
@@ -33,11 +33,11 @@ namespace allocation {
 //! Run allocate test cases for different places
 void AllocateTestCases() {
   auto &instance = AllocatorFacade::Instance();
-  platform::Place place;
+  phi::Place place;
   size_t size = 1024;
 
   {
-    place = platform::CPUPlace();
+    place = phi::CPUPlace();
     size = 1024;
     auto cpu_allocation = instance.Alloc(place, size);
     ASSERT_NE(cpu_allocation, nullptr);
@@ -48,7 +48,7 @@ void AllocateTestCases() {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   {
-    place = platform::CUDAPlace(0);
+    place = phi::GPUPlace(0);
     size = 1024;
     auto gpu_allocation = instance.Alloc(place, size);
     ASSERT_NE(gpu_allocation, nullptr);
@@ -59,7 +59,7 @@ void AllocateTestCases() {
 
   {
     // Allocate 2GB gpu memory
-    place = platform::CUDAPlace(0);
+    place = phi::GPUPlace(0);
     size = 2 * static_cast<size_t>(1 << 30);
     auto gpu_allocation = instance.Alloc(place, size);
     ASSERT_NE(gpu_allocation, nullptr);
@@ -69,10 +69,10 @@ void AllocateTestCases() {
   }
 
   {
-    place = platform::CUDAPinnedPlace();
+    place = phi::GPUPinnedPlace();
     size = (1 << 20);
     auto cuda_pinned_allocation =
-        instance.Alloc(platform::CUDAPinnedPlace(), 1 << 20);
+        instance.Alloc(phi::GPUPinnedPlace(), 1 << 20);
     ASSERT_NE(cuda_pinned_allocation, nullptr);
     ASSERT_NE(cuda_pinned_allocation->ptr(), nullptr);
     ASSERT_EQ(cuda_pinned_allocation->place(), place);

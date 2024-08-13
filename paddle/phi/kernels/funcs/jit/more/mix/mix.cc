@@ -17,10 +17,7 @@
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace more {
-namespace mix {
+namespace phi::jit::more::mix {
 
 using CPUPlace = phi::CPUPlace;
 
@@ -59,7 +56,7 @@ void (*getActFunc(KernelType type, int d))(const T*, T*, int) {  // NOLINT
   } else if (type == kVIdentity) {
     return KernelFuncs<VIdentityTuple<T>, CPUPlace>::Cache().At(d);
   }
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Act JIT kernel do not support type: %s", type));
   return nullptr;
 }
@@ -196,10 +193,7 @@ bool GRUHtPart1Kernel::CanBeUsed(const gru_attr_t& attr) const { return true; }
 
 bool GRUHtPart2Kernel::CanBeUsed(const gru_attr_t& attr) const { return true; }
 
-}  // namespace mix
-}  // namespace more
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::more::mix
 
 namespace mix = phi::jit::more::mix;
 

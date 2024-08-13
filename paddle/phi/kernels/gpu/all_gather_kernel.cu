@@ -73,7 +73,9 @@ PD_REGISTER_KERNEL(all_gather,
                    int64_t,
                    bool,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #else
 PD_REGISTER_KERNEL(all_gather,
                    GPU,
@@ -87,5 +89,7 @@ PD_REGISTER_KERNEL(all_gather,
                    int16_t,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #endif

@@ -109,14 +109,14 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(const phi::GPUContext& context,
                                             int vec_size = 1) {
   PADDLE_ENFORCE_GE(numel,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "numel is expected to be greater than or equal 0,"
                         " but received %d.",
                         numel));
   PADDLE_ENFORCE_GE(
       vec_size,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "vec_size is expected greater than 0, but received %d.", vec_size));
   // Get compute_capability
   const int capability = context.GetComputeCapability();
@@ -166,15 +166,15 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(const phi::GPUContext& context,
   PADDLE_ENFORCE_GT(
       x_dim,
       0,
-      phi::errors::InvalidArgument("x dim number should greater than 0,"
-                                   " but received value is: %d",
-                                   x_dim));
+      common::errors::InvalidArgument("x dim number should greater than 0,"
+                                      " but received value is: %d",
+                                      x_dim));
   PADDLE_ENFORCE_GT(
       y_dim,
       0,
-      phi::errors::InvalidArgument("y dim number should greater than 0,"
-                                   " but received value is: %d",
-                                   y_dim));
+      common::errors::InvalidArgument("y dim number should greater than 0,"
+                                      " but received value is: %d",
+                                      y_dim));
 
   const int kThreadsPerBlock = 256;
   int block_cols = std::min<int64_t>(x_dim, kThreadsPerBlock);
@@ -216,10 +216,13 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
   int block_y = std::min(GetLastPow2(height), max_threads / block_x);
   int block_z = std::min(num_img, max_threads / block_x / block_y);
 
-  std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-  int grid_x = std::min(max_grid_dim[0], DivUp<int>(width, block_x));
-  int grid_y = std::min(max_grid_dim[1], DivUp<int>(height, block_y));
-  int grid_z = std::min(max_grid_dim[2], DivUp<int>(num_img, block_z * 4));
+  std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+  unsigned int grid_x =
+      std::min(max_grid_dim[0], DivUp<unsigned int>(width, block_x));
+  unsigned int grid_y =
+      std::min(max_grid_dim[1], DivUp<unsigned int>(height, block_y));
+  unsigned int grid_z =
+      std::min(max_grid_dim[2], DivUp<unsigned int>(num_img, block_z * 4));
 
   const int capability = context.GetComputeCapability();
   GpuLaunchConfig config;

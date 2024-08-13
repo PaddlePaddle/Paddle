@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import atexit
 import collections
 import glob
@@ -156,7 +158,7 @@ def bootstrap_context():
     bdist_egg.write_stub = origin_write_stub
 
 
-def load_op_meta_info_and_register_op(lib_filename):
+def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
     core.load_op_meta_info_and_register_op(lib_filename)
     return OpProtoHolder.instance().update_op_proto()
 
@@ -305,9 +307,7 @@ class VersionManager:
                 md5 = combine_hash(md5, tuple(flat_elem))
             else:
                 raise RuntimeError(
-                    "Support types with list, tuple and dict, but received {} with {}.".format(
-                        type(elem), elem
-                    )
+                    f"Support types with list, tuple and dict, but received {type(elem)} with {elem}."
                 )
 
         return md5.hexdigest()
@@ -331,7 +331,7 @@ def clean_object_if_change_cflags(so_path, extension):
     """
     If already compiling source before, we should check whether cflags
     have changed and delete the built object to re-compile the source
-    even though source file content keeps unchanaged.
+    even though source file content keeps unchanged.
     """
 
     def serialize(path, version_info):
@@ -362,9 +362,7 @@ def clean_object_if_change_cflags(so_path, extension):
         # delete shared library file if version is changed to re-compile it.
         if so_version is not None and so_version != versioner.version:
             log_v(
-                "Re-Compiling {}, because specified cflags have been changed. New signature {} has been saved into {}.".format(
-                    so_name, versioner.version, version_file
-                )
+                f"Re-Compiling {so_name}, because specified cflags have been changed. New signature {versioner.version} has been saved into {version_file}."
             )
             os.remove(so_path)
             # update new version information
@@ -385,26 +383,25 @@ def prepare_unix_cudaflags(cflags):
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
     if core.is_compiled_with_rocm():
-        cflags = (
-            COMMON_HIPCC_FLAGS
-            + ['-Xcompiler', '-fPIC']
-            + cflags
-            + get_rocm_arch_flags(cflags)
-        )
+        cflags = [
+            *COMMON_HIPCC_FLAGS,
+            '-Xcompiler',
+            '-fPIC',
+            *cflags,
+            *get_rocm_arch_flags(cflags),
+        ]
     else:
-        cflags = (
-            COMMON_NVCC_FLAGS
-            + [
-                '-ccbin',
-                'cc',
-                '-Xcompiler',
-                '-fPIC',
-                '--expt-relaxed-constexpr',
-                '-DNVCC',
-            ]
-            + cflags
-            + get_cuda_arch_flags(cflags)
-        )
+        cflags = [
+            *COMMON_NVCC_FLAGS,
+            '-ccbin',
+            'cc',
+            '-Xcompiler',
+            '-fPIC',
+            '--expt-relaxed-constexpr',
+            '-DNVCC',
+            *cflags,
+            *get_cuda_arch_flags(cflags),
+        ]
 
     return cflags
 
@@ -413,18 +410,18 @@ def prepare_win_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + ['-w'] + cflags + get_cuda_arch_flags(cflags)
+    cflags = [*COMMON_NVCC_FLAGS, '-w', *cflags, *get_cuda_arch_flags(cflags)]
 
     return cflags
 
 
-def add_std_without_repeat(cflags, compiler_type, use_std14=False):
+def add_std_without_repeat(cflags, compiler_type, use_std17=False):
     """
-    Append -std=c++11/14 in cflags if without specific it before.
+    Append -std=c++14/17 in cflags if without specific it before.
     """
     cpp_flag_prefix = '/std:' if compiler_type == 'msvc' else '-std='
     if not any(cpp_flag_prefix in flag for flag in cflags):
-        suffix = 'c++14' if use_std14 else 'c++11'
+        suffix = 'c++17' if use_std17 else 'c++14'
         cpp_flag = cpp_flag_prefix + suffix
         cflags.append(cpp_flag)
 
@@ -444,7 +441,13 @@ def get_rocm_arch_flags(cflags):
     """
     For ROCm platform, amdgpu target should be added for HIPCC.
     """
-    cflags = cflags + ['-fno-gpu-rdc', '-amdgpu-target=gfx906']
+    cflags = [
+        *cflags,
+        '-fno-gpu-rdc',
+        '-amdgpu-target=gfx906',
+        '-amdgpu-target=gfx926',
+        '-amdgpu-target=gfx928',
+    ]
     return cflags
 
 
@@ -516,7 +519,7 @@ def _get_include_dirs_when_compiling(compile_dir):
         include_dirs_file
     ), f"File {include_dirs_file} does not exist"
     with open(include_dirs_file, 'r') as f:
-        include_dirs = [line.strip() for line in f.readlines() if line.strip()]
+        include_dirs = [line.strip() for line in f if line.strip()]
 
     extra_dirs = ['paddle/base/platform']
     all_include_dirs = list(include_dirs)
@@ -630,13 +633,8 @@ def create_sym_link_if_not_exist():
                 os.symlink(core_path, new_dll_core_path)
             except Exception:
                 warnings.warn(
-                    "Failed to create soft symbol link for {}.\n You can run prompt as administrator and execute the "
-                    "following command manually: `mklink {} {}`. Now it will create hard link for {} trickly.".format(
-                        raw_core_name,
-                        new_dll_core_path,
-                        core_path,
-                        raw_core_name,
-                    )
+                    f"Failed to create soft symbol link for {raw_core_name}.\n You can run prompt as administrator and execute the "
+                    f"following command manually: `mklink {new_dll_core_path} {core_path}`. Now it will create hard link for {raw_core_name} trickly."
                 )
                 run_cmd(f'mklink /H {new_dll_core_path} {core_path}')
         # libpaddle with lib suffix
@@ -652,9 +650,7 @@ def create_sym_link_if_not_exist():
                 assert os.path.exists(new_lib_core_path)
             except Exception:
                 raise RuntimeError(
-                    "Failed to create soft symbol link for {}.\n Please execute the following command manually: `ln -s {} {}`".format(
-                        raw_core_name, core_path, new_lib_core_path
-                    )
+                    f"Failed to create soft symbol link for {raw_core_name}.\n Please execute the following command manually: `ln -s {core_path} {new_lib_core_path}`"
                 )
 
         # libpaddle without suffix
@@ -893,7 +889,7 @@ def is_cuda_file(path):
     return items[-1] in cuda_suffix
 
 
-def get_build_directory(verbose=False):
+def get_build_directory(verbose: bool = False) -> str:
     """
     Return paddle extension root directory to put shared library. It could be specified by
     ``export PADDLE_EXTENSION_DIR=XXX`` . If not set, ``~/.cache/paddle_extension`` will be used
@@ -924,9 +920,7 @@ def get_build_directory(verbose=False):
             )
 
         log_v(
-            "$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".format(
-                root_extensions_directory
-            ),
+            f"$PADDLE_EXTENSION_DIR is not set, using path: {root_extensions_directory} by default.",
             verbose,
         )
 
@@ -936,9 +930,9 @@ def get_build_directory(verbose=False):
     return root_extensions_directory
 
 
-def parse_op_info(op_name):
+def parse_op_info(op_name: str) -> tuple[list[str], list[str], list[str]]:
     """
-    Parse input names and outpus detail information from registered custom op
+    Parse input names and outputs detail information from registered custom op
     from OpInfoMap.
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
@@ -1164,15 +1158,15 @@ def _custom_api_content(op_name):
     )
     API_TEMPLATE = textwrap.dedent(
         """
-        import paddle.base.core as core
-        from paddle.framework import in_dynamic_mode
+        from paddle import _C_ops
+        from paddle.framework import in_dynamic_or_pir_mode
         from paddle.base.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
-            if in_dynamic_mode():
-                outs = core.eager._run_custom_op("{op_name}", {params_list})
+            if in_dynamic_or_pir_mode():
+                outs = _C_ops._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
             else:
                 {static_content}
@@ -1222,21 +1216,25 @@ def _get_api_inputs_str(op_name):
     # input name by `@`, and only use first substr as argument
     params_list = ','.join([p.split("@")[0].lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
-    ins_map = "{%s}" % ','.join(
-        [
-            "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
-            for in_name in in_names
-        ]
+    ins_map = "{{{}}}".format(
+        ','.join(
+            [
+                "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
+                for in_name in in_names
+            ]
+        )
     )
     # e.g: {'num': n}
-    attrs_map = "{%s}" % ",".join(
-        [
-            "'{}' : {}".format(attr_name, attr_name.split("@")[0].lower())
-            for attr_name in attr_names
-        ]
+    attrs_map = "{{{}}}".format(
+        ",".join(
+            [
+                "'{}' : {}".format(attr_name, attr_name.split("@")[0].lower())
+                for attr_name in attr_names
+            ]
+        )
     )
     # e.g: ['Out', 'Index']
-    outs_list = "[%s]" % ','.join([f"'{name}'" for name in out_names])
+    outs_list = "[{}]".format(','.join([f"'{name}'" for name in out_names]))
 
     inplace_reverse_idx = core.eager._get_custom_operator_inplace_map(op_name)
 
@@ -1326,6 +1324,7 @@ def _jit_compile(file_path, verbose=False):
     """
     Build shared library in subprocess
     """
+    assert os.path.exists(file_path)
     ext_dir = os.path.dirname(file_path)
     setup_file = os.path.basename(file_path)
 
@@ -1356,7 +1355,7 @@ def _jit_compile(file_path, verbose=False):
 
 def parse_op_name_from(sources):
     """
-    Parse registerring custom op name from sources.
+    Parse registering custom op name from sources.
     """
 
     def regex(content):

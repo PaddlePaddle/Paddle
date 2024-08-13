@@ -20,13 +20,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 /*
- * This pass is to simplify the Grpah, it may contains:
- * - replace comlicated op with basic op
+ * This pass is to simplify the Graph, it may contains:
+ * - replace complicated op with basic op
  * - remove some unnecessary op
  *
  * In the current implementation, it supports:
@@ -237,9 +235,7 @@ void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op,
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(simplify_with_basic_ops_pass,
               paddle::framework::ir::SimplifyWithBasicOpsPass);

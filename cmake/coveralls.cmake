@@ -60,8 +60,8 @@ endfunction()
 
 if(WITH_COVERAGE)
   if(WITH_INCREMENTAL_COVERAGE)
-    # if *.h changed, generate coverage report totaly.
-    # if pybind.cc changed, generate coverage report totaly.
+    # if *.h changed, generate coverage report totally.
+    # if pybind.cc changed, generate coverage report totally.
     # Because if pybind.cc add '-g -O0 -fprofile-arcs -ftest-coverage' only, some testcase will fail.
     if((NOT ("$ENV{PADDLE_GIT_DIFF_H_FILE}" STREQUAL ""))
        OR ("$ENV{PADDLE_GIT_DIFF_CC_FILE}" MATCHES "pybind.cc"))

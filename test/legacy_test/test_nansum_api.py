@@ -136,7 +136,7 @@ class API_Test_Nansum(unittest.TestCase):
             [[float('nan'), 3, 5, 9], [1, 2, float('-nan'), 7]]
         ).astype(np.float32)
         with base.dygraph.guard():
-            inputs = base.dygraph.to_variable(x)
+            inputs = paddle.to_tensor(x)
             out = paddle.nansum(inputs)
             out_ref = np.array([27]).astype(np.float32)
 

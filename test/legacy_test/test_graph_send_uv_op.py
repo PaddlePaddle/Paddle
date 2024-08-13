@@ -190,9 +190,7 @@ class API_GeometricSendUVTest(unittest.TestCase):
                 paddle_res,
                 rtol=1e-05,
                 atol=1e-06,
-                err_msg='two value is                {}\n{}, check diff!'.format(
-                    np_res, paddle_res
-                ),
+                err_msg=f'two value is                {np_res}\n{paddle_res}, check diff!',
             )
 
     @test_with_pir_api
@@ -260,9 +258,7 @@ class API_GeometricSendUVTest(unittest.TestCase):
                     paddle_res,
                     rtol=1e-05,
                     atol=1e-06,
-                    err_msg='two value is                    {}\n{}, check diff!'.format(
-                        np_res, paddle_res
-                    ),
+                    err_msg=f'two value is                    {np_res}\n{paddle_res}, check diff!',
                 )
 
 

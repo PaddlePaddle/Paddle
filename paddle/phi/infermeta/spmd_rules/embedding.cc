@@ -23,15 +23,14 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-SpmdInfo EmbeddingInferSpmdUnspportVocabParallel(const DistMetaTensor& x,
-                                                 const DistMetaTensor& weight,
-                                                 int padding_idx,
-                                                 bool sparse) {
+SpmdInfo EmbeddingInferSpmdUnsupportVocabParallel(const DistMetaTensor& x,
+                                                  const DistMetaTensor& weight,
+                                                  int padding_idx,
+                                                  bool sparse) {
   DistMetaTensor w(weight.dims(), weight.dist_attr());
   if (weight.dist_attr().dims_mapping()[0] >= 0) {
     auto w_dims_mapping = weight.dist_attr().dims_mapping();
@@ -61,23 +60,23 @@ SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
   PADDLE_ENFORCE_EQ(
       weight_ndim,
       weight_dims_mapping.size(),
-      phi::errors::InvalidArgument("Tensor W's tensor rank [%d] and W's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   weight_ndim,
-                                   weight_dims_mapping.size()));
-  PADDLE_ENFORCE_EQ(
-      weight_ndim,
-      2,
-      phi::errors::InvalidArgument("Embedding table should have TWO dimension, "
-                                   "but got a tensor with [%d] dimension.",
-                                   weight_ndim));
+      common::errors::InvalidArgument("Tensor W's tensor rank [%d] and W's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      weight_ndim,
+                                      weight_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(weight_ndim,
+                    2,
+                    common::errors::InvalidArgument(
+                        "Embedding table should have TWO dimension, "
+                        "but got a tensor with [%d] dimension.",
+                        weight_ndim));
 
   // determine parallel mode
   int64_t weight_row_axis_mapping = weight_dims_mapping[0];
@@ -88,7 +87,7 @@ SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
     PADDLE_ENFORCE_EQ(
         weight_row_axis_mapping,
         -1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Row-wise parallel of embedding table does NOT support Padding "
             "Idx, "
             "but got padding_idx [%d] and row axis of embedding table is "
@@ -102,7 +101,7 @@ SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
     PADDLE_ENFORCE_EQ(
         weight_row_axis_mapping,
         -1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Row-wise parallel of embedding table does NOT support Sparse, but "
             "row axis of embedding table is sharded by mesh dimension [%d].",
             weight_row_axis_mapping));
@@ -123,7 +122,7 @@ SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
   std::string weight_axes = "jk";
   std::string out_axes = x_axes + "k";
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   auto axis_to_dim_map = ShardingMergeForTensors(
       {{x_axes, x_dims_mapping}, {weight_axes, weight_dims_mapping}}, false);
@@ -181,7 +180,7 @@ SpmdInfo EmbeddingInferSpmdReverse(const DistMetaTensor& x,
 
   PADDLE_ENFORCE_EQ(x_ndim,
                     out_ndim - 1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "There should be x_ndim + 1 = out_ndim in Embedding, "
                         "but got x_ndim: [%d] and out_ndim: [%d].",
                         x_ndim,
@@ -196,7 +195,7 @@ SpmdInfo EmbeddingInferSpmdReverse(const DistMetaTensor& x,
   std::string weight_axes = "jk";
   std::string out_axes = x_axes + "k";
 
-  // step2: Sharding Propogation
+  // step2: Sharding Propagation
   // should not use input dims mapping for backward sharding merge
   auto axis_to_dim_map =
       ShardingMergeForTensors({{out_axes, out_dims_mapping}}, false);
@@ -232,14 +231,14 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
                                 bool sparse) {
   PADDLE_ENFORCE_EQ(out_grad.dims().size(),
                     out_grad.dist_attr().dims_mapping().size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor out_grad's rank [%d] and out_grad's "
                         "dims_mapping size [%d] are not matched.",
                         out_grad.dims(),
                         out_grad.dist_attr().dims_mapping().size()));
 
   if (sparse) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "EmbeddingGradInferSpmd does't support sparse currently."));
   }
 
@@ -280,7 +279,7 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   std::string out_grad_dst_axes = t0_axes.substr(0, t0_axes.length() - 1) + "k";
   std::string w_grad_axes = t0_axes.substr(t0_axes.length() - 1, 1) + "k";
 
-  // Step2.2: Sharding Propogation
+  // Step2.2: Sharding Propagation
   // Step2.2.1: merge input shardings
   auto axis_to_dim_map = ShardingMergeForTensors(
       {{t0_axes, t0.dist_attr().dims_mapping()},
@@ -308,7 +307,7 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   w_grad_dist_attr.set_partial_status(partial_on_dims);
 
   // Step2.3: Update inputs info.
-  // NOTE: Reshard happend on intemediate operators must be ensure propagated
+  // NOTE: Reshard happened on intermediate operators must be ensure propagated
   // back to first inputs.
   t0 = DistMetaTensor(t0.dims(), t0_dist_attr);
   const auto& t0_dims = t0.dist_attr().dims_mapping();
@@ -345,5 +344,4 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
   return {{x_dst.dist_attr(), w_dst.dist_attr(), out_grad_dst.dist_attr()},
           {w_grad.dist_attr()}};
 }
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

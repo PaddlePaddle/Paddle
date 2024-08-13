@@ -98,18 +98,18 @@ class CommOpCostNode(CostNode):
         # should get from `cluster`
         BANDWIDTH = 32 * 1024 / 1000  # MB/ms, V100 PCIe
         num_ranks = len(self.ranks)
-        comm_volumn = np.prod(self.input_shape) * 4
+        comm_volume = np.prod(self.input_shape) * 4
 
         if 'allreduce' in self.comm_type:
-            self._cost = comm_volumn / (
+            self._cost = comm_volume / (
                 BANDWIDTH * num_ranks / (2 * (num_ranks - 1))
             )
         elif 'gather' in self.comm_type:
-            self._cost = comm_volumn / (BANDWIDTH * num_ranks / (num_ranks - 1))
+            self._cost = comm_volume / (BANDWIDTH * num_ranks / (num_ranks - 1))
         elif 'broadcast' in self.comm_type:
-            self._cost = comm_volumn / BANDWIDTH
+            self._cost = comm_volume / BANDWIDTH
         elif 'send' in self.comm_type or 'recv' in self.comm_type:
-            self._cost = comm_volumn / BANDWIDTH
+            self._cost = comm_volume / BANDWIDTH
         else:
             self._cost = 0
 

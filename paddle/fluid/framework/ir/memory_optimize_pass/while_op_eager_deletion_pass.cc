@@ -55,11 +55,11 @@ class WhileOpEagerDeletionPass : public ir::Pass {
       }
     }
     if (graph->IsConstructedByPartialProgram()) {
-      VLOG(4) << "Is Paritial Program";
+      VLOG(4) << "Is Partial Program";
       PADDLE_ENFORCE_LE(
           target_ops.size(),
           1,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Unsupported multi device if graph is constructed by "
               "partial program."));
       size_t scope_idx = 0;

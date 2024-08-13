@@ -29,8 +29,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindGenerator(py::module* m_ptr) {
   auto& m = *m_ptr;
   py::class_<phi::Generator::GeneratorState,
@@ -72,8 +71,7 @@ void BindGenerator(py::module* m_ptr) {
 
   py::class_<std::mt19937_64>(m, "mt19937_64", "");  // NOLINT
   py::class_<phi::Generator, std::shared_ptr<phi::Generator>>(m, "Generator")
-      .def("__init__",
-           [](phi::Generator& self) { new (&self) phi::Generator(); })
+      .def(py::init([]() { return std::make_unique<phi::Generator>(); }))
       .def("get_state", &phi::Generator::GetState)
       .def("set_state", &phi::Generator::SetState)
       .def("get_state_index", &phi::Generator::GetStateIndex)
@@ -94,5 +92,4 @@ void BindGenerator(py::module* m_ptr) {
   m.def("set_random_seed_generator", &phi::SetRandomSeedGenerator);
   m.def("get_random_seed_generator", &phi::GetRandomSeedGenerator);
 }
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

@@ -22,7 +22,7 @@ from dygraph_to_static_utils import (
 from numpy import append
 
 import paddle
-from paddle.jit.dy2static.utils import FunctionNameLivenessAnalysis
+from paddle.jit.dy2static.transformers.utils import FunctionNameLivenessAnalysis
 from paddle.utils import gast
 
 global_a = []
@@ -40,9 +40,7 @@ class JudgeVisitor(gast.NodeVisitor):
         assert scope.existed_vars() == expected, "Not Equals."
         assert (
             scope.modified_vars() == exp_mod
-        ), "Not Equals in function:{} . expect {} , but get {}".format(
-            node.name, exp_mod, scope.modified_vars()
-        )
+        ), f"Not Equals in function:{node.name} . expect {exp_mod} , but get {scope.modified_vars()}"
         self.generic_visit(node)
 
 
@@ -55,9 +53,7 @@ class JudgePushPopVisitor(gast.NodeVisitor):
         expected = self.pp_var.get(node.name, set())
         assert (
             scope.push_pop_vars == expected
-        ), "Not Equals in function:{} . expect {} , but get {}".format(
-            node.name, expected, scope.push_pop_vars
-        )
+        ), f"Not Equals in function:{node.name} . expect {expected} , but get {scope.push_pop_vars}"
         self.generic_visit(node)
 
 

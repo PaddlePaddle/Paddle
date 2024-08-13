@@ -21,8 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 using phi::distributed::auto_parallel::str_join;
 using phi::distributed::auto_parallel::TensorDistAttrProto;
 
@@ -49,6 +48,7 @@ TensorDistAttr& TensorDistAttr::operator=(const TensorDistAttr& dist_attr) {
   std::swap(this->dynamic_dims_, tmp.dynamic_dims_);
   std::swap(this->annotated_, tmp.annotated_);
   std::swap(this->partial_status_, tmp.partial_status_);
+  std::swap(this->skip_check_mesh_, tmp.skip_check_mesh_);
   return *this;
 }
 
@@ -60,6 +60,7 @@ void TensorDistAttr::copy_from(const TensorDistAttr& dist_attr) {
   set_dynamic_dims(dist_attr.dynamic_dims());
   set_annotated(dist_attr.annotated());
   set_partial_status(dist_attr.partial_status());
+  skip_check_mesh_ = dist_attr.skip_check_mesh();
 }
 
 void TensorDistAttr::set_process_mesh(const ProcessMesh& process_mesh) {
@@ -109,12 +110,12 @@ void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
                                         const ReduceType& type) {
   for (const auto& dim : dims) {
     if (partial_status_.count(dim) != 0) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Trying to Set dim %d as Partial which is already a Partial dim.",
           dim));
     }
     if (std::count(dims_mapping_.begin(), dims_mapping_.end(), dim)) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Trying to Set dim %d as Partial which is a Sharding dim.", dim));
     }
     partial_status_.emplace(dim, type);
@@ -126,7 +127,7 @@ void TensorDistAttr::clean_partial_status() { partial_status_.clear(); }
 void TensorDistAttr::clean_partial_dims(const std::vector<int64_t>& dims) {
   for (const auto& dim : dims) {
     if (partial_status_.count(dim) == 0) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Trying to clean Partial on dim %d but it is not Partial.", dim));
     } else {
       partial_status_.erase(dim);
@@ -289,6 +290,7 @@ std::string TensorDistAttr::to_string() const {
   dist_str += "dims_mappings: [" + str_join(dims_mapping_) + "], ";
   dist_str += "batch_dim: " + std::to_string(batch_dim_) + ", ";
   dist_str += "chunk_id: " + std::to_string(chunk_id_) + ", ";
+  dist_str += "skip_check_mesh: " + std::to_string(skip_check_mesh_) + ", ";
   dist_str += "dynamic_dims: [" + str_join(dynamic_dims_) + "], ";
   dist_str += "annotated: [" + str_join(annotated_) + "], ";
   dist_str += "partial: " + partial_status_string() + ".}";
@@ -445,5 +447,6 @@ bool TensorDistAttr::is_partial(int64_t mesh_axis) const {
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+void TensorDistAttr::set_skip_check_mesh(bool skip) { skip_check_mesh_ = skip; }
+
+}  // namespace phi::distributed

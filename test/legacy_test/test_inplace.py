@@ -351,7 +351,7 @@ class TestDygraphInplaceWithContinuous(TestDygraphInplace):
 
     def test_continuous_inplace_backward(self):
         # The api that only relies on input to calculate the gradient will copy input before
-        # the inpalce calculation, so here supports continuous inpalce backward calculation.
+        # the inplace calculation, so here supports continuous inplace backward calculation.
         grad_var_a, grad_var_a_inplace = 0, 1
         with paddle.base.dygraph.guard():
             var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
@@ -436,6 +436,18 @@ class TestDygraphInplaceFlatten(TestDygraphInplace):
 
     def inplace_api_processing(self, var):
         return var.flatten_()
+
+
+class TestDygraphInplaceFlattenStride(TestDygraphInplace):
+    def init_data(self):
+        self.input_var_numpy = np.random.randn(2, 3, 2)
+        self.dtype = "float32"
+
+    def non_inplace_api_processing(self, var):
+        return var.flatten(0, 1)
+
+    def inplace_api_processing(self, var):
+        return var.flatten_(0, 1)
 
 
 class TestDygraphInplaceScatter(TestDygraphInplace):
@@ -800,7 +812,7 @@ class TestDygraphInplacePowerScalar(TestDygraphInplaceWithContinuous):
         var = paddle.to_tensor(self.input_var_numpy, dtype=self.dtype)
         with self.assertRaisesRegex(
             TypeError,
-            'y must be scalar type, but received: %s ' % (type([2])),
+            f'y must be scalar type, but received: {type([2])} ',
         ):
             paddle.pow_(var, [2])
 
@@ -907,6 +919,70 @@ class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
 
     def non_inplace_api_processing(self, var):
         return paddle.neg(var)
+
+
+class TestDygraphInplaceGammaincc(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (3, 40)
+        self.dtype = "float32"
+        self.input_var_numpy = (
+            np.random.random(self.shape).astype(self.dtype) + 1
+        )
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
+
+    def inplace_api_processing(self, var):
+        return paddle.gammaincc_(var, y=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.gammaincc(var, y=self.y)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
+
+
+class TestDygraphInplaceGammainc(TestDygraphInplace):
+    def init_data(self):
+        self.shape = (3, 40)
+        self.dtype = "float32"
+        self.input_var_numpy = (
+            np.random.random(self.shape).astype(self.dtype) + 1
+        )
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype) + 1
+
+    def inplace_api_processing(self, var):
+        return paddle.gammainc_(var, y=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.gammainc(var, y=self.y)
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 4)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 7)
+
+    def test_backward_error(self):
+        pass
+
+    def test_backward_success_1(self):
+        pass
+
+    def test_backward_success_2(self):
+        pass
 
 
 class TestDygraphInplaceLgamma(TestDygraphInplaceWithContinuous):
@@ -1843,6 +1919,98 @@ class TestDygraphTensorApplyInplace(unittest.TestCase):
         np.testing.assert_array_equal(
             non_inplace_var.numpy(), inplace_var.numpy()
         )
+
+
+class TestDygraphInplaceBernoulli(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+        self.set_np_compare_func()
+
+    def init_data(self):
+        self.shape = (100, 1000)
+        self.input_var_numpy = np.random.random(self.shape)
+        self.dtype = "float32"
+        self.p = 0.5
+
+    def set_np_compare_func(self):
+        self.np_compare = np.array_equal
+
+    def inplace_api_processing(self, var):
+        return paddle.bernoulli_(var, p=self.p)
+
+    def inplace_class_method_processing(self, var):
+        return var.bernoulli_(self.p)
+
+    def non_inplace_api_processing(self):
+        return paddle.bernoulli(paddle.full(self.shape, self.p))
+
+    def test_inplace_api(self):
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        non_inplace_var = self.non_inplace_api_processing()
+        inplace_var = self.inplace_api_processing(var)
+        self.assertTrue(id(var) == id(inplace_var))
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().mean(),
+            inplace_var.numpy().mean(),
+            atol=0.01,
+        )
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().var(), inplace_var.numpy().var(), atol=0.01
+        )
+
+    def test_inplace_api_backward(self):
+        var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        var_a.stop_gradient = False
+        var_b = var_a.clone()
+        expected_gradient = np.zeros(self.shape)
+        inplace_var = self.inplace_api_processing(var_b)
+        inplace_var.backward()
+        np.testing.assert_equal(
+            var_a.grad.numpy(),
+            expected_gradient,
+        )
+
+    def test_inplace_class_method(self):
+        var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        non_inplace_var = self.non_inplace_api_processing()
+        inplace_var = self.inplace_class_method_processing(var)
+        self.assertTrue(id(var) == id(inplace_var))
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().mean(),
+            inplace_var.numpy().mean(),
+            atol=0.01,
+        )
+        np.testing.assert_allclose(
+            non_inplace_var.numpy().var(), inplace_var.numpy().var(), atol=0.01
+        )
+
+    def test_inplace_class_method_backward(self):
+        var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+        var_a.stop_gradient = False
+        var_b = var_a.clone()
+        expected_gradient = np.zeros(self.shape)
+        inplace_var = self.inplace_class_method_processing(var_b)
+        inplace_var.backward()
+        np.testing.assert_equal(
+            var_a.grad.numpy(),
+            expected_gradient,
+        )
+
+
+class TestDygraphInplaceBernoulli2(TestDygraphInplaceBernoulli):
+    def init_data(self):
+        self.shape = (100, 1000)
+        self.input_var_numpy = np.random.random(self.shape)
+        self.dtype = "float64"
+        self.p = 0.5
+
+
+class TestDygraphInplaceBernoulliError(unittest.TestCase):
+    def test_broadcast_error(self):
+        var = paddle.randn([3, 4])
+        p = paddle.randn([5])
+        with self.assertRaises(ValueError):
+            var.bernoulli_(p)
 
 
 if __name__ == '__main__':

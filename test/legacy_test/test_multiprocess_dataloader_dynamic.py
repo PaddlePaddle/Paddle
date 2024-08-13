@@ -95,8 +95,7 @@ class TestDygraphDataLoader(unittest.TestCase):
         collate_fn,
         use_shared_memory,
     ):
-        base.default_startup_program().random_seed = 1
-        base.default_main_program().random_seed = 1
+        paddle.seed(1)
         with base.dygraph.guard(places[0]):
             fc_net = SimpleFCNet()
             optimizer = paddle.optimizer.Adam(parameters=fc_net.parameters())
@@ -176,8 +175,7 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
         collate_fn,
         use_shared_memory,
     ):
-        base.default_startup_program().random_seed = 1
-        base.default_main_program().random_seed = 1
+        paddle.seed(1)
         with base.dygraph.guard(places[0]):
             fc_net = SimpleFCNet()
             optimizer = paddle.optimizer.Adam(parameters=fc_net.parameters())

@@ -158,18 +158,8 @@ def print_metric(metric_ptr, name):
     else:
         metric = metric_ptr.get_metric_msg(name)
         monitor_msg = (
-            "{}: AUC={:.6f} BUCKET_ERROR={:.6f} MAE={:.6f} RMSE={:.6f} "
-            "Actual CTR={:.6f} Predicted CTR={:.6f} COPC={:.6f} INS Count={:.0f}".format(
-                name,
-                metric[0],
-                metric[1],
-                metric[2],
-                metric[3],
-                metric[4],
-                metric[5],
-                metric[6],
-                metric[7],
-            )
+            f"{name}: AUC={metric[0]:.6f} BUCKET_ERROR={metric[1]:.6f} MAE={metric[2]:.6f} RMSE={metric[3]:.6f} "
+            f"Actual CTR={metric[4]:.6f} Predicted CTR={metric[5]:.6f} COPC={metric[6]:.6f} INS Count={metric[7]:.0f}"
         )
     # logger.info(monitor_msg)
     return monitor_msg

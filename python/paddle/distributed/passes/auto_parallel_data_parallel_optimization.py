@@ -63,7 +63,7 @@ class DataParallelOptimizationPass(PassBase):
 
     def __init__(self):
         super().__init__()
-        # NOTE not use depence on loss and param_grads
+        # NOTE not use dependence on loss and param_grads
         self.set_attr("dist_context", None)
         self.set_attr("global_rank", -1)
         self.set_attr("use_sharding", False)
@@ -152,14 +152,12 @@ class DataParallelOptimizationPass(PassBase):
                     continue
                 assert op.has_attr(
                     "ring_id"
-                ), f"Unexpected: comm op [{str(op)}] has NOT ring id."
+                ), f"Unexpected: comm op [{op}] has NOT ring id."
                 group = ring_id_to_process_group(op.attr("ring_id"))
 
                 assert (
                     group is not None
-                ), "Unexpected: data parallel group of [{}] from op [{}] is None".format(
-                    grad_name, str(op)
-                )
+                ), f"Unexpected: data parallel group of [{grad_name}] from op [{op}] is None"
 
                 self._grad_name_to_group_map[grad_name] = group
 
@@ -186,9 +184,7 @@ class DataParallelOptimizationPass(PassBase):
                 not_synchronized_grads.append(grad_name)
         assert (
             len(not_synchronized_grads) == 0
-        ), "Unexpected: gradients [{}] is scaled BUT NOT synchronized.".format(
-            not_synchronized_grads
-        )
+        ), f"Unexpected: gradients [{not_synchronized_grads}] is scaled BUT NOT synchronized."
 
     def is_data_parallel_applied(self):
         return len(self._group_to_grad_name_map) > 0
@@ -245,10 +241,10 @@ class DataParallelOptimizationPass(PassBase):
             ):
                 assert op.has_attr(
                     'rescale_grad'
-                ), f"Unexpected: op [{str(op)}] is supported to have [rescale_grad] attribute."
+                ), f"Unexpected: op [{op}] is supported to have [rescale_grad] attribute."
                 assert (
                     len(op.input("Grad")) == 1
-                ), f"Unexpected: op [{str(op)}] is supported to have only one input grad var."
+                ), f"Unexpected: op [{op}] is supported to have only one input grad var."
 
                 grad_name = op.input("Grad")[0]
                 dp_degree = len(
@@ -261,9 +257,7 @@ class DataParallelOptimizationPass(PassBase):
 
         assert scaled_grads == set(
             self._grad_name_to_group_map.keys()
-        ), "Unexpected: gradients [{}] are unscaled.".format(
-            set(self._grad_name_to_group_map.keys()) - scaled_grads
-        )
+        ), f"Unexpected: gradients [{set(self._grad_name_to_group_map.keys()) - scaled_grads}] are unscaled."
 
     def _could_be_overlap(self):
         # NOTE current different nccl comm will use different cuda stream
@@ -306,11 +300,11 @@ class DataParallelOptimizationPass(PassBase):
 
         block = default_main_program().global_block()
 
-        # NOTE the naive overlap implement in static hybird parallel only sync comm stream
+        # NOTE the naive overlap implement in static hybrid parallel only sync comm stream
         # at the end of Backward phase, based on a strong constraint that
         # all communicating gradient would NOT be used after communication in Backward phase.
         # BUT this constraint will fail for scenario like Weight-Sharing and Higher-Order Differentiation,
-        # where gradient will be involved in other calculation between data-parallel allreduce kernel submmited
+        # where gradient will be involved in other calculation between data-parallel allreduce kernel submitted
         # into comm streams and the synchronization of comm stream at the end of Backward phase.
         # synchronization of  comm stream should add according to the usage of communicating gradients
         # to support Overlapping for Weight-Sharing and Higher-Order Differentiation.
@@ -440,7 +434,12 @@ class DataParallelOptimizationPass(PassBase):
     def _update_program(self, grad_groups):
         block = default_main_program().global_block()
 
-        remove_op_types = ['scale', 'c_allreduce_sum', 'c_wait_compute']
+        remove_op_types = [
+            'scale',
+            'c_allreduce_avg',
+            'c_allreduce_sum',
+            'c_wait_compute',
+        ]
 
         for i, group in enumerate(grad_groups[::-1]):
             # skip unfused big tensor
@@ -483,7 +482,7 @@ class DataParallelOptimizationPass(PassBase):
                 scale_op = block.ops[group.scale_op_idx]
                 assert (
                     scale_op.type == 'scale'
-                ), f"should found scale op but found {str(scale_op)}"
+                ), f"should found scale op but found {scale_op}"
                 scale_op._rename_input(
                     scale_op.input_arg_names[0], group.coalesce_var.name
                 )
@@ -492,9 +491,10 @@ class DataParallelOptimizationPass(PassBase):
                 )
 
             allreduce_op = block.ops[group.allreduce_op_idx]
-            assert (
-                allreduce_op.type == 'c_allreduce_sum'
-            ), f"should found c_allreduce_sum op but found {str(allreduce_op)}"
+            assert allreduce_op.type in [
+                'c_allreduce_avg',
+                'c_allreduce_sum',
+            ], f"should found c_allreduce_avg or c_allreduce_sum op but found {allreduce_op}"
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
             )
@@ -518,7 +518,7 @@ class DataParallelOptimizationPass(PassBase):
                 new_out_name, out_dist_attr
             )
 
-            # remvoe un-used op
+            # remove un-used op
             remove_op_indices = (
                 group.remove_wait_op_indices
                 + group.remove_allreduce_op_indices
@@ -527,7 +527,7 @@ class DataParallelOptimizationPass(PassBase):
             for idx in sorted(remove_op_indices, reverse=True):
                 assert (
                     block.ops[idx].type in remove_op_types
-                ), f"Unexpected: try to remove op {str(block.ops[idx])}"
+                ), f"Unexpected: try to remove op {block.ops[idx]}"
                 block._remove_op(idx, False)
 
             # insert coalesce op
@@ -676,17 +676,13 @@ class DataParallelOptimizationPass(PassBase):
         if len(grad_groups) > 0:
             self._logger.info("Data Parallel Optimization: ")
             self._logger.info(
-                " {} Allreduce ops are fused into {} coalesce allreduce ops.".format(
-                    len(self._grad_name_to_group_map.keys()), len(grad_groups)
-                )
+                f" {len(self._grad_name_to_group_map.keys())} Allreduce ops are fused into {len(grad_groups)} coalesce allreduce ops."
             )
             self._logger.debug("gradient fusing group are following: ")
             fused_grads = set()
             for i, group in enumerate(grad_groups):
                 self._logger.debug(
-                    "coalesce gradient [{}] is composed by: {}".format(
-                        i, [grad.name for grad in group.gradients]
-                    )
+                    f"coalesce gradient [{i}] is composed by: {[grad.name for grad in group.gradients]}"
                 )
                 fused_grads.update([grad.name for grad in group.gradients])
             individual_grads = set(self._grad_name_to_group_map.keys()) - set(
@@ -756,7 +752,7 @@ class GradientsGroup:
             grad_op = self.ops[grad_op_idx]
             assert (
                 grad_var.name in grad_op.output_arg_names
-            ), f"grad [{grad_var.name}] should be output of {str(grad_op)}"
+            ), f"grad [{grad_var.name}] should be output of {grad_op}"
             self.coalesce_op_idx = grad_op_idx
 
     def finalize(self):

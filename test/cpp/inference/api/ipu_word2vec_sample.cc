@@ -25,8 +25,8 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/utils/flags.h"
 
 PD_DEFINE_string(infer_model, "", "Directory of the inference model.");
 

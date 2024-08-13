@@ -27,10 +27,10 @@ from dygraph_to_static_utils import (
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import base
 from paddle.base import ParamAttr
-from paddle.base.dygraph import to_variable
 from paddle.base.framework import unique_name
+from paddle.framework import use_pir_api
+from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2000
@@ -220,7 +220,7 @@ class BMN(paddle.nn.Layer):
             self.num_sample,
             self.num_sample_perbin,
         )
-        self.sample_mask = base.dygraph.base.to_variable(sample_mask)
+        self.sample_mask = paddle.to_tensor(sample_mask)
         self.sample_mask.stop_gradient = True
 
         self.p_conv3d1 = paddle.nn.Conv3D(
@@ -604,10 +604,10 @@ def val_bmn(model, args):
         gt_start = np.array([item[2] for item in data]).astype(DATATYPE)
         gt_end = np.array([item[3] for item in data]).astype(DATATYPE)
 
-        x_data = to_variable(video_feat)
-        gt_iou_map = to_variable(gt_iou_map)
-        gt_start = to_variable(gt_start)
-        gt_end = to_variable(gt_end)
+        x_data = paddle.to_tensor(video_feat)
+        gt_iou_map = paddle.to_tensor(gt_iou_map)
+        gt_start = paddle.to_tensor(gt_start)
+        gt_end = paddle.to_tensor(gt_end)
         gt_iou_map.stop_gradient = True
         gt_start.stop_gradient = True
         gt_end.stop_gradient = True
@@ -644,6 +644,7 @@ class TestTrain(Dy2StTestBase):
         self.model_save_dir = os.path.join(self.temp_dir.name, 'inference')
         self.model_save_prefix = os.path.join(self.model_save_dir, 'bmn')
         self.model_filename = "bmn" + INFER_MODEL_SUFFIX
+        self.pir_model_filename = "bmn" + PIR_INFER_MODEL_SUFFIX
         self.params_filename = "bmn" + INFER_PARAMS_SUFFIX
         self.dy_param_path = os.path.join(self.temp_dir.name, 'bmn_dy_param')
 
@@ -679,10 +680,10 @@ class TestTrain(Dy2StTestBase):
                         DATATYPE
                     )
 
-                    x_data = to_variable(video_feat)
-                    gt_iou_map = to_variable(gt_iou_map)
-                    gt_start = to_variable(gt_start)
-                    gt_end = to_variable(gt_end)
+                    x_data = paddle.to_tensor(video_feat)
+                    gt_iou_map = paddle.to_tensor(gt_iou_map)
+                    gt_start = paddle.to_tensor(gt_start)
+                    gt_end = paddle.to_tensor(gt_end)
                     gt_iou_map.stop_gradient = True
                     gt_start.stop_gradient = True
                     gt_end.stop_gradient = True
@@ -719,11 +720,7 @@ class TestTrain(Dy2StTestBase):
                         loss_data += val_loss_data
 
                     if batch_id == args.train_batch_num:
-                        # TODO(@xiongkun): open after save / load supported in pir.
-                        if (
-                            to_static
-                            and not paddle.base.framework.use_pir_api()
-                        ):
+                        if to_static:
                             paddle.jit.save(bmn, self.model_save_prefix)
                         else:
                             paddle.save(
@@ -734,22 +731,6 @@ class TestTrain(Dy2StTestBase):
             return np.array(loss_data)
 
     @test_legacy_and_pt_and_pir
-    def test_train_pir(self):
-        with enable_to_static_guard(True):
-            static_res = self.train_bmn(self.args, to_static=True)
-        with enable_to_static_guard(False):
-            dygraph_res = self.train_bmn(self.args, to_static=False)
-        np.testing.assert_allclose(
-            dygraph_res,
-            static_res,
-            rtol=1e-05,
-            err_msg='dygraph_res: {},\n static_res: {}'.format(
-                dygraph_res[~np.isclose(dygraph_res, static_res)],
-                static_res[~np.isclose(dygraph_res, static_res)],
-            ),
-            atol=1e-8,
-        )
-
     def test_train(self):
         with enable_to_static_guard(True):
             static_res = self.train_bmn(self.args, to_static=True)
@@ -759,10 +740,7 @@ class TestTrain(Dy2StTestBase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res: {},\n static_res: {}'.format(
-                dygraph_res[~np.isclose(dygraph_res, static_res)],
-                static_res[~np.isclose(dygraph_res, static_res)],
-            ),
+            err_msg=f'dygraph_res: {dygraph_res[~np.isclose(dygraph_res, static_res)]},\n static_res: {static_res[~np.isclose(dygraph_res, static_res)]}',
             atol=1e-8,
         )
 
@@ -779,7 +757,6 @@ class TestTrain(Dy2StTestBase):
             dygraph_pred_res = self.predict_dygraph(video_data)
             dygraph_jit_pred_res = self.predict_dygraph_jit(video_data)
             predictor_pred_res = self.predict_analysis_inference(video_data)
-
             for dy_res, st_res, dy_jit_res, predictor_res in zip(
                 dygraph_pred_res,
                 static_pred_res,
@@ -790,30 +767,21 @@ class TestTrain(Dy2StTestBase):
                     st_res,
                     dy_res,
                     rtol=1e-05,
-                    err_msg='dygraph_res: {},\n static_res: {}'.format(
-                        dy_res[~np.isclose(st_res, dy_res)],
-                        st_res[~np.isclose(st_res, dy_res)],
-                    ),
+                    err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
                     atol=1e-8,
                 )
                 np.testing.assert_allclose(
                     st_res,
                     dy_jit_res,
                     rtol=1e-05,
-                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                        dy_jit_res[~np.isclose(st_res, dy_jit_res)],
-                        st_res[~np.isclose(st_res, dy_jit_res)],
-                    ),
+                    err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
                     atol=1e-8,
                 )
                 np.testing.assert_allclose(
                     st_res,
                     predictor_res,
                     rtol=1e-05,
-                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                        predictor_res[~np.isclose(st_res, predictor_res)],
-                        st_res[~np.isclose(st_res, predictor_res)],
-                    ),
+                    err_msg=f'dygraph_jit_res: {predictor_res[~np.isclose(st_res, predictor_res)]},\n static_res: {st_res[~np.isclose(st_res, predictor_res)]}',
                     atol=1e-8,
                 )
             break
@@ -826,7 +794,7 @@ class TestTrain(Dy2StTestBase):
             bmn.set_dict(model_dict)
             bmn.eval()
 
-            x = to_variable(data)
+            x = paddle.to_tensor(data)
             pred_res = bmn(x)
             pred_res = [var.numpy() for var in pred_res]
 
@@ -835,6 +803,10 @@ class TestTrain(Dy2StTestBase):
     def predict_static(self, data):
         with static_guard():
             exe = paddle.static.Executor(self.place)
+            if use_pir_api():
+                model_filename = self.pir_model_filename
+            else:
+                model_filename = self.model_filename
             # load inference model
             [
                 inference_program,
@@ -843,7 +815,7 @@ class TestTrain(Dy2StTestBase):
             ] = paddle.static.io.load_inference_model(
                 self.model_save_dir,
                 executor=exe,
-                model_filename=self.model_filename,
+                model_filename=model_filename,
                 params_filename=self.params_filename,
             )
             pred_res = exe.run(
@@ -857,16 +829,21 @@ class TestTrain(Dy2StTestBase):
         bmn = paddle.jit.load(self.model_save_prefix)
         bmn.eval()
 
-        x = to_variable(data)
+        x = paddle.to_tensor(data)
         pred_res = bmn(x)
         pred_res = [var.numpy() for var in pred_res]
 
         return pred_res
 
     def predict_analysis_inference(self, data):
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
+
         output = PredictorTools(
             self.model_save_dir,
-            self.model_filename,
+            model_filename,
             self.params_filename,
             [data],
         )

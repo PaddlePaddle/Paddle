@@ -16,7 +16,6 @@ import unittest
 
 from test_case_base import (
     TestCaseBase,
-    run_in_both_default_and_pir,
     test_instruction_translator_cache_context,
 )
 
@@ -32,8 +31,22 @@ def tensor_dtype_guard(x):
     return x + 1
 
 
+def reconstruct_dtype():
+    x = paddle.to_tensor(1)
+    z = x.dtype
+    if x > 0:
+        y = paddle.to_tensor(1, dtype=z)
+    else:
+        y = 1
+    return y
+
+
+def dtype_guard(x, cast_map):
+    out = paddle.cast(x, cast_map[x.dtype])
+    return out, out.dtype
+
+
 class TestTensorAstype(TestCaseBase):
-    @run_in_both_default_and_pir
     def test_tensor_astype(self):
         x = paddle.ones([2, 3], dtype="float32")
         y = paddle.ones([2, 3], dtype="int32")
@@ -41,7 +54,6 @@ class TestTensorAstype(TestCaseBase):
 
 
 class TestTensorDtypeGuard(TestCaseBase):
-    @run_in_both_default_and_pir
     def test_tensor_dtype_guard(self):
         x = paddle.ones([2, 3], dtype="float32")
         y = paddle.ones([2, 3], dtype="int32")
@@ -52,6 +64,18 @@ class TestTensorDtypeGuard(TestCaseBase):
             self.assertEqual(ctx.translate_count, 2)
             self.assert_results(tensor_dtype_guard, x)
             self.assertEqual(ctx.translate_count, 2)
+
+
+class TestDtypeReconstruct(TestCaseBase):
+    def test_dtype_reconstruct(self):
+        self.assert_results(reconstruct_dtype)
+
+
+class TestDtypeGuard(TestCaseBase):
+    def test_dtype_guard(self):
+        dtype_map = {paddle.float32: paddle.float64}
+        x = paddle.ones([2, 3], dtype="float32")
+        self.assert_results(dtype_guard, x, dtype_map)
 
 
 if __name__ == "__main__":

@@ -22,9 +22,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -58,7 +56,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       if (fused_scale2_in_nodes.count(out_node)) {
         PADDLE_ENFORCE_EQ(out_node->IsCtrlVar(),
                           true,
-                          platform::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "In adam op pass, the dependency var(%s) only "
                               "should be ctrl var.",
                               out_node->Name()));
@@ -71,12 +69,12 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           node->inputs.empty(),
           false,
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Node(%s)'s input should not be empty here.", node->Name()));
       auto op_node = node->inputs.front();
       PADDLE_ENFORCE_EQ(op_node->IsOp(),
                         true,
-                        platform::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "Node(%s) should be an OP node.", op_node->Name()));
       op_node->outputs.erase(remove_if(op_node->outputs.begin(),
                                        op_node->outputs.end(),
@@ -107,7 +105,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     PADDLE_ENFORCE_GT(
         adam_ops.size(),
         static_cast<size_t>(0),
-        platform::errors::InvalidArgument("No adam op in the graph."));
+        common::errors::InvalidArgument("No adam op in the graph."));
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
@@ -126,7 +124,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           beta1,
           PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta1")),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All adam Op's attr(beta1) must be same, but there are two "
               "different "
               "value: %f, %f.",
@@ -135,7 +133,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           beta2,
           PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("beta2")),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All adam Op's attr(beta2) must be same, but there are two "
               "different "
               "value: %f, %f.",
@@ -144,7 +142,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           epsilon,
           PADDLE_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All adam Op's attr(epsilon) must be same, but there are two "
               "different "
               "value: %f, %f.",
@@ -153,7 +151,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           lazy_mode,
           PADDLE_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All adam Op's attr(lazy_mode) must be same, but there are two "
               "different "
               "value: %d, %d.",
@@ -164,7 +162,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
           PADDLE_GET_CONST(
               int64_t,
               adam_op->Op()->GetAttr("min_row_size_to_use_multithread")),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All adam Op's attr(min_row_size_to_use_multithread) must be "
               "same, but there are two different value: %I64, %I64.",
               min_row_size_to_use_multithread,
@@ -176,7 +174,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
           PADDLE_GET_CONST(
               int,
               adam_op->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All adam Op's attr(op_role) must be same, but there are two "
               "different "
               "value: %d, %d.",
@@ -222,7 +220,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
                          ir::Graph *graph) const {
     PADDLE_ENFORCE_EQ(beta_name.size(),
                       adam_ops.size(),
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Beta name size(%d) must equal to adam op size(%d).",
                           beta_name.size(),
                           adam_ops.size()));
@@ -233,17 +231,17 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     scale_ops.reserve(beta_name.size());
     for (size_t i = 0; i < adam_ops.size(); ++i) {
       auto &beta_1_pow_name = beta_name[i];
-      auto beta_pow_iter = std::find_if(
-          adam_ops[i]->inputs.begin(),
-          adam_ops[i]->inputs.end(),
-          [&beta_name, &beta_1_pow_name](ir::Node *var_node) -> bool {
-            return var_node->Var() &&
-                   var_node->Var()->Name() == beta_1_pow_name;
-          });
+      auto beta_pow_iter =
+          std::find_if(adam_ops[i]->inputs.begin(),
+                       adam_ops[i]->inputs.end(),
+                       [&beta_1_pow_name](ir::Node *var_node) -> bool {
+                         return var_node->Var() &&
+                                var_node->Var()->Name() == beta_1_pow_name;
+                       });
       PADDLE_ENFORCE_NE(beta_pow_iter,
                         adam_ops[i]->inputs.end(),
-                        platform::errors::NotFound(
-                            "Can not find %s in adam ops.", beta_1_pow_name));
+                        common::errors::NotFound("Can not find %s in adam ops.",
+                                                 beta_1_pow_name));
 
       auto beta_pow_node = *beta_pow_iter;
       auto scale_op_iter = std::find_if(
@@ -255,15 +253,15 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_NE(
           scale_op_iter,
           beta_pow_node->outputs.end(),
-          platform::errors::NotFound("Can not find %s in beta pow node.",
-                                     scale_op_name));
+          common::errors::NotFound("Can not find %s in beta pow node.",
+                                   scale_op_name));
 
       scale_ops.emplace_back(*scale_op_iter);
     }
     PADDLE_ENFORCE_EQ(
         scale_ops.size(),
         beta_name.size(),
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Beta name size(%d) must equal to scale ops size(%d).",
             beta_name.size(),
             scale_ops.size()));
@@ -281,7 +279,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           scale,
           PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("scale")),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All scale Op's attr(scale) must be same, but there are two "
               "different "
               "value: %f, %f.",
@@ -290,7 +288,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           bias,
           PADDLE_GET_CONST(float, scale_op->Op()->GetAttr("bias")),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All scale Op's attr(bias) must be same, but there are two "
               "different "
               "value: %f, %f.",
@@ -299,7 +297,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       PADDLE_ENFORCE_EQ(
           bias_after_scale,
           PADDLE_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All scale Op's attr(bias_after_scale) must be same, but there "
               "are two different value: %d, %d.",
               bias_after_scale,
@@ -310,7 +308,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
           PADDLE_GET_CONST(int,
                            scale_op->Op()->GetAttr(
                                OpProtoAndCheckerMaker::OpRoleAttrName())),
-          platform::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "All scale Op's attr(op_role) must be same, but there are two "
               "different "
               "value: %d, %d.",
@@ -342,8 +340,6 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     return scale_node;
   }
 };
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fuse_adam_op_pass, paddle::framework::ir::FuseAdamOpPass);

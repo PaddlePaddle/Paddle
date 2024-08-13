@@ -35,13 +35,21 @@ class CudnnIndexType;
 template <>
 class CudnnIndexType<int> {
  public:
-  static const cudnnDataType_t type = CUDNN_DATA_INT32;
+#ifdef PADDLE_WITH_CUDA
+  static const dnnDataType_t type = CUDNN_DATA_INT32;
+#else
+  static const dnnDataType_t type = miopenInt32;
+#endif
 };
 
 template <>
 class CudnnIndexType<int8_t> {
  public:
-  static const cudnnDataType_t type = CUDNN_DATA_INT8;
+#ifdef PADDLE_WITH_CUDA
+  static const dnnDataType_t type = CUDNN_DATA_INT8;
+#else
+  static const dnnDataType_t type = miopenInt8;
+#endif
 };
 
 inline GPUDNNDataLayout GetLayoutFromStr(std::string data_format) {

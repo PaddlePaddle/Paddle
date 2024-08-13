@@ -14,16 +14,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar
 
-if TYPE_CHECKING:
-    from typing_extensions import Concatenate, ParamSpec, TypeAlias
+from typing_extensions import Concatenate, ParamSpec, TypeAlias
 
-    P = ParamSpec("P")
-    R = TypeVar("R")
+P = ParamSpec("P")
+R = TypeVar("R")
 
-    MutableDataT = TypeVar("MutableDataT", bound="MutableData")
-    DataGetter: TypeAlias = Callable[[MutableDataT, Any], Any]
+MutableDataT = TypeVar("MutableDataT", bound="MutableData")
+DataGetter: TypeAlias = Callable[[MutableDataT, Any], Any]
 
 InnerMutableDataT = TypeVar(
     "InnerMutableDataT", bound="dict[str, Any] | list[Any]"
@@ -154,13 +153,13 @@ class MutableData(Generic[InnerMutableDataT]):
         self.records[:] = self.records[:version]
 
     def get(self, key):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def set(self, key, value):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def apply(self, mutation: Mutation, write_cache: InnerMutableDataT):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def reproduce(self, version: int | None = None) -> InnerMutableDataT:
         if version is None:

@@ -24,6 +24,8 @@ namespace distributed {
 
 SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x);
 
+SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x);
+
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
                                           const DistMetaTensor& out);
 
@@ -51,6 +53,16 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
                                         const DistMetaTensor& out,
                                         const DistMetaTensor& out_grad,
                                         int64_t axis = -1);
+
+SpmdInfo SwiGLUInferSpmd(const DistMetaTensor& x, const DistMetaTensor& y);
+
+SpmdInfo SwiGLUInferSpmdReverse(const DistMetaTensor& x,
+                                const DistMetaTensor& y,
+                                const DistMetaTensor& out);
+
+SpmdInfo SwiGLUGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& y,
+                             const DistMetaTensor& out_grad);
 
 }  // namespace distributed
 }  // namespace phi

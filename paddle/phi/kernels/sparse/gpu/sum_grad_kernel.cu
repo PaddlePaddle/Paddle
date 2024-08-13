@@ -54,7 +54,7 @@ __global__ void SumCsr3DGradCudaKernel(const int64_t* x_crows_data,
                                        const int64_t x_dim1,
                                        T* dx_values_data) {
   // dout_crows_data[index] should be equal to number;
-  CUDA_KERNEL_LOOP_TYPE(index, x_dim0 * (x_dim1 + 1), int64_t) {
+  CUDA_KERNEL_LOOP_TYPE(index, x_dim0 * (x_dim1 + 1) - 1, int64_t) {
     int64_t batch = index / (x_dim1 + 1);
     int64_t number = index % (x_dim1 + 1);
 
@@ -168,7 +168,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
   }
   PADDLE_ENFORCE_EQ(axis[0],
                     -1,
-                    phi::errors::Unimplemented(
+                    common::errors::Unimplemented(
                         "`axis` of SumCsrKernel only support None or -1 now."
                         "More number will be supported in the future."));
   if (x.dims().size() == 2) {

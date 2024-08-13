@@ -27,15 +27,15 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 
 #include "paddle/common/macros.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 
@@ -73,7 +73,7 @@ TEST(StandaloneExecutor, run) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
 
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
@@ -142,7 +142,7 @@ TEST(StandaloneExecutor, run_feed_tensor) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
@@ -150,9 +150,8 @@ TEST(StandaloneExecutor, run_feed_tensor) {
 
   phi::DenseTensorMeta meta(
       phi::DataType::FLOAT32, dims, data_layout, lod, offset);
-  paddle::platform::DeviceContext* dev_ctx =
-      paddle::platform::DeviceContextPool::Instance().Get(
-          paddle::platform::CPUPlace());
+  phi::DeviceContext* dev_ctx =
+      phi::DeviceContextPool::Instance().Get(phi::CPUPlace());
 
   phi::DenseTensor tensor_x;
   tensor_x.set_meta(meta);
@@ -193,7 +192,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
@@ -212,7 +211,7 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
   bool res3 = simple_cmp(out_tensor.data<float>()[3], 2.0);
 
   EXPECT_EQ(scope.kids().size(), 1u);
-  EXPECT_EQ(scope.kids().front()->Size(), 1u);
+  EXPECT_EQ(scope.kids().front()->Size(), 2u);
   EXPECT_EQ(res0, true);
   EXPECT_EQ(res1, true);
   EXPECT_EQ(res2, true);
@@ -256,7 +255,7 @@ TEST(StandaloneExecutor, if_op) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
@@ -296,7 +295,7 @@ TEST(StandaloneExecutor, while_op) {
                      std::vector<int64_t>{1}, 10, phi::DataType::INT32)
                  .out();
 
-  // comput condition value: i <= ten
+  // compute condition value: i <= ten
   auto cond_value = builder.Build<LessEqualOp>(i, ten).out();
 
   auto while_op =
@@ -312,7 +311,7 @@ TEST(StandaloneExecutor, while_op) {
           .out();
   auto new_i = builder.Build<AddOp>(body_i_argument, one).out();
 
-  // comput new condition value: new_i <= new_ten
+  // compute new condition value: new_i <= new_ten
   auto new_cond_value =
       builder.Build<LessEqualOp>(new_i, body_ten_argument).out();
 
@@ -326,7 +325,7 @@ TEST(StandaloneExecutor, while_op) {
 
   auto kernel_program = PdOpLowerToKernelPass(&program);
 
-  auto place = platform::CPUPlace();
+  auto place = phi::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 

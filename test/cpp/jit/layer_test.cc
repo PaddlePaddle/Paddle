@@ -55,12 +55,14 @@ PD_DECLARE_KERNEL(mean, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
 #endif
 
+COMMON_DECLARE_bool(enable_pir_api);
+
 namespace paddle {
 namespace jit {
 using DenseTensor = phi::DenseTensor;
 
 std::vector<Tensor> PrepareInputs(const phi::Place& place) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(place);
 
   DenseTensor t;
@@ -77,6 +79,9 @@ TEST(CpuLayerTest, Function) {
 }
 
 TEST(CpuLayerTest, Construct) {
+  if (FLAGS_enable_pir_api) {
+    return;
+  }
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
   paddle::platform::Timer timer;
@@ -125,6 +130,9 @@ TEST(CpuLayerTest, Construct) {
 }
 
 TEST(CpuLayerTest, Clone) {
+  if (FLAGS_enable_pir_api) {
+    return;
+  }
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
 
@@ -161,6 +169,9 @@ TEST(CpuLayerTest, Clone) {
 
 #if defined(PADDLE_WITH_CUDA)
 TEST(GpuLayerTest, Construct) {
+  if (FLAGS_enable_pir_api) {
+    return;
+  }
   auto place = phi::GPUPlace();
 
   std::string path = "./multi_program_load/export";
@@ -189,6 +200,9 @@ TEST(GpuLayerTest, Construct) {
 }
 
 TEST(GpuLayerTest, Clone) {
+  if (FLAGS_enable_pir_api) {
+    return;
+  }
   auto place = phi::GPUPlace();
 
   std::string path = "./multi_program_load/export";

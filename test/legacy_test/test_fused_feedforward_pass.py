@@ -79,7 +79,7 @@ class FeedForward(nn.Layer):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestFusedFeedforwadPass(unittest.TestCase):
+class TestFusedFeedforwardPass(unittest.TestCase):
     def setUp(self):
         self.pre_layer_norm = True
         self.add_residual = True
@@ -103,9 +103,8 @@ class TestFusedFeedforwadPass(unittest.TestCase):
         )
 
         main_prog = paddle.static.Program()
-        main_prog.random_seed = 1234
         startup_prog = paddle.static.Program()
-        startup_prog.random_seed = 1234
+        paddle.seed(1234)
 
         with paddle.static.program_guard(main_prog, startup_prog):
             data = paddle.static.data(

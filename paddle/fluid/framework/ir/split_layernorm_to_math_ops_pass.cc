@@ -21,12 +21,10 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/utils/string/pretty_log.h"
+#include "paddle/utils/string/printf.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 // cpplint complaints (wrong!) for not included <string> header in below line.
 using string::PrettyLogDetail;  // NOLINT
@@ -209,7 +207,7 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
       }
     }
     auto* dev_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     auto reduce_mean0_out_name(
         patterns::PDNodeName("split_layernorm", "reduce0"));
     auto* block = layer_norm_op->Op()->Block();
@@ -440,9 +438,7 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
   AddStatis(found_layer_norm_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(split_layernorm_to_math_ops_pass,
               paddle::framework::ir::SplitLayerNormPass);

@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::unordered_map<size_t, Scope*>& global_transfer_data_cache() {
   thread_local auto* x = new std::unordered_map<size_t, Scope*>;
@@ -44,7 +43,7 @@ Scope* TryCreateTransferScope(const phi::KernelKey& type0,
   infer_cache_key =
       CombineHash(infer_cache_key, std::hash<const Scope*>()(scope));
 
-  global_transfer_scope_key()[scope].insert(infer_cache_key);
+  global_transfer_scope_key()[scope].insert(infer_cache_key);  //  NOLINT
 
   auto it = global_transfer_data_cache().find(infer_cache_key);
   if (it != global_transfer_data_cache().end()) {
@@ -57,5 +56,4 @@ Scope* TryCreateTransferScope(const phi::KernelKey& type0,
   return new_scope;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

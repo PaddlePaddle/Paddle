@@ -70,9 +70,6 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         )
         self.perf_path = './perfstat'
 
-    def test_parallel_executor_statistics(self):
-        self.run_with_statistics(executor='ParallelExecutor')
-
     def test_executor_statistics(self):
         self.run_with_statistics(executor='Executor')
 
@@ -87,13 +84,6 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
         paddle.seed(2020)
         # note: startup program is empty
         main_program, startup_program, fetch_list = build_program()
-
-        enable = True
-        if executor == 'ParallelExecutor':
-            main_program = paddle.base.compiler.CompiledProgram(main_program)
-            enable = False
-        elif executor == 'Executor':
-            enable = False
 
         scope = paddle.static.Scope()
         with paddle.static.scope_guard(scope):
@@ -189,7 +179,9 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         if use_compiled:
             main_program = paddle.static.CompiledProgram(main_program)
 
-        if use_str:  # test for fetch name
+        if (
+            use_str and not paddle.framework.in_pir_mode()
+        ):  # test for fetch name
             fetch_vars = [x.name for x in fetch_vars]
         if add_wrong_fetch:  # test for wrong fetch type
             fetch_vars.append(1123)
@@ -338,14 +330,21 @@ class TestException(unittest.TestCase):
             },
         ]
         self.run_new_executor(feed)
-        self.assertIsNone(
-            paddle.static.global_scope().find_var(self.fetch_vars.name)
-        )
+        if not paddle.framework.in_pir_mode():
+            self.assertIsNone(
+                paddle.static.global_scope().find_var(self.fetch_vars.name)
+            )
 
 
 class TestFetchEmptyTensor(unittest.TestCase):
     def test_fetch(self):
-        places = [paddle.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.base.core.is_compiled_with_cuda()
+        ):
+            places.append(paddle.CPUPlace())
         if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:

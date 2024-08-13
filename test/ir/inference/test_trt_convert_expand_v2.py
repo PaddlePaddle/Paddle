@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -36,7 +38,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 4:
                 self.input_shape = [1, 1, 4, 6]
                 return np.random.random([1, 1, 4, 6]).astype(np.float32)
@@ -50,13 +52,13 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
                 self.input_shape = [48]
                 return np.random.random([48]).astype(np.float32)
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.array([1, 48]).astype(np.int32)
 
-        def generate_shapeT1_data(attrs: List[Dict[str, Any]]):
+        def generate_shapeT1_data(attrs: list[dict[str, Any]]):
             return np.array([2]).astype(np.int32)
 
-        def generate_shapeT2_data(attrs: List[Dict[str, Any]]):
+        def generate_shapeT2_data(attrs: list[dict[str, Any]]):
             return np.array([24]).astype(np.int32)
 
         for dims in [4, 3, 2, 1]:
@@ -67,12 +69,12 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [{"X": ["expand_v2_input"]}]
+                dics_input = [{"X": ["expand_v2_input"]}]
 
                 ops_config = [
                     {
                         "op_type": "expand_v2",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["expand_v2_out"]},
                         "op_attrs": dics[0],
                     }
@@ -93,7 +95,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -186,7 +188,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 1:
                 self.input_shape = [1]
                 return np.random.random([1]).astype(np.float32)
@@ -199,7 +201,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [
+                dics_input = [
                     {"X": ["expand_v2_input"], "Shape": ["shapeT1_data"]},
                 ]
                 ops_config = [
@@ -215,7 +217,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
                     },
                     {
                         "op_type": "expand_v2",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["expand_v2_out"]},
                         "op_attrs": dics[0],
                     },
@@ -236,7 +238,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape():
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"expand_v2_input": [1]}
@@ -253,7 +255,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        # fill_constant will be folded by constnt folding pass!
+        # fill_constant will be folded by constant folding pass!
         yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
@@ -275,7 +277,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 4:
                 self.input_shape = [1, 1, 4, 6]
                 return np.random.random([1, 1, 4, 6]).astype(np.float32)
@@ -291,7 +293,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [
+                dics_input = [
                     {
                         "X": ["expand_v2_input"],
                         "expand_shapes_tensor": [
@@ -345,7 +347,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
                     },
                     {
                         "op_type": "expand_v2",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["expand_v2_out"]},
                         "op_attrs": dics[0],
                     },
@@ -366,7 +368,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape():
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -399,7 +401,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        # fill_constant will be folded by constnt folding pass!
+        # fill_constant will be folded by constant folding pass!
         yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)

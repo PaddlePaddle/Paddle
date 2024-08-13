@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 """Definition of Server and Worker."""
 
-# NOTE: reduce removed in fuctools in python3
+# NOTE: reduce removed in functools in python3
 from functools import reduce
 
 from . import ps_pb2 as pslib
@@ -131,16 +131,15 @@ class DownpourServer(Server):
 
         for key in strategy:
             if key not in support_sparse_key_list:
-                raise ValueError("strategy key '%s' not support" % (key))
+                raise ValueError(f"strategy key '{key}' not support")
 
-        support_table_calss = ['DownpourSparseTable', 'DownpourSparseSSDTable']
+        support_table_class = ['DownpourSparseTable', 'DownpourSparseSSDTable']
         if strategy.get('sparse_table_class') is not None:
             table_class = strategy.get('sparse_table_class')
-            if table_class not in support_table_calss:
+            if table_class not in support_table_class:
                 raise ValueError(
-                    "support sparse_table_class: [ 'DownpourSparseTable', 'DownpourSparseSSDTable'], \
-                        but actual %s"
-                    % (table_class)
+                    f"support sparse_table_class: [ 'DownpourSparseTable', 'DownpourSparseSSDTable'], \
+                        but actual {table_class}"
                 )
         else:
             table_class = 'DownpourSparseTable'
@@ -183,10 +182,9 @@ class DownpourServer(Server):
                 accessor_class = strategy.get('sparse_accessor_class')
                 if accessor_class not in support_accessor_class:
                     raise ValueError(
-                        "support sparse_accessor_class: ['DownpourFeatureValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDymfAccessor', \
+                        f"support sparse_accessor_class: ['DownpourFeatureValueAccessor', 'DownpourCtrAccessor', 'DownpourCtrDymfAccessor', \
                         'DownpourSparseValueAccessor', 'DownpourCtrDoubleAccessor'], \
-                            but actual %s"
-                        % (accessor_class)
+                            but actual {accessor_class}"
                     )
             else:
                 accessor_class = 'DownpourCtrAccessor'
@@ -409,7 +407,7 @@ class DownpourServer(Server):
 
         for key in strategy:
             if key not in support_dense_key_list:
-                raise ValueError("strategy key '%s' not support" % (key))
+                raise ValueError(f"strategy key '{key}' not support")
 
         table.table_class = strategy.get(
             'dense_table_class', "DownpourDenseTable"
@@ -493,7 +491,7 @@ class DownpourServer(Server):
 
         for key in strategy:
             if key not in support_datanorm_key_list:
-                raise ValueError("strategy key '%s' not support" % (key))
+                raise ValueError(f"strategy key '{key}' not support")
 
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
@@ -689,7 +687,7 @@ class DownpourWorker(Worker):
                 for key_name in key_names:
                     if key_name not in keys:
                         raise ValueError(
-                            "sparse table %s slot_key error" % table_id
+                            f"sparse table {table_id} slot_key error"
                         )
                 target_table = table
                 break
@@ -755,12 +753,12 @@ class DownpourWorker(Worker):
                         return
                     else:
                         raise ValueError(
-                            "dense table %s dense_gradient_variable_name "
-                            "error" % table_id
+                            f"dense table {table_id} dense_gradient_variable_name "
+                            "error"
                         )
                 else:
                     raise ValueError(
-                        "dense table %s dense_variable_name error" % table_id
+                        f"dense table {table_id} dense_variable_name error"
                     )
 
         table = self._worker.dense_table.add()

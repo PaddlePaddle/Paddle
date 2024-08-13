@@ -246,7 +246,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       axis < out_dims.size() && axis >= (0 - out_dims.size()),
       true,
-      phi::errors::OutOfRange(
+      common::errors::OutOfRange(
           "Attr(axis) is out of range, It's expected "
           "to be in range of [-%d, %d]. But received Attr(axis) = %d.",
           out_dims.size(),
@@ -265,9 +265,9 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     int num_rows = x.numel() / row_size;
 
     dim3 threads(16, 32);
-    dim3 grid(
-        std::min(dev_ctx.GetCUDAMaxGridDimSize()[0],
-                 static_cast<int>(std::ceil(static_cast<float>(num_rows) /
+    dim3 grid(std::min(
+        dev_ctx.GetCUDAMaxGridDimSize()[0],
+        static_cast<unsigned int>(std::ceil(static_cast<float>(num_rows) /
                                             static_cast<float>(threads.y)))));
 
     KernelScanInnerWithIndices<T1, T2, 16, 32>

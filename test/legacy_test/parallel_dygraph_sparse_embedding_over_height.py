@@ -16,14 +16,13 @@ import sys
 
 sys.path.append("..")
 
+import paddle
 from legacy_test.parallel_dygraph_sparse_embedding import (
     SimpleNet,
     TestSparseEmbedding,
     fake_sample_reader,
 )
 from legacy_test.test_dist_base import runtime_main
-
-import paddle
 
 # global configs
 # using small `vocab_size` to test rows number over height

@@ -11,14 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #include "gtest/gtest.h"
 
 TEST(Place, Equality) {
-  paddle::platform::CPUPlace cpu;
-  paddle::platform::CUDAPlace g0(0), g1(1), gg0(0);
-  paddle::platform::XPUPlace x0(0), x1(1), xx0(0);
+  phi::CPUPlace cpu;
+  phi::GPUPlace g0(0), g1(1), gg0(0);
+  phi::XPUPlace x0(0), x1(1), xx0(0);
 
   EXPECT_EQ(cpu, cpu);
   EXPECT_EQ(g0, g0);
@@ -31,27 +31,27 @@ TEST(Place, Equality) {
   EXPECT_NE(g0, g1);
   EXPECT_NE(x0, x1);
 
-  EXPECT_TRUE(paddle::platform::places_are_same_class(g0, gg0));
-  EXPECT_TRUE(paddle::platform::places_are_same_class(x0, xx0));
-  EXPECT_FALSE(paddle::platform::places_are_same_class(g0, cpu));
-  EXPECT_FALSE(paddle::platform::places_are_same_class(x0, cpu));
-  EXPECT_FALSE(paddle::platform::places_are_same_class(g0, x0));
+  EXPECT_TRUE(phi::places_are_same_class(g0, gg0));
+  EXPECT_TRUE(phi::places_are_same_class(x0, xx0));
+  EXPECT_FALSE(phi::places_are_same_class(g0, cpu));
+  EXPECT_FALSE(phi::places_are_same_class(x0, cpu));
+  EXPECT_FALSE(phi::places_are_same_class(g0, x0));
 }
 
 TEST(Place, Print) {
   {
     std::stringstream ss;
-    ss << paddle::platform::XPUPlace(1);
+    ss << phi::XPUPlace(1);
     EXPECT_EQ("Place(xpu:1)", ss.str());
   }
   {
     std::stringstream ss;
-    ss << paddle::platform::CUDAPlace(1);
+    ss << phi::GPUPlace(1);
     EXPECT_EQ("Place(gpu:1)", ss.str());
   }
   {
     std::stringstream ss;
-    ss << paddle::platform::CPUPlace();
+    ss << phi::CPUPlace();
     EXPECT_EQ("Place(cpu)", ss.str());
   }
 }

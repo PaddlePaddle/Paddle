@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/pool_grad_kernel.h"
@@ -36,6 +37,7 @@ void PoolGradRawKernel(const Context& ctx,
                        bool global_pooling,
                        bool adaptive,
                        const std::string& padding_algorithm,
+                       const float norm_type,
                        DenseTensor* dx) {
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   std::vector<int> paddings_ = paddings;
@@ -71,9 +73,15 @@ void PoolGradRawKernel(const Context& ctx,
     funcs::SetConstant<Context, T> set_constant;
     set_constant(ctx, dx, static_cast<T>(0.0));
 
+    std::string true_type;
+    if (norm_type == INFINITY)
+      true_type = "max";
+    else
+      true_type = pooling_type;
+
     switch (kernel_size_.size()) {
       case 2: {
-        if (pooling_type == "max") {
+        if (true_type == "max") {
           funcs::MaxPool2dGradFunctor<Context, T> pool2d_backward;
           pool2d_backward(ctx,
                           x,
@@ -84,10 +92,27 @@ void PoolGradRawKernel(const Context& ctx,
                           paddings_,
                           data_format,
                           dx);
-        } else if (pooling_type == "avg") {
+        } else if (true_type == "avg") {
           funcs::Pool2dGradFunctor<Context, funcs::AvgPoolGrad<T>, T>
               pool2d_backward;
           funcs::AvgPoolGrad<T> pool_process;
+          pool2d_backward(ctx,
+                          x,
+                          out,
+                          dout,
+                          kernel_size_,
+                          strides,
+                          paddings_,
+                          data_format,
+                          exclusive,
+                          adaptive,
+                          dx,
+                          pool_process);
+        } else {  // lp_pool2d
+          funcs::Pool2dGradFunctor<Context, funcs::LPPoolGrad<T>, T>
+              pool2d_backward;
+          funcs::LPPoolGrad<T> pool_process;
+          pool_process.setNormType(norm_type);
           pool2d_backward(ctx,
                           x,
                           out,
@@ -215,6 +240,43 @@ void Pool2dGradKernel(const Context& ctx,
                                 global_pooling,
                                 adaptive,
                                 padding_algorithm,
+                                0,
+                                dx);
+}
+
+template <typename T, typename Context>
+void LPPool2dGradKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& out,
+                        const DenseTensor& dout,
+                        const IntArray& kernel_size,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        bool ceil_mode UNUSED,
+                        bool exclusive,
+                        const std::string& data_format,
+                        const std::string& pooling_type,
+                        bool global_pooling,
+                        bool adaptive,
+                        const std::string& padding_algorithm,
+                        const float norm_type,
+                        DenseTensor* dx) {
+  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
+                                   kernel_size.GetData().end());
+  PoolGradRawKernel<T, Context>(ctx,
+                                x,
+                                out,
+                                dout,
+                                kernel_size_val,
+                                strides,
+                                paddings,
+                                exclusive,
+                                data_format,
+                                pooling_type,
+                                global_pooling,
+                                adaptive,
+                                padding_algorithm,
+                                norm_type,
                                 dx);
 }
 
@@ -262,6 +324,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   const std::vector<int>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
+                                  bool ceil_mode UNUSED,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,
@@ -304,6 +367,7 @@ void Pool3dGradKernel(const Context& ctx,
                                 global_pooling,
                                 adaptive,
                                 padding_algorithm,
+                                0,
                                 dx);
 }
 
@@ -317,6 +381,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   const std::vector<int>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
+                                  bool ceil_mode UNUSED,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,

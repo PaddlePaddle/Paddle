@@ -21,34 +21,26 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void FlattenInferKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        int start_axis,
-                        int stop_axis,
-                        DenseTensor* out);
-
-template <typename T, typename Context>
 void FlattenKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int start_axis,
                    int stop_axis,
-                   DenseTensor* out,
-                   DenseTensor* xshape);
+                   DenseTensor* out);
 
-template <typename Context>
-void FlattenInferStridedKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               int start_axis,
-                               int stop_axis,
-                               DenseTensor* out);
+template <typename T, typename Context>
+void FlattenWithXShapeKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             int start_axis,
+                             int stop_axis,
+                             DenseTensor* out,
+                             DenseTensor* xshape);
 
 template <typename Context>
 void FlattenStridedKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           int start_axis,
                           int stop_axis,
-                          DenseTensor* out,
-                          DenseTensor* xshape);
+                          DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Flatten(const Context& dev_ctx,
@@ -58,7 +50,7 @@ DenseTensor Flatten(const Context& dev_ctx,
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   FlattenInferMeta(x, start_axis, stop_axis, &meta_out);
-  FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, &dense_out);
+  FlattenKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, &dense_out);
   return dense_out;
 }
 

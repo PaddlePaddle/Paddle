@@ -24,7 +24,6 @@
 #include "paddle/cinn/auto_schedule/task_scheduler/task_scheduler.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 

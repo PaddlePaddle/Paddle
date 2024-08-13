@@ -126,7 +126,7 @@ class TestAccuracyOpError(unittest.TestCase):
                 self.assertRaises(TypeError, paddle.metric.accuracy, x2, label)
 
                 x3 = paddle.static.data(
-                    name='input', shape=[-1, 2], dtype="float16"
+                    name='input', shape=[-1, 2], dtype="float32"
                 )
                 paddle.static.accuracy(input=x3, label=label)
                 paddle.metric.accuracy(input=x3, label=label)

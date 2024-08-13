@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle.distributed.fleet.recompute import (
-    recompute_sequential,
     recompute_hybrid,
+    recompute_sequential,
 )
 
 __all__ = ["recompute_sequential", "recompute_hybrid"]

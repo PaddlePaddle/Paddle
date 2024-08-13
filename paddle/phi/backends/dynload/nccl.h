@@ -18,7 +18,19 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+ncclResult_t ncclCommInitRank2(ncclComm_t* newcomm,
+                               int nranks,
+                               ncclUniqueId commId,
+                               int myrank,
+                               int param);
+#ifdef __cplusplus
+}
+#endif
 
 namespace phi {
 namespace dynload {
@@ -28,15 +40,21 @@ extern void* nccl_dso_handle;
 
 #define DECLARE_DYNAMIC_LOAD_NCCL_WRAP(__name)                   \
   struct DynLoad__##__name {                                     \
-    template <typename... Args>                                  \
-    auto operator()(Args... args) -> decltype(__name(args...)) { \
+    static auto GetNCCLFunc() {                                  \
       using nccl_func = decltype(&::__name);                     \
       std::call_once(nccl_dso_flag, []() {                       \
         nccl_dso_handle = phi::dynload::GetNCCLDsoHandle();      \
       });                                                        \
       static void* p_##__name = dlsym(nccl_dso_handle, #__name); \
-      return reinterpret_cast<nccl_func>(p_##__name)(args...);   \
+      return reinterpret_cast<nccl_func>(p_##__name);            \
     }                                                            \
+                                                                 \
+    template <typename... Args>                                  \
+    auto operator()(Args... args) -> decltype(__name(args...)) { \
+      return GetNCCLFunc()(args...);                             \
+    }                                                            \
+                                                                 \
+    static bool IsValid() { return GetNCCLFunc() != nullptr; }   \
   };                                                             \
   extern DynLoad__##__name __name
 
@@ -44,6 +62,7 @@ extern void* nccl_dso_handle;
   __macro(ncclCommInitAll);             \
   __macro(ncclGetUniqueId);             \
   __macro(ncclCommInitRank);            \
+  __macro(ncclCommInitRank2);           \
   __macro(ncclCommAbort);               \
   __macro(ncclCommDestroy);             \
   __macro(ncclCommCount);               \

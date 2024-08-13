@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 import collections
 import os
-from typing import List, Tuple
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils import download
@@ -166,14 +167,14 @@ class ESC50(AudioClassificationDataset):
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 
-    def _get_meta_info(self) -> List[collections.namedtuple]:
+    def _get_meta_info(self) -> list[collections.namedtuple]:
         ret = []
         with open(os.path.join(DATA_HOME, self.meta), 'r') as rf:
             for line in rf.readlines()[1:]:
                 ret.append(self.meta_info(*line.strip().split(',')))
         return ret
 
-    def _get_data(self, mode: str, split: int) -> Tuple[List[str], List[int]]:
+    def _get_data(self, mode: str, split: int) -> tuple[list[str], list[int]]:
         if not os.path.isdir(
             os.path.join(DATA_HOME, self.audio_path)
         ) or not os.path.isfile(os.path.join(DATA_HOME, self.meta)):

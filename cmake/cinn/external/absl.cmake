@@ -50,7 +50,7 @@ ExternalProject_Add(
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_bad_variant_access.a
   BUILD_BYPRODUCTS ${ABSL_INSTALL_DIR}/lib/libabsl_raw_hash_set.a)
 
-# It may be more convinent if we just include all absl libs
+# It may be more convenient if we just include all absl libs
 set(ABSL_LIB_NAMES
     hash
     wyhash
@@ -62,6 +62,10 @@ set(ABSL_LIB_NAMES
     bad_variant_access
     raw_hash_set)
 set(ABSL_LIBS "")
+
+if(WITH_ROCM)
+  list(APPEND ABSL_LIB_NAMES strings_internal raw_logging_internal)
+endif()
 
 add_library(absl STATIC IMPORTED GLOBAL)
 set_property(TARGET absl PROPERTY IMPORTED_LOCATION

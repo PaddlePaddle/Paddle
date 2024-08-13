@@ -177,7 +177,7 @@ void DownpourWorkerOpt::Initialize(const TrainerDesc& desc) {
             << dest_table;
     copy_dense_tables_.emplace_back(src_table, dest_table);
   }
-  for (auto& m : copy_table_config_.table_denpendency_map()) {
+  for (auto& m : copy_table_config_.table_dependency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
       // currently only support one dependency
       for (auto& value : m.values()) {
@@ -437,15 +437,15 @@ void DownpourWorkerOpt::TrainFiles() {
       PADDLE_ENFORCE_EQ(
           framework::TensorContainsInf(*tensor),
           false,
-          platform::errors::InvalidArgument("The target tensor %s contains Inf "
-                                            "should check some layers output.",
-                                            var_name));
+          common::errors::InvalidArgument("The target tensor %s contains Inf "
+                                          "should check some layers output.",
+                                          var_name));
       PADDLE_ENFORCE_EQ(
           framework::TensorContainsNAN(*tensor),
           false,
-          platform::errors::InvalidArgument("The target tensor %s contains Nan "
-                                            "should check some layers output.",
-                                            var_name));
+          common::errors::InvalidArgument("The target tensor %s contains Nan "
+                                          "should check some layers output.",
+                                          var_name));
     }
 
     if (need_to_push_sparse_) {

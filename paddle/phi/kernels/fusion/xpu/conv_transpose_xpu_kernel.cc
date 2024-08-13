@@ -39,7 +39,7 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
                               const std::string& act_type,
                               DenseTensor* out,
                               DenseTensor* out_max) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
 
   ctx.template Alloc<T>(out);
   ctx.template Alloc<float>(out_max);
@@ -71,11 +71,11 @@ void Conv2dTransposeXPUKernel(const Context& ctx,
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
   auto filter_max_data = filter_max.data<float>();
 
-  int r = xpu::conv2d_transpose_fusion_v2<XPUT, int16_t, XPUT, int16_t>(
+  int r = xpu::conv2d_transpose_fusion_v2<XPUType, int16_t, XPUType, int16_t>(
       ctx.x_context(),
-      reinterpret_cast<const XPUT*>(x.data<T>()),
+      reinterpret_cast<const XPUType*>(x.data<T>()),
       filter.data<int16_t>(),
-      reinterpret_cast<XPUT*>(out->data<T>()),
+      reinterpret_cast<XPUType*>(out->data<T>()),
       batch_size,
       img_yc,
       img_xh,

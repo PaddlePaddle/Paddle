@@ -12,13 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Literal
 
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import no_grad
 from paddle.nn.layer.norm import _BatchNormBase
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import (
+        DataLayoutND,
+        ParamAttrLike,
+    )
+    from paddle.nn import Layer
 
 
 class BatchNorm(paddle.nn.BatchNorm1D):
@@ -68,7 +79,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             If it is set to None or one attribute of ParamAttr, batch_norm
             will create ParamAttr as bias_attr. If it is set to False, the weight is not learnable.
             If the Initializer of the bias_attr is not set, the bias is initialized zero. Default: None.
-        data_format(str, optional): Specify the input data format, may be "NC", "NCL" or "NLC". Default "NCL".
+        data_format(str, optional): Specify the input data format, may be "NDHWC" or "NHWC". Default "NDHWC".
         use_global_stats(bool|None, optional): Whether to use global mean and variance. If set to False, use the statistics of one mini-batch, if set to True, use the global statistics, if set to None, use global statistics in the test phase and use the statistics of one mini-batch in the training phase. Default: None.
         name(str, optional): Name for the BatchNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
@@ -97,15 +108,15 @@ class BatchNorm(paddle.nn.BatchNorm1D):
 
     def __init__(
         self,
-        num_features,
-        momentum=0.9,
-        epsilon=1e-05,
-        weight_attr=None,
-        bias_attr=None,
-        data_format='NDHWC',
-        use_global_stats=None,
-        name=None,
-    ):
+        num_features: int,
+        momentum: float = 0.9,
+        epsilon: float = 1e-05,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: Literal["NDHWC", "NHWC"] = "NDHWC",
+        use_global_stats: bool | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             num_features,
             momentum=momentum,
@@ -117,13 +128,13 @@ class BatchNorm(paddle.nn.BatchNorm1D):
             name=name,
         )
 
-    def _check_data_format(self, input):
+    def _check_data_format(self, input: Literal["NDHWC", "NHWC"]) -> None:
         if input not in ["NDHWC", "NHWC"]:
             raise ValueError(
                 'sparse BatchNorm only support layout of "NDHWC" and "NHWC"'
             )
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         self._check_data_format(self._data_format)
 
         if self.training:
@@ -304,14 +315,14 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
 
     def __init__(
         self,
-        num_features,
-        momentum=0.9,
-        epsilon=1e-05,
-        weight_attr=None,
-        bias_attr=None,
-        data_format='NCHW',
-        name=None,
-    ):
+        num_features: int,
+        momentum: float = 0.9,
+        epsilon: float = 1e-05,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: DataLayoutND = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             num_features,
             momentum,
@@ -322,7 +333,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
             name,
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         self._check_data_format()
         sync_batch_norm_out, _, _, _, _, _ = _C_ops.sparse_sync_batch_norm_(
             x,
@@ -340,7 +351,7 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         return sync_batch_norm_out
 
     @classmethod
-    def convert_sync_batchnorm(cls, layer):
+    def convert_sync_batchnorm(cls, layer: Layer) -> Layer:
         r"""
         Helper function to convert :class: `paddle.sparse.nn.BatchNorm` layers in the model to :class: `paddle.sparse.nn.SyncBatchNorm` layers.
 

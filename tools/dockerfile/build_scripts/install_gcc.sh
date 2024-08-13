@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,7 +30,7 @@ else
 fi
 
 if [ "$1" == "gcc82" ]; then
-  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz 
+  wget -q --no-proxy https://paddle-ci.gz.bcebos.com/gcc-8.2.0.tar.xz
   tar -xf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
   wget -q --no-proxy https://paddle-ci.gz.bcebos.com/sanitizer_platform_limits_posix.cc.patch
@@ -44,7 +44,7 @@ if [ "$1" == "gcc82" ]; then
   make -j8 && make install
   cd .. && rm -rf temp_gcc82 gcc-8.2.0 gcc-8.2.0.tar.xz
   if [ -f "/etc/redhat-release" ];then
-    cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} && 
+    cp ${lib_so_6} ${lib_so_6}.bak  && rm -f ${lib_so_6} &&
     ln -s /usr/local/gcc-8.2/lib64/libgfortran.so.5 ${lib_so_5} && \
     ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_so_6} && \
     cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}

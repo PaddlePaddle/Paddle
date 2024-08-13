@@ -25,7 +25,9 @@ namespace ir {
 namespace patterns {
 
 struct AdaptiveSeqlenPatternV1 : public PatternBase {
-  AdaptiveSeqlenPatternV1(PDPattern* pattern, const std::string& name_scope);
+  AdaptiveSeqlenPatternV1(PDPattern* pattern,
+                          const std::string& name_scope,
+                          const std::string& matmul_type);
 
   // declare operator node's name
   PATTERN_DECL_NODE(embedding_xpu);
@@ -44,7 +46,8 @@ struct AdaptiveSeqlenPatternV1 : public PatternBase {
 };
 
 AdaptiveSeqlenPatternV1::AdaptiveSeqlenPatternV1(PDPattern* pattern,
-                                                 const std::string& name_scope)
+                                                 const std::string& name_scope,
+                                                 const std::string& matmul_type)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* embedding_xpu = pattern->NewNode(embedding_xpu_repr())
                             ->assert_is_op("embedding_with_eltwise_add_xpu");
@@ -59,11 +62,11 @@ AdaptiveSeqlenPatternV1::AdaptiveSeqlenPatternV1(PDPattern* pattern,
                              ->assert_is_op_input("multi_encoder_xpu", "x");
 
   auto* mask = pattern->NewNode(mask_repr())
-                   ->assert_is_op_input("matmul", "X")
-                   ->assert_is_op_input("matmul", "Y");
-  auto* matmul = pattern->NewNode(matmul_repr())->assert_is_op("matmul");
+                   ->assert_is_op_input(matmul_type, "X")
+                   ->assert_is_op_input(matmul_type, "Y");
+  auto* matmul = pattern->NewNode(matmul_repr())->assert_is_op(matmul_type);
   auto* matmul_out = pattern->NewNode(matmul_out_repr())
-                         ->assert_is_op_output("matmul", "Out")
+                         ->assert_is_op_output(matmul_type, "Out")
                          ->assert_is_op_input("scale", "X");
   auto* scale = pattern->NewNode(scale_repr())->assert_is_op("scale");
   auto* scale_out = pattern->NewNode(scale_out_repr())
@@ -88,9 +91,10 @@ AdaptiveSeqlenPatternV1::AdaptiveSeqlenPatternV1(PDPattern* pattern,
 }  // namespace patterns
 
 int MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyAdaptiveSeqlenPassV1(
-    ir::Graph* graph) const {
+    ir::Graph* graph, const std::string& matmul_type) const {
   GraphPatternDetector gpd;
-  patterns::AdaptiveSeqlenPatternV1 pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::AdaptiveSeqlenPatternV1 pattern(
+      gpd.mutable_pattern(), name_scope_, matmul_type);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -143,7 +147,9 @@ int MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyAdaptiveSeqlenPassV1(
 namespace patterns {
 
 struct AdaptiveSeqlenPatternV2 : public PatternBase {
-  AdaptiveSeqlenPatternV2(PDPattern* pattern, const std::string& name_scope);
+  AdaptiveSeqlenPatternV2(PDPattern* pattern,
+                          const std::string& name_scope,
+                          const std::string& matmul_type);
 
   // declare operator node's name
   PATTERN_DECL_NODE(embedding_xpu);
@@ -172,7 +178,8 @@ struct AdaptiveSeqlenPatternV2 : public PatternBase {
 };
 
 AdaptiveSeqlenPatternV2::AdaptiveSeqlenPatternV2(PDPattern* pattern,
-                                                 const std::string& name_scope)
+                                                 const std::string& name_scope,
+                                                 const std::string& matmul_type)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* embedding_xpu = pattern->NewNode(embedding_xpu_repr())
                             ->assert_is_op("embedding_with_eltwise_add_xpu");
@@ -201,11 +208,11 @@ AdaptiveSeqlenPatternV2::AdaptiveSeqlenPatternV2(PDPattern* pattern,
       pattern->NewNode(unsqueeze_0_repr())->assert_is_op("unsqueeze2");
   auto* unsqueeze_0_out = pattern->NewNode(unsqueeze_0_out_repr())
                               ->assert_is_op_output("unsqueeze2", "Out")
-                              ->assert_is_op_input("matmul_v2", "X")
-                              ->assert_is_op_input("matmul_v2", "Y");
-  auto* matmul = pattern->NewNode(matmul_repr())->assert_is_op("matmul_v2");
+                              ->assert_is_op_input(matmul_type, "X")
+                              ->assert_is_op_input(matmul_type, "Y");
+  auto* matmul = pattern->NewNode(matmul_repr())->assert_is_op(matmul_type);
   auto* matmul_out = pattern->NewNode(matmul_out_repr())
-                         ->assert_is_op_output("matmul_v2", "Out")
+                         ->assert_is_op_output(matmul_type, "Out")
                          ->assert_is_op_input("scale", "X");
   auto* scale_0 = pattern->NewNode(scale_0_repr())->assert_is_op("scale");
   auto* scale_0_out = pattern->NewNode(scale_0_out_repr())
@@ -244,9 +251,10 @@ AdaptiveSeqlenPatternV2::AdaptiveSeqlenPatternV2(PDPattern* pattern,
 }  // namespace patterns
 
 int MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyAdaptiveSeqlenPassV2(
-    ir::Graph* graph) const {
+    ir::Graph* graph, const std::string& matmul_type) const {
   GraphPatternDetector gpd;
-  patterns::AdaptiveSeqlenPatternV2 pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::AdaptiveSeqlenPatternV2 pattern(
+      gpd.mutable_pattern(), name_scope_, matmul_type);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -320,13 +328,146 @@ int MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyAdaptiveSeqlenPassV2(
   return found_subgraph_count;
 }
 
+namespace patterns {
+struct AdaptiveSeqlenPatternV3 : public PatternBase {
+  AdaptiveSeqlenPatternV3(PDPattern* pattern,
+                          const std::string& name_scope,
+                          const std::string& matmul_type);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(multi_encoder_xpu);
+  PATTERN_DECL_NODE(matmul);
+  PATTERN_DECL_NODE(scale);
+  PATTERN_DECL_NODE(stack);
+  // declare variable node's name
+  PATTERN_DECL_NODE(x);
+  PATTERN_DECL_NODE(mask);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(scale_out);
+  PATTERN_DECL_NODE(stack_out);
+};
+
+AdaptiveSeqlenPatternV3::AdaptiveSeqlenPatternV3(PDPattern* pattern,
+                                                 const std::string& name_scope,
+                                                 const std::string& matmul_type)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* x =
+      pattern->NewNode(x_repr())->assert_is_op_input("multi_encoder_xpu", "x");
+
+  auto* mask = pattern->NewNode(mask_repr())
+                   ->assert_is_op_input(matmul_type, "X")
+                   ->assert_is_op_input(matmul_type, "Y");
+  auto* matmul = pattern->NewNode(matmul_repr())->assert_is_op(matmul_type);
+  auto* matmul_out = pattern->NewNode(matmul_out_repr())
+                         ->assert_is_op_output(matmul_type, "Out")
+                         ->assert_is_op_input("scale", "X");
+  auto* scale = pattern->NewNode(scale_repr())->assert_is_op("scale");
+  auto* scale_out = pattern->NewNode(scale_out_repr())
+                        ->assert_is_op_output("scale", "Out")
+                        ->assert_is_op_input("stack", "X");
+  auto* stack = pattern->NewNode(stack_repr())->assert_is_op("stack");
+  auto* stack_out = pattern->NewNode(stack_out_repr())
+                        ->assert_is_op_output("stack", "Y")
+                        ->assert_is_op_input("multi_encoder_xpu", "mask");
+
+  auto* multi_encoder_xpu = pattern->NewNode(multi_encoder_xpu_repr())
+                                ->assert_is_op("multi_encoder_xpu");
+
+  matmul->LinksFrom({mask}).LinksTo({matmul_out});
+  scale->LinksFrom({matmul_out}).LinksTo({scale_out});
+  stack->LinksFrom({scale_out}).LinksTo({stack_out});
+  multi_encoder_xpu->LinksFrom({x, stack_out});
+}
+
+}  // namespace patterns
+
+int MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyAdaptiveSeqlenPassV3(
+    ir::Graph* graph, const std::string& matmul_type) const {
+  GraphPatternDetector gpd;
+  patterns::AdaptiveSeqlenPatternV3 pattern(
+      gpd.mutable_pattern(), name_scope_, matmul_type);
+
+  int found_subgraph_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(4) << "handle ApplyAdaptiveSeqlenPassV3 fuse";
+    GET_IR_NODE(multi_encoder_xpu);
+    GET_IR_NODE(matmul);
+    GET_IR_NODE(scale);
+    GET_IR_NODE(stack);
+    GET_IR_NODE(x);
+    GET_IR_NODE(mask);
+    GET_IR_NODE(matmul_out);
+    GET_IR_NODE(scale_out);
+    GET_IR_NODE(stack_out);
+
+    std::string mask_name = mask->Name();
+    std::string seq_len_name = mask_name + "_seq_len";
+    VarDesc seq_len_desc(seq_len_name);
+    auto* seq_len = graph->CreateVarNode(&seq_len_desc);
+    std::string seq_lod_name = mask_name + "_seq_lod";
+    VarDesc seq_lod_desc(seq_lod_name);
+    auto* seq_lod = graph->CreateVarNode(&seq_lod_desc);
+    std::string max_seq_len_name = mask_name + "_max_seq_len";
+    VarDesc max_seq_len_desc(max_seq_len_name);
+    auto* max_seq_len = graph->CreateVarNode(&max_seq_len_desc);
+    std::string x_vsl_name = x->Name() + "_vsl_packed";
+    VarDesc x_vsl_desc(x_vsl_name);
+    auto* x_vsl = graph->CreateVarNode(&x_vsl_desc);
+
+    framework::OpDesc op_desc;
+    op_desc.SetType("mask_adaptive_xpu");
+    op_desc.SetInput("mask", {mask_name});
+    op_desc.SetOutput("length", {seq_len_name});
+    op_desc.SetOutput("seq_lod", {seq_lod_name});
+    op_desc.SetOutput("pad_seq_len", {max_seq_len_name});
+    auto* mask_adaptive_xpu = graph->CreateOpNode(&op_desc);
+
+    framework::OpDesc new_op_desc;
+    new_op_desc.SetType("sequence_unpad_xpu");
+    new_op_desc.SetInput("x", {x->Name()});
+    new_op_desc.SetInput("length", {seq_len_name});
+    new_op_desc.SetOutput("out", {x_vsl_name});
+    auto* sequence_unpad = graph->CreateOpNode(&new_op_desc);
+
+    multi_encoder_xpu->Op()->SetInput("x", {x_vsl_name});
+    multi_encoder_xpu->Op()->SetInput("seq_lod", {seq_lod_name});
+    multi_encoder_xpu->Op()->SetInput("max_seq_len", {max_seq_len_name});
+    multi_encoder_xpu->Op()->RemoveInput("mask");
+    IR_NODE_LINK_TO(mask, mask_adaptive_xpu);
+    IR_NODE_LINK_TO(mask_adaptive_xpu, seq_len);
+    IR_NODE_LINK_TO(mask_adaptive_xpu, seq_lod);
+    IR_NODE_LINK_TO(mask_adaptive_xpu, max_seq_len);
+    IR_NODE_LINK_TO(x, sequence_unpad);
+    IR_NODE_LINK_TO(seq_len, sequence_unpad);
+    IR_NODE_LINK_TO(sequence_unpad, x_vsl);
+    IR_NODE_LINK_TO(x_vsl, multi_encoder_xpu);
+    IR_NODE_LINK_TO(seq_lod, multi_encoder_xpu);
+    IR_NODE_LINK_TO(max_seq_len, multi_encoder_xpu);
+
+    // delete useless node
+    std::unordered_set<const Node*> delete_nodes{
+        matmul, scale, stack, matmul_out, scale_out, stack_out};
+    GraphSafeRemoveNodes(graph, delete_nodes);
+    found_subgraph_count++;
+  };
+
+  gpd(graph, handler);
+  return found_subgraph_count;
+}
+
 void MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
+  std::vector<std::string> matmul_types{"matmul", "matmul_v2"};
+  int found_subgraph_count = 0;
+  for (auto& matmul_type : matmul_types) {
+    found_subgraph_count += ApplyAdaptiveSeqlenPassV1(graph, matmul_type);
+    found_subgraph_count += ApplyAdaptiveSeqlenPassV2(graph, matmul_type);
+    found_subgraph_count += ApplyAdaptiveSeqlenPassV3(graph, matmul_type);
+  }
 
-  int found_subgraph_count = ApplyAdaptiveSeqlenPassV1(graph);
-  found_subgraph_count += ApplyAdaptiveSeqlenPassV2(graph);
   AddStatis(found_subgraph_count);
 }
 

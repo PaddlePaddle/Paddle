@@ -87,7 +87,7 @@ StackPattern::StackPattern(PDPattern* pattern, const std::string& name_scope)
 /*
 "stack" can be replaced by "unsqueeze" if:
 1. "stack inputs" are the same。
-1. "stack output" is "elementwise_add input" or "fused_multi_transformer
+2. "stack output" is "elementwise_add input" or "fused_multi_transformer
 src_mask input".
 */
 class StackFusePass : public FusePassBase {
@@ -100,7 +100,7 @@ class StackFusePass : public FusePassBase {
 
 void StackFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   GraphPatternDetector gpd;
   patterns::StackPattern pattern(gpd.mutable_pattern(), name_scope_);

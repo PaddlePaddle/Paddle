@@ -1,6 +1,5 @@
 add_subdirectory(framework)
 add_subdirectory(pe)
 add_subdirectory(op)
-add_subdirectory(pass)
 add_subdirectory(kernels)
 add_subdirectory(dialect)

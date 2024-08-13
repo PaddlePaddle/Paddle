@@ -14,21 +14,26 @@
 
 #pragma once
 
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include <memory>
 
+#include "paddle/pir/include/pass/pass.h"
+
+namespace pir {
+class Value;
+class PatternRewriter;
+}  // namespace pir
 namespace cinn {
 namespace dialect {
+class GenerateShapeOp;
+
 namespace ir {
 
-class SplitGenerateShapeIntoShapeOpsPass : public pir::PatternRewritePass {
- public:
-  SplitGenerateShapeIntoShapeOpsPass();
+namespace details {
+std::optional<pir::Value> GetOutReplacement(cinn::dialect::GenerateShapeOp op,
+                                            pir::PatternRewriter* rewriter);
+}  // namespace details
 
-  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
-
-  bool CanApplyOn(pir::Operation *op) const override;
-};
+std::unique_ptr<pir::Pass> CreateSplitGenerateShapeIntoShapeOpsPass();
 
 }  // namespace ir
 }  // namespace dialect

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -25,7 +26,13 @@ from paddle.pir_utils import test_with_pir_api
 
 class TestCosineSimilarityAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -80,9 +87,9 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_x2 = np.random.rand(*shape).astype(np.float32)
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
-        tesnor_x1 = paddle.to_tensor(np_x1)
-        tesnor_x2 = paddle.to_tensor(np_x2)
-        y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = F.cosine_similarity(tensor_x1, tensor_x2, axis=axis, eps=eps)
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
@@ -97,9 +104,9 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_x2 = np.random.rand(*shape).astype(np.float32)
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
-        tesnor_x1 = paddle.to_tensor(np_x1)
-        tesnor_x2 = paddle.to_tensor(np_x2)
-        y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = F.cosine_similarity(tensor_x1, tensor_x2, axis=axis, eps=eps)
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
@@ -115,9 +122,9 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_x2 = np.random.rand(*shape2).astype(np.float32)
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
-        tesnor_x1 = paddle.to_tensor(np_x1)
-        tesnor_x2 = paddle.to_tensor(np_x2)
-        y = F.cosine_similarity(tesnor_x1, tesnor_x2, axis=axis, eps=eps)
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = F.cosine_similarity(tensor_x1, tensor_x2, axis=axis, eps=eps)
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 
@@ -134,9 +141,9 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         np_out = self._get_numpy_out(np_x1, np_x2, axis=axis, eps=eps)
 
         cos_sim_func = nn.CosineSimilarity(axis=axis, eps=eps)
-        tesnor_x1 = paddle.to_tensor(np_x1)
-        tesnor_x2 = paddle.to_tensor(np_x2)
-        y = cos_sim_func(tesnor_x1, tesnor_x2)
+        tensor_x1 = paddle.to_tensor(np_x1)
+        tensor_x2 = paddle.to_tensor(np_x2)
+        y = cos_sim_func(tensor_x1, tensor_x2)
 
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
 

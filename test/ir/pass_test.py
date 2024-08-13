@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 import warnings
@@ -41,7 +42,13 @@ class PassTest(unittest.TestCase):
         random.seed(124)
 
     def _get_places(self):
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         return places
@@ -131,9 +138,7 @@ class PassTest(unittest.TestCase):
             outs, lods = self._run_program(executor, self.main_program)
         self.assertTrue(
             len(self.fetch_list) == len(outs),
-            "Checking the number of fetchs failed. Expected: {}, Received: {}".format(
-                len(self.fetch_list), len(outs)
-            ),
+            f"Checking the number of fetchs failed. Expected: {len(self.fetch_list)}, Received: {len(outs)}",
         )
 
         # Parameters may be changed in ir passes.
@@ -149,9 +154,7 @@ class PassTest(unittest.TestCase):
         outs_opt, lods_opt = self._run_program(executor, opt_program)
         self.assertTrue(
             len(self.fetch_list) == len(outs_opt),
-            "Checking the number of fetchs failed. Expected: {}, Received: {}".format(
-                len(self.fetch_list), len(outs_opt)
-            ),
+            f"Checking the number of fetchs failed. Expected: {len(self.fetch_list)}, Received: {len(outs_opt)}",
         )
         for i in range(len(self.fetch_list)):
             is_allclose = np.allclose(outs_opt[i], outs[i], atol=atol)
@@ -194,10 +197,8 @@ class PassTest(unittest.TestCase):
                 actual_num_fused_ops += 1
         self.assertTrue(
             self.num_fused_ops == actual_num_fused_ops,
-            "Checking of the number of fused operator < {} > failed. "
-            "Expected: {}, Received: {}".format(
-                self.fused_op_type, self.num_fused_ops, actual_num_fused_ops
-            ),
+            f"Checking of the number of fused operator < {self.fused_op_type} > failed. "
+            f"Expected: {self.num_fused_ops}, Received: {actual_num_fused_ops}",
         )
 
     def check_program(self, program=None):
@@ -219,9 +220,7 @@ class PassTest(unittest.TestCase):
         self.assertTrue(
             self.main_program.num_blocks == program.num_blocks,
             "The number of blocks of the origin program and the optimized "
-            "program are different ({} vs {}).".format(
-                self.main_program.num_blocks, program.num_blocks
-            ),
+            f"program are different ({self.main_program.num_blocks} vs {program.num_blocks}).",
         )
 
         is_different = False

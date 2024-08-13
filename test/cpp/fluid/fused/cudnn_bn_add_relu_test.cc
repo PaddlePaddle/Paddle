@@ -16,35 +16,27 @@ limitations under the License. */
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
-#include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_scale_bias_add_relu.cu.h"
 
-PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace op = paddle::operators;
-
-USE_OP_ITSELF(batch_norm);
-USE_OP_ITSELF(fused_bn_add_activation);
-USE_OP_ITSELF(fused_bn_add_activation_grad);
-PD_DECLARE_KERNEL(batch_norm, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(fused_bn_add_activation, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(fused_bn_add_activation_grad, GPU, ALL_LAYOUT);
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
                       phi::DenseTensor *cpu_out) {
   T *cpu_out_ptr =
-      cpu_out->mutable_data<T>(common::make_ddim(dims), platform::CPUPlace());
+      cpu_out->mutable_data<T>(common::make_ddim(dims), phi::CPUPlace());
   std::default_random_engine random(0);
   std::uniform_real_distribution<float> dis(-1.0, 1.0);
   for (int i = 0; i < cpu_out->numel(); ++i) {
@@ -57,7 +49,7 @@ void InitConstantTensor(const std::vector<int64_t> &dims,
                         T value,
                         phi::DenseTensor *cpu_out) {
   T *cpu_out_ptr =
-      cpu_out->mutable_data<T>(common::make_ddim(dims), platform::CPUPlace());
+      cpu_out->mutable_data<T>(common::make_ddim(dims), phi::CPUPlace());
   for (int i = 0; i < cpu_out->numel(); ++i) {
     cpu_out_ptr[i] = value;
   }
@@ -113,9 +105,9 @@ void ComputeSumAndSquareSum(const phi::DenseTensor &cpu_x,
 
   const T *cpu_x_ptr = cpu_x.data<T>();
   float *cpu_sum_ptr =
-      cpu_sum->mutable_data<float>({1, 1, 1, c}, platform::CPUPlace());
-  float *cpu_sum_square_ptr = cpu_sum_of_square->mutable_data<float>(
-      {1, 1, 1, c}, platform::CPUPlace());
+      cpu_sum->mutable_data<float>({1, 1, 1, c}, phi::CPUPlace());
+  float *cpu_sum_square_ptr =
+      cpu_sum_of_square->mutable_data<float>({1, 1, 1, c}, phi::CPUPlace());
 
   for (int j = 0; j < c; ++j) {
     float tmp_sum = 0.0f;
@@ -205,13 +197,12 @@ void ComputeBatchNormForward(const phi::GPUContext &ctx,
                                       attrs);
   op->Run(scope, ctx.GetPlace());
 
-  paddle::framework::TensorCopySync(*y, platform::CPUPlace(), cpu_y);
-  paddle::framework::TensorCopySync(*mean, platform::CPUPlace(), cpu_mean);
-  paddle::framework::TensorCopySync(*var, platform::CPUPlace(), cpu_var);
+  paddle::framework::TensorCopySync(*y, phi::CPUPlace(), cpu_y);
+  paddle::framework::TensorCopySync(*mean, phi::CPUPlace(), cpu_mean);
+  paddle::framework::TensorCopySync(*var, phi::CPUPlace(), cpu_var);
   paddle::framework::TensorCopySync(
-      *saved_mean, platform::CPUPlace(), cpu_saved_mean);
-  paddle::framework::TensorCopySync(
-      *saved_var, platform::CPUPlace(), cpu_saved_var);
+      *saved_mean, phi::CPUPlace(), cpu_saved_mean);
+  paddle::framework::TensorCopySync(*saved_var, phi::CPUPlace(), cpu_saved_var);
   // reserved_space will stay on GPU and used in grad op.
   saved_reserve_space->ShareDataWith(*reserve_space);
 }
@@ -273,13 +264,12 @@ void ComputeFusedBNAddReluForward(const phi::GPUContext &ctx,
                                       attrs);
   op->Run(scope, ctx.GetPlace());
 
-  paddle::framework::TensorCopySync(*y, platform::CPUPlace(), cpu_y);
-  paddle::framework::TensorCopySync(*mean, platform::CPUPlace(), cpu_mean);
-  paddle::framework::TensorCopySync(*var, platform::CPUPlace(), cpu_var);
+  paddle::framework::TensorCopySync(*y, phi::CPUPlace(), cpu_y);
+  paddle::framework::TensorCopySync(*mean, phi::CPUPlace(), cpu_mean);
+  paddle::framework::TensorCopySync(*var, phi::CPUPlace(), cpu_var);
   paddle::framework::TensorCopySync(
-      *saved_mean, platform::CPUPlace(), cpu_saved_mean);
-  paddle::framework::TensorCopySync(
-      *saved_var, platform::CPUPlace(), cpu_saved_var);
+      *saved_mean, phi::CPUPlace(), cpu_saved_mean);
+  paddle::framework::TensorCopySync(*saved_var, phi::CPUPlace(), cpu_saved_var);
   // reserved_space will stay on GPU and used in grad op.
   saved_reserve_space->ShareDataWith(*reserve_space);
 }
@@ -353,10 +343,10 @@ void ComputeFusedBNAddReluBackward(const phi::GPUContext &ctx,
                                       attrs);
   op->Run(scope, ctx.GetPlace());
 
-  paddle::framework::TensorCopySync(*dx, platform::CPUPlace(), cpu_dx);
-  paddle::framework::TensorCopySync(*dz, platform::CPUPlace(), cpu_dz);
-  paddle::framework::TensorCopySync(*dscale, platform::CPUPlace(), cpu_dscale);
-  paddle::framework::TensorCopySync(*dbias, platform::CPUPlace(), cpu_dbias);
+  paddle::framework::TensorCopySync(*dx, phi::CPUPlace(), cpu_dx);
+  paddle::framework::TensorCopySync(*dz, phi::CPUPlace(), cpu_dz);
+  paddle::framework::TensorCopySync(*dscale, phi::CPUPlace(), cpu_dscale);
+  paddle::framework::TensorCopySync(*dbias, phi::CPUPlace(), cpu_dbias);
 }
 
 template <typename T>
@@ -388,7 +378,7 @@ class CudnnBNAddReluTester {
               << "] act_type=" << act_type_ << ", fuse_add=" << fuse_add_
               << ", has_shortcut=" << has_shortcut_;
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
     auto select = [&](phi::DenseTensor *in) {
       return has_shortcut_ ? in : nullptr;
@@ -473,7 +463,7 @@ class CudnnBNAddReluTester {
 
   void CheckBackward(float diff, bool is_relative_atol = false) {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
     phi::DenseTensor cpu_dx_base;
     phi::DenseTensor cpu_dz_base;
@@ -653,7 +643,7 @@ class CudnnBNAddReluTester {
     saved_var->Resize({1, 1, 1, channels_});
 
     auto param_shape = common::vectorize<int>(bn_scale->dims());
-    op::CudnnBNStatsFinalize<T> bn_op(ctx, param_shape);
+    phi::fusion::CudnnBNStatsFinalize<T> bn_op(ctx, param_shape);
     bn_op.Forward(ctx,
                   *sum,
                   *sum_of_square,
@@ -764,7 +754,7 @@ class CudnnBNAddReluTester {
     int c = channels_;
     int64_t nhw = ele_count_;
     int32_t c_int32_elems = ((c + 63) & ~63) / 32;
-    int32_t nhw_int32_elems = (nhw + 31) & ~31;
+    int32_t nhw_int32_elems = (static_cast<int32_t>(nhw) + 31) & ~31;
     bitmask.Resize(common::make_ddim({nhw_int32_elems, c_int32_elems, 1}));
 
     auto data_shape = common::vectorize<int>(x.dims());
@@ -772,13 +762,13 @@ class CudnnBNAddReluTester {
     auto bitmask_shape = common::vectorize<int>(bitmask.dims());
 
     // 2. Scale Bias + Relu
-    op::CudnnScaleBiasAddRelu<T> sbar_op(ctx,
-                                         act_type_,
-                                         fuse_add_,
-                                         has_shortcut_,
-                                         data_shape,
-                                         param_shape,
-                                         bitmask_shape);
+    phi::fusion::CudnnScaleBiasAddRelu<T> sbar_op(ctx,
+                                                  act_type_,
+                                                  fuse_add_,
+                                                  has_shortcut_,
+                                                  data_shape,
+                                                  param_shape,
+                                                  bitmask_shape);
     sbar_op.Forward(ctx,
                     x,
                     equiv_scale_x,
@@ -789,24 +779,22 @@ class CudnnBNAddReluTester {
                     &y,
                     &bitmask);
 
-    paddle::framework::TensorCopySync(mean_x, platform::CPUPlace(), cpu_mean_x);
-    paddle::framework::TensorCopySync(var_x, platform::CPUPlace(), cpu_var_x);
+    paddle::framework::TensorCopySync(mean_x, phi::CPUPlace(), cpu_mean_x);
+    paddle::framework::TensorCopySync(var_x, phi::CPUPlace(), cpu_var_x);
     paddle::framework::TensorCopySync(
-        saved_mean_x, platform::CPUPlace(), cpu_saved_mean_x);
+        saved_mean_x, phi::CPUPlace(), cpu_saved_mean_x);
     paddle::framework::TensorCopySync(
-        saved_var_x, platform::CPUPlace(), cpu_saved_var_x);
+        saved_var_x, phi::CPUPlace(), cpu_saved_var_x);
     if (has_shortcut_) {
+      paddle::framework::TensorCopySync(mean_z, phi::CPUPlace(), cpu_mean_z);
+      paddle::framework::TensorCopySync(var_z, phi::CPUPlace(), cpu_var_z);
       paddle::framework::TensorCopySync(
-          mean_z, platform::CPUPlace(), cpu_mean_z);
-      paddle::framework::TensorCopySync(var_z, platform::CPUPlace(), cpu_var_z);
+          saved_mean_z, phi::CPUPlace(), cpu_saved_mean_z);
       paddle::framework::TensorCopySync(
-          saved_mean_z, platform::CPUPlace(), cpu_saved_mean_z);
-      paddle::framework::TensorCopySync(
-          saved_var_z, platform::CPUPlace(), cpu_saved_var_z);
+          saved_var_z, phi::CPUPlace(), cpu_saved_var_z);
     }
-    paddle::framework::TensorCopySync(y, platform::CPUPlace(), cpu_y);
-    paddle::framework::TensorCopySync(
-        bitmask, platform::CPUPlace(), cpu_bitmask);
+    paddle::framework::TensorCopySync(y, phi::CPUPlace(), cpu_y);
+    paddle::framework::TensorCopySync(bitmask, phi::CPUPlace(), cpu_bitmask);
   }
 
   // Get backward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
@@ -851,7 +839,7 @@ class CudnnBNAddReluTester {
     auto bitmask_shape = common::vectorize<int>(bitmask.dims());
 
     std::string act_type = "relu";
-    op::CudnnScaleBiasAddRelu<T> sbar_op(
+    phi::fusion::CudnnScaleBiasAddRelu<T> sbar_op(
         ctx, act_type, true, false, data_shape, param_shape, bitmask_shape);
     sbar_op.Backward(ctx,
                      dy,
@@ -867,10 +855,10 @@ class CudnnBNAddReluTester {
                      &dbias,
                      eps_);
 
-    paddle::framework::TensorCopySync(dx, platform::CPUPlace(), cpu_dx);
-    paddle::framework::TensorCopySync(dz, platform::CPUPlace(), cpu_dz);
-    paddle::framework::TensorCopySync(dscale, platform::CPUPlace(), cpu_dscale);
-    paddle::framework::TensorCopySync(dbias, platform::CPUPlace(), cpu_dbias);
+    paddle::framework::TensorCopySync(dx, phi::CPUPlace(), cpu_dx);
+    paddle::framework::TensorCopySync(dz, phi::CPUPlace(), cpu_dz);
+    paddle::framework::TensorCopySync(dscale, phi::CPUPlace(), cpu_dscale);
+    paddle::framework::TensorCopySync(dbias, phi::CPUPlace(), cpu_dbias);
   }
 
  private:
@@ -920,7 +908,7 @@ TEST(CudnnBNAddReluFp16, BNAdd) {
   bool has_shortcut = false;
   FLAGS_cudnn_batchnorm_spatial_persistent = true;
   for (auto fuse_add : {false, true}) {
-    CudnnBNAddReluTester<paddle::platform::float16> test(
+    CudnnBNAddReluTester<phi::dtype::float16> test(
         batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
     test.CheckForward(2e-3);
   }
@@ -935,7 +923,7 @@ TEST(CudnnBNAddReluFp16, BNAddRelu) {
   bool has_shortcut = false;
   FLAGS_cudnn_batchnorm_spatial_persistent = true;
   for (auto fuse_add : {false, true}) {
-    CudnnBNAddReluTester<paddle::platform::float16> test(
+    CudnnBNAddReluTester<phi::dtype::float16> test(
         batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
     test.CheckForward(2e-3);
     if (fuse_add) {
@@ -953,7 +941,7 @@ TEST(CudnnBNAddReluFp16, HasShortcut) {
   bool fuse_add = false;
   bool has_shortcut = true;
   FLAGS_cudnn_batchnorm_spatial_persistent = true;
-  CudnnBNAddReluTester<paddle::platform::float16> test(
+  CudnnBNAddReluTester<phi::dtype::float16> test(
       batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
   test.CheckForward(5e-3);
 }

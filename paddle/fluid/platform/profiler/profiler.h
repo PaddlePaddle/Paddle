@@ -21,13 +21,13 @@
 #include <list>
 #include <memory>
 
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/profiler/cpu_utilization.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
 
-PHI_DECLARE_int64(host_trace_level);
+COMMON_DECLARE_int64(host_trace_level);
 
 namespace paddle {
 namespace platform {

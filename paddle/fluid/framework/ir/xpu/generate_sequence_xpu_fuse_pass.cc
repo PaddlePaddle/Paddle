@@ -116,7 +116,7 @@ Origin subgraph:
             |   cumsum
             |     |
             \     /
-         elemetwise_sub
+         elementwise_sub
 
 Fused subgraph:
       generate_sequence_xpu
@@ -131,7 +131,7 @@ class GenerateSequenceXPUFusePass : public FusePassBase {
 
 void GenerateSequenceXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   GraphPatternDetector gpd;
   patterns::GenerateSequenceXPUPattern pattern(gpd.mutable_pattern(),

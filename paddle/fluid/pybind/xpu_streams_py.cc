@@ -17,16 +17,15 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/device_event_base.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/core/platform/device_event_base.h"
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindXpuStream(py::module *m_ptr) {
   auto &m = *m_ptr;
 
@@ -38,14 +37,16 @@ void BindXpuStream(py::module *m_ptr) {
     }
     int curr_device_id = paddle::platform::GetXPUCurrentDeviceId();
     paddle::platform::SetXPUDeviceId(device_id);
-    PADDLE_ENFORCE_XPU_SUCCESS(xpu_wait());
+    auto place = phi::XPUPlace(device_id);
+    auto *dev_ctx = static_cast<phi::XPUContext *>(
+        phi::DeviceContextPool::Instance().Get(place));
+    dev_ctx->Wait();
     paddle::platform::SetXPUDeviceId(curr_device_id);
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Paddle is not compiled with XPU. Cannot visit device synchronize."));
 #endif
   });
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

@@ -50,8 +50,7 @@ def train(network, use_cuda, batch_size=32, pass_num=2):
     reader = feeder.feed(train_reader())
 
     exe = base.Executor(place)
-    base.default_startup_program().random_seed = 1
-    base.default_main_program().random_seed = 1
+    paddle.seed(1)
     exe.run(base.default_startup_program())
 
     train_cp = base.default_main_program()

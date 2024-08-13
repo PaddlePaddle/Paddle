@@ -38,9 +38,7 @@ ops_to_fill_zero_for_empty_grads = {
     "tanh_grad",
     "tanh_double_grad",
     "tanh_triple_grad",
-    "sin_double_grad",
     "sin_triple_grad",
-    "cos_double_grad",
     "cos_triple_grad",
     "subtract_double_grad",
     "divide_double_grad",
@@ -59,6 +57,7 @@ ops_to_fill_zero_for_empty_grads = {
     "conv3d_double_grad",
     "depthwise_conv2d_grad_grad",
     "concat_double_grad",
+    "stack_double_grad",
     "expand_grad",
     "argsort_grad",
     "eigh_grad",
@@ -118,7 +117,7 @@ def ReadFwdFile(filepath):
     # empty file loaded by yaml is None
     contents = yaml.load(f, Loader=yaml.FullLoader)
     f.close()
-    # not all fused ops supoort dygraph
+    # not all fused ops support dygraph
     if filepath.endswith("fused_ops.yaml") is True:
         new_apis = [
             api
@@ -134,7 +133,7 @@ def ReadBwdFile(filepath, bw_ops=None):
     f = open(filepath, 'r')
     if bw_ops is None:
         contents = yaml.load(f, Loader=yaml.FullLoader)
-        # not all fused ops supoort dygraph
+        # not all fused ops support dygraph
         if filepath.endswith("fused_backward.yaml") is True:
             new_apis = [
                 api
@@ -550,13 +549,13 @@ class FunctionGeneratorBase:
 
         assert (
             'op' in forward_api_contents.keys()
-        ), "Unable to find \"op\" in forward_api_contents keys"
+        ), 'Unable to find "op" in forward_api_contents keys'
         assert (
             'args' in forward_api_contents.keys()
-        ), "Unable to find \"args\" in forward_api_contents keys"
+        ), 'Unable to find "args" in forward_api_contents keys'
         assert (
             'output' in forward_api_contents.keys()
-        ), "Unable to find \"output\" in forward_api_contents keys"
+        ), 'Unable to find "output" in forward_api_contents keys'
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         (

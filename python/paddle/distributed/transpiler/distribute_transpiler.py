@@ -57,9 +57,9 @@ LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-RPC_OP_ROLE_ATTR_NAME = (
-    op_role_attr_name
-) = core.op_proto_and_checker_maker.kOpRoleAttrName()
+RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = (
+    core.op_proto_and_checker_maker.kOpRoleAttrName()
+)
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 DIST_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Dist
@@ -470,7 +470,7 @@ class DistributeTranspiler:
         elif collective_mode == "single_process_multi_thread":
             transpiler = collective.SingleProcessMultiThread()
         else:
-            raise ValueError('invalid collective_mode: %s' % collective_mode)
+            raise ValueError(f'invalid collective_mode: {collective_mode}')
 
         transpiler.transpile(
             startup_program=startup_program,
@@ -658,7 +658,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             # check use_hierarchical_allreduce options
             if self.config.use_hierarchical_allreduce:
                 trainers_num = len(self.origin_program._trainers_endpoints)
-                # selected automaticly
+                # selected automatically
                 if self.config.hierarchical_allreduce_inter_nranks <= 1:
                     self.config.hierarchical_allreduce_inter_nranks = (
                         core.get_cuda_device_count()
@@ -667,19 +667,13 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 assert (
                     trainers_num
                     > self.config.hierarchical_allreduce_inter_nranks
-                ), "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(
-                    trainers_num,
-                    self.config.hierarchical_allreduce_inter_nranks,
-                )
+                ), f"trainers_num:{trainers_num} < hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks}"
 
                 assert (
                     trainers_num
                     % self.config.hierarchical_allreduce_inter_nranks
                     == 0
-                ), "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(
-                    trainers_num,
-                    self.config.hierarchical_allreduce_inter_nranks,
-                )
+                ), f"trainers_num:{trainers_num} mod hierarchical_allreduce_inter_nranks:{self.config.hierarchical_allreduce_inter_nranks} != 0"
 
                 self.origin_program._hierarchical_allreduce_inter_nranks = int(
                     self.config.hierarchical_allreduce_inter_nranks
@@ -1564,9 +1558,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             attrs['dc_asgd'] = True
 
         if len(prefetch_var_name_to_block_id) > 0:
-            attrs[
-                'prefetch_var_name_to_block_id'
-            ] = prefetch_var_name_to_block_id
+            attrs['prefetch_var_name_to_block_id'] = (
+                prefetch_var_name_to_block_id
+            )
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -2077,11 +2071,11 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     type="send",
                     inputs={'X': self.trainer_side_table_grad_list},
                     outputs={
-                        'Out': [
-                            self.grad_name_to_send_dummy_out[self.table_name]
-                        ]
-                        if self.sync_mode
-                        else []
+                        'Out': (
+                            [self.grad_name_to_send_dummy_out[self.table_name]]
+                            if self.sync_mode
+                            else []
+                        )
                     },
                     attrs={
                         "epmap": pserver_endpoints,
@@ -2265,7 +2259,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         NOTE: only grads need to be named for different trainers, use
               add_trainer_suffix to rename the grad vars.
         Args:
-            program (ProgramDesc): ProgramDesc which gradients blong.
+            program (ProgramDesc): ProgramDesc which gradients belong.
             block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
             add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
         Returns:
@@ -2329,7 +2323,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     dtype=orig_var.dtype,
                     type=orig_var.type,
                     shape=splited_shape,
-                )  # flattend split var
+                )  # flatten split var
                 var_mapping[varname].append(var)
             program.global_block()._sync_with_cpp()
         return var_mapping
@@ -2357,9 +2351,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
             sparse_param_name = self.grad_name_to_param_name[orig_var.name]
             if self._is_input_of_remote_sparse_update_op(sparse_param_name):
-                self.sparse_param_to_height_sections[
-                    sparse_param_name
-                ] = height_sections
+                self.sparse_param_to_height_sections[sparse_param_name] = (
+                    height_sections
+                )
             program.global_block()._insert_op(
                 index=index + 1,
                 type="split_selected_rows",
@@ -2420,7 +2414,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             pass
         else:
             raise ValueError(
-                "Not supported optimizer for distributed training: %s" % op_type
+                f"Not supported optimizer for distributed training: {op_type}"
             )
         return orig_shape
 
@@ -2503,7 +2497,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
     def _append_dc_asgd_ops(self, block, param_var, grad_var):
         # NOTE: can not use grammar candy here, should put ops in specific block
         local_param_bak = block.create_var(
-            name="%s.local_bak" % param_var.name,
+            name=f"{param_var.name}.local_bak",
             shape=param_var.shape,
             type=param_var.type,
             dtype=param_var.dtype,

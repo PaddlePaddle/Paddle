@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Define some layers used to export quantization model with ONNX style."""
+from __future__ import annotations
+
 import abc
-from typing import List, Tuple
 
 import paddle
 from paddle import _legacy_C_ops as _C_ops
@@ -46,7 +47,14 @@ class LinearQuanterDequanter(Layer):
 
 
 class LinearQuanter(Layer):
-    def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
+    def __init__(
+        self,
+        scales,
+        zero_point=None,
+        quant_axis=None,
+        bit_length=8,
+        group_size=128,
+    ):
         super().__init__()
         scales = paddle.to_tensor(scales, dtype="float32")
         scale_attr = paddle.framework.ParamAttr(
@@ -58,16 +66,57 @@ class LinearQuanter(Layer):
             shape=scales.shape, attr=scale_attr, dtype="float32"
         )
         self._scales.set_value(scales)
-        self._zero_point = (
-            paddle.zeros([1], dtype="float32")
-            if zero_point is None
-            else paddle.to_tensor(zero_point)
+        zero_point = zero_point if zero_point is not None else zero_point
+        zero_point = paddle.to_tensor(zero_point, dtype="float32")
+        zp_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.zero_point'),
+            initializer=paddle.nn.initializer.Constant(0.0),
+            trainable=False,
         )
+        self._zero_point = self.create_parameter(
+            shape=zero_point.shape, attr=zp_attr, dtype="float32"
+        )
+        self._zero_point.set_value(zero_point)
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
+        self._group_size = group_size
+        if isinstance(self._bit_length, tuple):
+            if (
+                self._bit_length[0] == 4
+                and self._bit_length[1] == 3
+                and len(self._bit_length) == 2
+            ):
+                self._qmin = -1 * 448
+                self._qmax = 448
+            elif (
+                self._bit_length[0] == 5
+                and self._bit_length[1] == 2
+                and len(self._bit_length) == 2
+            ):
+                self._qmin = -1 * 57344
+                self._qmax = 57344
+            else:
+                raise NotImplementedError(
+                    "Currently, only float8_e4m3 and float8_e5m2 formats are supported. Please set quant_bits to (4,3) or (5,2) for the corresponding format."
+                )
+        else:
+            self._qmax = (1 << (self._bit_length - 1)) - 1
+            self._qmin = -1 * self._qmax - 1
+        if isinstance(self._bit_length, tuple):
+            self._bit_length = self._bit_length[0] + self._bit_length[1] + 1
 
     def forward(self, input):
         if in_dynamic_mode():
+            if len(self._scales.shape) > 1:
+                new_s = paddle.repeat_interleave(
+                    self._scales, self._group_size, 0
+                )
+                quant_weight = paddle.clip(
+                    paddle.round(input.cast('float32') / new_s * self._qmax),
+                    self._qmin,
+                    self._qmax,
+                )
+                return quant_weight.cast(input.dtype)
             return _C_ops.quantize_linear(
                 input.cast('float32'),
                 self._scales,
@@ -76,6 +125,10 @@ class LinearQuanter(Layer):
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
+                "qmin",
+                self._qmin,
+                "qmax",
+                self._qmax,
             ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
@@ -90,6 +143,8 @@ class LinearQuanter(Layer):
                 attrs={
                     'quant_axis': self._quant_axis,
                     'bit_length': self._bit_length,
+                    'qmin': self._qmin,
+                    'qmax': self._qmax,
                 },
             )
             return out
@@ -105,7 +160,14 @@ class LinearQuanter(Layer):
 
 
 class LinearDequanter(Layer):
-    def __init__(self, scales, zero_point=None, quant_axis=None, bit_length=8):
+    def __init__(
+        self,
+        scales,
+        zero_point=None,
+        quant_axis=None,
+        bit_length=8,
+        group_size=128,
+    ):
         super().__init__()
         scales = paddle.to_tensor(scales, dtype="float32")
         scale_attr = paddle.framework.ParamAttr(
@@ -117,16 +179,56 @@ class LinearDequanter(Layer):
             shape=scales.shape, attr=scale_attr, dtype="float32"
         )
         self._scales.set_value(scales)
-        self._zero_point = (
-            paddle.zeros([1], dtype="float32")
-            if zero_point is None
-            else paddle.to_tensor(zero_point)
+        zero_point = zero_point if zero_point is not None else zero_point
+        zero_point = paddle.to_tensor(zero_point, dtype="float32")
+        zp_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.zero_point'),
+            initializer=paddle.nn.initializer.Constant(0.0),
+            trainable=False,
         )
+        self._zero_point = self.create_parameter(
+            shape=zero_point.shape, attr=zp_attr, dtype="float32"
+        )
+        self._zero_point.set_value(zero_point)
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
+        self._group_size = group_size
+        if isinstance(self._bit_length, tuple):
+            if (
+                self._bit_length[0] == 4
+                and self._bit_length[1] == 3
+                and len(self._bit_length) == 2
+            ):
+                self._qmin = -1 * 448
+                self._qmax = 448
+            elif (
+                self._bit_length[0] == 5
+                and self._bit_length[1] == 2
+                and len(self._bit_length) == 2
+            ):
+                self._qmin = -1 * 57344
+                self._qmax = 57344
+            else:
+                raise NotImplementedError(
+                    "Currently, only float8_e4m3 and float8_e5m2 formats are supported. Please set quant_bits to (4,3) or (5,2) for the corresponding format."
+                )
+        else:
+            self._qmax = (1 << (self._bit_length - 1)) - 1
+            self._qmin = -1 * self._qmax - 1
+        if isinstance(self._bit_length, tuple):
+            self._bit_length = self._bit_length[0] + self._bit_length[1] + 1
 
     def forward(self, input):
         if in_dynamic_mode():
+            if len(self._scales.shape) > 1:
+                new_s = paddle.repeat_interleave(
+                    self._scales, self._group_size, 0
+                )
+                quant_dequant_weight = (
+                    input.cast('float32') / self._qmax * new_s
+                )
+                return quant_dequant_weight.cast(input.dtype)
+
             return _C_ops.dequantize_linear(
                 input.cast('float32'),
                 self._scales,
@@ -135,6 +237,10 @@ class LinearDequanter(Layer):
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
+                "qmin",
+                self._qmin,
+                "qmax",
+                self._qmax,
             ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
@@ -149,6 +255,8 @@ class LinearDequanter(Layer):
                 attrs={
                     'quant_axis': self._quant_axis,
                     'bit_length': self._bit_length,
+                    'qmin': self._qmin,
+                    'qmax': self._qmax,
                 },
             )
             return out
@@ -200,7 +308,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         self.converted = False
 
     @abc.abstractmethod
-    def weights_to_quanters(self) -> List[Tuple[str, str]]:
+    def weights_to_quanters(self) -> list[tuple[str, str]]:
         r"""Get the name pairs of weights to be quantized and their corresponding
         quantizers. In the convert function of this abstract class, it will call
         the ‘weights_to_quanters’ function and do something as follows:
@@ -215,7 +323,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def activation_quanters(self) -> List[str]:
+    def activation_quanters(self) -> list[str]:
         r"""Get the names of quanters used to quantize activations.
         All the quanters or observers returned by this function will be converted to quantize
         and dequantize operators for deployment.
@@ -225,9 +333,8 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
 
     def _convert_quanter_to_qdq(self, quanter_name) -> LinearQuanterDequanter:
         r"""Convert quanter to an instance of LinearQuanterDequanter."""
-        assert hasattr(
-            self, quanter_name
-        ), f"{quanter_name} is not attribute of current layer."
+        if not hasattr(self, quanter_name):
+            return None
         quanter = getattr(self, quanter_name)
         if quanter is None:
             return None

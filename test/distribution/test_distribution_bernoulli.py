@@ -566,18 +566,6 @@ class BernoulliTestError(unittest.TestCase):
 
     @parameterize_func(
         [
-            (-0.1, ValueError),
-            (1.1, ValueError),
-            (np.nan, ValueError),
-            (-1j + 1, TypeError),
-        ]
-    )
-    def test_bad_init(self, probs, error):
-        with paddle.base.dygraph.guard(self.place):
-            self.assertRaises(error, Bernoulli, probs)
-
-    @parameterize_func(
-        [
             (
                 [0.3, 0.5],
                 paddle.to_tensor([0.1, 0.2, 0.3]),

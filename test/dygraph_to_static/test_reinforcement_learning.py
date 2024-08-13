@@ -16,7 +16,7 @@ import itertools
 import math
 import unittest
 
-import gym
+import gymnasium as gym
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
@@ -26,7 +26,6 @@ from dygraph_to_static_utils import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle.base.dygraph import to_variable
 from paddle.nn import Layer
 
 SEED = 2020
@@ -112,14 +111,14 @@ def train(args, to_static: bool):
             return idx, np.array([mask]).astype("float32")
 
         def select_action(state):
-            state = to_variable(state)
+            state = paddle.to_tensor(state)
             state.stop_gradient = True
             loss_probs = policy(state)
 
             probs = loss_probs.numpy()
 
             action, _mask = sample_action(probs[0])
-            mask = to_variable(_mask)
+            mask = paddle.to_tensor(_mask)
             mask.stop_gradient = True
 
             loss_probs = paddle.log(loss_probs)
@@ -148,7 +147,7 @@ def train(args, to_static: bool):
 
                 R_numpy = np.ones_like(log_prob_numpy).astype("float32")
                 _R = -1 * R * R_numpy
-                _R = to_variable(_R)
+                _R = paddle.to_tensor(_R)
                 _R.stop_gradient = True
                 cur_loss = paddle.multiply(_R, log_prob)
                 policy_loss.append(cur_loss)
@@ -191,9 +190,7 @@ def train(args, to_static: bool):
             running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
             if i_episode % args.log_interval == 0:
                 print(
-                    'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'.format(
-                        i_episode, ep_reward, running_reward, float(loss)
-                    )
+                    f'Episode {i_episode}\tLast reward: {ep_reward:.2f}\tAverage reward: {running_reward:.2f}\t loss_probs: {float(loss)}'
                 )
 
             if i_episode > args.train_step:

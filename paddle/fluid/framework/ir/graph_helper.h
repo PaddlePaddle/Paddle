@@ -76,7 +76,7 @@ enum class SortKind {
 };
 
 // Several kinds of topological sort.
-std::vector<Node *> TopologyVarientSort(const Graph &graph, SortKind sort_kind);
+std::vector<Node *> TopologyVariantSort(const Graph &graph, SortKind sort_kind);
 
 // Clean the nodes that doesn't connect to others.
 void CleanIndividualNodes(Graph *graph);
@@ -97,7 +97,7 @@ BuildOperationAdjList(const Graph &graph) {
       for (auto &adj_n : var->inputs) {
         PADDLE_ENFORCE_EQ(adj_n->NodeType(),
                           ir::Node::Type::kOperation,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Node(%s)'s type(%d) must be kOperation type.",
                               adj_n->Name(),
                               static_cast<int>(adj_n->NodeType())));

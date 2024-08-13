@@ -199,7 +199,7 @@ void generic_mixed_gemm_kernelLauncher(const T* A,
       // now to run bf16 mixgemm, we have set the split-k factor to 1
       VLOG(1) << "Requested split-k but workspace size insufficient. Falling "
                  "back to non-split-k implementation.";
-      VLOG(1) << "need workspace sizoe of: " << gemm.get_workspace_size(args)
+      VLOG(1) << "need workspace size of: " << gemm.get_workspace_size(args)
               << ", but got " << workspace_bytes;
       VLOG(1) << "args.batch_stride_D:" << args.batch_stride_D;
       VLOG(1) << "args.batch_count:" << args.batch_count;

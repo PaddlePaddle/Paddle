@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -36,7 +37,6 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {
@@ -125,7 +125,7 @@ class VarBase {
       }
       // NOTE(zhiqiu): we should keep grad_var_'s stop_gradient property
       // same as fwd varbase
-      grad_var_->SetOverridedStopGradient(var_->InnerOverridedStopGradient());
+      grad_var_->SetOverriddenStopGradient(var_->InnerOverriddenStopGradient());
     }
     return grad_var_;
   }
@@ -133,39 +133,39 @@ class VarBase {
   const framework::Variable& GradVar() const {
     PADDLE_ENFORCE_NOT_NULL(
         grad_var_,
-        platform::errors::NotFound("Gradient of %s does not exist", Name()));
+        common::errors::NotFound("Gradient of %s does not exist", Name()));
     return grad_var_->Var();
   }
 
   framework::Variable* MutableGradVar() {
     PADDLE_ENFORCE_NOT_NULL(
         grad_var_,
-        platform::errors::NotFound("Gradient of %s does not exist", Name()));
+        common::errors::NotFound("Gradient of %s does not exist", Name()));
     return grad_var_->MutableVar();
   }
 
   bool IsLeaf() const { return var_->IsLeaf(); }
 
-  void SetOverridedStopGradient(bool stop_gradient) {
-    var_->SetOverridedStopGradient(stop_gradient);
+  void SetOverriddenStopGradient(bool stop_gradient) {
+    var_->SetOverriddenStopGradient(stop_gradient);
     if (grad_var_) {
-      grad_var_->SetOverridedStopGradient(stop_gradient);
+      grad_var_->SetOverriddenStopGradient(stop_gradient);
     }
   }
 
-  bool OverridedStopGradient() const { return var_->OverridedStopGradient(); }
+  bool OverriddenStopGradient() const { return var_->OverriddenStopGradient(); }
 
-  void InnerSetOverridedStopGradient(bool stop_gradient) {
-    if (InnerOverridedStopGradient() == -1) {
-      var_->InnerSetOverridedStopGradient(stop_gradient);
+  void InnerSetOverriddenStopGradient(bool stop_gradient) {
+    if (InnerOverriddenStopGradient() == -1) {
+      var_->InnerSetOverriddenStopGradient(stop_gradient);
       if (grad_var_) {
-        grad_var_->InnerSetOverridedStopGradient(stop_gradient);
+        grad_var_->InnerSetOverriddenStopGradient(stop_gradient);
       }
     }
   }
 
-  int InnerOverridedStopGradient() const {
-    return var_->InnerOverridedStopGradient();
+  int InnerOverriddenStopGradient() const {
+    return var_->InnerOverriddenStopGradient();
   }
 
   void SetPersistable(bool persistable) { var_->SetPersistable(persistable); }
@@ -228,14 +228,14 @@ class VarBase {
     return var_->ForwardDataType();
   }
 
-  const platform::Place Place() const { return var_->Place(); }
+  const phi::Place Place() const { return var_->Place(); }
 
   void ClearGradient(bool set_to_zero = true);
 
   void _GradientSetEmpty(bool is_empty = true);
   bool _IsGradientSetEmpty();
 
-  std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
+  std::shared_ptr<VarBase> NewVarBase(const phi::Place& dst_place,
                                       const bool blocking) const;
 
   void CopyFrom(const imperative::VarBase& src, bool blocking);
@@ -295,7 +295,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameVarBaseMap& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
@@ -304,7 +304,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameTensorMap& outs,
     const framework::AttributeMap& attrs,
     const framework::AttributeMap& default_attrs,
-    const platform::Place& place,
+    const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
 void ClearNoNeedBufferInputs(OpBase* op);

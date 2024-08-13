@@ -29,6 +29,10 @@ void SetConfig(AnalysisConfig *cfg, std::string model_path) {
   cfg->DisableGpu();
   cfg->SwitchIrOptim(true);
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
+  cfg->EnableNewIR();
+  cfg->EnableNewExecutor();
+  cfg->SetOptimizationLevel(3);
+
   if (FLAGS_enable_mkldnn) cfg->EnableMKLDNN();
 }
 
@@ -39,7 +43,11 @@ class TensorReader {
                size_t beginning_offset,
                std::vector<int> shape,
                std::string name)
-      : file_(file), position_(beginning_offset), shape_(shape), name_(name) {
+      : file_(file),
+        position_(beginning_offset),
+        shape_(shape),
+        name_(name),
+        numel_(0) {
     numel_ = std::accumulate(
         shape_.begin(), shape_.end(), size_t{1}, std::multiplies<size_t>());
   }

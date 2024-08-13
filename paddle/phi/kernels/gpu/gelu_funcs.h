@@ -16,17 +16,17 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 
-PHI_DECLARE_bool(use_fast_math);
+COMMON_DECLARE_bool(use_fast_math);
 
 namespace phi {
 
-#ifdef __NVCC__
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <bool FastMode>
 static __device__ __forceinline__ float FP32FastTanh(float x) {
 #if __CUDA_ARCH__ >= 750 && CUDA_VERSION >= 11000
@@ -46,6 +46,16 @@ static __device__ __forceinline__ T GeluFwd(T x) {
                                          (1.0f + 0.044715f * cast_x * cast_x));
   return static_cast<T>(cast_x * 0.5f * (1.0f + tanh_out));
 }
+
+#ifdef PADDLE_WITH_HIP
+template <bool FastMode>
+static __device__ __forceinline__ __half GeluFwdHalf(__half x) {
+  const float cast_x = __half2float(x);
+  auto tanh_out = FP32FastTanh<FastMode>(0.79788456f * cast_x *
+                                         (1.0f + 0.044715f * cast_x * cast_x));
+  return __float2half(cast_x * 0.5f * (1.0f + tanh_out));
+}
+#endif
 
 template <bool FastMode>
 static __device__ __forceinline__ float FP32GeluBwd(float x, float y_g) {
@@ -70,7 +80,11 @@ static __global__ void FP16FastGeluFwdCUDAKernel(const __half* x,
     ArrT in_arr = *reinterpret_cast<const ArrT*>(x + offset);
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
+#ifdef PADDLE_WITH_HIP
+      in_arr[i] = GeluFwdHalf<FastMode>(in_arr[i]);
+#else
       in_arr[i] = GeluFwd<half, FastMode>(in_arr[i]);
+#endif
     }
     *reinterpret_cast<ArrT*>(y + offset) = in_arr;
   }
@@ -91,8 +105,13 @@ static __global__ void FP16FastGeluBwdCUDAKernel(const __half* x,
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
       __half2 tmp_fp16_2;
+#ifdef PADDLE_WITH_HIP
+      tmp_fp16_2.x = *reinterpret_cast<uint16_t*>(&x_in_arr[i]);
+      tmp_fp16_2.y = *reinterpret_cast<uint16_t*>(&y_g_in_arr[i]);
+#else
       tmp_fp16_2.x = x_in_arr[i];
       tmp_fp16_2.y = y_g_in_arr[i];
+#endif
       float2 tmp_fp32_2 = __half22float2(tmp_fp16_2);
       x_in_arr[i] =
           __float2half(FP32GeluBwd<FastMode>(tmp_fp32_2.x, tmp_fp32_2.y));

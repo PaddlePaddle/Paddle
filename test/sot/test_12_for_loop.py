@@ -295,5 +295,18 @@ class TestUndefinedVarInRiskyCodes(TestCaseBase):
         self.assert_results(undefined_var_case_1)
 
 
+def comp_with_fallback(x):
+    paddle.jit.sot.psdb.fallback()
+    y = [len(t) for t in x]
+    return paddle.to_tensor(y)
+
+
+class TestListCompWithFallback(TestCaseBase):
+    @strict_mode_guard(False)
+    def test_list_comp_with_fallback(self):
+        x = [paddle.randn([4, 6])]
+        self.assert_results(comp_with_fallback, x)
+
+
 if __name__ == "__main__":
     unittest.main()

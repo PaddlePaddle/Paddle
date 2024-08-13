@@ -83,7 +83,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                     width,
                     d_output_data);
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "CPU c_embedding ids only support int32 or int64."));
   }
 }
@@ -96,4 +96,6 @@ PD_REGISTER_KERNEL(c_embedding_grad,
                    phi::CEmbeddingGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

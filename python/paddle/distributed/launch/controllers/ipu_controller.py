@@ -18,7 +18,7 @@ import sys
 
 from paddle.distributed.launch.job.container import Container
 
-from .collective import CollectiveController, ControleMode
+from .collective import CollectiveController, ControllerMode
 
 
 class IPUController(CollectiveController):
@@ -26,7 +26,7 @@ class IPUController(CollectiveController):
     def enable(cls, ctx):
         if ctx.args.training_script == "ipu":
             ctx.logger.debug(f"{cls.__name__} enabled")
-            ctx.args.run_mode = ControleMode.IPU
+            ctx.args.run_mode = ControllerMode.IPU
             return True
         else:
             return False
@@ -34,7 +34,7 @@ class IPUController(CollectiveController):
     def parse_ipu_args(self, args_list):
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "--hosts", type=str, help="The hosts for IPU distributd training."
+            "--hosts", type=str, help="The hosts for IPU distributed training."
         )
         parser.add_argument(
             "--nproc_per_host",
@@ -71,9 +71,7 @@ class IPUController(CollectiveController):
         # The number of replicas for data parallel
         assert (
             num_ipus % poprun_args.ipus_per_replica
-        ) == 0, "The number of IPUs:{} mod the number of IPUs per replica:{} must == 0".format(
-            num_ipus, poprun_args.ipus_per_replica
-        )
+        ) == 0, f"The number of IPUs:{num_ipus} mod the number of IPUs per replica:{poprun_args.ipus_per_replica} must == 0"
         num_replicas = num_ipus // poprun_args.ipus_per_replica
         self.ctx.logger.info(f"The number of total replicas is {num_replicas}.")
 
@@ -83,9 +81,7 @@ class IPUController(CollectiveController):
         self.ctx.logger.info(f"The number of total processes is {num_procs}.")
         assert (
             num_replicas % num_procs
-        ) == 0, "The number of replicas:{} mod the number of processes:{} must == 0".format(
-            num_replicas, num_procs
-        )
+        ) == 0, f"The number of replicas:{num_replicas} mod the number of processes:{num_procs} must == 0"
 
         # hosts and endpoints
         hosts = poprun_args.hosts.replace(' ', '').split(',')
@@ -130,9 +126,7 @@ class IPUController(CollectiveController):
             cur_endpoint = endpoints[idx // poprun_args.nproc_per_host]
             rank_in_node = idx % poprun_args.nproc_per_host
             poprun_command.append(
-                '--instance-mpi-local-args={}:\"-x PADDLE_TRAINER_ID={} -x PADDLE_CURRENT_ENDPOINT={} -x PADDLE_RANK_IN_NODE={}\"'.format(
-                    idx, idx, cur_endpoint, rank_in_node
-                )
+                f'--instance-mpi-local-args={idx}:"-x PADDLE_TRAINER_ID={idx} -x PADDLE_CURRENT_ENDPOINT={cur_endpoint} -x PADDLE_RANK_IN_NODE={rank_in_node}"'
             )
 
         # executor
@@ -146,8 +140,8 @@ class IPUController(CollectiveController):
         print("-----------  PopRun Command -----------")
         print("poprun \\")
         for i in range(len(poprun_command) - 1):
-            print("%s \\" % (poprun_command[i]))
-        print("%s" % (poprun_command[len(poprun_command) - 1]))
+            print(f"{poprun_command[i]} \\")
+        print(f"{poprun_command[len(poprun_command) - 1]}")
         print("---------------------------------------")
 
         # replace training_script_args

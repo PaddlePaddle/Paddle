@@ -16,8 +16,8 @@ ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 RUN yum install -y bzip2 gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel patch
 COPY build_scripts /build_scripts
 RUN bash build_scripts/build.sh
-#RUN bash build_scripts/install_nccl2.sh 
-RUN bash build_scripts/install_trt.sh 
+#RUN bash build_scripts/install_nccl2.sh
+RUN bash build_scripts/install_trt.sh
 RUN rm -rf build_scripts
 RUN ln -s /usr/local/ssl/include/openssl /usr/include
 
@@ -26,7 +26,7 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
   tar -xvf git-2.17.1.tar.gz && \
   cd git-2.17.1 && \
   ./configure --with-openssl --prefix=/usr/local && \
-  make -j8 && make install 
+  make -j8 && make install
 
 ENV SSL_CERT_FILE=/opt/_internal/certs.pem
 ENV GOROOT=/usr/local/go GOPATH=/root/gopath
@@ -43,7 +43,7 @@ RUN wget --no-check-certificate -qO- https://paddle-ci.gz.bcebos.com/go1.15.12.l
 
 
 # protobuf 3.6.1
-RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \ 
+RUN cd /opt && wget -q --no-check-certificate https://paddle-ci.cdn.bcebos.com/protobuf-cpp-3.6.1.tar.gz && \
     tar xzf protobuf-cpp-3.6.1.tar.gz && \
     cd protobuf-3.6.1 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.6.1.tar.gz
 

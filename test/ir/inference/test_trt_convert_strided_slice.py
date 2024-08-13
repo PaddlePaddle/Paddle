@@ -12,15 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from itertools import product
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class TrtConvertStridedSliceTest(TrtLayerAutoScanTest):
@@ -33,56 +39,56 @@ class TrtConvertStridedSliceTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.random.random([1, 56, 56, 192]).astype(np.float32)
 
-        for axes in [[1, 2]]:
-            for starts in [[1, 1]]:
-                for ends in [[10000000, 10000000]]:
-                    for decrease_axis in [[]]:
-                        for infer_flags in [[1, 1]]:
-                            for strides in [[2, 2]]:
-                                dics = [
-                                    {
-                                        "axes": axes,
-                                        "starts": starts,
-                                        "ends": ends,
-                                        "decrease_axis": decrease_axis,
-                                        "infer_flags": infer_flags,
-                                        "strides": strides,
-                                    }
-                                ]
+        for axes, starts, ends, decrease_axis, infer_flags, strides in product(
+            [[1, 2]],
+            [[1, 1]],
+            [[10000000, 10000000]],
+            [[]],
+            [[1, 1]],
+            [[2, 2]],
+        ):
+            dics = [
+                {
+                    "axes": axes,
+                    "starts": starts,
+                    "ends": ends,
+                    "decrease_axis": decrease_axis,
+                    "infer_flags": infer_flags,
+                    "strides": strides,
+                }
+            ]
 
-                                ops_config = [
-                                    {
-                                        "op_type": "strided_slice",
-                                        "op_inputs": {"Input": ["input_data"]},
-                                        "op_outputs": {
-                                            "Out": ["slice_output_data"]
-                                        },
-                                        "op_attrs": dics[0],
-                                    }
-                                ]
-                                ops = self.generate_op_config(ops_config)
+            ops_config = [
+                {
+                    "op_type": "strided_slice",
+                    "op_inputs": {"Input": ["input_data"]},
+                    "op_outputs": {"Out": ["slice_output_data"]},
+                    "op_attrs": dics[0],
+                }
+            ]
+            ops = self.generate_op_config(ops_config)
 
-                                program_config = ProgramConfig(
-                                    ops=ops,
-                                    weights={},
-                                    inputs={
-                                        "input_data": TensorConfig(
-                                            data_gen=partial(
-                                                generate_input1, dics
-                                            )
-                                        )
-                                    },
-                                    outputs=["slice_output_data"],
-                                )
+            program_config = ProgramConfig(
+                ops=ops,
+                weights={},
+                inputs={
+                    "input_data": TensorConfig(
+                        data_gen=partial(generate_input1, dics)
+                    )
+                },
+                outputs=["slice_output_data"],
+            )
 
-                                yield program_config
+            yield program_config
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> Generator[
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+    ]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 56, 56, 192]
@@ -144,7 +150,7 @@ class TrtConvertStridedSliceTest2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return np.random.random([1, 56, 56, 192]).astype(np.float32)
 
         for axes in [[1, 2], [2, 3], [1, 3]]:
@@ -199,7 +205,9 @@ class TrtConvertStridedSliceTest2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> Generator[
+        Any, Any, tuple[paddle_infer.Config, list[int], float] | None
+    ]:
         def generate_dynamic_shape():
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 56, 56, 192]

@@ -15,7 +15,7 @@
 # This file contains composite rules of nonbasic operations. There are some notes:
 # 1. When define composite rule of some op, you can only use primitive ops defined in primitives.py.
 # 2. The name and args of target op must be corresponding with standard description of op in
-#    ops.yaml or legacy_ops.yaml.
+#    ops.yaml or dygraph_ops.yaml.
 
 import functools
 import operator
@@ -74,7 +74,7 @@ def composite_batchnorm(
 ):
     """
     define composite rule of op batch_norm
-    As the same with op kernel, the position of savedvariance indeed return inverse std.
+    As the same with op kernel, the position of saved variance indeed return inverse std.
     """
 
     is_amp = False
@@ -136,7 +136,7 @@ def composite_batchnorm(
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
-    # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
+    # reserve_space is not needed in composite rule, but still return None to keep same as phi op definition.
     reserve_space = None
     if not use_run_stat:
         return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space
@@ -290,7 +290,7 @@ def mean_composite(x, axis, keepdim):
 @REGISTER_COMPOSITE('expand_v2')
 def expand_v2_composite(x, shape):
     """
-    define composite rule of op expnad_v2, expand_v2->expand
+    define composite rule of op expand_v2, expand_v2->expand
     repeat_times = shape / x.shape
     out = tile(x, repeat_times = repeat_times)
     """
@@ -324,7 +324,7 @@ def expand_v2_composite(x, shape):
 @REGISTER_COMPOSITE('expand_as_v2')
 def expand_as_v2_composite(x, y, target_shape):
     """
-    define composite rule of op expnad_as_v2, expand_as_v2->expand_as
+    define composite rule of op expand_as_v2, expand_as_v2->expand_as
     repeat_times = target_shape / x.shape
     out = tile(x, repeat_times = repeat_times)
     """
@@ -420,7 +420,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
 
     if upscale_in_train:
         if not is_test:
-            # Process p=1.0 for avoid devide zero error (x*mask/(1.0-p))
+            # Process p=1.0 for avoid divide zero error (x*mask/(1.0-p))
             if p == 1.0:
                 return 0.0 * x, zeros(x.shape, core.VarDesc.VarType.UINT8)
             else:
@@ -457,7 +457,7 @@ def hard_swish_composite(x):
     """define composite rule of op hard_swish.
     offset=3, threshold=6, scale=6
     out = minimum(
-        maxmum(x + offset, 0), threshold
+        maximum(x + offset, 0), threshold
     ) * x / scale
     """
     threshold = 6.0
@@ -655,22 +655,6 @@ def unsqueeze_composite(x, axis):
         )
     out = reshape(x, x_shape)
     return [out, None]
-
-
-@REGISTER_COMPOSITE('rsqrt')
-def rsqrt_composite(x):
-    """define composite rule of op rsqrt."""
-    # rsqrt(x) = x^(-0.5)
-    is_amp = False
-    from paddle.base.data_feeder import convert_dtype
-
-    dtype = convert_dtype(x.dtype)
-    if dtype in ["float16", "uint16"]:
-        is_amp = True
-        x = cast(x, "float32")
-    y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
-    res = pow(x, y)
-    return res if not is_amp else cast(res, dtype)
 
 
 @REGISTER_COMPOSITE('group_norm')

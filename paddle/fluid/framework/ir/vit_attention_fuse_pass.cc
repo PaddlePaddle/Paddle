@@ -52,9 +52,7 @@
   GET_IR_NODE(reshape2_op);       \
   GET_IR_NODE(reshape2_out);
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 bool HasScale(OpDesc* const op_ptr,
               std::string* name,
@@ -136,7 +134,7 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
     PADDLE_ENFORCE_NE(
         subgraph.count(x),
         0,
-        platform::errors::NotFound("Detector did not find input x of conv2d."));
+        common::errors::NotFound("Detector did not find input x of conv2d."));
 
     IR_NODE_LINK_TO(subgraph.at(x), vit_attention_node);  // Input
     IR_NODE_LINK_TO(matmul0_in_y, vit_attention_node);
@@ -160,9 +158,7 @@ void VitAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(vit_attention_fuse_pass,
               paddle::framework::ir::VitAttentionFusePass);

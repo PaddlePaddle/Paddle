@@ -22,13 +22,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
-namespace patterns {
+}  // namespace paddle::framework::ir
+namespace paddle::framework::ir::patterns {
 struct YoloBoxPattern : public PatternBase {
   YoloBoxPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, name_scope) {
@@ -147,13 +146,14 @@ struct YoloBoxPattern : public PatternBase {
   PATTERN_DECL_NODE(nms_out_index);
   PATTERN_DECL_NODE(nms_out_rois_num);
 };
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 YoloBoxFusePass::YoloBoxFusePass() = default;
 
 void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   GraphPatternDetector gpd;
   patterns::YoloBoxPattern yolo_box_pattern(gpd.mutable_pattern(), name_scope_);
@@ -300,8 +300,6 @@ void YoloBoxFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(yolo_box_fuse_pass, paddle::framework::ir::YoloBoxFusePass);

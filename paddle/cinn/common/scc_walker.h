@@ -24,11 +24,11 @@
 #include <vector>
 
 #include "paddle/cinn/common/dfs_walker.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
-// strong connnected components visitor
+// strong connected components visitor
 template <typename NodeType>
 class SccWalker final {
  public:
@@ -75,13 +75,17 @@ class SccWalker final {
         continue;
       }
       std::vector<NodeType> scc;
-      // Use node2root immutablely inside dfs visitor.
+      // Use node2root immutably inside dfs visitor.
       DfsVisitor<NodeType> visitor(VisitPrevNode);
       visitor(root, [&](NodeType node) { scc.push_back(node); });
       SccHandler(scc);
       // Update node2root outside dfs visitor.
       for (NodeType node : scc) {
-        CHECK(node2root.emplace(node, root).second);
+        PADDLE_ENFORCE_EQ(node2root.emplace(node, root).second,
+                          true,
+                          ::common::errors::AlreadyExists(
+                              "Failed to insert the node into node2root. The "
+                              "node may already exist."));
       }
     }
   }

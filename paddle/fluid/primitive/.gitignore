@@ -1,5 +1,5 @@
 backend/generated/*.cc
 backend/generated/*.h
-primitive/primitive.h
+primitive/generated_primitive.h
 rule/vjp/generated/generated_vjp.h
 rule/vjp/generated/generated_vjp.cc

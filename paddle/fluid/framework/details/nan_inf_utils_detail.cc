@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/amp_type_traits.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
@@ -83,14 +83,14 @@ static const std::unordered_map<std::string, int>& role_str2int() {
   return _role_str2int;
 }
 
-static std::unordered_set<std::string>& op_type_nan_inf_white_list() {
+std::unordered_set<std::string>& op_type_nan_inf_white_list() {
   static std::unordered_set<std::string> _op_type_nan_inf_white_list = {
       "coalesce_tensor", /* This Op will alloc tensor, and may not init space */
   };
   return _op_type_nan_inf_white_list;
 }
 
-static std::unordered_map<std::string, std::vector<std::string>>&
+std::unordered_map<std::string, std::vector<std::string>>&
 op_var_nan_inf_white_list() {
   static std::unordered_map<std::string, std::vector<std::string>>
       _op_var_nan_inf_white_list = {
@@ -100,7 +100,7 @@ op_var_nan_inf_white_list() {
   return _op_var_nan_inf_white_list;
 }
 
-static void InitWhiteListFormEnv() {
+void InitWhiteListFormEnv() {
   // op_type_skip and op_var_skip may be NULL.
   // So need init static value in there, prevent thread competition.
   // NOTE. role_str2int needn't do this for it only used in this func.
@@ -128,7 +128,7 @@ static void InitWhiteListFormEnv() {
     while (std::getline(ss, op_role, ',')) {
       PADDLE_ENFORCE_EQ(role_str2int().find(op_role) != role_str2int().end(),
                         true,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Skip role must be one of "
                             "{forward,backward,optimize,rpc,dist,lrsched,loss,"
                             "default}, instead of %s",
@@ -145,7 +145,7 @@ static void InitWhiteListFormEnv() {
       PADDLE_ENFORCE_EQ(
           pos != std::string::npos,
           true,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Skip var format must be op:var, instead of %s", op_var));
       std::string op = op_var.substr(0, pos);
       std::string var = op_var.substr(pos + 1);
@@ -158,10 +158,10 @@ static void InitWhiteListFormEnv() {
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const std::string& var_name,
                          const framework::Variable* var,
-                         const platform::Place& place) {
+                         const phi::Place& place) {
   PADDLE_ENFORCE_NOT_NULL(
       var,
-      platform::errors::NotFound(
+      common::errors::NotFound(
           "Cannot find var: `%s` in op `%s`.", var_name, op_type));
 
   const phi::DenseTensor* tensor{nullptr};
@@ -182,17 +182,17 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   VLOG(10) << "begin check " << op_type << " var_name:" << var_name
            << ", place:" << tensor->place() << ", numel:" << tensor->numel();
 
-  if (platform::is_gpu_place(tensor->place())) {
+  if (phi::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "phi::DenseTensor[%s] use gpu place. PaddlePaddle must compile "
         "with GPU.",
         var_name));
 #endif
     return;
-  } else if (platform::is_xpu_place(tensor->place())) {
+  } else if (phi::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU
     if (framework::TransToProtoVarType(tensor->dtype()) !=
         proto::VarType::FP32) {
@@ -200,7 +200,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     }
 
     float* cpu_data = new float[tensor->numel()];
-    memory::Copy(platform::CPUPlace(),
+    memory::Copy(phi::CPUPlace(),
                  static_cast<void*>(cpu_data),
                  tensor->place(),
                  static_cast<const void*>(tensor->data<float>()),
@@ -216,12 +216,12 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     PADDLE_ENFORCE_NE(
         flag,
         true,
-        platform::errors::Fatal(
+        common::errors::Fatal(
             "Operator %s output phi::DenseTensor %s contains Inf.",
             op_type,
             var_name));
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "phi::DenseTensor[%s] use xpu place. PaddlePaddle must compile "
         "with XPU.",
         var_name));
@@ -234,7 +234,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 void CheckVarHasNanOrInf(const std::string& op_type,
                          const framework::Scope& scope,
                          const std::string& var_name,
-                         const platform::Place& place) {
+                         const phi::Place& place) {
   auto* var = scope.FindVar(var_name);
   CheckVarHasNanOrInf(op_type, var_name, var, place);
 }
@@ -259,12 +259,12 @@ bool IsSkipOp(const framework::OperatorBase& op) {
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
                         const framework::Scope& exec_scope,
-                        const platform::Place& place) {
+                        const phi::Place& place) {
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 
   if (IsSkipOp(op)) return;
 
-  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
+  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {  // NOLINT
     // NOTE. vname may destruct in the end of this func.
     for (auto& vname : op.OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);

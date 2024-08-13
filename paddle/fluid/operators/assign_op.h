@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace phi {
 class DenseTensor;
@@ -33,8 +33,7 @@ namespace paddle {
 namespace operators {
 class AssignFunctor {
  public:
-  AssignFunctor(framework::Variable *out,
-                const platform::DeviceContext &dev_ctx)
+  AssignFunctor(framework::Variable *out, const phi::DeviceContext &dev_ctx)
       : out_(out), dev_ctx_(dev_ctx) {}
 
   void operator()(const phi::DenseTensor &lod_tensor) const {
@@ -42,8 +41,8 @@ class AssignFunctor {
     copy_tensor(lod_tensor, &out_tensor);
   }
 
-  void operator()(const framework::LoDTensorArray &array) const {
-    auto &out_array = *out_->GetMutable<framework::LoDTensorArray>();
+  void operator()(const phi::TensorArray &array) const {
+    auto &out_array = *out_->GetMutable<phi::TensorArray>();
     out_array.resize(array.size());
     for (size_t i = 0; i < array.size(); ++i) {
       copy_tensor(array[i], &out_array[i]);
@@ -64,7 +63,7 @@ class AssignFunctor {
     PADDLE_ENFORCE_EQ(
         true,
         false,
-        platform::errors::PermissionDenied(
+        common::errors::PermissionDenied(
             "Not support type for assign op with type %s", typeid(T).name()));
   }
 
@@ -78,7 +77,7 @@ class AssignFunctor {
   }
 
   framework::Variable *out_;
-  const platform::DeviceContext &dev_ctx_;
+  const phi::DeviceContext &dev_ctx_;
 };
 
 }  // namespace operators

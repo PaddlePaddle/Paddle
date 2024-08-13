@@ -28,8 +28,9 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/pybind/eager_generator.h"
+#include "paddle/fluid/pybind/eager_legacy_op_function_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -212,7 +213,6 @@ std::string GenerateOpFunctionsBody(
   std::string outs_initializer_with_null = "";
   std::string return_str = "";
 
-  int outs_num = 0;
   for (auto& output : op_proto->outputs()) {
     auto& out_name = output.name();
 
@@ -287,10 +287,6 @@ std::string GenerateOpFunctionsBody(
       }
       outs_initializer += ",";
     }
-
-    // return_str += paddle::string::Sprintf(return_template, out_name);
-    // return_str += ",";
-    outs_num += 1;
   }
   call_api_str += "attrs);";
   if (outs_initializer.back() == ',') {
@@ -477,11 +473,7 @@ GenerateOpFunctions() {
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
-int main(int argc, char* argv[]) {  // NOLINT
-  if (argc != 2) {
-    std::cerr << "argc must be 2" << std::endl;
-    return -1;
-  }
+int run_legacy_generator(int argc, char* argv[]) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   // We need a fake device to trigger the registration of the common kernel and
   // generate api
@@ -539,12 +531,12 @@ int main(int argc, char* argv[]) {  // NOLINT
       << "  auto m = module->def_submodule(\"ops\");\n"
       << "  auto legacy = m.def_submodule(\"legacy\");\n"
       << "  if (PyModule_AddFunctions(legacy.ptr(), ExtestMethods) < 0) {\n"
-      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+      << "    PADDLE_THROW(common::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
       << "  if (PyModule_AddFunctions(legacy.ptr(), CustomEagerMethods) < "
          "0) {\n"
-      << "    PADDLE_THROW(platform::errors::Fatal (\"Add functions to "
+      << "    PADDLE_THROW(common::errors::Fatal (\"Add functions to "
          "core.eager.ops failed!\"));\n"
       << "  }\n\n"
 

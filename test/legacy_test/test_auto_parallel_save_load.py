@@ -14,12 +14,12 @@
 
 import unittest
 
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from test_parallel_dygraph_dataparallel import TestMultipleAccelerators
 
 
-class TestAutoParallelSaveLoad(TestMultipleGpus):
+class TestAutoParallelSaveLoad(TestMultipleAccelerators):
     def test_auto_parallel_save_load(self):
-        self.run_mnist_2gpu('auto_parallel_save_load.py')
+        self.run_mnist_2accelerators('auto_parallel_save_load.py')
 
 
 if __name__ == "__main__":

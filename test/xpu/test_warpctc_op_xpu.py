@@ -22,6 +22,8 @@ from get_test_cover_info import (
     get_xpu_op_support_types,
 )
 from op_test_xpu import XPUOpTest
+
+sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import stable_softmax
 
 import paddle
@@ -116,7 +118,7 @@ class CTCForward:
         required_times = labels_a_sequence.shape[0]
         old_label = -1
         for i in range(labels_a_sequence.shape[0]):
-            # two contingous labels with the same value
+            # two contiguous labels with the same value
             if labels_a_sequence[i, 0] == old_label:
                 required_times = required_times + 1
             old_label = labels_a_sequence[i, 0]
@@ -425,7 +427,7 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
             paddle.enable_static()
 
     class TestCTCLossAPICase(unittest.TestCase):
-        def test_functinal_api(self):
+        def test_functional_api(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
             self.batch_size = 4

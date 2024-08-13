@@ -21,49 +21,34 @@ std::string error_name(ErrorCode code) {
   switch (code) {
     case ErrorCode::LEGACY:
       return "Error";
-      break;
     case ErrorCode::INVALID_ARGUMENT:
       return "InvalidArgumentError";
-      break;
     case ErrorCode::NOT_FOUND:
       return "NotFoundError";
-      break;
     case ErrorCode::OUT_OF_RANGE:
       return "OutOfRangeError";
-      break;
     case ErrorCode::ALREADY_EXISTS:
       return "AlreadyExistsError";
-      break;
     case ErrorCode::RESOURCE_EXHAUSTED:
       return "ResourceExhaustedError";
-      break;
     case ErrorCode::PRECONDITION_NOT_MET:
       return "PreconditionNotMetError";
-      break;
     case ErrorCode::PERMISSION_DENIED:
       return "PermissionDeniedError";
-      break;
     case ErrorCode::EXECUTION_TIMEOUT:
       return "ExecutionTimeoutError";
-      break;
     case ErrorCode::UNIMPLEMENTED:
       return "UnimplementedError";
-      break;
     case ErrorCode::UNAVAILABLE:
       return "UnavailableError";
-      break;
     case ErrorCode::FATAL:
       return "FatalError";
-      break;
     case ErrorCode::EXTERNAL:
       return "ExternalError";
-      break;
     case ErrorCode::INVALID_TYPE:
       return "InvalidTypeError";
-      break;
     default:
       throw std::invalid_argument("The error type is undefined.");
-      break;
   }
 }
 

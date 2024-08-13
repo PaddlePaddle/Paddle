@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -214,14 +215,20 @@ class TestUnfoldAPI(TestUnfoldOp):
         self.op_type = 'unfold'
         self.python_api = paddle.nn.functional.unfold
         self.set_data()
-        self.places = [base.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
     def test_dygraph(self):
         for place in self.places:
             with base.dygraph.guard(place):
-                input = base.dygraph.to_variable(self.inputs['X'])
+                input = paddle.to_tensor(self.inputs['X'])
                 m = paddle.nn.Unfold(**self.attrs)
                 m.eval()
                 result = m(input)

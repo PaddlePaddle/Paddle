@@ -18,18 +18,11 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 static PDNode* create_emb_vars(PDPattern* pattern,
                                const std::string& name,
@@ -139,7 +132,8 @@ void SkipLayerNorm::operator()() {
       .LinksTo({layer_norm_out, layer_norm_mean_var, layer_norm_variance_var});
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
     Graph* graph, const std::string& name_scope
@@ -230,7 +224,7 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
   std::vector<Node*> end_pattern_scales;
   std::vector<Node*> end_pattern_biases;
   std::vector<Node*> end_pattern_out;
-  std::vector<Node*> end_patter_layernorms;
+  std::vector<Node*> end_pattern_layernorms;
   std::vector<std::unordered_set<Node*>> end_pattern_remove_nodes;
   GraphPatternDetector gpd3;
   auto* pattern3 = gpd3.mutable_pattern();
@@ -264,7 +258,7 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
     end_pattern_biases.push_back(layer_norm_bias);
     end_pattern_scales.push_back(layer_norm_scale);
     end_pattern_out.push_back(layer_norm_out);
-    end_patter_layernorms.push_back(layer_norm);
+    end_pattern_layernorms.push_back(layer_norm);
   };
   gpd3(graph, handler3);
 
@@ -376,13 +370,13 @@ int EmbeddingEltwiseLayerNormFusePass::BuildFusion(
       new_op_desc.SetInput("Scale", {end_pattern_scales[k]->Name()});
       new_op_desc.SetOutput("Out", {end_pattern_out[k]->Name()});
       new_op_desc.SetAttr("epsilon",
-                          end_patter_layernorms[k]->Op()->GetAttr("epsilon"));
+                          end_pattern_layernorms[k]->Op()->GetAttr("epsilon"));
 
-      if (end_patter_layernorms[k]->Op()->HasAttr("out_threshold")) {
+      if (end_pattern_layernorms[k]->Op()->HasAttr("out_threshold")) {
         new_op_desc.SetAttr("enable_int8", true);
         new_op_desc.SetAttr(
             "out_threshold",
-            end_patter_layernorms[k]->Op()->GetAttr("out_threshold"));
+            end_pattern_layernorms[k]->Op()->GetAttr("out_threshold"));
       }
 
       auto* embedding_eltwise_layernorm = graph->CreateOpNode(&new_op_desc);
@@ -474,9 +468,7 @@ void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(embedding_eltwise_layernorm_fuse_pass,
               paddle::framework::ir::EmbeddingEltwiseLayerNormFusePass);

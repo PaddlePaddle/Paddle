@@ -82,6 +82,8 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
 
   std::string GetBackendName() const override { return "XCCL"; }
 
+  std::string GetCommName(int rank);
+
   phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
   phi::DeviceContext* GetDeviceContext(const Place& place,

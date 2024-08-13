@@ -25,8 +25,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
-#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {

@@ -27,7 +27,7 @@ struct CacheAllocator {
     place_ = place;
   }
 
-  ~CacheAllocator() { VLOG(2) << "destory allocator"; }
+  ~CacheAllocator() { VLOG(2) << "destroy allocator"; }
 
   char* allocate(std::ptrdiff_t num_bytes) {
     VLOG(2) << "allocate " << num_bytes << " bytes";
@@ -41,6 +41,10 @@ struct CacheAllocator {
     VLOG(2) << "deallocate ";
     allocation_map_type::iterator iter = busy_allocation_.find(ptr);
     CHECK(iter != busy_allocation_.end());
+    PADDLE_ENFORCE_NE(iter,
+                      busy_allocation_.end(),
+                      common::errors::InvalidArgument(
+                          "Deallocate failed, can not find right position"));
     busy_allocation_.erase(iter);
   }
 

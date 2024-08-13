@@ -44,6 +44,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
             self.op_type = "elementwise_sub"
             self.use_xpu = True
             self.dtype = self.in_type
+
             self.init_shape()
             self.init_input_output()
 
@@ -93,7 +94,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
-        def test_check_grad_ingore_x(self):
+        def test_check_grad_ignore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
@@ -104,7 +105,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
                     no_grad_set=set("X"),
                 )
 
-        def test_check_grad_ingore_y(self):
+        def test_check_grad_ignore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(

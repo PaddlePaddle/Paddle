@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Fliename:
+Filename:
     test_image.py
 Description:
-    This scipt test image resize,flip and chw.
+    This script test image resize,flip and chw.
 """
 import os
 import unittest
@@ -34,10 +34,10 @@ class Image(unittest.TestCase):
 
     def test_resize_flip_chw(self):
         """resize"""
-        imgdir = os.path.join(
+        img_dir = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), 'cat.jpg'
         )
-        images = image.load_image(imgdir)
+        images = image.load_image(img_dir)
         images = image.resize_short(images, 256)
         self.assertEqual(256, min(images.shape[:2]))
         self.assertEqual(3, images.shape[2])

@@ -39,7 +39,7 @@ namespace analysis {
 
 using framework::ir::Graph;
 using framework::ir::Node;
-using framework::ir::TopologyVarientSort;
+using framework::ir::TopologyVariantSort;
 using space_table_t = MemoryOptimizePass::space_table_t;
 
 typedef struct {
@@ -60,7 +60,7 @@ void MemoryOptimizePass::CollectLifeCycle(
     int sort_kind) const {
   int max_lifecycle = 0;
   double persis_byte = 0;
-  for (auto* op_node : framework::ir::TopologyVarientSort(
+  for (auto* op_node : framework::ir::TopologyVariantSort(
            *graph, static_cast<framework::ir::SortKind>(sort_kind))) {
     if (!op_node->IsOp()) continue;
     auto reads = op_node->inputs;
@@ -92,7 +92,10 @@ void MemoryOptimizePass::CollectLifeCycle(
 
           auto in_shape = node->Var()->GetShape();
           for (auto i : in_shape) {
-            CHECK_GE(i, 0);
+            PADDLE_ENFORCE_GE(i,
+                              0,
+                              common::errors::InvalidArgument(
+                                  "The shape of node shouldn't be negative. "));
           }
           auto var_bytes = std::accumulate(in_shape.begin(),
                                            in_shape.end(),
@@ -138,7 +141,11 @@ void MemoryOptimizePass::CollectVarMemorySize(
                                         "fetch",
                                         "share_data"};
     for (auto* tmp : node->inputs) {
-      CHECK(tmp->IsOp());
+      PADDLE_ENFORCE_EQ(tmp->IsOp(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Expected a node to be an operation, but the given "
+                            "node is not an operation."));
       std::string op_type = tmp->Op()->Type();
       if (std::find(invalid_op.begin(), invalid_op.end(), op_type) !=
           invalid_op.end()) {
@@ -146,7 +153,11 @@ void MemoryOptimizePass::CollectVarMemorySize(
       }
     }
     for (auto* tmp : node->outputs) {
-      CHECK(tmp->IsOp());
+      PADDLE_ENFORCE_EQ(tmp->IsOp(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Expected a node to be an operation, but the given "
+                            "node is not an operation."));
       std::string op_type = tmp->Op()->Type();
       if (std::find(invalid_op.begin(), invalid_op.end(), op_type) !=
           invalid_op.end()) {

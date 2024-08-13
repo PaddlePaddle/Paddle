@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -22,7 +24,7 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-class TrtConvertElementwiseaddTransposeTest(TrtLayerAutoScanTest):
+class TrtConvertElementwiseAddTransposeTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -130,7 +132,7 @@ class TrtConvertElementwiseaddTransposeTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs, inputs):
             channel = inputs['ele_input_1'].shape[2]
 

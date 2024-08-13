@@ -29,11 +29,6 @@ namespace phi {
 
 const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
 
-const std::unordered_set<std::string> standard_kernel_suffixs({
-    "sr",  // SelectedRows kernel
-    "raw"  // fallback kernel of original fluid op
-});
-
 /**
  * Some fluid ops are no longer used under the corresponding official API
  * system of 2.0. These names need to correspond to the official API names
@@ -65,26 +60,18 @@ static const std::unordered_set<std::string> deprecated_op_names(
      "all",
      "reshape",
      "reshape_grad",
-     "expand",
      "expand_as",
-     "expand_grad",
      "expand_as_grad",
      "one_hot",
-     "top_k",
-     "top_k_grad",
+     // If remove top_k in PHI, uncomment the lines.
+     // "top_k",
+     // "top_k_grad",
      "linear_interp",
      "linear_interp_grad",
-     "bilinear_interp",
-     "bilinear_interp_grad",
      "trilinear_interp",
      "trilinear_interp_grad",
-     "nearest_interp",
-     "nearest_interp_grad",
      "bicubic_interp",
-     "bicubic_interp_grad",
-     "crop",
-     "crop_grad",
-     "generate_proposals"});
+     "bicubic_interp_grad"});
 
 class DefaultKernelSignatureMap {
  public:
@@ -97,7 +84,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         it,
         map_.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Operator `%s`'s kernel signature is not registered.", op_type));
     return it->second;
   }
@@ -114,7 +101,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         Has(op_type),
         true,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Operator (%s)'s Kernel Signature has been registered.", op_type));
     map_.insert({std::move(op_type), std::move(signature)});
   }
@@ -144,7 +131,7 @@ class OpUtilsMap {
     PADDLE_ENFORCE_EQ(
         phi_kernel_to_fluid_op_.count(base_kernel_name),
         0UL,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Operator (%s)'s kernel name (%s) has been registered.",
             op_type,
             base_kernel_name));
@@ -159,7 +146,7 @@ class OpUtilsMap {
     PADDLE_ENFORCE_EQ(
         arg_mapping_fn_map_.count(op_type),
         0UL,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Operator (%s)'s argument mapping function has been registered.",
             op_type));
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});

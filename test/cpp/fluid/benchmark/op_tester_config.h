@@ -136,7 +136,7 @@ void OpInputConfig::ParseDType(std::istream& is) {
   } else if (dtype_str == "fp64" || dtype_str == "double") {
     dtype = "fp64";
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported dtype %s in OpInputConfig.", dtype_str.c_str()));
   }
   VLOG(4) << "dtype of input " << name << " is: " << dtype;
@@ -150,7 +150,7 @@ void OpInputConfig::ParseInitializer(std::istream& is) {
   const std::vector<std::string> supported_initializers = {
       "random", "natural", "zeros", "file"};
   if (!Has(supported_initializers, initializer_str)) {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported initializer %s in OpInputConfig.",
         initializer_str.c_str()));
   }
@@ -190,7 +190,7 @@ void OpInputConfig::ParseLoD(std::istream& is) {
   PADDLE_ENFORCE_GE(
       lod_str.length(),
       4U,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The length of lod string should be "
           "equal to or larger than 4. But length of lod string is %zu.",
           lod_str.length()));
@@ -223,8 +223,8 @@ OpTesterConfig::OpTesterConfig(const std::string& filename) {
   PADDLE_ENFORCE_EQ(
       static_cast<bool>(fin),
       true,
-      platform::errors::InvalidArgument("OpTesterConfig cannot open file %s.",
-                                        filename.c_str()));
+      common::errors::InvalidArgument("OpTesterConfig cannot open file %s.",
+                                      filename.c_str()));
 
   Init(fin);
 }

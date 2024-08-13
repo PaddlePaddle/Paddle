@@ -53,8 +53,7 @@ class TestBase(IPUOpTest):
         scope = paddle.static.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
-        main_prog.random_seed = self.SEED
-        startup_prog.random_seed = self.SEED
+        paddle.seed(self.SEED)
 
         bs = self.ipu_bs if run_ipu else self.cpu_bs
         with paddle.static.scope_guard(scope):
@@ -63,13 +62,21 @@ class TestBase(IPUOpTest):
                     name='image', shape=[bs, 3, 10, 10], dtype='float32'
                 )
                 with paddle.static.ipu_shard_guard(index=0):
-                    conv1 = paddle.static.nn.conv2d(
-                        image, num_filters=3, filter_size=3, bias_attr=False
-                    )
+                    conv1 = paddle.nn.Conv2D(
+                        in_channels=image.shape[1],
+                        out_channels=3,
+                        kernel_size=3,
+                        bias_attr=False,
+                    )(image)
+
                 with paddle.static.ipu_shard_guard(index=1):
-                    conv2 = paddle.static.nn.conv2d(
-                        conv1, num_filters=3, filter_size=3, bias_attr=False
-                    )
+                    conv2 = paddle.nn.Conv2D(
+                        in_channels=conv1.shape[1],
+                        out_channels=3,
+                        kernel_size=3,
+                        bias_attr=False,
+                    )(conv1)
+
                     # should consider influence of bs
                     loss = paddle.mean(conv2)
 

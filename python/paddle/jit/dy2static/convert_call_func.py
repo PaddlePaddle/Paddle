@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import copy
 import functools
@@ -20,7 +22,7 @@ import logging
 import os
 import pdb  # noqa: T100
 import re
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy
 
@@ -41,6 +43,9 @@ from .program_translator import (
     unwrap_decorators,
 )
 from .utils import is_builtin, is_paddle_func
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 __all__ = []
 
@@ -69,9 +74,7 @@ class ConversionOptions:
             setattr(func, CONVERSION_OPTIONS, self)
         else:
             translator_logger.warn(
-                "Only support @not_to_static to type(function) or type(method), but recevied {}".format(
-                    type(func)
-                )
+                f"Only support @not_to_static to type(function) or type(method), but received {type(func)}"
             )
 
 
@@ -102,7 +105,7 @@ def builtin_modules():
 BUILTIN_LIKELY_MODULES = builtin_modules()
 
 
-def add_ignore_module(modules: List[Any]):
+def add_ignore_module(modules: list[ModuleType]):
     """
     Adds modules that ignore transcription
     """
@@ -112,21 +115,49 @@ def add_ignore_module(modules: List[Any]):
             BUILTIN_LIKELY_MODULES.append(module)
 
 
+@functools.lru_cache
+def get_module_functions(module) -> list[Callable[..., Any]]:
+    visited = set()
+
+    def _try_get_members(module) -> list[tuple[str, Any]]:
+        try:
+            return inspect.getmembers(module)
+        except Exception:
+            return []
+
+    def _get_module_functions(module):
+        if module in visited:
+            return []
+        visited.add(module)
+        results = []
+        for _member_name, member in _try_get_members(module):
+            if callable(member):
+                results.append(member)
+            if inspect.ismodule(member):
+                results.extend(_get_module_functions(member))
+        return results
+
+    return _get_module_functions(module)
+
+
 def is_unsupported(func):
     """
     Checks whether the func is supported by dygraph to static graph.
     """
 
-    for m in BUILTIN_LIKELY_MODULES:
-        for v in m.__dict__.values():
-            if not callable(v):
-                continue
-            if func is v:
-                translator_logger.log(
-                    2,
-                    f"Whitelist: {func} is part of built-in module and does not have to be transformed.",
-                )
-                return True
+    builtin_functions = [
+        func
+        for module in BUILTIN_LIKELY_MODULES
+        for func in get_module_functions(module)
+    ]
+
+    for builtin_fn in builtin_functions:
+        if func is builtin_fn:
+            translator_logger.log(
+                2,
+                f"Whitelist: {func} is part of built-in module and does not have to be transformed.",
+            )
+            return True
 
     # NOTE: should be placed before `is_paddle_func`
     # The api(s) should be considered as plain function and convert
@@ -144,6 +175,8 @@ def is_unsupported(func):
             func,
         )
         return True
+
+    return False
 
 
 def convert_call(func):
@@ -220,15 +253,13 @@ def convert_call(func):
 
     if inspect.isgeneratorfunction(func):
         # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function.
-        # If we don't deal generatorfunction here, we will regard it as normal function and get errors in some
+        # If we don't deal generator function here, we will regard it as normal function and get errors in some
         # occasion.
         number_of_stars = 30
         translator_logger.warn(
             "\n\n"
             + "*" * number_of_stars
-            + "\nYour function:`{}` doesn't support to transform to static function because it is a generator function, it will be run as-is.".format(
-                func.__name__
-            )
+            + f"\nYour function:`{func.__name__}` doesn't support to transform to static function because it is a generator function, it will be run as-is."
             + "\n"
             + "*" * number_of_stars
             + "\n\n"
@@ -304,7 +335,7 @@ def convert_call(func):
                 _, forward_func = unwrap_decorators(func.forward)
                 func._original_funcs['forward'] = forward_func.__func__
                 forward_func = convert_to_static(forward_func)
-                # Bound mothod will be convert into plain function after `convert_to_static`.
+                # Bound method will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
                 func.forward = forward_func.__get__(func)

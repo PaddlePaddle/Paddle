@@ -25,13 +25,7 @@ def train(prefix):
     worker_endpoints = worker_endpoints_env
     trainers_num = len(worker_endpoints.split(','))
 
-    name = "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
-        selected_gpus,
-        worker_endpoints,
-        trainers_num,
-        current_endpoint,
-        trainer_id,
-    )
+    name = f"selected_gpus:{selected_gpus} worker_endpoints:{worker_endpoints} trainers_num:{trainers_num} current_endpoint:{current_endpoint} trainer_id:{trainer_id}"
 
     print(name)
     with open(f"multi_process_{prefix}.check_{trainer_id}.log", "w") as f:
@@ -51,13 +45,7 @@ def train_abort(prefix):
             # train abort
             sys.exit(1)
         except SystemExit:
-            name = "abort>>> selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
-                selected_gpus,
-                worker_endpoints,
-                trainers_num,
-                current_endpoint,
-                trainer_id,
-            )
+            name = f"abort>>> selected_gpus:{selected_gpus} worker_endpoints:{worker_endpoints} trainers_num:{trainers_num} current_endpoint:{current_endpoint} trainer_id:{trainer_id}"
             print(name)
             with open(
                 f"multi_process_{prefix}.check_{trainer_id}.log", "w"
@@ -67,13 +55,7 @@ def train_abort(prefix):
     else:
         # sleep 30s to make sure paddle.distributed.launch will terminate this process
         time.sleep(30)
-        name = "selected_gpus:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
-            selected_gpus,
-            worker_endpoints,
-            trainers_num,
-            current_endpoint,
-            trainer_id,
-        )
+        name = f"selected_gpus:{selected_gpus} worker_endpoints:{worker_endpoints} trainers_num:{trainers_num} current_endpoint:{current_endpoint} trainer_id:{trainer_id}"
 
         print(name)
         with open(f"multi_process_{prefix}.check_{trainer_id}.log", "w") as f:

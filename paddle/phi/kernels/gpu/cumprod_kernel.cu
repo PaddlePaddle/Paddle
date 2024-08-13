@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/cumprod.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/exclusive_scan.h"
 #include "paddle/phi/kernels/funcs/inclusive_scan.h"
 
 namespace phi {
@@ -27,6 +28,8 @@ template <typename T, typename Context>
 void CumprodKernel(const Context &dev_ctx,
                    const DenseTensor &input,
                    int dim,
+                   bool exclusive,
+                   bool reverse,
                    DenseTensor *out) {
   const auto *x = &input;
   auto *y = out;
@@ -39,15 +42,27 @@ void CumprodKernel(const Context &dev_ctx,
 
   const auto *x_data = x->data<T>();
   auto *y_data = dev_ctx.template Alloc<T>(y);
-  phi::funcs::InclusiveScan(x_data,
-                            y_data,
-                            outer_dim,
-                            mid_dim,
-                            inner_dim,
-                            static_cast<T>(1),
-                            funcs::MultiplyFunctor<T>(),
-                            /*reverse=*/false,
-                            dev_ctx);
+  if (!exclusive) {
+    phi::funcs::InclusiveScan(x_data,
+                              y_data,
+                              outer_dim,
+                              mid_dim,
+                              inner_dim,
+                              static_cast<T>(1),
+                              funcs::MultiplyFunctor<T>(),
+                              /*reverse=*/reverse,
+                              dev_ctx);
+  } else {
+    phi::funcs::ExclusiveScan(x_data,
+                              y_data,
+                              outer_dim,
+                              mid_dim,
+                              inner_dim,
+                              static_cast<T>(1),
+                              funcs::MultiplyFunctor<T>(),
+                              /*reverse=*/reverse,
+                              dev_ctx);
+  }
 }
 
 }  // namespace phi

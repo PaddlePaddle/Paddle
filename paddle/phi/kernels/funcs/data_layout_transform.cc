@@ -28,8 +28,7 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #endif
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 #ifdef PADDLE_WITH_DNNL
 
@@ -120,7 +119,7 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
   } else {
     out->ShareDataWith(in);
   }
-  // For exepected NHWC data format we need to reshape the Output tensor
+  // For expected NHWC data format we need to reshape the Output tensor
   // As MKL-DNN description was in NCHW and paddle is expecting NHWC
   MatchShapeToLayout(out, in_layout, out_layout);
 
@@ -131,5 +130,4 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
 
 #endif
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

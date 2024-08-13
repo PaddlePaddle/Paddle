@@ -18,10 +18,19 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
+
+
+def partial_sum_wrapper(x, start_index, length):
+    if isinstance(x, paddle.Tensor):
+        x = [x]
+    return paddle._C_ops.partial_sum(x, start_index, length)
+
 
 class TestPartialSumOp(OpTest):
     def setUp(self):
         self.op_type = "partial_sum"
+        self.python_api = partial_sum_wrapper
         self.init_kernel_type()
         self.init_para()
         if self.length is -1:

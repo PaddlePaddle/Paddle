@@ -106,7 +106,7 @@ class GroupShardedStage3(nn.Layer):
         sync_buffers=False,
         device="gpu",
         segment_size=2**20,
-        pertrain_sync_models=True,
+        pretrain_sync_models=True,
         offload=False,
         sync_comm=False,
         dp_group=None,
@@ -115,9 +115,11 @@ class GroupShardedStage3(nn.Layer):
         super().__init__()
 
         # Default configs
-        assert core.is_compiled_with_cuda() or (
-            device in core.get_all_custom_device_type()
-        ), "Only support CUDA / CustomDevice."
+        assert (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_xpu()
+            or (device in core.get_all_custom_device_type())
+        ), "Only support CUDA / XPU / CustomDevice."
 
         self._layer = layer
         self._default_device = device
@@ -213,7 +215,7 @@ class GroupShardedStage3(nn.Layer):
                         item["grad_clip"] = self._optim._grad_clip
 
         # Synchronous all ranks models
-        if pertrain_sync_models:
+        if pretrain_sync_models:
             self._sync_params_and_buffers()
 
         self._segment_rank_params(self._layer)
@@ -323,10 +325,10 @@ class GroupShardedStage3(nn.Layer):
                 tmp_var._share_buffer_to(param)
                 del tmp_var
             for grad_storage in self._grad_storages.values():
-                grad_storage.manumal_relase()
+                grad_storage.manual_release()
                 grad_storage.rebuild()
 
-    # Update param memery slice
+    # Update param memory slice
     def _update_params_slice(self):
         update_list = self._update_params()
 
@@ -385,7 +387,7 @@ class GroupShardedStage3(nn.Layer):
         buffer_size[Type.fp32.value] = 0
         buffer_size[Type.fp16.value] = 0
         for param in self._unslice_params:
-            # Updata optimizer master weights
+            # Update optimizer master weights
             if (
                 param.dtype == Type.fp16.value or param.dtype == Type.bf16.value
             ) and not self._offload:
@@ -404,9 +406,11 @@ class GroupShardedStage3(nn.Layer):
             if param.dtype not in self._grad_storages.keys():
                 self._grad_storages[param.dtype] = GradStorage(
                     buffer_size[param.dtype],
-                    dtype=param.dtype
-                    if not self.use_main_grad
-                    else paddle.float32,
+                    dtype=(
+                        param.dtype
+                        if not self.use_main_grad
+                        else paddle.float32
+                    ),
                     device=self._default_device,
                     destination=self._rank,
                     parm2align=self._unslice_params2align,
@@ -537,7 +541,7 @@ class GroupShardedStage3(nn.Layer):
             )
         param.status = "part"
 
-        # Updata optimizer master weights
+        # Update optimizer master weights
         if (
             param.trainable
             and (

@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import itertools
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -50,7 +52,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(batch, attrs: List[Dict[str, Any]]):
+        def generate_input1(batch, attrs: list[dict[str, Any]]):
             return (
                 np.ones([batch, attrs[0]['groups'] * 3, 64, 64]).astype(
                     np.float32
@@ -58,14 +60,14 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                 / 4
             )
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.random.random([9, 3, 3, 3]).astype(np.float32) - 0.5
 
         batch_options = [1, 2]
         strides_options = [[2, 2], [1, 2]]
         paddings_options = [[0, 3], [1, 2, 3, 4]]
         groups_options = [1, 3]
-        padding_altorithm_options = ['EXPLICIT', 'SAME', 'VALID']
+        padding_algorithm_options = ['EXPLICIT', 'SAME', 'VALID']
         dilations_options = [[1, 2]]
         data_format_options = ['NCHW']
 
@@ -74,7 +76,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             strides_options,
             paddings_options,
             groups_options,
-            padding_altorithm_options,
+            padding_algorithm_options,
             dilations_options,
             data_format_options,
         ]
@@ -90,7 +92,6 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         ) in itertools.product(*configurations):
             attrs = [
                 {
-                    "data_fromat": data_format,
                     "dilations": dilations,
                     "padding_algorithm": padding_algorithm,
                     "groups": groups,
@@ -140,7 +141,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             input_groups = attrs[0]['groups'] * 3
             self.dynamic_shape.min_input_shape = {
@@ -234,13 +235,13 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             return (
                 np.random.random(attrs[0]['input_shape']).astype(np.float32)
                 - 0.5
             )
 
-        def generate_data(attrs: List[Dict[str, Any]]):
+        def generate_data(attrs: list[dict[str, Any]]):
             return (
                 np.random.random(attrs[0]['weight_shape']).astype(np.float32)
                 - 0.5
@@ -252,7 +253,7 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
         strides_options = [[2, 2]]
         paddings_options = [[1, 1]]
         groups_options = [1]
-        padding_altorithm_options = ['EXPLICIT']
+        padding_algorithm_options = ['EXPLICIT']
         dilations_options = [[1, 1]]
         data_format_options = ['NCHW']
 
@@ -263,7 +264,7 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
             strides_options,
             paddings_options,
             groups_options,
-            padding_altorithm_options,
+            padding_algorithm_options,
             dilations_options,
             data_format_options,
         ]
@@ -282,14 +283,13 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
             ic = input_shape[1]
             attrs = [
                 {
-                    "data_fromat": data_format,
                     "dilations": dilations,
                     "padding_algorithm": padding_algorithm,
                     "groups": groups,
                     "paddings": paddings,
                     "strides": strides,
                     "data_format": data_format,
-                    # below attrs are used for my convience.
+                    # below attrs are used for my convenience.
                     "input_shape": input_shape,
                     "weight_shape": [
                         oc,
@@ -332,7 +332,7 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}

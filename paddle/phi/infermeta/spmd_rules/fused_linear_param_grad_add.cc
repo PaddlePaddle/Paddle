@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 SpmdInfo FusedLinearParamGradAddInferSpmd(const DistMetaTensor& x,
                                           const DistMetaTensor& dout,
@@ -50,7 +49,7 @@ SpmdInfo FusedLinearParamGradAddInferSpmd(const DistMetaTensor& x,
   if (!IsEmpty(dweight_shape)) {
     PADDLE_ENFORCE_EQ(dweight_dist_attr,
                       weight_grad_dist_attr,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "dweight_dist_attr [%s] and weight_grad_dist_attr "
                           "[%s] should be equal",
                           dweight_dist_attr.to_string(),
@@ -61,7 +60,7 @@ SpmdInfo FusedLinearParamGradAddInferSpmd(const DistMetaTensor& x,
     PADDLE_ENFORCE_EQ(
         dbias_dist_attr,
         bias_grad_dist_attr,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "dbias_dist_attr [%s] and bias_grad_dist_attr [%s] should be equal",
             dbias_dist_attr.to_string(),
             bias_grad_dist_attr.to_string()));
@@ -73,5 +72,4 @@ SpmdInfo FusedLinearParamGradAddInferSpmd(const DistMetaTensor& x,
 
 SpmdInfo FusedLinearParamGradAddInferSpmdFakeReverse() { return SpmdInfo(); }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

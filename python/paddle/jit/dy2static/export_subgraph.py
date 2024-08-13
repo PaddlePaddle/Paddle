@@ -240,5 +240,5 @@ def pir_exporter(pp_layer, program, role, shared_inputs=None, inter_outs=None):
             )
     except Exception as e:
         _logger.error(
-            f"Export subgraph failed: {e}\n. Received original program: {str(program)}"
+            f"Export subgraph failed: {e}\n. Received original program: {program}"
         )

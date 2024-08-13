@@ -25,6 +25,19 @@
 namespace cinn {
 namespace ir {
 
+class ComputeInlineTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "ComputeInlineTactic"; }
+
+ private:
+  std::unordered_set<std::string> output_names_;
+  cinn::common::Target target_;
+};
+
 void ComputeInlineTactic::Init(ScheduleContext* context) {
   output_names_ = context->output_names;
   target_ = context->target;
@@ -32,10 +45,7 @@ void ComputeInlineTactic::Init(ScheduleContext* context) {
 
 void ComputeInlineTactic::Apply(ir::IRSchedule* sch,
                                 const std::string& block_id) {
-  VLOG(5) << "[Start DoComputeInline] func body: "
-          << sch->GetModule().GetExprs().front();
-
-  // TODO(LiuYang): Compute of ops will be rewrited so that we
+  // TODO(LiuYang): Compute of ops will be rewritten so that we
   // don't use it in dynamic group_schedule rules temporarily.
   // if (IsProhibitScheduleExternCallBlock(node->Block())) {
   //    return;
@@ -49,6 +59,10 @@ void ComputeInlineTactic::Apply(ir::IRSchedule* sch,
   VLOG(6) << "try ComputeInline on: " << block_id
           << ", after ComputeInline, func body: "
           << sch->GetModule().GetExprs().front();
+}
+
+std::unique_ptr<ScheduleTactic> CreateComputeInlineTactic() {
+  return std::make_unique<ComputeInlineTactic>();
 }
 
 }  // namespace ir

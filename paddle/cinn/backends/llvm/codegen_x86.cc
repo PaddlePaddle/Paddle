@@ -30,7 +30,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/runtime/intrinsic.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::backends {
 
 CodeGenX86::CodeGenX86(llvm::Module* m,
@@ -144,8 +144,10 @@ void CodeGenX86::CreateParallelLaunch(Expr body, int num_task) {
   symbol_table_->PopScope();
   std::swap(parallel_env_, par_env);
   std::swap(f_, f);
-  CHECK_NE(par_env.parallel_loop_count, 0)
-      << "find no parallel loop within parallel launch";
+  PADDLE_ENFORCE_NE(par_env.parallel_loop_count,
+                    0,
+                    ::common::errors::InvalidArgument(
+                        "find no parallel loop within parallel launch"));
   b_->SetInsertPoint(launch_end);
 }
 
@@ -164,8 +166,11 @@ llvm::Value* CodeGenX86::Visit(const ir::For* op) {
     } else {
       Expr num_task = parallel_env_.num_task;
       Expr task_id = parallel_env_.task_id;
-      CHECK(!parallel_env_.in_parallel_loop)
-          << "Nested parallel loop is not supported, try to fuse them instead";
+      PADDLE_ENFORCE_EQ(parallel_env_.in_parallel_loop,
+                        false,
+                        ::common::errors::InvalidArgument(
+                            "Nested parallel loop is not supported, "
+                            "try to fuse them instead"));
       parallel_env_.in_parallel_loop = true;
       if (parallel_env_.stride_pattern) {
         auto new_for = ir::For::Make(op->loop_var,
@@ -176,7 +181,9 @@ llvm::Value* CodeGenX86::Visit(const ir::For* op) {
                                      op->body,
                                      op->vectorize_info());
         auto for_node = new_for.As<ir::For>();
-        CHECK(for_node);
+        PADDLE_ENFORCE_NOT_NULL(for_node,
+                                ::common::errors::InvalidArgument(
+                                    "the node new_for can't be nullptr"));
         CreateSerialFor(for_node, num_task.as_int32());
       } else {
         Expr extent = op->extent;
@@ -191,7 +198,9 @@ llvm::Value* CodeGenX86::Visit(const ir::For* op) {
                                      op->body,
                                      op->vectorize_info());
         auto for_node = new_for.As<ir::For>();
-        CHECK(for_node);
+        PADDLE_ENFORCE_NOT_NULL(for_node,
+                                ::common::errors::InvalidArgument(
+                                    "the node new_for can't be null"));
         CreateSerialFor(for_node);
       }
       parallel_env_.in_parallel_loop = false;

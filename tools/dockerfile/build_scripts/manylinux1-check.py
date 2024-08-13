@@ -17,9 +17,12 @@
 
 def is_manylinux1_compatible():
     # Only Linux, and only x86-64 / i686
-    from distutils.util import get_platform
+    import platform
 
-    if get_platform() not in ["linux-x86_64", "linux-i686"]:
+    if platform.system() != 'Linux' and platform.machine() not in [
+        "linux-x86_64",
+        "linux-i686",
+    ]:
         return False
 
     # Check for presence of _manylinux module

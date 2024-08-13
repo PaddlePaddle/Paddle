@@ -31,7 +31,7 @@ def analysisPyXml(rootPath, ut):
     for clazz in root.findall('packages/package/classes/class'):
         clazz_filename = clazz.attrib.get('filename')
         if not clazz_filename.startswith('/paddle'):
-            clazz_filename = '/paddle/%s' % clazz_filename
+            clazz_filename = f'/paddle/{clazz_filename}'
         for line in clazz.findall('lines/line'):
             line_hits = int(line.attrib.get('hits'))
             if line_hits != 0:

@@ -20,10 +20,10 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_legacy_and_pt_and_pir,
+    test_pir_only,
 )
 
 import paddle
-from paddle.framework import use_pir_api
 
 
 class GradLayer(paddle.nn.Layer):
@@ -101,9 +101,6 @@ class TestGradLinear(TestGrad):
 
     @test_legacy_and_pt_and_pir
     def test_save_infer_program(self):
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if use_pir_api():
-            return
         static_fn = paddle.jit.to_static(self.func)
         input_spec = [
             paddle.static.InputSpec(shape=[10, 2, 5], dtype='float32')
@@ -132,9 +129,6 @@ class TestGradLinear(TestGrad):
 
             static_fn.clear_gradients()
 
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if use_pir_api():
-            return
         paddle.jit.save(static_fn, self.train_model_path)
         load_func = paddle.jit.load(self.train_model_path)
 
@@ -159,6 +153,33 @@ class TestNoGradLinear(TestGradLinear):
 
     def tearDown(self):
         self.temp_dir.cleanup()
+
+
+class UnuseGradVarLayer(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, var_0, var_1):
+        var_1 = var_1 + 1
+        return var_0, var_1
+
+
+class TestUnuseGradVar(Dy2StTestBase):
+    @test_pir_only
+    def test_run(self):
+        layer = UnuseGradVarLayer()
+        layer = paddle.jit.to_static(layer)
+
+        x = paddle.to_tensor([1.0])
+        y = paddle.to_tensor([2.0])
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        out1, out2 = layer(x, y)
+        out = out1 + out2
+        out.backward()
+        np.testing.assert_array_equal(out.numpy(), [4])
+        np.testing.assert_array_equal(x.grad.numpy(), [1])
 
 
 if __name__ == '__main__':

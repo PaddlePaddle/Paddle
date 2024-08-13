@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from op_test import OpTest
+
+sys.path.append("../deprecated/legacy_test")
 from test_lstm_op import ACTIVATION, lstm
 
 
@@ -140,7 +143,9 @@ class TestFusionLSTMOp(OpTest):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            self.check_output(check_dygraph=False)
+            self.check_output(
+                check_dygraph=False, check_pir_onednn=self.check_pir_onednn
+            )
 
 
 class TestFusionLSTMOpInit(TestFusionLSTMOp):

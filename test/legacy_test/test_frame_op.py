@@ -33,11 +33,11 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
 
     if axis == -1:
         shape = list(x.shape)[:-1] + [frame_length, n_frames]
-        strides = list(strides) + [hop_length * x.itemsize]
+        strides = [*strides, hop_length * x.itemsize]
 
     elif axis == 0:
         shape = [n_frames, frame_length] + list(x.shape)[1:]
-        strides = [hop_length * x.itemsize] + list(strides)
+        strides = [hop_length * x.itemsize, *strides]
 
     else:
         raise ValueError(f"Frame axis={axis} must be either 0 or -1")
@@ -151,7 +151,7 @@ class TestFrameFP16OP(TestFrameOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not complied with CUDA and not support the bfloat16",
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFrameBF16OP(OpTest):
     def setUp(self):

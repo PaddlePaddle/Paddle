@@ -14,18 +14,16 @@
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include <string>
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
-PHI_DECLARE_bool(allreduce_record_one_event);
+COMMON_DECLARE_bool(allreduce_record_one_event);
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 struct VarHandleBase;
 
 ComputationOpHandle::ComputationOpHandle(ir::Node *node,
                                          Scope *scope,
-                                         platform::Place place,
+                                         phi::Place place,
                                          size_t scope_idx)
     : OpHandleBase(node),
       op_(framework::OpRegistry::CreateOp(*node->Op())),
@@ -55,6 +53,4 @@ bool ComputationOpHandle::NeedWait(VarHandleBase *in_var) {
 }
 
 std::string ComputationOpHandle::Name() const { return op_->Type(); }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

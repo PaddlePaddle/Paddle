@@ -14,8 +14,8 @@
 
 #pragma once
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/pir/core/dialect_interface.h"
-#include "paddle/pir/core/parameter.h"
+#include "paddle/pir/include/core/dialect_interface.h"
+#include "paddle/pir/include/core/parameter.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {

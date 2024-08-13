@@ -22,12 +22,12 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
-#include "paddle/fluid/operators/fused/fused_dropout_common.h"
-#include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
-#include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+#include "paddle/phi/kernels/funcs/math/bert_encoder_functor.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_common.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_layernorm_residual_dropout_bias.h"
 
 namespace paddle {
 namespace inference {
@@ -290,16 +290,16 @@ bool PrelnResidualBiasPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      platform::errors::InvalidArgument("The pos(%d) should be less than the "
-                                        "num(%d) of the input and the output.",
-                                        pos,
-                                        nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
@@ -309,8 +309,8 @@ bool PrelnResidualBiasPluginDynamic::supportsFormatCombination(
              (in.format == nvinfer1::TensorFormat::kLINEAR);
 #else
       PADDLE_THROW(
-          platform::errors::Fatal("TRT plugin supported FP16 is not available "
-                                  "while with_fp16 is set true."));
+          common::errors::Fatal("TRT plugin supported FP16 is not available "
+                                "while with_fp16 is set true."));
 #endif
     } else {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
@@ -370,7 +370,7 @@ int PrelnResidualBiasPluginDynamic::enqueue(
     rows_temp = input_dims.d[0] * input_dims.d[1] * input_dims.d[2];
     cols_temp = input_dims.d[3];
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "fused_bias_dropout_residual_layer_norm op only support 3-D or 4-D "
         "input, but get `%d`-D.",
         input_dims.nbDims));
@@ -401,11 +401,11 @@ int PrelnResidualBiasPluginDynamic::enqueue(
     float *mean = nullptr;
     float *var = nullptr;
     const int VecSize = 8;
-    paddle::operators::FusedLayernormResidualDropoutBiasFunctor<float,
-                                                                uint8_t,
-                                                                VecSize,
-                                                                float,
-                                                                false>()(
+    phi::fusion::FusedLayernormResidualDropoutBiasFunctor<float,
+                                                          uint8_t,
+                                                          VecSize,
+                                                          float,
+                                                          false>()(
         rows,
         cols,
         seed,
@@ -477,15 +477,15 @@ int PrelnResidualBiasPluginDynamic::enqueue(
             HALF2_ADD_BIAS_RESIDUAL_LAYERNORM_OPT2(8);
             break;
           default:
-            PADDLE_THROW(platform::errors::Fatal(
+            PADDLE_THROW(common::errors::Fatal(
                 "Invalid UNROLL_FACTOR in preln_residual_bias trt plugin."));
         }
       } else {
-        paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
-                                                                    uint8_t,
-                                                                    VecSize,
-                                                                    float,
-                                                                    false>()(
+        phi::fusion::FusedLayernormResidualDropoutBiasFunctor<half,
+                                                              uint8_t,
+                                                              VecSize,
+                                                              float,
+                                                              false>()(
             rows,
             cols,
             seed,
@@ -508,11 +508,11 @@ int PrelnResidualBiasPluginDynamic::enqueue(
       }
     } else {
       // if sm < 60, use FusedLayernormResidualDropoutBiasFunctor only
-      paddle::operators::FusedLayernormResidualDropoutBiasFunctor<half,
-                                                                  uint8_t,
-                                                                  VecSize,
-                                                                  float,
-                                                                  false>()(
+      phi::fusion::FusedLayernormResidualDropoutBiasFunctor<half,
+                                                            uint8_t,
+                                                            VecSize,
+                                                            float,
+                                                            false>()(
           rows,
           cols,
           seed,
@@ -534,7 +534,7 @@ int PrelnResidualBiasPluginDynamic::enqueue(
           stream);
     }
 #else
-    PADDLE_THROW(platform::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The Ernie(Bert) tensorRT plugin should be "
         "complied with CUDA version >= 10.0 when running with fp16. "
         "Please recomplie it or try to use fp32 by set "
@@ -543,8 +543,8 @@ int PrelnResidualBiasPluginDynamic::enqueue(
 #endif
   } else {
     PADDLE_THROW(
-        platform::errors::Fatal("The PrelnResidualBias TRT Plugin's input type "
-                                "should be float or half."));
+        common::errors::Fatal("The PrelnResidualBias TRT Plugin's input type "
+                              "should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }

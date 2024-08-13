@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
 
-#include "paddle/fluid/string/split.h"
+#include "paddle/utils/string/split.h"
 
 namespace paddle {
 namespace distributed {
@@ -28,10 +28,10 @@ void HeterServer::RegisterServiceHandler(std::string message_name,
   service_.RegisterServiceHandler(message_name, func);
 }
 
-void HeterServer::StartHeterService(bool neeed_encrypt) {
+void HeterServer::StartHeterService(bool need_encrypt) {
   server_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
-  if (neeed_encrypt) {
+  if (need_encrypt) {
     options.mutable_ssl_options()->default_cert.certificate = "/cert.pem";
     options.mutable_ssl_options()->default_cert.private_key = "/key.pem";
   }
@@ -63,10 +63,10 @@ void HeterServer::StartHeterService(bool neeed_encrypt) {
   VLOG(4) << "start service done";
 }
 
-void HeterServer::StartHeterInterService(bool neeed_encrypt) {
+void HeterServer::StartHeterInterService(bool need_encrypt) {
   server_inter_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
   brpc::ServerOptions options;
-  if (neeed_encrypt) {
+  if (need_encrypt) {
     options.mutable_ssl_options()->default_cert.certificate = "/cert.pem";
     options.mutable_ssl_options()->default_cert.private_key = "/key.pem";
   }
@@ -99,7 +99,7 @@ void HeterServer::StartHeterInterService(bool neeed_encrypt) {
   VLOG(4) << "start service done";
 }
 
-void HeterServer::SetFanin(const int& fan_in) { service_.SetFanin(fan_in); }
+void HeterServer::SetFanIn(const int& fan_in) { service_.SetFanIn(fan_in); }
 
 void HeterServer::WaitServerReady() {
   std::unique_lock<std::mutex> lock(this->mutex_ready_);
@@ -169,8 +169,8 @@ int SendAndRecvVariableHandler::SaveInSwitchWithScope(
     PsResponseMessage* response,
     brpc::Controller* cntl) {
   VLOG(4) << "entering SaveInSwitchWithScope";
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::CPUPlace cpu_place;
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  phi::CPUPlace cpu_place;
   auto& cpu_dev_ctx = *pool.Get(cpu_place);
   auto message_name = request->message_name();
   VLOG(4) << "message_name in heter server: " << message_name;
@@ -211,8 +211,8 @@ int SendAndRecvVariableHandler::QueryInSwitchWithScope(
   if (!local_scope) {
     LOG(INFO) << "local_scope is null";
   }
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::CPUPlace cpu_place;
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  phi::CPUPlace cpu_place;
   auto& cpu_dev_ctx = *pool.Get(cpu_place);
 
   // get req message_name & req_var_names

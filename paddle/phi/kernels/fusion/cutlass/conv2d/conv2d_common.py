@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 
-sys.path.append("../")
+dirname, filename = os.path.split(os.path.abspath(sys.argv[0]))
+sys.path.append(dirname + "/../")
 from util import SubstituteTemplate
 
 # For beginners, these template parameters may be difficult to understand.
@@ -49,10 +51,14 @@ cutlass::Status ${kernel_func_name}(const ConvAllParams& params) {
 
   using ImplicitGemm =
       cutlass::conv::device::ImplicitGemmConvolution<kernel_base>;
-  const half *input = params.input;
-  const half *weight = params.weight;
-  const half *bias = params.bias;
-  half *output = params.output;
+
+  ${element_a} *input = (${element_a} *)(params.input);
+  ${element_b} *weight = (${element_b} *)(params.weight);
+  ${element_c} *bias = (${element_c} *)(params.bias);
+  ${element_c} *output = (${element_c} *)(params.output);
+  // only used by conv2d_bias_residual
+  auto residual = (${element_c} *)(params.residual);
+
   int batch = params.batch;
   int ic = params.ic;
   int ih = params.ih;
@@ -90,14 +96,8 @@ CommonCutlassConvKernelExecute = """
   ImplicitGemm implicit_gemm_op;
   size_t bytes = implicit_gemm_op.get_workspace_size(arguments);
 
-  auto ctx = params.ctx;
-  auto stream = ctx->stream();
-  phi::Allocator::AllocationPtr tmp_gpu_ptrs_data =
-       phi::memory_utils::Alloc(
-          ctx->GetPlace(),
-          bytes,
-          phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
-  void *workspace = tmp_gpu_ptrs_data->ptr();
+  auto stream = params.stream;
+  void *workspace = params.workspace;
 
   cutlass::Status status = implicit_gemm_op.can_implement(arguments);
   CUTLASS_CHECK(status);
@@ -111,18 +111,21 @@ CommonCutlassConvKernelExecute = """
 
 # CommonConvFunction is a wrapper for many kernels
 # a func_name is like conv2d_bias_silu_sm75
-# it has many kernels, we should pick up a performence-best
+# it has many kernels, we should pick up a performance-best
 # ${func_name} is like conv2d_bias_silu_sm75
 # ${enum_op_name} is like CONV2D_BIAS_SILU
 
 CommonConvFunction = """
+
+${kernel_func_declare}
+
 std::vector<std::function<cutlass::Status(const ConvAllParams)>>
     ${func_name}_all_func =  {${all_kernel_func_name}};
 
 std::map<std::vector<int>, int> map_problem_${func_name};
 std::mutex ${func_name}_mutex;
 
-void ${func_name}(const ConvAllParams& params) {
+bool ${func_name}(ConvAllParams params) {
   int batch = params.batch;
   int ic = params.ic;
   int ih = params.ih;
@@ -142,7 +145,7 @@ void ${func_name}(const ConvAllParams& params) {
   if (map_problem_${func_name}.count(problem_size)) {
     ${func_name}_all_func[map_problem_${func_name}.at(problem_size)](
         params);
-    return;
+    return true;
   }
 
   int best_config_index = ProfileToGetBestConfig(
@@ -152,6 +155,7 @@ void ${func_name}(const ConvAllParams& params) {
 
   map_problem_${func_name}[problem_size] = best_config_index;
   ${func_name}_all_func[best_config_index](params);
+  return true;
 }
 """
 
@@ -161,16 +165,27 @@ void ${func_name}(const ConvAllParams& params) {
 # this function is invoked by phi kernel
 
 CommonWrapperForPhi = """
-void ${op_name}(const ConvAllParams& params) {
-    ${dispatch_body}
+bool ${op_name}(ConvAllParams params) {
+  ${dispatch_body}
 }
 """
 
 
+def convert_c_data_type(dtype):
+    if dtype == "fp16":
+        return "Conv2dDataType::fp16"
+    elif dtype == "bf16":
+        return "Conv2dDataType::bf16"
+    elif dtype == "fp32":
+        return "Conv2dDataType::fp32"
+    else:
+        return None
+
+
 CommonDispatchTemp = '''
-    if (params.sm_version == ${sm_code})
+    if (params.sm_version == ${sm_code} && params.data_type == ${data_type})
     {
-        ${op_name_with_sm}(params);
+        return ${op_name_with_sm}(params);
     }
     '''
 
@@ -186,18 +201,24 @@ CommonTail = '''
 
 # Wrap different sm versions into a function called by phi
 def GenerateFunctionForPhi(
-    sm_versions, support_epi_funcs, underscore_names, camel_names
+    sm_versions_and_types, support_epi_funcs, underscore_names, camel_names
 ):
     generated_code = ""
     for epi_func in support_epi_funcs:
         dispatch_body = ""
-        for sm_version in sm_versions:
+        for sm_version, data_type in sm_versions_and_types:
             sm_dicts = {}
             sm_dicts["sm_code"] = sm_version
+            sm_dicts["data_type"] = convert_c_data_type(data_type)
             sm_dicts["op_name_with_sm"] = (
-                underscore_names[epi_func].lower() + "_sm" + sm_version
+                underscore_names[epi_func].lower()
+                + "_sm"
+                + sm_version
+                + "_"
+                + data_type
             )
             dispatch_body += SubstituteTemplate(CommonDispatchTemp, sm_dicts)
+        dispatch_body += '''    return false;'''
         op_dicts = {}
         op_dicts["dispatch_body"] = dispatch_body
         op_dicts["op_name"] = camel_names[epi_func]

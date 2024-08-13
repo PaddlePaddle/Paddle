@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
-from test_attribute_var import UnittestBase
 
 import paddle
 from paddle.base import core
-from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -30,7 +28,7 @@ paddle.enable_static()
 class TestSqueezeOp(OpTest):
     def setUp(self):
         self.op_type = "squeeze2"
-        self.prim_op_type = "comp"
+        self.prim_op_type = "prim"
         self.python_api = paddle.squeeze
         self.public_python_api = paddle.squeeze
         self.python_out_sig = [
@@ -57,7 +55,6 @@ class TestSqueezeOp(OpTest):
     def test_check_output(self):
         self.check_output(
             no_check_set=['XShape'],
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -66,7 +63,6 @@ class TestSqueezeOp(OpTest):
         self.check_grad(
             ["X"],
             "Out",
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -190,81 +186,6 @@ class TestSqueezeOp3BF16Op(TestSqueezeOp):
         self.dtype = np.uint16
 
 
-class TestSqueeze2AxesTensor(UnittestBase):
-    def init_info(self):
-        self.shapes = [[2, 3, 4]]
-        self.save_path = os.path.join(self.temp_dir.name, 'squeeze_tensor')
-
-    def test_static(self):
-        main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
-            fc = paddle.nn.Linear(4, 10)
-            x = paddle.randn([2, 3, 4])
-            x.stop_gradient = False
-            feat = fc(x)  # [2,3,10]
-            feat = paddle.unsqueeze(feat, [0, 2])  # [1, 2, 3, 1, 10]
-            # axes is a Variable
-            axes = paddle.assign([0, 2])
-            out = paddle.squeeze(feat, axes)
-            out2 = paddle.squeeze(feat, axes)
-
-            sgd = paddle.optimizer.SGD()
-            sgd.minimize(paddle.mean(out))
-            self.assertTrue("Var[" in str(main_prog))
-
-            exe = paddle.static.Executor()
-            exe.run(starup_prog)
-            res = exe.run(fetch_list=[feat, out, out2])
-            self.assertEqual(res[0].shape, (1, 2, 1, 3, 10))
-            self.assertEqual(res[1].shape, (2, 3, 10))
-            self.assertEqual(res[2].shape, (2, 3, 10))
-
-            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-            # Test for Inference Predictor
-            infer_out = self.infer_prog()
-            self.assertEqual(infer_out.shape, (2, 3, 10))
-
-
-class TestSqueeze2AxesTensorList(UnittestBase):
-    def init_info(self):
-        self.shapes = [[2, 3, 4]]
-        self.save_path = os.path.join(self.temp_dir.name, 'squeeze_tensor')
-
-    def test_static(self):
-        main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
-            fc = paddle.nn.Linear(4, 10)
-            x = paddle.randn([2, 3, 4])
-            x.stop_gradient = False
-            feat = fc(x)  # [2,3,10]
-            feat = paddle.unsqueeze(feat, [0, 2])  # [1, 2, 3, 1, 10]
-            # axes is a list[Variable]
-            axes = [
-                paddle.full([1], 0, dtype='int32'),
-                paddle.full([1], 2, dtype='int32'),
-            ]
-            out = paddle.squeeze(feat, axes)
-            out2 = paddle.squeeze(feat, axes)
-
-            sgd = paddle.optimizer.SGD()
-            sgd.minimize(paddle.mean(out))
-            self.assertTrue("Vars[" in str(main_prog))
-
-            exe = paddle.static.Executor()
-            exe.run(starup_prog)
-            res = exe.run(fetch_list=[feat, out, out2])
-            self.assertEqual(res[0].shape, (1, 2, 1, 3, 10))
-            self.assertEqual(res[1].shape, (2, 3, 10))
-            self.assertEqual(res[2].shape, (2, 3, 10))
-
-            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-            # Test for Inference Predictor
-            infer_out = self.infer_prog()
-            self.assertEqual(infer_out.shape, (2, 3, 10))
-
-
 # test api
 class TestSqueezeAPI(unittest.TestCase):
     def setUp(self):
@@ -284,16 +205,12 @@ class TestSqueezeAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_error(self):
         def test_axes_type():
-            x2 = paddle.static.data(name="x2", shape=[2, 1, 25], dtype="int32")
-            self.squeeze(x2, axis=2.1)
-
-        self.assertRaises(TypeError, test_axes_type)
-
-    def test_pir_error(self):
-        def test_axes_type():
-            with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x2 = paddle.static.data(
                     name="x2", shape=[2, 1, 25], dtype="int32"
                 )

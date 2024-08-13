@@ -56,9 +56,12 @@ void OperatorDialect::initialize() {
   RegisterOp<FusionOp>();
   RegisterOp<ConcatOp>();
   RegisterOp<SplitOp>();
+  RegisterOp<YieldStoreOp>();
   RegisterOp<GenerateShapeOp>();
+  RegisterOp<GenerateXShapeOp>();
   RegisterAttribute<GroupInfoAttribute>();
   RegisterAttribute<CINNKernelInfoAttribute>();
+  RegisterAttribute<FusionTrackerPtrAttribute>();
 }
 
 void OperatorDialect::PrintType(pir::Type type, std::ostream &os) const {}
@@ -79,21 +82,29 @@ void OperatorDialect::PrintAttribute(pir::Attribute attr,
 
     os << "(" << cinn_kernel_info.data().fn_ptr;
     os << ')';
+  } else if (attr.isa<FusionTrackerPtrAttribute>()) {
+    auto tracker = attr.dyn_cast<FusionTrackerPtrAttribute>();
+    os << "(" << tracker;
+    os << ')';
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(::common::errors::Unimplemented(
         "cinn dialect only support GroupInfo and CINNKernelInfo"));
   }
 }
 
-void OperatorDialect::PrintOperation(pir::Operation *op,
-                                     pir::IrPrinter &printer) const {
+pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation *op) const {
   if (auto group_op = op->dyn_cast<GroupOp>()) {
-    group_op.Print(printer);
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto group_op = op->dyn_cast<GroupOp>();
+      group_op.Print(printer);
+    };
   } else if (auto fusion_op = op->dyn_cast<FusionOp>()) {
-    fusion_op.Print(printer);
-  } else {
-    printer.PrintGeneralOperation(op);
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto fusion_op = op->dyn_cast<FusionOp>();
+      fusion_op.Print(printer);
+    };
   }
+  return nullptr;
 }
 
 }  // namespace dialect

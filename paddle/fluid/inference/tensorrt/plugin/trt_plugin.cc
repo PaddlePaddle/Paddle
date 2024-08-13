@@ -14,58 +14,55 @@
 
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
-namespace plugin {
+namespace paddle::inference::tensorrt::plugin {
 
-inline void Seria(void*& buffer,  // NOLINT
-                  const std::vector<nvinfer1::Dims>& input_dims,
-                  nvinfer1::DataType data_type,
-                  nvinfer1::PluginFormat data_format,
-                  bool with_fp16) {
+inline void Serialize(void*& buffer,  // NOLINT
+                      const std::vector<nvinfer1::Dims>& input_dims,
+                      nvinfer1::DataType data_type,
+                      nvinfer1::PluginFormat data_format,
+                      bool with_fp16) {
   SerializeValue(&buffer, input_dims);
   SerializeValue(&buffer, data_type);
   SerializeValue(&buffer, data_format);
   SerializeValue(&buffer, with_fp16);
 }
 
-inline void Deseria(void const*& serial_data,
-                    size_t& serial_length,  // NOLINT
-                    std::vector<nvinfer1::Dims>* input_dims,
-                    nvinfer1::DataType* data_type,
-                    nvinfer1::PluginFormat* data_format,
-                    bool* with_fp16) {
+inline void Deserialize(void const*& serial_data,  // NOLINT
+                        size_t& serial_length,     // NOLINT
+                        std::vector<nvinfer1::Dims>* input_dims,
+                        nvinfer1::DataType* data_type,
+                        nvinfer1::PluginFormat* data_format,
+                        bool* with_fp16) {
   DeserializeValue(&serial_data, &serial_length, input_dims);
   DeserializeValue(&serial_data, &serial_length, data_type);
   DeserializeValue(&serial_data, &serial_length, data_format);
   DeserializeValue(&serial_data, &serial_length, with_fp16);
 }
 
-inline size_t SeriaSize(const std::vector<nvinfer1::Dims>& input_dims,
-                        nvinfer1::DataType data_type,
-                        nvinfer1::PluginFormat data_format,
-                        bool with_fp16) {
+inline size_t SerializeSize(const std::vector<nvinfer1::Dims>& input_dims,
+                            nvinfer1::DataType data_type,
+                            nvinfer1::PluginFormat data_format,
+                            bool with_fp16) {
   return (SerializedSize(input_dims) + SerializedSize(data_type) +
           SerializedSize(data_format) + SerializedSize(with_fp16));
 }
 
 void PluginTensorRT::serializeBase(void*& buffer) const {
-  Seria(buffer, input_dims_, data_type_, data_format_, with_fp16_);
+  Serialize(buffer, input_dims_, data_type_, data_format_, with_fp16_);
 }
 
 void PluginTensorRT::deserializeBase(void const*& serial_data,
                                      size_t& serial_length) {
-  Deseria(serial_data,
-          serial_length,
-          &input_dims_,
-          &data_type_,
-          &data_format_,
-          &with_fp16_);
+  Deserialize(serial_data,
+              serial_length,
+              &input_dims_,
+              &data_type_,
+              &data_format_,
+              &with_fp16_);
 }
 
 size_t PluginTensorRT::getBaseSerializationSize() const {
-  return SeriaSize(input_dims_, data_type_, data_format_, with_fp16_);
+  return SerializeSize(input_dims_, data_type_, data_format_, with_fp16_);
 }
 
 bool PluginTensorRT::supportsFormat(
@@ -87,21 +84,21 @@ void PluginTensorRT::configureWithFormat(const nvinfer1::Dims* input_dims,
 }
 
 void PluginTensorRTV2Ext::serializeBase(void*& buffer) const {
-  Seria(buffer, input_dims_, data_type_, data_format_, with_fp16_);
+  Serialize(buffer, input_dims_, data_type_, data_format_, with_fp16_);
 }
 
 void PluginTensorRTV2Ext::deserializeBase(void const*& serial_data,
                                           size_t& serial_length) {
-  Deseria(serial_data,
-          serial_length,
-          &input_dims_,
-          &data_type_,
-          &data_format_,
-          &with_fp16_);
+  Deserialize(serial_data,
+              serial_length,
+              &input_dims_,
+              &data_type_,
+              &data_format_,
+              &with_fp16_);
 }
 
 size_t PluginTensorRTV2Ext::getBaseSerializationSize() const {
-  return SeriaSize(input_dims_, data_type_, data_format_, with_fp16_);
+  return SerializeSize(input_dims_, data_type_, data_format_, with_fp16_);
 }
 
 void PluginTensorRTV2Ext::configurePlugin(
@@ -139,7 +136,4 @@ const char* TensorRTPluginCreator::getPluginNamespace() const TRT_NOEXCEPT {
   return plugin_namespace_.c_str();
 }
 
-}  // namespace plugin
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt::plugin

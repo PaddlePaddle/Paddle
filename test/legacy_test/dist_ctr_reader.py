@@ -114,7 +114,7 @@ class Dataset:
         Load trainset.
         '''
         file_name = "train.txt"
-        logger.info("load trainset from %s" % file_name)
+        logger.info(f"load trainset from {file_name}")
         mode = TaskMode.create_train()
         return self._parse_creator(file_name, mode)
 
@@ -123,7 +123,7 @@ class Dataset:
         Load testset.
         '''
         file_name = "test.txt"
-        logger.info("load testset from %s" % file_name)
+        logger.info(f"load testset from {file_name}")
         mode = TaskMode.create_test()
         return self._parse_creator(file_name, mode)
 
@@ -132,7 +132,7 @@ class Dataset:
         Load infer set.
         '''
         file_name = "infer.txt"
-        logger.info("load inferset from %s" % file_name)
+        logger.info(f"load inferset from {file_name}")
         mode = TaskMode.create_infer()
         return self._parse_creator(file_name, mode)
 

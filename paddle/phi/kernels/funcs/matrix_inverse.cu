@@ -116,7 +116,7 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
   for (int i = 0; i < batch_size; ++i) {
     PADDLE_ENFORCE_EQ(info[i],
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "For batch [%d]: U(%d, %d) is zero, singular U. "
                           "Please check the matrix value and change it to a "
                           "non-singular matrix",
@@ -131,6 +131,8 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
 
 template class MatrixInverseFunctor<GPUContext, float>;
 template class MatrixInverseFunctor<GPUContext, double>;
+template class MatrixInverseFunctor<GPUContext, phi::dtype::complex<float>>;
+template class MatrixInverseFunctor<GPUContext, phi::dtype::complex<double>>;
 
 }  // namespace funcs
 }  // namespace phi

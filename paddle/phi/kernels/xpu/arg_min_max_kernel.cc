@@ -33,7 +33,7 @@ void ArgMaxKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   using XPUType = typename XPUTypeTrait<T>::Type;
   PADDLE_ENFORCE_EQ(

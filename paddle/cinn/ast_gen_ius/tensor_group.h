@@ -85,7 +85,7 @@ class TensorGroup {
   /**
    * Get all tensors which the tensor with given name depends on.
    */
-  std::set<ir::Tensor> GetCrtlDepTensors(const std::string& tensor_name);
+  std::set<ir::Tensor> GetCtrlDepTensors(const std::string& tensor_name);
 
   /**
    * Get Union-Find set algorithm root tensor name which shares memory with the
@@ -107,7 +107,7 @@ class TensorGroup {
 
   /**
    * Returns tensors in topological order and remove those args
-   * Becuase the order is used for generating function body, we don't have to
+   * Because the order is used for generating function body, we don't have to
    * generate args
    */
   std::vector<ir::Tensor> GetGenFuncTopoOrder(
@@ -129,10 +129,6 @@ class TensorGroup {
    */
   std::unordered_map<std::string, std::string> share_memory_tensor_;
 };
-
-// TODO(zhhsplendid): remove stage_map need to change all fcompute CINNValuePack
-// we will change it in the next PR
-TensorGroup ConvertStageMapToTensorGroup(const poly::StageMap& stage_map);
 
 }  // namespace ast_gen_ius
 }  // namespace cinn

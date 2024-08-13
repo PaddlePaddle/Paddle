@@ -17,9 +17,7 @@ limitations under the License. */
 #include <paddle/common/ddim.h>
 #include <string>
 #include <vector>
-#include "paddle/phi/core/flags.h"
-
-PHI_DECLARE_bool(set_to_1d);
+#include "paddle/common/flags.h"
 
 namespace phi {
 
@@ -37,7 +35,7 @@ inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
     PADDLE_ENFORCE_LT(
         axis,
         in_dims.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The axis value should be less than the rank of input, "
             "but received axes[%d] = %d, rank of input is %d.",
             i,
@@ -55,7 +53,7 @@ inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
       PADDLE_ENFORCE_NE(
           step,
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Step should not be 0, but received step = %d.", step));
 
       T start = (*starts)[i] < 0 ? ((*starts)[i] + dim_value) : (*starts)[i];
@@ -71,7 +69,7 @@ inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
         PADDLE_ENFORCE_GE(
             end,
             start,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "When step > 0, end should be greater than start, but "
                 "received end = %d, start = %d.",
                 end,
@@ -88,7 +86,7 @@ inline void CheckAndUpdateSliceAttrs(const DDim in_dims,
         PADDLE_ENFORCE_GE(
             start,
             end,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "When step < 0, start should be greater than end, but "
                 "received start = %d, end = %d.",
                 start,
@@ -193,7 +191,7 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
       if (infer_flags && (*infer_flags)[i] != -1) {
         PADDLE_ENFORCE_EQ(decreased_dims[axis],
                           1,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Decrease dim should be 1, but now received %d",
                               decreased_dims[axis]));
       }
@@ -204,11 +202,6 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
       if (decrease_flag[i] == 0) {
         new_shape.push_back(decreased_dims[i]);
       }
-    }
-    if (FLAGS_set_to_1d && new_shape.size() == 0) {
-      // NOTE(zoooo0820): Hack procssing to 1-D, when axes decrease to 0-D in
-      // slice. This will remove in release 2.6.
-      new_shape.push_back(1);
     }
     decreased_dims = common::make_ddim(new_shape);
   }
@@ -230,14 +223,14 @@ inline void CheckAndUpdateSparseSliceAttrs(const DDim in_dims,
   PADDLE_ENFORCE_EQ(
       axes->size(),
       starts->size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The length of axes (%d) and length of starts (%d) should be same.",
           axes->size(),
           starts->size()));
   PADDLE_ENFORCE_EQ(
       axes->size(),
       ends->size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The length of axes (%d) and length of ends (%d) should be same.",
           axes->size(),
           ends->size()));

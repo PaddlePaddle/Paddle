@@ -180,7 +180,7 @@ class TestOneHotOpApi(unittest.TestCase):
         ).reshape([6, 1])
         with base.dygraph.guard():
             one_hot_label = functional.one_hot(
-                x=base.dygraph.to_variable(label), num_classes=num_classes
+                x=paddle.to_tensor(label), num_classes=num_classes
             )
 
 
@@ -194,7 +194,9 @@ class BadInputTestOnehotV2(unittest.TestCase):
                     shape=[4],
                     dtype="float32",
                 )
-                label.desc.set_need_check_feed(False)
+
+                if not paddle.framework.use_pir_api():
+                    label.desc.set_need_check_feed(False)
                 one_hot_label = functional.one_hot(x=label, num_classes=4)
 
             self.assertRaises(TypeError, test_bad_x)

@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import hashlib
 import os
 import os.path as osp
-import shlex
 import shutil
-import subprocess
 import sys
 import tarfile
 import time
 import zipfile
-from urllib.parse import urlparse
+from typing import Literal
 
 import httpx
 
@@ -61,7 +61,7 @@ WEIGHTS_HOME = osp.expanduser("~/.cache/paddle/hapi/weights")
 DOWNLOAD_RETRY_LIMIT = 3
 
 
-def is_url(path):
+def is_url(path: str) -> bool:
     """
     Whether path is URL.
     Args:
@@ -70,7 +70,7 @@ def is_url(path):
     return path.startswith('http://') or path.startswith('https://')
 
 
-def get_weights_path_from_url(url, md5sum=None):
+def get_weights_path_from_url(url: str, md5sum: str | None = None) -> str:
     """Get weights path from WEIGHT_HOME, if not exists,
     download it from url.
 
@@ -117,8 +117,13 @@ def _get_unique_endpoints(trainer_endpoints):
 
 
 def get_path_from_url(
-    url, root_dir, md5sum=None, check_exist=True, decompress=True, method='get'
-):
+    url: str,
+    root_dir: str,
+    md5sum: str | None = None,
+    check_exist: bool = True,
+    decompress: bool = True,
+    method: Literal['wget', 'get'] = 'get',
+) -> str:
     """Download from given url to root_dir.
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
@@ -128,9 +133,9 @@ def get_path_from_url(
         url (str): download url
         root_dir (str): root dir for downloading, it should be
                         WEIGHTS_HOME or DATASET_HOME
-        md5sum (str): md5 sum of download package
-        decompress (bool): decompress zip or tar file. Default is `True`
-        method (str): which download method to use. Support `wget` and `get`. Default is `get`.
+        md5sum (str|None, optional): md5 sum of download package
+        decompress (bool, optional): decompress zip or tar file. Default is `True`
+        method (str, optional): which download method to use. Support `wget` and `get`. Default is `get`.
 
     Returns:
         str: a local path to save downloaded models & weights & datasets.
@@ -192,46 +197,11 @@ def _get_download(url, fullname):
             return fullname
 
     except Exception as e:  # requests.exceptions.ConnectionError
-        logger.info(
-            f"Downloading {fname} from {url} failed with exception {str(e)}"
-        )
+        logger.info(f"Downloading {fname} from {url} failed with exception {e}")
         return False
 
 
-def _wget_download(url: str, fullname: str):
-    try:
-        assert urlparse(url).scheme in (
-            'http',
-            'https',
-        ), 'Only support https and http url'
-        # using wget to download url
-        tmp_fullname = shlex.quote(fullname + "_tmp")
-        url = shlex.quote(url)
-        # –user-agent
-        command = f'wget -O {tmp_fullname} -t {DOWNLOAD_RETRY_LIMIT} {url}'
-        subprc = subprocess.Popen(
-            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        _ = subprc.communicate()
-
-        if subprc.returncode != 0:
-            raise RuntimeError(
-                f'{command} failed. Please make sure `wget` is installed or {url} exists'
-            )
-
-        shutil.move(tmp_fullname, fullname)
-
-    except Exception as e:  # requests.exceptions.ConnectionError
-        logger.info(f"Downloading {url} failed with exception {str(e)}")
-        return False
-
-    return fullname
-
-
-_download_methods = {
-    'get': _get_download,
-    'wget': _wget_download,
-}
+_download_methods = {'get': _get_download}
 
 
 def _download(url, path, md5sum=None, method='get'):
@@ -313,7 +283,10 @@ def _decompress(fname):
 
 def _uncompress_file_zip(filepath):
     with zipfile.ZipFile(filepath, 'r') as files:
-        file_list = files.namelist()
+        file_list_tmp = files.namelist()
+        file_list = []
+        for file in file_list_tmp:
+            file_list.append(file.replace("../", ""))
 
         file_dir = os.path.dirname(filepath)
 
@@ -342,7 +315,13 @@ def _uncompress_file_zip(filepath):
 
 def _uncompress_file_tar(filepath, mode="r:*"):
     with tarfile.open(filepath, mode) as files:
-        file_list = files.getnames()
+        file_list_tmp = files.getnames()
+        file_list = []
+        for file in file_list_tmp:
+            assert (
+                file[0] != "/"
+            ), f"uncompress file path {file} should not start with /"
+            file_list.append(file.replace("../", ""))
 
         file_dir = os.path.dirname(filepath)
 

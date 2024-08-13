@@ -13,22 +13,25 @@
 // limitations under the License.
 #pragma once
 #include <cuda_fp16.h>
-#include <glog/logging.h>
 #include <map>
 #include <vector>
-
-#include "paddle/phi/backends/gpu/gpu_context.h"
 
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
 
+typedef enum {
+  fp32,
+  fp16,
+  bf16,
+} Conv2dDataType;
+
 typedef struct {
-  const half *input;
-  const half *weight;
-  const half *bias;
-  const half *residual;
-  half *output;
+  const void *input;
+  const void *weight;
+  const void *bias;
+  const void *residual;
+  void *output;
   int batch;
   int ic;
   int ih;
@@ -47,23 +50,26 @@ typedef struct {
   int oh;
   int ow;
   int groups;
-  const phi::GPUContext *ctx;
+  // const phi::GPUContext *ctx;
+  cudaStream_t stream;
   float alpha;  // for leaky_relu use
   int sm_version = 75;
+  Conv2dDataType data_type;
+  void *workspace = nullptr;
 } ConvAllParams;
 
 // Below functions are provided by cutlass, they are called by phi.
-void Conv2dBiasAddRelu(const ConvAllParams &params);
-void Conv2dBiasRelu(const ConvAllParams &params);
-void Conv2dBiasLeakyRelu(const ConvAllParams &params);
-void Conv2dBiasSilu(const ConvAllParams &params);
-void Conv2dBias(const ConvAllParams &params);
-void Conv2dBiasSigmoid(const ConvAllParams &params);
+extern "C" bool Conv2dBiasAddRelu(ConvAllParams params);
+extern "C" bool Conv2dBiasRelu(ConvAllParams params);
+extern "C" bool Conv2dBiasLeakyRelu(ConvAllParams params);
+extern "C" bool Conv2dBiasSilu(ConvAllParams params);
+extern "C" bool Conv2dBias(ConvAllParams params);
+extern "C" bool Conv2dBiasSigmoid(ConvAllParams params);
 
-void Conv2dDepthwiseBias(const ConvAllParams &params);
-void Conv2dDepthwiseBiasRelu(const ConvAllParams &params);
-void Conv2dDepthwiseBiasSigmoid(const ConvAllParams &params);
-void Conv2dDepthwiseBiasSilu(const ConvAllParams &params);
+extern "C" bool Conv2dDepthwiseBias(ConvAllParams params);
+extern "C" bool Conv2dDepthwiseBiasRelu(ConvAllParams params);
+extern "C" bool Conv2dDepthwiseBiasSigmoid(ConvAllParams params);
+extern "C" bool Conv2dDepthwiseBiasSilu(ConvAllParams params);
 
 }  // namespace cutlass_internal
 }  // namespace fusion

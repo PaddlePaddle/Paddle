@@ -200,7 +200,7 @@ void FusedContinuousSameOpsPass::FusedUnsqueezeOps(ir::Graph* graph) const {
 }
 void FusedContinuousSameOpsPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   int repeat_time = 0;
   int total_delete_op_count = 0;

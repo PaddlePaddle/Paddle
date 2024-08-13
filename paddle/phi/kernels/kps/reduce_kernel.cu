@@ -196,7 +196,7 @@ void SumRawKernel(const Context& dev_ctx,
   if (x.numel() > std::numeric_limits<int32_t>::max()) {
 #ifndef PADDLE_WITH_XPU_KP
     if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
           "sum for reduce_sum function. As a result, input dtype should be "
           "the same as out dtype"));
@@ -234,7 +234,7 @@ void SumRawKernel(const Context& dev_ctx,
       CALL_EIGEN_REDUCE_SUM_KERNEL(4);
       CALL_EIGEN_REDUCE_SUM_KERNEL(5);
       default:
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
             "sum for reduce_sum function. As a result, its dim should be <= "
             "5."));
@@ -242,14 +242,31 @@ void SumRawKernel(const Context& dev_ctx,
     }
 #undef CALL_EIGEN_REDUCE_SUM_KERNEL
 #else
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "If Input.numel() > INT32_MAX, reduce_sum kernel uses EigenTensor "
         "sum for reduce_sum function. Such case is only supported on GPU "
         "now."));
 #endif
   } else {
-    phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-        dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+    if (x.dtype() == phi::DataType::BFLOAT16 &&
+        out_dtype == phi::DataType::FLOAT32) {
+      std::vector<int> reduce_dims = phi::funcs::details::GetReduceDim(
+          dims.GetData(), x.dims().size(), reduce_all);
+
+      phi::funcs::ReduceKernel<
+          phi::dtype::bfloat16,
+          float,
+          kps::AddFunctor,
+          kps::IdentityFunctor<phi::dtype::bfloat16, float>>(
+          dev_ctx,
+          x,
+          out,
+          kps::IdentityFunctor<phi::dtype::bfloat16, float>(),
+          reduce_dims);
+    } else {
+      phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
+          dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+    }
   }
 }
 }  // namespace phi
@@ -333,7 +350,9 @@ PD_REGISTER_KERNEL(max,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2) {}
 
 PD_REGISTER_KERNEL(mean_raw,
                    KPS,

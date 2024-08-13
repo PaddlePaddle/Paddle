@@ -23,12 +23,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -38,7 +38,7 @@ struct ExecutorPrepareContext;
 }  // namespace framework
 }  // namespace paddle
 
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle {
 namespace distributed {
@@ -75,7 +75,7 @@ class TensorTable : public Table {
 
   int32_t SetProgramEnv(
       framework::Scope *scope,
-      platform::Place place,
+      phi::Place place,
       const std::vector<framework::ProgramDesc> *sub_program) override {
     scope_ = scope;
     place_ = place;
@@ -87,7 +87,7 @@ class TensorTable : public Table {
  protected:
   framework::Executor *executor_;
   framework::Scope *scope_;
-  platform::Place place_ = platform::CPUPlace();
+  phi::Place place_ = phi::CPUPlace();
   const std::vector<framework::ProgramDesc> *sub_program_;
   paddle::distributed::TensorAccessorParameter program_config_;
   std::shared_ptr<framework::ExecutorPrepareContext> exec_context_ = nullptr;
@@ -185,7 +185,7 @@ class GlobalStepTable : public DenseTensorTable {
     }
 
     if (main_program_id_ != -1) {
-      // Run main porgram, if program is used for learning decay
+      // Run main program, if program is used for learning decay
       auto main_program_desc = sub_program_->at(main_program_id_);
       auto main_ctx = executor_->Prepare(main_program_desc, 0);
       exec_context_ = std::move(main_ctx);
@@ -209,7 +209,7 @@ class GlobalStepTable : public DenseTensorTable {
                           *table_map) override {
     auto *lr_var = scope_->FindVar(fetch_var_name_);
     auto *lr_tensor = lr_var->GetMutable<phi::DenseTensor>();
-    auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
+    auto *lr_value = lr_tensor->mutable_data<float>(phi::CPUPlace());
     VLOG(3) << "GlobalStepTable::set_table_map set global lr: " << *lr_value;
 
     for (auto iter = table_map->begin(); iter != table_map->end(); iter++) {
@@ -232,7 +232,7 @@ class GlobalStepTable : public DenseTensorTable {
 
     auto *global_step_var = scope_->FindVar(feed_var_name_);
     auto *tensor = global_step_var->GetMutable<phi::DenseTensor>();
-    auto *value = tensor->mutable_data<int64_t>(platform::CPUPlace());
+    auto *value = tensor->mutable_data<int64_t>(phi::CPUPlace());
 
     auto global_counter = 0;
     for (auto &trainer_counter : decay_counters_) {
@@ -246,7 +246,7 @@ class GlobalStepTable : public DenseTensorTable {
     executor_->RunPreparedContext(exec_context_.get(), scope_, false, false);
     auto *lr_var = scope_->FindVar(fetch_var_name_);
     auto *lr_tensor = lr_var->GetMutable<phi::DenseTensor>();
-    auto *lr_value = lr_tensor->mutable_data<float>(platform::CPUPlace());
+    auto *lr_value = lr_tensor->mutable_data<float>(phi::CPUPlace());
     VLOG(3) << "GlobalStepTable::LR value: " << lr_value[0];
     return 0;
   }

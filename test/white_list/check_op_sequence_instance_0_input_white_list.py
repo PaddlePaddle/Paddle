@@ -15,7 +15,7 @@
 # If the output after infershape() is a lod_tensor, commenly its lod_level
 # should be equal during compile time and run time.
 # For ops in this whitelist, the equality check of lod_level between
-# compiletime&runtime will be skipped. Ops in this whitelist need to declear
+# compiletime&runtime will be skipped. Ops in this whitelist need to declare
 # reasons for skipping compile_vs_runtime test or be fixed later.
 
 import sys
@@ -23,7 +23,6 @@ import sys
 # For ops in this whitelist, the check of instance size is 0 input will be skipped.
 # Ops in this whitelist need to be fixed later.
 NEED_TO_FIX_OP_LIST = [
-    'sequence_concat',
     'sequence_conv',
     'sequence_enumerate',
     'sequence_erase',

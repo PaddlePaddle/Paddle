@@ -19,8 +19,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/output_logger.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -57,7 +57,7 @@ class ChromeTracingLogger : public BaseLogger {
   void RefineDisplayName(std::unordered_map<std::string, std::string>);
   std::string filename_;
   std::ofstream output_file_stream_;
-  static const char* categary_name_[];
+  static const char* category_name_[];
   std::set<std::pair<uint64_t, uint64_t>> pid_tid_set_;
   std::set<std::pair<uint64_t, uint64_t>> deviceid_streamid_set_;
   uint64_t start_time_;

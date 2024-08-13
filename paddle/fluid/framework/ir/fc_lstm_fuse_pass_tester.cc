@@ -14,11 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass_tester.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-namespace fc_lstm_test {
+namespace paddle::framework::ir::fc_lstm_test {
 
 TEST(FcLstmFusePass, basic) {
   std::unique_ptr<ir::Graph> graph = PrepareGraph();
@@ -36,23 +32,20 @@ TEST(FcLstmFusePass, basic) {
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
                     num_nodes_after - 6,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The number of nodes before and after "
                         "the fuse does not meet expectations"));
-  PADDLE_ENFORCE_EQ(num_fusion_lstm_nodes_after,
-                    2,
-                    platform::errors::PreconditionNotMet(
-                        "The number of lstm nodes before the "
-                        "fuse does not meet expectations"));
-  PADDLE_ENFORCE_EQ(num_lstm_nodes_before,
-                    num_fusion_lstm_nodes_after,
-                    platform::errors::PreconditionNotMet(
-                        "The number of fusion_gru nodes does "
-                        "not meet expectations after fuse"));
+  PADDLE_ENFORCE_EQ(
+      num_fusion_lstm_nodes_after,
+      2,
+      common::errors::PreconditionNotMet("The number of lstm nodes before the "
+                                         "fuse does not meet expectations"));
+  PADDLE_ENFORCE_EQ(
+      num_lstm_nodes_before,
+      num_fusion_lstm_nodes_after,
+      common::errors::PreconditionNotMet("The number of fusion_gru nodes does "
+                                         "not meet expectations after fuse"));
 }
-}  // namespace fc_lstm_test
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fc_lstm_test
 
 USE_PASS(fc_lstm_fuse_pass);

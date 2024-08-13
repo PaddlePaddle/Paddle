@@ -57,16 +57,28 @@ class TestMulOneDNNOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(
+            core.CPUPlace(), check_pir_onednn=True, check_dygraph=False
+        )
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CPUPlace(), ['X', 'Y'], 'Out')
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['X', 'Y'],
+            'Out',
+            check_pir_onednn=True,
+            check_dygraph=False,
+        )
 
-    def test_check_grad_ingore_x(self):
-        self.check_grad_with_place(core.CPUPlace(), ['Y'], 'Out', set('X'))
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ['Y'], 'Out', set('X'), check_pir_onednn=True
+        )
 
-    def test_check_grad_ingore_y(self):
-        self.check_grad_with_place(core.CPUPlace(), ['X'], 'Out', set('Y'))
+    def test_check_grad_ignore_y(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ['X'], 'Out', set('Y'), check_pir_onednn=True
+        )
 
 
 class TestMulXNumColDims2OneDNNOp(TestMulOneDNNOp):
@@ -135,9 +147,11 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             'Out',
             user_defined_grads=[self.dx, self.dy],
             user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            check_pir_onednn=True,
+            check_dygraph=False,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.calculate_grads()
         self.check_grad_with_place(
             core.CPUPlace(),
@@ -146,9 +160,11 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             set('X'),
             user_defined_grads=[self.dy],
             user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            check_pir_onednn=True,
+            check_dygraph=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.calculate_grads()
         self.check_grad_with_place(
             core.CPUPlace(),
@@ -157,6 +173,8 @@ class TestMulBF16OneDNNOp(TestMulOneDNNOp):
             set('Y'),
             user_defined_grads=[self.dx],
             user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            check_pir_onednn=True,
+            check_dygraph=False,
         )
 
 

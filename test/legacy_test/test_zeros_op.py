@@ -80,5 +80,13 @@ class ApiZerosError(unittest.TestCase):
                 assert error_msg.find("expected to be no less than 0") > 0
 
 
+class ApiZerosWithDynamicShape(unittest.TestCase):
+    def test_dynamic_shape(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data("x", shape=[], dtype='int32')
+            out = paddle.zeros(shape=[101, x])
+            self.assertEqual(out.shape, [101, -1])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -22,6 +22,7 @@
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace backends {
@@ -37,12 +38,16 @@ using runtime::cuda::CUDAModule;
  *
  * @param shape: a non-empty shape for the created cuda memory
  * @param data: the data to initialize the cuda memory. Function doesn't
- *     initailize if it is nullptr
+ *     initialize if it is nullptr
  * @return the CUdeviceptr pointing to the created memory
  */
 template <typename T>
 CUdeviceptr CreateCudaMemory(const std::vector<int>& shape, const T* data) {
-  CHECK(!shape.empty()) << "Couldn't create CUDA memory for empty shape";
+  PADDLE_ENFORCE_EQ(!shape.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Couldn't create CUDA memory for empty shape. Please "
+                        "ensure the shape is not empty."));
   CUDA_CALL(cudaDeviceSynchronize());
 
   int numel = 1;
@@ -107,7 +112,7 @@ void __launch_bounds__(512) fn_relu_1_kernel(const float* __restrict__ var_1, fl
 
   backends::nvrtc::Compiler compiler;
 
-  std::string ptx = compiler(CodeGenCUDA_Dev::GetSourceHeader() + source_code);
+  std::string ptx = compiler(CodeGenCudaDev::GetSourceHeader() + source_code);
   ASSERT_FALSE(ptx.empty());
 
   CUDAModule cuda_module(ptx, CUDAModule::Kind::PTX);

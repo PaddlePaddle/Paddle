@@ -20,13 +20,9 @@ import astor
 import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
     enable_to_static_guard,
     test_ast_only,
     test_legacy_and_pt_and_pir,
-    test_legacy_only,
 )
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
@@ -308,8 +304,7 @@ class TestFunctionTrainEvalMode(Dy2StTestBase):
 
 
 class TestIfElseEarlyReturn(Dy2StTestBase):
-    # Why add test_legacy_only? : PIR not support if true and false branch output with different rank
-    @test_legacy_only
+    @test_legacy_and_pt_and_pir
     def test_ifelse_early_return1(self):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
@@ -321,7 +316,7 @@ class TestIfElseEarlyReturn(Dy2StTestBase):
         elif isinstance(out, tuple):
             np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
-    @disable_test_case((ToStaticMode.AST, IrMode.PT))
+    @test_legacy_and_pt_and_pir
     def test_ifelse_early_return2(self):
         answer = np.zeros([2, 2]) + 3
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)

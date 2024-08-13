@@ -57,7 +57,7 @@ int GetGPUMaxThreadsPerBlock(int id);
 int GetCurrentDeviceId();
 
 //! Get the maximum GridDim size for GPU buddy allocator.
-std::array<int, 3> GetGpuMaxGridDimSize(int);
+std::array<unsigned int, 3> GetGpuMaxGridDimSize(int);
 
 std::pair<int, int> GetGpuStreamPriorityRange();
 

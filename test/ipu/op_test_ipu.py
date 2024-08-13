@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import os
 import random
 import unittest
 from enum import IntEnum
-from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -44,7 +44,7 @@ class ExecutionModeFull(IntEnum):
     CPU_FP32 = 1
     # Run fp32 model on ipu
     IPU_FP32 = 2
-    # Convert model to fp16 using mixed-precision approch
+    # Convert model to fp16 using mixed-precision approach
     # All parameters will be converted to fp16
     IPU_FP16 = 3
 
@@ -118,9 +118,9 @@ class IPUOpTest(IPUTest):
         cls.main_prog: paddle.static.Program = None
         cls.startup_prog: paddle.static.Program = None
         cls.scope: paddle.static.Scope = None
-        cls.feed_list: List[str] = None
-        cls.fetch_list: List[str] = None
-        cls.output_dict: Optional[Dict] = {}
+        cls.feed_list: list[str] = None
+        cls.fetch_list: list[str] = None
+        cls.output_dict: dict | None = {}
 
     def tearDown(self):
         # Manual reset when using ipumodel
@@ -163,8 +163,7 @@ class IPUOpTest(IPUTest):
             self.scope = paddle.static.Scope()
             self.main_prog = paddle.static.Program()
             self.startup_prog = paddle.static.Program()
-            self.main_prog.random_seed = self.SEED
-            self.startup_prog.random_seed = self.SEED
+            paddle.seed(self.SEED)
             with paddle.static.scope_guard(self.scope):
                 with paddle.utils.unique_name.guard(
                     paddle.utils.unique_name.generate('')

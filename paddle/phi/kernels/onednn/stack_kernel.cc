@@ -53,7 +53,7 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
         srcs_md.push_back(input->mem_desc());
       }
 
-      input_dims[stack_axis] *= inputs.size();
+      input_dims[stack_axis] *= inputs.size();  // NOLINT
       dst_md = dnnl::memory::desc(input_dims, dt, OneDNNMemoryFormat::any);
     } else {
       auto extended_input_dims = common::vectorize<int64_t>(output->dims());
@@ -66,7 +66,7 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
       // concat primitive choses suboptimal format tag because it cannot
       // distinguish between f.e. abcd and abdc if last dim is equal to 1 so
       // enforcing is needed for better performance
-      dst_fmt = GetPlainOneDNNFormat(extended_input_dims.size());
+      dst_fmt = GetPlainOneDNNFormat(extended_input_dims.size());  // NOLINT
       dst_md =
           dnnl::memory::desc(common::vectorize(output->dims()), dt, dst_fmt);
     }

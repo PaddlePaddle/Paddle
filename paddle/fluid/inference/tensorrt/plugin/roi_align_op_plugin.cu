@@ -156,7 +156,7 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
                             data_type_ == nvinfer1::DataType::kHALF;
   PADDLE_ENFORCE_EQ(data_type_is_valid,
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT RoiAlign plugin only accepts kFLOAT(%d) or "
                         "kHALF(%d) data type, but the received data type = %d",
                         static_cast<int>(nvinfer1::DataType::kFLOAT),
@@ -165,7 +165,7 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
 
   PADDLE_ENFORCE_GT(pooled_height_,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT RoiAlign plugin only accepts pooled_height "
                         "greater than %d, but the received pooled_height = %d",
                         0,
@@ -173,7 +173,7 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
 
   PADDLE_ENFORCE_GT(pooled_width_,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT RoiAlign plugin only accepts pooled_width greater "
                         "than %d, but the received pooled_width = %d",
                         0,
@@ -181,7 +181,7 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
 
   PADDLE_ENFORCE_GT(spatial_scale_,
                     0.f,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT RoiAlign plugin only accepts spatial_scale "
                         "greater than %f, but the received spatial_scale = %f",
                         0,
@@ -194,7 +194,7 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(const nvinfer1::DataType data_type,
   PADDLE_ENFORCE_GE(
       device,
       0,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The cuda device ID should be greater than %d, but device ID is %d",
           0,
           device));
@@ -217,7 +217,7 @@ RoiAlignPluginDynamic::RoiAlignPluginDynamic(void const* data, size_t length) {
   PADDLE_ENFORCE_GE(
       device,
       0,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The cuda device ID should be greater than %d, but device ID is %d",
           0,
           device));
@@ -350,7 +350,7 @@ int RoiAlignPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
                                    cudaStream_t stream) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(outputDesc[0].type,
                     data_type_,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TRT RoiAlignPluginDynamic expects outputDesc[0].type "
                         "equal to data_type_"));
 

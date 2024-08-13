@@ -19,15 +19,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 // "op_device" attr is only used in model training. "op_device" attr will change
 // place of op kernel, so we use "delete_op_device_pass" to remove it.
@@ -38,7 +34,7 @@ class DeleteOpDevicePass : public Pass {
 
 void DeleteOpDevicePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   int delete_counts = 0;
   for (auto* node : graph->Nodes()) {
     if (!node->IsOp() || !node->Op()->HasAttr("op_device")) continue;
@@ -50,8 +46,6 @@ void DeleteOpDevicePass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_op_device_pass, paddle::framework::ir::DeleteOpDevicePass);

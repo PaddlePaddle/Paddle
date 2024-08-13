@@ -38,8 +38,8 @@ std::vector<int> GetVec32FromVec64Attr(::pir::Attribute attr) {
 
 void AppendAttrForReduceOp(const ::pir::Operation& op,
                            utils::AttributeMap& attrs) {  // NOLINT
-  auto attr = op.attributes().at("dim");
-  attrs["dim"] = GetVec32FromVec64Attr(attr);
+  auto attr = op.attributes().at("axis");
+  attrs["axis"] = GetVec32FromVec64Attr(attr);
 }
 
 void AppendAttrForTransposeOp(const ::pir::Operation& op,
@@ -73,8 +73,8 @@ void AppendAttrForUniformOp(const ::pir::Operation& op,
   attrs["dtype"] = "float32";
 }
 
-void AppendAttrForBoadcastToOp(const ::pir::Operation& op,
-                               utils::AttributeMap& attrs) {  // NOLINT
+void AppendAttrForBroadcastToOp(const ::pir::Operation& op,
+                                utils::AttributeMap& attrs) {  // NOLINT
   auto axes_attr = op.attributes().at("broadcast_axes");
   attrs["broadcast_axes"] = GetVec32FromVec64Attr(axes_attr);
 
@@ -119,9 +119,7 @@ void OpMapper::RegisterMapRules() {
   REGISTER_OPERAND_RULE(SumOp, 0);
   REGISTER_OPERAND_RULE(MinOp, 0);
   REGISTER_OPERAND_RULE(ProdOp, 0);
-  REGISTER_ATTR_RULE(ReduceMaxOp, AppendAttrForReduceOp);
-  REGISTER_ATTR_RULE(ReduceSumOp, AppendAttrForReduceOp);
-  REGISTER_ATTR_RULE(BroadcastOp, AppendAttrForBoadcastToOp);
+  REGISTER_ATTR_RULE(BroadcastOp, AppendAttrForBroadcastToOp);
   REGISTER_ATTR_RULE(UniformRandomOp, AppendAttrForUniformOp);
   REGISTER_PD_ATTR_RULE(TransposeOp, AppendAttrForTransposeOp);
   REGISTER_ATTR_RULE(SliceOp, AppendAttrForSliceOp);

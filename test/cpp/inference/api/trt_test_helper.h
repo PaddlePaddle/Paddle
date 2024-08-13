@@ -19,7 +19,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {

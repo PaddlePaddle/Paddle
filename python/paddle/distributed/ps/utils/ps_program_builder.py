@@ -80,9 +80,7 @@ class PsProgramBuilder:
             self._build_trainer_programs()
             base.framework.switch_startup_program(self.cloned_startup)
             print(
-                "paddle.static.default_startup_program: {}".format(
-                    paddle.static.default_startup_program
-                )
+                f"paddle.static.default_startup_program: {paddle.static.default_startup_program}"
             )
             # print("ps_program_build before =", id(self.loss.block.program))
             self._build_trainer_desc()
@@ -105,8 +103,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
         super().__init__(pass_ctx)
         if self.ps_mode != DistributedMode.GEO:
             raise ValueError(
-                "ps mode: {} not matched {}",
-                format(self.ps_mode, "GeoPsProgramBuilder"),
+                f"ps mode: {self.ps_mode} not matched GeoPsProgramBuilder",
             )
 
     def _build_trainer_programs(self):
@@ -182,8 +179,7 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
             and self.ps_mode != DistributedMode.ASYNC
         ):
             raise ValueError(
-                "ps mode: {} not matched {}",
-                format(self.ps_mode, "PsProgramBuilder"),
+                f"ps mode: {self.ps_mode} not matched PsProgramBuilder"
             )
 
     def _build_trainer_programs(self):
@@ -459,9 +455,7 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             base.framework.switch_startup_program(self.cloned_startup)
             paddle.framework.switch_main_program(self.cloned_main)
             print(
-                "paddle.static.default_startup_program: {}".format(
-                    paddle.static.default_startup_program()._heter_pipeline_opt
-                )
+                f"paddle.static.default_startup_program: {paddle.static.default_startup_program()._heter_pipeline_opt}"
             )
         else:
             self._build_pserver_programs()

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -39,7 +41,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]], batch):
+        def generate_input1(attrs: list[dict[str, Any]], batch):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
@@ -49,7 +51,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
             elif self.dims == 1:
                 return np.ones([24]).astype(np.float32)
 
-        def generate_input2(attrs: List[Dict[str, Any]], batch):
+        def generate_input2(attrs: list[dict[str, Any]], batch):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
@@ -59,7 +61,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
             elif self.dims == 1:
                 return np.ones([24]).astype(np.float32)
 
-        def generate_input3(attrs: List[Dict[str, Any]], batch):
+        def generate_input3(attrs: list[dict[str, Any]], batch):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
@@ -69,7 +71,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
             elif self.dims == 1:
                 return np.ones([24]).astype(np.float32)
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.zeros([1]).astype(np.int32)
 
         for dims in [2, 3, 4]:
@@ -79,7 +81,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                         self.num_input = num_input
                         self.dims = dims
                         dics = [{"axis": axis}, {}]
-                        dics_intput = [
+                        dics_input = [
                             {
                                 "X": [
                                     "concat_input1",
@@ -138,7 +140,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                         ops_config = [
                             {
                                 "op_type": "concat",
-                                "op_inputs": dics_intput[num_input],
+                                "op_inputs": dics_input[num_input],
                                 "op_outputs": {"Out": ["concat_output"]},
                                 "op_attrs": dics[0],
                             }
@@ -155,7 +157,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.num_input == 0:
                 if self.dims == 4:

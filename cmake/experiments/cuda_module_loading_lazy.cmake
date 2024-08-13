@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # this file contains experimental build options for lazy cuda module loading
-# cuda moduel lazy loading is supported by CUDA 11.7+
+# cuda module lazy loading is supported by CUDA 11.7+
 # this experiment option makes Paddle supports lazy loading before CUDA 11.7.
 
 if(LINUX)

@@ -78,7 +78,8 @@ class Conv1DTransposeTestCase(unittest.TestCase):
         self.weight_shape = weight_shape = (
             self.in_channels,
             self.out_channels // self.groups,
-        ) + tuple(filter_size)
+            *filter_size,
+        )
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )
@@ -105,9 +106,12 @@ class Conv1DTransposeTestCase(unittest.TestCase):
                 w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = paddle.static.data(
-                    "bias", (self.out_channels,), dtype=self.dtype
-                )
+                if not self.no_bias:
+                    b_var = paddle.static.data(
+                        "bias", (self.out_channels,), dtype=self.dtype
+                    )
+                else:
+                    b_var = None
                 y_var = F.conv1d_transpose(
                     x_var,
                     w_var,
@@ -148,19 +152,20 @@ class Conv1DTransposeTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
-    def _test_equivalence(self, place):
-        result1 = self.functional(place)
+    def _test_pir_equivalence(self, place):
+        with paddle.pir_utils.IrGuard():
+            result1 = self.functional(place)
         with dg.guard(place):
             result2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
 
     def runTest(self):
         place = base.CPUPlace()
-        self._test_equivalence(place)
+        self._test_pir_equivalence(place)
 
         if base.core.is_compiled_with_cuda():
             place = base.CUDAPlace(0)
-            self._test_equivalence(place)
+            self._test_pir_equivalence(place)
 
 
 class Conv1DTransposeErrorTestCase(Conv1DTransposeTestCase):

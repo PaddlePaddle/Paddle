@@ -317,7 +317,7 @@ OneFastWhereXPUPattern::OneFastWhereXPUPattern(PDPattern* pattern,
   PADDLE_ENFORCE_LE(
       mode,
       1,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "one_fast_where_xpu_fuse_pass mode(%d) is not supported.", mode));
   if (mode == 0) {
     mul0->LinksFrom({x, scale_out}).LinksTo({mul0_out});
@@ -438,7 +438,7 @@ CascadeFastWhereXPUPattern::CascadeFastWhereXPUPattern(
       pattern->NewNode(fast_where_xpu0_repr())->assert_is_op("fast_where_xpu");
   auto fast_where_xpu1 =
       pattern->NewNode(fast_where_xpu1_repr())->assert_is_op("fast_where_xpu");
-  // declare vairable nodes
+  // declare variable nodes
   auto condition0 = pattern->NewNode(condition0_repr())
                         ->assert_is_op_input("fast_where_xpu", "condition");
   auto condition1 = pattern->NewNode(condition1_repr())
@@ -455,7 +455,7 @@ CascadeFastWhereXPUPattern::CascadeFastWhereXPUPattern(
   PADDLE_ENFORCE_LE(
       mode,
       1,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cascade_fast_where_xpu_fuse_pass mode(%d) is not supported.", mode));
   if (mode == 0) {
     fast_where_xpu0_out->assert_is_op_input("fast_where_xpu", "y");
@@ -537,7 +537,7 @@ int OneFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph, int mode) const {
 
 void OneFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   int found_subgraph_count = 0;
   for (auto mode : {0, 1}) {
@@ -615,7 +615,7 @@ int CascadeFastWhereXPUFusePass::ApplySubgraph(ir::Graph* graph,
 
 void CascadeFastWhereXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   int total_found_subgraph_count = 0;
   int cur_found_subgraph_count = 0;

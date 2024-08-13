@@ -12,11 +12,11 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
+#include "paddle/phi/kernels/funcs/elementwise/elementwise_op_impl.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -86,7 +86,7 @@ class ActivationCudaKernel
     for (auto& attr : attrs) {
       *attr.second = ctx.Attr<float>(attr.first);
     }
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+    phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
         dev_ctx, ins, &outs, functor);
   }
 };
@@ -117,16 +117,16 @@ class ActivationGradCudaKernel
         static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
       // Only need forward output Out
       ins.push_back(out);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+      phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
           dev_ctx, ins, &outs, functor);
     } else if (static_cast<int>(Functor::FwdDeps()) ==
                static_cast<int>(ActBwdOpFwdDeps::kDepX)) {
       // Only need forward input X
       ins.push_back(x);
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+      phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
           dev_ctx, ins, &outs, functor);
     } else {
-      paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+      phi::funcs::LaunchSameDimsElementwiseCudaKernel<T>(
           dev_ctx, ins, &outs, functor);
     }
   }

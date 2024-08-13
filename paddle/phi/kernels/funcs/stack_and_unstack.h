@@ -77,6 +77,13 @@ void StackRawKernel(const Context& ctx,
   if (axis < 0) axis += (x[0]->dims().size() + 1);
   int num = static_cast<int>(x.size());
 
+  // zero sized tensor case
+  if (x[0]->numel() == 0) {
+    ctx.template Alloc<T>(out);
+    auto out_dims = out->dims();
+    out->Resize(out_dims);
+    return;
+  }
   // Split x dim from axis to matrix of shape [x_row, x_col], and the output
   // tensor's shape is [x_row, out_col].
   int64_t x_row = 1, x_row_bak = 1;
@@ -251,6 +258,15 @@ void UnStackRawKernel(const Context& ctx,
   // Input tensor is splited to split_dim tensors along split_dim dimension.
   int64_t split_dim = x_dims[axis];
 
+  // zero sized tensor case
+  if (x.numel() == 0) {
+    for (int i = 0; i < split_dim; i++) {
+      ctx.template Alloc<T>((*outs)[i]);
+      auto x_grad_dim = (*outs)[i]->dims();
+      (*outs)[i]->Resize(x_grad_dim);
+    }
+    return;
+  }
   // Treat outs[i] as [out_row, out_col], and x as [out_row, split_dim,
   // out_col].
   int64_t out_row = 1;

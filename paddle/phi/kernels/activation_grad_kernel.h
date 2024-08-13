@@ -89,7 +89,7 @@ void ReluDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SinDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& dout,
+                         const DenseTensor& dout,
                          const DenseTensor& ddx,
                          DenseTensor* dx,
                          DenseTensor* ddout);
@@ -97,7 +97,7 @@ void SinDoubleGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CosDoubleGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const paddle::optional<DenseTensor>& dout,
+                         const DenseTensor& dout,
                          const DenseTensor& ddx,
                          DenseTensor* dx,
                          DenseTensor* ddout);
@@ -307,7 +307,6 @@ DECLARE_ACTIVATION_GRAD_KERNEL_NODEP(Floor);
 DECLARE_ACTIVATION_GRAD_KERNEL_NODEP(Ceil);
 
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu, alpha);
-DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(ThresholdedRelu, threshold);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(SoftShrink, lambda);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(HardShrink, threshold);
 DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Logit, eps);
@@ -318,5 +317,6 @@ DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(HardTanh, t_min, t_max);
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh, scale_a, scale_b);
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus, beta, threshold);
 DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid, slope, offset);
+DECLARE_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(ThresholdedRelu, threshold, value);
 
 }  // namespace phi

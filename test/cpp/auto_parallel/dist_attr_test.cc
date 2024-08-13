@@ -28,8 +28,6 @@ namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
-using paddle::framework::BlockDesc;
-using paddle::framework::OpDesc;
 using paddle::framework::ProgramDesc;
 using paddle::framework::VarDesc;
 

@@ -160,14 +160,10 @@ class GradientMergeOptimizer:
         var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
         assert (
             param.name in var_attr
-        ), 'when using GradientMergeOptimizer, param={} must be in var_attr={}'.format(
-            param.name, var_attr
-        )
+        ), f'when using GradientMergeOptimizer, param={param.name} must be in var_attr={var_attr}'
         assert (
             grad.name in var_attr
-        ), 'when using GradientMergeOptimizer, grad={} must be in var_attr={}'.format(
-            param.name, var_attr
-        )
+        ), f'when using GradientMergeOptimizer, grad={param.name} must be in var_attr={var_attr}'
 
         # remove (param, grad) from op_role_var
         var_attr.remove(param.name)

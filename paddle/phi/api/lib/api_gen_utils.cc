@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
@@ -24,6 +24,7 @@ PHI_DECLARE_bool(use_stride_kernel);
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace experimental {
@@ -417,6 +418,32 @@ void TransStride(phi::DeviceContext* dev_ctx,
       return;
     }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+    if (custom_ctx) {
+      const phi::KernelKey& kernel_key = {phi::TransToPhiBackend(to->place()),
+                                          phi::DataLayout::ALL_LAYOUT,
+                                          to->dtype()};
+      using kernel_signature = void (*)(const phi::DeviceContext&,
+                                        const phi::DenseTensor&,
+                                        const std::vector<int64_t>&,
+                                        const std::vector<int64_t>&,
+                                        int64_t,
+                                        phi::DenseTensor*);
+      PD_VISIT_KERNEL("strided_copy",
+                      kernel_key,
+                      kernel_signature,
+                      false,
+                      *custom_ctx,
+                      *from,
+                      common::vectorize<int64_t>(to->dims()),
+                      common::vectorize<int64_t>(to->strides()),
+                      to->offset(),
+                      to);
+      delete from;
+      return;
+    }
+#endif
   }
 }
 
@@ -464,6 +491,31 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                                to->offset(),
                                to);
                          }));
+      return;
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+    if (custom_ctx) {
+      const phi::KernelKey& kernel_key = {phi::TransToPhiBackend(to->place()),
+                                          phi::DataLayout::ALL_LAYOUT,
+                                          to->dtype()};
+      using kernel_signature = void (*)(const phi::DeviceContext&,
+                                        const phi::DenseTensor&,
+                                        const std::vector<int64_t>&,
+                                        const std::vector<int64_t>&,
+                                        int64_t,
+                                        phi::DenseTensor*);
+      PD_VISIT_KERNEL("strided_copy",
+                      kernel_key,
+                      kernel_signature,
+                      false,
+                      *custom_ctx,
+                      *from,
+                      common::vectorize<int64_t>(to->dims()),
+                      common::vectorize<int64_t>(to->strides()),
+                      to->offset(),
+                      to);
       return;
     }
 #endif
@@ -521,6 +573,33 @@ void TransStride(phi::DeviceContext* dev_ctx,
         continue;
       }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+      if (custom_ctx) {
+        const phi::KernelKey& kernel_key = {
+            phi::TransToPhiBackend(to[i]->place()),
+            phi::DataLayout::ALL_LAYOUT,
+            to[i]->dtype()};
+        using kernel_signature = void (*)(const phi::DeviceContext&,
+                                          const phi::DenseTensor&,
+                                          const std::vector<int64_t>&,
+                                          const std::vector<int64_t>&,
+                                          int64_t,
+                                          phi::DenseTensor*);
+        PD_VISIT_KERNEL("strided_copy",
+                        kernel_key,
+                        kernel_signature,
+                        false,
+                        *custom_ctx,
+                        *from[i],
+                        common::vectorize<int64_t>(to[i]->dims()),
+                        common::vectorize<int64_t>(to[i]->strides()),
+                        to[i]->offset(),
+                        to[i]);
+        delete from[i];
+        return;
+      }
+#endif
     }
   }
 }
@@ -551,7 +630,8 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
       true,
-      phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+      common::errors::PreconditionNotMet(
+          "Arg must be a single TensorDistAttr"));
   if (out) {
     if (out->impl() == nullptr) {
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
@@ -588,7 +668,7 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
       paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
           dist_attr),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Arg must be a vector of TensorDistAttr"));
   const std::vector<phi::distributed::TensorDistAttr>& dist_attrs =
       PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
@@ -598,12 +678,19 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
   // TODO(GhostScreaming): Inplace outputs are initialized, just set their
   // dist_attr.
   if (out->size() == out_size) {
-    VLOG(3) << "Outputs are inplace vector Tensors, just set their dist_attrs "
-            << "according to InferSPMD output result.";
+    VLOG(3) << "Outputs are inplace vector Tensors, SKIP set dist_attr for out "
+            << "to avoid changing the inplaced input";
     for (size_t i = 0; i < out_size; ++i) {
       results[i] =
           static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
-      results[i]->unsafe_set_dist_attr(dist_attrs[i]);
+      continue;
+      // auto t =
+      //     static_cast<phi::distributed::DistTensor*>(out->at(i).impl().get());
+      // auto dist_t = std::make_shared<phi::distributed::DistTensor>(
+      //     t->shared_value(), t->dims(), dist_attrs[i]);
+      // out->at(i) = Tensor();
+      // out->at(i).set_impl(dist_t);
+      // results[i] = dist_t.get();
     }
   } else {
     out->reserve(out_size);
@@ -657,6 +744,7 @@ std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     }
     return dist_output;
   }
+  VLOG(4) << "CreateKernelDistOutput with NULL out";
   return nullptr;
 }
 
@@ -686,7 +774,7 @@ CreateKernelDistOutput(std::vector<Tensor*> out,
   PADDLE_ENFORCE_EQ(
       out.size(),
       tensor_dist_attrs.size(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "out.size() [%d] and tensor_dist_attrs.size() [%d] not match",
           out.size(),
           tensor_dist_attrs.size()));

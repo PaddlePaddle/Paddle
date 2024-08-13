@@ -25,7 +25,7 @@
   {% endfilter %}
   op->CheckAttrs();
   op->InferVarType(block);
-  op->InferShape(*block); 
+  op->InferShape(*block);
   {% if outputs|length > 1 %}
   return std::make_tuple{{sequence('(', ')', ', ', output_names)}};
   {% elif outputs|length == 1 %}
@@ -56,7 +56,7 @@ template <>
 {%- macro static_prim_api_sig_ret(outputs) -%}
   {%- set names = [] -%}
   {%- for i in outputs -%} {%- do names.append(i.typename|to_paddle_output_type) -%} {%- endfor -%}
-  {%- if names|length > 1 -%} 
+  {%- if names|length > 1 -%}
 std::tuple<{{sequence('', '', ', ', names)}}>
   {%- else -%}
 {{names[0]}}
@@ -80,7 +80,7 @@ if ({{input.name}}) {
   std::transform({{input.name}}.get().begin(), {{input.name}}.get().end(), {{input.name}}_names.begin(), [](const Tensor& t) {
     return std::static_pointer_cast<prim::DescTensor>(t.impl())->Name();
   });
-  op->SetInput("{{input.fluid_name | to_pascal}}", {{input.name}}_names);  
+  op->SetInput("{{input.fluid_name | to_pascal}}", {{input.name}}_names);
 }
   {%- else -%}
 if ({{input.name}}) {
@@ -96,7 +96,7 @@ std::vector<std::string> {{input.name}}_names({{input.name}}.size());;
 std::transform({{input.name}}.begin(), {{input.name}}.end(), {{input.name}}_names.begin(), [](const Tensor& t) {
   return std::static_pointer_cast<prim::DescTensor>(t.impl())->Name();
 });
-op->SetInput("{{input.fluid_name | to_pascal}}", {{input.name}}_names);  
+op->SetInput("{{input.fluid_name | to_pascal}}", {{input.name}}_names);
   {%- else -%}
 op->SetInput("{{input.fluid_name | to_pascal}}", {std::static_pointer_cast<prim::DescTensor>({{input.name}}.impl())->Name()});
   {%- endif -%}
@@ -180,7 +180,7 @@ paddle::framework::TransToProtoVarType({{src_name}})
   {%- set is_set = [] -%}  {#- why not use boolean, ref: https://stackoverflow.com/questions/17925674/jinja2-local-global-variable -#}
   {%- if not is_set -%} {#- use DataType attr as default output dtype -#}
     {%- for attr in attrs -%}
-      {%- if attr.typename is datatype -%} 
+      {%- if attr.typename is datatype -%}
 {{attr.name}}
         {%- do is_set.append(1) -%}
       {%- endif -%}

@@ -26,8 +26,10 @@ root_path = sys.argv[4]
 
 def read_yaml_ops():
     ops_list = []
-    yaml_path = root_path + "/paddle/phi/api/yaml/ops.yaml"
-    legacy_yaml_path = root_path + "/paddle/phi/api/yaml/legacy_ops.yaml"
+    yaml_path = root_path + "/paddle/phi/ops/yaml/ops.yaml"
+    legacy_yaml_path = (
+        root_path + "/paddle/phi/ops/yaml/inconsistent/dygraph_ops.yaml"
+    )
 
     with open(yaml_path, 'r') as f:
         ops_list = yaml.load(f, Loader=yaml.FullLoader)
@@ -87,8 +89,10 @@ def get_api_diff(dev_api_file, pr_api_file):
 
 
 def get_yaml_diff(branch):
-    ops_yaml_path = root_path + "/paddle/phi/api/yaml/ops.yaml"
-    legacy_yaml_path = root_path + "/paddle/phi/api/yaml/legacy_ops.yaml"
+    ops_yaml_path = root_path + "/paddle/phi/ops/yaml/ops.yaml"
+    legacy_yaml_path = (
+        root_path + "/paddle/phi/ops/yaml/inconsistent/dygraph_ops.yaml"
+    )
     git_cmd = (
         "git diff -U0 upstream/"
         + branch

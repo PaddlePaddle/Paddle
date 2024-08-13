@@ -33,6 +33,7 @@ from paddle import base
 from paddle.base import core
 from paddle.base.framework import unique_name
 from paddle.framework import use_pir_api
+from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 place = (
@@ -91,6 +92,7 @@ class TestBert(Dy2StTestBase):
         self.model_save_dir = os.path.join(self.temp_dir.name, 'inference')
         self.model_save_prefix = os.path.join(self.model_save_dir, 'bert')
         self.model_filename = 'bert' + INFER_MODEL_SUFFIX
+        self.pir_model_filename = 'bert' + PIR_INFER_MODEL_SUFFIX
         self.params_filename = 'bert' + INFER_PARAMS_SUFFIX
         self.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, 'bert.dygraph'
@@ -162,9 +164,7 @@ class TestBert(Dy2StTestBase):
                 step_idx += 1
                 if step_idx == STEP_NUM:
                     if to_static:
-                        # TODO(pir-save-load): Fix this after we support save/load in PIR
-                        if not use_pir_api():
-                            paddle.jit.save(bert, self.model_save_prefix)
+                        paddle.jit.save(bert, self.model_save_prefix)
                     else:
                         paddle.save(
                             bert.state_dict(),
@@ -183,6 +183,11 @@ class TestBert(Dy2StTestBase):
     def predict_static(self, data):
         paddle.enable_static()
         exe = base.Executor(place)
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
+
         # load inference model
         [
             inference_program,
@@ -191,7 +196,7 @@ class TestBert(Dy2StTestBase):
         ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
-            model_filename=self.model_filename,
+            model_filename=model_filename,
             params_filename=self.params_filename,
         )
         pred_res = exe.run(
@@ -266,8 +271,13 @@ class TestBert(Dy2StTestBase):
         return pred_res
 
     def predict_analysis_inference(self, data):
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
+
         output = PredictorTools(
-            self.model_save_dir, self.model_filename, self.params_filename, data
+            self.model_save_dir, model_filename, self.params_filename, data
         )
         out = output()
         return out
@@ -304,45 +314,34 @@ class TestBert(Dy2StTestBase):
     def verify_predict(self):
         for data in self.data_reader.data_generator()():
             dygraph_pred_res = self.predict_dygraph(self.bert_config, data)
-            # TODO(pir-save-load): Fix this after we support save/load in PIR
-            if not use_pir_api():
-                static_pred_res = self.predict_static(data)
-                dygraph_jit_pred_res = self.predict_dygraph_jit(data)
-                predictor_pred_res = self.predict_analysis_inference(data)
+            static_pred_res = self.predict_static(data)
+            dygraph_jit_pred_res = self.predict_dygraph_jit(data)
+            predictor_pred_res = self.predict_analysis_inference(data)
 
-                for dy_res, st_res, dy_jit_res, predictor_res in zip(
-                    dygraph_pred_res,
-                    static_pred_res,
-                    dygraph_jit_pred_res,
-                    predictor_pred_res,
-                ):
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_res,
-                        rtol=1e-05,
-                        err_msg='dygraph_res: {},\n static_res: {}'.format(
-                            dy_res[~np.isclose(st_res, dy_res)],
-                            st_res[~np.isclose(st_res, dy_res)],
-                        ),
-                    )
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_jit_res,
-                        rtol=1e-05,
-                        err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                            dy_jit_res[~np.isclose(st_res, dy_jit_res)],
-                            st_res[~np.isclose(st_res, dy_jit_res)],
-                        ),
-                    )
-                    np.testing.assert_allclose(
-                        st_res,
-                        predictor_res,
-                        rtol=1e-05,
-                        err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
-                            predictor_res[~np.isclose(st_res, predictor_res)],
-                            st_res[~np.isclose(st_res, predictor_res)],
-                        ),
-                    )
+            for dy_res, st_res, dy_jit_res, predictor_res in zip(
+                dygraph_pred_res,
+                static_pred_res,
+                dygraph_jit_pred_res,
+                predictor_pred_res,
+            ):
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_res,
+                    rtol=1e-05,
+                    err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
+                )
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_jit_res,
+                    rtol=1e-05,
+                    err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
+                )
+                np.testing.assert_allclose(
+                    st_res,
+                    predictor_res,
+                    rtol=1e-05,
+                    err_msg=f'dygraph_jit_res_predictor: {predictor_res[~np.isclose(st_res, predictor_res)]},\n static_res: {st_res[~np.isclose(st_res, predictor_res)]}',
+                )
             break
 
 

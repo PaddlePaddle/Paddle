@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/op_base.h"
 
 using OpInfoTuple = std::tuple<std::vector<paddle::dialect::OpInputInfo>,
                                std::vector<paddle::dialect::OpAttributeInfo>,

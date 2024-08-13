@@ -35,7 +35,7 @@ class TestMatmulScaleFusePass(PassAutoScanTest):
             "matmul",
         ], (1e-5, 1e-5)
 
-        # mkldnn
+        # onednn
         config = self.create_inference_config(use_mkldnn=True)
         yield config, [
             "matmul",

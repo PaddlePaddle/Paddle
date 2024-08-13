@@ -57,7 +57,8 @@ class LinearNet(nn.Layer):
             paddle.static.InputSpec(
                 shape=[None, IMAGE_SIZE], dtype='float32', name='x'
             )
-        ]
+        ],
+        full_graph=True,
     )
     def forward(self, x):
         return self._linear(x)

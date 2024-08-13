@@ -99,7 +99,7 @@ class PsLocalClient : public PSClient {
                                             size_t num);
 
   virtual ::std::future<int32_t> Flush();
-  // server profilera
+  // server profiler
   virtual std::future<int32_t> StartProfiler() {
     std::promise<int32_t> prom;
     std::future<int32_t> fut = prom.get_future();
@@ -202,6 +202,8 @@ class PsLocalClient : public PSClient {
 
     return fut;
   }
+
+  virtual ::std::future<int32_t> SetDayId(size_t table_id, int day_id);
 
  protected:
   virtual int32_t Initialize();

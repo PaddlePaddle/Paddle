@@ -14,69 +14,14 @@
 
 #pragma once
 
-#include <array>
-#include <functional>
-#include <queue>
-#include <unordered_set>
+#include "paddle/common/topo_walker.h"
 
 namespace cinn {
 namespace common {
 
 // Topological order visitor
 template <typename NodeType>
-class TopoWalker final {
- public:
-  TopoWalker(const TopoWalker&) = default;
-  TopoWalker(TopoWalker&&) = default;
-
-  using NodeHandlerType = std::function<void(NodeType)>;
-  using NodesVisitorType =
-      std::function<void(NodeType, const NodeHandlerType&)>;
-
-  TopoWalker(const NodesVisitorType& VisitPrevNodesValue,
-             const NodesVisitorType& VisitNextNodesValue)
-      : VisitPrevNodes(VisitPrevNodesValue),
-        VisitNextNodes(VisitNextNodesValue) {}
-
-  void operator()(NodeType node, const NodeHandlerType& NodeHandler) const {
-    std::array<NodeType, 1> nodes{node};
-    (*this)(nodes.begin(), nodes.end(), NodeHandler);
-  }
-
-  template <typename NodeIt>
-  void operator()(NodeIt begin,
-                  NodeIt end,
-                  const NodeHandlerType& NodeHandler) const {
-    std::queue<NodeType> node_queue;
-    std::unordered_set<NodeType> queued_nodes;
-    const auto& TryEnqueueNode = [&](NodeType node) {
-      if (queued_nodes.count(node) == 0) {
-        node_queue.push(node);
-        queued_nodes.insert(node);
-      }
-    };
-    for (NodeIt iter = begin; iter != end; ++iter) {
-      TryEnqueueNode(*iter);
-    }
-    while (!node_queue.empty()) {
-      NodeType node = node_queue.front();
-      node_queue.pop();
-      NodeHandler(node);
-      VisitNextNodes(node, [&](NodeType node) {
-        size_t num_unfinished_inputs = 0;
-        VisitPrevNodes(node, [&](NodeType in_node) {
-          num_unfinished_inputs += (queued_nodes.count(in_node) > 0 ? 0 : 1);
-        });
-        if (num_unfinished_inputs == 0) {
-          TryEnqueueNode(node);
-        }
-      });
-    }
-  }
-
-  NodesVisitorType VisitPrevNodes;
-  NodesVisitorType VisitNextNodes;
-};
+using TopoWalker = ::common::TopoWalker<NodeType>;
 
 }  // namespace common
 }  // namespace cinn

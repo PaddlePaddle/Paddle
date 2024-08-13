@@ -42,8 +42,8 @@ class LookAhead(Optimizer):
 
     Args:
         inner_optimizer (Optimizer): The optimizer that update fast params step by step.
-        alpha (float, optinal): The learning rate of Lookahead. The default value is 0.5.
-        k (int, optinal): The slow params is updated every k steps. The default value is 5.
+        alpha (float, optional): The learning rate of Lookahead. The default value is 0.5.
+        k (int, optional): The slow params is updated every k steps. The default value is 5.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -63,7 +63,7 @@ class LookAhead(Optimizer):
             >>> IMAGE_SIZE = 784
             >>> CLASS_NUM = 10
             >>> # define a random dataset
-            >>> class RandomDataset(paddle.io.Dataset):
+            >>> class RandomDataset(paddle.io.Dataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...     def __getitem__(self, idx):
@@ -111,6 +111,7 @@ class LookAhead(Optimizer):
             >>> train(layer, loader, loss_fn, lookahead)
 
     """
+
     _slow_str = "slow"
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5, name=None):

@@ -56,13 +56,13 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
 
 bool GetCondData(const phi::DenseTensor &cond);
 
-bool StrInVaraiableNameMap(const std::string &,
-                           const framework::VariableNameMap &);
+bool StrInVariableNameMap(const std::string &,
+                          const framework::VariableNameMap &);
 
 void TransferVariablePlace(const framework::Scope *scope,
                            const std::string &var_name,
                            const phi::Place &dst_place,
-                           const platform::DeviceContext &dev_ctx);
+                           const phi::DeviceContext &dev_ctx);
 
 }  // namespace operators
 }  // namespace paddle

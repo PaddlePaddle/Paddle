@@ -40,11 +40,11 @@ class LoDArrayLengthOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
+               const phi::Place &place) const override {
+    auto &x = scope.FindVar(Input("X"))->Get<phi::TensorArray>();
     auto &out = *scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
     out.Resize({1});
-    auto cpu = platform::CPUPlace();
+    auto cpu = phi::CPUPlace();
     *out.mutable_data<int64_t>(cpu) = static_cast<int64_t>(x.size());
   }
 };
@@ -52,7 +52,7 @@ class LoDArrayLengthOp : public framework::OperatorBase {
 class LoDArrayLengthProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensorArray) The input tensor array.");
+    AddInput("X", "(phi::TensorArray) The input tensor array.");
     AddOutput("Out", "(Tensor) 1x1 CPU Tensor of length, int64_t");
     AddComment(R"DOC(
 LoDArrayLength Operator.
@@ -62,7 +62,7 @@ This operator obtains the length of lod tensor array:
 $$Out = len(X)$$
 
 NOTE: The output is a CPU Tensor since the control variable should be only in
-CPU and the length of LoDTensorArray should be used as control variables.
+CPU and the length of phi::TensorArray should be used as control variables.
 
 )DOC");
   }

@@ -22,7 +22,7 @@
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace poly {
 using utils::Join;
@@ -57,7 +57,11 @@ void isl_set_dim_names(isl::map *map,
                        isl_dim_type dim_type,
                        const std::vector<std::string> &names) {
   const int dim = isl_map_dim(map->get(), dim_type);
-  CHECK_EQ(dim, names.size());
+  PADDLE_ENFORCE_EQ(
+      dim,
+      names.size(),
+      ::common::errors::InvalidArgument(
+          "The size of names should be equal to the dimension of the map."));
 
   for (int i = 0; i < dim; i++) {
     *map = isl::manage(
@@ -67,7 +71,11 @@ void isl_set_dim_names(isl::map *map,
 
 void isl_set_dim_names(isl::set *set, const std::vector<std::string> &names) {
   int dim = isl_set_dim(set->get(), isl_dim_set);
-  CHECK_EQ(dim, names.size());
+  PADDLE_ENFORCE_EQ(
+      dim,
+      names.size(),
+      ::common::errors::InvalidArgument(
+          "The size of names should be equal to the dimension of the set."));
 
   for (int i = 0; i < dim; i++) {
     *set = isl::manage(
@@ -76,7 +84,11 @@ void isl_set_dim_names(isl::set *set, const std::vector<std::string> &names) {
 }
 
 isl::union_map isl_maps_to_union_map(const std::vector<isl::map> &maps) {
-  CHECK(!maps.empty());
+  PADDLE_ENFORCE_EQ(!maps.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input vector of isl::map is empty. "
+                        "Please ensure the vector is not empty."));
   isl::union_map umap =
       isl::manage(isl_union_map_from_map(maps.front().copy()));
   for (int i = 1; i < maps.size(); i++) {
@@ -86,7 +98,11 @@ isl::union_map isl_maps_to_union_map(const std::vector<isl::map> &maps) {
 }
 
 isl::union_set isl_sets_to_union_set(const std::vector<isl::set> &sets) {
-  CHECK(!sets.empty());
+  PADDLE_ENFORCE_EQ(!sets.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input vector of isl::set is empty. "
+                        "Please ensure the vector is not empty."));
   isl::union_set uset =
       isl::manage(isl_union_set_from_set(sets.front().copy()));
   for (int i = 1; i < sets.size(); i++) {
@@ -97,7 +113,11 @@ isl::union_set isl_sets_to_union_set(const std::vector<isl::set> &sets) {
 
 std::string isl_map_get_statement_repr(__isl_keep isl_map *map,
                                        isl_dim_type type) {
-  CHECK(map);
+  PADDLE_ENFORCE_NOT_NULL(
+      map,
+      ::common::errors::InvalidArgument(
+          "The input isl_map is null. "
+          "Please ensure the map is properly initialized."));
   auto tuple_name = isl_map_get_tuple_name(map, type);
   std::vector<std::string> dims;
 
@@ -122,7 +142,11 @@ isl::set SetGetDims(isl::set set, const std::vector<int> &dims) {
   auto dim_names = isl_get_dim_names(set);
   std::vector<std::string> selected_dim_names;
   for (int v : dims) {
-    CHECK_LT(v, dim_names.size());
+    PADDLE_ENFORCE_LT(
+        v,
+        dim_names.size(),
+        ::common::errors::InvalidArgument(
+            "The dim index should be less than the size of dim names."));
     selected_dim_names.push_back(dim_names[v]);
   }
 
@@ -136,11 +160,13 @@ isl::set SetGetDims(isl::set set, const std::vector<int> &dims) {
   return set.apply(transform);
 }
 
-isl_set *isl_get_precending_aixs(isl_set *set,
-                                 int level,
-                                 bool with_tuple_name) {
+isl_set *isl_get_preceding_axis(isl_set *set, int level, bool with_tuple_name) {
   int n = isl_set_dim(set, isl_dim_set);
-  CHECK_LT(level, n);
+  PADDLE_ENFORCE_LT(
+      level,
+      n,
+      ::common::errors::InvalidArgument(
+          "The level should be less than the dimension of the set."));
 
   std::vector<std::string> domain_iterators;
   std::vector<std::string> range_iterators;
@@ -189,7 +215,7 @@ int isl_get_original_axes_from_optimized_level(isl_set __isl_keep *a,
   return original_level;
 }
 
-int isl_get_precending_removed_axes_counts(isl_set __isl_keep *a, int level) {
+int isl_get_preceding_removed_axes_counts(isl_set __isl_keep *a, int level) {
   int removed_axes_counts = 0;
   std::vector<std::tuple<int, int>> iden_dim_offsets;
   for (int i = 0; i <= level; i++) {
@@ -227,15 +253,23 @@ bool isl_is_removed_axis(isl_set __isl_keep *a, int level) {
 int isl_max_level_compatible(isl_set *a, isl_set *b) {
   int an = isl_set_dim(a, isl_dim_set);
   int bn = isl_set_dim(b, isl_dim_set);
-  CHECK_GE(an, 0);
-  CHECK_GE(bn, 0);
+  PADDLE_ENFORCE_GE(
+      an,
+      0,
+      ::common::errors::InvalidArgument(
+          "The dimension of the set should be greater than or equal to 0."));
+  PADDLE_ENFORCE_GE(
+      bn,
+      0,
+      ::common::errors::InvalidArgument(
+          "The dimension of the set should be greater than or equal to 0."));
 
   int compatible_level = -1;
   for (int i = 0; i < std::min(an, bn); i++) {
     isl::set a_prefix =
-        isl::manage(isl_get_precending_aixs(isl_set_copy(a), i, false));
+        isl::manage(isl_get_preceding_axis(isl_set_copy(a), i, false));
     isl::set b_prefix =
-        isl::manage(isl_get_precending_aixs(isl_set_copy(b), i, false));
+        isl::manage(isl_get_preceding_axis(isl_set_copy(b), i, false));
 
     a_prefix = isl::manage(isl_set_set_tuple_name(a_prefix.release(), "s"));
     b_prefix = isl::manage(isl_set_set_tuple_name(b_prefix.release(), "s"));
@@ -282,7 +316,11 @@ isl_set *isl_simplify(isl_set __isl_take *set) {
 }
 
 isl::union_set isl_union_set_from_sets(llvm::ArrayRef<isl::set> sets) {
-  CHECK(!sets.empty());
+  PADDLE_ENFORCE_EQ(!sets.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input ArrayRef of isl::set is empty. "
+                        "Please ensure the ArrayRef is not empty."));
   isl::union_set res = isl::manage(isl_union_set_from_set(sets.front().copy()));
   for (int i = 1; i < sets.size(); i++) {
     res = isl::manage(isl_union_set_add_set(res.release(), sets[i].copy()));
@@ -315,8 +353,14 @@ std::tuple<isl::val, isl::val> isl_set_get_axis_range_by_name(
 }
 
 std::tuple<isl::val, isl::val> isl_set_get_axis_range(isl_set *set, int pos) {
-  CHECK(isl_set_dim_is_bounded(set, isl_dim_set, pos))
-      << "an unbound cannot get range, " << isl_set_to_str(set);
+  PADDLE_ENFORCE_EQ(
+      isl_set_dim_is_bounded(set, isl_dim_set, pos),
+      true,
+      ::common::errors::InvalidArgument(
+          "The dimension at position %d of the isl_set is not bounded. "
+          "An unbounded dimension cannot get range. Please check the set: %s",
+          pos,
+          isl_set_to_str(set)));
 
   std::vector<std::string> from_iters;
   std::string target_axis_name;
@@ -371,7 +415,11 @@ bool isl_set_axis_has_noparam_constant_bound(isl_set __isl_keep *set, int pos) {
             // ignore
           }
 
-          CHECK(aff);
+          PADDLE_ENFORCE_NOT_NULL(
+              aff,
+              ::common::errors::InvalidArgument(
+                  "The isl_aff is null. "
+                  "Please ensure the isl_aff is properly initialized."));
           auto &is_param_involved = *reinterpret_cast<bool *>(user);
           if (is_param_involved) return isl_stat_ok;
 
@@ -424,14 +472,14 @@ isl::set isl_set_dim_name_if_null(
   return isl::manage(set);
 }
 
-isl::map RemoveAxiesByInputNames(const isl::map &x,
-                                 const isl::set &origin_domain,
-                                 const std::vector<std::string> &dim_in_names) {
+isl::map RemoveAxesByInputNames(const isl::map &x,
+                                const isl::set &origin_domain,
+                                const std::vector<std::string> &dim_in_names) {
   std::string map_str = isl_map_to_str(x.get());
   isl::ctx this_ctx = x.ctx();
   isl::map temp_transform(this_ctx, map_str);
   auto related_output_names =
-      GetRelatedOutputAxies(x, origin_domain, dim_in_names);
+      GetRelatedOutputAxes(x, origin_domain, dim_in_names);
   if (dim_in_names.empty()) return temp_transform;
   for (auto &i : dim_in_names) {
     temp_transform = isl::manage(isl_remove_axis_by_name(
@@ -444,7 +492,7 @@ isl::map RemoveAxiesByInputNames(const isl::map &x,
   return temp_transform;
 }
 
-isl::map RemoveAxiesByOutputNames(
+isl::map RemoveAxesByOutputNames(
     const isl::map &x,
     const isl::set &origin_domain,
     const std::vector<std::string> &dim_out_names) {
@@ -452,7 +500,7 @@ isl::map RemoveAxiesByOutputNames(
   isl::ctx this_ctx = x.ctx();
   isl::map temp_transform(this_ctx, map_str);
   auto related_input_names =
-      GetRelatedInputAxies(x, origin_domain, dim_out_names);
+      GetRelatedInputAxes(x, origin_domain, dim_out_names);
   if (dim_out_names.empty()) return temp_transform;
   for (auto &i : dim_out_names) {
     temp_transform = isl::manage(isl_remove_axis_by_name(
@@ -465,24 +513,24 @@ isl::map RemoveAxiesByOutputNames(
   return temp_transform;
 }
 
-std::vector<std::string> GetRelatedOutputAxies(
+std::vector<std::string> GetRelatedOutputAxes(
     const isl::map &x,
     const isl::set &origin_domain,
     const std::vector<std::string> &dim_in_names) {
   std::string map_str = isl_map_to_str(x.get());
-  VLOG(1) << "GetRelatedOutputAxies map_str is : " << map_str;
+  VLOG(1) << "GetRelatedOutputAxes map_str is : " << map_str;
   isl::ctx this_ctx = x.ctx();
   isl::map temp_transform(this_ctx, map_str);
   auto dim_out_names = isl_get_dim_names(temp_transform, isl_dim_out);
   std::set<std::string> dim_in_set;
   for (auto &i : dim_in_names) {
-    VLOG(1) << "GetRelatedOutputAxies dim_in_names is : " << i;
+    VLOG(1) << "GetRelatedOutputAxes dim_in_names is : " << i;
     dim_in_set.insert(i);
   }
   std::set<std::string> res_set;
   for (auto &i : dim_out_names) {
     auto related_in_dim =
-        GetRelatedInputAxies(temp_transform, origin_domain, {i});
+        GetRelatedInputAxes(temp_transform, origin_domain, {i});
     for (auto &j : related_in_dim) {
       if (dim_in_set.count(j) > 0) {
         res_set.insert(i);
@@ -491,24 +539,24 @@ std::vector<std::string> GetRelatedOutputAxies(
   }
   std::vector<std::string> res;
   for (auto &i : res_set) {
-    VLOG(1) << "GetRelatedOutputAxies res is : " << i;
+    VLOG(1) << "GetRelatedOutputAxes res is : " << i;
     res.push_back(i);
   }
   return res;
 }
 
-std::vector<std::string> GetRelatedInputAxies(
+std::vector<std::string> GetRelatedInputAxes(
     const isl::map &x,
     const isl::set &origin_domain,
     const std::vector<std::string> &dim_out_names,
     bool strict) {
   std::string map_str = isl_map_to_str(x.get());
-  VLOG(1) << "GetRelatedInputAxies map_str is : " << map_str;
+  VLOG(1) << "GetRelatedInputAxes map_str is : " << map_str;
   isl::ctx this_ctx = x.ctx();
   isl::map temp_transform(this_ctx, map_str);
   auto dim_in_names = isl_get_dim_names(temp_transform, isl_dim_in);
   for (auto &i : dim_out_names) {
-    VLOG(1) << "GetRelatedInputAxies dim_out_names is : " << i;
+    VLOG(1) << "GetRelatedInputAxes dim_out_names is : " << i;
     temp_transform = isl::manage(isl_remove_axis_by_name(
         temp_transform.release(), isl_dim_out, i.c_str()));
   }
@@ -522,16 +570,16 @@ std::vector<std::string> GetRelatedInputAxies(
   auto transformed_domain = temp_set.apply(x);
   for (auto &i : dim_out_names) {
     out_set.insert(i);
-    if (utils::Endswith(i, "_inner") || utils::Endswith(i, "_outer")) {
+    if (utils::EndsWith(i, "_inner") || utils::EndsWith(i, "_outer")) {
       out_set_without_suffix.insert(utils::RemoveSuffix(i));
     }
   }
   for (auto &i : dim_in_names) {
     if (utils::Count(&map_str, i) != utils::Count(&deleted_map, i)) {
-      VLOG(1) << "GetRelatedInputAxies res is : " << i;
+      VLOG(1) << "GetRelatedInputAxes res is : " << i;
       res.push_back(i);
     } else if (out_set_without_suffix.count(i) > 0 && !strict) {
-      VLOG(1) << "GetRelatedInputAxies res is : " << i;
+      VLOG(1) << "GetRelatedInputAxes res is : " << i;
       res.push_back(i);
     } else if (out_set.count(i) > 0) {
       auto range1 = isl_set_get_axis_range_by_name(origin_domain.get(), i);

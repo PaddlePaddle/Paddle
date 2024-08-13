@@ -18,6 +18,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
+#endif
+
 // sparse header
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
@@ -44,7 +49,7 @@ void SyncBatchNormKernel(const Context& ctx,
                          DenseTensor* reserve_space) {
   PADDLE_ENFORCE_EQ(use_global_stats,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "sync_batch_norm doesn't support "
                         "to set use_global_stats True. Please use batch_norm "
                         "in this case."));
@@ -56,11 +61,11 @@ void SyncBatchNormKernel(const Context& ctx,
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Input dim size should be larger than 1."));
   PADDLE_ENFORCE_LE(x_dims.size(),
                     5,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Input dim size should be less than 6."));
   int N, C, H, W, D;
   funcs::ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
@@ -88,12 +93,11 @@ void SyncBatchNormKernel(const Context& ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from phi::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
-    alloc_ptr = phi::memory_utils::Alloc(
-        ctx.GetPlace(),
-        bytes,
-        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-
-    auto* stats = reinterpret_cast<BatchNormParamType<T>*>(alloc_ptr->ptr());
+    phi::DenseTensor stats_tensor;
+    stats_tensor.Resize({static_cast<int64_t>(bytes)});
+    ctx.template Alloc<BatchNormParamType<T>>(&stats_tensor);
+    auto* stats_data = stats_tensor.data<BatchNormParamType<T>>();
+    auto* stats = reinterpret_cast<BatchNormParamType<T>*>(stats_data);
     const int threads = 512;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
     if (layout == phi::DataLayout::kNCHW) {
@@ -122,6 +126,15 @@ void SyncBatchNormKernel(const Context& ctx,
                                       comm,
                                       stream));
       VLOG(3) << "Sync result using all reduce";
+    } else {
+      if (FLAGS_dynamic_static_unified_comm) {
+        auto comm_ctx =
+            static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
+        if (comm_ctx) {
+          comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
+          VLOG(3) << "Sync result using all reduce";
+        }
+      }
     }
 #endif
 
@@ -132,6 +145,13 @@ void SyncBatchNormKernel(const Context& ctx,
     auto* sv_mean_data = ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
     auto* sv_inv_var_data =
         ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
+
+    int64_t reserve_space_size = 0;
+    if (reserve_space == nullptr) {
+      reserve_space = new DenseTensor();
+    }
+    reserve_space->Resize({reserve_space_size});
+    ctx.template Alloc<T>(reserve_space);
 
     // Note, Input('Mean')/Input('Variance') share variable with
     // Output('MeanOut')/Output('VarianceOut')
@@ -256,6 +276,7 @@ void SyncBatchNormCooKernel(const Context& dev_ctx,
                                        saved_variance,
                                        reserve_space);
   y->SetIndicesDict(x.GetIndicesDict());
+  y->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>

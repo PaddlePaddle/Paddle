@@ -20,13 +20,38 @@ from test_imperative_base import new_program_scope
 import paddle
 import paddle.nn.functional as F
 from paddle import base
+from paddle.autograd.backward_utils import ValueDict
 from paddle.base import core
-from paddle.base.dygraph import guard, to_variable
+from paddle.base.dygraph import guard
 from paddle.nn import Layer, Linear
 
 np.set_printoptions(suppress=True)
 
 from utils import DyGraphProgramDescTracerTestHelper
+
+
+def create_parameter_mapping(startup_program, main_program):
+    startup_params = {}
+    main_params = {}
+    parameter_mapping = ValueDict()
+    for op in startup_program.global_block().ops:
+        if op.name() == "builtin.set_parameter":
+            name = op.attrs()["parameter_name"]
+            param = op.operand(0).source()
+            startup_params[name] = param
+
+    for op in main_program.global_block().ops:
+        if op.name() == "builtin.parameter":
+            name = op.attrs()["parameter_name"]
+            param = op.result(0)
+            main_params[name] = param
+
+    assert len(startup_params) == len(main_params)
+    for name, startup_param in startup_params.items():
+        assert name in main_params
+        main_param = main_params[name]
+        parameter_mapping[main_param] = startup_param
+    return parameter_mapping
 
 
 # Copy from models
@@ -88,7 +113,7 @@ class ModelHyperParams:
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.
     src_vocab_size = 10000
-    # size of target word dictionay
+    # size of target word dictionary
     trg_vocab_size = 10000
     # index for <bos> token
     bos_idx = 0
@@ -178,18 +203,18 @@ def create_data(is_static=False):
         ]
     else:
         enc_inputs = [
-            to_variable(src_word_np, name='src_word'),
-            to_variable(src_pos_np, name='src_pos'),
-            to_variable(src_slf_attn_bias_np, name='src_slf_attn_bias'),
+            paddle.to_tensor(src_word_np),
+            paddle.to_tensor(src_pos_np),
+            paddle.to_tensor(src_slf_attn_bias_np),
         ]
         dec_inputs = [
-            to_variable(trg_word_np, name='trg_word'),
-            to_variable(trg_pos_np, name='trg_pos'),
-            to_variable(trg_slf_attn_bias_np, name='trg_slf_attn_bias'),
-            to_variable(trg_src_attn_bias_np, name='trg_src_attn_bias'),
+            paddle.to_tensor(trg_word_np),
+            paddle.to_tensor(trg_pos_np),
+            paddle.to_tensor(trg_slf_attn_bias_np),
+            paddle.to_tensor(trg_src_attn_bias_np),
         ]
-        label = to_variable(lbl_word_np, name='lbl_word')
-        weight = to_variable(lbl_weight_np, name='lbl_weight')
+        label = paddle.to_tensor(lbl_word_np)
+        weight = paddle.to_tensor(lbl_weight_np)
         return enc_inputs, dec_inputs, label, weight
 
 
@@ -223,9 +248,11 @@ def make_all_inputs(input_fields):
             name=input_field,
             shape=input_descs[input_field][0],
             dtype=input_descs[input_field][1],
-            lod_level=input_descs[input_field][2]
-            if len(input_descs[input_field]) == 3
-            else 0,
+            lod_level=(
+                input_descs[input_field][2]
+                if len(input_descs[input_field]) == 3
+                else 0
+            ),
         )
         inputs.append(input_var)
     return inputs
@@ -235,7 +262,7 @@ def make_all_inputs(input_fields):
 # consistent with some ops' infer-shape output in compile time, such as the
 # sequence_expand op used in beamsearch decoder.
 batch_size = -1
-# The placeholder for squence length in compile time.
+# The placeholder for sequence length in compile time.
 seq_len = ModelHyperParams.max_length
 # Here list the data shapes and data types of all inputs.
 # The shapes here act as placeholder and are set to pass the infer-shape in
@@ -287,11 +314,17 @@ input_descs = {
     "enc_output": [(batch_size, seq_len, ModelHyperParams.d_model), "float32"],
     # The actual data shape of label_word is:
     # [batch_size * max_trg_len_in_batch, 1]
-    "lbl_word": [(batch_size * seq_len, 1), "int64"],
+    "lbl_word": [
+        (-1 if batch_size == -1 else batch_size * seq_len, 1),
+        "int64",
+    ],
     # This input is used to mask out the loss of padding tokens.
     # The actual data shape of label_weight is:
     # [batch_size * max_trg_len_in_batch, 1]
-    "lbl_weight": [(batch_size * seq_len, 1), "float32"],
+    "lbl_weight": [
+        (-1 if batch_size == -1 else batch_size * seq_len, 1),
+        "float32",
+    ],
     # This input is used in beam-search decoder.
     "init_score": [(batch_size, 1), "float32", 2],
     # This input is used in beam-search decoder for the first gather
@@ -496,11 +529,11 @@ class MultiHeadAttentionLayer(Layer):
             product += attn_bias
         weights = paddle.nn.functional.softmax(product)
         if self._dropout_rate:
-            weights_droped = paddle.nn.functional.dropout(
+            weights_dropped = paddle.nn.functional.dropout(
                 weights,
                 p=self._dropout_rate,
             )
-            out = paddle.matmul(weights_droped, transpose_v)
+            out = paddle.matmul(weights_dropped, transpose_v)
         else:
             out = paddle.matmul(weights, transpose_v)
 
@@ -680,7 +713,7 @@ class PrepareEncoderDecoderLayer(Layer):
         )
 
         # use in dygraph_mode to fit different length batch
-        # self._pos_emb._w = to_variable(
+        # self._pos_emb._w = paddle.to_tensor(
         #     position_encoding_init(self._src_max_len, self._src_emb_dim))
 
     def forward(self, src_word, src_pos):
@@ -775,7 +808,7 @@ class DecoderSubLayer(Layer):
         super().__init__()
         self._postprocess_cmd = postprocess_cmd
         self._preprocess_cmd = preprocess_cmd
-        self._prepostprcess_dropout = prepostprocess_dropout
+        self._prepostprocess_dropout = prepostprocess_dropout
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
@@ -819,7 +852,7 @@ class DecoderSubLayer(Layer):
 
     def forward(self, dec_input, enc_output, slf_attn_bias, dec_enc_attn_bias):
         pre_process_rlt = self._pre_process_layer(
-            None, dec_input, self._preprocess_cmd, self._prepostprcess_dropout
+            None, dec_input, self._preprocess_cmd, self._prepostprocess_dropout
         )
         slf_attn_output = self._multihead_attention_layer(
             pre_process_rlt, None, None, slf_attn_bias
@@ -828,13 +861,13 @@ class DecoderSubLayer(Layer):
             dec_input,
             slf_attn_output,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         pre_process_rlt2 = self._pre_process_layer2(
             None,
             slf_attn_output_pp,
             self._preprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         enc_attn_output_pp = self._multihead_attention_layer2(
             pre_process_rlt2, enc_output, enc_output, dec_enc_attn_bias
@@ -843,20 +876,20 @@ class DecoderSubLayer(Layer):
             slf_attn_output_pp,
             enc_attn_output_pp,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         pre_process_rlt3 = self._pre_process_layer3(
             None,
             enc_attn_output,
             self._preprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         ffd_output = self._positionwise_feed_forward_layer(pre_process_rlt3)
         dec_output = self._post_process_layer3(
             enc_attn_output,
             ffd_output,
             self._postprocess_cmd,
-            self._prepostprcess_dropout,
+            self._prepostprocess_dropout,
         )
         return dec_output
 
@@ -1112,7 +1145,13 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             # NOTE(xiongkun03): In new executor, the inplace strategy is on by default, which will cause result of sumop have some differences. So we disable inplace.
             base.set_flags({'FLAGS_new_executor_use_inplace': False})
             paddle.seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+            else:
+                paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
@@ -1191,7 +1230,13 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
         with new_program_scope():
             paddle.seed(seed)
-            paddle.framework.random._manual_program_seed(seed)
+            if paddle.framework.use_pir_api():
+                with paddle.pir_utils.OldIrGuard():
+                    # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                    paddle.framework.random._manual_program_seed(seed)
+                paddle.framework.random._manual_program_seed(seed)
+            else:
+                paddle.framework.random._manual_program_seed(seed)
             transformer = TransFormer(
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
@@ -1237,6 +1282,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             static_param_updated = {}
             static_param_init = {}
             static_param_name_list = []
+            static_params = []
             (
                 static_sum_cost,
                 static_avg_cost,
@@ -1246,12 +1292,26 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             optimizer.minimize(static_avg_cost)
             for param in transformer.parameters():
                 static_param_name_list.append(param.name)
+                static_params.append(param)
+
+            if paddle.framework.use_pir_api():
+                parameter_mapping = create_parameter_mapping(
+                    paddle.static.default_startup_program(),
+                    paddle.static.default_main_program(),
+                )
+                startup_params = [
+                    parameter_mapping[param] for param in static_params
+                ]
+            else:
+                startup_params = static_params
+
             out = exe.run(
-                base.default_startup_program(),
-                fetch_list=static_param_name_list,
+                paddle.static.default_startup_program(),
+                fetch_list=startup_params,
             )
             for i in range(len(static_param_name_list)):
-                static_param_init[static_param_name_list[i]] = out[i]
+                param_name = static_param_name_list[i]
+                static_param_init[param_name] = out[i]
             static_sum_cost_value = None
             static_avg_cost_value = None
             static_predict_value = None
@@ -1265,7 +1325,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     static_token_num,
                 ]
 
-                fetch_list.extend(static_param_name_list)
+                fetch_list.extend(static_params)
                 out = exe.run(
                     base.default_main_program(),
                     feed=feed_dict,
@@ -1277,9 +1337,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 static_token_num_value = out[3]
                 if i == batch_num - 1:
                     for k in range(4, len(out)):
-                        static_param_updated[
-                            static_param_name_list[k - 4]
-                        ] = out[k]
+                        static_param_updated[static_param_name_list[k - 4]] = (
+                            out[k]
+                        )
 
         # compare eager result with imperative result
         with guard():

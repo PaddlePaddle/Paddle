@@ -49,27 +49,21 @@ class DistributedTensor:
             and all(isinstance(x, int) and x >= -1 for x in dims_mapping)
         ):
             raise ValueError(
-                "The dims_mapping must be list or tuple and item in dims_mapping must >= -1, but got {}".format(
-                    dims_mapping
-                )
+                f"The dims_mapping must be list or tuple and item in dims_mapping must >= -1, but got {dims_mapping}"
             )
         if not (
             isinstance(processes, (list, tuple))
             and all(isinstance(x, int) and x >= 0 for x in processes)
         ):
             raise ValueError(
-                "The processes must be list or tuple and item in processes must be integer, but got {}".format(
-                    processes
-                )
+                f"The processes must be list or tuple and item in processes must be integer, but got {processes}"
             )
         if not (
             isinstance(topology, (list, tuple))
             and all(isinstance(x, int) and x > 0 for x in topology)
         ):
             raise ValueError(
-                "The topology must be list or tuple and item in topology must be non-negative integer, but got {}".format(
-                    topology
-                )
+                f"The topology must be list or tuple and item in topology must be non-negative integer, but got {topology}"
             )
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
             raise ValueError(f"The rank must >= 0, but got {rank}")
@@ -156,9 +150,7 @@ class DistributedTensor:
         )
         assert len(local_sizes) == len(
             local_offsets
-        ), "The length of local_sizes must be equal to local_offsets, but got {} and {}.".format(
-            len(local_sizes), len(local_offsets)
-        )
+        ), f"The length of local_sizes must be equal to local_offsets, but got {len(local_sizes)} and {len(local_offsets)}."
 
         local_end_offsets = [
             x[0] + x[1] for x in zip(local_offsets, local_sizes)
@@ -384,11 +376,7 @@ class DistributedTensor:
         return result
 
     def __str__(self):
-        str = "{{tensor name: {}, tensor id: {}, tensor original_id {}".format(
-            self.serial_tensor.desc.name(),
-            self.serial_tensor.desc.id(),
-            self.serial_tensor.desc.original_id(),
-        )
+        str = f"{{tensor name: {self.serial_tensor.desc.name()}, tensor id: {self.serial_tensor.desc.id()}, tensor original_id {self.serial_tensor.desc.original_id()}"
 
         # str += ", {}".format(self.dist_attr)
         # return str

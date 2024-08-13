@@ -76,7 +76,7 @@ class Summary {
   struct Item {
     HostEvent info;
     Ratio sub_ratio{0.0};    // percentage of EventType
-    Ratio total_ratio{0.0};  // precentage of total process
+    Ratio total_ratio{0.0};  // percentage of total process
 
     explicit Item(const HostEvent& e) : info(e) {}
     bool operator<(const Item& other) const {

@@ -50,7 +50,7 @@ void ExpandGradKernel(const Context& dev_ctx,
 
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
         in_grad,
-        funcs::GetPlainOneDNNFormat(in_grad_vec_dims.size()),
+        funcs::GetPlainOneDNNFormat(static_cast<int>(in_grad_vec_dims.size())),
         dev_ctx.GetPlace());
 
     auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,

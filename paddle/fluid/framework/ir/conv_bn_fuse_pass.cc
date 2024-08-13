@@ -18,23 +18,21 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
+#include "paddle/fluid/framework/ir/onednn/onednn_pass_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 namespace {
 template <typename T1, typename T2>
@@ -42,20 +40,17 @@ void ConvertTensorType(phi::DenseTensor* tensor) {
   phi::DenseTensor tmp_tensor;
   tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
   tmp_tensor.Resize(tensor->dims());
-  auto* tmp_data = tmp_tensor.mutable_data<T2>(paddle::platform::CPUPlace());
-  auto* data = tensor->mutable_data<T1>(paddle::platform::CPUPlace());
+  auto* tmp_data = tmp_tensor.mutable_data<T2>(phi::CPUPlace());
+  auto* data = tensor->mutable_data<T1>(phi::CPUPlace());
   for (int i = 0; i < tensor->numel(); i++) {
     tmp_data[i] = static_cast<T2>(data[i]);
   }
   tensor->clear();
-  paddle::framework::TensorCopySync(
-      tmp_tensor, paddle::platform::CPUPlace(), tensor);
+  paddle::framework::TensorCopySync(tmp_tensor, phi::CPUPlace(), tensor);
 }
 }  // namespace
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_CONV_BN_NODES(pattern_name)                                      \
   /* OPERATORS */                                                            \
@@ -96,7 +91,7 @@ void recompute_bias_and_weights(const Scope* scope,
   // Re-compute bias of conv2d from BN
   PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(),
                     bn_bias_tensor.dims(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "phi::DenseTensor elementwise y(%d) and batch "
                         "norm bias(%d) must have same dims.",
                         eltwise_y_in_tensor->dims().size(),
@@ -112,7 +107,7 @@ void recompute_bias_and_weights(const Scope* scope,
   ConstEigenVectorArrayMap scale_array(
       scale_tensor->data<float>(), scale_tensor->numel(), 1);
   EigenVectorArrayMap variance_array(
-      variance_tensor->mutable_data<float>(platform::CPUPlace()),
+      variance_tensor->mutable_data<float>(phi::CPUPlace()),
       variance_tensor->numel(),
       1);
   ConstEigenVectorArrayMap mean_array(
@@ -127,14 +122,14 @@ void recompute_bias_and_weights(const Scope* scope,
   for (int i = 0; i < variance_tensor->numel(); i++) {
     PADDLE_ENFORCE_EQ(std::isfinite(variance_array[i]),
                       true,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The inverse of Fused batch norm variance "
                           "should be finite. Found nonfinite values! "
                           "Please check %s ",
                           bn_variance.Name()));
   }
   EigenVectorArrayMap eltwise_y_in_array(
-      eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
+      eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
       eltwise_y_in_tensor->numel(),
       1);
 
@@ -143,7 +138,7 @@ void recompute_bias_and_weights(const Scope* scope,
   for (int i = 0; i < eltwise_y_in_tensor->numel(); i++) {
     PADDLE_ENFORCE_EQ(std::isfinite(eltwise_y_in_array[i]),
                       true,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Fused batch norm bias should be "
                           "finite. Found nonfinite values! "
                           "Please check %s and related variables.",
@@ -154,7 +149,7 @@ void recompute_bias_and_weights(const Scope* scope,
   auto* weights =
       scope->FindVar(conv_weight->Name())->GetMutable<phi::DenseTensor>();
   auto weights_shape = weights->dims();
-  auto weights_data = weights->mutable_data<float>(platform::CPUPlace());
+  auto weights_data = weights->mutable_data<float>(phi::CPUPlace());
 
   // ConvTranspose weights are in IOHW format
   if (conv_type == "conv2d_transpose") {
@@ -309,7 +304,7 @@ ConvBNFusePass::ConvBNFusePass() {
 
 void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   VLOG(3) << "Running conv_bn_fuse_pass.";
@@ -322,7 +317,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -395,10 +390,9 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
       // Initialize eltwise_y
       eltwise_y_in_tensor->Resize(bn_bias_tensor->dims());
-      std::fill_n(
-          eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
-          eltwise_y_in_tensor->numel(),
-          0.0f);
+      std::fill_n(eltwise_y_in_tensor->mutable_data<float>(phi::CPUPlace()),
+                  eltwise_y_in_tensor->numel(),
+                  0.0f);
 
       // update weights and biases
       recompute_bias_and_weights(scope,
@@ -421,7 +415,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // without MKL-DNN fuse conv+bn into conv+elementwise_add
     if (is_mkldnn) {
       if (conv->Op()->Type() == "conv2d" ||
-          conv->Op()->Type() == "depthwise_conv2d") {
+          conv->Op()->Type() == "depthwise_conv2d" ||
+          conv->Op()->Type() == "conv2d_transpose") {
         ConvertToFusedOp(conv->Op());
       }
       if (mkldnn_with_bias) {
@@ -430,12 +425,12 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
         PADDLE_ENFORCE_EQ(
             conv_bias_names.size(),
             1UL,
-            phi::errors::InvalidArgument("Find input var Bias error."));
+            common::errors::InvalidArgument("Find input var Bias error."));
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
                           bn_bias_tensor->dims(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "phi::DenseTensor convolution bias(%d) and batch "
                               "normalization bias (%d) "
                               "must have same dims.",
@@ -617,7 +612,7 @@ ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
 
 void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   VLOG(3) << "Running conv_eltwiseadd_bn_fuse_pass.";
@@ -631,7 +626,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -702,8 +697,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
           scope->Var(eltwise_y_in_node->Name())->GetMutable<phi::DenseTensor>();
 
       // Initialize eltwise_y
-      TensorCopy(
-          *eltwise_y_in_tensor, platform::CPUPlace(), eltwise_y_in_tensor_ex);
+      TensorCopy(*eltwise_y_in_tensor, phi::CPUPlace(), eltwise_y_in_tensor_ex);
 
       recompute_bias_and_weights(scope,
                                  conv_weight,
@@ -776,6 +770,48 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
 ConvTransposeBNFusePass::ConvTransposeBNFusePass() {  // NOLINT
   AddOpCompat(OpCompat("conv2d_transpose"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("output_padding")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("output_size")
+      .IsType<std::vector<int>>()
+      .IsOptional()
+      .End()
+      .AddAttr("groups")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("conv2d_transpose_bias"))
       .AddInput("Input")
       .IsTensor()
       .End()
@@ -940,9 +976,7 @@ DepthwiseConvBNFusePass::DepthwiseConvBNFusePass() {  // NOLINT
       .End();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv_bn_fuse_pass, paddle::framework::ir::ConvBNFusePass);
 REGISTER_PASS(conv_eltwiseadd_bn_fuse_pass,

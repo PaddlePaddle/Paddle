@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -147,6 +148,15 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
             self.strides = [1, 1, 1, 2, 2]
             self.infer_flags = [1, 1, 1, 1, 1]
 
+    class XPUTestStrideSliceOp4(XPUTestStrideSliceOp):
+        def initTestCase(self):
+            self.inshape = (3, 4, 10)
+            self.axes = [0, 1, 2]
+            self.starts = [0, -1, 0]
+            self.ends = [2, -3, 5]
+            self.strides = [1, -1, 1]
+            self.infer_flags = [1, 1, 1]
+
     class XPUTestStrideSliceOp5(XPUTestStrideSliceOp):
         def initTestCase(self):
             self.inshape = (5, 5, 5)
@@ -154,6 +164,15 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
             self.starts = [1, 0, 0]
             self.ends = [2, 1, 3]
             self.strides = [1, 1, 1]
+            self.infer_flags = [1, 1, 1]
+
+    class XPUTestStrideSliceOp6(XPUTestStrideSliceOp):
+        def initTestCase(self):
+            self.inshape = (5, 5, 5)
+            self.axes = [0, 1, 2]
+            self.starts = [1, -1, 0]
+            self.ends = [2, -3, 3]
+            self.strides = [1, -1, 1]
             self.infer_flags = [1, 1, 1]
 
     class XPUTestStrideSliceOp7(XPUTestStrideSliceOp):
@@ -191,6 +210,26 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
             self.ends = [1, 4, 4096, 128]
             self.strides = [1, 1, 1, 2]
             self.infer_flags = [1, 1, 1, 1]
+
+    @check_run_big_shape_test()
+    class XPUTestStrideSliceOpLargeShape1(XPUTestStrideSliceOp):
+        def initTestCase(self):
+            self.inshape = (1, 8192, 5, 128)
+            self.axes = [0, 1, 2, 3]
+            self.starts = [0, 0, 0, 0]
+            self.ends = [1, 8192, 5, 128]
+            self.strides = [1, 1, 1, 2]
+            self.infer_flags = [1, 1, 1, 1]
+
+    @check_run_big_shape_test()
+    class XPUTestStrideSliceOpLargeShape2(XPUTestStrideSliceOp):
+        def initTestCase(self):
+            self.inshape = (8192, 3456)
+            self.axes = [0, 1]
+            self.starts = [0, 0]
+            self.ends = [8192, 3456]
+            self.strides = [1, 2]
+            self.infer_flags = [1, 1]
 
 
 support_types = get_xpu_op_support_types('strided_slice')

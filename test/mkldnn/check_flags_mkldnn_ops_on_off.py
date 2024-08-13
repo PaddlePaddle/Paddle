@@ -33,20 +33,20 @@ def check():
     )
     print("check: DNNL_VERBOSE=", os.environ['DNNL_VERBOSE'])
     print(
-        "check: FLAGS_tracer_mkldnn_ops_on=",
-        _global_flags()['FLAGS_tracer_mkldnn_ops_on'],
+        "check: FLAGS_tracer_onednn_ops_on=",
+        _global_flags()['FLAGS_tracer_onednn_ops_on'],
     )
     print(
-        "check: FLAGS_tracer_mkldnn_ops_off=",
-        _global_flags()['FLAGS_tracer_mkldnn_ops_off'],
+        "check: FLAGS_tracer_onednn_ops_off=",
+        _global_flags()['FLAGS_tracer_onednn_ops_off'],
     )
     a_np = np.random.uniform(-2, 2, (10, 20, 30)).astype(np.float32)
     b_np = np.random.uniform(-5, 5, (10, 20, 30)).astype(np.float32)
     helper = LayerHelper(base.unique_name.generate("test"), act="relu")
     func = helper.append_activation
     with base.dygraph.guard(base.core.CPUPlace()):
-        a = base.dygraph.to_variable(a_np)
-        b = base.dygraph.to_variable(b_np)
+        a = paddle.to_tensor(a_np)
+        b = paddle.to_tensor(b_np)
         y = paddle.add(x=a, y=b)
         y = paddle.matmul(x=y, y=b, transpose_y=True)
         res1 = func(y)

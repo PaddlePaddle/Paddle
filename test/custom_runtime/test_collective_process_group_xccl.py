@@ -49,11 +49,12 @@ def start_local_trainers(
     os.system("rm -rf log && mkdir -p log")
     for idx, t in enumerate(pod.trainers):
         proc_env = {
-            "FLAGS_selected_custom_cpus": "%s"
-            % ",".join([str(g) for g in t.gpus]),
-            "PADDLE_TRAINER_ID": "%d" % t.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "FLAGS_selected_custom_cpus": "{}".format(
+                ",".join([str(g) for g in t.gpus])
+            ),
+            "PADDLE_TRAINER_ID": str(t.rank),
+            "PADDLE_CURRENT_ENDPOINT": str(t.endpoint),
+            "PADDLE_TRAINERS_NUM": str(cluster.trainers_nranks()),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_DISTRI_CUSTOM_DEVICE_TYPE": "custom_cpu",
         }

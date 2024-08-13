@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -100,7 +101,13 @@ class TestAtan2API(unittest.TestCase):
         self.init_dtype()
         self.x1 = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         self.x2 = np.random.uniform(-1, -0.1, self.shape).astype(self.dtype)
-        self.place = [paddle.CPUPlace()]
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 

@@ -20,8 +20,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -45,7 +44,7 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
                                    const TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(dist_attr.verify_dynamic(common::vectorize(dims)),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input dist_attr [%s] and dims [%s] are improper.",
                         dist_attr.to_string(),
                         str_join(vectorize(dims))));
@@ -60,7 +59,7 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
                                    const TensorDistAttr& dist_attr) {
   PADDLE_ENFORCE_EQ(dist_attr.verify_dynamic(common::vectorize(tensor->dims())),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input dist_attr [%s] and dims [%s] are improper.",
                         dist_attr.to_string(),
                         str_join(vectorize(tensor->dims()))));
@@ -74,5 +73,4 @@ DenseTensor* ReshardFunction::GetMutableTensor(DistTensor* tensor) {
   return tensor->value_.get();
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

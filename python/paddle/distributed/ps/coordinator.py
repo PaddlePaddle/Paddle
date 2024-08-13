@@ -116,7 +116,7 @@ class FLClientBase(abc.ABC):
         self.startup_program = paddle.static.default_startup_program()
         self._client_ptr = fleet.get_fl_client()
         self._coordinators = self.role_maker._get_coordinator_endpoints()
-        logger.info(f"fl-ps > coordinator enpoints: {self._coordinators}")
+        logger.info(f"fl-ps > coordinator endpoints: {self._coordinators}")
         self.strategy_handlers = {}
         self.exe = None
         self.use_cuda = int(self.config.get("runner.use_gpu"))
@@ -132,9 +132,7 @@ class FLClientBase(abc.ABC):
         self.train_dataset = train_dataset
         self.train_file_list = train_file_list
         logger.info(
-            "fl-ps > {}, data_feed_desc:\n {}".format(
-                type(self.train_dataset), self.train_dataset._desc()
-            )
+            f"fl-ps > {type(self.train_dataset)}, data_feed_desc:\n {self.train_dataset._desc()}"
         )
 
     def set_test_dataset_info(self, test_dataset, test_file_list):
@@ -178,9 +176,9 @@ class FLClientBase(abc.ABC):
             logger.info(f"fl-ps > persist_vars_list: {persist_vars_name}")
 
             if dump_fields_path is not None:
-                self.main_program._fleet_opt[
-                    'dump_fields_path'
-                ] = dump_fields_path
+                self.main_program._fleet_opt['dump_fields_path'] = (
+                    dump_fields_path
+                )
             if dump_fields is not None:
                 self.main_program._fleet_opt["dump_fields"] = dump_fields
             if dump_param is not None:
@@ -198,7 +196,7 @@ class FLClient(FLClientBase):
     def __build_fl_client_info_desc(self, state_info):
         # ......... to implement ...... #
         state_info = {
-            ClientInfoAttr.DEVICE_TYPE: "Andorid",
+            ClientInfoAttr.DEVICE_TYPE: "Android",
             ClientInfoAttr.COMPUTE_CAPACITY: 10,
             ClientInfoAttr.BANDWIDTH: 100,
         }

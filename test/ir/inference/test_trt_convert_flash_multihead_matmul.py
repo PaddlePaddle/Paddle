@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -24,6 +25,10 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.optimization_level = 5
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8520:
@@ -242,7 +247,7 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             # The last dim of input1 and input2 should be static.
             self.dynamic_shape.min_input_shape = {
@@ -267,7 +272,7 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for static_shape
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        self.trt_param.workspace_size = 2013265920
+        self.trt_param.workspace_size = 1 << 33
         yield self.create_inference_config(), (1, 2), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 2), (2e-2, 5e-3)
@@ -275,7 +280,7 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        self.trt_param.workspace_size = 2013265920
+        self.trt_param.workspace_size = 1 << 33
         yield self.create_inference_config(), (1, 2), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 2), (2e-2, 5e-3)
@@ -320,6 +325,10 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
 
 
 class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.optimization_level = 5
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         ver = paddle_infer.get_trt_compile_version()
         if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8520:
@@ -537,7 +546,7 @@ class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data1": [1, 4096, 320],
@@ -570,7 +579,7 @@ class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        self.trt_param.workspace_size = 2013265920
+        self.trt_param.workspace_size = 1 << 33
         yield self.create_inference_config(), (1, 5), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
@@ -579,7 +588,7 @@ class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        self.trt_param.workspace_size = 2013265920
+        self.trt_param.workspace_size = 1 << 33
         yield self.create_inference_config(), (1, 5), (1e-5, 1e-4)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)

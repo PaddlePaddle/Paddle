@@ -320,7 +320,7 @@ class PipelinePass(PassBase):
         recv_vars_name = {}
         for ib, src_block in enumerate(self._program.blocks):
             if ib == 0:
-                strat_block = start_prog.block(0)
+                start_block = start_prog.block(0)
                 end_block = end_prog.block(0)
 
                 is_after_while_op = False
@@ -333,7 +333,7 @@ class PipelinePass(PassBase):
 
                     if not is_after_while_op:
                         _create_program(
-                            src_block, strat_block, op, force_create=True
+                            src_block, start_block, op, force_create=True
                         )
                     else:
                         _create_program(
@@ -344,11 +344,11 @@ class PipelinePass(PassBase):
                 # The while block will be split to two separate blocks:
                 #     while{transformer_layer(send_block), generation_and_broadcast(recv_block)}
                 # The send_block:
-                #     include all ops about tansformer layers computation
-                #     execlude the nccl op about the while cond var(the last pp stage).
+                #     include all ops about transformer layers computation
+                #     exclude the nccl op about the while cond var(the last pp stage).
                 # The recv_block:
                 #     include all computation ops about generation and while cond var
-                #     execlude the nccl op about the while cond var(the pp stages exclude the last one)
+                #     exclude the nccl op about the while cond var(the pp stages exclude the last one)
                 # the nccl op about the while cond var:
                 #     put these varnames in the recv task node and do communication with brpc instead of nccl.
                 send_block = send_prog.block(0)
@@ -369,7 +369,7 @@ class PipelinePass(PassBase):
 
                     if not is_after_send_op or not is_after_recv_op:
                         if self._cur_pp_stage == self._pp_stages - 1:
-                            # NOTE: the c_sync_calc_stream about c_allgather cannot be removed
+                            # NOTE: the c_sync_calc_stream about all_gather cannot be removed
                             if (
                                 op.type == "c_sync_calc_stream"
                                 and src_block.ops[i + 1].type == "send_v2"
@@ -380,7 +380,11 @@ class PipelinePass(PassBase):
                             # HACKCODE: the varname of send_v2 op, cast op should be recorded for brpc comm
                             if (
                                 op.type
-                                not in ["recv_2", "assign", "c_allgather"]
+                                not in [
+                                    "recv_2",
+                                    "assign",
+                                    "all_gather",
+                                ]
                                 and op.has_attr('op_namescope')
                                 and "/auto_parallel/reshard"
                                 in op.attr('op_namescope')

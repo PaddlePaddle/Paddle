@@ -312,7 +312,7 @@ class TestRot90_API(unittest.TestCase):
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
         with base.dygraph.guard():
-            inputs = base.dygraph.to_variable(img)
+            inputs = paddle.to_tensor(img)
 
             ret = paddle.rot90(inputs, k=1, axes=[0, 1])
             ret = ret.rot90(1, axes=[0, 1])

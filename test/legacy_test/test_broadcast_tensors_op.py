@@ -47,9 +47,13 @@ def find_output_shape(input_list):
 def make_inputs_outputs(input_shapes, dtype, is_bfloat16=False):
     """Automatically generate formatted inputs and outputs from input_shapes"""
     input_list = [
-        (np.random.random(shape) + 1j * np.random.random(shape)).astype(dtype)
-        if dtype == 'complex64' or dtype == 'complex128'
-        else np.random.random(shape).astype(dtype)
+        (
+            (np.random.random(shape) + 1j * np.random.random(shape)).astype(
+                dtype
+            )
+            if dtype == 'complex64' or dtype == 'complex128'
+            else np.random.random(shape).astype(dtype)
+        )
         for shape in input_shapes
     ]
     output_shape = find_output_shape(input_list)
@@ -356,8 +360,12 @@ class TestRaiseBroadcastTensorsError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_type)
         self.assertRaises(TypeError, test_dtype)
-        self.assertRaises(TypeError, test_bcast_semantics)
-        self.assertRaises(TypeError, test_bcast_semantics_complex64)
+        if paddle.base.framework.in_pir_mode():
+            self.assertRaises(ValueError, test_bcast_semantics)
+            self.assertRaises(ValueError, test_bcast_semantics_complex64)
+        else:
+            self.assertRaises(TypeError, test_bcast_semantics)
+            self.assertRaises(TypeError, test_bcast_semantics_complex64)
 
 
 class TestRaiseBroadcastTensorsErrorDyGraph(unittest.TestCase):

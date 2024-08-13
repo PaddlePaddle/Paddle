@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -153,7 +154,7 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.mode == "ValueTensor":
                 self.input_shape = [1, 1]
@@ -185,7 +186,11 @@ class TrtConvertFillConstantTest(TrtLayerAutoScanTest):
             if self.mode == "ValueTensor":
                 return 0, 3
             else:
-                return 1, 2
+                ver = paddle_infer.get_trt_compile_version()
+                if ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8500:
+                    return 1, 3
+                else:
+                    return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))

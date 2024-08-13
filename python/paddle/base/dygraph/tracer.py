@@ -142,7 +142,7 @@ class Tracer(core.Tracer):
                     assert out_name in outputs.keys()
                     num_outs = len(outputs[out_name])
                     arg_to_append = num_outs
-                # NOTE(dev): For MasterParam/MasterParamOut in optimzer op
+                # NOTE(dev): For MasterParam/MasterParamOut in optimizer op
                 elif "Var" in arg_name[-3:]:
                     out_name = arg_name[:-3]
                     print(out_name)
@@ -174,7 +174,7 @@ class Tracer(core.Tracer):
 
         if op_type == 'load_combine':
             assert len(outputs.keys()) == 1
-            key = list(outputs.keys())[0]
+            key = next(iter(outputs.keys()))
             for j in range(len(returns)):
                 returns[j]._share_underline_tensor_to(outputs[key][j])
             return
@@ -200,12 +200,12 @@ class Tracer(core.Tracer):
                             )
         elif isinstance(returns, list):
             assert len(outputs.keys()) == 1
-            key = list(outputs.keys())[0]
+            key = next(iter(outputs.keys()))
             for j in range(len(returns)):
                 outputs[key][j].reconstruct_from_(returns[j], False)
         else:
             assert len(outputs.keys()) == 1
-            key = list(outputs.keys())[0]
+            key = next(iter(outputs.keys()))
             if isinstance(outputs[key], list):
                 outputs[key][0].reconstruct_from_(returns, False)
             else:
@@ -285,12 +285,12 @@ class Tracer(core.Tracer):
                         outputs[retname][0].reconstruct_from_(returns[i], False)
         elif isinstance(returns, list):
             assert len(outputs.keys()) == 1
-            key = list(outputs.keys())[0]
+            key = next(iter(outputs.keys()))
             for j in range(len(returns)):
                 outputs[key][j].reconstruct_from_(returns[j], False)
         else:
             assert len(outputs.keys()) == 1
-            key = list(outputs.keys())[0]
+            key = next(iter(outputs.keys()))
             if isinstance(outputs[key], list):
                 outputs[key][0].reconstruct_from_(returns, False)
             else:

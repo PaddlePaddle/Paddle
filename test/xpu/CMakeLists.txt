@@ -1,4 +1,5 @@
 if(WITH_XPU)
+  add_subdirectory(amp)
   add_subdirectory(cpp)
 endif()
 
@@ -31,7 +32,6 @@ endforeach()
 set_tests_properties(test_conv2d_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_v2_op_xpu PROPERTIES TIMEOUT 900)
-set_tests_properties(test_matmul_op_xpu PROPERTIES TIMEOUT 300)
 set_tests_properties(test_collective_identity_xpu
                      PROPERTIES LABELS "RUN_TYPE=DIST_KUNLUN")
 set_tests_properties(test_collective_allgather_xpu

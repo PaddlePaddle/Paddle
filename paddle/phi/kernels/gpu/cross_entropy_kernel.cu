@@ -73,7 +73,7 @@ struct ExpAddFunctor {
 
 /*
   Cross entropy soft label with dynamic size on axis (log2_elements is
-  varibale).
+  variable).
   - if the input is softmax, compute loss with softmax
   - if the input is log_softmax, compute loss with log_softmax and update
   softmax
@@ -1417,8 +1417,8 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         dtype,
         phi::CppTypeToDataType<T>::Type(),
-        phi::errors::InvalidArgument("The Input(Label) should be with the "
-                                     "same data type as Input(Logits)."));
+        common::errors::InvalidArgument("The Input(Label) should be with the "
+                                        "same data type as Input(Logits)."));
     CrossEntropyWithSoftmaxCUDAKernel<T, T>(dev_ctx,
                                             logits,
                                             label,

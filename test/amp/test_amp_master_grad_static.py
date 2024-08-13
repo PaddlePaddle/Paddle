@@ -158,7 +158,12 @@ class TestMasterGradAccuracy(AmpTestBase):
         dtype = "float16"
         max_iters = 25
         x_f32, x_f16 = self._generate_feed_x(dtype)
-        place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
         exe = paddle.static.Executor(place)
         use_grad_clip_list = [False, True]
         for use_grad_clip in use_grad_clip_list:

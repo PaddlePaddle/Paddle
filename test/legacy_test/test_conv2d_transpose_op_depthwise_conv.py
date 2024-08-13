@@ -19,6 +19,9 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
+import sys
+
+sys.path.append("../../legacy_test")
 from test_conv2d_transpose_op import TestConv2DTransposeOp
 
 

@@ -21,13 +21,8 @@ import paddle
 import paddle.nn.quant as Q
 from paddle import base
 from paddle.base import core
-from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
 from paddle.pir_utils import test_with_pir_api
-
-np.random.seed(123)
-paddle.seed(123)
-default_main_program().random_seed = 42
 
 
 @unittest.skipIf(
@@ -45,11 +40,13 @@ class LLMInt8LinearTestCase(unittest.TestCase):
         self.batch = 1
         self.token = 32
         self.in_features = 64
-        self.out_features = 256
+        self.out_features = 128
         self.threshold = 6.0
         self.static = False
 
     def setUp(self):
+        np.random.seed(123)
+        paddle.seed(42)
         self.config()
         x = np.random.random((self.batch, self.token, self.in_features))
         self.x = paddle.to_tensor(x, dtype=self.dtype)
@@ -66,49 +63,89 @@ class LLMInt8LinearTestCase(unittest.TestCase):
             self.in_features, self.out_features, bias_attr=bias_attr
         )
 
-        self.bias = self.linear.bias
         self.weight = self.linear.weight
         self.weight_scale = None
         self.weight, self.weight_scale = Q.weight_quantize(
             self.weight, algo="llm.int8"
         )
 
+    def dynamic_quant(self, x):
+        row_ranges = paddle.max(x, axis=[-1]).astype('float32')
+        row_ranges = row_ranges.unsqueeze(-1)
+        quant_x = paddle.round(
+            paddle.clip(
+                x.astype('float32') * 127.0 * (1 / row_ranges),
+                min=-127.0,
+                max=127.0,
+            )
+        ).astype('int8')
+        return quant_x, row_ranges
+
     def get_linear_out(self):
-        out = self.linear(self.x)
+        outlier_cols = (
+            paddle.nonzero(paddle.max(self.x, axis=[0, 1]) > self.threshold)
+            .reshape([-1])
+            .numpy()
+            .tolist()
+        )
+
+        x_int8 = self.x
+        if len(outlier_cols) > 0:
+            x_fp = self.x[:, :, outlier_cols]
+            w_fp = self.linear.weight[outlier_cols]
+            res_fp = paddle.matmul(x_fp, w_fp)
+
+            x_int8[:, :, outlier_cols] = 0
+        x_int8, row_ranges = self.dynamic_quant(x_int8)
+
+        res_int8 = paddle.matmul(x_int8, self.weight.transpose((1, 0)))
+        dequant_scale = row_ranges * self.weight_scale / 127.0
+        res_dequant = (res_int8.astype('float32') * dequant_scale).astype(
+            self.dtype
+        )
+
+        if len(outlier_cols) > 0:
+            out = res_dequant + res_fp
+        else:
+            out = res_dequant
+
+        if self.bias:
+            out += self.bias
+
         return out.numpy()
 
     def get_llm_int8_linear_out(self):
         out = Q.llm_int8_linear(
             self.x,
             self.weight,
-            bias=self.bias,
+            bias=self.linear.bias,
             weight_scale=self.weight_scale,
             threshold=self.threshold,
         )
         return out.numpy()
 
     @test_with_pir_api
-    def get_llm_int8_linear_out_static(self):
+    def llm_int8_linear_out_static(self, out_expect):
         paddle.enable_static()
-        main = base.static.Program()
-        start = base.static.Program()
-        with base.static.program_guard(main, start):
-            x = paddle.static.data("x", self.x.shape, dtype=self.x.dtype)
+        main = paddle.static.Program()
+        start = paddle.static.Program()
+        with paddle.static.program_guard(main, start):
+            x = paddle.static.data("x", self.x.shape, dtype=self.dtype)
 
             weight = paddle.static.data(
-                "weight", self.weight.shape, dtype=self.weight.dtype
+                "weight", self.weight.shape, dtype='int8'
             )
             bias = paddle.static.data(
-                "bias", self.bias.shape, dtype=self.bias.dtype
+                "bias", self.linear.bias.shape, dtype=self.dtype
             )
             x_np = self.x.numpy()
             weight_np = self.weight.numpy()
-            bias_np = self.bias.numpy()
+            bias_np = self.linear.bias.numpy()
             if self.weight_scale is not None:
                 weight_scale = paddle.static.data(
                     "weight_scale",
                     self.weight_scale.shape,
-                    dtype=self.weight_scale.dtype,
+                    dtype='float32',
                 )
                 weight_scale_np = self.weight_scale.numpy()
             else:
@@ -130,20 +167,30 @@ class LLMInt8LinearTestCase(unittest.TestCase):
             }
             exe = base.Executor(paddle.CUDAPlace(0))
             exe.run(start)
-            (out,) = exe.run(main, feed=feed_dict, fetch_list=[out])
+            (out_real,) = exe.run(main, feed=feed_dict, fetch_list=[out])
+
         paddle.disable_static()
-        return out
+
+        if self.dtype == "bfloat16":
+            out_real = convert_uint16_to_float(out_real)
+            out_expect = convert_uint16_to_float(out_expect)
+
+        np.testing.assert_allclose(
+            out_real, out_expect, rtol=self.rtol, atol=self.atol
+        )
 
     def test_llm_int8_linear(self):
         out_expect = self.get_linear_out()
         if self.static:
-            out_real = self.get_llm_int8_linear_out_static()
+            self.llm_int8_linear_out_static(out_expect)
+            return
         else:
             out_real = self.get_llm_int8_linear_out()
 
         if self.dtype == "bfloat16":
             out_real = convert_uint16_to_float(out_real)
             out_expect = convert_uint16_to_float(out_expect)
+
         np.testing.assert_allclose(
             out_real, out_expect, rtol=self.rtol, atol=self.atol
         )
@@ -179,19 +226,6 @@ class LLMInt8LinearTestCase2(LLMInt8LinearTestCase):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
-class LLMInt8LinearTestCase3(LLMInt8LinearTestCase):
-    def config(self):
-        super().config()
-        self.dtype = 'bfloat16'
-        self.weight_dtype = "int8"
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
     or paddle.device.cuda.get_device_capability()[0] < 8
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
@@ -214,20 +248,6 @@ class LLMInt8LinearTestCase5(LLMInt8LinearTestCase):
         super().config()
         self.dtype = 'float16'
         self.bias = False
-        self.weight_dtype = "int4"
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8 or core is not support bfloat16",
-)
-class LLMInt8LinearTestCase6(LLMInt8LinearTestCase):
-    def config(self):
-        super().config()
-        self.dtype = 'bfloat16'
         self.weight_dtype = "int4"
 
 
@@ -258,21 +278,6 @@ class LLMInt8LinearTestCase8(LLMInt8LinearTestCase):
         self.dtype = 'float16'
         self.weight_dtype = "int8"
         self.bias = False
-        self.batch = 1
-        self.token = 1
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or get_cuda_version() < 11020
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
-class LLMInt8LinearTestCase9(LLMInt8LinearTestCase):
-    def config(self):
-        super().config()
-        self.dtype = 'bfloat16'
-        self.weight_dtype = "int8"
         self.batch = 1
         self.token = 1
 

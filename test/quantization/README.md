@@ -51,7 +51,7 @@ Notes:
    ```... → input1 → conv2d → output1 → batch_norm → output2 → relu → output3 → ...```
    and we want to quantize the `conv2d` op, then after applying FP32 optimizations the sequence will become
    ```... → input1 → conv2d → output3 → ...```
-   and the quantization scales have to be collected for the `input1` and `outpu3` tensors in the Quant model.
+   and the quantization scales have to be collected for the `input1` and `output3` tensors in the Quant model.
 2. Quantization of the following operators is supported: `conv2d`, `depthwise_conv2d`, `mul`, `fc`, `matmul`, `pool2d`, `reshape2`, `transpose2`, `concat`.
 3. The longest sequence of consecutive quantizable operators in the model, the biggest performance boost can be achieved through quantization:
    ```... → conv2d → conv2d → pool2d → conv2d → conv2d → ...```

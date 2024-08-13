@@ -89,7 +89,7 @@ __global__ void vol2col(int num_kernels,
 }
 
 /*
- * im = [input_channels,intpu_depth, input_height, input_width] for
+ * im = [input_channels,input_depth, input_height, input_width] for
  * channels_first
  * im = [input_depth, input_height, input_width, input_channels] for
  * channels_last
@@ -111,12 +111,12 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
     const DataLayout data_layout) const {
   PADDLE_ENFORCE_EQ(vol.dims().size(),
                     4,
-                    phi::errors::InvalidArgument(
-                        "The dimension of  vol should be 4, but received %d.",
+                    common::errors::InvalidArgument(
+                        "The dimension of vol should be 4, but received %d.",
                         vol.dims().size()));
   PADDLE_ENFORCE_EQ(col->dims().size(),
                     7,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The dimension of col should be 7, but received %d.",
                         col->dims().size()));
 
@@ -148,7 +148,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
                          1;
   PADDLE_ENFORCE_EQ(input_depth_tmp,
                     output_depth,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "input_depth(%d) and output_depth(%d) are mismatching.",
                         input_depth_tmp,
                         output_depth));
@@ -159,7 +159,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
   PADDLE_ENFORCE_EQ(
       input_height_tmp,
       output_height,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "input_height(%d) and output_height(%d) are mismatching.",
           input_height_tmp,
           output_height));
@@ -169,7 +169,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
                          1;
   PADDLE_ENFORCE_EQ(input_width_tmp,
                     output_width,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "input_width(%d) and output_width(%d) are mismatching.",
                         input_width_tmp,
                         output_width));
@@ -317,13 +317,13 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
     const DataLayout data_layout) const {
   PADDLE_ENFORCE_EQ(vol->dims().size(),
                     4,
-                    phi::errors::InvalidArgument(
-                        "The dimension of vol  should be 4, but received %d.",
+                    common::errors::InvalidArgument(
+                        "The dimension of vol should be 4, but received %d.",
                         vol->dims().size()));
   PADDLE_ENFORCE_EQ(col.dims().size(),
                     7,
-                    phi::errors::InvalidArgument(
-                        "The dimension of col  should be 7, but received %d.",
+                    common::errors::InvalidArgument(
+                        "The dimension of col should be 7, but received %d.",
                         col.dims().size()));
 
   int input_channels =
@@ -355,7 +355,7 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
                          1;
   PADDLE_ENFORCE_EQ(input_depth_tmp,
                     output_depth,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "input_depth(%d) and output_depth(%d) are mismatching.",
                         input_depth_tmp,
                         output_depth));
@@ -366,7 +366,7 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
   PADDLE_ENFORCE_EQ(
       input_height_tmp,
       output_height,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "input_height(%d) and output_height(%d) are mismatching.",
           input_height_tmp,
           output_height));
@@ -376,7 +376,7 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
                          1;
   PADDLE_ENFORCE_EQ(input_width_tmp,
                     output_width,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "input_width(%d) and output_width(%d) are mismatching.",
                         input_width_tmp,
                         output_width));

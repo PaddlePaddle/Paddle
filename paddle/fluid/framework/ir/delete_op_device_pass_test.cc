@@ -16,9 +16,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 TEST(delete_op_device_pass, relu) {
   ProgramDesc program;
@@ -37,15 +35,13 @@ TEST(delete_op_device_pass, relu) {
     if (!node->IsOp()) continue;
     if (node->Op()->Type() == "relu") {
       PADDLE_ENFORCE(!node->Op()->HasAttr("op_device"),
-                     platform::errors::InvalidArgument(
+                     common::errors::InvalidArgument(
                          "Run delete_op_device_pass failed. Relu op still has "
                          "'op_device' attr."));
     }
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(delete_op_device_pass);

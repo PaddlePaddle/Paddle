@@ -56,13 +56,13 @@ class SimpleNet(nn.Layer):
         return logits
 
 
-class TestExecutor(TestCaseBase):
+class TestSegmentLinear(TestCaseBase):
     @strict_mode_guard(False)
     def test_simple(self):
         x = paddle.randn((1, 8, 8))
         net = SimpleNet()
         net = paddle.jit.to_static(
-            net
+            net, full_graph=False
         )  # dont make effect. we need fetch sot PR in paddle.
         loss = net(x)
         loss = loss.sum()

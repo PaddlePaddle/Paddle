@@ -21,7 +21,7 @@ CINN_USE_REGISTER(host_intrinsics)
 CINN_USE_REGISTER(mkl_math)
 CINN_USE_REGISTER(cinn_cpu_mkl)
 #ifdef CINN_WITH_DNNL
-CINN_USE_REGISTER(cinn_cpu_mkldnn)
+CINN_USE_REGISTER(cinn_cpu_onednn)
 #endif
 #endif
 CINN_USE_REGISTER(cinn_backend_parallel)

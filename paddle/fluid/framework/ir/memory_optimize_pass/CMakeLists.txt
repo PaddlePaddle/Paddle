@@ -15,10 +15,6 @@ cc_library(
   SRCS while_op_eager_deletion_pass.cc
   DEPS while_op_helper graph_helper pass)
 cc_library(
-  recurrent_op_eager_deletion_pass
-  SRCS recurrent_op_eager_deletion_pass.cc
-  DEPS recurrent_op_helper graph_helper pass)
-cc_library(
   reference_count_pass_helper
   SRCS reference_count_pass_helper.cc
   DEPS garbage_collector) #
@@ -34,20 +30,7 @@ set(EAGER_DELETETION_PASS_DEPS
     conditional_block_op_eager_deletion_pass
     pylayer_op_eager_deletion_pass
     while_op_eager_deletion_pass
-    recurrent_op_eager_deletion_pass
     reference_count_pass_helper)
-if(WITH_CINN)
-  cc_library(
-    share_varinfo_into_cinn_pass
-    SRCS share_varinfo_into_cinn_pass.cc
-    DEPS pass enforce common graph_helper)
-  cc_test(
-    share_varinfo_into_cinn_pass_test
-    SRCS share_varinfo_into_cinn_pass_test.cc
-    DEPS share_varinfo_into_cinn_pass parallel_executor elementwise_add_op
-         mul_op cinn_launch_op)
-  list(APPEND EAGER_DELETETION_PASS_DEPS share_varinfo_into_cinn_pass)
-endif()
 
 cc_library(
   eager_deletion_pass
@@ -72,9 +55,3 @@ cc_library(
   inplace_addto_op_pass
   SRCS inplace_addto_op_pass.cc
   DEPS memory_reuse_pass)
-
-cc_test(
-  test_reference_count_pass_last_lived_ops
-  SRCS test_reference_count_pass_last_lived_ops.cc
-  DEPS parallel_executor elementwise_mul_op elementwise_add_op generated_op phi
-       common)

@@ -159,7 +159,7 @@ class XPUTestUnfoldOp(XPUOpTestWrapper):
         def test_dygraph(self):
             for place in self.places:
                 with base.dygraph.guard(place):
-                    input = base.dygraph.to_variable(self.inputs['X'])
+                    input = paddle.to_tensor(self.inputs['X'])
                     m = paddle.nn.Unfold(**self.attrs)
                     m.eval()
                     result = m(input)

@@ -44,10 +44,10 @@ std::vector<std::vector<int64_t>> LinearInferShape(
   auto ndims_y = weight_shape.size();
   PD_CHECK(ndims_x > 0,
            "The Input(x) dims size must be greater than 0,"
-           " but reviced dims size is 0. ");
+           " but received dims size is 0. ");
   PD_CHECK(ndims_y > 0,
            "The Input(y) dims size must be greater than 0,"
-           " but reviced dims size is 0. ");
+           " but received dims size is 0. ");
 
   bool x_broadcasted = false, y_broadcasted = false;
   if (ndims_x == 1) {

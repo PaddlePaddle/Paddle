@@ -61,8 +61,8 @@ class TestFuseResNetUnit(unittest.TestCase):
             place, after_program, to_fp16_var_names=after_params
         )
         feed = {"x": np.random.randn(1, 64, 64, 8).astype("float16")}
-        before_out = exe.run(program, feed=feed, fetch_list=[out.name])
-        after_out = exe.run(after_program, feed=feed, fetch_list=[out.name])
+        before_out = exe.run(program, feed=feed, fetch_list=[out])
+        after_out = exe.run(after_program, feed=feed, fetch_list=[out])
         np.testing.assert_allclose(
             before_out[0], after_out[0], rtol=1e-05, atol=0.005
         )

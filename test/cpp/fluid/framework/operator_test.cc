@@ -14,9 +14,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include "gtest/gtest.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/init.h"
 
 PD_DECLARE_bool(enable_unused_var_check);
@@ -35,8 +35,7 @@ class OpWithoutKernelTest : public OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs), x(1) {}
 
  private:
-  void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {
+  void RunImpl(const Scope& scope, const phi::Place& place) const override {
     ++op_run_num;
     ASSERT_EQ(static_cast<int>(inputs_.size()), 1);
     ASSERT_EQ(static_cast<int>(outputs_.size()), 1);
@@ -51,7 +50,7 @@ class OpWithoutKernelTest : public OperatorBase {
 
 class OpWithoutKernelCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
     AddAttr<float>("scale", "scale of cosine op");
@@ -89,7 +88,7 @@ TEST(OperatorBase, all) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -106,7 +105,7 @@ static int special_type_value = 1;
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("x", "input of test op");
     AddOutput("y", "output of test op");
     AddAttr<float>("scale", "scale of cosine op")
@@ -161,7 +160,7 @@ class CPUKernel2Test : public OpKernel<float> {
 class OpKernelTestMultiInputsProtoAndCheckerMaker
     : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("xs", "inputs of test op").AsDuplicable();
     AddInput("k", "input of test op");
     AddOutput("ys", "outputs of test op").AsDuplicable();
@@ -225,7 +224,7 @@ REGISTER_OP_CPU_KERNEL(op_with_kernel,
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
     op_with_kernel,
     CPU,
-    paddle::platform::CPUPlace,
+    phi::CPUPlace,
     MY_SPECIAL_NAME,
     paddle::framework::special_type_value,
     paddle::framework::CPUKernel2Test<float, float>);
@@ -243,7 +242,7 @@ TEST(OpKernel, all) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -276,7 +275,7 @@ TEST(OpKernel, multi_inputs) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   scope.Var("x0")->GetMutable<phi::DenseTensor>();
   scope.Var("x1")->GetMutable<phi::DenseTensor>();
@@ -335,7 +334,7 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
 
 class IndicateLoDTensorDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("phi::DenseTensor", "Input of phi::DenseTensor type Variable.");
     AddComment("This Op is only for IndicateVarDataType interface test.");
   }
@@ -357,7 +356,7 @@ class IndicateSelectedRowsDataTypeTest : public OperatorWithKernel {
 class IndicateSelectedRowsDataTypeTestProtoMaker
     : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("SelectedRows", "Input of SelectedRows type Variable.");
     AddComment("This Op is only for IndicateVarDataType interface test.");
   }
@@ -377,7 +376,7 @@ class IndicateOtherDataTypeTest : public OperatorWithKernel {
 };
 class IndicateOtherDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("Other", "Input of Other type Variable");
     AddComment("This Op is only for IndicateVarDataType interface test.");
   }
@@ -421,7 +420,7 @@ TEST(IndicateVarDataTypeTest, other) {
   op_desc.set_type("indicate_other_data_type_test");
   BuildVar("Other", {"lod_rank_table_1"}, op_desc.add_inputs());
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -455,15 +454,14 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
   attr->set_type(paddle::framework::proto::AttrType::FLOAT);
   attr->set_f(3.14);
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   auto* var = scope.Var("OUT1");
-  var->GetMutable<paddle::framework::LoDTensorArray>();
+  var->GetMutable<phi::TensorArray>();
 
-  paddle::platform::DeviceContextPool& pool =
-      paddle::platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(cpu_place);
 
   paddle::framework::RuntimeContext ctx({}, {});
@@ -493,7 +491,7 @@ class GetLoDLevelTest : public OperatorWithKernel {
     auto lod_level = ctx->GetLoDLevel("X");
     PADDLE_ENFORCE_GT(lod_level,
                       0,
-                      paddle::platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The LoD level Input(X) should be larger than 0."));
   }
 };
@@ -512,7 +510,7 @@ class SetLoDLevelTest : public OperatorWithKernel {
 
 class GetSetLoDLevelTestMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(phi::DenseTensor) Input Variable.");
     AddOutput("Out", "(phi::DenseTensor) Output Variable.");
     AddComment("This Op is only for Get/SetLoDLevel interface test.");
@@ -543,7 +541,7 @@ void SetGetLoDLevelTestMain(std::string op_type) {
   BuildVar("X", {"x.0"}, op_desc.add_inputs());
   BuildVar("Out", {"out.0"}, op_desc.add_outputs());
 
-  paddle::platform::CPUPlace place;
+  phi::CPUPlace place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
@@ -592,7 +590,7 @@ class OpUnusedVarTest : public OperatorWithKernel {
 
 class OpUnusedVarTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "input of test op");
     AddOutput("Y", "output of test op");
     AddComment("This is test op for unused var check.");
@@ -650,7 +648,7 @@ TEST(OpWithUnusedVar, all) {
   BuildVar("X", {"X"}, op_desc.add_inputs());
   BuildVar("Y", {"Y"}, op_desc.add_outputs());
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   auto* x = scope.Var("X")->GetMutable<phi::DenseTensor>();
   auto* y = scope.Var("Y")->GetMutable<phi::DenseTensor>();
@@ -675,7 +673,7 @@ TEST(OpWithoutUnusedVar, all) {
   BuildVar("X", {"X"}, op_desc.add_inputs());
   BuildVar("Y", {"Y"}, op_desc.add_outputs());
 
-  paddle::platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
   paddle::framework::Scope scope;
   auto* x = scope.Var("X")->GetMutable<phi::DenseTensor>();
   auto* y = scope.Var("Y")->GetMutable<phi::DenseTensor>();

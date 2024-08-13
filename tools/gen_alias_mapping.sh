@@ -17,16 +17,16 @@
 # Brief:
 #     This code is used for generating the mapping list of Paddle API alias.
 #     Only the APIs set with the `DEFINE_ALIAS` flag is enable.
-# 
+#
 # Arguments:
 #     None
-# 
+#
 # Usage:
-#     Go into the `Paddle` folder and just run `./tools/gen_alias_mapping.sh`     
+#     Go into the `Paddle` folder and just run `./tools/gen_alias_mapping.sh`
 #
 # Returns:
 #     succ: 0
-# 
+#
 #     Will also print the mapping list to stdout. The format of each line is as below:
 #         <real API implement>\t<API recommend>,<API other alias name1>,<API other alias name2>,...
 
@@ -38,7 +38,7 @@ find ${PADDLE_ROOT}/python/ -name '*.py' \
     | grep 'DEFINE_ALIAS' \
     | perl -ne '
         if (/\/python\/(.*):from (\.*)(\w.*) import (.*?)\s+#DEFINE_ALIAS\s+$/) {
-            my @arr = split(", ", $4); 
+            my @arr = split(", ", $4);
             foreach $i (@arr) {
                 printf "%s|%s|%s|%d\n", $3, $i, substr($1, 0, -3), length($2);
             }
@@ -66,7 +66,7 @@ find ${PADDLE_ROOT}/python/ -name '*.py' \
             }
             key = key""new;
             n2o[key] = val;
-        } 
+        }
         END {
             for (new in n2o) {
                 old = n2o[new] in n2o ? n2o[n2o[new]] : n2o[new];
@@ -78,7 +78,7 @@ find ${PADDLE_ROOT}/python/ -name '*.py' \
         {
             o2n[$1] = o2n[$1] ? o2n[$1]","$3 : $3;
         }
-        END { 
+        END {
             for (i in o2n) {
                 print i"\t"o2n[i];
             }

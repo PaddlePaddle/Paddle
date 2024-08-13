@@ -23,6 +23,8 @@ template <typename T, typename Context>
 void CumprodKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    int dim,
+                   bool exclusive,
+                   bool reverse,
                    DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   const DenseTensor* x = &input;

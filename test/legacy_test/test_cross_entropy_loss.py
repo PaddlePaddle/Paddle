@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import stable_softmax
 from test_softmax_with_cross_entropy_op import cross_entropy
 
@@ -249,20 +252,22 @@ class CrossEntropyLoss(unittest.TestCase):
 
         paddle.disable_static()
         paddle_loss_swce = paddle.nn.functional.softmax_with_cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
         )
 
         paddle_loss_ce = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
 
@@ -313,13 +318,15 @@ class CrossEntropyLoss(unittest.TestCase):
         # 2. dygraph
         paddle.disable_static()
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -412,11 +419,11 @@ class CrossEntropyLoss(unittest.TestCase):
         # 2. dygraph
         paddle.disable_static()
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight),
+            weight=paddle.to_tensor(self.weight),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -504,8 +511,8 @@ class CrossEntropyLoss(unittest.TestCase):
         # 2 dygraph
         paddle.disable_static()
         paddle_loss_mean = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
             weight=self.weight,
@@ -589,11 +596,11 @@ class CrossEntropyLoss(unittest.TestCase):
 
         # 2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight),
+            weight=paddle.to_tensor(self.weight),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -689,13 +696,15 @@ class CrossEntropyLoss(unittest.TestCase):
 
             # 2. dygraph
             paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-                base.dygraph.to_variable(self.logits),
-                base.dygraph.to_variable(self.labels),
+                paddle.to_tensor(self.logits),
+                paddle.to_tensor(self.labels),
                 soft_label=True,
                 axis=self.axis,
-                weight=base.dygraph.to_variable(self.weight)
-                if self.weight is not None
-                else None,
+                weight=(
+                    paddle.to_tensor(self.weight)
+                    if self.weight is not None
+                    else None
+                ),
                 reduction=self.reduction,
             )
             dy_ret_value = paddle_loss_none_weight.numpy()
@@ -790,11 +799,11 @@ class CrossEntropyLoss(unittest.TestCase):
 
         # 2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight),
+            weight=paddle.to_tensor(self.weight),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -892,14 +901,16 @@ class CrossEntropyLoss(unittest.TestCase):
         # 2. dygraph
         paddle.disable_static()
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -991,12 +1002,12 @@ class CrossEntropyLoss(unittest.TestCase):
 
         # 2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight),
+            weight=paddle.to_tensor(self.weight),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1073,9 +1084,9 @@ class CrossEntropyLoss(unittest.TestCase):
         self.labels = np.zeros(self.shape, dtype=self.dtype)
         indices = np.random.randint(0, self.C, self.shape[:-1])
         for i in range(self.N):
-            self.labels[
-                i, np.arange(self.H), np.arange(self.W), indices[i]
-            ] = 1.0
+            self.labels[i, np.arange(self.H), np.arange(self.W), indices[i]] = (
+                1.0
+            )
         self.soft_labels = label_smooth(
             self.labels, self.C, epsilon=self.label_smoothing
         )
@@ -1098,14 +1109,16 @@ class CrossEntropyLoss(unittest.TestCase):
 
         # 2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1181,9 +1194,9 @@ class CrossEntropyLoss(unittest.TestCase):
         self.labels = np.zeros(self.shape, dtype=self.dtype)
         indices = np.random.randint(0, self.C, self.shape[:-1])
         for i in range(self.N):
-            self.labels[
-                i, np.arange(self.H), np.arange(self.W), indices[i]
-            ] = 1.0
+            self.labels[i, np.arange(self.H), np.arange(self.W), indices[i]] = (
+                1.0
+            )
         self.soft_labels = label_smooth(
             self.labels, self.C, epsilon=self.label_smoothing
         )
@@ -1206,12 +1219,12 @@ class CrossEntropyLoss(unittest.TestCase):
 
         # 2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight),
+            weight=paddle.to_tensor(self.weight),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1310,14 +1323,16 @@ class CrossEntropyLoss(unittest.TestCase):
         # 2. dygraph
         paddle.disable_static()
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=self.soft_label,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1408,14 +1423,16 @@ class CrossEntropyLoss(unittest.TestCase):
         # 2. dygraph
         paddle.disable_static()
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=self.soft_label,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1516,14 +1533,16 @@ class CrossEntropyLoss(unittest.TestCase):
 
         # 2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1622,14 +1641,16 @@ class CrossEntropyLoss(unittest.TestCase):
 
         # 2. dygraph
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
-            base.dygraph.to_variable(self.logits),
-            base.dygraph.to_variable(self.labels),
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=base.dygraph.to_variable(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1719,8 +1740,8 @@ class CrossEntropyLoss(unittest.TestCase):
                 axis=1, ignore_index=0
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -1768,8 +1789,8 @@ class CrossEntropyLoss(unittest.TestCase):
                 axis=1, ignore_index=-1
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -1821,13 +1842,13 @@ class CrossEntropyLoss(unittest.TestCase):
 
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np),
+                weight=paddle.to_tensor(weight_np),
                 axis=1,
                 ignore_index=0,
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -1849,11 +1870,11 @@ class CrossEntropyLoss(unittest.TestCase):
 
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np), ignore_index=255
+                weight=paddle.to_tensor(weight_np), ignore_index=255
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -1904,11 +1925,11 @@ class CrossEntropyLoss(unittest.TestCase):
 
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np), axis=1
+                weight=paddle.to_tensor(weight_np), axis=1
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -1958,11 +1979,11 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np), reduction='sum'
+                weight=paddle.to_tensor(weight_np), reduction='sum'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -2015,11 +2036,11 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np), reduction='none'
+                weight=paddle.to_tensor(weight_np), reduction='none'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             dy_ret_value = np.squeeze(dy_ret_value)
@@ -2070,9 +2091,9 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         with base.dygraph.guard():
             dy_ret = paddle.nn.functional.cross_entropy(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
-                weight=base.dygraph.to_variable(weight_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
+                weight=paddle.to_tensor(weight_np),
                 reduction='none',
             )
             dy_ret_value = dy_ret.numpy()
@@ -2114,8 +2135,8 @@ class CrossEntropyLoss(unittest.TestCase):
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss()
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -2157,8 +2178,8 @@ class CrossEntropyLoss(unittest.TestCase):
                 reduction='sum'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -2201,8 +2222,8 @@ class CrossEntropyLoss(unittest.TestCase):
                 reduction='none'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             dy_ret_value = np.squeeze(dy_ret_value)
@@ -2259,11 +2280,11 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np), reduction='none'
+                weight=paddle.to_tensor(weight_np), reduction='none'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             dy_ret_value = np.squeeze(dy_ret_value)
@@ -2323,13 +2344,13 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np),
+                weight=paddle.to_tensor(weight_np),
                 reduction='mean',
                 axis=1,
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -2354,11 +2375,11 @@ class CrossEntropyLoss(unittest.TestCase):
         weight_np = np.random.random([C]).astype(self.dtype)
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np), ignore_index=255
+                weight=paddle.to_tensor(weight_np), ignore_index=255
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -2412,11 +2433,11 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np), reduction='mean'
+                weight=paddle.to_tensor(weight_np), reduction='mean'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -2473,11 +2494,11 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         with base.dygraph.guard():
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
-                weight=base.dygraph.to_variable(weight_np), reduction='sum'
+                weight=paddle.to_tensor(weight_np), reduction='sum'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -2531,8 +2552,8 @@ class CrossEntropyLoss(unittest.TestCase):
                 reduction='none'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             dy_ret_value = np.squeeze(dy_ret_value)
@@ -2585,8 +2606,8 @@ class CrossEntropyLoss(unittest.TestCase):
                 reduction='mean'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
@@ -2640,8 +2661,8 @@ class CrossEntropyLoss(unittest.TestCase):
                 reduction='sum'
             )
             dy_ret = cross_entropy_loss(
-                base.dygraph.to_variable(input_np),
-                base.dygraph.to_variable(label_np),
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
             )
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)

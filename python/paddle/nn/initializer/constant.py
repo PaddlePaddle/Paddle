@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
+import paddle
 from paddle import _C_ops
 
 from ...base import core, framework
@@ -35,13 +37,17 @@ class ConstantInitializer(Initializer):
 
     """
 
-    def __init__(self, value=0.0, force_cpu=False):
+    def __init__(self, value: float = 0.0, force_cpu: bool = False) -> None:
         assert value is not None
         super().__init__()
         self._value = value
         self._force_cpu = force_cpu
 
-    def forward(self, var, block=None):
+    def forward(
+        self,
+        var: paddle.Tensor,
+        block: paddle.pir.Block | None = None,
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with constant.
 
         Args:
@@ -52,7 +58,6 @@ class ConstantInitializer(Initializer):
         Returns:
             The initialization op
         """
-        import paddle
 
         block = self._check_block(block)
 
@@ -135,7 +140,7 @@ class Constant(ConstantInitializer):
 
     """
 
-    def __init__(self, value=0.0):
+    def __init__(self, value: float = 0.0) -> None:
         if value is None:
             raise ValueError("value must not be none.")
         super().__init__(value=value, force_cpu=False)

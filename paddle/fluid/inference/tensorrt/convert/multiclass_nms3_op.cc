@@ -13,9 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class MultiClassNMS3OpConverter : public OpConverter {
  public:
@@ -102,10 +100,8 @@ class MultiClassNMS3OpConverter : public OpConverter {
         {"clipBoxes", &clip_boxes, nvinfer1::PluginFieldType::kINT32, 1},
     };
 
-    nvinfer1::PluginFieldCollection* plugin_collections =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_collections) +
-                   fields.size() * sizeof(nvinfer1::PluginField)));
+    std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collections(
+        new nvinfer1::PluginFieldCollection);
     plugin_collections->nbFields = static_cast<int>(fields.size());
     plugin_collections->fields = fields.data();
     std::string nms_plugin_name = "BatchedNMS_TRT";
@@ -114,9 +110,9 @@ class MultiClassNMS3OpConverter : public OpConverter {
     }
     auto creator =
         GetPluginRegistry()->getPluginCreator(nms_plugin_name.c_str(), "1");
-    auto batch_nms_plugin =
-        creator->createPlugin(nms_plugin_name.c_str(), plugin_collections);
-    free(plugin_collections);
+    auto batch_nms_plugin = creator->createPlugin(nms_plugin_name.c_str(),
+                                                  plugin_collections.get());
+    plugin_collections.reset();
 
     auto batch_nms_layer = engine_->network()->addPluginV2(
         batch_nms_inputs.data(), batch_nms_inputs.size(), *batch_nms_plugin);
@@ -163,17 +159,15 @@ class MultiClassNMS3OpConverter : public OpConverter {
         nvinfer1::Weights{
             nvinfer1::DataType::kINT32, static_cast<void*>(index.data()), 1});
 
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         batch_nms_layer, "multiclass_nms3", {rois_num_name}, test_mode);
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         nms_concat_layer, "multiclass_nms3", {output_name}, test_mode);
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         constant_layer, "multiclass_nms3", {index_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(multiclass_nms3, MultiClassNMS3OpConverter);

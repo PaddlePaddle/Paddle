@@ -17,10 +17,17 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
+
+
+def api_wrapper(logits, labels):
+    return paddle._C_ops.hinge_loss(logits, labels)
+
 
 class TestHingeLossOp(OpTest):
     def setUp(self):
         self.op_type = 'hinge_loss'
+        self.python_api = api_wrapper
         samples_num = 100
         logits = np.random.uniform(-10, 10, (samples_num, 1)).astype('float32')
         labels = np.random.randint(0, 2, (samples_num, 1)).astype('float32')

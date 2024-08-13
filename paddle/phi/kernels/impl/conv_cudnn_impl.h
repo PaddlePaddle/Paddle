@@ -30,9 +30,9 @@
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 
-PD_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 PD_DECLARE_int64(conv_workspace_size_limit);
-PD_DECLARE_bool(cudnn_exhaustive_search);
+COMMON_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 
@@ -52,7 +52,7 @@ static inline bool IsVoltaOrLater(const phi::GPUContext& dev_ctx) {
 //     case phi::DataLayout::NDHWC:
 //       return CUDNN_TENSOR_NHWC;  // add, liyamei
 //     default:
-//       PADDLE_THROW(phi::errors::Unimplemented(
+//       PADDLE_THROW(common::errors::Unimplemented(
 //           "CUDNN has no equivalent dataLayout for input order."));
 //   }
 //   return CUDNN_TENSOR_NCHW;

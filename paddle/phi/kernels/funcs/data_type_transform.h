@@ -28,7 +28,7 @@ phi::DenseTensor TransDataType(const Context& dev_ctx,
                                const phi::DenseTensor& x,
                                DataType dtype) {
   VLOG(3) << "TransDataType "
-          << "src type:" << x.dtype() << "; dst typoe: " << dtype;
+          << "src type:" << x.dtype() << "; dst type: " << dtype;
 
   switch (x.dtype()) {
     case DataType::FLOAT32:
@@ -50,7 +50,7 @@ phi::DenseTensor TransDataType(const Context& dev_ctx,
     case DataType::UINT8:
       return phi::Cast<uint8_t>(dev_ctx, x, dtype);
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
           x.dtype()));
   }

@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/send_v2_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class SendOpV2 : public framework::OperatorWithKernel {
  public:
@@ -28,12 +27,12 @@ class SendOpV2 : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         peer,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The peer (%d) for send_v2 op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for send_v2 op must be non-negative.", ring_id));
   }
 
@@ -41,8 +40,8 @@ class SendOpV2 : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const framework::Variable* var = ctx.InputVar("X");
-    if (var->IsType<framework::LoDTensorArray>()) {
-      auto t_arr = var->Get<framework::LoDTensorArray>();
+    if (var->IsType<phi::TensorArray>()) {
+      auto t_arr = var->Get<phi::TensorArray>();
       // NOTE(sandyhouse): Support an empty tensor array as Input.
       // And set the kernel type is float.
       if (t_arr.empty()) {
@@ -78,11 +77,9 @@ Reference: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.h
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(send_v2, ops::SendOpV2, ops::SendOpV2Maker);
 
@@ -94,4 +91,4 @@ PD_REGISTER_STRUCT_KERNEL(send_v2,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

@@ -31,16 +31,16 @@ std::string GetMasterEndpoint() {
   const char* master_endpoint = std::getenv("PADDLE_MASTER");
   if (!master_endpoint) {
     const char* trainer_endpoints = std::getenv("PADDLE_TRAINER_ENDPOINTS");
-    PADDLE_ENFORCE_NOT_NULL(
-        trainer_endpoints,
-        phi::errors::NotFound("The environment variable "
-                              "'PADDLE_TRAINER_ENDPOINTS' cannot be found."));
+    PADDLE_ENFORCE_NOT_NULL(trainer_endpoints,
+                            common::errors::NotFound(
+                                "The environment variable "
+                                "'PADDLE_TRAINER_ENDPOINTS' cannot be found."));
     return str_split(trainer_endpoints, ",")[0];
   }
 
   PADDLE_ENFORCE_NOT_NULL(
       master_endpoint,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The environment variable 'PADDLE_MASTER' cannot be found."));
   return master_endpoint;
 }

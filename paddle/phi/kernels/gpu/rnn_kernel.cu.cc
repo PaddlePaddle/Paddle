@@ -39,6 +39,31 @@ void RNNInferece(bool has_seq_length,
                  T *last_c_data,
                  DenseTensor *workspace_data,
                  size_t workspace_size) {
+#if CUDNN_VERSION >= 90000
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      phi::dynload::cudnnRNNForward(handle,
+                                    rnn->rnn_desc(),
+                                    CUDNN_FWD_MODE_INFERENCE,
+                                    nullptr,
+                                    rnn->x_seq_desc(),
+                                    x_data,
+                                    rnn->y_seq_desc(),
+                                    out_data,
+                                    rnn->init_h_desc(),
+                                    init_h_data,
+                                    last_h_data,
+                                    rnn->init_c_desc(),
+                                    init_c_data,
+                                    last_c_data,
+                                    rnn->weights_size(),
+                                    w_data,
+                                    workspace_size,
+                                    workspace_data->data<uint8_t>(),
+                                    0,
+                                    nullptr));
+
+#else
+
   if (!has_seq_length) {
 // for inference
 // This interface is used when the input/output is unpadded.
@@ -118,12 +143,14 @@ void RNNInferece(bool has_seq_length,
         workspace_size));
 #else
     // CUDNN VERSION has to >=7.2.1
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "The padded input is supported by "
         "cudnnRNNForwardInferenceEx, but it only works when "
         "the version of cudnn is larger than 7.2.1"));
 #endif
   }
+
+#endif  // end CUDNN_VERSION >= 90000
 }
 
 template <typename T, typename Context>
@@ -166,7 +193,7 @@ void RnnKernel(const Context &dev_ctx,
     rnn_mode = CUDNN_RNN_TANH;
 #endif
   else
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "rnn_mode should be LSTM, GRU, RNN_RELU or RNN_TANH, but received: "
         "%s.",
         mode));
@@ -197,10 +224,10 @@ void RnnKernel(const Context &dev_ctx,
 
   bool has_seq_length = sequence_length.is_initialized();
 #ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_EQ(
-      has_seq_length,
-      false,
-      phi::errors::InvalidArgument("ROCm do not support SequenceLength yet."));
+  PADDLE_ENFORCE_EQ(has_seq_length,
+                    false,
+                    common::errors::InvalidArgument(
+                        "ROCm do not support SequenceLength yet."));
 #endif
   std::vector<int> SequenceLength;
   if (has_seq_length) {
@@ -305,6 +332,30 @@ void RnnKernel(const Context &dev_ctx,
                 &workspace_data_,
                 workspace_size);
   } else {
+#if CUDNN_VERSION >= 90000
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cudnnRNNForward(handle,
+                                      rnn.rnn_desc(),
+                                      CUDNN_FWD_MODE_TRAINING,
+                                      nullptr,
+                                      rnn.x_seq_desc(),
+                                      x_data,
+                                      rnn.y_seq_desc(),
+                                      out_data,
+                                      rnn.init_h_desc(),
+                                      init_h_data,
+                                      last_h_data,
+                                      rnn.init_c_desc(),
+                                      init_c_data,
+                                      last_c_data,
+                                      rnn.weights_size(),
+                                      w_data,
+                                      workspace_size,
+                                      workspace_data_.data<uint8_t>(),
+                                      reserve_size,
+                                      reserve_data));
+#else
+
     if (!has_seq_length) {
 // for train
 // This interface is used when the input/output is unpadded.
@@ -389,12 +440,13 @@ void RnnKernel(const Context &dev_ctx,
           reserve_data,
           reserve_size));
 #else
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "The padded input is supported by "
           "cudnnRNNForwardTrainingEx, but it only works when "
           "the version of cudnn is larger than 7.2.1"));
 #endif
     }
+#endif  // end CUDNN_VERSION >= 90000
   }
 }
 

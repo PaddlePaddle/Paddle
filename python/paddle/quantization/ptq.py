@@ -11,14 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
+from typing import TYPE_CHECKING
 
 from paddle.distributed import fleet
-from paddle.nn import Layer
 
-from .config import QuantConfig
 from .quantize import Quantization
+
+if TYPE_CHECKING:
+    from paddle.nn import Layer
+
+    from .config import QuantConfig
 
 
 class PTQ(Quantization):
@@ -26,7 +31,7 @@ class PTQ(Quantization):
     Applying post training quantization to the model.
     """
 
-    def __init__(self, config: QuantConfig):
+    def __init__(self, config: QuantConfig) -> None:
         super().__init__(config)
 
     def _is_parallel_training(self):
@@ -38,7 +43,7 @@ class PTQ(Quantization):
         except Exception:  # fleet is not initialized
             return False
 
-    def quantize(self, model: Layer, inplace=False):
+    def quantize(self, model: Layer, inplace: bool = False) -> Layer:
         r"""
         Create a model for post-training quantization.
 
@@ -118,7 +123,7 @@ class PTQ(Quantization):
             _model.eval()
         assert (
             not model.training
-        ), "Post-Training Quantization shoud not work on training models. Please set evaluation mode by model.eval()."
+        ), "Post-Training Quantization should not work on training models. Please set evaluation mode by model.eval()."
         self._config._specify(_model)
         self._convert_to_quant_layers(_model, self._config)
         self._insert_activation_observers(_model, self._config)

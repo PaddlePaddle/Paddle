@@ -34,7 +34,6 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/utils/benchmark.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "test/cpp/inference/api/config_printer.h"
 #include "test/cpp/inference/test_helper.h"
@@ -69,9 +68,6 @@ PD_DEFINE_int32(num_threads,
 PD_DEFINE_bool(use_analysis,
                true,
                "Running the inference program in analysis mode.");
-PD_DEFINE_bool(record_benchmark,
-               false,
-               "Record benchmark after profiling the model");
 PD_DEFINE_double(accuracy, 1e-3, "Result Accuracy.");
 PD_DEFINE_double(quantized_accuracy, 2e-2, "Result Quantized Accuracy.");
 PD_DEFINE_bool(zero_copy, false, "Use ZeroCopy to speedup Feed/Fetch.");
@@ -107,7 +103,7 @@ namespace paddle {
 namespace inference {
 
 using ::paddle::framework::proto::VarType;
-using float16 = ::paddle::platform::float16;
+using float16 = ::phi::dtype::float16;
 
 template <typename T>
 constexpr ::paddle::PaddleDType GetPaddleDType();
@@ -204,7 +200,7 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   auto all_test_data_size = iterations * test_data_batch_size;
   PADDLE_ENFORCE_LE(static_cast<size_t>(num_images),
                     all_test_data_size,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The requested quantization warmup data size must be "
                         "lower or equal to the test data size. But received"
                         "warmup size is %d and test data size is %d. Please "
@@ -315,7 +311,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       COMPARE(PaddleDType::UINT8, uint8_t, EXPECT_EQ);
       COMPARE(PaddleDType::INT8, int8_t, EXPECT_EQ);
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "VarMessageToVarType: Unsupported dtype %d",
             static_cast<int>(out.dtype)));
     }
@@ -354,7 +350,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       COMPARE(PaddleDType::UINT8, uint8_t, EXPECT_EQ);
       COMPARE(PaddleDType::INT8, int8_t, EXPECT_EQ);
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "VarMessageToVarType: Unsupported dtype %d",
             static_cast<int>(out.dtype)));
     }
@@ -400,7 +396,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "In SetFakeImageInput, expected test_all_data = false, "
                         "but now test_all_data=",
                         FLAGS_test_all_data));
@@ -419,7 +415,7 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
     PADDLE_ENFORCE_EQ(
         feed_names->size(),
         feed_target_shapes.size(),
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of feeds_names and size of "
             "feed_target_shapes must be equal, but now feeds_names "
             "size is %d and feed_target_shapes size is %d",
@@ -594,14 +590,6 @@ void PredictionRun(PaddlePredictor *predictor,
 
   if (sample_latency != nullptr)
     *sample_latency = batch_latency / FLAGS_batch_size;
-
-  if (FLAGS_record_benchmark) {
-    Benchmark benchmark;
-    benchmark.SetName(FLAGS_model_name);
-    benchmark.SetBatchSize(FLAGS_batch_size);
-    benchmark.SetLatency(batch_latency);
-    benchmark.PersistToFile("benchmark_record.txt");
-  }
 }
 
 void TestOneThreadPrediction(
@@ -670,7 +658,7 @@ void SummarizeAccuracy(float avg_acc_ref, float avg_acc, int compared_idx) {
   PADDLE_ENFORCE_LE(
       compared_idx,
       2,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The compared_idx should be <= 2. But received compared_idx = %d. "
           "For top1 accuracy, set compared_idx = 1; For top5 accuracy or mean "
           "Average Precision (mAP), set compared_idx = 2.",
@@ -678,7 +666,7 @@ void SummarizeAccuracy(float avg_acc_ref, float avg_acc, int compared_idx) {
   PADDLE_ENFORCE_GE(
       compared_idx,
       1,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The compared_idx should be >= 1. But received compared_idx = %d. "
           "For top1 accuracy, set compared_idx = 1; For top5 accuracy or mean "
           "Average Precision (mAP), set compared_idx = 2.",
@@ -717,7 +705,7 @@ float CompareAccuracyOne(
     int compared_idx) {
   PADDLE_ENFORCE_GT(output_slots.size(),
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The accuracy vector is empty. The accuracy vector "
                         "size should be bigger than 0"));
 
@@ -729,7 +717,7 @@ float CompareAccuracyOne(
         PADDLE_ENFORCE_GE(
             output_slots[i].size(),
             2UL,
-            platform::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "To achieve top 1 accuracy, output_slots size "
                 "must be bigger than or equal to 2, but now the size is %d",
                 output_slots[i].size()));
@@ -738,7 +726,7 @@ float CompareAccuracyOne(
         PADDLE_ENFORCE_GE(
             output_slots[i].size(),
             3UL,
-            platform::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "To achieve top 5 accuracy or mean Average "
                 "Precision (mAP), output_slots size must be "
                 "bigger than or equal to 3, but now the size is %d",
@@ -822,12 +810,12 @@ void CompareNativeAndAnalysis(
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
   PADDLE_ENFORCE_GT(native_outputs.size(),
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The native outputs is empty. The native outputs "
                         "vector size must be bigger than 0"));
   PADDLE_ENFORCE_GT(analysis_outputs.size(),
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The analysis outputs is empty. The analysis outputs "
                         "vector size must be bigger than 0"));
   CompareResult(analysis_outputs.back(), native_outputs.back());
@@ -841,11 +829,11 @@ void CompareQuantizedAndAnalysis(
   PADDLE_ENFORCE_GT(
       inputs.size(),
       0,
-      platform::errors::PreconditionNotMet("There is no input data provided."));
+      common::errors::PreconditionNotMet("There is no input data provided."));
   PADDLE_ENFORCE_EQ(
       inputs[0][0].shape[0],
       FLAGS_batch_size,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input data has to be packed batch by batch. The batchsize is set to "
           "%d, but the real input is packed with batchsize = %d",
           FLAGS_batch_size,
@@ -897,7 +885,7 @@ void CompareBFloat16AndAnalysis(
   PADDLE_ENFORCE_EQ(
       inputs[0][0].shape[0],
       FLAGS_batch_size,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input data has to be packed batch by batch. The batchsize is set to "
           "%d, but the real input is packed with batchsize = %d",
           FLAGS_batch_size,
@@ -945,7 +933,7 @@ void CompareAnalysisAndAnalysis(
   PADDLE_ENFORCE_EQ(
       inputs[0][0].shape[0],
       FLAGS_batch_size,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input data has to be packed batch by batch. The batchsize is set to "
           "%d, but the real input is packed with batchsize = %d",
           FLAGS_batch_size,
@@ -1167,7 +1155,7 @@ void ConvertFP32toFP16(::paddle::PaddleTensor &tensor  // NOLINT
   PADDLE_ENFORCE_EQ(
       tensor.dtype,
       PaddleDType::FLOAT32,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The tensor dtype is not float32, only support float32 as input"));
   float *fp32_data = reinterpret_cast<float *>(tensor.data.data());
   float16 *fp16_data = new float16[num];
@@ -1188,7 +1176,7 @@ void ConvertFP16toFP32(::paddle::PaddleTensor &tensor  // NOLINT
   PADDLE_ENFORCE_EQ(
       tensor.dtype,
       PaddleDType::FLOAT16,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The tensor dtype is not float16, only support float16 as input"));
   float16 *fp16_data = reinterpret_cast<float16 *>(tensor.data.data());
   float *fp32_data = new float[num];

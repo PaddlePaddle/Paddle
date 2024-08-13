@@ -45,5 +45,7 @@ PD_REGISTER_KERNEL(max_raw,
                    int,
                    int64_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::float8_e4m3fn,
+                   phi::dtype::float8_e5m2) {}
 #endif

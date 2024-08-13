@@ -42,7 +42,7 @@ Node *GetInputNode(const Node *op, const std::string &name) {
   }
 
   PADDLE_ENFORCE_NOT_NULL(
-      out, platform::errors::InvalidArgument("Input's name cannot be found."));
+      out, common::errors::InvalidArgument("Input's name cannot be found."));
 
   return out;
 }
@@ -58,7 +58,7 @@ Node *GetOutputNode(const Node *op, const std::string &name) {
   }
 
   PADDLE_ENFORCE_NOT_NULL(
-      out, platform::errors::InvalidArgument("Output's name cannot be found."));
+      out, common::errors::InvalidArgument("Output's name cannot be found."));
 
   return out;
 }
@@ -112,7 +112,7 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
       fuse_adamw_op_desc.SetInput("SkipUpdate", {});
     }
 
-    for (auto &name : config.repalce_outputs_name) {
+    for (auto &name : config.replace_outputs_name) {
       fuse_adamw_op_desc.SetOutput(name, GetNodeNames(inout_node_vectors[i]));
       i++;
     }
@@ -151,7 +151,7 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
         IR_NODE_LINK_TO(inout_node_vectors[j][k], fuse_adamw_node);
       }
       for (; j < config.replace_inputs_name.size() +
-                     config.repalce_outputs_name.size();
+                     config.replace_outputs_name.size();
            j++) {
         IR_NODE_LINK_TO(fuse_adamw_node, inout_node_vectors[j][k]);
       }
@@ -254,7 +254,7 @@ ir::Graph *FuseAdamWPass::FuseAdamWFun(ir::Graph *graph,
                                        const bool with_decay,
                                        const bool multi_precision) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
 
   VLOG(4) << "handle fuse AdadW";
 

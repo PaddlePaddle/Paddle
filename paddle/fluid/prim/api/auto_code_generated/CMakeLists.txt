@@ -1,14 +1,12 @@
-set(api_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml"
-)
+set(api_yaml_path "${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/ops.parsed.yaml")
 set(legacy_api_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml"
+    "${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_ops.parsed.yaml"
 )
 set(api_compat_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml")
 set(api_prim_yaml_path "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/api.yaml")
 set(api_version_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml")
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_version.yaml")
 set(tmp_eager_prim_api_cc_path
     "${PADDLE_SOURCE_DIR}/paddle/fluid/prim/api/generated_prim/eager_prim_api.cc.tmp"
 )
@@ -93,7 +91,7 @@ set(tmp_eager_tensor_operants_h_path ${eager_tensor_operants_h_path}.tmp)
 set(tmp_static_tensor_operants_cc_path ${static_tensor_operants_cc_path}.tmp)
 set(tmp_static_tensor_operants_h_path ${static_tensor_operants_h_path}.tmp)
 set(tensor_api_yaml_path
-    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/tensor_operants.yaml)
+    ${PADDLE_SOURCE_DIR}/paddle/phi/api/lib/tensor_operants.yaml)
 
 message("Prim tensor operants code generator")
 execute_process(

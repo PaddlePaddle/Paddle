@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
 
 #include "test/cpp/pir/tools/test_pir_utils.h"
 
@@ -25,7 +25,7 @@ using namespace symbol;  // NOLINT
 
 namespace {
 DimExpr CreateExampleDimExpr() {
-  DimExprBuilder dim_expr_builder{nullptr};
+  DimExprBuilder dim_expr_builder;
   DimExpr sym0 = DimExpr("S0");
   DimExpr sym1 = DimExpr("S1");
   DimExpr constant = DimExpr(2);
@@ -76,7 +76,10 @@ TEST(DimExprUtil, MakeGetterDimExpr4SymbolName) {
   using ShapeSymbolBinding = cinn::dialect::GenerateShapeOp::ShapeSymbolBinding;
   symbol_bindings.emplace_back(ShapeSymbolBinding{"Symbol", 0, 0});
   const auto& dim_expr = CreateExampleDimExpr();
-  const auto& shape_or_data_dim_exprs = symbol::ShapeOrDataDimExprs({dim_expr});
+
+  const auto& shape_or_data_dim_exprs = symbol::ShapeOrDataDimExprs(
+      symbol::TensorShapeOrDataDimExprs({dim_expr}));
+
   const auto& DimExpr4SymbolName = MakeGetterDimExpr4SymbolName(
       symbol_bindings,
       [&](int in_tensor_idx) -> const symbol::ShapeOrDataDimExprs& {

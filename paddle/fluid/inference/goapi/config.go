@@ -505,44 +505,6 @@ func (config *Config) TensorrtDlaEnabled() bool {
 }
 
 ///
-/// \brief Turn on the usage of Lite sub-graph engine.
-///
-/// \param precision Precion used in Lite sub-graph engine.
-/// \param zeroCopy Set the zero copy mode.
-/// \param passesFilter Set the passes used in Lite sub-graph engine.
-/// \param opsFilter Operators not supported by Lite.
-///
-func (config *Config) EnableLiteEngine(precision Precision, zeroCopy bool, passesFilter []string, opsFilter []string) {
-	passesFilterNum := uint(len(passesFilter))
-	var passesFilterBuf = make([]*C.char, passesFilterNum+1)
-	for i, _ := range passesFilter {
-		char := C.CString(passesFilter[i])
-		defer C.free(unsafe.Pointer(char))
-		passesFilterBuf[i] = (*C.char)(unsafe.Pointer(char))
-	}
-
-	opsFilterNum := uint(len(opsFilter))
-	var opsFilterBuf = make([]*C.char, passesFilterNum+1)
-	for i, _ := range opsFilter {
-		char := C.CString(opsFilter[i])
-		defer C.free(unsafe.Pointer(char))
-		opsFilterBuf[i] = (*C.char)(unsafe.Pointer(char))
-	}
-
-	C.PD_ConfigEnableLiteEngine(config.c, C.int32_t(precision), cvtGoBoolToPD(zeroCopy), C.size_t(passesFilterNum), (**C.char)(unsafe.Pointer(&passesFilterBuf[0])), C.size_t(opsFilterNum), (**C.char)(unsafe.Pointer(&opsFilterBuf[0])))
-}
-
-///
-/// \brief A boolean state indicating whether the Lite sub-graph engine is
-/// used.
-///
-/// \return bool whether the Lite sub-graph engine is used.
-///
-func (config *Config) LiteEngineEnabled() bool {
-	return cvtPDBoolToGo(C.PD_ConfigLiteEngineEnabled(config.c))
-}
-
-///
 /// \brief Control whether to debug IR graph analysis phase.
 /// This will generate DOT files for visualizing the computation graph after
 /// each analysis pass applied.
@@ -554,14 +516,14 @@ func (config *Config) SwitchIrDebug(x bool) {
 }
 
 ///
-/// \brief Turn on MKLDNN.
+/// \brief Turn on OneDNN.
 ///
 func (config *Config) EnableMKLDNN() {
 	C.PD_ConfigEnableMKLDNN(config.c)
 }
 
 ///
-/// \brief Set the cache capacity of different input shapes for MKLDNN.
+/// \brief Set the cache capacity of different input shapes for OneDNN.
 /// Default value 0 means not caching any shape.
 /// Please see MKL-DNN Data Caching Design Document:
 /// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
@@ -573,9 +535,9 @@ func (config *Config) SetMkldnnCacheCapacity(capacity int32) {
 }
 
 ///
-/// \brief A boolean state telling whether to use the MKLDNN.
+/// \brief A boolean state telling whether to use the OneDNN.
 ///
-/// \return bool Whether to use the MKLDNN.
+/// \return bool Whether to use the OneDNN.
 ///
 func (config *Config) MkldnnEnabled() bool {
 	return cvtPDBoolToGo(C.PD_ConfigMkldnnEnabled(config.c))
@@ -609,7 +571,7 @@ func (config *Config) CpuMathLibraryNumThreads() int32 {
 // NativeConfig ToNativeConfig() const;
 
 ///
-/// \brief Specify the operator type list to use MKLDNN acceleration.
+/// \brief Specify the operator type list to use OneDNN acceleration.
 ///
 /// \param opList The operator type list.
 ///
@@ -627,23 +589,23 @@ func (config *Config) SetMKLDNNOp(opList []string) {
 }
 
 ///
-/// \brief Turn on MKLDNN quantization.
+/// \brief Turn on OneDNN quantization.
 ///
 func (config *Config) EnableMkldnnQuantizer() {
 	C.PD_ConfigEnableMkldnnQuantizer(config.c)
 }
 
 ///
-/// \brief Turn on MKLDNN bfloat16.
+/// \brief Turn on OneDNN bfloat16.
 ///
 func (config *Config) EnableMkldnnBfloat16() {
 	C.PD_ConfigEnableMkldnnBfloat16(config.c)
 }
 
 ///
-/// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
+/// \brief A boolean state telling whether to use the OneDNN Bfloat16.
 ///
-/// \return bool Whether to use the MKLDNN Bfloat16.
+/// \return bool Whether to use the OneDNN Bfloat16.
 ///
 func (config *Config) MkldnnBfloat16Enabled() bool {
 	return cvtPDBoolToGo(C.PD_ConfigMkldnnBfloat16Enabled(config.c))
@@ -677,9 +639,9 @@ func (config *Config) ThreadLocalStreamEnabled() bool {
 }
 
 ///
-/// \brief A boolean state telling whether the MKLDNN quantization is enabled.
+/// \brief A boolean state telling whether the OneDNN quantization is enabled.
 ///
-/// \return bool Whether the MKLDNN quantization is enabled.
+/// \return bool Whether the OneDNN quantization is enabled.
 ///
 func (config *Config) MkldnnQuantizerEnabled() bool {
 	return cvtPDBoolToGo(C.PD_ConfigMkldnnQuantizerEnabled(config.c))

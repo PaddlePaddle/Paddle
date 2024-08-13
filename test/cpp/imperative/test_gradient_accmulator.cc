@@ -20,12 +20,9 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace imperative = paddle::imperative;
-namespace platform = paddle::platform;
-namespace framework = paddle::framework;
 namespace paddle {
 namespace imperative {
 
@@ -80,13 +77,13 @@ TEST(Test__SelectedRowsMerge_Test, SelectedRowsMerge) {
 }
 
 template <typename Place1, typename Place2, typename T>
-int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
+int TensorAddTest(Place1 place1, Place2 place2, T t1, T t2) {
   framework::Variable var1;
   framework::Variable var2;
   std::vector<T> src_data(10, t1);
   std::vector<T> dst_data(10, t2);
   std::vector<T> result;
-  platform::CPUPlace src_place;
+  phi::CPUPlace src_place;
   for (unsigned int i = 0; i < 10; i++) {
     result.emplace_back(src_data[i] + dst_data[i]);
   }
@@ -99,7 +96,7 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   auto* src_mutable = src->mutable_data<T>(place1);
   auto* dst_mutable = dst->mutable_data<T>(place2);
 
-  if (!std::is_same<Place1, platform::CUDAPlace>::value) {
+  if (!std::is_same<Place1, phi::GPUPlace>::value) {
     paddle::memory::Copy(place1,
                          src_mutable,
                          src_place,
@@ -116,7 +113,7 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
 #endif
   }
 
-  if (!std::is_same<Place2, platform::CUDAPlace>::value) {
+  if (!std::is_same<Place2, phi::GPUPlace>::value) {
     paddle::memory::Copy(place2,
                          dst_mutable,
                          src_place,
@@ -134,7 +131,7 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
   }
   imperative::TensorAdd<framework::Variable>(var1, &var2);
   phi::DenseTensor rlt;
-  platform::CPUPlace rlt_place;
+  phi::CPUPlace rlt_place;
   framework::TensorCopySync(*dst, rlt_place, &rlt);
 
   for (unsigned int i = 0; i < rlt.numel(); i++) {
@@ -146,117 +143,117 @@ int TensorddTest(Place1 place1, Place2 place2, T t1, T t2) {
 
 TEST(test_add_functor, add_functor) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDAPlace gpu_place(0);
+  phi::GPUPlace gpu_place(0);
 #endif
-  platform::CPUPlace cpu_place;
+  phi::CPUPlace cpu_place;
 
   int cpu_res = 1;
 
   // float32
-  cpu_res = TensorddTest(
+  cpu_res = TensorAddTest(
       cpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(cpu_res, 0);
   // float16
-  cpu_res = TensorddTest(cpu_place,
-                         cpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  cpu_res = TensorAddTest(cpu_place,
+                          cpu_place,
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(cpu_res, 0);
   // double
-  cpu_res = TensorddTest(
+  cpu_res = TensorAddTest(
       cpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(cpu_res, 0);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   int gpu_res = 1;
-  gpu_res = TensorddTest(gpu_place, gpu_place, 1.0, 0.0);
+  gpu_res = TensorAddTest(gpu_place, gpu_place, 1.0, 0.0);
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(
+  gpu_res = TensorAddTest(
       gpu_place, gpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(gpu_res, 0);
 
   // normal
-  gpu_res = TensorddTest(
+  gpu_res = TensorAddTest(
       gpu_place, gpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(gpu_place,
-                         gpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  gpu_res = TensorAddTest(gpu_place,
+                          gpu_place,
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
   // different places
-  gpu_res = TensorddTest(
+  gpu_res = TensorAddTest(
       cpu_place, gpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(
+  gpu_res = TensorAddTest(
       gpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(cpu_place,
-                         gpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  gpu_res = TensorAddTest(cpu_place,
+                          gpu_place,
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
-  gpu_res = TensorddTest(gpu_place,
-                         cpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  gpu_res = TensorAddTest(gpu_place,
+                          cpu_place,
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
 #endif
 
 #ifdef PADDLE_WITH_XPU
-  platform::XPUPlace xpu_place(0);
+  phi::XPUPlace xpu_place(0);
   int xpu_res = 1;
   // normal
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       xpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(xpu_place,
-                         xpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  xpu_res = TensorAddTest(xpu_place,
+                          xpu_place,
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       xpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
   // different places
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       cpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       xpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(cpu_place,
-                         xpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  xpu_res = TensorAddTest(cpu_place,
+                          xpu_place,
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(xpu_place,
-                         cpu_place,
-                         static_cast<platform::float16>(1.0),
-                         static_cast<platform::float16>(2.0));
+  xpu_res = TensorAddTest(xpu_place,
+                          cpu_place,
+                          static_cast<phi::dtype::float16>(1.0),
+                          static_cast<phi::dtype::float16>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       cpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
-  xpu_res = TensorddTest(
+  xpu_res = TensorAddTest(
       xpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(xpu_res, 0);
 #endif
 }
 
-TEST(test_add_functor, execption) {
-  platform::CUDAPinnedPlace cuda_pinned_place;
-  platform::CUDAPlace cuda_place(0);
-  platform::CPUPlace cpu_place;
+TEST(test_add_functor, exception) {
+  phi::GPUPinnedPlace cuda_pinned_place;
+  phi::GPUPlace cuda_place(0);
+  phi::CPUPlace cpu_place;
 
-  ASSERT_ANY_THROW(TensorddTest(cpu_place, cpu_place, 1, 0));
+  ASSERT_ANY_THROW(TensorAddTest(cpu_place, cpu_place, 1, 0));
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   ASSERT_ANY_THROW(
-      TensorddTest(cuda_pinned_place, cuda_pinned_place, 1.0, 0.0));
-  ASSERT_ANY_THROW(TensorddTest(cuda_pinned_place,
-                                cuda_pinned_place,
-                                static_cast<platform::float16>(1.0),
-                                static_cast<platform::float16>(2.0)));
+      TensorAddTest(cuda_pinned_place, cuda_pinned_place, 1.0, 0.0));
+  ASSERT_ANY_THROW(TensorAddTest(cuda_pinned_place,
+                                 cuda_pinned_place,
+                                 static_cast<phi::dtype::float16>(1.0),
+                                 static_cast<phi::dtype::float16>(2.0)));
 #endif
 }
 
@@ -289,9 +286,9 @@ static bool IsEqualVar(const framework::Variable& var1,
 
   if (var1.IsType<phi::DenseTensor>()) {
     framework::TensorCopySync(
-        var1.Get<phi::DenseTensor>(), platform::CPUPlace(), &t1);
+        var1.Get<phi::DenseTensor>(), phi::CPUPlace(), &t1);
     framework::TensorCopySync(
-        var2.Get<phi::DenseTensor>(), platform::CPUPlace(), &t2);
+        var2.Get<phi::DenseTensor>(), phi::CPUPlace(), &t2);
   } else {
     auto& s1 = var1.Get<phi::SelectedRows>();
     auto& s2 = var2.Get<phi::SelectedRows>();
@@ -312,9 +309,9 @@ static bool IsEqualVar(const framework::Variable& var1,
     }
 
     framework::TensorCopySync(
-        var1.Get<phi::SelectedRows>().value(), platform::CPUPlace(), &t1);
+        var1.Get<phi::SelectedRows>().value(), phi::CPUPlace(), &t1);
     framework::TensorCopySync(
-        var2.Get<phi::SelectedRows>().value(), platform::CPUPlace(), &t2);
+        var2.Get<phi::SelectedRows>().value(), phi::CPUPlace(), &t2);
   }
 
   if (t1.type() != t2.type() || t1.dims() != t2.dims()) {
@@ -331,13 +328,13 @@ static bool IsEqualVar(const framework::Variable& var1,
 }
 
 template <typename T>
-static framework::Variable RandomTensor(const framework::DDim& dims,
-                                        const platform::Place& place,
+static framework::Variable RandomTensor(const phi::DDim& dims,
+                                        const phi::Place& place,
                                         int low = -10,
                                         int high = 10) {
   phi::DenseTensor cpu_tensor;
   cpu_tensor.Resize(dims);
-  auto* ptr = cpu_tensor.mutable_data<T>(platform::CPUPlace());
+  auto* ptr = cpu_tensor.mutable_data<T>(phi::CPUPlace());
   std::uniform_int_distribution<int> dist(low, high);
   std::random_device rd;
   std::mt19937 engine(rd());
@@ -352,8 +349,8 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
 }
 
 template <typename T>
-static framework::Variable RandomSelectedRows(framework::DDim dims,
-                                              const platform::Place& place,
+static framework::Variable RandomSelectedRows(phi::DDim dims,
+                                              const phi::Place& place,
                                               int64_t row_number,
                                               int low = -10,
                                               int high = 10) {
@@ -379,7 +376,7 @@ static framework::Variable RandomSelectedRows(framework::DDim dims,
 
 static std::unique_ptr<GradientAccumulator> CreateAccumulator(
     const std::shared_ptr<VariableWrapper>& var, bool sort_gradient) {
-  if (sort_gradient) {
+  if (sort_gradient) {  // NOLINT
     return std::unique_ptr<GradientAccumulator>(
         new SortedGradientAccumulator(var.get()));
   } else {
@@ -388,9 +385,9 @@ static std::unique_ptr<GradientAccumulator> CreateAccumulator(
   }
 }
 
-static void TestGradientAccumulatorTestUnchangeInput(
-    const platform::Place& place, bool sort_gradient) {
-  framework::DDim dim{10, 20};
+static void TestGradientAccumulatorTestUnchangeInput(const phi::Place& place,
+                                                     bool sort_gradient) {
+  phi::DDim dim{10, 20};
   int64_t maximum_row_number = 100;
 
   std::uniform_int_distribution<int64_t> dist(1, maximum_row_number);
@@ -403,7 +400,7 @@ static void TestGradientAccumulatorTestUnchangeInput(
   std::mt19937 engine(seed);
 
   auto create_var = [&](bool use_tensor) {
-    if (use_tensor) {
+    if (use_tensor) {  // NOLINT
       return RandomTensor<float>(dim, place);
     } else {
       return RandomSelectedRows<float>(dim, place, dist(engine));
@@ -418,13 +415,13 @@ static void TestGradientAccumulatorTestUnchangeInput(
        *    test accumulate on this graph
        */
       auto g_var1 = std::make_shared<VariableWrapper>("g_var1");
-      g_var1->SetOverridedStopGradient(false);
+      g_var1->SetOverriddenStopGradient(false);
       auto g_accum1 = CreateAccumulator(g_var1, sort_gradient);
       g_accum1->IncreaseRefCnt();
       g_accum1->IncreaseRefCnt();
 
       auto g_var2 = std::make_shared<VariableWrapper>("g_var2");
-      g_var2->SetOverridedStopGradient(false);
+      g_var2->SetOverriddenStopGradient(false);
       auto g_accum2 = CreateAccumulator(g_var2, sort_gradient);
       g_accum2->IncreaseRefCnt();
       g_accum2->IncreaseRefCnt();
@@ -473,8 +470,8 @@ static void TestGradientAccumulatorTestUnchangeInput(
       auto var3 = create_var(use_tensor1);
       auto var_wrapper3_3 = std::make_shared<VariableWrapper>("tmp1_3");
       auto var_wrapper4_3 = std::make_shared<VariableWrapper>("tmp2_3");
-      var_wrapper3_3->SetOverridedStopGradient(false);
-      var_wrapper4_3->SetOverridedStopGradient(false);
+      var_wrapper3_3->SetOverriddenStopGradient(false);
+      var_wrapper4_3->SetOverriddenStopGradient(false);
       CopyVar(var3, var_wrapper3_3->MutableVar());
       CopyVar(var3, var_wrapper4_3->MutableVar());
 
@@ -506,11 +503,9 @@ static void TestGradientAccumulatorTestUnchangeInput(
 
 TEST(test_gradient_accumulator, test_unchange_input) {
   for (auto sort_gradient : {false, true}) {
-    TestGradientAccumulatorTestUnchangeInput(platform::CPUPlace(),
-                                             sort_gradient);
+    TestGradientAccumulatorTestUnchangeInput(phi::CPUPlace(), sort_gradient);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    TestGradientAccumulatorTestUnchangeInput(platform::CUDAPlace(0),
-                                             sort_gradient);
+    TestGradientAccumulatorTestUnchangeInput(phi::GPUPlace(0), sort_gradient);
 #endif
   }
 }

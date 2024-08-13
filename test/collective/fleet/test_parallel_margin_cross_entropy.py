@@ -14,12 +14,17 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestParallelMarginSoftmaxWithCrossEntropy(TestMultipleGpus):
+class TestParallelMarginSoftmaxWithCrossEntropy(TestMultipleAccelerators):
     def test_parallel_margin_cross_entropy(self):
-        self.run_mnist_2gpu('parallel_margin_cross_entropy.py')
+        self.run_mnist_2accelerators(
+            'parallel_margin_cross_entropy.py',
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
+        )
 
 
 if __name__ == "__main__":

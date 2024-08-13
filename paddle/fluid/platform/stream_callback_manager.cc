@@ -83,7 +83,7 @@ void StreamCallbackManager<Stream>::Wait() const {
 }
 
 #ifdef PADDLE_WITH_CUDA
-template struct StreamCallbackManager<gpuStream_t>;
+template class StreamCallbackManager<gpuStream_t>;
 #endif
 #ifdef PADDLE_WITH_HIP
 template struct StreamCallbackManager<hipStream_t>;
