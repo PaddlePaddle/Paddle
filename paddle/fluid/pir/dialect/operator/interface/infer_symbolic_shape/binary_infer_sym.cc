@@ -910,10 +910,21 @@ bool PullGpuPsSparseOpInferSymbolicShape(
                                       ids_shape_or_data.size(),
                                       size.size()));
   const size_t n_ids = ids_shape_or_data.size();
-  symbol::TensorShapeOrDataDimExprs out_shape_or_data;
+  symbol::TensorListShapeOrDataDimExprs out_list_shape_or_data;
+  for (size_t = 0; i < n_ids; ++i) {
+    int embedding_size = size[i];
+    const auto ids_dims_shape = ids_shape_or_data[i].shape();
+    int ids_rank = ids_dims_shape.size();
+    infer_context->AddEqualCstr(ids_dims_shape[ids_rank - 1],
+                                symbol::DimExpr{1});
+    std::vector<symbol::DimExpr> out_dim = ids_dims_shape;
+    out_dim.push_back(symbol::DimExpr{embedding_size});
+    out_list_shape_or_data.push_back(
+        symbol::TensorShapeOrDataDimExprs(out_dim));
+  }
 
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::ShapeOrDataDimExprs{out_shape_or_data});
+      op->result(0), symbol::ShapeOrDataDimExprs{out_list_shape_or_data});
   return true;
 }
 
