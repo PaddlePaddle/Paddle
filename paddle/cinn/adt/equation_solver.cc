@@ -33,11 +33,7 @@ std::unordered_map<Variable, Value> InferValuesImpl(
     IndexExprInferContext* ctx) {
   const auto& [out_iter, in_iter] = id.tuple();
   Variable in_variable{in_iter.value()};
-  PADDLE_ENFORCE_EQ(ctx->HasValue(in_variable),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The context must have a value for the variable '%s'.",
-                        in_variable.c_str()));
+  CHECK(ctx->HasValue(in_variable));
   return {{out_iter.value(), ctx->GetValue(in_variable)}};
 }
 
@@ -45,11 +41,7 @@ std::unordered_map<Variable, Value> InferValuesImpl(
     const Identity<tOut<Index>, tIn<Index>>& id, IndexExprInferContext* ctx) {
   const auto& [out_index, in_index] = id.tuple();
   Variable in_variable{in_index.value()};
-  PADDLE_ENFORCE_EQ(ctx->HasValue(in_variable),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The context must have a value for the variable '%s'.",
-                        in_variable.c_str()));
+  CHECK(ctx->HasValue(in_variable));
   return {{out_index.value(), ctx->GetValue(in_variable)}};
 }
 
@@ -211,22 +203,13 @@ std::unordered_map<Variable, Value> InferValuesImpl(
           in_msg_out_indexes.value()->size()));
   for (std::size_t i = 0; i < out_msg_in_indexes.value()->size(); ++i) {
     const auto& value = ctx->GetValue(in_msg_in_indexes.value()->at(i));
-    PADDLE_ENFORCE_EQ(
-        ret.emplace(out_msg_in_indexes.value()->at(i), value).second,
-        true,
-        phi::errors::InvalidArgument(
-            "Failed to insert the value at index %d into the map.", i));
+    CHECK(ret.emplace(out_msg_in_indexes.value()->at(i), value).second);
   }
   for (std::size_t i = 0; i < out_msg_out_indexes.value()->size(); ++i) {
     const auto& value = ctx->GetValue(in_msg_out_indexes.value()->at(i));
     const auto& out_index = out_msg_out_indexes.value()->at(i);
     if (out_index.has_value()) {
-      PADDLE_ENFORCE_EQ(
-          ret.emplace(out_index.value(), value).second,
-          true,
-          phi::errors::InvalidArgument(
-              "Failed to insert the value into the map at index %d.",
-              out_index.value()));
+      CHECK(ret.emplace(out_index.value(), value).second);
     }
   }
   return ret;
@@ -290,10 +273,7 @@ void SolveEquations(
       starts.begin(), starts.end(), [&](const Function* function) {
         tValueInferSuccess<bool> has_unique_value =
             MergeInferedValuesIntoCtx(function, ctx);
-        PADDLE_ENFORCE_EQ(has_unique_value.value(),
-                          true,
-                          phi::errors::InvalidArgument(
-                              "The 'has_unique_value' must be true."));
+        CHECK(has_unique_value.value());
       });
 }
 
