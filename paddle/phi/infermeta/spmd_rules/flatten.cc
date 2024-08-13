@@ -105,7 +105,7 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
                                       x_ndim,
                                       x_dims_mapping.size()));
 
-  // obtain target shape and use ReshapeInferSpmdDynamic to infer
+  // obtain target shape and use ReshapeInferSpmd to infer
   start_axis = PreprocessAxis(start_axis, x_ndim);
   stop_axis = PreprocessAxis(stop_axis, x_ndim);
   std::vector<int64_t> dst_shape;
@@ -125,8 +125,8 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
   VLOG(4) << "Start_axis: " << start_axis;
   VLOG(4) << "Stop_axis: " << stop_axis;
   VLOG(4) << "FlattenInferSpmd: output shape: [" << str_join(dst_shape) << "]";
-  VLOG(4) << "use ReshapeInferSpmdDynamic to infer distributed attribute";
-  return ReshapeInferSpmdDynamic(x, dst_shape);
+  VLOG(4) << "use ReshapeInferSpmd to infer distributed attribute";
+  return ReshapeInferSpmd(x, dst_shape);
 }
 
 // TODO(jeff41404): consider xshape and use ReshapeInferSpmdReverse in future
@@ -188,15 +188,11 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
-SpmdInfo FlattenGradInferSpmd(const DistMetaTensor& xshape,
+SpmdInfo FlattenGradInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad) {
-  // TODO(jeff41404): when ReshapeInferSpmd and ReshapeGradInferSpmd can deliver
-  // distributed attribute of xshape, we will use ReshapeGradInferSpmd directly
-  // in future return ReshapeGradInferSpmd(xshape, out_grad);
-  auto shape = phi::vectorize(xshape.dims());
-  shape = std::vector<int64_t>(shape.begin() + 1, shape.end());
+  auto shape = phi::vectorize(x.dims());
   const auto& spmd = ReshapeInferSpmd(out_grad, shape);
-  return {{xshape.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
+  return {{x.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }
 
 }  // namespace phi::distributed

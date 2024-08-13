@@ -95,6 +95,11 @@ class TestLlamaAuto:
         self.config.recompute = False
         self.config.sep_parallel_degree = 1
 
+        self.run_step_dynamic = 10
+        self.run_step_dy2static = (
+            self.run_step_dynamic // self.gradient_accumulation_steps
+        )
+
         self.init_dist_env()
 
     def init_dist_env(self):
@@ -145,32 +150,39 @@ class TestLlamaAuto:
         )
 
         tr_loss = float(0)
+        tr_loss_add = float(0)
         model.train()
         #####
         for step, inputs in enumerate(dist_loader()):
+            if step >= self.run_step_dynamic:
+                break
+
             input_ids, labels = inputs
             logits = model(input_ids)
             tr_loss_step = criterion(logits, labels)
-            if self.gradient_accumulation_steps > 1:
-                tr_loss_step /= self.gradient_accumulation_steps
 
             tr_loss_step.backward()
-            tr_loss += tr_loss_step
+            tr_loss_add += tr_loss_step
 
-            if step % self.gradient_accumulation_steps == 0:
-                optimizer.step()
-                optimizer.clear_grad()
-                lr_scheduler.step()
-                tr_loss = 0
-
-            if step >= 9:
-                break
             if int(dist.get_rank()) in [2, 3, 6, 7]:
                 assert tr_loss_step._is_initialized()
             else:
                 assert not tr_loss_step._is_initialized()
 
-        return tr_loss_step._md5sum()
+            if (step + 1) % self.gradient_accumulation_steps == 0:
+                tr_loss_add /= self.gradient_accumulation_steps
+                tr_loss = tr_loss_add
+
+                optimizer.step()
+                optimizer.clear_grad()
+                lr_scheduler.step()
+
+                tr_loss_add = 0
+
+        numpy_array = np.array(tr_loss)
+        array_bytes = numpy_array.tobytes()
+        loss_md5 = hashlib.md5(array_bytes).hexdigest()
+        return loss_md5
 
     def run_dy2static(self):
         model = LlamaForCausalLMAuto(self.config)
@@ -184,7 +196,7 @@ class TestLlamaAuto:
         train_dataset = RandomDataset(self.config.seq_length)
         train_sampler = BatchSampler(
             train_dataset,
-            batch_size=2,
+            batch_size=2 * self.gradient_accumulation_steps,
             shuffle=False,
             drop_last=True,
         )
@@ -202,9 +214,10 @@ class TestLlamaAuto:
         strategy = None
         if self.gradient_accumulation_steps > 1:
             strategy = dist.Strategy()
-            strategy.pipeline.accumulate_steps = (
-                self.gradient_accumulation_steps
-            )
+
+            strategy.gradient_merge.enable = True
+            strategy.gradient_merge.k_steps = self.gradient_accumulation_steps
+            strategy.gradient_merge.avg = False
 
         dist_model = dist.to_static(
             model, dist_loader, criterion, optimizer, strategy=strategy
@@ -213,15 +226,20 @@ class TestLlamaAuto:
         dist_model.train()
         loss = None
         for step, inputs in enumerate(dist_loader()):
+            if step >= self.run_step_dy2static:
+                break
+
             input_ids, labels = inputs
             loss = dist_model(input_ids, labels)
+
             lr_scheduler.step()
-            if step >= 9:
-                break
             if int(dist.get_rank()) in [2, 3, 6, 7]:
                 assert loss is not None
             else:
                 assert loss is None
+
+        if loss is not None:
+            loss = np.average(loss)
 
         numpy_array = np.array(loss)
         array_bytes = numpy_array.tobytes()

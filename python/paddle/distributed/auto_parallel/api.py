@@ -271,7 +271,7 @@ def shard_tensor(
         return shard_tensor_static(tensor, mesh, sharding_specs)
 
 
-class _dtensor_from_local_list(PyLayer):
+class _moe_global_mesh_tensor(PyLayer):
     @staticmethod
     def forward(
         ctx,
@@ -333,40 +333,54 @@ class _dtensor_from_local_list(PyLayer):
             return out
 
 
-def dtensor_from_local_list(
+def get_sub_meshes_from_global_mesh(
+    global_mesh, global_placements, local_mesh_dim
+):
+    if (
+        global_mesh is not None
+        and local_mesh_dim is not None
+        and global_placements is not None
+    ):
+        mesh_shape = global_mesh.shape
+        mesh_ndim = len(mesh_shape)
+        if local_mesh_dim >= mesh_ndim or (
+            local_mesh_dim < 0 and -local_mesh_dim > mesh_ndim
+        ):
+            raise ValueError(
+                f"The local_mesh_dim should between (-{mesh_ndim}, {mesh_ndim}]"
+            )
+        if local_mesh_dim < 0:
+            local_mesh_dim += mesh_ndim
+    else:
+        raise ValueError(
+            "the args global_mesh, global_placements and local_mesh_dim should all be set."
+        )
+
+    process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
+    splitted_process_ids = np.split(
+        process_ids, mesh_shape[local_mesh_dim], axis=local_mesh_dim
+    )
+    local_mesh_list = []
+    for process_ids in splitted_process_ids:
+        local_mesh_list.append(dist.ProcessMesh(process_ids))
+    local_placements = list(global_placements)
+    local_placements.pop(local_mesh_dim)
+    if local_placements == []:
+        local_placements.append(dist.Replicate())
+    return local_mesh_list, local_placements
+
+
+def moe_global_mesh_tensor(
     local_tensor_list, mesh, placements, local_mesh_dim=-1
 ):
     # assume the each rank has the same tensor shape for now, just use the local shape to calculate the global shape
+    local_mesh_list, local_placements = get_sub_meshes_from_global_mesh(
+        mesh, placements, local_mesh_dim
+    )
+
     local_tensor_idx = mesh.process_ids.index(dist.get_rank())
     local_tensor = local_tensor_list[local_tensor_idx]
     global_dims = list(local_tensor.shape)
-    local_mesh = None
-    if paddle.in_dynamic_mode():
-        if local_tensor.is_dist():
-            local_mesh = local_tensor.process_mesh
-            local_val = local_tensor._local_value()
-        else:
-            local_val = local_tensor
-
-    if local_mesh is not None:
-        assert (
-            len(local_mesh.shape) == 1
-        ), "dtensor_from_local only support 1D local mesh now when the input ``local_tensor`` is a dist_tensor."
-        local_process_ids = local_mesh.process_ids
-
-        if len(local_process_ids) > 1:
-            diff = local_process_ids[1] - local_process_ids[0]
-            global_mesh_shape = mesh.shape
-            for i in range(len(global_mesh_shape) - 1, -1, -1):
-                diff = diff // global_mesh_shape[i]
-                if diff == 0:
-                    local_mesh_dim = i
-                    break
-            assert (
-                local_mesh_dim == len(global_mesh_shape) - 1
-            ), "Only support the local mesh to be the last dimension of global mesh now."
-        local_placement = local_tensor.placements[0]
-
     for idx, placement in enumerate(placements):
         if placement.is_shard():
             shard_dim = placement.get_dim()
@@ -374,13 +388,21 @@ def dtensor_from_local_list(
             global_dims[shard_dim] = local_dim_size * mesh.shape[idx]
 
     if paddle.in_dynamic_mode():
-        local_mesh_list = []
-        for tensor in local_tensor_list:
-            local_mesh_list.append(copy.deepcopy(tensor.process_mesh))
+        resharded_local_tensor_list = []
+        for i, tensor in enumerate(local_tensor_list):
             tensor.get_tensor()._unsafe_set_skip_check_mesh(True)
+            if (
+                tensor.placements != local_placements
+                or tensor.process_mesh != local_mesh_list[i]
+            ):
+                resharded_local_tensor_list.append(
+                    reshard(tensor, local_mesh_list[i], local_placements)
+                )
+            else:
+                resharded_local_tensor_list.append(tensor)
 
-        return _dtensor_from_local_list.apply(
-            local_tensor_list,
+        return _moe_global_mesh_tensor.apply(
+            resharded_local_tensor_list,
             local_mesh_list,
             local_tensor_idx,
             global_dims,
@@ -388,24 +410,7 @@ def dtensor_from_local_list(
             placements,
         )
     elif paddle.framework.in_pir_mode():
-        if local_mesh_dim == -1:
-            raise ValueError("local_mesh_dim must be set.")
-        mesh_shape = mesh.shape
-        process_ids = np.array(mesh.process_ids).reshape(mesh_shape)
-        splitted_process_ids = np.split(
-            process_ids, mesh_shape[local_mesh_dim], axis=local_mesh_dim
-        )
-        # local_process_ids = splitted_process_ids[dist.get_rank()]
-        # local_mesh = dist.ProcessMesh(local_process_ids)
-        local_mesh_list = []
-        for process_ids in splitted_process_ids:
-            local_mesh_list.append(dist.ProcessMesh(process_ids))
-        local_placements = list(placements)
-        local_placements.pop(local_mesh_dim)
-        if local_placements == []:
-            local_placements.append(dist.Replicate())
-
-        dist_tensor = paddle._C_ops.dtensor_from_local_list(
+        dist_tensor = paddle._C_ops.moe_global_mesh_tensor(
             local_tensor_list,
             local_mesh_list,
             local_placements,
@@ -419,11 +424,11 @@ def dtensor_from_local_list(
         return dist_tensor
     else:
         raise NotImplementedError(
-            "dtensor_from_local_list() are only supported in dynamic mode."
+            "dtensor_from_local_list() are only supported in dynamic and pir mode."
         )
 
 
-class _local_tensors_from_dist(PyLayer):
+class _moe_sub_mesh_tensors(PyLayer):
     @staticmethod
     def forward(
         ctx,
@@ -495,32 +500,18 @@ class _local_tensors_from_dist(PyLayer):
         return global_tensor
 
 
-def local_tensor_list_from_dtensor(
+def moe_sub_mesh_tensors(
     dist_tensor, global_mesh=None, local_mesh_dim=None, global_placements=None
 ):
     """
     Get the local part of the ``dist_tensor`` on the specific ``local_mesh_dim``.
     """
-    if (
-        global_mesh is not None
-        and local_mesh_dim is not None
-        and global_placements is not None
-    ):
-        mesh_shape = global_mesh.shape
-        process_ids = np.array(global_mesh.process_ids).reshape(mesh_shape)
-        splitted_process_ids = np.split(
-            process_ids, mesh_shape[local_mesh_dim], axis=local_mesh_dim
-        )
-        local_mesh_list = []
-        for process_ids in splitted_process_ids:
-            local_mesh_list.append(dist.ProcessMesh(process_ids))
-        local_placements = list(global_placements)
-        local_placements.pop(local_mesh_dim)
-        if local_placements == []:
-            local_placements.append(dist.Replicate())
+    local_mesh_list, local_placements = get_sub_meshes_from_global_mesh(
+        global_mesh, global_placements, local_mesh_dim
+    )
 
     if paddle.framework.in_dynamic_mode():
-        return _local_tensors_from_dist.apply(
+        return _moe_sub_mesh_tensors.apply(
             dist_tensor,
             local_mesh_list,
             local_placements,
@@ -528,7 +519,7 @@ def local_tensor_list_from_dtensor(
             global_placements,
         )
     elif paddle.framework.in_pir_mode():
-        local_tensors = paddle._C_ops.local_tensors_from_dist(
+        local_tensors = paddle._C_ops.moe_sub_mesh_tensors(
             dist_tensor,
             local_mesh_list,
             local_placements,
@@ -541,7 +532,7 @@ def local_tensor_list_from_dtensor(
         return local_tensors
     else:
         raise NotImplementedError(
-            "local_tensor_from_dist is only supported in dynamic mode."
+            "moe_sub_mesh_tensors is only supported in dynamic mode."
         )
 
 
@@ -2293,9 +2284,9 @@ class DistModel:
 
         if use_pir_api():
             scope = paddle.static.global_scope()
-            local_state_dict = self._engine._pir_dist_main_progs[
-                self._engine._mode
-            ].state_dict(mode, scope)
+            local_state_dict = self.dist_main_program(
+                mode=self._engine._mode
+            ).state_dict(mode, scope)
         else:
             local_state_dict = self.dist_main_program(
                 mode=self._engine._mode
@@ -2321,14 +2312,10 @@ class DistModel:
         Args:
             local_state_dict(Dict[str, libpaddle.Tensor]): The state dict from program.
         """
+        dist_main_program = self.dist_main_program(mode=self._engine._mode)
         if use_pir_api():
-            dist_main_program = self._engine._pir_dist_main_progs[
-                self._engine._mode
-            ]
             dist_attrs = get_dist_attr(dist_main_program)
-
         else:
-            dist_main_program = self.dist_main_program(mode=self._engine._mode)
             # Dict[var.name, Dict["process_shape": process_mesh.shape, "process_group": process_mesh.process_ids, "dims_mapping": dims_mapping]]
             dist_attrs = get_dist_attr(
                 dist_main_program, self._engine._dist_contexts[self._mode]

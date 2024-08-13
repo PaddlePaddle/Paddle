@@ -26,18 +26,14 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
-#include "paddle/fluid/distributed/collective/process_group.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/common/flags.h"
-#include "paddle/fluid/distributed/collective/process_group_nccl.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
-#endif
 #include "paddle/common/layout.h"
-#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/norm_utils.cu.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#endif
 
 namespace phi {
 
@@ -573,40 +569,11 @@ void SyncBatchNormGradFunctor(
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  int global_gid = 0;
-  ncclComm_t comm = nullptr;
-
-  if (paddle::distributed::ProcessGroupMapFromGid::getInstance()->has(
-          global_gid)) {
-    auto *nccl_pg = static_cast<paddle::distributed::ProcessGroupNCCL *>(
-        paddle::distributed::ProcessGroupMapFromGid::getInstance()->get(
-            global_gid));
-    comm = nccl_pg->NCCLComm(x->place());
-  } else {
-    comm = ctx.nccl_comm();
-  }
-
-  if (comm) {
-    int dtype = phi::ToNCCLDataType(scale.dtype());
-    // In-place operation
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        phi::dynload::ncclAllReduce(stats,
-                                    stats,
-                                    2 * C + 1,
-                                    static_cast<ncclDataType_t>(dtype),
-                                    ncclSum,
-                                    comm,
-                                    stream));
-    VLOG(3) << "Sync result using all reduce";
-  } else {
-    if (FLAGS_dynamic_static_unified_comm) {
-      auto comm_ctx =
-          static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
-      if (comm_ctx) {
-        comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
-        VLOG(3) << "Sync result using all reduce";
-      }
-    }
+  auto comm_ctx =
+      static_cast<distributed::NCCLCommContext *>(ctx.GetCommContext());
+  // In sync_batch_norm, comm_ctx may be null.
+  if (comm_ctx) {
+    comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
   }
 #endif
 

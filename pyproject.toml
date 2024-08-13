@@ -115,6 +115,9 @@ select = [
 
     # Refurb
     "FURB",
+
+    # Flake8-future-annotations
+    "FA",
 ]
 unfixable = [
     "NPY001"

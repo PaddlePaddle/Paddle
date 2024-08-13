@@ -14,12 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import json
 import os
 import unicodedata
 from shutil import copyfile
-from typing import Optional
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils.download import get_path_from_url
@@ -190,7 +191,7 @@ class PretrainedTokenizer:
         self,
         text,
         text_pair=None,
-        max_seq_len: Optional[int] = None,
+        max_seq_len: int | None = None,
         stride=0,
         is_split_into_words=False,
         pad_to_max_seq_len=False,
@@ -409,7 +410,7 @@ class PretrainedTokenizer:
         """
         Converts a sequence of tokens into ids using the `vocab` attribute (an
         instance of `Vocab`). Override it if needed.
-        Args：
+        Args:
             tokens (list[int]): List of token ids.
         Returns:
             list: Converted id list.

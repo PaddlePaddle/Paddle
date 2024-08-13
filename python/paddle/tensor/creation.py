@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import TYPE_CHECKING, Any, Sequence, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -48,6 +48,8 @@ from ..framework import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle._typing import (
         DTypeLike,
         NestedNumbericSequence,
