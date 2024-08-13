@@ -42,7 +42,7 @@ namespace ir {
 Tensor GetTensor(const Expr& block) {
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param block should be a ir::ScheduleBlockRealize node."));
   auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
@@ -53,7 +53,7 @@ Tensor GetTensor(const Expr& block) {
                         "root block)"));
   PADDLE_ENFORCE_NOT_NULL(
       (*find_tensor.begin()).As<ir::Store>()->tensor.as_tensor(),
-      phi::errors::NotFound("Store node's tensor should be tensor."));
+      ::common::errors::NotFound("Store node's tensor should be tensor."));
   Tensor tensor =
       (*find_tensor.begin()).As<ir::Store>()->tensor.as_tensor_ref();
   return tensor;
@@ -62,7 +62,7 @@ Tensor GetTensor(const Expr& block) {
 Tensor GetReadTensor(const Expr& block, int index) {
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param block should be a ir::ScheduleBlockRealize node."));
   auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
@@ -84,9 +84,10 @@ Tensor GetReadTensor(const Expr& block, int index) {
       ::common::errors::InvalidArgument(
           "The number of Load nodes should be equal to the number "
           "of read tensors!"));
-  PADDLE_ENFORCE_EQ(!find_read_tensor.empty(),
-                    true,
-                    phi::errors::NotFound("Didn't find Load tensor in block!"));
+  PADDLE_ENFORCE_EQ(
+      !find_read_tensor.empty(),
+      true,
+      ::common::errors::NotFound("Didn't find Load tensor in block!"));
   PADDLE_ENFORCE_LT(
       index,
       (int)find_read_tensor.size(),
@@ -95,17 +96,17 @@ Tensor GetReadTensor(const Expr& block, int index) {
 }
 
 int GetLoopExtent(const Expr& loop) {
-  PADDLE_ENFORCE_NOT_NULL(
-      loop.As<ir::For>(),
-      phi::errors::NotFound("The input of GetLoopExtent should be ir::For!"));
+  PADDLE_ENFORCE_NOT_NULL(loop.As<ir::For>(),
+                          ::common::errors::NotFound(
+                              "The input of GetLoopExtent should be ir::For!"));
   PADDLE_ENFORCE_EQ(
       cinn::common::is_zero(loop.As<ir::For>()->min),
       true,
-      phi::errors::InvalidArgument("For node's min should be zero."));
-  PADDLE_ENFORCE_EQ(
-      loop.As<ir::For>()->extent.is_constant(),
-      true,
-      phi::errors::InvalidArgument("For node's extent should be constant."));
+      ::common::errors::InvalidArgument("For node's min should be zero."));
+  PADDLE_ENFORCE_EQ(loop.As<ir::For>()->extent.is_constant(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "For node's extent should be constant."));
   return static_cast<int>(loop.As<ir::For>()->extent.get_constant());
 }
 
@@ -130,7 +131,7 @@ void SetCudaAxisInfo(Expr* lowered_func) {
       PADDLE_ENFORCE_EQ(
           cinn::common::is_zero(x->As<ir::For>()->min),
           true,
-          phi::errors::InvalidArgument("For node's min should be zero."));
+          ::common::errors::InvalidArgument("For node's min should be zero."));
       auto bind_info = x->As<ir::For>()->bind_info();
       info.set_valid(true);
       ir::Expr range = x->As<ir::For>()->extent;
@@ -170,12 +171,12 @@ Expr GetNextForLoop(const Expr& for_loop) {
   Expr result;
   PADDLE_ENFORCE_NOT_NULL(
       for_loop.As<ir::For>(),
-      phi::errors::NotFound("Param for_loop should be a ir::For node."));
+      ::common::errors::NotFound("Param for_loop should be a ir::For node."));
   Expr for_body = for_loop.As<ir::For>()->body;
   ir::Block* for_body_block = for_body.As<ir::Block>();
   PADDLE_ENFORCE_NOT_NULL(
       for_body_block,
-      phi::errors::NotFound("The for_loop's body should be Block!"));
+      ::common::errors::NotFound("The for_loop's body should be Block!"));
 
   // Only support for body block contains a sub for loop
   int next_idx = -1;
@@ -202,7 +203,8 @@ Expr GetNextForLoop(const Expr& for_loop) {
     // we will check it later in the future.
     PADDLE_ENFORCE_NOT_NULL(
         block_body.As<IfThenElse>()->true_case.As<ir::Block>(),
-        phi::errors::NotFound("IfThenElse node's true_case should be Block!"));
+        ::common::errors::NotFound(
+            "IfThenElse node's true_case should be Block!"));
     Expr true_case = block_body.As<IfThenElse>()->true_case;
     if (true_case.As<ir::Block>()->stmts.size() != 1U ||
         !true_case.As<ir::Block>()->stmts[0].As<ir::For>())
@@ -220,32 +222,32 @@ std::vector<Expr> GetIfThenElseInRange(const Expr& top, const Expr& bottom) {
   std::vector<Expr> if_nodes;
   PADDLE_ENFORCE_NOT_NULL(
       top.As<ir::For>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param top of GetIfThenElseInRange should be ir::For node."));
   PADDLE_ENFORCE_NOT_NULL(
       bottom.As<ir::For>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param bottom of GetIfThenElseInRange should be ir::For node."));
   for (auto loop_iter = top; loop_iter != bottom;) {
     PADDLE_ENFORCE_NOT_NULL(
         loop_iter.As<ir::For>(),
-        phi::errors::NotFound("Param loop_iter should be ir::For node."));
+        ::common::errors::NotFound("Param loop_iter should be ir::For node."));
     PADDLE_ENFORCE_NOT_NULL(
         loop_iter.As<ir::For>()->body.As<ir::Block>(),
-        phi::errors::NotFound("For node's body should be Block!"));
+        ::common::errors::NotFound("For node's body should be Block!"));
     auto block = loop_iter.As<ir::For>()->body.As<ir::Block>();
     for (Expr tmp : block->stmts) {
       if (tmp.As<IfThenElse>()) {
         if_nodes.push_back(tmp);
         PADDLE_ENFORCE_NOT_NULL(
             tmp.As<IfThenElse>()->true_case.As<ir::Block>(),
-            phi::errors::NotFound(
+            ::common::errors::NotFound(
                 "IfThenElse node's true_case should be Block!"));
         Expr true_case = tmp.As<IfThenElse>()->true_case;
         PADDLE_ENFORCE_EQ(true_case.As<ir::Block>()->stmts.size() == 1U &&
                               true_case.As<ir::Block>()->stmts[0].As<ir::For>(),
                           true,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Block node's stmts should be For! And the size "
                               "of stmts should be 1, but got %d.",
                               true_case.As<ir::Block>()->stmts.size()));
@@ -296,7 +298,7 @@ std::vector<int> ValidateFactors(const std::vector<int>& factors,
   PADDLE_ENFORCE_EQ(
       !factors.empty(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The factors param of Split should not be empty! Please check."));
   bool has_minus_one = false;
   int product = 1;
@@ -350,7 +352,7 @@ void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
   auto* rf_for = rf_loop.As<ir::For>();
   PADDLE_ENFORCE_NOT_NULL(
       rf_for,
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Expr param of Rfactor must be For node! Please check."));
   // check the rf_loop only has one schedule block
   auto block_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
@@ -379,8 +381,8 @@ void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
   auto* sch_block = sch_block_realize->schedule_block.As<ScheduleBlock>();
   PADDLE_ENFORCE_NOT_NULL(
       sch_block,
-      phi::errors::NotFound("ScheduleBlockRealize node's schedule_block "
-                            "should be ScheduleBlock."));
+      ::common::errors::NotFound("ScheduleBlockRealize node's schedule_block "
+                                 "should be ScheduleBlock."));
   auto& iter_values = sch_block_realize->iter_values;
   auto& iter_vars = sch_block->iter_vars;
   PADDLE_ENFORCE_EQ(iter_values.size(),
@@ -394,12 +396,12 @@ void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
       PADDLE_ENFORCE_EQ(
           !rf_block_var.defined(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The rfactor loop var can only be binded to one block var."));
       auto iter_value = iter_values[i].As<_Var_>();
       PADDLE_ENFORCE_NOT_NULL(
           iter_value,
-          phi::errors::NotFound(
+          ::common::errors::NotFound(
               "The iter value don't support complex reduce bindings."));
       rf_block_var = iter_vars[i];
       auto it = std::find_if(indice.begin(), indice.end(), [&](const Expr& x) {
@@ -408,7 +410,7 @@ void CHECKRfactorValidation(const Expr& rf_loop, int rf_axis) {
       PADDLE_ENFORCE_EQ(
           it == indice.end(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "Param rfactor loop var is not reduce, please check!"));
     }
   }
@@ -496,8 +498,8 @@ std::vector<IterRange> CalculateTensorRegions(
     const Expr& root) {
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ScheduleBlockRealize>(),
-      phi::errors::NotFound("Param block of CalculateTensorRegions "
-                            "should be ScheduleBlockRealize node!"));
+      ::common::errors::NotFound("Param block of CalculateTensorRegions "
+                                 "should be ScheduleBlockRealize node!"));
   auto iter_vars = block.As<ir::ScheduleBlockRealize>()
                        ->schedule_block.As<ir::ScheduleBlock>()
                        ->iter_vars;
@@ -510,7 +512,7 @@ std::vector<IterRange> CalculateTensorRegions(
   for (auto& loop : outer_loops) {
     PADDLE_ENFORCE_NOT_NULL(
         loop.As<For>(),
-        phi::errors::NotFound("Param loop should be For node."));
+        ::common::errors::NotFound("Param loop should be For node."));
     loop_vars.emplace_back(loop.As<For>()->loop_var);
     loop_ranges.emplace_back(
         IterRange(loop.As<For>()->min, loop.As<For>()->extent));
@@ -555,8 +557,8 @@ std::vector<IterRange> CalculateTensorRegions(
 Expr GetNthAccessExpr(const Expr& block, int index, bool is_write) {
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ScheduleBlockRealize>(),
-      phi::errors::NotFound("Param block of GetNthAccessExpr should be "
-                            "ScheduleBlockRealize node."));
+      ::common::errors::NotFound("Param block of GetNthAccessExpr should be "
+                                 "ScheduleBlockRealize node."));
   auto compute_body = block.As<ScheduleBlockRealize>()
                           ->schedule_block.As<ScheduleBlock>()
                           ->body;
@@ -630,7 +632,7 @@ Expr MakeCacheBlock(const std::vector<IterRange>& buffer_ranges,
   // Create block vars, block's accessed region and accessing indices
   PADDLE_ENFORCE_EQ(new_tensor->buffer.defined(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The new tensor's buffer should be defined!"));
   for (auto& dim : new_tensor->buffer->shape) {
     Var var(Expr(0), dim, "v" + std::to_string(block_vars.size()), false);
@@ -673,14 +675,14 @@ void FindInsertionPoint(const Expr& root, CacheBlockInfo* info, bool is_write) {
   if (find_produce_read.empty()) {
     PADDLE_ENFORCE_NOT_NULL(
         root.As<ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
-        phi::errors::NotFound(
+        ::common::errors::NotFound(
             "ScheduleBlockRealize node's schedule_block should be "
             "ScheduleBlock!"));
-    PADDLE_ENFORCE_NOT_NULL(
-        root.As<ScheduleBlockRealize>()
-            ->schedule_block.As<ScheduleBlock>()
-            ->body.As<Block>(),
-        phi::errors::NotFound("ScheduleBlock node's body should be Block!"));
+    PADDLE_ENFORCE_NOT_NULL(root.As<ScheduleBlockRealize>()
+                                ->schedule_block.As<ScheduleBlock>()
+                                ->body.As<Block>(),
+                            ::common::errors::NotFound(
+                                "ScheduleBlock node's body should be Block!"));
     info->loc_block = root.As<ScheduleBlockRealize>()
                           ->schedule_block.As<ScheduleBlock>()
                           ->body;
@@ -696,13 +698,13 @@ void FindInsertionPoint(const Expr& root, CacheBlockInfo* info, bool is_write) {
 
   PADDLE_ENFORCE_NOT_NULL(
       root.As<ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
-      phi::errors::NotFound("ScheduleBlockRealize node's schedule_block "
-                            "should be ScheduleBlock!"));
+      ::common::errors::NotFound("ScheduleBlockRealize node's schedule_block "
+                                 "should be ScheduleBlock!"));
   PADDLE_ENFORCE_NOT_NULL(
       root.As<ScheduleBlockRealize>()
           ->schedule_block.As<ScheduleBlock>()
           ->body.As<Block>(),
-      phi::errors::NotFound("ScheduleBlock node's body should be Block!"));
+      ::common::errors::NotFound("ScheduleBlock node's body should be Block!"));
   info->loc_block =
       root.As<ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>()->body;
   for (int i = 0;
@@ -721,7 +723,8 @@ const std::set<Expr, CompExpr> CollectLoopsToSet(
   for (auto& i : loops) {
     PADDLE_ENFORCE_NOT_NULL(
         i.As<ir::For>(),
-        phi::errors::NotFound("Param loops should be For node! Please check."));
+        ::common::errors::NotFound(
+            "Param loops should be For node! Please check."));
     auto inserted = for_loops.insert(i);
     if (!inserted.second) {
       PADDLE_THROW(::common::errors::InvalidArgument(
@@ -747,7 +750,7 @@ std::pair<Expr, Expr> GetBoundaryOfReorderRange(
     Expr v_for = loop_i;
     PADDLE_ENFORCE_NOT_NULL(
         v_for.As<ir::For>(),
-        phi::errors::NotFound(
+        ::common::errors::NotFound(
             "Param v_for should be a ir::For node! Please check."));
     while (v_for.defined()) {
       // If loop_i's sub loop is visited it must be pre-visited top.
@@ -774,14 +777,14 @@ std::pair<Expr, Expr> GetBoundaryOfReorderRange(
   }
   PADDLE_ENFORCE_NOT_NULL(
       top.As<ir::For>(),
-      phi::errors::NotFound("Param top should be a ir::For node."));
+      ::common::errors::NotFound("Param top should be a ir::For node."));
   PADDLE_ENFORCE_EQ(bottom.defined(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Param bottom should be defined! Please check."));
   PADDLE_ENFORCE_NOT_NULL(
       bottom.As<ir::For>(),
-      phi::errors::NotFound("Param bottom should be a ir::For node."));
+      ::common::errors::NotFound("Param bottom should be a ir::For node."));
   return std::make_pair(top, bottom);
 }
 
@@ -789,11 +792,11 @@ std::vector<Expr> GetLoopsInRange(const Expr& top, const Expr& bottom) {
   std::vector<Expr> chain;
   PADDLE_ENFORCE_NOT_NULL(
       top.As<ir::For>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param top of GetLoopsInRange should be a ir::For node."));
   PADDLE_ENFORCE_NOT_NULL(
       bottom.As<ir::For>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param bottom of GetLoopsInRange should be a ir::For node."));
   for (auto loop_iter = top; loop_iter != bottom;) {
     Expr tmp = GetNextForLoop(loop_iter);
@@ -830,11 +833,11 @@ Expr ConstructOtherStmtChain(const std::vector<Expr>& stmts,
     Expr temp = ir::ir_utils::IRCopy(loops[reordered_indices[i]]);
     PADDLE_ENFORCE_EQ(temp.defined(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Param temp should be defined! Please check."));
     PADDLE_ENFORCE_NOT_NULL(
         temp.As<ir::For>(),
-        phi::errors::NotFound("Param temp should be a ir::For node."));
+        ::common::errors::NotFound("Param temp should be a ir::For node."));
     if (new_loop.defined()) {
       temp.As<ir::For>()->body = Block::Make({new_loop});
     } else {
@@ -854,7 +857,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
   for (auto& if_expr : if_nodes) {
     PADDLE_ENFORCE_NOT_NULL(
         if_expr.As<IfThenElse>(),
-        phi::errors::NotFound(
+        ::common::errors::NotFound(
             "Param if_nodes should be IfThenElse node! Please check."));
     auto var_set = ir::ir_utils::CollectIRNodes(
         if_expr.As<IfThenElse>()->condition,
@@ -872,7 +875,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
     auto& loop_in_chain = chain[i];
     PADDLE_ENFORCE_NOT_NULL(
         loop_in_chain.As<ir::For>(),
-        phi::errors::NotFound(
+        ::common::errors::NotFound(
             "Param loop_in_chain should be ir::For node! Please check."));
     Expr temp;
     if (loop_set.count(loop_in_chain)) {
@@ -887,11 +890,11 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
     }
     PADDLE_ENFORCE_EQ(temp.defined(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "Param temp should be defined! Please check."));
     PADDLE_ENFORCE_NOT_NULL(
         temp.As<ir::For>(),
-        phi::errors::NotFound(
+        ::common::errors::NotFound(
             "Param temp should be ir::For node! Please check."));
     // Main chain, each loop's body only contains sub_loop or bottom loop's body
     if (new_loop.defined()) {
@@ -922,7 +925,7 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
   }
   PADDLE_ENFORCE_EQ(new_loop.defined(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Param new loop should be defined! Please check."));
 
   // new_loop_chain, which represents the main loop chain, now is from top to
@@ -1054,14 +1057,14 @@ Expr ConstructNewLoopChain(const std::vector<Expr>& chain,
 }
 
 std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
-  PADDLE_ENFORCE_NOT_NULL(
-      block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::NotFound("Param block of GetProducers should be "
-                            "ir::ScheduleBlockRealize node! Please check."));
-  PADDLE_ENFORCE_NOT_NULL(
-      root.As<ir::ScheduleBlockRealize>(),
-      phi::errors::NotFound("Param root of GetProducers should be "
-                            "ir::ScheduleBlockRealize node! Please check."));
+  PADDLE_ENFORCE_NOT_NULL(block.As<ir::ScheduleBlockRealize>(),
+                          ::common::errors::NotFound(
+                              "Param block of GetProducers should be "
+                              "ir::ScheduleBlockRealize node! Please check."));
+  PADDLE_ENFORCE_NOT_NULL(root.As<ir::ScheduleBlockRealize>(),
+                          ::common::errors::NotFound(
+                              "Param root of GetProducers should be "
+                              "ir::ScheduleBlockRealize node! Please check."));
   std::vector<Expr> producers;
 
   // collect all producers' tensor names
@@ -1113,7 +1116,7 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
                           ->schedule_block.As<ir::ScheduleBlock>();
     PADDLE_ENFORCE_NOT_NULL(
         cur_block,
-        phi::errors::NotFound(
+        ::common::errors::NotFound(
             "Param block result should be a ScheduleBlockRealize node."));
     auto find_stores = ir::ir_utils::CollectIRNodesWithoutTensor(
         cur_block->body, [&producer_tensor_names](const Expr* x) {
@@ -1127,14 +1130,14 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
 }
 
 std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
-  PADDLE_ENFORCE_NOT_NULL(
-      block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::NotFound("Param block of GetConsumers should be "
-                            "ir::ScheduleBlockRealize node! Please check."));
-  PADDLE_ENFORCE_NOT_NULL(
-      root.As<ir::ScheduleBlockRealize>(),
-      phi::errors::NotFound("Param root of GetConsumers should be "
-                            "ir::ScheduleBlockRealize node! Please check."));
+  PADDLE_ENFORCE_NOT_NULL(block.As<ir::ScheduleBlockRealize>(),
+                          ::common::errors::NotFound(
+                              "Param block of GetConsumers should be "
+                              "ir::ScheduleBlockRealize node! Please check."));
+  PADDLE_ENFORCE_NOT_NULL(root.As<ir::ScheduleBlockRealize>(),
+                          ::common::errors::NotFound(
+                              "Param root of GetConsumers should be "
+                              "ir::ScheduleBlockRealize node! Please check."));
   std::vector<Expr> consumers;
   std::string block_tensor = GetTensor(block)->name;
   if (IsReduceInitTensorName(block_tensor)) {
@@ -1161,7 +1164,7 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
     PADDLE_ENFORCE_NOT_NULL(
         i.As<ir::ScheduleBlockRealize>()
             ->schedule_block.As<ir::ScheduleBlock>(),
-        phi::errors::NotFound(
+        ::common::errors::NotFound(
             "ScheduleBlockRealize node's schedule_block should "
             "be ScheduleBlock!"));
     auto block_body = i.As<ir::ScheduleBlockRealize>()
@@ -1199,7 +1202,7 @@ void CheckComputeAtValidation(const Expr& block,
       true);
   PADDLE_ENFORCE_EQ(!find_block.empty(),
                     true,
-                    phi::errors::NotFound("Didn't find block in root!"));
+                    ::common::errors::NotFound("Didn't find block in root!"));
 
   auto find_loop = ir::ir_utils::CollectIRNodesWithoutTensor(
       root,
@@ -1207,7 +1210,7 @@ void CheckComputeAtValidation(const Expr& block,
       true);
   PADDLE_ENFORCE_EQ(!find_loop.empty(),
                     true,
-                    phi::errors::NotFound("Didn't find loop in root!"));
+                    ::common::errors::NotFound("Didn't find loop in root!"));
 
   auto find_block_in_loop = ir::ir_utils::CollectIRNodesWithoutTensor(
       loop,
@@ -1215,25 +1218,25 @@ void CheckComputeAtValidation(const Expr& block,
         return x->As<ir::ScheduleBlockRealize>() && *x == block;
       },
       true);
-  PADDLE_ENFORCE_EQ(
-      find_block_in_loop.empty(),
-      true,
-      phi::errors::InvalidArgument("The loop should not be block's ancestor!"));
+  PADDLE_ENFORCE_EQ(find_block_in_loop.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The loop should not be block's ancestor!"));
 }
 
 void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(
       for_loop.As<ir::For>(),
-      phi::errors::NotFound("Param for_loop of GetConsumers should be a "
-                            "ir::For node! Please check."));
+      ::common::errors::NotFound("Param for_loop of GetConsumers should be a "
+                                 "ir::For node! Please check."));
   PADDLE_ENFORCE_NOT_NULL(
       for_loop.As<ir::For>()->body.As<Block>(),
-      phi::errors::NotFound("For node's body should be Block!"));
+      ::common::errors::NotFound("For node's body should be Block!"));
   ir::Block* dst_block = for_loop.As<ir::For>()->body.As<Block>();
   PADDLE_ENFORCE_EQ(
       index == -1 || index >= 0 && index < dst_block->stmts.size(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The index should be -1 or between [0, block stmts size), but got %d",
           index));
 
@@ -1245,8 +1248,8 @@ void InsertBlock(Expr& for_loop, const Expr& insertion, int index) {  // NOLINT
       auto* inserted_block = dst_it->As<IfThenElse>()->true_case.As<Block>();
       PADDLE_ENFORCE_NOT_NULL(
           inserted_block,
-          phi::errors::NotFound("The IfThenElse node to be inserted "
-                                "should contain a true_case block."));
+          ::common::errors::NotFound("The IfThenElse node to be inserted "
+                                     "should contain a true_case block."));
       inserted_block->stmts.insert(inserted_block->stmts.begin(), insertion);
     } else {
       dst_block->stmts.insert(dst_it, insertion);
@@ -1271,11 +1274,11 @@ std::vector<IterRange> CalculateRequiredRegions(
     bool is_store_provided) {
   PADDLE_ENFORCE_NOT_NULL(
       block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param block should be a ir::ScheduleBlockRealize node."));
   PADDLE_ENFORCE_NOT_NULL(
       loop.As<ir::For>(),
-      phi::errors::NotFound("Param loop should be a ir::For node."));
+      ::common::errors::NotFound("Param loop should be a ir::For node."));
 
   std::set<Expr> provided_nodes;
   if (is_store_provided) {
@@ -1299,7 +1302,7 @@ std::vector<IterRange> CalculateRequiredRegions(
     for (const Expr& req_block : required_blocks) {
       PADDLE_ENFORCE_NOT_NULL(
           req_block.As<ir::ScheduleBlockRealize>(),
-          phi::errors::NotFound(
+          ::common::errors::NotFound(
               "Param req_block should be a ir::ScheduleBlockRealize node."));
       Expr block_body =
           ir::ir_utils::IRCopy(req_block.As<ir::ScheduleBlockRealize>()
@@ -1384,8 +1387,9 @@ std::vector<IterRange> CalculateRequiredRegions(
                   ->iter_values[i]
                   .is_constant(),
           true,
-          phi::errors::InvalidArgument("ScheduleBlockRealize node's iter "
-                                       "values should be var or constant."));
+          ::common::errors::InvalidArgument(
+              "ScheduleBlockRealize node's iter "
+              "values should be var or constant."));
       if (block.As<ir::ScheduleBlockRealize>()->iter_values[i].as_var()) {
         auto find_for_loops =
             ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
@@ -1417,7 +1421,7 @@ Expr CheckComputeInlineValidationAndGetStore(const Expr& schedule_block,
                                              const Expr& root) {
   PADDLE_ENFORCE_NOT_NULL(
       schedule_block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param schedule_block should be a ir::ScheduleBlockRealize node."));
   auto compute_body = schedule_block.As<ir::ScheduleBlockRealize>()
                           ->schedule_block.As<ir::ScheduleBlock>()
@@ -1432,7 +1436,7 @@ Expr CheckComputeInlineValidationAndGetStore(const Expr& schedule_block,
   Expr tensor = (*find_store.begin()).As<ir::Store>()->tensor;
   PADDLE_ENFORCE_EQ(!tensor.as_tensor_ref()->is_reduce_tensor(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Param tensor should not be a reduce tensor!"));
   // 2. Check this schedule block is the only writer of the tensor.
   find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
@@ -1456,7 +1460,7 @@ Expr CheckComputeInlineValidationAndGetStore(const Expr& schedule_block,
   PADDLE_ENFORCE_EQ(
       find_load.empty(),
       true,
-      phi::errors::InvalidArgument("The find_load should be empty!"));
+      ::common::errors::InvalidArgument("The find_load should be empty!"));
   return (*find_store.begin());
 }
 
@@ -1464,7 +1468,7 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
     const Expr& schedule_block, const Expr& root) {
   PADDLE_ENFORCE_NOT_NULL(
       schedule_block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param schedule_block should be a ir::ScheduleBlockRealize node."));
   auto compute_body = schedule_block.As<ir::ScheduleBlockRealize>()
                           ->schedule_block.As<ir::ScheduleBlock>()
@@ -1479,7 +1483,7 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
   Expr tensor = (*find_inlined_load.begin()).As<ir::Load>()->tensor;
   PADDLE_ENFORCE_EQ(!tensor.as_tensor_ref()->is_reduce_tensor(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Param tensor should not be a reduce tensor!"));
   auto inlined_load = *find_inlined_load.begin();
   // 2. Check this schedule block is the only reader of the tensor.
@@ -1504,7 +1508,7 @@ std::tuple<Expr, Expr, Expr> CheckReverseComputeInlineValidationAndGetExprs(
   PADDLE_ENFORCE_EQ(
       find_store.empty(),
       true,
-      phi::errors::InvalidArgument("The find_store should be empty!"));
+      ::common::errors::InvalidArgument("The find_store should be empty!"));
   // 4. Get store that will be inlined.
   auto find_inlined_store =
       ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {

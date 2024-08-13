@@ -763,7 +763,7 @@ def monkey_patch_tensor():
         if len(invalid_keys) != 0:
             raise TypeError(
                 "to() got an unexpected keyword argument "
-                + list(invalid_keys)[0]
+                + next(iter(invalid_keys))
             )
         if size_args > 0:
             if isinstance(args[0], paddle.Tensor):

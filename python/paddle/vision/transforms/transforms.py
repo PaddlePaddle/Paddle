@@ -1794,7 +1794,7 @@ class RandomRotation(BaseTransform[_InputT, _RetT]):
         degrees: float | Sequence[float],
         interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
         expand: bool = False,
-        center: tuple[float, float] = None,
+        center: tuple[float, float] | None = None,
         fill: Size3 = 0,
         keys: _TransformInputKeys | None = None,
     ) -> None:

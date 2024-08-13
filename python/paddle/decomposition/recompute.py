@@ -155,7 +155,7 @@ def auto_recompute(
     grad_outputs: Sequence[pir.Value],
     fwd_op_end_idx: int,
     backward_op_start_idx: int,
-    recomputable_ops: Sequence[str] = None,
+    recomputable_ops: Sequence[str] | None = None,
 ) -> tuple[paddle.static.Program, int]:
     '''
     Considering the compiler fuse strategy, we model the pir graph.

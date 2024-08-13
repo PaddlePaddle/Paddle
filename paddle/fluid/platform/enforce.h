@@ -158,12 +158,12 @@ struct EOFException : public std::exception {
     END_HANDLE_THE_ERROR                               \
   } while (0)
 
-#define PADDLE_THROW_BAD_ALLOC(...)                                      \
-  do {                                                                   \
-    HANDLE_THE_ERROR                                                     \
-    throw ::paddle::memory::allocation::BadAlloc(                        \
-        phi::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
-    END_HANDLE_THE_ERROR                                                 \
+#define PADDLE_THROW_BAD_ALLOC(...)                                           \
+  do {                                                                        \
+    HANDLE_THE_ERROR                                                          \
+    throw ::paddle::memory::allocation::BadAlloc(                             \
+        ::common::ErrorSummary(__VA_ARGS__).to_string(), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                      \
   } while (0)
 
 }  // namespace platform

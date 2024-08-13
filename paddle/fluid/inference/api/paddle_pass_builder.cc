@@ -615,6 +615,7 @@ const std::vector<std::string> kPirGpuPasses{
     "transpose_flatten_concat_fuse_pass",
     "remove_redundant_transpose_pass",
     "transfer_layout_pass",
+    "horizontal_fuse_pass",
 };
 
 const std::vector<std::string> kPirXpuPasses{
@@ -624,6 +625,7 @@ const std::vector<std::string> kPirXpuPasses{
     "map_op_to_another_pass",
     "identity_op_clean_pass",
     // Operator fusion pass
+    "add_activation_xpu_fuse_pass",
     "add_layernorm_xpu_fuse_pass",
     "conv2d_bn_xpu_fuse_pass",
     "conv2d_add_xpu_fuse_pass",

@@ -334,7 +334,7 @@ class AutoParallelizer:
             # serialize the dist context by planner
             if dist_context is not None:
                 logging.info("Start serialize searched dist attr")
-                cwd = pathlib.Path().resolve()
+                cwd = pathlib.Path().cwd()
                 searched_dist_context_path = os.path.join(
                     cwd, f"searched_dist_context_{time.time()}.pkl"
                 )
