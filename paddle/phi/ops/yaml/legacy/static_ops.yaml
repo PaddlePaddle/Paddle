@@ -958,7 +958,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : UnsqueezeWithXShapeInferMeta
-    spmd_rule : UnsqueezeInferSpmd
+    spmd_rule : UnsqueezeWithXShapeInferSpmd
   kernel :
     func : unsqueeze_with_xshape
     data_type : x

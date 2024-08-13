@@ -32,5 +32,15 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& out_grad,
                                 const IntArray& axis = {});
+
+// FIXME(dev): Clean these two old IR InferSpmd rules, while removing
+// python/paddle/distributed/auto_parallel/static/operators/dist_unsqueeze2.py
+SpmdInfo UnsqueezeWithXShapeInferSpmd(const DistMetaTensor& x,
+                                      const std::vector<int64_t>& axis);
+
+SpmdInfo UnsqueezeWithXShapeGradInferSpmd(const DistMetaTensor& xshape,
+                                          const DistMetaTensor& out_grad,
+                                          const IntArray& axis = {});
+
 }  // namespace distributed
 }  // namespace phi

@@ -29,6 +29,14 @@ namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
+TensorDistAttr CreateUnsqueezeXshape(const TensorDistAttr& x) {
+  TensorDistAttr out(x);
+  auto dims_mapping = x.dims_mapping();
+  dims_mapping.insert(dims_mapping.begin(), -1);
+  out.set_dims_mapping(dims_mapping);
+  return out;
+}
+
 std::vector<std::shared_ptr<DimTrans>> MakeUnsqueezeDimTrans(
     const std::vector<int64_t>& x_shape,
     std::vector<int64_t>* out_shape,
@@ -225,6 +233,22 @@ SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& x,
   auto shape = phi::vectorize(x.dims());
   const auto& spmd = ReshapeInferSpmd(out_grad, shape);
   return {{x.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
+}
+
+SpmdInfo UnsqueezeWithXShapeInferSpmd(const DistMetaTensor& x,
+                                      const std::vector<int64_t>& axis) {
+  const auto& spmd = UnsqueezeInferSpmd(x, axis);
+  const auto& x_dist_attr = PADDLE_GET_CONST(TensorDistAttr, spmd.first[0]);
+  return {{x_dist_attr}, {spmd.second[0], CreateUnsqueezeXshape(x_dist_attr)}};
+}
+
+SpmdInfo UnsqueezeWithXShapeGradInferSpmd(const DistMetaTensor& xshape,
+                                          const DistMetaTensor& out_grad,
+                                          const IntArray& axis) {
+  auto shape = phi::vectorize(xshape.dims());
+  shape = std::vector<int64_t>(shape.begin() + 1, shape.end());
+  const auto& spmd = ReshapeInferSpmd(out_grad, shape);
+  return {{xshape.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }
 
 }  // namespace phi::distributed
