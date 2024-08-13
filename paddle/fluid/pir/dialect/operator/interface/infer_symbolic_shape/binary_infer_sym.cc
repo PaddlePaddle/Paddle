@@ -1075,9 +1075,8 @@ bool IndexAddOpInferSymbolicShape(
       1,
       common::errors::InvalidArgument("Index tensor must be 1-dimensional."));
 
-  PADDLE_ENFORCE_EQ(index_shape.shape()[0].dyn_cast<int64_t>(),
+  PADDLE_ENFORCE_NE(index_shape.shape()[0].dyn_cast<int64_t>(),
                     0,
-                    false,
                     common::errors::InvalidArgument(
                         "The length of Input(Index) can't be 0."));
 
