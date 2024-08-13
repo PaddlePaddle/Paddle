@@ -3591,12 +3591,13 @@ struct QuantizeLinearOpTranscriber : public OpTranscriber {
   }
 };
 
-struct Reshape2GradOpTranscriber : public OpTranscriber {
+template <typename OpT>
+struct WithXShapeGradOpTranscriber : public OpTranscriber {
   pir::Operation* operator()(pir::IrContext* ctx,
                              TranslationContext* param_map,
                              const OpDesc& op_desc,
                              pir::Block* block) override {
-    VLOG(4) << "Translate Reshape2Grad...";
+    VLOG(4) << "Translate " << op_desc.Type() << ".....";
     pir::Builder builder(ctx, block);
     auto& input_xshape_name = op_desc.Input("XShape")[0];
     auto& input_outgrad_name = op_desc.Input("Out@GRAD")[0];
@@ -3645,13 +3646,12 @@ struct Reshape2GradOpTranscriber : public OpTranscriber {
         ::common::errors::InvalidArgument(
             "input type must be DenseTensorType, but received: %s.",
             input_outgrad_value.type()));
+    // NOTE(Aurelius84): Even though we use xshape to construct grad op,
+    // but in GradKernel we still use dx->dims by default.
+    OpT grad_op = builder.Build<OpT>(xshape_value, input_outgrad_value);
+    param_map->PushValue(out_name, grad_op.result(0));
 
-    dialect::ReshapeGradOp reshape_grad_op =
-        builder.Build<dialect::ReshapeGradOp>(xshape_value,
-                                              input_outgrad_value);
-    param_map->PushValue(out_name, reshape_grad_op.result(0));
-
-    return reshape_grad_op.operation();
+    return grad_op.operation();
   }
 };
 
@@ -3747,7 +3747,11 @@ OpTranslator::OpTranslator() {
   special_handlers["c_embedding"] = CEmbeddingOpTranscriber();
   special_handlers["quantize_linear"] = QuantizeLinearOpTranscriber();
   special_handlers["dequantize_linear"] = QuantizeLinearOpTranscriber();
-  special_handlers["reshape2_grad"] = Reshape2GradOpTranscriber();
+  // To process Op with XShape output in old IR
+  special_handlers["reshape2_grad"] =
+      WithXShapeGradOpTranscriber<dialect::ReshapeGradOp>();
+  special_handlers["flatten_contiguous_range_grad"] =
+      WithXShapeGradOpTranscriber<dialect::FlattenGradOp>();
 }
 
 }  // namespace translator

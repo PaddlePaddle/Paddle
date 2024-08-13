@@ -1094,9 +1094,7 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
-                                          int start_axis,
-                                          int end_axis) {
+Tensor flatten_decomp(const Tensor& x, int start_axis, int end_axis) {
   auto x_dim = x.shape();
   if (x_dim.size() == 0) {
     start_axis = 0;
@@ -1109,17 +1107,8 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
   if (has_dynamic_shape(x.shape())) {
     auto x_shape = shape<T>(x);
-    Tensor x_shape_tensor = full<T>({1}, 0, x_shape.dtype());
-    std::vector<Tensor> tmp_shape;
-    tmp_shape.push_back(x_shape_tensor);
-    for (size_t i = 0; i < x_dim.size(); i++) {
-      tmp_shape.push_back(get_slice<T>(x_shape, i));
-    }
-    x_shape_tensor = concat<T>(tmp_shape);
-    x_shape_tensor =
-        backend::full_with_tensor<T>(x_shape_tensor, 0.0, DataType::FLOAT32);
     if (end_axis == start_axis) {
-      return std::make_tuple(backend::reshape<T>(x, x_shape), x_shape_tensor);
+      return backend::reshape<T>(x, x_shape);
     }
     std::vector<Tensor> out_shape;
 
@@ -1139,18 +1128,16 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
     }
 
     Tensor out_shape_tensor = concat<T>(out_shape);
-    return std::make_tuple(backend::reshape<T>(x, out_shape_tensor),
-                           x_shape_tensor);
+    return backend::reshape<T>(x, out_shape_tensor);
   } else {
     std::vector<int64_t> tmp_shape(x_dim);
     tmp_shape.insert(tmp_shape.begin(), 0);
-    auto xshape = full<T>(tmp_shape, 0.0, DataType::FLOAT32);
     if (x_dim.size() == 0) {
       std::vector<int64_t> res_shape(1, 1);
-      return std::make_tuple(reshape<T>(x, res_shape), xshape);
+      return reshape<T>(x, res_shape);
     }
     if (end_axis == start_axis) {
-      return std::make_tuple(reshape<T>(x, x_dim), xshape);
+      return reshape<T>(x, x_dim);
     }
 
     int slice_numel = 1;
@@ -1166,7 +1153,7 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
       out_shape.push_back(x_dim[i]);
     }
 
-    return std::make_tuple(reshape<T>(x, out_shape), xshape);
+    return reshape<T>(x, out_shape);
   }
 }
 
