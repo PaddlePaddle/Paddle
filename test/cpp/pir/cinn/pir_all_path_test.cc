@@ -25,7 +25,6 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
-#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -71,10 +70,9 @@ static void RunAndCheckResult(::pir::Program* program,
   stage_1_pm.AddPass(pir::CreateBuildCinnPass());
   stage_1_pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
-  PADDLE_ENFORCE_EQ(
-      stage_1_pm.Run(program),
-      true,
-      commom::errors::Unavailable("stage_1_pm fail to run program"));
+  PADDLE_ENFORCE_EQ(stage_1_pm.Run(program),
+                    true,
+                    phi::errors::Unavailable("stage_1_pm fail to run program"));
 
   pir::PassManager stage_2_pm(ctx);
   stage_2_pm.AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
@@ -82,10 +80,9 @@ static void RunAndCheckResult(::pir::Program* program,
   stage_2_pm.AddPass(pir::CreateDeadCodeEliminationPass());
   stage_2_pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
 
-  PADDLE_ENFORCE_EQ(
-      stage_2_pm.Run(program),
-      true,
-      commom::errors::Unavailable("stage_2_pm fail to run program"));
+  PADDLE_ENFORCE_EQ(stage_2_pm.Run(program),
+                    true,
+                    phi::errors::Unavailable("stage_2_pm fail to run program"));
 
   phi::Place place = phi::GPUPlace(0);
 

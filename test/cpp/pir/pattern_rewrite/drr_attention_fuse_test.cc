@@ -24,7 +24,6 @@
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/multihead_matmul_fuse_pass.h"
 
-#include "paddle/common/errors.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/pass/pass_manager.h"
@@ -164,6 +163,6 @@ TEST(DrrTest, AttentionFuse) {
 
   PADDLE_ENFORCE_EQ(pm.Run(&program),
                     true,
-                    commom::errors::Unavailable("pm fail to run program"));
+                    phi::errors::Unavailable("pm fail to run program"));
   EXPECT_EQ(program.block()->size(), 2u);
 }

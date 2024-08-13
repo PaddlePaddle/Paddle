@@ -16,7 +16,6 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/common/errors.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
@@ -142,6 +141,6 @@ TEST(DrrTest, FusedLinear) {
 
   PADDLE_ENFORCE_EQ(pm.Run(&program),
                     true,
-                    commom::errors::Unavailable("pm fail to run program"));
+                    phi::errors::Unavailable("pm fail to run program"));
   EXPECT_EQ(program.block()->size(), 22u);
 }
