@@ -80,7 +80,7 @@ class SequenceMaskTestBase(OpTest):
         return (index_broadcast < x_broadcast).astype(self.mask_dtype)
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
 
 class SequenceMaskTest1(SequenceMaskTestBase):

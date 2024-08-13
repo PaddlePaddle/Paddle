@@ -4119,6 +4119,7 @@
   kernel:
     func: sequence_mask_scalar
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sequence_pool
   args: (Tensor x, bool is_test=false, str pooltype = "AVERAGE", float pad_value = 0.0)

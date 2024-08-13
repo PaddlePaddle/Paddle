@@ -952,12 +952,26 @@ bool SearchsortedOpInferSymbolicShape(
   return true;
 }
 
-// bool SequenceMaskOpInferSymbolicShape(pir::Operation *op,
-//                                       pir::InferSymbolicShapeContext
-//                                       *infer_context) {
-//   // pass
-//   return true;
-// }
+bool SequenceMaskOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+
+  const auto &max_len_tensor =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  int max_len = max_len_tensor.AsScalar().to<int>();
+
+  std::vector<symbol::DimExpr> y_dims = x_dims;
+  y_dims.push_back(max_len > 0 ? symbol::DimExpr(max_len)
+                               : symbol::DimExpr(-1));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(y_dims)});
+
+  return true;
+}
 
 bool SwigluOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
