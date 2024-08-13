@@ -66,12 +66,9 @@ DEFINE_GENERAL_PATTERN(Silu, paddle::dialect::SiluOp)
 DEFINE_GENERAL_PATTERN(Conv2d, paddle::dialect::Conv2dOp)
 DEFINE_GENERAL_PATTERN(FusedConv2dAddAct, paddle::dialect::FusedConv2dAddActOp)
 DEFINE_GENERAL_PATTERN(DepthwiseConv2d, paddle::dialect::DepthwiseConv2dOp)
-<<<<<<< HEAD
 DEFINE_GENERAL_PATTERN(Shape, paddle::dialect::ShapeOp)
 DEFINE_GENERAL_PATTERN(Expand, paddle::dialect::ExpandOp)
-=======
 DEFINE_GENERAL_PATTERN(Sigmoid, paddle::dialect::SigmoidOp)
->>>>>>> a325d64cacda84d45cc95a602a4b4e7c7ab2aeb9
 
 #undef DEFINE_GENERAL_PATTERN
 
