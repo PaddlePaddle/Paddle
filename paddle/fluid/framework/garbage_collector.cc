@@ -14,7 +14,7 @@
 
 #include <functional>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
@@ -133,13 +133,12 @@ CustomDefaultStreamGarbageCollector::CustomDefaultStreamGarbageCollector(
     : GarbageCollector(place, max_memory_size) {}
 
 void CustomDefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::CustomDeviceContext *>(this->dev_ctx_)
-      ->WaitStreamCallback();
+  static_cast<phi::CustomContext *>(this->dev_ctx_)->WaitStreamCallback();
 }
 
 void CustomDefaultStreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
-  static_cast<platform::CustomDeviceContext *>(this->dev_ctx_)
+  static_cast<phi::CustomContext *>(this->dev_ctx_)
       ->AddStreamCallback(callback);
 }
 
@@ -212,7 +211,7 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
     }
 #else
     PADDLE_THROW(
-        platform::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
+        common::errors::Unimplemented("No GPU gc found in CPU/XPU paddle"));
 #endif
   } else if (phi::is_cpu_place(place)) {
     gc = std::make_unique<CPUGarbageCollector>(place, max_memory_size);
@@ -221,14 +220,14 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
     gc = std::make_unique<XPUGarbageCollector>(place, max_memory_size);
 #else
     PADDLE_THROW(
-        platform::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
+        common::errors::Unimplemented("No XPU gc found in CPU/GPU paddle"));
 #endif
   } else if (phi::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
     gc = std::make_unique<IPUGarbageCollector>(place, max_memory_size);
 #else
     PADDLE_THROW(
-        platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
+        common::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
 #endif
   } else if (phi::is_custom_place(place)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -242,7 +241,7 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
           place, max_memory_size);
     }
 #else
-    PADDLE_THROW(platform::errors::Unimplemented("No CustomDevice gc found"));
+    PADDLE_THROW(common::errors::Unimplemented("No CustomDevice gc found"));
 #endif
   }
   return std::unique_ptr<GarbageCollector>(gc.release());

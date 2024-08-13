@@ -15,7 +15,8 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/utils/visit_place.h"
 
 namespace paddle {
 namespace framework {
@@ -24,12 +25,12 @@ namespace internal {
 template <typename T>
 static ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
-  if (std::is_same<T, platform::complex<float>>::value ||
-      std::is_same<T, platform::complex<double>>::value) {
+  if (std::is_same<T, phi::dtype::complex<float>>::value ||
+      std::is_same<T, phi::dtype::complex<double>>::value) {
     dtype.code = kDLComplex;
-  } else if (std::is_same<T, platform::bfloat16>::value) {
+  } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
     dtype.code = kDLBfloat;
-  } else if (std::is_same<T, platform::float16>::value ||
+  } else if (std::is_same<T, phi::dtype::float16>::value ||
              std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
   } else if (std::is_unsigned<T>::value) {
@@ -37,10 +38,10 @@ static ::DLDataType GetDLDataTypeCode() {
   } else if (std::is_integral<T>::value) {
     dtype.code = kDLInt;
   } else {
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "Unsupported data type (%s), only supports float16, float, unsigned "
         "int and int.",
-        platform::demangle(typeid(T).name())));
+        common::demangle(typeid(T).name())));
   }
   dtype.bits = 8 * sizeof(T);
   dtype.lanes = 1;
@@ -64,7 +65,7 @@ static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
   auto it = type_to_dtype_map.find(static_cast<int>(type));
   PADDLE_ENFORCE_NE(it,
                     type_to_dtype_map_end_it,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Unsupported data type (%s).", DataTypeToString(type)));
   return it->second;
 #undef REG_DL_DATA_TYPE
@@ -82,17 +83,17 @@ struct DLDeviceVisitor {
 
   inline ::DLDevice operator()(const phi::IPUPlace &place) const {
     PADDLE_THROW(
-        platform::errors::Unimplemented("phi::IPUPlace is not supported"));
+        common::errors::Unimplemented("phi::IPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::XPUPlace &place) const {
     PADDLE_THROW(
-        platform::errors::Unimplemented("phi::XPUPlace is not supported"));
+        common::errors::Unimplemented("phi::XPUPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::CustomPlace &place) const {
     PADDLE_THROW(
-        platform::errors::Unimplemented("phi::CustomPlace is not supported"));
+        common::errors::Unimplemented("phi::CustomPlace is not supported"));
   }
 
   inline ::DLDevice operator()(const phi::GPUPlace &place) const {
@@ -102,7 +103,7 @@ struct DLDeviceVisitor {
     device.device_id = place.device;  // NOLINT
     return device;
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "phi::GPUPlace is not supported in CPU only version."));
 #endif
   }
@@ -114,7 +115,7 @@ struct DLDeviceVisitor {
     device.device_id = 0;
     return device;
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "phi::GPUPinnedPlace is not supported in CPU only version."));
 #endif
   }
@@ -165,7 +166,7 @@ DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
   // init device, DLDevice type with device_type and device_id
   auto place = src.place();
   pdDLMTensor->tensor.dl_tensor.device =
-      paddle::platform::VisitPlace(place, internal::DLDeviceVisitor());
+      phi::VisitPlace(place, internal::DLDeviceVisitor());
 
   pdDLMTensor->tensor.dl_tensor.dtype = internal::GetDLDataTypeFromTypeIndex(
       framework::TransToProtoVarType(src.dtype()));
@@ -181,7 +182,7 @@ DLPackTensor::DLPackTensor(const phi::DenseTensor &tensor, LaneType lanes)
 
   // init device, DLDevice type with device_type and device_id
   auto place = tensor.place();
-  t_.device = paddle::platform::VisitPlace(place, internal::DLDeviceVisitor());
+  t_.device = phi::VisitPlace(place, internal::DLDeviceVisitor());
 
   // init dtype
   t_.dtype = internal::GetDLDataTypeFromTypeIndex(

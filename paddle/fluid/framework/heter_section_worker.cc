@@ -17,14 +17,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
-                platform::DeviceContext* dev_ctx,
+                phi::DeviceContext* dev_ctx,
                 const phi::Place& place,
                 int micro_id) {
   // create microbatch_id variable
@@ -35,7 +35,7 @@ void SetMicroId(paddle::framework::Scope* scope,
   PADDLE_ENFORCE_EQ(
       var->IsType<phi::DenseTensor>(),
       1,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the type of microbatch_id  should be phi::DenseTensor"));
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   std::vector<int> dims{1};
@@ -207,13 +207,13 @@ void HeterSectionWorker::MiniBatchBarrier() {
     auto micro_id = task.second;
     PADDLE_ENFORCE_EQ(message_name.find("backward") != std::string::npos,
                       true,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "cpu trainers only receive backward data"));
     PADDLE_ENFORCE_EQ(
         micro_ids.find(micro_id) == micro_ids.end(),
         true,
-        platform::errors::InvalidArgument("minibatch_scope_ can not be nullptr "
-                                          "when create MicroBatch Scope"));
+        common::errors::InvalidArgument("minibatch_scope_ can not be nullptr "
+                                        "when create MicroBatch Scope"));
     micro_ids.insert(micro_id);
     // backward data has been deserialized to micro scope
     // now run backward computation
@@ -302,7 +302,7 @@ void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
 void HeterSectionWorker::CreateMicrobatchScopes() {
   PADDLE_ENFORCE_NOT_NULL(
       minibatch_scope_,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "minibatch_scope_ can not be nullptr when create MicroBatch Scopes"));
   if (microbatch_scopes_.get() == nullptr) {
     microbatch_scopes_.reset(new std::vector<paddle::framework::Scope*>{});
@@ -412,7 +412,7 @@ void HeterSectionWorker::Run() {
       if (is_last_stage) {
         PADDLE_ENFORCE_EQ(message_name.find("forward") != std::string::npos,
                           1,
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "last stage only receive forward data"));
         RunForward(micro_id);
         RunBackward(micro_id);

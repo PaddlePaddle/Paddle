@@ -18,10 +18,10 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 USE_OP_ITSELF(elementwise_add);
 
@@ -41,8 +41,8 @@ static void Memcpy(void *dst, const void *src, size_t n, bool copy_to_gpu) {
     PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpy(dst, src, n, hipMemcpyHostToDevice));
 #else
     PADDLE_THROW(
-        phi::errors::InvalidArgument("Check your paddle version, current "
-                                     "version is not compiled with cuda"));
+        common::errors::InvalidArgument("Check your paddle version, current "
+                                        "version is not compiled with cuda"));
 #endif
   } else {
     std::memcpy(dst, src, n);
@@ -98,20 +98,20 @@ bool TestMain(const phi::Place &place, const phi::DDim &dims, bool inplace) {
   PADDLE_ENFORCE_EQ(
       scope.kids().empty(),
       true,
-      phi::errors::InvalidArgument("The scope can not have the child scopes,"
-                                   "please check your code."));
+      common::errors::InvalidArgument("The scope can not have the child scopes,"
+                                      "please check your code."));
   if (inplace) {
     PADDLE_ENFORCE_EQ(
         &out_tensor,
         x,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output tensor should be same as input x in inplace mode,"
             " but now is not same."));
   } else {
     PADDLE_ENFORCE_EQ(
         &out_tensor,
         z,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The output tensor should be same as output z in normal mode,"
             " but now is not same."));
   }

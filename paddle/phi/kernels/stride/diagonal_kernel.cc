@@ -32,9 +32,9 @@ void DiagonalStridedKernel(const Context& dev_ctx,
                            int axis2,
                            DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   size_t x_rank = x.dims().size();
   if (axis1 < 0) {
@@ -75,7 +75,8 @@ void DiagonalStridedKernel(const Context& dev_ctx,
   auto tmp_dim = DDim(shape.data(), static_cast<int>(shape.size()));
   // if (product(meta.dims) > 0 && meta.dims != tmp_dim) {
   //   PADDLE_THROW(
-  //       phi::errors::Fatal("Diagonal kernel stride compute diff, infer shape
+  //       common::errors::Fatal("Diagonal kernel stride compute diff, infer
+  //       shape
   //       "
   //                          "is %s, but compute is %s.",
   //                          meta.dims,

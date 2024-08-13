@@ -21,11 +21,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Generator,
     Generic,
-    Iterable,
-    Iterator,
-    Sequence,
     Tuple,
     TypeVar,
 )
@@ -37,6 +33,8 @@ import paddle
 from ... import framework
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable, Iterator, Sequence
+
     from paddle import Tensor
 
 _T = TypeVar('_T')
@@ -99,6 +97,10 @@ class Dataset(Generic[_T]):
             "'{}' not implement in class "
             "{}".format('__len__', self.__class__.__name__)
         )
+
+    if TYPE_CHECKING:
+        # A virtual method for type checking only
+        def __iter__(self) -> Iterator[_T]: ...
 
 
 class IterableDataset(Dataset[_T]):
@@ -482,18 +484,31 @@ class Subset(Dataset[_T]):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.io import Subset
 
-            >>> # example 1:
-            >>> a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2])
+            >>> class RangeDataset(paddle.io.Dataset):  # type: ignore[type-arg]
+            ...     def __init__(self, start, stop):
+            ...         self.start = start
+            ...         self.stop = stop
+            ...
+            ...     def __getitem__(self, index):
+            ...         return index + self.start
+            ...
+            ...     def __len__(self):
+            ...         return self.stop - self.start
+
+            >>> # Example 1:
+            >>> a = paddle.io.Subset(dataset=RangeDataset(1, 4), indices=[0, 2])
             >>> print(list(a))
             [1, 3]
 
-            >>> # example 2:
-            >>> b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])
+            >>> # Example 2:
+            >>> b = paddle.io.Subset(dataset=RangeDataset(1, 4), indices=[1, 1])
             >>> print(list(b))
             [2, 2]
     """
+
+    dataset: Dataset[_T]
+    indices: Sequence[int]
 
     def __init__(self, dataset: Dataset[_T], indices: Sequence[int]) -> None:
         self.dataset = dataset

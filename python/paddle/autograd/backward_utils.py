@@ -49,11 +49,22 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.split",
     "pd_op.multiply",
     "pd_op.relu",
-    "pd_op.sigmoid",
     "pd_op.divide",
     "pd_op.pow",
     "pd_op.elementwise_pow",
     "pd_op.softmax",
+    "pd_op.matmul",
+    "pd_op.cumsum",
+    "pd_op.erf",
+    "pd_op.floor",
+    "pd_op.reshape",
+    "pd_op.leaky_relu",
+    "pd_op.softsign",
+    "pd_op.maximum",
+    "pd_op.minimum",
+    "pd_op.gelu",
+    "pd_op.hardswish",
+    "pd_op.reduce_as",
 ]
 
 
@@ -62,7 +73,10 @@ class ValueWrapper:
         if isinstance(value, ValueWrapper):
             assert isinstance(value._value, (type(None), pir.Value))
         else:
-            assert isinstance(value, (type(None), pir.Value))
+            if not isinstance(value, (type(None), pir.Value)):
+                raise TypeError(
+                    "Value Wrapper is onlys support None and pir.Value"
+                )
         self._value = value._value if isinstance(value, ValueWrapper) else value
 
     def __hash__(self) -> int:
@@ -591,6 +605,8 @@ def get_grad_semantic_info(op):
         "pd_op.while",
         "pd_op.pylayer",
         "cf.tuple_push",
+        "dist_op.dtensor_from_local_tensors",
+        "dist_op.local_tensors_from_dtensor",
     ]:
         grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]
         if op.name() == "pd_op.if":

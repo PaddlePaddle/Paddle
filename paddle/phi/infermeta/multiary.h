@@ -528,6 +528,20 @@ void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   MetaTensor* rpn_roi_probs,
                                   MetaTensor* rpn_rois_num);
 
+void LegacyGenerateProposalsInferMeta(const MetaTensor& scores,
+                                      const MetaTensor& bbox_deltas,
+                                      const MetaTensor& im_info,
+                                      const MetaTensor& anchors,
+                                      const MetaTensor& variances,
+                                      int pre_nms_top_n,
+                                      int post_nms_top_n,
+                                      float nms_thresh,
+                                      float min_size,
+                                      float eta,
+                                      MetaTensor* rpn_rois,
+                                      MetaTensor* rpn_roi_probs,
+                                      MetaTensor* rpn_rois_num);
+
 void GraphKhopSamplerInferMeta(const MetaTensor& row,
                                const MetaTensor& col_ptr,
                                const MetaTensor& x,
@@ -1151,6 +1165,18 @@ void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& bias1,
                   const std::string& act_type,
                   MetaTensor* out);
+
+void FusedMoeInferMeta(const MetaTensor& X,
+                       const MetaTensor& gate_weight,
+                       const MetaTensor& ffn1_weight,
+                       const MetaTensor& ffn1_scale,
+                       const MetaTensor& ffn1_bias,
+                       const MetaTensor& ffn2_weight,
+                       const MetaTensor& ffn2_scale,
+                       const MetaTensor& ffn2_bias,
+                       const std::string& quant_method,
+                       const int moe_topk,
+                       MetaTensor* out);
 
 void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,
                                       const MetaTensor& key,

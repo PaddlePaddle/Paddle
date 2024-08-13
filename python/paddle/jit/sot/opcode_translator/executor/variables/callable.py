@@ -270,7 +270,14 @@ class TensorFunctionVariable(FunctionVariable):
     def __init__(
         self, method_name: str, graph: FunctionGraph, tracker: Tracker
     ):
-        fn = getattr(paddle.static.Variable, method_name)
+        fn = getattr(
+            (
+                paddle.pir.Value
+                if paddle.framework.use_pir_api()
+                else paddle.static.Variable
+            ),
+            method_name,
+        )
         super().__init__(fn, graph, tracker)
         self.method_name = method_name
 
@@ -654,7 +661,7 @@ class BuiltinVariable(FunctionVariable):
                 return VariableFactory.from_value(
                     True,
                     self.graph,
-                    DummyTracker([self] + list(args) + list(kwargs.values())),
+                    DummyTracker([self, *list(args), *list(kwargs.values())]),
                 )
 
         # Break graph if neither of the above conditions is met
@@ -724,7 +731,13 @@ class ClassVariable(CallableVariable):
         return self.value
 
     def call_function(self, /, *args, **kwargs):
-        new_object = self.value.__new__(self.value)
+        from ..function_graph import convert_to_py_value
+
+        new_object = self.value.__new__(
+            self.value,
+            *convert_to_py_value(args),
+            **convert_to_py_value(kwargs),
+        )
 
         # do not have init function
         if self.value.__init__ is object.__init__:
@@ -749,7 +762,7 @@ class ClassVariable(CallableVariable):
         new_object_variable = VariableFactory.from_value(
             new_object,
             self.graph,
-            DummyTracker([self] + list(args) + list(kwargs.values())),
+            DummyTracker([self, *list(args), *list(kwargs.values())]),
         )
         fn_var(new_object_variable, *args, **kwargs)
         return new_object_variable

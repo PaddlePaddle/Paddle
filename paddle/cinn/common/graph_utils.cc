@@ -32,7 +32,7 @@ namespace {
 void DFSSortUtil(const GraphNode *node, std::vector<GraphNode *> *order) {}
 
 std::vector<GraphNode *> DFSSort(const std::vector<GraphNode *> &nodes) {
-  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
+  PADDLE_THROW(::common::errors::Unimplemented("Not Implemented"));
   return {};
 }
 
@@ -100,7 +100,7 @@ Graph::topological_order() const {
     for (auto &edge : top_node->outlinks()) {
       PADDLE_ENFORCE_EQ(edge->source(),
                         top_node,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The edge's source is not equal to the top node."));
       edge_order.push_back(edge.get());
       auto *sink = edge->sink();
@@ -112,7 +112,7 @@ Graph::topological_order() const {
 
   PADDLE_ENFORCE_EQ(node_order.size(),
                     nodes().size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The node_order size is not equal to the nodes size."));
 
   return std::make_tuple(node_order, edge_order);
@@ -179,9 +179,18 @@ void Graph::ClearUnlinkedNodes(
     absl::flat_hash_map<std::string, std::vector<int>> *shape_dict,
     absl::flat_hash_map<std::string, Type> *type_dict,
     absl::flat_hash_map<std::string, std::string> *layout_dict) {
-  CHECK(shape_dict);
-  CHECK(type_dict);
-  CHECK(layout_dict);
+  PADDLE_ENFORCE_NOT_NULL(
+      shape_dict,
+      ::common::errors::InvalidArgument(
+          "The shpe_dict %s is null,please change", shape_dict));
+  PADDLE_ENFORCE_NOT_NULL(
+      type_dict,
+      ::common::errors::InvalidArgument(
+          "The type_dict %s is null,please change ", type_dict));
+  PADDLE_ENFORCE_NOT_NULL(
+      layout_dict,
+      ::common::errors::InvalidArgument(
+          "The layout_dict%s is null,please change", layout_dict));
   for (auto it = nodes_.begin(); it < nodes_.end(); ++it) {
     auto node = *it;
     if (node->inlinks().empty() && node->outlinks().empty()) {

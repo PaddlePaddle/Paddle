@@ -35,7 +35,8 @@ def is_collective_comm_op(op):
         "c_reduce_max",
         "c_reduce_prod",
         "c_broadcast",
-        "c_allgather",
+        "all_gather",
+        "all_reduce",
     ]
     if op.type in comm_list:
         return True
@@ -100,7 +101,7 @@ def get_comm_volume(comm_op, src_rank, tgt_rank):
     tensor_bytes = tensor_size * get_dtype_bytes(tensor.dtype)
     if "c_allreduce" in comm_op_type:
         comm_volume = 2 * tensor_bytes
-    elif "c_allgather" in comm_op_type:
+    elif "all_gather" in comm_op_type:
         comm_volume = tensor_bytes
     elif "c_broadcast" in comm_op_type:
         if comm_op.attr("root") == src_rank:
@@ -168,9 +169,9 @@ def analyze_requirements_for_program(src_info, rank):
                     ] += link_info["comm_volume"]
                 else:
                     comm_requirements_to_ranks[tgt_rank] = {}
-                    comm_requirements_to_ranks[tgt_rank][
-                        "comm_volume"
-                    ] = link_info["comm_volume"]
+                    comm_requirements_to_ranks[tgt_rank]["comm_volume"] = (
+                        link_info["comm_volume"]
+                    )
     return resource_requirements, comm_requirements_to_ranks
 
 

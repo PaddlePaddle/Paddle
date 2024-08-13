@@ -247,8 +247,14 @@ struct GE : public BinaryOpNode<GE> {
  */
 struct And : public BinaryOpNode<And> {
   And(Expr a, Expr b) : BinaryOpNode<And>(a.type(), a, b) {
-    CHECK(a->type().is_bool());
-    CHECK(b->type().is_bool());
+    PADDLE_ENFORCE_EQ(
+        a->type().is_bool(),
+        true,
+        phi::errors::PreconditionNotMet("The type of 'a' must be bool."));
+    PADDLE_ENFORCE_EQ(
+        b->type().is_bool(),
+        true,
+        phi::errors::PreconditionNotMet("The type of 'b' must be bool."));
   }
 
   Type type() const { return Bool(a()->type().lanes()); }
@@ -274,8 +280,14 @@ struct Minus : public UnaryOpNode<Minus> {
  */
 struct Or : public BinaryOpNode<Or> {
   Or(Expr a, Expr b) : BinaryOpNode<Or>(Bool(), a, b) {
-    CHECK(a->type().is_bool());
-    CHECK(b->type().is_bool());
+    PADDLE_ENFORCE_EQ(
+        a->type().is_bool(),
+        true,
+        phi::errors::PreconditionNotMet("The type of 'a' must be bool."));
+    PADDLE_ENFORCE_EQ(
+        b->type().is_bool(),
+        true,
+        phi::errors::PreconditionNotMet("The type of 'b' must be bool."));
   }
 
   static Expr Make(Expr a, Expr b);
@@ -508,9 +520,12 @@ struct Select : public ExprNode<Select> {
     PADDLE_ENFORCE_EQ(
         true_value.type(),
         false_value.type(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The type of true_value and false_value should be the same."));
-    CHECK(condition.type().is_bool());
+    PADDLE_ENFORCE_EQ(condition.type().is_bool(),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "The condition must be of boolean type."));
     type_ = true_value.type();
   }
 
@@ -650,12 +665,18 @@ struct IfThenElse : public ExprNode<IfThenElse> {
   static Expr Make(Expr condition, Expr true_case, Expr false_case = Expr());
 
   void Verify() const override {
-    CHECK(condition.defined());
-    CHECK(true_case.defined());
+    PADDLE_ENFORCE_EQ(
+        condition.defined(),
+        true,
+        phi::errors::PreconditionNotMet("The condition must be defined."));
+    PADDLE_ENFORCE_EQ(
+        true_case.defined(),
+        true,
+        phi::errors::PreconditionNotMet("The true_case must be defined."));
     PADDLE_ENFORCE_EQ(
         condition.type(),
         type_of<bool>(),
-        phi::errors::InvalidArgument("condition should be a bool"));
+        ::common::errors::InvalidArgument("condition should be a bool"));
   }
 
   std::vector<Expr*> expr_fields() override;
@@ -712,7 +733,10 @@ struct BindInfo {
   }
 
   friend std::ostream& operator<<(std::ostream& os, const BindInfo& bind_info) {
-    CHECK(bind_info.valid()) << "Make invalid BindInfo to stream";
+    PADDLE_ENFORCE_EQ(
+        bind_info.valid(),
+        true,
+        phi::errors::PreconditionNotMet("Make invalid BindInfo to stream"));
     char axis_name = 'x' + bind_info.offset;
     std::string prefix =
         bind_info.for_type == ForType::GPUBlock ? "blockIdx." : "threadIdx.";
@@ -931,10 +955,13 @@ struct FracOp : public BinaryOpNode<FracOp> {
   bool is_constant() const { return a().is_constant() && b().is_constant(); }
 
   double get_constant() const {
-    CHECK(is_constant());
+    PADDLE_ENFORCE_EQ(
+        is_constant(),
+        true,
+        phi::errors::PreconditionNotMet("The expression must be constant."));
     PADDLE_ENFORCE_NE(b().get_constant(),
                       0.f,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The denominator of FracOp should not be 0"));
     return a().get_constant() / b().get_constant();
   }
@@ -989,10 +1016,12 @@ struct NoneReduceMethod {};
 struct WarpReduceMethod {};
 struct BlockReduceMethod {};
 struct DiscreteReduceMethod {};
+struct IntervalReduceMethod {};
 using ReduceMethod = std::variant<NoneReduceMethod,
                                   WarpReduceMethod,
                                   BlockReduceMethod,
-                                  DiscreteReduceMethod>;
+                                  DiscreteReduceMethod,
+                                  IntervalReduceMethod>;
 
 // ScheduleBlock is the unit of schedule IR which represents tensor's
 // computation

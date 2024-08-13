@@ -20,9 +20,9 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/type_promotion_utils.h"
 #include "paddle/fluid/imperative/amp_utils.h"
-#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/type_promotion.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
@@ -42,7 +42,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   VLOG(3) << "Running AD API: "
           << "multiply";
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "multiply dygraph", paddle::platform::TracerEventType::Operator, 1);
 
   // AMP Logic
@@ -153,7 +153,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
   // Node Creation
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "multiply node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);
@@ -240,7 +240,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
   VLOG(3) << "Running AD API: "
           << "multiply_";
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "multiply_ dygraph", paddle::platform::TracerEventType::Operator, 1);
 
   // AMP Logic
@@ -319,7 +319,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
   std::shared_ptr<MultiplyGradNode> grad_node;
   // Set grad_node before API Call
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "multiply node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);
@@ -412,7 +412,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   VLOG(3) << "Running AD API: "
           << "multiply";
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "multiply dygraph", paddle::platform::TracerEventType::Operator, 1);
 
   // AMP Logic
@@ -522,7 +522,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
   // Node Creation
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "multiply node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);

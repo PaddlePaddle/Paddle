@@ -150,7 +150,7 @@ void CheckInferSymWithInferMeta(
     pir::InferSymbolicShapeContext* infer_context = nullptr) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
-    if (!res || !res.type()) {
+    if (!res || !res.type() || res.use_empty()) {
       continue;
     }
 
@@ -222,7 +222,7 @@ class ShapeOptimizationPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     PADDLE_ENFORCE_NOT_NULL(
         module_op,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ShapeOptimizationPass should run on module op."));
     PrintProgram(module_op, "Origin Program");
 
@@ -288,7 +288,13 @@ void InferSymExprForOp(Operation* op,
         std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
             infer_context->GetOpInferSymbolicShapeCache(op_infer_cache_key)
                 .value();
-        CHECK(cached_result_shape_or_data.size() == op->num_results());
+        PADDLE_ENFORCE_EQ(cached_result_shape_or_data.size(),
+                          op->num_results(),
+                          common::errors::Fatal(
+                              "Cached number of result %u is not equal to the "
+                              "given number of output %u",
+                              cached_result_shape_or_data.size(),
+                              op->num_results()));
         for (uint32_t i = 0; i < op->num_results(); ++i) {
           infer_context->SetShapeOrDataForValue(op->result(i),
                                                 cached_result_shape_or_data[i]);
@@ -296,7 +302,8 @@ void InferSymExprForOp(Operation* op,
       } else {
         // risk set
         LOG(WARNING) << "Not found symbolic shape cache for " << op->name()
-                     << "[id:" << op->id() << "]";
+                     << "[id:" << op->id()
+                     << "], op_infer_cache_key is :" << op_infer_cache_key;
         for (uint32_t i = 0; i < op->num_results(); ++i) {
           infer_context->SetSymbolForValueByStaticShape(op->result(i));
         }

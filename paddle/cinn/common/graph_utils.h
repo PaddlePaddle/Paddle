@@ -85,9 +85,12 @@ class GraphNode : public Object {
   template <typename EdgeT = GraphEdge>
   std::tuple<EdgeT*, EdgeT*> LinkTo(GraphNode* other) {
     EdgeT *a, *b;
-    CHECK(other);
+    PADDLE_ENFORCE_NOT_NULL(
+        other, ::common::errors::InvalidArgument("The input node is null."));
     PADDLE_ENFORCE_NE(
-        other, this, phi::errors::InvalidArgument("Cannot link to itself"));
+        other,
+        this,
+        ::common::errors::InvalidArgument("Cannot link to itself"));
     auto outlink_edge = make_shared<GraphEdge>(this, other, index_outlinks);
     auto inlink_edge =
         make_shared<GraphEdge>(this, other, other->index_inlinks);
@@ -108,8 +111,11 @@ class GraphNode : public Object {
         break;
       }
     }
-    CHECK(a);
-    CHECK(b);
+    PADDLE_ENFORCE_NOT_NULL(
+        a, ::common::errors::InvalidArgument("Sorry,but outlinks is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(b,
+                            ::common::errors::InvalidArgument(
+                                "Sorry, but other->inlinks_ is nullptr"));
     return std::make_tuple(a, b);
   }
 
@@ -130,7 +136,7 @@ class GraphNode : public Object {
     }
     PADDLE_ENFORCE_EQ(outlink_linked,
                       inlink_linked,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The outlink_linked should same as inlink_linked."));
     if (outlink_linked)
       return;

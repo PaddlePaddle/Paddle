@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -30,7 +30,7 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 
 namespace paddle::framework::interpreter {
 
-using DeviceContext = platform::DeviceContext;
+using DeviceContext = phi::DeviceContext;
 using DeviceEvent = platform::DeviceEvent;
 
 inline std::string RunTypeToString(DownstreamRunType run_type) {
@@ -134,7 +134,7 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
         PADDLE_ENFORCE_NE(
             op_func_node->event_to_record_,
             "default",
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "If the attribute 'force_record_event_' of one "
                 "operator is 'true', the 'event_to_record_' of this "
                 "operator can not be 'default'. But the "
@@ -144,7 +144,7 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
             (*program_force_events_to_wait_)
                 .find(op_func_node->event_to_record_),
             (*program_force_events_to_wait_).end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The program_force_events_to_wait_ had the event "
                 "that belongs to the operator : %s before the operator create "
                 "the event, "
@@ -166,7 +166,7 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
         PADDLE_ENFORCE_NE(
             (*program_force_events_to_wait_).find(event_name),
             (*program_force_events_to_wait_).end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The program_force_events_to_wait_ don't have the event %s "
                 "for the operator: %s to wait. The event should had been "
                 "created by the operator "
@@ -243,7 +243,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
       if (FLAGS_dynamic_static_unified_comm) {
         const auto& comm_context_manager =
             phi::distributed::CommContextManager::GetInstance();
-        dev_ctx = static_cast<platform::DeviceContext*>(
+        dev_ctx = static_cast<phi::DeviceContext*>(
             static_cast<phi::distributed::NCCLCommContext*>(
                 comm_context_manager.Get(std::to_string(ring_id)))
                 ->GetDevContext());
@@ -774,7 +774,7 @@ void PirStreamAnalyzer::ConstructEvents(
         PADDLE_ENFORCE_NE(
             instr->EventToRecordInfo(),
             "default",
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "If the attribute 'force_record_event_' of one "
                 "operator is 'true', the 'event_to_record_' of this "
                 "operator can not be 'default'. But the "
@@ -783,7 +783,7 @@ void PirStreamAnalyzer::ConstructEvents(
         PADDLE_ENFORCE_EQ(
             (*program_force_events_to_wait_).find(instr->EventToRecordInfo()),
             (*program_force_events_to_wait_).end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The program_force_events_to_wait_ had the event "
                 "that belongs to the operator : %s before the operator create "
                 "the event, "
@@ -805,7 +805,7 @@ void PirStreamAnalyzer::ConstructEvents(
         PADDLE_ENFORCE_NE(
             (*program_force_events_to_wait_).find(event_name),
             (*program_force_events_to_wait_).end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The program_force_events_to_wait_ don't have the event %s "
                 "for the operator: %s to wait. The event should had been "
                 "created by the operator "

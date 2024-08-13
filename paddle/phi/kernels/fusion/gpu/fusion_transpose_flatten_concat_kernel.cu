@@ -116,7 +116,7 @@ void TransposeFlattenConcatFusionKernel(
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(out_desc));
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "The fusion_transpose_flatten_concat operator is not supported on HIP."));
 #endif
 }

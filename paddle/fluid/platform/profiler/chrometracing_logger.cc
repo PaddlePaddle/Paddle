@@ -20,17 +20,17 @@ limitations under the License. */
 #include <regex>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle::platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.json";
 
 static std::string DefaultFileName() {
-  auto pid = GetProcessId();
+  auto pid = phi::GetProcessId();
   return string_format(
       std::string(kDefaultFilename), pid, GetStringFormatLocalTime().c_str());
 }

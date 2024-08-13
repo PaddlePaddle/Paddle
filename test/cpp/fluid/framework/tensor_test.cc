@@ -248,7 +248,7 @@ TEST(DenseTensor, Layout) {
 }
 
 TEST(DenseTensor, FP16) {
-  using platform::float16;
+  using phi::dtype::float16;
   phi::DenseTensor src;
   float16* src_ptr = src.mutable_data<float16>({2, 3}, phi::CPUPlace());
   for (int i = 0; i < 2 * 3; ++i) {

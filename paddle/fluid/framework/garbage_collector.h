@@ -21,8 +21,8 @@
 #include <utility>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/stream_callback_manager.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
@@ -50,7 +50,7 @@ class GarbageCollector {
  protected:
   virtual void ClearCallback(const std::function<void()> &callback) = 0;
 
-  platform::DeviceContext *dev_ctx_;
+  phi::DeviceContext *dev_ctx_;
   std::unique_ptr<GarbageQueue> garbages_;
   mutable std::unique_ptr<std::mutex> mutex_;
   const size_t max_memory_size_;

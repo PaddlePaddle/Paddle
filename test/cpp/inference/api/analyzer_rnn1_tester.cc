@@ -14,6 +14,8 @@
 
 #include "test/cpp/inference/api/tester_helper.h"
 
+#include "paddle/common/enforce.h"
+
 PD_DEFINE_bool(with_precision_check, true, "turn on test");
 
 namespace paddle {
@@ -52,11 +54,32 @@ struct DataRecord {
       data.lod1.push_back(0);
       data.lod2.push_back(0);
       data.lod3.push_back(0);
-      CHECK(!data.link_step_data_all.empty()) << "empty";
-      CHECK(!data.week_data_all.empty());
-      CHECK(!data.minute_data_all.empty());
-      CHECK_EQ(data.link_step_data_all.size(), data.week_data_all.size());
-      CHECK_EQ(data.minute_data_all.size(), data.link_step_data_all.size());
+      PADDLE_ENFORCE_EQ(!data.link_step_data_all.empty(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "link_step_data_all should not be empty."));
+
+      PADDLE_ENFORCE_EQ(
+          !data.week_data_all.empty(),
+          true,
+          phi::errors::InvalidArgument("week_data_all should not be empty."));
+
+      PADDLE_ENFORCE_EQ(
+          !data.minute_data_all.empty(),
+          true,
+          phi::errors::InvalidArgument("minute_data_all should not be empty."));
+      PADDLE_ENFORCE_EQ(
+          data.link_step_data_all.size(),
+          data.week_data_all.size(),
+          platform::errors::InvalidArgument(
+              "The value of data.link_step_data_all.size() is not equal to the "
+              "value of data.week_data_all.size()."))
+      PADDLE_ENFORCE_EQ(
+          data.minute_data_all.size(),
+          data.link_step_data_all.size(),
+          platform::errors::InvalidArgument(
+              "The value of data.minute_data_all.size() is not equal to the "
+              "value of data.link_step_data_all.size()."))
       for (size_t j = 0; j < data.link_step_data_all.size(); j++) {
         for (const auto &d : data.link_step_data_all[j]) {
           data.rnn_link_data.push_back(d);

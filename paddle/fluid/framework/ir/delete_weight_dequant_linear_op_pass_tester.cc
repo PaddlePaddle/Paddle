@@ -74,14 +74,14 @@ TEST(DeleteWeightDequantLinearOpPass, basic) {
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
       num_nodes_after + 3,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After pass, the number of nodes should be reduced by 3, but the "
           "number before pass is %d, after pass is %d.",
           num_nodes_before,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_dequant_nodes_after,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "After pass, the number of nodes of type "
                         "'dequantize_linear' should be 1, not %d.",
                         num_dequant_nodes_after));
@@ -121,14 +121,14 @@ TEST(DeleteWeightDequantLinearOpPass, basic_fp16) {
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
       num_nodes_after + 3,
-      platform::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After pass, the number of nodes should be reduced by 3, but the "
           "number before pass is %d, after pass is %d.",
           num_nodes_before,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_dequant_nodes_after,
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "After pass, the number of nodes of type "
                         "'dequantize_linear' should be 1, not %d.",
                         num_dequant_nodes_after));

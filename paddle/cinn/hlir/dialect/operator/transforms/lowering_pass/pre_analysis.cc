@@ -51,7 +51,6 @@ void FusionOpAnalysis::PreCompileGroup() {
 
   std::vector<OpLoweringGroupPtr> groups;
   for (auto& group_info : *group_infos_) {
-    if (is_dy_shape_ && NeedBroadcastWithCF(group_info.second)) continue;
     groups.push_back(group_info.second);
   }
   // Build and trigger compilaion cache.

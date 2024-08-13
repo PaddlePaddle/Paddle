@@ -14,8 +14,9 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops
 from paddle.base.framework import in_dynamic_or_pir_mode
 
@@ -24,6 +25,8 @@ from ..base.dygraph import no_grad
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -163,7 +166,7 @@ class Adadelta(Optimizer):
         }
 
     def _create_accumulators(self, block, parameters):
-        if not isinstance(block, framework.Block):
+        if not isinstance(block, (framework.Block, paddle.pir.Block)):
             raise TypeError("block is not instance of framework.Block.")
         if isinstance(parameters, dict):
             parameters = parameters.get('params')
@@ -225,7 +228,7 @@ class Adadelta(Optimizer):
                 )
             return None
         else:
-            if not isinstance(block, framework.Block):
+            if not isinstance(block, (framework.Block, paddle.pir.Block)):
                 raise TypeError("block is not instance of framework.Block.")
 
             # Create the adadelta optimizer op

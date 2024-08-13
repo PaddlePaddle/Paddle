@@ -16,7 +16,7 @@ from __future__ import annotations
 import warnings
 from collections import defaultdict
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import pir
@@ -37,6 +37,8 @@ from .lr import LRScheduler
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
     from .adam import _AdamParameterConfig
@@ -211,7 +213,7 @@ class AdamW(Optimizer):
             # paddle.Tensor is also iterable, so here we don't check whether
             # the input is iterable, if the input is paddle.Tensor, the
             # list(paddle.Tensor) will be a error value
-            if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
+            if isinstance(parameters, paddle.Tensor):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
                     f"an iterable of paddle Tensors, but got argument type is `{type(parameters)}`."

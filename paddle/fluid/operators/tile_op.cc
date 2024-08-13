@@ -181,7 +181,7 @@ class TileCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     auto repeat_times = this->Attr<std::vector<int>>("repeat_times");
     if (tensor_repeat_times.is_initialized() ||
         tensor_repeat_times_attr.is_initialized()) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "We don't support RepeatTimes from tensor or repeat_times_tensor for "
           "tile composite grad for now. "));
     } else {

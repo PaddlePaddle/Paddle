@@ -18,8 +18,8 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #endif
 #include "paddle/phi/api/include/tensor.h"
 
@@ -62,8 +62,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     } else {
       // NOTE(liyurui): This will be removed after moving this operator to phi.
       int numel = x->numel();
-      ncclDataType_t dtype =
-          platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
+      ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       if (root == comm->rank()) {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
@@ -91,7 +90,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     out->set_lod(x->lod());
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }
@@ -110,7 +109,8 @@ PD_REGISTER_STRUCT_KERNEL(c_broadcast,
                           int64_t,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
+#if (NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000) || \
+    defined(PADDLE_WITH_HIP)
                           phi::dtype::bfloat16,
 #endif
                           phi::dtype::float16) {
