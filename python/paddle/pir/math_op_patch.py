@@ -734,7 +734,7 @@ def monkey_patch_value():
         if len(invalid_keys) != 0:
             raise TypeError(
                 "to() got an unexpected keyword argument "
-                + next(iter(invalid_keys), "unknown key")
+                + next(iter(invalid_keys))
             )
 
         def dtype_first_sig(dtype, blocking=None): ...
