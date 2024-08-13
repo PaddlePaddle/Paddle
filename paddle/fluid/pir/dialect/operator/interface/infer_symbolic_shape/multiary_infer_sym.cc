@@ -1280,8 +1280,6 @@ bool MulticlassNms3OpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &scores_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const auto &rois_num_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2));
 
   const std::vector<symbol::DimExpr> &box_dims = bboxes_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &score_dims = scores_shape_or_data.shape();
