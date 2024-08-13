@@ -107,6 +107,7 @@ void ApplyPdToCinnPass(
     const std::function<std::shared_ptr<::pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
+  pass_manager->AddPass(pir::CreateFusedGemmEpiloguePass());
   if (FLAGS_enable_fuse_parallel_matmul_pass) {
     pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   }
@@ -128,7 +129,6 @@ void ApplyCinnPreprocessPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   bool has_dynamic_shape = HasDynamicShape(*program);
 
-  pass_manager->AddPass(pir::CreateFusedGemmEpiloguePass());
   if (has_dynamic_shape) {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
@@ -185,6 +185,7 @@ void ApplyDivideGroupOpToFusionOpPass(
   pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateShapeOpsFallbackToPhiPass());
 
+  // pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 

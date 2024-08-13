@@ -159,9 +159,11 @@ class TestCinnSubGraphBase(unittest.TestCase):
     def prepare_data(self):
         self.shape = [128, 768]
         self.axis = -1
-        self.x = paddle.uniform(self.shape, dtype="float32", min=-0.5, max=0.5)
+        self.x = paddle.uniform([256], dtype="float32", min=-0.5, max=0.5)
         self.x.stop_gradient = False
-        self.y = paddle.uniform([128, 1], dtype="float32", min=-0.5, max=0.5)
+        self.y = paddle.uniform(
+            [16, 256, 64, 64], dtype="float32", min=-0.5, max=0.5
+        )
         self.y.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
@@ -172,21 +174,21 @@ class TestCinnSubGraphBase(unittest.TestCase):
 class TestCinnSin(TestCinnSubGraphBase):
     def train(self, use_cinn):
         paddle.seed(2022)
-        net = CINNSinSubGraphNet()
+        # net = CINNSinSubGraphNet()
         # net = CINNSumSubGraphNet()
-        # net = CINNBroadCastSubGraphNet()
+        net = CINNBroadCastSubGraphNet()
         net.eval()
         # net = CINNSoftmaxSubGraphNet()
 
         input_specs = [
             paddle.static.InputSpec(
-                shape=(128, 768),
+                shape=[256],
                 dtype=paddle.float32,
                 name=None,
                 stop_gradient=False,
             ),
             # paddle.static.InputSpec(
-            #     shape=(128, 1),
+            #     shape=(16, 256, 64, 64),
             #     dtype=paddle.float32,
             #     name=None,
             #     stop_gradient=False,
@@ -196,13 +198,13 @@ class TestCinnSin(TestCinnSubGraphBase):
         print("use cinn", use_cinn)
         net = utils.apply_to_static(net, use_cinn, input_spec=input_specs)
         # out = net(self.x, self.y)
-        out = net(self.x)
+        out = net(self.x, self.y)
 
         return out
 
     def test_forward(self):
         cinn_out = self.train(use_cinn=True)
-        # dy_out = self.train(use_cinn=False)
+        # dy_out, dy_out_1 = self.train(use_cinn=False)
         # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 

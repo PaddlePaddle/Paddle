@@ -3356,6 +3356,7 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
     std::cout << "IR after lowering = " << *program << std::endl;
   }
 
+  // std::cout << "IR after lowering = " << *program << std::endl;
   return program;
 }
 }  // namespace paddle::dialect
