@@ -1301,7 +1301,6 @@ class OpTest(unittest.TestCase):
         static_inputs = defaultdict(list)
         feed = {}
         for name, item in self.inputs.items():
-            print(f"Index: {name}, Item: {item}")
             if isinstance(item, (list, tuple)):
                 for tup in item:
                     dtype = (
