@@ -809,7 +809,7 @@ void SubstituteGlobalTensor(ir::Expr* e) {
 
 }  // namespace
 
-void ReduceInitMerge(Expr* e) {
+void ReduceComputeMerge(Expr* e) {
   VLOG(4) << "Before ReduceInitMerge: \n" << *e;
 
   MergeReduceInitScheduleBlock(e);
