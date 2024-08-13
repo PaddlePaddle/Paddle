@@ -1309,6 +1309,7 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
 
+  pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
   const std::vector<int64_t> axis = details::GetVectorAttr(
       axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
 
