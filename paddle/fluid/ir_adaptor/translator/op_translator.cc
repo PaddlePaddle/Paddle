@@ -3752,6 +3752,8 @@ OpTranslator::OpTranslator() {
       WithXShapeGradOpTranscriber<dialect::ReshapeGradOp>();
   special_handlers["flatten_contiguous_range_grad"] =
       WithXShapeGradOpTranscriber<dialect::FlattenGradOp>();
+  special_handlers["squeeze2_grad"] =
+      WithXShapeGradOpTranscriber<dialect::SqueezeGradOp>();
 }
 
 }  // namespace translator
