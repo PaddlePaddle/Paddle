@@ -17,7 +17,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
-#include "glog/logging.h"
+
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/collective/process_group_without_stream.h"
@@ -55,33 +55,13 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
 
     ~GlooStore() = default;
 
-    std::vector<char> get(const std::string& key) override {
-      VLOG(3) << "GlooStore::get";
-      auto value = _store->get(key);
-      return std::vector<char>(value.begin(), value.end());
-    }
+    std::vector<char> get(const std::string& key) override;
+    void wait(const std::vector<std::string>& keys) override;
 
-    void wait(const std::vector<std::string>& keys) override {
-      VLOG(3) << "GlooStore::wait";
-      for (auto& key : keys) {
-        _store->wait(key);
-      }
-    }
-
-    void set(const std::string& key, const std::vector<char>& value) override {
-      VLOG(3) << "GlooStore::set";
-      std::vector<uint8_t> tmp(value.begin(), value.end());
-      _store->set(key, tmp);
-    }
+    void set(const std::string& key, const std::vector<char>& value) override;
 
     void wait(const std::vector<std::string>& keys,
-              const std::chrono::milliseconds& timeout) override {
-      VLOG(3) << "GlooStore::wait";
-      for (auto& key : keys) {
-        _store->wait(key);
-      }
-      // wait(keys);
-    }
+              const std::chrono::milliseconds& timeout) override;
 
    protected:
     std::shared_ptr<phi::distributed::Store> _store;
