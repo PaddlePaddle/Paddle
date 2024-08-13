@@ -159,7 +159,7 @@ class ESC50(AudioClassificationDataset):
         'Hand saw',
     ]
     meta: str = os.path.join('ESC-50-master', 'meta', 'esc50.csv')
-    audio_path = os.path.join('ESC-50-master', 'audio')
+    audio_path: str = os.path.join('ESC-50-master', 'audio')
 
     class meta_info(NamedTuple):
         filename: str
