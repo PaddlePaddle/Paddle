@@ -952,15 +952,13 @@ bool SearchsortedOpInferSymbolicShape(
   return true;
 }
 
-bool SequenceMaskOpInferSymbolicShape(
+bool SequenceMaskScalarOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+  const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
-  const auto &max_len_tensor =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  int max_len = max_len_tensor.dyn_cast<pir::Int32Attribute>().data();
+  int max_len = op->attribute<pir::Int32Attribute>("max_len").data();
 
   std::vector<symbol::DimExpr> y_dims = x_dims;
   y_dims.push_back(max_len > 0 ? symbol::DimExpr(max_len)
