@@ -832,7 +832,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
                                              GradNodeStr(t),
                                              ad_meta->StopGradient());
       auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
-      if (t.is_initialized() && data_ptr) {
+      if (t.initialized() && data_ptr) {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
                                        t.initialized(),
@@ -851,7 +851,7 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
       }
     } else {
       auto* data_ptr = dynamic_cast<phi::DenseTensor*>(t.impl().get());
-      if (t.is_initialized() && data_ptr) {
+      if (t.initialized() && data_ptr) {
         return paddle::string::Sprintf(TENSOR_PRINT_TEMPLATE,
                                        tensor_name_str,
                                        t.initialized(),

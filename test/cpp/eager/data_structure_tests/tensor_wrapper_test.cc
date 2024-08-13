@@ -100,5 +100,9 @@ TEST(TensorWrapper, Basic) {
   // Test Raw recover
   paddle::Tensor et3;
   auto tw2 = egr::TensorWrapper(et3);
-  CHECK(tw2.recover().initialized() == false);
+  PADDLE_ENFORCE_EQ(
+      tw2.recover().initialized(),
+      false,
+      phi::errors::Fatal(
+          "Variable `tw2` should not be initialized after recover"));
 }

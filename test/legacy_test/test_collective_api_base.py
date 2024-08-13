@@ -154,7 +154,11 @@ class TestCollectiveAPIRunnerBase:
                     reduce_type=args['reduce_type'],
                 )
                 if args["use_comm_context"]
-                else (self.get_model(train_prog, startup_prog, rank))
+                else (
+                    self.get_model(
+                        train_prog, startup_prog, rank, dtype=args['dtype']
+                    )
+                )
             )
             exe = base.Executor(place)
             exe.run(startup_prog)

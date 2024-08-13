@@ -16,8 +16,8 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/tensorrt/engine.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace pir {
 class Operation;

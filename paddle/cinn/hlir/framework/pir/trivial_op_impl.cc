@@ -252,7 +252,8 @@ ir::Expr CopyReduceBody(const FusibleOp& downstream, const ReduceOp& upstream) {
       return ir::ir_utils::IRCopy(op.GetFuncBody());
     }
     ir::Expr operator()(const TrivialOp& op) {
-      PADDLE_THROW("TrivialOp cannot be copied.");
+      PADDLE_THROW(
+          ::common::errors::Unimplemented("TrivialOp cannot be copied."));
     }
   };
   return std::visit(Visitor(), downstream);

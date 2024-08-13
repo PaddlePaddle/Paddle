@@ -182,13 +182,13 @@ struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
     auto* tensor_n = op->tensor.As<ir::_Tensor_>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor_n,
-        phi::errors::InvalidArgument("Sorry, but op->tensor is null"));
+        ::common::errors::InvalidArgument("Sorry, but op->tensor is null"));
     auto it = vectorizes.find(tensor_n->name);
     if (it != vectorizes.end()) {
       PADDLE_ENFORCE_LT(
           it->second.level,
           forloop_stack.size(),
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "Required it->second.level shall be less than "
               "forloop_stack.size()."
               "But receive it->second.level = %d, forloop_stack.size() = %d ",
@@ -198,7 +198,7 @@ struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
       PADDLE_ENFORCE_EQ(
           it->second.valid(),
           true,
-          phi::errors::InvalidArgument("it->second.valid() is false"));
+          ::common::errors::InvalidArgument("it->second.valid() is false"));
     }
   }
 
@@ -229,14 +229,14 @@ struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
     auto* tensor_n = op->tensor.As<ir::_Tensor_>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor_n,
-        phi::errors::InvalidArgument("Sorry, but op->tensor is null"));
+        ::common::errors::InvalidArgument("Sorry, but op->tensor is null"));
     auto it = unrolls.find(tensor_n->name);
     if (it != unrolls.end()) {
       for (int level : it->second) {
         VLOG(1) << "Mark " << level << " Unrolled";
         PADDLE_ENFORCE_LT(level,
                           stack.size(),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Required level shall be less than stack.size()."
                               "But receive level = %d, stack.size() = %d ",
                               level,
@@ -273,14 +273,14 @@ struct MarkParallelMutator : public ir::IRMutator<Expr*> {
     auto* tensor_n = op->tensor.As<ir::_Tensor_>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor_n,
-        phi::errors::InvalidArgument("Sorry, but op->tensor is null"));
+        ::common::errors::InvalidArgument("Sorry, but op->tensor is null"));
     auto it = parallels.find(tensor_n->name);
     if (it != parallels.end()) {
       for (int level : it->second) {
         VLOG(1) << "Mark " << level << " Parallelled";
         PADDLE_ENFORCE_LT(level,
                           stack.size(),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Required level shall be less than stack.size()."
                               "But receive level = %d, stack.size() = %d ",
                               level,

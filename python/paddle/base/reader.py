@@ -136,10 +136,10 @@ class DataLoaderBase:
         return self
 
     def __iter__(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def __next__(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
     def _check_input_array(cls, item):

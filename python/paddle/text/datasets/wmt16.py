@@ -174,8 +174,7 @@ class WMT16(Dataset):
     @overload
     def _load_dict(
         self, lang: _Wmt16Language, dict_size: int, reverse: Literal[True] = ...
-    ) -> dict[int, str]:
-        ...
+    ) -> dict[int, str]: ...
 
     @overload
     def _load_dict(
@@ -183,14 +182,12 @@ class WMT16(Dataset):
         lang: _Wmt16Language,
         dict_size: int,
         reverse: Literal[False] = ...,
-    ) -> dict[str, int]:
-        ...
+    ) -> dict[str, int]: ...
 
     @overload
     def _load_dict(
         self, lang: _Wmt16Language, dict_size: int, reverse: bool = ...
-    ) -> dict[int, str] | dict[str, int]:
-        ...
+    ) -> dict[int, str] | dict[str, int]: ...
 
     def _load_dict(self, lang, dict_size, reverse=False):
         dict_path = os.path.join(
@@ -274,9 +271,7 @@ class WMT16(Dataset):
                 self.trg_ids.append(trg_ids)
                 self.trg_ids_next.append(trg_ids_next)
 
-    def __getitem__(
-        self, idx: int
-    ) -> tuple[
+    def __getitem__(self, idx: int) -> tuple[
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],
         npt.NDArray[np.int_],
@@ -293,20 +288,17 @@ class WMT16(Dataset):
     @overload
     def get_dict(
         self, lang: _Wmt16Language, reverse: Literal[True] = ...
-    ) -> dict[int, str]:
-        ...
+    ) -> dict[int, str]: ...
 
     @overload
     def get_dict(
         self, lang: _Wmt16Language, reverse: Literal[False] = ...
-    ) -> dict[str, int]:
-        ...
+    ) -> dict[str, int]: ...
 
     @overload
     def get_dict(
         self, lang: _Wmt16Language, reverse: bool = ...
-    ) -> dict[int, str] | dict[str, int]:
-        ...
+    ) -> dict[int, str] | dict[str, int]: ...
 
     def get_dict(self, lang, reverse=False):
         """

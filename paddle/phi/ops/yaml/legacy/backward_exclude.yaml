@@ -31,6 +31,8 @@
 - prod_grad
 - repeat_interleave_grad
 - repeat_interleave_with_tensor_index_grad
+- reshape_grad
+- reshape_double_grad
 - rnn_grad
 - set_value_with_tensor_grad
 - slice_double_grad

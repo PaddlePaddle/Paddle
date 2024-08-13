@@ -178,12 +178,17 @@ SpmdInfo ScatterGradInferSpmd(const DistMetaTensor& index,
   // the batch axis of index, updates, out_grad must be replicated
   std::vector<int64_t> index_dims_mapping(index_dims_mapping_src);
   index_dims_mapping[0] = -1;
+  std::vector<int64_t> updates_dims_mapping(updates_dims_mapping_src);
+  updates_dims_mapping[0] = -1;
   std::vector<int64_t> out_grad_dims_mapping(out_grad_dims_mapping_src);
   out_grad_dims_mapping[0] = -1;
 
   TensorDistAttr index_dist_attr_dst =
       CopyTensorDistAttrForOutput(index_dist_attr_src);
   index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
+  TensorDistAttr updates_dist_attr_dst =
+      CopyTensorDistAttrForOutput(updates_dist_attr_src);
+  updates_dist_attr_dst.set_dims_mapping(updates_dims_mapping);
   TensorDistAttr out_grad_dist_attr_dst =
       CopyTensorDistAttrForOutput(out_grad_dist_attr_src);
   out_grad_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping);
@@ -199,7 +204,7 @@ SpmdInfo ScatterGradInferSpmd(const DistMetaTensor& index,
   TensorDistAttr updates_grad_dist_attr =
       PADDLE_GET_CONST(TensorDistAttr, spmd_info.second[0]);
 
-  return {{index_dist_attr_dst, updates_dist_attr_src, out_grad_dist_attr_dst},
+  return {{index_dist_attr_dst, updates_dist_attr_dst, out_grad_dist_attr_dst},
           {x_grad_dist_attr, updates_grad_dist_attr}};
 }
 

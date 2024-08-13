@@ -83,12 +83,27 @@ int32_t MemorySparseTable::InitializeValue() {
     _shard_merge_rate = _config.has_shard_merge_rate()
                             ? _config.shard_merge_rate()
                             : _shard_merge_rate;
-    CHECK((_m_avg_local_shard_num = static_cast<int>(
-               std::ceil(_avg_local_shard_num * _shard_merge_rate)),
-           _m_avg_local_shard_num <= _avg_local_shard_num));
-    CHECK((_m_real_local_shard_num = static_cast<int>(
-               std::ceil(_real_local_shard_num * _shard_merge_rate)),
-           _m_real_local_shard_num <= _real_local_shard_num));
+    _m_avg_local_shard_num =
+        static_cast<int>(std::ceil(_avg_local_shard_num * _shard_merge_rate));
+    PADDLE_ENFORCE_LE(
+        _m_avg_local_shard_num,
+        _avg_local_shard_num,
+        phi::errors::InvalidArgument(
+            "The calculated '_m_avg_local_shard_num' (%d) must be less than or "
+            "equal to '_avg_local_shard_num' (%d).",
+            _m_avg_local_shard_num,
+            _avg_local_shard_num));
+
+    _m_real_local_shard_num =
+        static_cast<int>(std::ceil(_real_local_shard_num * _shard_merge_rate));
+    PADDLE_ENFORCE_LE(
+        _m_real_local_shard_num,
+        _real_local_shard_num,
+        phi::errors::InvalidArgument(
+            "The calculated '_m_real_local_shard_num' (%d) must be less than "
+            "or equal to '_real_local_shard_num' (%d).",
+            _m_real_local_shard_num,
+            _real_local_shard_num));
 
     uint32_t avg_shard_server_num =
         _sparse_table_shard_num / _avg_local_shard_num;
@@ -948,7 +963,12 @@ std::pair<int64_t, int64_t> MemorySparseTable::PrintTableStat() {
 }
 
 int32_t MemorySparseTable::Pull(TableContext &context) {
-  CHECK(context.value_type == Sparse);
+  PADDLE_ENFORCE_EQ(
+      context.value_type,
+      Sparse,
+      phi::errors::InvalidArgument(
+          "The 'value_type' in context must be 'Sparse', but received %d.",
+          context.value_type));
   if (context.use_ptr) {
     char **pull_values = context.pull_context.ptr_values;
     const uint64_t *keys = context.pull_context.keys;
@@ -962,7 +982,12 @@ int32_t MemorySparseTable::Pull(TableContext &context) {
 }
 
 int32_t MemorySparseTable::Push(TableContext &context) {
-  CHECK(context.value_type == Sparse);
+  PADDLE_ENFORCE_EQ(
+      context.value_type,
+      Sparse,
+      phi::errors::InvalidArgument(
+          "The 'value_type' in context must be 'Sparse', but received %d.",
+          context.value_type));
   if (!context.use_ptr) {
     return PushSparse(
         context.push_context.keys, context.push_context.values, context.num);

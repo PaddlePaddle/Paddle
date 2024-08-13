@@ -29,14 +29,14 @@ std::string TensorGetBufferName(const _Tensor_ *tensor) {
   PADDLE_ENFORCE_EQ(
       !tensor->name.empty(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Tensor name is empty. Ensure that the tensor has a valid name."));
-  PADDLE_ENFORCE_EQ(
-      utils::StartsWith(tensor->name, "_"),
-      false,
-      phi::errors::InvalidArgument("The name with prefix '_' is not allowed "
-                                   "for tensor. Current tensor's name is: %s",
-                                   tensor->name));
+  PADDLE_ENFORCE_EQ(utils::StartsWith(tensor->name, "_"),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "The name with prefix '_' is not allowed "
+                        "for tensor. Current tensor's name is: %s",
+                        tensor->name));
   return "_" + tensor->name;
 }
 
@@ -44,12 +44,12 @@ std::string BufferGetTensorName(const _Buffer_ *buffer) {
   PADDLE_ENFORCE_EQ(
       !buffer->name.empty(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Buffer name is empty. Ensure that the buffer has a valid name."));
   PADDLE_ENFORCE_EQ(
       utils::StartsWith(buffer->name, "_"),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Buffer's name should start with '_'. Current buffer's name is: %s",
           buffer->name));
   return buffer->name.substr(1);
@@ -70,17 +70,17 @@ Buffer _Buffer_::Make(Var data,
                       Target target) {
   PADDLE_ENFORCE_EQ(dtype.valid(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The data type (dtype) is invalid. Ensure that dtype "
                         "is properly initialized and valid."));
   PADDLE_ENFORCE_EQ(dtype.is_unk(),
                     false,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The data type (dtype) is unknown. Ensure that dtype "
                         "is properly initialized and known."));
   PADDLE_ENFORCE_EQ(dtype.is_void(),
                     false,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The data type (dtype) is void. Ensure that dtype is "
                         "properly initialized and not void."));
 
@@ -120,7 +120,7 @@ void _Buffer_::BindTo(const _Tensor_ *tensor) {
   PADDLE_ENFORCE_EQ(
       !tensor->shape.empty(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Tensor should have a shape to bind to a Buffer. Ensure that the "
           "tensor's shape is properly initialized and not empty."));
 
@@ -142,7 +142,7 @@ int64_t _Buffer_::numel() const {
   for (auto &i : shape) {
     PADDLE_ENFORCE_EQ(i.is_constant(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The value of 'i' is not constant. Ensure that 'i' "
                           "is a constant value before proceeding."));
 
@@ -167,16 +167,16 @@ void _Buffer_::Verify() const {
   PADDLE_ENFORCE_EQ(
       !shape.empty(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Buffer shape is empty. Ensure that the buffer has a valid shape."));
   PADDLE_ENFORCE_EQ(
       !name.empty(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Buffer name is empty. Ensure that the buffer has a valid name."));
   PADDLE_ENFORCE_EQ(dtype.valid(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Buffer data type (dtype) is invalid. Ensure that "
                         "dtype is properly initialized and valid."));
 }
@@ -196,10 +196,10 @@ Expr _BufferRange_::Make(const Expr &buffer, const std::vector<Var> &ranges) {
 }
 void _BufferRange_::Verify() const {
   auto *buffer_ptr = buffer.As<_Buffer_>();
-  PADDLE_ENFORCE_NOT_NULL(
-      buffer_ptr,
-      phi::errors::InvalidArgument("buffer_ptr is null. Ensure that buffer_ptr "
-                                   "is properly initialized and not null."));
+  PADDLE_ENFORCE_NOT_NULL(buffer_ptr,
+                          ::common::errors::InvalidArgument(
+                              "buffer_ptr is null. Ensure that buffer_ptr "
+                              "is properly initialized and not null."));
 }
 Expr _BufferRange_::Copy() const {
   auto node = make_shared<_BufferRange_>();
@@ -213,11 +213,11 @@ bool BufferRange::operator==(const BufferRange &x) const {
   auto this_buffer = operator->()->buffer.As<_Buffer_>();
   auto other_buffer = x->buffer.As<_Buffer_>();
   PADDLE_ENFORCE_NOT_NULL(this_buffer,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "this_buffer is null. Ensure that this_buffer is "
                               "properly initialized and not null."));
   PADDLE_ENFORCE_NOT_NULL(other_buffer,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "other_buffer is null. Ensure that other_buffer "
                               "is properly initialized and not null."));
 

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -36,7 +38,7 @@ class TrtConvertExpandASV2Test(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 4:
                 self.input_shape = [1, 8, 1, 32]
                 return np.random.random([1, 8, 1, 32]).astype(np.float32)
@@ -92,7 +94,7 @@ class TrtConvertExpandASV2Test(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -180,7 +182,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 1:
                 self.input_shape = [1]
                 return np.random.random([1]).astype(np.float32)
@@ -230,7 +232,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape():
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"expand_v2_input": [1]}

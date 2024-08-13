@@ -18,10 +18,10 @@
 #include <mutex>  // NOLINT
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 
 namespace paddle {
 namespace platform {

@@ -73,7 +73,6 @@ TEST(sparse_csr_tensor, construct) {
   CHECK(sparse.place() == phi::CPUPlace());
   CHECK(sparse.initialized() == true);
 }
-
 TEST(sparse_csr_tensor, other_function) {
   auto fancy_allocator = std::unique_ptr<Allocator>(new FancyAllocator);
   auto alloc = fancy_allocator.get();
@@ -107,11 +106,19 @@ TEST(sparse_csr_tensor, other_function) {
 
   // Test shallow_copy
   SparseCsrTensor csr2(csr);
-  CHECK(csr.dims() == csr2.dims());
+  PADDLE_ENFORCE_EQ(
+      csr.dims(),
+      csr2.dims(),
+      common::errors::Fatal("`csr.dims()` should be equal to `csr2.dims()`, "
+                            "something wrong with shallow copy"));
 
   // Test shallow_copy_assignment
   SparseCsrTensor csr3 = csr2;
-  CHECK(csr3.dims() == csr2.dims());
+  PADDLE_ENFORCE_EQ(
+      csr3.dims(),
+      csr2.dims(),
+      common::errors::Fatal("``csr3.dims()` should be equal to `csr2.dims()`, "
+                            "something wrong with shallow copy assignment"));
 }
 
 }  // namespace tests

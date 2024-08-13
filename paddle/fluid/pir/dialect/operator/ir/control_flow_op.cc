@@ -488,23 +488,30 @@ void WhileOp::VerifySig() {
       pir::DenseTensorType output_tensor_type =
           output_type.dyn_cast<pir::DenseTensorType>();
 
-      const common::DDim &output_dims = output_tensor_type.dims();
-      common::DDim new_input_dims = input_tensor_type.dims();
-      for (int i = 0; i < new_input_dims.size(); i++) {
-        if (output_dims[i] == -1) {
-          new_input_dims[i] = -1;
+      auto GetCheckType = [&](const pir::DenseTensorType &type) {
+        const auto &input_dims = input_tensor_type.dims();
+        const auto &output_dims = output_tensor_type.dims();
+        auto result_dims = type.dims();
+        for (int i = 0; i < result_dims.size(); i++) {
+          if (input_dims[i] == -1 || output_dims[i] == -1) {
+            result_dims[i] = -1;
+          }
         }
-      }
-      pir::DenseTensorType new_input_tensor_type =
-          pir::DenseTensorType::get(pir::IrContext::Instance(),
-                                    input_tensor_type.dtype(),
-                                    new_input_dims,
-                                    input_tensor_type.data_layout(),
-                                    input_tensor_type.lod(),
-                                    input_tensor_type.offset());
+        return pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                         type.dtype(),
+                                         result_dims,
+                                         type.data_layout(),
+                                         type.lod(),
+                                         type.offset());
+      };
+      pir::DenseTensorType check_input_tensor_type =
+          GetCheckType(input_tensor_type);
+      pir::DenseTensorType check_output_tensor_type =
+          GetCheckType(output_tensor_type);
+
       PADDLE_ENFORCE_EQ(
-          new_input_tensor_type,
-          output_tensor_type,
+          check_input_tensor_type,
+          check_output_tensor_type,
           common::errors::PreconditionNotMet(
               "The (%d) result and operand type is not equal.", index));
     } else {

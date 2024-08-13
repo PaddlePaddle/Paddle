@@ -174,7 +174,7 @@ def set_backend(backend_name: str) -> None:
 
     """
     if backend_name not in list_available_backends():
-        raise NotImplementedError()
+        raise NotImplementedError
 
     if backend_name == "wave_backend":
         module = wave_backend

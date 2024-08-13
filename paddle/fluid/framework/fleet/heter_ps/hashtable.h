@@ -33,7 +33,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/cudf/concurrent_unordered_map.cuh.h"
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "thrust/pair.h"
 #elif defined(__xpu__)
 #include <xpu/runtime.h>

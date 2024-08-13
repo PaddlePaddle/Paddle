@@ -174,9 +174,9 @@ class AMPState:
                             op.desc.original_id()
                         ]
                         assert fwd_op_id in self._op_fp16_dict, str(op)
-                        self._op_fp16_dict[
-                            op.desc.original_id()
-                        ] = self._is_fp16_op(fwd_op_id)
+                        self._op_fp16_dict[op.desc.original_id()] = (
+                            self._is_fp16_op(fwd_op_id)
+                        )
                 elif is_optimize_op(op):
                     break
 

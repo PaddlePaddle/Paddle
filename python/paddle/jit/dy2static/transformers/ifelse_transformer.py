@@ -432,12 +432,12 @@ def create_convert_ifelse_node(
             pred=ast_to_source_code(pred),
             true_fn=true_func_source,
             false_fn=false_func_source,
-            get_args=get_args_func.name
-            if not is_if_expr
-            else 'lambda: None',  # TODO: better way to deal with this
-            set_args=set_args_func.name
-            if not is_if_expr
-            else 'lambda args: None',
+            get_args=(
+                get_args_func.name if not is_if_expr else 'lambda: None'
+            ),  # TODO: better way to deal with this
+            set_args=(
+                set_args_func.name if not is_if_expr else 'lambda args: None'
+            ),
             return_name_ids=create_name_str(return_name_ids),
             push_pop_ids=create_name_str(push_pop_ids),
         )

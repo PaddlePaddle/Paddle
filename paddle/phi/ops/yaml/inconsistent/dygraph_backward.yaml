@@ -266,35 +266,6 @@
     func : multiply_triple_grad
   optional : fwd_grad_grad_x, fwd_grad_grad_y, grad_x_grad, grad_y_grad, grad_grad_out_grad
 
-- backward_op : reshape_double_grad
-  forward : reshape_grad (Tensor xshape, Tensor grad_out) -> Tensor(grad_x)
-  args : (Tensor grad_out, Tensor grad_x_grad)
-  output : Tensor(grad_out_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [grad_out]
-  kernel :
-    func : reshape_double_grad
-  no_need_buffer : grad_out
-  inplace : (grad_x_grad -> grad_out_grad)
-
-- backward_op : reshape_grad
-  forward : reshape (Tensor x, IntArray shape) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : KernelWithXShapeInferMeta
-    param : [xshape, out_grad]
-    spmd_rule: ReshapeGradInferSpmd
-  kernel :
-    func : reshape_grad
-    param : [out_grad]
-    data_type: out_grad
-    backend: out_grad
-    layout: out_grad
-  backward : reshape_double_grad
-  inplace : (out_grad -> x_grad)
-
 - backward_op : set_value_grad
   forward : set_value (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values) -> Tensor(out)
   args : (Tensor out_grad, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
