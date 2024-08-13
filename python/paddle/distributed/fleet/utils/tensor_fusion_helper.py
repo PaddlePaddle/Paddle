@@ -482,9 +482,9 @@ class FusedCommBuffer:
             )
 
         if self._act == HOOK_ACTION.REDUCE_SCATTER:
-            self._sharding_param_grad_view[
-                param.name
-            ]._grad_buffer = self.grad_storage
+            self._sharding_param_grad_view[param.name]._grad_buffer = (
+                self.grad_storage
+            )
             tmp_var = self._sharding_param_grad_view[
                 param.name
             ]._slice_grad_from_buffer()
@@ -704,25 +704,29 @@ def obtain_storage(
 def filter_params(params, is_fp32, is_distributed, need_clip):
     params = list(
         filter(
-            lambda x: x.is_distributed
-            if is_distributed
-            else (not x.is_distributed),
+            lambda x: (
+                x.is_distributed if is_distributed else (not x.is_distributed)
+            ),
             params,
         )
     )
     params = list(
         filter(
-            lambda x: getattr(x, 'need_clip', True)
-            if need_clip
-            else (not getattr(x, 'need_clip', True)),
+            lambda x: (
+                getattr(x, 'need_clip', True)
+                if need_clip
+                else (not getattr(x, 'need_clip', True))
+            ),
             params,
         )
     )
     params = list(
         filter(
-            lambda x: x.dtype == paddle.float32
-            if is_fp32
-            else x.dtype != paddle.float32,
+            lambda x: (
+                x.dtype == paddle.float32
+                if is_fp32
+                else x.dtype != paddle.float32
+            ),
             params,
         )
     )

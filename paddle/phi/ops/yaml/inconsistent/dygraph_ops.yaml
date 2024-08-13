@@ -292,20 +292,6 @@
   inplace : (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
 
-- op : reshape
-  args : (Tensor x, IntArray shape)
-  output : Tensor(out)
-  infer_meta :
-    func : ReshapeInferMeta
-    spmd_rule : ReshapeInferSpmd
-    local_shape: shape
-    global_shape: out
-  kernel :
-    func : reshape
-  inplace : (x -> out)
-  view: (x -> out)
-  backward: reshape_grad
-
 - op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)

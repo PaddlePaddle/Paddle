@@ -16,7 +16,6 @@
 #include <cstdint>
 
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/aligned_allocator.h"
@@ -28,18 +27,19 @@
 #include "paddle/phi/core/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
 #include <utility>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/memory/allocation/cuda_allocator.h"
 #include "paddle/phi/core/memory/allocation/cuda_managed_allocator.h"
 #include "paddle/phi/core/memory/allocation/pinned_allocator.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/phi/core/memory/allocation/thread_local_allocator.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
@@ -60,10 +60,10 @@
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/memory/allocation/stream_safe_xpu_allocator.h"
 #include "paddle/phi/core/memory/allocation/xpu_allocator.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_IPU

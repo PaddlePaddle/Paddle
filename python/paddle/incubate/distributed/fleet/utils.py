@@ -476,14 +476,16 @@ def parse_program(program, output_dir):
     # all vars
     all_vars = list(program.list_vars())
     output["all_vars"] = [
-        {
-            'name': str(v.name),
-            'shape': str(v.shape),
-            'lod_level': int(v.lod_level),
-            'dtype': str(v.dtype),
-        }
-        if v.type not in feed_fetch_type_list
-        else {'name': str(v.name), 'type': str(v.type)}
+        (
+            {
+                'name': str(v.name),
+                'shape': str(v.shape),
+                'lod_level': int(v.lod_level),
+                'dtype': str(v.dtype),
+            }
+            if v.type not in feed_fetch_type_list
+            else {'name': str(v.name), 'type': str(v.type)}
+        )
         for v in all_vars
     ]
     with open(os.path.join(output_dir, all_vars_out_fn), 'w') as f:

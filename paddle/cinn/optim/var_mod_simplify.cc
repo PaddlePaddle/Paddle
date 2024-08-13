@@ -51,12 +51,12 @@ struct ReplaceDivWithVarMutator : public ir::IRMutator<> {
     if (a.is_var() && b.is_constant()) {
       auto a_var = a.As<_Var_>();
       auto b_int = b.As<IntImm>();
-      PADDLE_ENFORCE_NOT_NULL(
-          a_var,
-          phi::errors::InvalidArgument("The node->operand(0) should be var"));
-      PADDLE_ENFORCE_NOT_NULL(
-          b_int,
-          phi::errors::InvalidArgument("The node->operand(1) should be int"));
+      PADDLE_ENFORCE_NOT_NULL(a_var,
+                              ::common::errors::InvalidArgument(
+                                  "The node->operand(0) should be var"));
+      PADDLE_ENFORCE_NOT_NULL(b_int,
+                              ::common::errors::InvalidArgument(
+                                  "The node->operand(1) should be int"));
       std::string var_name = a_var->name + "/" + std::to_string(b_int->value);
       div_var_map_[var_name] = ir::Div::Make(a, b);
       *expr = Var(var_name);
@@ -74,9 +74,9 @@ struct ReplaceVarWithDivMutator : public ir::IRMutator<> {
 
   void Visit(const _Var_* op, Expr* expr) override {
     auto* node = expr->As<_Var_>();
-    PADDLE_ENFORCE_NOT_NULL(
-        node,
-        phi::errors::InvalidArgument("Sorry, but the node expr is nullptr"));
+    PADDLE_ENFORCE_NOT_NULL(node,
+                            ::common::errors::InvalidArgument(
+                                "Sorry, but the node expr is nullptr"));
     if (div_var_map_.count(node->name)) {
       *expr = div_var_map_[node->name];
     }

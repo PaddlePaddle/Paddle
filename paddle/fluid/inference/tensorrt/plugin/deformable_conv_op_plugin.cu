@@ -20,10 +20,10 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/inference/tensorrt/plugin/deformable_conv_op_plugin.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {

@@ -341,7 +341,7 @@ class InputSpec:
                 f"type(batch_size) shall be `int`, but received {type(batch_size).__name__}."
             )
 
-        new_shape = [batch_size] + list(self.shape)
+        new_shape = [batch_size, *list(self.shape)]
         self.shape = tuple(new_shape)
 
         return self

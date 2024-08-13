@@ -32,7 +32,7 @@
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/common/place.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
 #include "paddle/phi/api/profiler/profiler.h"

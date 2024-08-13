@@ -523,6 +523,18 @@ void DispatchWithDtype(
                              max_seq_len,
                              dim_head);
       VLOG(3) << "qkv split end";
+      // VLOGMatrix(unpadding_q.data<T>(),
+      //            unpadding_q.numel(),
+      //            "unpadding_q",
+      //            unpadding_q.numel());
+      // VLOGMatrix(unpadding_k.data<T>(),
+      //            unpadding_k.numel(),
+      //            "unpadding_k",
+      //            unpadding_k.numel());
+      // VLOGMatrix(unpadding_v.data<T>(),
+      //            unpadding_v.numel(),
+      //            "unpadding_v",
+      //            unpadding_v.numel());
       // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
       // q,k,v,out all in 3-D [token_num, q_num_head, dim_head].
       auto fmha_shape = fmha_buf.dims();

@@ -516,7 +516,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 scale_.name: self.scale,
                 bias_.name: self.bias,
             },
-            fetch_list=vars_list + [grads],
+            fetch_list=[*vars_list, grads],
         )
         paddle.disable_static()
         core._set_prim_all_enabled(True)
@@ -601,7 +601,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                         scale_.name: self.scale,
                         bias_.name: self.bias,
                     },
-                    fetch_list=vars_list + [grads],
+                    fetch_list=[*vars_list, grads],
                 )
                 fwd_actual[-1].append(out_list[0])
                 fwd_actual[-1].append(out_list[1])

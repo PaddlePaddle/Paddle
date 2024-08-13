@@ -55,7 +55,6 @@ class TestAdd(TestBase):
         )
         self.net = AddCase
         self.atol = 1e-8
-        self.with_train = False
 
 
 if __name__ == '__main__':

@@ -22,8 +22,8 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {
