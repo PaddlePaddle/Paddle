@@ -961,7 +961,7 @@ bool SequenceMaskOpInferSymbolicShape(
 
   const auto &attributes = op->attributes();
   std::vector<symbol::DimExpr> y_dims = x_shape;
-  if (attributes.find("maxlen") != attributes.end()) {
+  if (op->HasAttribute("axis")) {
     PADDLE_THROW(::common::errors::InvalidArgument("Find maxlen"));
     int maxlen = op->attribute<pir::Int64Attribute>("maxlen").data();
     y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
