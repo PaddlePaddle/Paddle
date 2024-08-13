@@ -1562,18 +1562,27 @@ void FFTR2CInferMeta(const MetaTensor& x,
   }
 }
 
-void FlattenInferMeta(const MetaTensor& x,
-                      int start_axis,
-                      int stop_axis,
-                      MetaTensor* out) {
-  FlattenWithXShapeInferMeta(x, start_axis, stop_axis, out, nullptr);
-}
-
 void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 int start_axis,
                                 int stop_axis,
                                 MetaTensor* out,
                                 MetaTensor* xshape) {
+  FlattenInferMeta(x, start_axis, stop_axis, out);
+  if (xshape == nullptr) return;
+  const auto& x_dims = x.dims();
+  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    xshape_dims[i + 1] = x_dims[i];
+  }
+  xshape->set_dims(common::make_ddim(xshape_dims));
+  xshape->share_lod(x);
+}
+
+void FlattenInferMeta(const MetaTensor& x,
+                      int start_axis,
+                      int stop_axis,
+                      MetaTensor* out) {
   auto x_dims = x.dims();
   int in_dims_size = x_dims.size();
 
@@ -1635,14 +1644,6 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
     // are the same.
     out->share_lod(x);
   }
-  if (xshape == nullptr) return;
-  std::vector<int64_t> xshape_dims(x_dims.size() + 1);
-  xshape_dims[0] = 0;
-  for (int i = 0; i < x_dims.size(); ++i) {
-    xshape_dims[i + 1] = x_dims[i];
-  }
-  xshape->set_dims(common::make_ddim(xshape_dims));
-  xshape->share_lod(x);
 }
 
 void Flatten2InferMeta(const MetaTensor& x,
