@@ -957,7 +957,9 @@ class UnsqueezeOpPattern
         }
       }
 
-      ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
+      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+          op->operand_source(0), output_shape);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
       rewriter.EraseOp(op);
 
       return true;

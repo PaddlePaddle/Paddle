@@ -151,7 +151,6 @@ strided_op_list = {
     "tensor_unfold",
     "transpose",
     "unbind",
-    "unsqueeze_infer",
     "unsqueeze",
     "view_shape",
     "view_dtype",
@@ -172,7 +171,6 @@ strided_op_need_flags_check_list = {
     "tensor_unfold_",
     "transpose_",
     "unbind_",
-    "unsqueeze_infer_",
     "view_shape_",
     "view_dtype_",
 }

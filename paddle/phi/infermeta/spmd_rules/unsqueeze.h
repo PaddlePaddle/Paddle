@@ -29,7 +29,7 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
 SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
                                    const std::vector<int64_t>& axis);
-SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& xshape,
+SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& out_grad,
                                 const IntArray& axis = {});
 }  // namespace distributed
