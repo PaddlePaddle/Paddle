@@ -215,6 +215,13 @@ bool FeedOpInferSymbolicShape(pir::Operation *op,
     }
   }
 
+  if (op->attributes().count("name")) {
+    std::string name =
+        op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+    details::CheckAndReplaceInputConstraintDimExpr(
+        name, *infer_context, &out_dims);
+  }
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});

@@ -31,13 +31,41 @@ static std::string GetValueId(Value val) {
          std::to_string(val_idx);
 }
 
-void InferSymbolicShapeContext::Init() {
+void InferSymbolicShapeContext::Init(
+    const InputShapeInfoType& input_shape_info) {
   value_id_to_shape_or_data_.clear();
   next_sym_idx_ = sym_idx_begin_;
   constraints_manager_.SetEqualCallbackFunc(
       [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
         return SubstituteDimExpr(lhs, rhs);
       });
+
+  const auto& InitUseInfoForInputDim =
+      [&](const std::unordered_map<std::string, std::vector<unsigned>>&
+              use_info,
+          const symbol::DimExpr& dim_expr) {
+        for (const auto& item : use_info) {
+          for (const auto& dim_index : item.second) {
+            input_shape_init_symbol_[item.first].emplace_back(
+                DimIndexAndExpr(dim_index, dim_expr));
+          }
+        }
+      };
+
+  const auto& InitRangeInfoForInputDim =
+      [&](const symbol::ConstraintsManager::Range& range,
+          const symbol::DimExpr& dim_expr) {
+        constraints_manager_.AddInputRangeCstr(dim_expr, range);
+      };
+
+  for (const auto& item : input_shape_info) {
+    const auto& next_symbol = GetNextSymName();
+    VLOG(3) << "Map Input Dynamic Shape Dim \"" << item.first
+            << "\" to DimExpr \"" << next_symbol << "\"";
+    symbol::DimExpr dim_expr{next_symbol};
+    InitUseInfoForInputDim(item.second.use, dim_expr);
+    InitRangeInfoForInputDim(item.second.range, dim_expr);
+  }
 }
 
 void InferSymbolicShapeContext::RegisterSymbolConstraintFromContext(
@@ -367,7 +395,25 @@ InferSymbolicShapeContext::GetOpInferSymbolicShapeCache(
   return std::nullopt;
 }
 
-void ShapeConstraintIRAnalysis::Init() { context_.Init(); }
+bool InferSymbolicShapeContext::HasInputShapeInitSymbol(
+    const std::string& input_name) const {
+  return input_shape_init_symbol_.find(input_name) !=
+         input_shape_init_symbol_.cend();
+}
+
+const std::vector<InferSymbolicShapeContext::DimIndexAndExpr>
+InferSymbolicShapeContext::GetInputShapeInitSymbol(
+    const std::string& input_name) const {
+  if (!HasInputShapeInitSymbol(input_name)) {
+    PADDLE_THROW(
+        common::errors::Fatal(input_name + "Not in input_shape_init_symbol!"));
+  }
+  return input_shape_init_symbol_.at(input_name);
+}
+
+void ShapeConstraintIRAnalysis::InitInferContext() {
+  context_.Init(input_shape_info_);
+}
 
 void ShapeConstraintIRAnalysis::RegisterSymbolConstraintFromShapeAnalysis(
     const ShapeConstraintIRAnalysis& other) {

@@ -171,4 +171,9 @@ void BuildCstrEqForTensorListAlongAxis(
     const std::vector<pir::Value> &values,
     int axis);
 
+void CheckAndReplaceInputConstraintDimExpr(
+    const std::string &input_name,
+    const pir::InferSymbolicShapeContext &infer_context,
+    std::vector<symbol::DimExpr> *input_dim_exprs);
+
 }  // namespace paddle::dialect::details

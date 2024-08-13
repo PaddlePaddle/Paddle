@@ -108,7 +108,7 @@ class DynamicToStaticConverter {
     VisitEachValue(fusion_op_, [&](pir::Value value) {
       updated |= UpdateValueShape(value);
     });
-    shape_analysis_->Init();
+    shape_analysis_->InitInferContext();
     return updated;
   }
 

@@ -197,4 +197,49 @@ void BuildCstrEqForTensorListAlongAxis(
   }
 }
 
+void CheckAndReplaceInputConstraintDimExpr(
+    const std::string &input_name,
+    const pir::InferSymbolicShapeContext &infer_context,
+    std::vector<symbol::DimExpr> *input_dim_exprs) {
+  if (infer_context.HasInputShapeInitSymbol(input_name)) {
+    const auto &dim_index_and_exprs =
+        infer_context.GetInputShapeInitSymbol(input_name);
+    const auto &constraints_manager = infer_context.constraints_manager();
+
+    const auto &CheckStaticDimMatchConstraints =
+        [&](const std::int64_t &static_value,
+            const symbol::DimExpr &dim_expr,
+            const int &dim_index) {
+          if (constraints_manager.IsBoundedInput(dim_expr)) {
+            const auto &range =
+                constraints_manager.GetRangeOfBoundedInput(dim_expr);
+            PADDLE_ENFORCE_EQ(
+                static_value >= range.min && static_value <= range.max,
+                true,
+                common::errors::InvalidArgument(
+                    "Input DimExpr range constraint is inconsistent "
+                    "with static shape dim. The input dim index is "
+                    "%d, static value is %d, range constraint is [%d, %d].",
+                    input_name,
+                    dim_index,
+                    static_value,
+                    range.min,
+                    range.max));
+          }
+        };
+
+    for (const auto &index_and_expr : dim_index_and_exprs) {
+      symbol::DimExpr origin_dim_expr =
+          input_dim_exprs->at(index_and_expr.index);
+      if (origin_dim_expr.isa<std::int64_t>()) {
+        const std::int64_t &static_value = origin_dim_expr.Get<std::int64_t>();
+        CheckStaticDimMatchConstraints(
+            static_value, index_and_expr.dim_expr, index_and_expr.index);
+      } else {
+        input_dim_exprs->at(index_and_expr.index) = index_and_expr.dim_expr;
+      }
+    }
+  }
+}
+
 }  // namespace paddle::dialect::details
