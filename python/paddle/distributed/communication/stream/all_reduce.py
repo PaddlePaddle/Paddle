@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops, framework
 from paddle.base import data_feeder
@@ -25,8 +28,21 @@ from paddle.distributed.communication.reduce import (
 )
 from paddle.framework import in_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
-def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
+    from ..all_reduce import _ReduceOp
+
+
+def _all_reduce_in_dygraph(
+    tensor: Tensor,
+    op: _ReduceOp,
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+) -> task:
     op_type = _get_reduce_op(op, "allreduce")
 
     if use_calc_stream:
@@ -39,7 +55,13 @@ def _all_reduce_in_dygraph(tensor, op, group, sync_op, use_calc_stream):
     return task
 
 
-def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
+def _all_reduce_in_static_mode(
+    tensor: Tensor,
+    op: _ReduceOp,
+    group: Group,
+    sync_op: bool,
+    use_calc_stream: bool,
+) -> None:
     data_feeder.check_variable_and_dtype(
         tensor,
         'tensor',
@@ -80,8 +102,12 @@ def _all_reduce_in_static_mode(tensor, op, group, sync_op, use_calc_stream):
 
 
 def all_reduce(
-    tensor, op=ReduceOp.SUM, group=None, sync_op=True, use_calc_stream=False
-):
+    tensor: Tensor,
+    op: _ReduceOp = ReduceOp.SUM,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Perform specific reduction (for example, sum, max) on inputs across devices.
@@ -90,7 +116,7 @@ def all_reduce(
         tensor (Tensor): The input tensor on each rank. The result will overwrite this tenor after communication. Support
             float16, float32, float64, int32, int64, int8, uint8 or bool as the input data type.
         op (ReduceOp.SUM|ReduceOp.MAX|ReduceOp.MIN|ReduceOp.PROD, optional): The reduction used. If none is given, use ReduceOp.SUM as default.
-        group (Group, optional): Communicate in which group. If none is given, use the global group as default.
+        group (Group|None, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
             option is designed for high performance demand, be careful to turn it on except you are clearly know its meaning.
@@ -113,7 +139,7 @@ def all_reduce(
             >>> else:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> task = dist.stream.all_reduce(data, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = data
             >>> print(out)
             [[5, 7, 9], [5, 7, 9]]
