@@ -816,6 +816,7 @@
   output : Tensor(out)
   infer_meta:
     func: UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param: [x]
   kernel:
     func: share_data

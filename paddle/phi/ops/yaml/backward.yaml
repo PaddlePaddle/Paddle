@@ -2699,6 +2699,7 @@
   infer_meta :
     func : ScatterGradInferMeta
     param : [index, updates, out_grad, overwrite]
+    spmd_rule : ScatterGradInferSpmd
   kernel :
     func : scatter_grad
   no_need_buffer : updates
