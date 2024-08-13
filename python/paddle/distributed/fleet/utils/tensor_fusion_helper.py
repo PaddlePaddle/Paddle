@@ -152,13 +152,10 @@ def flatten_dense_tensors(
         else:
             param_storage.buffer.main_grad = grad_storage.buffer
         param_storage.buffer.stop_gradient = False
-        outputs = (param_storage,) + outputs
+        outputs = (param_storage, *outputs)
 
     if release_grad:
-        outputs = outputs + (
-            _buffer_size,
-            _param2offset,
-        )
+        outputs = (*outputs, _buffer_size, _param2offset)
 
     return outputs
 
