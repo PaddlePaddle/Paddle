@@ -37,6 +37,16 @@ std::vector<int64_t> GetValueShape(const pir::Value& value) {
   } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
     return phi::vectorize(
         value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dims());
+    // } else if (value.type().isa<paddle::dialect::SparseCooTensorType>()) {
+    //   return phi::vectorize(
+    //         value.type()
+    //             .dyn_cast<paddle::dialect::SparseCooTensorType>()
+    //             .dims());
+    // } else if (value.type().isa<paddle::dialect::SparseCsrTensorType>()) {
+    //   return phi::vectorize(
+    //       value.type()
+    //           .dyn_cast<paddle::dialect::SparseCsrTensorType>()
+    //           .dims());
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only get shape for dense_tensor or selected_rows."));

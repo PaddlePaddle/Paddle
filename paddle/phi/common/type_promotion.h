@@ -87,26 +87,11 @@ inline static DataType promoteTypes(DataType x, DataType y) {
 
 // Migrated from operator overloading
 static std::unordered_set<std::string> support_promotion_ops = {
-    "add",
-    "elementwise_add",
-    "subtract",
-    "elementwise_sub",
-    "multiply",
-    "elementwise_mul",
-    "elementwise_mod",
-    "remainder"
-    "divide",
-    "elementwise_div",
-    "truediv",
-    "floor_divide",
-    "pow",
-    "elementwise_pow",
-    "equal",
-    "not_equal",
-    "less_than",
-    "less_equal",
-    "greater_than",
-    "greater_equal",
+    "add",       "elementwise_add", "subtract",        "elementwise_sub",
+    "multiply",  "elementwise_mul", "elementwise_mod", "remainder",
+    "divide",    "elementwise_div", "truediv",         "floor_divide",
+    "pow",       "elementwise_pow", "equal",           "not_equal",
+    "less_than", "less_equal",      "greater_than",    "greater_equal",
 };
 
 inline bool is_support_float(DataType dtype) {
@@ -195,6 +180,9 @@ inline bool NeedTypePromotion(
     const DataType& y_dtype,
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
+  // std::cout << "need type promotion? " <<
+  // (support_promotion_ops.find(op_name) != support_promotion_ops.end()) << " "
+  // << x_shape.size() << " " << y_shape.size() << std::endl;
   if (x_dtype == y_dtype) {
     if (op_name == "divide" || op_name == "divide_") {
       if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
