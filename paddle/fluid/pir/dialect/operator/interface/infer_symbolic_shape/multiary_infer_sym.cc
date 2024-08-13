@@ -745,9 +745,9 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   }
 
   pir::Value operand_source = op->operand_source(0);
+  const auto &x_shape = infer_context->GetShapeOrDataForValue(operand_source);
   const auto &shape_data_list =
-      infer_context->GetShapeOrDataForValue(operand_source)
-          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+      x_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
   size_t rank = shape_data_list.at(0).shape().size();
   const int64_t axis = [&] {
@@ -755,12 +755,9 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
     return axis >= 0 ? axis : std::max(int64_t(0), int64_t(axis + rank));
   }();
 
-  if (shape_data_list.at(0).data().has_value()) {
+  if (details::HasCompleteData(x_shape)) {
     if (rank == 1) {
-      const auto &s_or_d =
-          infer_context->GetShapeOrDataForValue(operand_source);
-      ExprVec data = details::GetExprVecFromData(s_or_d);
-
+      ExprVec data = details::GetExprVecFromData(x_shape);
       const std::vector<symbol::DimExpr> shape{std::int64_t(data.size())};
       symbol::ShapeOrDataDimExprs shape_data{
           symbol::TensorShapeOrDataDimExprs(shape, data)};
@@ -859,11 +856,10 @@ bool EditDistanceOpInferSymbolicShape(
     infer_context->AddEqualCstr(refs_dims[1], one);
   }
 
-  symbol::ShapeOrDataDimExprs refs_shape_or_data_exprs(
+  symbol::ShapeOrDataDimExprs out_shape_or_data_exprs(
       symbol::TensorShapeOrDataDimExprs(
           std::vector<symbol::DimExpr>{refs_dims}));
-  infer_context->SetShapeOrDataForValue(op->result(0),
-                                        refs_shape_or_data_exprs);
+  infer_context->SetShapeOrDataForValue(op->result(0), out_shape_or_data_exprs);
 
   symbol::ShapeOrDataDimExprs single_dim_expr(symbol::TensorShapeOrDataDimExprs(
       std::vector<symbol::DimExpr>{symbol::DimExpr(1)}));
