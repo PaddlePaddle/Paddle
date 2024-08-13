@@ -994,8 +994,8 @@ bool GumbelSoftmaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
-  size_t rank = x_dims.size();
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  size_t rank = x_shape.size();
 
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
 
