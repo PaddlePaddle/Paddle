@@ -22,25 +22,19 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PartialRecvOpCUDAKernel(const Context& dev_ctx,
-                             int ring_id,
-                             int peer,
-                             DataType type,
-                             const std::vector<int>& out_shape,
-                             int num,
-                             int id,
-                             DenseTensor* out) {
+void PartialRecvKernel(const Context& dev_ctx,
+                       int ring_id UNUSED,
+                       int peer,
+                       DataType type,
+                       const std::vector<int>& out_shape,
+                       int num,
+                       int id,
+                       DenseTensor* out) {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
   auto out_dims = out->dims();
   auto numel = out->numel();
-  int rid = ring_id;
 
-  PADDLE_ENFORCE_GE(
-      rid,
-      0,
-      common::errors::InvalidArgument(
-          "The ring_id (%d) for partial_recv op must be non-negative.", rid));
   PADDLE_ENFORCE_GE(
       peer,
       0,
@@ -83,8 +77,6 @@ void PartialRecvOpCUDAKernel(const Context& dev_ctx,
   nranks = comm_ctx->GetSize();
   rank = comm_ctx->GetRank();
 
-  VLOG(3) << "new comm_context_manager has ring_id " << rid;
-
   PADDLE_ENFORCE_LT(
       peer,
       nranks,
@@ -111,7 +103,7 @@ void PartialRecvOpCUDAKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(partial_recv,
                    GPU,
                    ALL_LAYOUT,
-                   phi::PartialRecvOpCUDAKernel,
+                   phi::PartialRecvKernel,
                    float,
                    double,
                    phi::dtype::bfloat16,
@@ -122,7 +114,7 @@ PD_REGISTER_KERNEL(partial_recv,
 PD_REGISTER_KERNEL(partial_recv,
                    GPU,
                    ALL_LAYOUT,
-                   phi::PartialRecvOpCUDAKernel,
+                   phi::PartialRecvKernel,
                    float,
                    double,
                    int,
