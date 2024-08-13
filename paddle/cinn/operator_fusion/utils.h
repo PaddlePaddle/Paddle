@@ -453,10 +453,24 @@ static const size_t GetResultIdx(const pir::Value& v, pir::Operation* op) {
       "Can not find the value %s as result of op %s", v.impl(), op->name()));
 }
 
+static std::vector<pir::Operation*> FindUserOp(
+    const std::vector<pir::Operation*>& candidates, const pir::Value& value) {
+  std::vector<pir::Operation*> results;
+  for (auto consumer_it = value.use_begin(); consumer_it != value.use_end();
+       ++consumer_it) {
+    pir::Operation* user_op = consumer_it.owner();
+    auto iter = std::find(candidates.begin(), candidates.end(), user_op);
+    if (iter != candidates.end()) {
+      results.emplace_back(*iter);
+    }
+  }
+  return results;
+}
+
 static bool IsDirectUpstream(const pir::Operation* upstream,
                              const pir::Operation* downstream) {
-  for (const auto& value : downstream->results()) {
-    for (const auto& operand : upstream->operands()) {
+  for (const auto& value : upstream->results()) {
+    for (const auto& operand : downstream->operands()) {
       if (value == operand.source()) {
         return true;
       }
