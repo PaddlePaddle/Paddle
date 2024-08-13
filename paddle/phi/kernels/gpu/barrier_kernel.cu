@@ -32,20 +32,8 @@ void BarrierKernel(const Context& dev_ctx,
                    const DenseTensor& x_in,
                    DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto place = dev_ctx.GetPlace();
 
-  const auto& comm_context_manager =
-      phi::distributed::CommContextManager::GetInstance();
   if (FLAGS_dynamic_static_unified_comm) {
-    PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "You choose to use new communication library by "
-                          "setting environment "
-                          "variable FLAGS_dynamic_static_unified_comm True. "
-                          "But ring_id(%d) is "
-                          "not found in comm_context_manager.",
-                          std::to_string(ring_id)));
     auto comm_ctx =
         static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
     PADDLE_ENFORCE_NOT_NULL(
