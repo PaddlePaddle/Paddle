@@ -954,7 +954,6 @@ bool SearchsortedOpInferSymbolicShape(
 
 bool SequenceMaskOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  PADDLE_THROW(::common::errors::InvalidArgument("Find maxlen"));
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
