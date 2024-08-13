@@ -183,9 +183,9 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
 def _expand_low_nd_padding(padding):
     # 1d to 2d fake input
     if len(padding) == 2:
-        padding = [0] * 2 + padding
+        padding = [0, 0, *padding]
     elif len(padding) == 1:
-        padding = [0] + padding
+        padding = [0, *padding]
     else:
         raise ValueError(
             f"The size of padding's dimension should be 1 or 2. But got padding={padding}"
@@ -252,12 +252,12 @@ def avg_pool1d(
     _check_input(x, 3)
     x = unsqueeze(x, [2])
     kernel_size = convert_to_list(kernel_size, 1, 'kernel_size')
-    kernel_size = [1] + kernel_size
+    kernel_size = [1, *kernel_size]
     if stride is None:
         stride = kernel_size
     else:
         stride = convert_to_list(stride, 1, 'pool_stride')
-        stride = [1] + stride
+        stride = [1, *stride]
 
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
@@ -630,11 +630,11 @@ def max_pool1d(
     data_format = "NCHW"
     _check_input(x, 3)
     x = unsqueeze(x, [2])
-    kernel_size = [1] + convert_to_list(kernel_size, 1, 'pool_size')
+    kernel_size = [1, *convert_to_list(kernel_size, 1, "pool_size")]
     if stride is None:
         stride = kernel_size
     else:
-        stride = [1] + convert_to_list(stride, 1, 'pool_stride')
+        stride = [1, *convert_to_list(stride, 1, "pool_stride")]
 
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, ceil_mode=ceil_mode
@@ -825,11 +825,11 @@ def max_unpool1d(
     data_format = "NCHW"
     x = unsqueeze(x, [2])
     indices = unsqueeze(indices, [2])
-    kernel_size = [1] + convert_to_list(kernel_size, 1, 'pool_size')
+    kernel_size = [1, *convert_to_list(kernel_size, 1, "pool_size")]
     if stride is None:
         stride = kernel_size
     else:
-        stride = [1] + convert_to_list(stride, 1, 'pool_stride')
+        stride = [1, *convert_to_list(stride, 1, 'pool_stride')]
     padding, padding_algorithm = _update_padding_nd(padding, 1)
     # use 2d to implenment 1d should expand padding in advance.
     padding = _expand_low_nd_padding(padding)
@@ -1477,7 +1477,7 @@ def adaptive_avg_pool1d(
     """
     pool_type = 'avg'
     _check_input(x, 3)
-    pool_size = [1] + convert_to_list(output_size, 1, 'pool_size')
+    pool_size = [1, *convert_to_list(output_size, 1, "pool_size")]
 
     x = unsqueeze(x, [2])
     if in_dynamic_or_pir_mode():
@@ -1847,7 +1847,7 @@ def adaptive_max_pool1d(
     """
     _check_input(x, 3)
 
-    pool_size = [1] + convert_to_list(output_size, 1, 'pool_size')
+    pool_size = [1, *convert_to_list(output_size, 1, "pool_size")]
 
     x = unsqueeze(x, [2])
     if in_dynamic_or_pir_mode():
@@ -2470,12 +2470,12 @@ def lp_pool1d(
     _check_input(x, 3)
     x = unsqueeze(x, [axis])
     kernel_size = convert_to_list(kernel_size, 1, 'kernel_size')
-    kernel_size = [1] + kernel_size
+    kernel_size = [1, *kernel_size]
     if stride is None:
         stride = kernel_size
     else:
         stride = convert_to_list(stride, 1, 'pool_stride')
-        stride = [1] + stride
+        stride = [1, *stride]
 
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)

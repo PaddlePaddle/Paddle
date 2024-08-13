@@ -54,11 +54,17 @@ class DevInfoMgr final {
   using RetType = typename GetDevType<arch>::DevType;
 
   const RetType* operator->() const {
-    CHECK(!std::is_void<RetType>()) << "Current device can't be recognized!\n";
+    PADDLE_ENFORCE_EQ(
+        !std::is_void<RetType>(),
+        true,
+        phi::errors::InvalidArgument("Current device can't be recognized!"));
     return dynamic_cast<const RetType*>(impl_.get());
   }
   RetType* operator->() {
-    CHECK(!std::is_void<RetType>()) << "Current device can't be recognized!\n";
+    PADDLE_ENFORCE_EQ(
+        !std::is_void<RetType>(),
+        true,
+        phi::errors::InvalidArgument("Current device can't be recognized!"));
     return dynamic_cast<RetType*>(impl_.get());
   }
 };

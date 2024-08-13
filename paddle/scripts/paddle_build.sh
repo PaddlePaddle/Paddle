@@ -2761,13 +2761,9 @@ set +x
 
         if [ ${WITH_CINN:-OFF} == "ON" ]; then
             pushd ${PADDLE_ROOT}/build/paddle/cinn
-            ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp
-            popd
-            pushd ${PADDLE_ROOT}/build/test/cinn
-            ctest -N -E "test_paddle_model_convertor|test_cinn_fake_resnet|test_cinn_sub_graph_map_expr|test_assign_value_op_mapper|test_batch_norm_op"  | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' >> ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp
+            ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
             popd
             ctest -N -L "RUN_TYPE=CINN" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_ut_list
-            cat ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp | sort | uniq > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
             echo "========================================"
             echo "pr_ci_cinn_ut_list: "
             cat ${PADDLE_ROOT}/build/pr_ci_cinn_ut_list
@@ -2780,7 +2776,7 @@ set +x
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
 
         if [ ${WITH_CINN=-OFF} == "ON" ]; then
-            run_cinn_ut="OFF"
+            run_cinn_ut=`check_cinn_file_diff`
             if [[ "OFF" == ${run_cinn_ut} ]]; then
               echo "No CINN-related changes were found"
               echo "Skip PR-CI-CINN-GPU UT CI"
@@ -2794,21 +2790,6 @@ set +x
                 cinn_gpu_ut_endTime_s=`date +%s`
                 echo "ipipe_log_param_cinn_gpu_TestCases_Total_Time: $[ $cinn_gpu_ut_endTime_s - $cinn_gpu_ut_startTime_s ]s"
                 echo "ipipe_log_param_cinn_gpu_TestCases_Total_Time: $[ $cinn_gpu_ut_endTime_s - $cinn_gpu_ut_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
-
-                # pr-ci-cinn-gpu
-                export LD_LIBRARY_PATH=/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
-                export LD_LIBRARY_PATH=/usr/local/lib/python3.9/dist-packages/paddle/libs:${LD_LIBRARY_PATH}
-                export LD_LIBRARY_PATH=${PADDLE_ROOT}/build/python/paddle/libs/:${LD_LIBRARY_PATH}
-                pip install nvidia-pyindex
-                pip install nvidia-tensorrt
-                pip install xgboost
-                bash ${PADDLE_ROOT}/tools/cinn/build.sh prepare_model
-                bash ${PADDLE_ROOT}/tools/cinn/build.sh run_demo 2>&1 | tee /dev/null
-                demo_test=${PIPESTATUS[0]}
-                if [[ ${demo_test} -ne 0 ]];then
-                    echo -e "\033[31mcinn demo test failed\033[0m"
-                    exit -1
-                fi
             fi
 
             # run pr-ci-cinn ut

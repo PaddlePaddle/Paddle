@@ -13,7 +13,17 @@
 # limitations under the License.
 from __future__ import annotations
 
+import pickle
+import tarfile
 from typing import TYPE_CHECKING, Any, Literal, Tuple
+
+import numpy as np
+import numpy.typing as npt
+from PIL import Image
+
+import paddle
+from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -24,17 +34,6 @@ if TYPE_CHECKING:
     from ..image import _ImageBackend, _ImageDataType
 
     _DatasetMode = Literal["train", "test"]
-
-
-import pickle
-import tarfile
-
-import numpy as np
-from PIL import Image
-
-import paddle
-from paddle.dataset.common import _check_exists_and_download
-from paddle.io import Dataset
 
 __all__ = []
 

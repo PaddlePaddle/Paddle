@@ -690,7 +690,6 @@ set_tests_properties(test_conditional_block_deprecated
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
-    test_adamw_op_deprecated
     test_arg_min_max_op
     test_batch_norm_op_deprecated
     test_decoupled_py_reader_deprecated

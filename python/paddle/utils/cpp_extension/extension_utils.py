@@ -383,26 +383,25 @@ def prepare_unix_cudaflags(cflags):
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
     if core.is_compiled_with_rocm():
-        cflags = (
-            COMMON_HIPCC_FLAGS
-            + ['-Xcompiler', '-fPIC']
-            + cflags
-            + get_rocm_arch_flags(cflags)
-        )
+        cflags = [
+            *COMMON_HIPCC_FLAGS,
+            '-Xcompiler',
+            '-fPIC',
+            *cflags,
+            *get_rocm_arch_flags(cflags),
+        ]
     else:
-        cflags = (
-            COMMON_NVCC_FLAGS
-            + [
-                '-ccbin',
-                'cc',
-                '-Xcompiler',
-                '-fPIC',
-                '--expt-relaxed-constexpr',
-                '-DNVCC',
-            ]
-            + cflags
-            + get_cuda_arch_flags(cflags)
-        )
+        cflags = [
+            *COMMON_NVCC_FLAGS,
+            '-ccbin',
+            'cc',
+            '-Xcompiler',
+            '-fPIC',
+            '--expt-relaxed-constexpr',
+            '-DNVCC',
+            *cflags,
+            *get_cuda_arch_flags(cflags),
+        ]
 
     return cflags
 
@@ -411,7 +410,7 @@ def prepare_win_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + ['-w'] + cflags + get_cuda_arch_flags(cflags)
+    cflags = [*COMMON_NVCC_FLAGS, '-w', *cflags, *get_cuda_arch_flags(cflags)]
 
     return cflags
 
@@ -442,7 +441,8 @@ def get_rocm_arch_flags(cflags):
     """
     For ROCm platform, amdgpu target should be added for HIPCC.
     """
-    cflags = cflags + [
+    cflags = [
+        *cflags,
         '-fno-gpu-rdc',
         '-amdgpu-target=gfx906',
         '-amdgpu-target=gfx926',

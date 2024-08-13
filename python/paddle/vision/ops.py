@@ -1137,7 +1137,7 @@ class DeformConv2D(Layer):
 
         self._padding = convert_to_list(padding, 2, 'padding')
 
-        filter_shape = [out_channels, in_channels // groups] + self._kernel_size
+        filter_shape = [out_channels, in_channels // groups, *self._kernel_size]
 
         def _get_default_param_initializer():
             filter_elem_num = np.prod(self._kernel_size) * self._in_channels
