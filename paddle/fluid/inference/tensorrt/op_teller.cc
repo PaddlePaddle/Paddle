@@ -2777,6 +2777,32 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "argsort") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      if (!desc.HasAttr("descending") || !desc.HasAttr("axis")) {
+        VLOG(3) << op_type << " needs attributes: descending and axis.";
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
+      std::vector<int64_t> shape = x_var_desc->GetShape();
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis < 0) {
+        axis += shape.size();
+      }
+      if (shape[axis] > 3840 || shape[axis] < 0) {
+        VLOG(3) << op_type << " shape[" << axis << "] = " << shape[axis]
+                << " is invalid, it should less than 3840 and greater than "
+                   "zero in TensorRT.";
+        return false;
+      }
+    }
+
     if (op_type == "unbind") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the unbind does not support "
@@ -3098,6 +3124,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "quantize_linear",
       "dequantize_linear",
       "share_data",
+      "argsort",
       "bitwise_and",
       "bitwise_or",
       "size"};
@@ -3272,6 +3299,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "quantize_linear",
       "dequantize_linear",
       "share_data",
+      "argsort",
       "bitwise_and",
       "bitwise_or",
       "size"};

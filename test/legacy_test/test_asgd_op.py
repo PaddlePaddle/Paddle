@@ -495,7 +495,7 @@ class TestASGDValidation:
             for param in model.parameters():
                 d_validation[param.name] = np.zeros(param.shape)
                 ys_validation[param.name] = np.zeros(
-                    [self.batch_num] + param.shape
+                    [self.batch_num, *param.shape]
                 )
 
             for i in range(5):
@@ -523,9 +523,9 @@ class TestASGDValidation:
                         - y_validation[param.name]
                         + grad_validation[param.name]
                     )
-                    ys_validation[param.name][
-                        i % self.batch_num
-                    ] = grad_validation[param.name]
+                    ys_validation[param.name][i % self.batch_num] = (
+                        grad_validation[param.name]
+                    )
                     n_validation[param.name] = min(i + 1, self.batch_num)
                     param_validation[param.name] = (
                         param_validation[param.name]

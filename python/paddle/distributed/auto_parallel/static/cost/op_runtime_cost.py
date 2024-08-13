@@ -120,9 +120,13 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
                 str(var_dtype), ", ".join(supported_var_dtypes)
             )
         )
-        logger.info(
-            f'[+] var: "{var_name}", shape={var_shape}, dtype="{var_dtype}".\n'
-        ) if verbose else None
+        (
+            logger.info(
+                f'[+] var: "{var_name}", shape={var_shape}, dtype="{var_dtype}".\n'
+            )
+            if verbose
+            else None
+        )
         np_dtype = (
             convert_dtype(var_dtype)
             if isinstance(var_dtype, core.VarDesc.VarType)
@@ -168,9 +172,11 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
                 )
                 feed_names.append(out_var_name)
         if not has_feed_op:
-            logger.info(
-                "WARNING: program does not have any feed op.\n"
-            ) if verbose else None
+            (
+                logger.info("WARNING: program does not have any feed op.\n")
+                if verbose
+                else None
+            )
         return feed_names
 
     for var_name in _analyze_graph_and_collect_all_vars_with_zero_in_degree():
@@ -299,7 +305,11 @@ def measure_program_real_op_cost(
             and check_if_op_supports_runtime_profiling(op)
         ):
             op.dist_attr.run_time_us = op_runtime_us_final
-        logger.info(
-            "%4s %32s  %.1f us"
-            % (str(op_id), str(op.type), op_runtime_us_final)
-        ) if verbose_level >= 1 else None
+        (
+            logger.info(
+                "%4s %32s  %.1f us"
+                % (str(op_id), str(op.type), op_runtime_us_final)
+            )
+            if verbose_level >= 1
+            else None
+        )

@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler.h"
 #include "paddle/utils/string/string_helper.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"

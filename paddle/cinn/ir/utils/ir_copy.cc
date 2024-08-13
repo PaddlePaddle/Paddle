@@ -346,16 +346,16 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
   Expr Visit(const Broadcast* op) override {
     auto value = Visit(&op->value);
     int lanes = op->lanes;
-    PADDLE_ENFORCE_EQ(
-        value.defined(),
-        true,
-        phi::errors::InvalidArgument("Broadcasting value is not defined."));
+    PADDLE_ENFORCE_EQ(value.defined(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Broadcasting value is not defined."));
     PADDLE_ENFORCE_EQ(
         value.type().valid(),
         true,
-        phi::errors::InvalidArgument("Broadcasting value type is invalid. "
-                                     "Expected a valid type, but got: %s",
-                                     value.type()));
+        ::common::errors::InvalidArgument("Broadcasting value type is invalid. "
+                                          "Expected a valid type, but got: %s",
+                                          value.type()));
 
     auto* n = make_shared<Broadcast>();
     n->value = value;
@@ -368,11 +368,11 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
     auto b = Visit(&op->b());
     PADDLE_ENFORCE_EQ(a.defined(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The first operand of FracOp is not defined."));
     PADDLE_ENFORCE_EQ(b.defined(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The second operand of FracOp is not defined."));
 
     auto* n = make_shared<FracOp>();
@@ -426,7 +426,7 @@ struct IRCopyVisitor : public ir::IRVisitorRequireReImpl<Expr> {
       PADDLE_ENFORCE_NE(
           var,
           nullptr,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "ScheduleBlock iter_var is not a valid _Var_ type."));
       iter_vars.push_back(Visit(var));
     }

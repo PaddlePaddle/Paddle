@@ -179,7 +179,9 @@ class TestBertTokenizerOp(unittest.TestCase):
             '酒店装修一般，但还算整洁。 泳池在大堂的屋顶，因此很小，不过女儿倒是喜欢。 包的早餐是西式的，'
             '还算丰富。 服务吗，一般'
         ]
-        self.text_pair = ['非常不错，服务很好，位于市中心区，交通方便，不过价格也高！']
+        self.text_pair = [
+            '非常不错，服务很好，位于市中心区，交通方便，不过价格也高！'
+        ]
         self.text_tensor = to_string_tensor(self.text, "text")
         self.text_pair_tensor = to_string_tensor(self.text_pair, "text_pair")
         self.texts = [

@@ -42,6 +42,8 @@ PHI_DEFINE_EXPORTED_READONLY_bool(
 PHI_DEFINE_EXPORTED_READONLY_bool(print_allocator_trace_info,
                                   false,
                                   "print trace memory info");
+
+PHI_DEFINE_EXPORTED_READONLY_bool(dump_chunk_info, false, "dump chunk info");
 namespace paddle::memory::allocation {
 
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
@@ -62,6 +64,27 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
   VLOG(4) << "chunk_size_:" << chunk_size_;
 }
 
+void AutoGrowthBestFitAllocator::DumpInfo() const {
+  for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end(); ++chunk_it) {
+    std::cout << "Chunk\t";
+    std::ostringstream oss_used;
+    std::ostringstream oss_free;
+    size_t total = 0, free = 0, used = 0;
+    for (auto &b : chunk_it->blocks_) {
+      total += b.size_;
+      if (b.is_free_) {
+        free += b.size_;
+        oss_free << "(" << b.size_ << "," << b.ptr_ << ")";
+      } else {
+        used += b.size_;
+        oss_used << "(" << b.size_ << "," << b.ptr_ << ")";
+      }
+    }
+    std::cout << total << "\t" << used << "\t" << free << "\t";
+    std::cout << "[" << oss_used.str() << "]\t[" << oss_free.str() << "]"
+              << std::endl;
+  }
+}
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
   phi::RecordEvent record("AutoGrowthBestFitAllocator::Allocate",
@@ -96,6 +119,12 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
       block_it->is_free_ = false;
     }
   } else {
+    if (FLAGS_dump_chunk_info) {
+      std::cout << "MemDbg memory not enough growth chunk, need size = " << size
+                << std::endl;
+      DumpInfo();
+    }
+
     if (FLAGS_free_when_no_cache_hit) {
       FreeIdleChunks();
     }
@@ -105,6 +134,10 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
       chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
           underlying_allocator_->Allocate(realloc_size)));
     } catch (BadAlloc &ex) {
+      if (FLAGS_dump_chunk_info) {
+        std::cout << "MemDbg OOM" << std::endl;
+        DumpInfo();
+      }
       if (FLAGS_free_when_no_cache_hit) throw ex;
       FreeIdleChunks();
       chunks_.emplace_back(static_unique_ptr_cast<Allocation>(
@@ -125,6 +158,11 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     block_it = --(blocks.end());
     VLOG(2) << "Not found and reallocate " << realloc_size << "("
             << static_cast<void *>(p) << "), and remaining " << remaining_size;
+    if (FLAGS_dump_chunk_info) {
+      std::cout << "MemDbg memory after growth chunk, realloc_size = "
+                << realloc_size << std::endl;
+      DumpInfo();
+    }
   }
   ++total_alloc_times_;
   total_alloc_size_ += size;
@@ -179,6 +217,9 @@ void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
 }
 
 uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
+  if (FLAGS_dump_chunk_info) {
+    std::cout << "FreeIdleChunks called" << std::endl;
+  }
   if (!allow_free_idle_chunk_) {
     return 0;
   }
@@ -188,6 +229,10 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
     if (blocks.size() == 1 && blocks.begin()->is_free_) {
       auto &block = *blocks.begin();
       VLOG(2) << "Free chunk with size " << block.size_;
+      if (FLAGS_dump_chunk_info) {
+        std::cout << "FreeIdleChunks chunk is " << block.size_ << ", "
+                  << block.ptr_ << std::endl;
+      }
       bytes += block.size_;
       free_blocks_.erase(std::make_pair(block.size_, block.ptr_));
       chunk_it = chunks_.erase(chunk_it);

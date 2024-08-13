@@ -1024,12 +1024,12 @@ class ParallelTuner:
         tmp[0] = self._best_parallel_strategy[0]
         tmp[1] = self._best_parallel_strategy[1]
         tmp[2] = self._best_parallel_strategy[2]
-        self._best_parallel_strategy[
-            0
-        ] = self._dist_context._dist_tensors_for_program
-        self._best_parallel_strategy[
-            1
-        ] = self._dist_context._dist_ops_for_program
+        self._best_parallel_strategy[0] = (
+            self._dist_context._dist_tensors_for_program
+        )
+        self._best_parallel_strategy[1] = (
+            self._dist_context._dist_ops_for_program
+        )
         self._best_parallel_strategy[2] = self._dist_context._process_meshes
         self._dist_context._dist_tensors_for_program = tmp[0]
         self._dist_context._dist_ops_for_program = tmp[1]

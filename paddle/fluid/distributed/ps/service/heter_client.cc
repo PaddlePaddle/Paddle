@@ -15,7 +15,7 @@
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 namespace paddle {
 namespace distributed {

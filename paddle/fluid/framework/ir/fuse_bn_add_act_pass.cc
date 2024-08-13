@@ -17,8 +17,8 @@
 #include <string>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace framework {

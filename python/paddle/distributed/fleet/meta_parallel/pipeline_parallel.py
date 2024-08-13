@@ -10,6 +10,8 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+from __future__ import annotations
+
 import os
 import queue
 import sys
@@ -17,7 +19,7 @@ import time
 import warnings
 from collections import defaultdict
 from enum import Enum
-from typing import Callable, Dict, List
+from typing import Callable
 
 import paddle
 from paddle import framework
@@ -160,7 +162,7 @@ class PipelineParallelMicroStepLocations(Enum):
 class PipelineParallelMicroStepCallback:
     def __init__(self):
         # Initializes a dictionary to store hooks for each micro-step location in the pipeline.
-        self.hooks: Dict[PipelineParallelMicroStepLocations, List[Callable]] = {
+        self.hooks: dict[PipelineParallelMicroStepLocations, list[Callable]] = {
             PipelineParallelMicroStepLocations.FORWARD_BEGIN: [],
             PipelineParallelMicroStepLocations.FORWARD_END: [],
             PipelineParallelMicroStepLocations.BACKWARD_BEGIN: [],

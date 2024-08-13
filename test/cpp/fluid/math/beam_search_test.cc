@@ -17,8 +17,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 void PrepareCPUTensors(phi::DenseTensor* ids,
                        phi::DenseTensor* scores,

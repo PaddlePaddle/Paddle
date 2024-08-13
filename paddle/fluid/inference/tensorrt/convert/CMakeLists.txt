@@ -107,6 +107,7 @@ list(
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc
   expand_v2_op.cc
+  argsort_op.cc
   cumsum_op.cc
   temporal_shift_op.cc
   einsum_op.cc

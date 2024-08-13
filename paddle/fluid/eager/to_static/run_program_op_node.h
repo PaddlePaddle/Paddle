@@ -50,7 +50,7 @@ static void Trans2ContiguousTensorsInplace(
     const std::vector<paddle::Tensor> &tensors) {
   std::vector<Tensor> res;
   for (auto &t : tensors) {
-    if (t.is_initialized() && t.is_dense_tensor() &&
+    if (t.initialized() && t.is_dense_tensor() &&
         !std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())
              ->meta()
              .is_contiguous()) {

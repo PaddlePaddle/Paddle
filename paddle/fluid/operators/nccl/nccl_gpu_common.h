@@ -22,7 +22,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/phi/backends/dynload/rccl.h"
 #else

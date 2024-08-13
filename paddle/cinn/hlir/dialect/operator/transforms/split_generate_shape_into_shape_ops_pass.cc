@@ -18,7 +18,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
-#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -349,7 +349,9 @@ std::vector<symbol::DimExpr> GetOutDimExprs(cinn::dialect::GenerateShapeOp op) {
   for (int i = 0; i < output_dim_exprs.size(); ++i) {
     const auto& attr = output_dim_exprs.at(i);
     const auto& opt_dim_expr = cinn::dialect::ConvertAttributeToDimExpr(attr);
-    CHECK(opt_dim_expr.has_value());
+    PADDLE_ENFORCE(opt_dim_expr.has_value(),
+                   phi::errors::InvalidArgument(
+                       "opt_dim_expr is empty, it should have value"));
     ret.emplace_back(opt_dim_expr.value());
   }
   return ret;
