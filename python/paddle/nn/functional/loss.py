@@ -4546,7 +4546,7 @@ def adaptive_log_softmax_with_loss(
     output = paddle.zeros([batch_size], dtype=input.dtype)
     gather_inds = paddle.empty([batch_size], dtype=label.dtype)
 
-    cutoff_values = [0] + cutoffs
+    cutoff_values = [0, *cutoffs]
     for i in range(len(cutoff_values) - 1):
         low_idx = cutoff_values[i]
         high_idx = cutoff_values[i + 1]
