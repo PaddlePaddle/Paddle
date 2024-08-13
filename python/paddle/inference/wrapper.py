@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import numpy as np
 
@@ -34,8 +34,14 @@ from paddle.base.log_helper import get_logger
 
 if TYPE_CHECKING:
     import numpy.typing as npt
+    from typing_extensions import Unpack
 
     from paddle import Tensor
+
+    class _WhiteList(TypedDict):
+        white_list: set[str]
+
+
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
@@ -91,7 +97,7 @@ def convert_to_mixed_precision(
     backend: PlaceType,
     keep_io_types: bool = True,
     black_list: set[str] = set(),
-    **kwargs: dict[str, Any],
+    **kwargs: Unpack[_WhiteList],
 ) -> None:
     '''
     Convert a fp32 model to mixed precision model.
