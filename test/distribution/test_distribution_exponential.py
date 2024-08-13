@@ -179,7 +179,7 @@ class TestExponentialSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': (*paddle.squeeze(self._paddle_expon.rate).shape,),
+                'expect': tuple(paddle.squeeze(self._paddle_expon.rate).shape),
             },
             {
                 'input': (3, 2),
