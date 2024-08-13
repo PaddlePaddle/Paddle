@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/sync_batch_norm_utils.h"
+#include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/sync_batch_norm_kernel.h"
-
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/common/flags.h"
-COMMON_DECLARE_bool(dynamic_static_unified_comm);
-#endif
-
-// sparse header
-#include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/sync_batch_norm_utils.h"
 
 namespace phi {
 
@@ -109,32 +101,10 @@ void SyncBatchNormKernel(const Context& ctx,
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
-    if (comm == nullptr) {
-      comm = ctx.nccl_comm();
-    }
-
-    if (comm) {
-      int dtype = phi::ToNCCLDataType(mean_out->dtype());
-      // In-place operation
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::ncclAllReduce(stats,
-                                      stats,
-                                      2 * C + 1,
-                                      static_cast<ncclDataType_t>(dtype),
-                                      ncclSum,
-                                      comm,
-                                      stream));
-      VLOG(3) << "Sync result using all reduce";
-    } else {
-      if (FLAGS_dynamic_static_unified_comm) {
-        auto comm_ctx =
-            static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
-        if (comm_ctx) {
-          comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
-          VLOG(3) << "Sync result using all reduce";
-        }
-      }
+    auto comm_ctx =
+        static_cast<distributed::NCCLCommContext*>(ctx.GetCommContext());
+    if (comm_ctx) {
+      comm_ctx->AllReduce(&stats_tensor, stats_tensor, ncclSum, stream);
     }
 #endif
 
@@ -199,128 +169,6 @@ void SyncBatchNormKernel(const Context& ctx,
   }
 }
 
-template <typename T, typename Context>
-void SyncBatchNormGradKernel(const Context& ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& scale,
-                             const DenseTensor& bias,
-                             const DenseTensor& saved_mean,
-                             const DenseTensor& saved_variance,
-                             const paddle::optional<DenseTensor>& reserve_space,
-                             const DenseTensor& y_grad,
-                             float momentum,
-                             float epsilon_f,
-                             const std::string& data_layout_str,
-                             bool is_test,
-                             bool use_global_stats,
-                             bool trainable_statistics,
-                             DenseTensor* x_grad,
-                             DenseTensor* scale_grad,
-                             DenseTensor* bias_grad) {
-  SyncBatchNormGradFunctor<T, Context>(ctx,
-                                       &x,
-                                       nullptr,
-                                       scale,
-                                       bias,
-                                       saved_mean,
-                                       saved_variance,
-                                       y_grad,
-                                       epsilon_f,
-                                       data_layout_str,
-                                       x_grad,
-                                       scale_grad,
-                                       bias_grad);
-}
-
-}  // namespace phi
-
-namespace phi {
-namespace sparse {
-
-template <typename T, typename Context>
-void SyncBatchNormCooKernel(const Context& dev_ctx,
-                            const SparseCooTensor& x,
-                            const DenseTensor& mean,
-                            const DenseTensor& variance,
-                            const DenseTensor& scale,
-                            const DenseTensor& bias,
-                            bool is_test,
-                            float momentum,
-                            float epsilon,
-                            const std::string& data_layout,
-                            bool use_global_stats,
-                            bool trainable_statistics,
-                            SparseCooTensor* y,
-                            DenseTensor* mean_out,
-                            DenseTensor* variance_out,
-                            DenseTensor* saved_mean,
-                            DenseTensor* saved_variance,
-                            DenseTensor* reserve_space) {
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, y);
-  phi::SyncBatchNormKernel<T, Context>(dev_ctx,
-                                       x.values(),
-                                       mean,
-                                       variance,
-                                       scale,
-                                       bias,
-                                       is_test,
-                                       momentum,
-                                       epsilon,
-                                       data_layout,
-                                       use_global_stats,
-                                       trainable_statistics,
-                                       y->mutable_values(),
-                                       mean_out,
-                                       variance_out,
-                                       saved_mean,
-                                       saved_variance,
-                                       reserve_space);
-  y->SetIndicesDict(x.GetIndicesDict());
-  y->SetKmaps(x.GetKmaps());
-}
-
-template <typename T, typename Context>
-void SyncBatchNormCooGradKernel(
-    const Context& dev_ctx,
-    const SparseCooTensor& x,
-    const DenseTensor& scale,
-    const DenseTensor& bias,
-    const DenseTensor& saved_mean,
-    const DenseTensor& saved_variance,
-    const paddle::optional<DenseTensor>& reserve_space,
-    const SparseCooTensor& y_grad,
-    float momentum,
-    float epsilon,
-    const std::string& data_layout,
-    bool is_test,
-    bool use_global_stats,
-    bool trainable_statistics,
-    SparseCooTensor* x_grad,
-    DenseTensor* scale_grad,
-    DenseTensor* bias_grad) {
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, x_grad);
-  *scale_grad = phi::EmptyLike<T, Context>(dev_ctx, scale);
-  *bias_grad = phi::EmptyLike<T, Context>(dev_ctx, bias);
-  phi::SyncBatchNormGradKernel<T, Context>(dev_ctx,
-                                           x.values(),
-                                           scale,
-                                           bias,
-                                           saved_mean,
-                                           saved_variance,
-                                           reserve_space,
-                                           y_grad.values(),
-                                           momentum,
-                                           epsilon,
-                                           data_layout,
-                                           is_test,
-                                           use_global_stats,
-                                           trainable_statistics,
-                                           x_grad->mutable_values(),
-                                           scale_grad,
-                                           bias_grad);
-}
-
-}  // namespace sparse
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
@@ -383,71 +231,4 @@ PD_REGISTER_KERNEL(sync_batch_norm,
   }
 }
 #endif
-#endif
-
-#ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(sync_batch_norm_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SyncBatchNormGradKernel,
-                   float,
-                   phi::dtype::float16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
-  }
-}
-#else
-#if CUDNN_VERSION_MIN(8, 1, 0)
-PD_REGISTER_KERNEL(sync_batch_norm_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SyncBatchNormGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-#else
-PD_REGISTER_KERNEL(sync_batch_norm_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::SyncBatchNormGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-#endif
-#endif
-
-#ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(sync_batch_norm_coo,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::SyncBatchNormCooKernel,
-                   float,
-                   phi::dtype::float16) {}
-#else
-PD_REGISTER_KERNEL(sync_batch_norm_coo,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::SyncBatchNormCooKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
-#endif
-
-#ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::SyncBatchNormCooGradKernel,
-                   float,
-                   phi::dtype::float16) {}
-#else
-PD_REGISTER_KERNEL(sync_batch_norm_coo_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::SyncBatchNormCooGradKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
 #endif

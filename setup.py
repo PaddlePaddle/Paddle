@@ -1398,15 +1398,18 @@ def get_package_data_and_package_dir():
         ext_modules = []
 
     # type hints
-    package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
-    package_data['paddle.framework'] = package_data.get(
-        'paddle.framework', []
-    ) + ['*.pyi']
-    package_data['paddle.base'] = package_data.get('paddle.base', []) + [
-        '*.pyi'
+    package_data['paddle'] = [*package_data.get('paddle', []), 'py.typed']
+    package_data['paddle.framework'] = [
+        *package_data.get('paddle.framework', []),
+        '*.pyi',
     ]
-    package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
-        'tensor.pyi'
+    package_data['paddle.base'] = [
+        *package_data.get('paddle.base', []),
+        '*.pyi',
+    ]
+    package_data['paddle.tensor'] = [
+        *package_data.get('paddle.tensor', []),
+        'tensor.pyi',
     ]
 
     return package_data, package_dir, ext_modules

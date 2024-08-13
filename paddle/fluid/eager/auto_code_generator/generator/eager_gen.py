@@ -734,20 +734,20 @@ def GenerateCoreOpInfoDeclaration():
 def GenerateCoreOpInfoDefinition():
     op_args_info_list = []
     for op_name, arg_list in core_ops_args_info.items():
-        arg_str = ",".join(["\"" + v + "\"" for v in arg_list])
-        op_args_info = f"{{ \"{op_name}\", {{ {arg_str} }} }},"
+        arg_str = ",".join([f'"{v}"' for v in arg_list])
+        op_args_info = f'{{ "{op_name}", {{ {arg_str} }} }},'
         op_args_info_list.append(op_args_info)
 
     op_types_info_list = []
     for op_name, type_list in core_ops_args_type_info.items():
-        type_str = ",".join(["\"" + v + "\"" for v in type_list])
-        op_types_info = f"{{ \"{op_name}\", {{ {type_str} }} }},"
+        type_str = ",".join([f'"{v}"' for v in type_list])
+        op_types_info = f'{{ "{op_name}", {{ {type_str} }} }},'
         op_types_info_list.append(op_types_info)
 
     op_returns_info_list = []
     for op_name, return_list in core_ops_returns_info.items():
-        return_str = ",".join(["\"" + v + "\"" for v in return_list])
-        return_types_info = f"{{ \"{op_name}\", {{ {return_str} }} }},"
+        return_str = ",".join([f'"{v}"' for v in return_list])
+        return_types_info = f'{{ "{op_name}", {{ {return_str} }} }},'
         op_returns_info_list.append(return_types_info)
 
     op_args_info_str = "\n".join(op_args_info_list)
@@ -841,27 +841,27 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         forward_api_contents = self.forward_api_contents
         grad_api_contents = self.grad_api_contents
 
-        assert 'op' in forward_api_contents, "Unable to find \"op\" in ops.yaml"
+        assert 'op' in forward_api_contents, 'Unable to find "op" in ops.yaml'
         assert (
             'args' in forward_api_contents
-        ), "Unable to find \"args\" in ops.yaml"
+        ), 'Unable to find "args" in ops.yaml'
         assert (
             'output' in forward_api_contents
-        ), "Unable to find \"output\" in ops.yaml"
+        ), 'Unable to find "output" in ops.yaml'
 
         if grad_api_contents is not None:
             assert (
                 'backward' in forward_api_contents
-            ), "Unable to find \"backward\" in ops.yaml"
+            ), 'Unable to find "backward" in ops.yaml'
             assert (
                 'args' in grad_api_contents
-            ), "Unable to find \"args\" in backward.yaml"
+            ), 'Unable to find "args" in backward.yaml'
             assert (
                 'output' in grad_api_contents
-            ), "Unable to find \"output\" in backward.yaml"
+            ), 'Unable to find "output" in backward.yaml'
             assert (
                 'forward' in grad_api_contents
-            ), "Unable to find \"forward\" in backward.yaml"
+            ), 'Unable to find "forward" in backward.yaml'
 
     def ForwardsValidationCheck(self):
         forward_inputs_list = self.forward_inputs_list
@@ -1308,7 +1308,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
         set_grad_in_meta_str = "\n".join(set_grad_in_meta_list)
 
         node_event_name = forward_api_name + " node_creation"
-        node_creation_event_str = f"{indent}phi::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
+        node_creation_event_str = f'{indent}phi::RecordEvent node_creation_record_event("{node_event_name}", paddle::platform::TracerEventType::OperatorInner, 1);\n'
         self.node_creation_str = ""
         if not for_backward:
             self.node_creation_before_call_str = (
@@ -1453,7 +1453,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         layout_autotune_attr_code_list = []
         layout_autotune_attr_type_list = []
         layout_autotune_attr_code_list.append(
-            f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");\n"
+            f'auto op_name = phi::TransToFluidOpName("{forward_api_name}");\n'
         )
 
         lightly_flag = False
@@ -1608,13 +1608,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}) amp_tensors_vector.push_back({{ *{name} }});\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto new_{name} = paddle::imperative::AmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        f'auto new_{name} = paddle::imperative::AmpAutoCast("{name}", {name}, amp_dst_dtype, op_name);\n'
                     )
                     layout_tensors_vector_optional_list.append(
                         f"if ({name}) tensors_vector.push_back({{ *{name} }});\n"
                     )
                     layout_autotune_optional_list.append(
-                        f"auto new_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
+                        f'auto new_{name} = transformer->TransInTensor("{name}", {name});\n'
                     )
                 else:
                     if (
@@ -1625,16 +1625,16 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         arg_str = f"paddle::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
                         amp_autocast_list.append(
-                            f"auto new_{name} = paddle::imperative::AmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                            f'auto new_{name} = paddle::imperative::AmpAutoCast("{name}", {name}, amp_dst_dtype, op_name);\n'
                         )
                     else:
                         arg_str = f"const paddle::Tensor& {name}"
                         amp_tensors_vector_list.append(f"{{{name}}}")
                         amp_autocast_list.append(
-                            f"auto new_{name} = paddle::imperative::AmpAutoCast(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                            f'auto new_{name} = paddle::imperative::AmpAutoCast("{name}", {name}, amp_dst_dtype, op_name);\n'
                         )
                     layout_autotune_list.append(
-                        f"auto new_{name} = transformer->TransInTensor(\"{name}\", {name});\n"
+                        f'auto new_{name} = transformer->TransInTensor("{name}", {name});\n'
                     )
             else:
                 assert IsVectorTensorType(ttype)
@@ -1652,10 +1652,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         f"if ({name}) amp_tensors_vector.push_back( *{name} );\n"
                     )
                     amp_autocast_optional_list.append(
-                        f"auto new_{name} = paddle::imperative::AmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        f'auto new_{name} = paddle::imperative::AmpAutoCasts("{name}", {name}, amp_dst_dtype, op_name);\n'
                     )
                     layout_autotune_optional_list.append(
-                        f"auto new_{name} = transformer->TransInTensors(\"{name}\", {name});\n"
+                        f'auto new_{name} = transformer->TransInTensors("{name}", {name});\n'
                     )
                 else:
                     if (
@@ -1668,10 +1668,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                         arg_str = f"const std::vector<paddle::Tensor>& {name}"
                     amp_tensors_vector_list.append(f"{name}")
                     amp_autocast_list.append(
-                        f"auto new_{name} = paddle::imperative::AmpAutoCasts(\"{name}\", {name}, amp_dst_dtype, op_name);\n"
+                        f'auto new_{name} = paddle::imperative::AmpAutoCasts("{name}", {name}, amp_dst_dtype, op_name);\n'
                     )
                     layout_autotune_list.append(
-                        f"auto new_{name} = transformer->TransInTensors(\"{name}\", {name});\n"
+                        f'auto new_{name} = transformer->TransInTensors("{name}", {name});\n'
                     )
 
             inputs_args_definition_list[pos] = arg_str
@@ -1887,15 +1887,15 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 inputs_call_args_str_tmp = ", ".join(self.inputs_call_list_tmp)
                 forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str_tmp});"
 
-        dygraph_event_str = f"{indent}phi::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);\n"
-        log_memory_info_str = f"{indent}paddle::memory::LogDeviceMemoryStats(egr::Controller::Instance().GetExpectedPlace(), \"{forward_api_name}\");"
+        dygraph_event_str = f'{indent}phi::RecordEvent dygraph_entrance_record_event("{forward_api_name} dygraph", paddle::platform::TracerEventType::Operator, 1);\n'
+        log_memory_info_str = f'{indent}paddle::memory::LogDeviceMemoryStats(egr::Controller::Instance().GetExpectedPlace(), "{forward_api_name}");'
         forward_ad_function_name = GetDygraphForwardFunctionName(
             forward_api_name
         )
 
         # Forward amp logic
         kernel_trans2_op_name_str = (
-            f"auto op_name = phi::TransToFluidOpName(\"{forward_api_name}\");"
+            f'auto op_name = phi::TransToFluidOpName("{forward_api_name}");'
         )
         amp_tensors_vector_list_str = (
             "{ " + ",".join(amp_tensors_vector_list) + " }"
@@ -1914,7 +1914,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
         if is_inplaced or (forward_api_name == "cast"):
-            amp_logic_str = f"\n VLOG(5) << \" No AMP for {forward_ad_function_name} because it is a inplace or cast api. \"; "
+            amp_logic_str = f'\n VLOG(5) << " No AMP for {forward_ad_function_name} because it is a inplace or cast api. "; '
         else:
             amp_logic_str = AMP_LOGIC_TEMPLATE.format(
                 kernel_trans2_op_name_str,
@@ -1927,7 +1927,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # Forward type promotion logic
         if forward_api_name in type_promote_white_list:
             # only support two inputs
-            op_func_name = f"\"{forward_api_name}\""
+            op_func_name = f'"{forward_api_name}"'
             x = type_promote_white_list[forward_api_name][0]
             y = type_promote_white_list[forward_api_name][1]
             type_promote_inputs_call_args_str = ", ".join(
@@ -1935,7 +1935,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             )
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
 
-            x_cast = f"auto new_{x} = egr::PromoteCast(\"{x}\", {x}, promotion_type);"
+            x_cast = (
+                f'auto new_{x} = egr::PromoteCast("{x}", {x}, promotion_type);'
+            )
 
             type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
                 op_func_name=op_func_name,
@@ -1947,7 +1949,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             )
         elif forward_api_name in type_promote_inplace_white_list:
             # only support two inputs
-            op_func_name = f"\"{forward_api_name}\""
+            op_func_name = f'"{forward_api_name}"'
             x = type_promote_inplace_white_list[forward_api_name][0]
             y = type_promote_inplace_white_list[forward_api_name][1]
             type_promote_inputs_call_args_str = ", ".join(
@@ -1956,7 +1958,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
 
             x_cast = (
-                f"{x} = egr::PromoteCastInplace(\"{x}\", {x}, promotion_type);"
+                f'{x} = egr::PromoteCastInplace("{x}", {x}, promotion_type);'
             )
 
             type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
@@ -1968,7 +1970,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 return_value=type_promote_call_list,
             )
         else:
-            type_promotion_logic_str = f"\n VLOG(5) << \" No Type Promotion for {forward_ad_function_name} api. \"; "
+            type_promotion_logic_str = f'\n VLOG(5) << " No Type Promotion for {forward_ad_function_name} api. "; '
         # Forward layout autotune
         layout_autotune_list_str = "    ".join(
             layout_autotune_list
@@ -1984,16 +1986,16 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         )
 
         # For inputs outputs prepare for logging
-        var_str = f"\n{indent}  std::string input_str = \"\";"
-        var_str += f"\n{indent}  std::string output_str = \"\";"
+        var_str = f'\n{indent}  std::string input_str = "";'
+        var_str += f'\n{indent}  std::string output_str = "";'
         for name, (ttype, pos) in forward_inputs_position_map.items():
-            var_str += f"\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = \" \\n( {name} , [%s]), \";"
+            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , [%s]), ";'
             var_str += f"\n{indent}  std::string input_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  input_str += input_{name}_str;"
 
         before_log_str = BEFORE_LOG_PRINT_TEMPLATE.format(var_str)
         for name, (ttype, pos) in forward_outputs_position_map.items():
-            var_str += f"\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = \" \\n( {name} , [%s]), \";"
+            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , [%s]), ";'
             var_str += f"\n{indent}  std::string output_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  output_str += output_{name}_str;"
 
@@ -2007,7 +2009,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         # Generate forward_definition_str and forward_declaration_str
         if self.is_forward_only:
             if len(amp_tensors_vector_list) == 0:
-                amp_logic_str = f"\n VLOG(7) << \" No AMP for {forward_ad_function_name} because it has no input. \"; "
+                amp_logic_str = f'\n VLOG(7) << " No AMP for {forward_ad_function_name} because it has no input. "; '
             self.forward_definition_str += (
                 FORWARD_ONLY_FUNCTION_TEMPLATE.format(
                     returns_type_str,
@@ -2623,7 +2625,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 grad_api_out_args_list.append(f"api_output_{out_index}")
                 fwd_positions_list.append(f"{fwd_position}")
             if inplace_grad_input_str in optional_inplace_var_name:
-                optional_inplace_str = "VLOG(6) << \"No Inplace should happend for wrappered input: {inplace_grad_input_str}\";"
+                optional_inplace_str = 'VLOG(6) << "No Inplace should happend for wrappered input: {inplace_grad_input_str}";'
             else:
                 optional_inplace_str = f"""if (api_output_{out_index} != nullptr && can_be_inplaced) {{
       egr::EagerUtils::HandleViewBetweenInputAndOutput({inplace_grad_input_str}, api_output_{out_index});
@@ -2867,15 +2869,15 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
 
         grad_node_name = GetGradNodeName(self.backward_api_name)
         # For inputs outputs prepare for logging
-        var_str = f"\n{indent}  std::string input_str = \"\";"
-        var_str += f"\n{indent}  std::string output_str = \"\";"
+        var_str = f'\n{indent}  std::string input_str = "";'
+        var_str += f'\n{indent}  std::string output_str = "";'
         for name, (
             ttype,
             fwd_position,
             grad_api_position,
         ) in backward_grad_inputs_map.items():
             new_name = self.TransformToNextGradName(name)
-            var_str += f"\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = \" \\n( {new_name} , [%s]), \";"
+            var_str += f'\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = " \\n( {new_name} , [%s]), ";'
             var_str += f"\n{indent}  std::string input_{new_name}_str = paddle::string::Sprintf(TENSOR_{new_name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({new_name}));"
             var_str += f"\n{indent}  input_str += input_{new_name}_str;"
 
@@ -2884,7 +2886,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             (backward_input_type, is_fwd_input, grad_api_position),
         ) in backward_forward_inputs_map.items():
             new_name = self.TransformToNextGradName(name)
-            var_str += f"\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = \" \\n( {new_name} , [%s]), \";"
+            var_str += f'\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = " \\n( {new_name} , [%s]), ";'
             var_str += f"\n{indent}  std::string input_{new_name}_str = paddle::string::Sprintf(TENSOR_{new_name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({new_name}));"
             var_str += f"\n{indent}  input_str += input_{new_name}_str;"
 
@@ -2896,7 +2898,7 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             grad_api_position,
         ) in backward_grad_outputs_map.items():
             new_name = self.TransformToNextGradName(name)
-            var_str += f"\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = \" \\n ( {new_name} , [%s]), \";"
+            var_str += f'\n{indent}  const char* TENSOR_{new_name.upper()}_TEMPLATE = " \\n ( {new_name} , [%s]), ";'
             var_str += f"\n{indent}  std::string output_{new_name}_str = paddle::string::Sprintf(TENSOR_{new_name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({new_name}));"
             var_str += f"\n{indent}  output_str += output_{new_name}_str;"
 
