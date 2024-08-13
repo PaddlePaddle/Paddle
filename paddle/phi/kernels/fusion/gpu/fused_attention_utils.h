@@ -17,8 +17,8 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
-
 #include "paddle/common/errors.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
