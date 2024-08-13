@@ -1499,6 +1499,7 @@
     func : EigvalsInferMeta
   kernel :
     func : eigvals
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : eigvalsh
   args : (Tensor x, str uplo = "L", bool is_test = false)
@@ -1889,16 +1890,15 @@
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : FlattenWithXShapeInferMeta
+    func : FlattenInferMeta
     spmd_rule : FlattenInferSpmd
   kernel :
     func : flatten
     data_type : x
   inplace : (x -> out)
   view : (x -> out)
-  intermediate : xshape
   backward : flatten_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
@@ -1962,6 +1962,7 @@
   kernel :
     func : fractional_max_pool2d
   backward : fractional_max_pool2d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fractional_max_pool3d
   args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0, 0}, float random_u = 0.0, bool return_mask = true)
@@ -1971,6 +1972,7 @@
   kernel :
     func : fractional_max_pool3d
   backward : fractional_max_pool3d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : frame
   args : (Tensor x, int frame_length, int hop_length, int axis=-1)
@@ -2624,6 +2626,7 @@
     func : kldiv_loss
     data_type : x
   backward : kldiv_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : kron
   args : (Tensor x, Tensor y)
@@ -3393,6 +3396,7 @@
   kernel :
     func : norm
   backward : norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : npu_identity
   args : (Tensor x, int format = -1)
@@ -3454,6 +3458,7 @@
   kernel :
     func : p_norm
   backward : p_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pad
   args : (Tensor x, int[] paddings, Scalar pad_value)
@@ -3878,6 +3883,7 @@
   optional : bias, residual, norm_bias, residual_out
   intermediate : inv_var
   backward : rms_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rmsprop_
   args : (Tensor param, Tensor mean_square, Tensor grad, Tensor moment, Tensor learning_rate, Tensor mean_grad, Tensor master_param, float epsilon = 1.0e-10f, float decay = 0.9f, float momentum = 0.0f, bool centered = false, bool multi_precision = false)
@@ -4134,6 +4140,7 @@
   kernel:
     func: set_value_with_tensor
   backward: set_value_with_tensor_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sgd_
   args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision=false)
@@ -4225,6 +4232,7 @@
   inplace : (x -> out)
   backward : sigmoid_cross_entropy_with_logits_grad
   optional : pos_weight
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sign
   args : (Tensor x)
@@ -4507,6 +4515,7 @@
      func : swiglu
   optional : y
   backward: swiglu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : swish
   args : (Tensor x)
