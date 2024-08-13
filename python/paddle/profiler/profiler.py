@@ -19,7 +19,7 @@ import json
 import os
 import socket
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Literal, Self
+from typing import TYPE_CHECKING, Callable, Literal
 from warnings import warn
 
 import paddle
@@ -46,6 +46,8 @@ from .utils import RecordEvent, wrap_optimizers
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from types import TracebackType
+
+    from typing_extensions import Self
 
     from paddle.base.core import _ProfilerResult
 
