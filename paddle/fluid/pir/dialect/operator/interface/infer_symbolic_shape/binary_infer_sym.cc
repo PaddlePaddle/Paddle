@@ -963,9 +963,9 @@ bool SequenceMaskOpInferSymbolicShape(
   if (attributes.find("maxlen") != attributes.end()) {
     int maxlen = op->attribute<pir::Int32Attribute>("maxlen").data();
     y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
-                                : symbol::DimExpr(-1));
+                                : infer_context->GetNextSymName());
   } else if (op->operand_source(1)) {
-    y_dims.push_back(symbol::DimExpr(-1));
+    y_dims.push_back(infer_context->GetNextSymName());
   } else {
     PADDLE_THROW(::common::errors::InvalidArgument(
         "Find maxlen or max_len_tensor Failed"));
