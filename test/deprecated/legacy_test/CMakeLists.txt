@@ -628,8 +628,6 @@ else()
   set_tests_properties(test_layer_norm_op_deprecated PROPERTIES TIMEOUT 250)
 endif()
 
-set_tests_properties(test_imperative_selected_rows_to_lod_tensor
-                     PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
