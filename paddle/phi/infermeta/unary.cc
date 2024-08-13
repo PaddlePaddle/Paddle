@@ -5990,6 +5990,12 @@ void StridedUnChangedInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_strides(x.strides());
 }
 
+void StraightThroughEstimatorInferMeta(const MetaTensor& out_grad,
+                                       MetaTensor* x_grad) {
+  x_grad->set_dims(out_grad.dims());
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void NumberCountInferMeta(const MetaTensor& x,
                           int upper_range,
                           MetaTensor* out) {

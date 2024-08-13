@@ -54,7 +54,7 @@ from .trainer_factory import FetchHandlerMonitor, TrainerFactory
 from .wrapped_decorator import signature_safe_contextmanager
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Generator, Sequence
 
     import numpy.typing as npt
 
@@ -1675,7 +1675,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = ...,
         feed: dict[str, npt.NDArray[Any]] | list[npt.NDArray[Any]] | None = ...,
-        fetch_list: list[str | Tensor] | None = ...,
+        fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
         scope: core.Scope | None = ...,
@@ -1689,7 +1689,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = ...,
         feed: dict[str, npt.NDArray[Any]] | list[npt.NDArray[Any]] | None = ...,
-        fetch_list: list[str | Tensor] | None = ...,
+        fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
         scope: core.Scope | None = ...,
@@ -1703,7 +1703,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = ...,
         feed: dict[str, npt.NDArray[Any]] | list[npt.NDArray[Any]] | None = ...,
-        fetch_list: list[str | Tensor] | None = ...,
+        fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
         scope: core.Scope | None = ...,

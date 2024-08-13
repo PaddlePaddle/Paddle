@@ -97,7 +97,7 @@ def irecv(
             >>> else:
             ...     data = paddle.to_tensor([1, 2, 3])
             ...     task = dist.irecv(data, src=0)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> print(data)
             >>> # [7, 8, 9] (2 GPUs)
     """

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import itertools
 import unittest
-from typing import Optional
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
@@ -25,14 +26,14 @@ from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
-def np_naive_logcumsumexp(x: np.ndarray, axis: Optional[int] = None):
+def np_naive_logcumsumexp(x: np.ndarray, axis: int | None = None):
     return np.log(np.cumsum(np.exp(x), axis=axis))
 
 
 def np_logcumsumexp(
     x: np.ndarray,
-    axis: Optional[int] = None,
-    flatten: Optional[bool] = None,
+    axis: int | None = None,
+    flatten: bool | None = None,
     reverse: bool = False,
     exclusive: bool = False,
 ):
@@ -71,8 +72,8 @@ def np_logcumsumexp(
 def np_logcumsumexp_grad(
     x: np.ndarray,
     dout: np.ndarray,
-    axis: Optional[int] = None,
-    flatten: Optional[bool] = None,
+    axis: int | None = None,
+    flatten: bool | None = None,
     reverse: bool = False,
     exclusive: bool = False,
 ):
@@ -252,7 +253,7 @@ class BaseTestCases:
                     np_logcumsumexp_grad(
                         self.inputs['X'],
                         1 / self.inputs['X'].size,
-                        **self.attrs
+                        **self.attrs,
                     )
                 ],
                 check_pir=True,

@@ -21,11 +21,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Generator,
     Generic,
-    Iterable,
-    Iterator,
-    Sequence,
     Tuple,
     TypeVar,
 )
@@ -37,6 +33,8 @@ import paddle
 from ... import framework
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable, Iterator, Sequence
+
     from paddle import Tensor
 
 _T = TypeVar('_T')

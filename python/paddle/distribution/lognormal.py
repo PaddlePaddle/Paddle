@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Union
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distribution.normal import Normal
@@ -21,6 +21,9 @@ from paddle.distribution.transform import ExpTransform
 from paddle.distribution.transformed_distribution import TransformedDistribution
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Union
+
     import numpy as np
     import numpy.typing as npt
     from typing_extensions import TypeAlias
