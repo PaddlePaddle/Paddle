@@ -53,17 +53,17 @@ from paddle.base.libpaddle.pir import (
     get_used_external_value,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle.pir import Value
+
 """
     grad: for template test, will combine in paddle.grad .
     calc_gradient: for internal use, optest, parallel etc .
     calc_gradient_helper: for dygraph to static .
 """
 __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from paddle.pir import Value
 
 
 def append_full_like(float_value, copy_value, value, state, backward_ops):
