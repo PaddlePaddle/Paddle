@@ -1024,7 +1024,7 @@ def get_paddle_extra_install_requirements():
                 'utf-8'
             )
             version_line = next(
-                (line for line in output.split('\n') if 'release' in line), None
+                line for line in output.split('\n') if 'release' in line
             )
             version = version_line.split(' ')[-1].split(',')[0]
             cuda_major_version = version.split('.')[0]
