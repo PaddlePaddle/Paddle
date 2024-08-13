@@ -18,8 +18,6 @@
 #
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
-
-# doctest: +SKIP('Number of sample edges dismatch, the sample kernel has error.')
 from __future__ import annotations
 
 import math
@@ -64,6 +62,7 @@ def variable_length_memory_efficient_attention(
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +SKIP('Number of sample edges dismatch, the sample kernel has error.')
             >>> import math
             >>> import paddle
             >>> from paddle.incubate.nn.functional import variable_length_memory_efficient_attention
