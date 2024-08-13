@@ -764,6 +764,9 @@ def tdm_child(
     )
     tree_info.stop_gradient = True
 
+    if in_dynamic_or_pir_mode():
+        return _C_ops.tdm_child(x, tree_info, child_nums, c_dtype)
+
     child = helper.create_variable_for_type_inference(dtype=dtype)
     leaf_mask = helper.create_variable_for_type_inference(dtype=dtype)
 
@@ -978,6 +981,18 @@ def tdm_sampler(
         dtype=tree_dtype,
         default_initializer=paddle.nn.initializer.Constant(0),
     )
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.tdm_sampler(
+            x,
+            travel,
+            layer,
+            output_positive,
+            neg_samples_num_list,
+            tree_layer_offset_lod,
+            seed,
+            c_dtype,
+        )
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
     out.stop_gradient = True
