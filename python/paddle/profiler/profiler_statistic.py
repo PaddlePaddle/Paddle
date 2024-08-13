@@ -423,7 +423,7 @@ class TimeRangeSummary:
     def get_gpu_devices(self) -> list[int]:
         return self.GPUTimeRange.keys()
 
-    def get_gpu_event_sum(
+    def get_gpu_range_sum(
         self, device_id: int, event_type: TracerEventType
     ) -> dict[int, dict[int, TracerEventType]]:
         return self.GPUTimeRangeSum[device_id][event_type]
