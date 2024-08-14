@@ -279,7 +279,8 @@ static PyObject* tensor__add__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -375,8 +376,8 @@ static PyObject* tensor__sub__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -470,8 +471,8 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -568,8 +569,8 @@ static PyObject* tensor__mul__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -665,8 +666,8 @@ static PyObject* tensor__div__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -754,8 +755,8 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -846,8 +847,8 @@ static PyObject* tensor__gt__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -939,8 +940,8 @@ static PyObject* tensor__ge__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -1033,8 +1034,8 @@ static PyObject* tensor__mod__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -1252,8 +1253,8 @@ static PyObject* tensor__lt__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -1345,8 +1346,8 @@ static PyObject* tensor__le__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -1439,8 +1440,8 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -1536,8 +1537,8 @@ static PyObject* tensor__pow__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -1629,8 +1630,8 @@ static PyObject* tensor__rpow__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -1722,8 +1723,8 @@ static PyObject* tensor__ne__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
@@ -1815,8 +1816,8 @@ static PyObject* tensor__eq__method(TensorObject* self,
       ConvertAllInputsToDistTensor(
           mesh, self_tensor_ref_addr, other_tensor_ref_addr);
     }
-
-    other_tensor = CastPyArg2Tensor(other_obj, 0);
+    self_tensor = self_tensor_ref_addr;
+    other_tensor = other_tensor_ref_addr;
   } else {
     if (IsNumpyArray(other_obj)) {
       py::object numpy_value =
