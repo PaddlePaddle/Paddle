@@ -42,8 +42,8 @@ def fused_moe(
         ffn1_bias (Tensor): the first batch matrix matmul bias. Its shape is [num_experts, 1, d_feed_forward*2].
         ffn2_weight (Tensor): the second batch matrix matmul weight. Its shape is [num_experts, d_feed_forward, d_model].
         ffn2_bias (Tensor): the second batch matrix matmul bias. Its shape is [num_experts, 1, d_model].
-        ffn1_scale (Tensor, optional): the input scale Tensor Provided to weight for dequantization. Its shape is [TODO: xinhw].
-        ffn2_scale (Tensor, optional): the input scale Tensor Provided to weight for dequantization. Its shape is [TODO: xinhw].
+        ffn1_scale (Tensor, optional): the input scale Tensor Provided to weight for dequantization. Its shape is [num_experts, d_feed_forward*2].
+        ffn2_scale (Tensor, optional): the input scale Tensor Provided to weight for dequantization. Its shape is [num_experts, d_model].
         quant_method (string): Currently not supported.
         moe_topk: Select the top k experts for each token.
 
