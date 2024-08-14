@@ -88,7 +88,7 @@ uint64_t GetPirVersion() {
   std::string paddle_root = "";
   // For coverage CI
   if (current_path.find("Paddle") == std::string::npos) {
-    paddle_root = current_path.substr(0, current_path.find("build") + 5);
+    paddle_root = paddle_root = "/paddle/build";
   } else {
     paddle_root = current_path.substr(0, current_path.find("Paddle") + 6);
   }
@@ -117,7 +117,7 @@ uint64_t GetMaxReleasePirVersion() {
   std::string paddle_root = "";
   // For coverage CI
   if (current_path.find("Paddle") == std::string::npos) {
-    paddle_root = current_path.substr(0, current_path.find("build") + 5);
+    paddle_root = "/paddle/build";
   } else {
     paddle_root = current_path.substr(0, current_path.find("Paddle") + 6);
   }
