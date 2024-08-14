@@ -325,18 +325,24 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
 
-bool ConvTransposeOpInferSymbolicShape(pir::Operation *op,
-                                       pir::InferSymbolicShapeContext *infer_context) {
-  auto x_shape = infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  auto filter_shape = infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+bool ConvTransposeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  auto x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto filter_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
   auto strides = paddle::dialect::details::GetVectorAttr<int>(op, "strides");
   auto paddings = paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  auto output_padding = paddle::dialect::details::GetVectorAttr<int>(op, "output_padding");
-  auto output_size = paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
-  auto padding_algorithm = op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
+  auto output_padding =
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_padding");
+  auto output_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+  auto padding_algorithm =
+      op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
   int groups = op->attribute<pir::Int32Attribute>("groups").data();
-  auto dilations = paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
+  auto dilations =
+      paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
   auto data_format = op->attribute<pir::StrAttribute>("data_format").AsString();
 
   std::vector<symbol::DimExpr> new_paddings;
@@ -347,31 +353,41 @@ bool ConvTransposeOpInferSymbolicShape(pir::Operation *op,
   for (const auto &i : dilations) {
     new_dilations.push_back(symbol::DimExpr{i});
   }
-  const DataLayout data_layout = op->attribute<pir::BoolAttribute>("is_run_mkldnn_kernel").data()
-                                     ? DataLayout::kNCHW
-                                     : common::StringToDataLayout(data_format);
-  PADDLE_ENFORCE_EQ(x_shape.size() == 4 || x_shape.size() == 5, true,
-                phi::errors::InvalidArgument("Input of Op(conv_transpose) should be 4-D or "
-                              "5-D Tensor. But received: %u-D Tensor",
-                              x_shape.size()));
-  PADDLE_ENFORCE_EQ(x_shape.size(), filter_shape.size(),
+  const DataLayout data_layout =
+      op->attribute<pir::BoolAttribute>("is_run_mkldnn_kernel").data()
+          ? DataLayout::kNCHW
+          : common::StringToDataLayout(data_format);
+  PADDLE_ENFORCE_EQ(x_shape.size() == 4 || x_shape.size() == 5,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Input of Op(conv_transpose) should be 4-D or "
+                        "5-D Tensor. But received: %u-D Tensor",
+                        x_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      x_shape.size(),
+      filter_shape.size(),
       phi::errors::InvalidArgument(
           "The input's dimension size and filter's dimension size of "
           "Op (conv_transpose) should be equal. But received: the shape of "
-          "the dimension size of input is [%d],  the dimension size of filter is [%d]. ",
+          "the dimension size of input is [%d],  the dimension size of filter "
+          "is [%d]. ",
           x_shape.size(),
           filter_shape.size()));
   int stride_size = static_cast<int>(strides.size());
-  for(int i = 0; i < stride_size; ++i) {
-    PADDLE_ENFORCE_GT(strides[i] , 0,
-                      phi::errors::InvalidArgument(
-                          "The strides of Op(conv_transpose) should be greater than 0. "
-                          "But received: the strides of Op(conv_transpose) is [%d].",
-                          strides[i]));
+  for (int i = 0; i < stride_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        strides[i],
+        0,
+        phi::errors::InvalidArgument(
+            "The strides of Op(conv_transpose) should be greater than 0. "
+            "But received: the strides of Op(conv_transpose) is [%d].",
+            strides[i]));
   }
 
   int in_sub_stride_size = x_shape.size() - stride_size;
-  PADDLE_ENFORCE_EQ(x_shape.size() - strides.size(),2U,
+  PADDLE_ENFORCE_EQ(
+      x_shape.size() - strides.size(),
+      2U,
       phi::errors::InvalidArgument(
           "The input's dimension size minus Attr(stride)'s size must "
           "be equal to 2 for Op(conv_transpose). But received: [%d], the "
@@ -394,26 +410,34 @@ bool ConvTransposeOpInferSymbolicShape(pir::Operation *op,
         phi::errors::InvalidArgument(
             "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
-  const symbol::DimExpr C = (data_layout != DataLayout::kNHWC ? x_shape[1] 
-                                                     : x_shape[x_shape.size() - 1]);
-  infer_context->AddEqualCstr(filter_shape[0], C);                                                 
+  const symbol::DimExpr C =
+      (data_layout != DataLayout::kNHWC ? x_shape[1]
+                                        : x_shape[x_shape.size() - 1]);
+  infer_context->AddEqualCstr(filter_shape[0], C);
   const std::vector<symbol::DimExpr> x_data_dims =
-      data_layout != DataLayout::kNHWC ? std::vector<symbol::DimExpr>(x_shape.begin() + 2, x_shape.end())
-                                       : std::vector<symbol::DimExpr>(x_shape.begin() + 1, x_shape.end() - 1);
-  auto ksize =  std::vector<symbol::DimExpr>(filter_shape.begin() + 2, filter_shape.end());
-  UpdatePaddingAndDilation(
-      &new_paddings, &new_dilations, padding_algorithm, x_data_dims, strides, ksize);
+      data_layout != DataLayout::kNHWC
+          ? std::vector<symbol::DimExpr>(x_shape.begin() + 2, x_shape.end())
+          : std::vector<symbol::DimExpr>(x_shape.begin() + 1,
+                                         x_shape.end() - 1);
+  auto ksize = std::vector<symbol::DimExpr>(filter_shape.begin() + 2,
+                                            filter_shape.end());
+  UpdatePaddingAndDilation(&new_paddings,
+                           &new_dilations,
+                           padding_algorithm,
+                           x_data_dims,
+                           strides,
+                           ksize);
 
-  std::vector<symbol::DimExpr>  output_shape;
+  std::vector<symbol::DimExpr> output_shape;
   output_shape.push_back(x_shape[0]);
   if (data_layout != DataLayout::kNHWC) {
     output_shape.push_back(filter_shape[1] * groups);
   }
 
   const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
-  for (int i = 0; i <  static_cast<int>(strides.size()); ++i) {
+  for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     auto filter_extent = new_dilations[i] * (filter_shape[i + 2] - 1) + 1;
-    auto infer_shape = (x_shape[i + offset].Get<std::int64_t>() > 0) 
+    auto infer_shape = (x_shape[i + offset].Get<std::int64_t>() > 0)
                            ? (x_shape[i + offset] - 1) * strides[i] -
                                  new_paddings[2 * i] - new_paddings[2 * i + 1] +
                                  filter_extent
@@ -431,17 +455,20 @@ bool ConvTransposeOpInferSymbolicShape(pir::Operation *op,
     output_shape.push_back(filter_shape[1] * groups);
   }
 
-  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(output_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
   return true;
 }
-bool Conv2dTransposeOpInferSymbolicShape(pir::Operation *op, 
-                                         pir::InferSymbolicShapeContext *infer_context) {
-    std::vector<int64_t> output_size = paddle::dialect::details::GetVectorAttr<int64_t>(op, "output_size");
-    std::vector<int> vec_output_size(output_size.begin(), output_size.end());
+bool Conv2dTransposeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<int64_t> output_size =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "output_size");
+  std::vector<int> vec_output_size(output_size.begin(), output_size.end());
 
-    return ConvTransposeOpInferSymbolicShape(op, infer_context);
+  return ConvTransposeOpInferSymbolicShape(op, infer_context);
 }
-
 
 bool CrossOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
