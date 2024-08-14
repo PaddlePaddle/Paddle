@@ -45,16 +45,16 @@ class TestCopySignOp(OpTest):
         self.outputs = {'out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x', 'y'], ['out'])
+        self.check_grad(['x', 'y'], ['out'], check_pir=True)
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(['y'], ['out'])
+        self.check_grad(['y'], ['out'], check_pir=True)
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(['x'], ['out'])
+        self.check_grad(['x'], ['out'], check_pir=True)
 
     def init_config(self):
         self.x = np.random.randn(20, 6).astype('float64')
@@ -87,19 +87,21 @@ class TestCopySignBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['x', 'y'], ['out'])
+        self.check_grad_with_place(
+            self.place, ['x', 'y'], ['out'], check_pir=True
+        )
 
     def test_check_grad_ignore_x(self):
         self.check_grad_with_place(
-            self.place, ['y'], ['out'], no_grad_set=set('x')
+            self.place, ['y'], ['out'], no_grad_set=set('x'), check_pir=True
         )
 
     def test_check_grad_ignore_y(self):
         self.check_grad_with_place(
-            self.place, ['x'], ['out'], no_grad_set=set('y')
+            self.place, ['x'], ['out'], no_grad_set=set('y'), check_pir=True
         )
 
 
