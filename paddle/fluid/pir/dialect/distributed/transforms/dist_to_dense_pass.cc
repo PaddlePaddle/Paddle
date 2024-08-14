@@ -50,9 +50,11 @@ pir::Type CastToLocalType(pir::Type type) {
       local_types.push_back(CastToLocalType(vec_type[i]));
     }
     return pir::VectorType::get(vec_type.ir_context(), local_types);
-  } else if (!type || type.isa<pir::StackType>() ||
-             type.isa<pir::InletType>() || type.isa<pir::OutletType>()) {
+  } else if (!type) {
     // skip if <<NULL TYPE>>
+    return nullptr;
+  } else if (type.isa<pir::StackType>() || type.isa<pir::InletType>() ||
+             type.isa<pir::OutletType>()) {
     return type;
   } else {
     // TODO(2024-Q2) not all value are dist type
