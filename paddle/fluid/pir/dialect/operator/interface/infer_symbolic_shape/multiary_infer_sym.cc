@@ -901,16 +901,21 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool DetectionMapOpInferSymbolicShape(pir::Operation *op,
-                                      pir::InferSymbolicShapeContext *infer_context) {
-  const auto& detect_res_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto& label_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const auto& pos_count_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(3));
-  const auto& true_pos_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(4));
-  const auto& false_pos_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(5));
+bool DetectionMapOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &detect_res_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &pos_count_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const auto &true_pos_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+  const auto &false_pos_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(5));
 
-  const auto& detect_res_shape = detect_res_shape_or_data.shape();
-  const auto& label_shape = label_shape_or_data.shape();
+  const auto &detect_res_shape = detect_res_shape_or_data.shape();
+  const auto &label_shape = label_shape_or_data.shape();
 
   PADDLE_ENFORCE_EQ(detect_res_shape.size(),
                     2UL,
@@ -941,7 +946,10 @@ bool DetectionMapOpInferSymbolicShape(pir::Operation *op,
   }
 
   std::vector<symbol::DimExpr> m_ap_shape = {symbol::DimExpr(1)};
-  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(m_ap_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(m_ap_shape)});
 
   return true;
 }
