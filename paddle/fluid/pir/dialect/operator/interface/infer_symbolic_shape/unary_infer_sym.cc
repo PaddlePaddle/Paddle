@@ -896,7 +896,8 @@ bool MaxPool2dWithIndexOpInferSymbolicShape(
 
   if (global_pooling) {
     kernel_size_.resize(rank_x - 2);
-    for (int i = 0; i < kernel_size_.size(); ++i) {
+    int rank = kernel_size_.size();
+    for (int i = 0; i < rank; ++i) {
       paddings_[i] = 0;
       const auto &x = x_shape[i + 2];
       if (x.isa<int64_t>()) {
@@ -1000,7 +1001,8 @@ bool MaxPool3dWithIndexOpInferSymbolicShape(
 
   if (global_pooling) {
     kernel_size_.resize(rank_x - 2);
-    for (int i = 0; i < kernel_size_.size(); ++i) {
+    int rank = kernel_size_.size();
+    for (int i = 0; i < rank; ++i) {
       paddings_[i] = 0;
       const auto &x = x_shape[i + 2];
       if (x.isa<int64_t>()) {
