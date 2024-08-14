@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
@@ -43,6 +43,8 @@ from ..framework import (
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         DTypeLike,
@@ -2879,7 +2881,7 @@ def tensor_split(
 
         starts = 0
         ends = 0
-        for idx in list(indices) + [total_n]:
+        for idx in [*list(indices), total_n]:
             ends = idx
             # convert index < 0 to positive
             starts_index = starts if starts >= 0 else total_n + starts

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
@@ -34,6 +34,7 @@ from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from typing import Callable, TypeAlias
 
     from paddle import Tensor
@@ -4545,7 +4546,7 @@ def adaptive_log_softmax_with_loss(
     output = paddle.zeros([batch_size], dtype=input.dtype)
     gather_inds = paddle.empty([batch_size], dtype=label.dtype)
 
-    cutoff_values = [0] + cutoffs
+    cutoff_values = [0, *cutoffs]
     for i in range(len(cutoff_values) - 1):
         low_idx = cutoff_values[i]
         high_idx = cutoff_values[i + 1]

@@ -133,26 +133,38 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
       }
       return dev_ctx;
     }
-    if (FLAGS_dynamic_static_unified_comm) {
-      if (op_attributes.count("ring_id") != 0) {
-        int ring_id =
-            op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        if (comm_context_manager.Has(std::to_string(ring_id))) {
-          auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
-          dev_ctx = static_cast<platform::DeviceContext*>(
-              static_cast<phi::distributed::NCCLCommContext*>(comm_context)
-                  ->GetDevContext());
-          dev_ctx->SetCommContext(comm_context);
-          if (op_name.compare(paddle::dialect::ReduceScatterOp::name()) == 0 ||
-              op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
-            return dev_ctx;
+
+    // handle comm op
+    if (op_attributes.count("ring_id") != 0 &&
+        FLAGS_dynamic_static_unified_comm) {
+      int ring_id =
+          op_attributes.at("ring_id").dyn_cast<pir::Int32Attribute>().data();
+      const auto& comm_context_manager =
+          phi::distributed::CommContextManager::GetInstance();
+      if (comm_context_manager.Has(std::to_string(ring_id))) {
+        auto comm_context = comm_context_manager.Get(std::to_string(ring_id));
+        dev_ctx = static_cast<platform::DeviceContext*>(
+            static_cast<phi::distributed::NCCLCommContext*>(comm_context)
+                ->GetDevContext());
+        dev_ctx->SetCommContext(comm_context);
+        if (op_name.compare(paddle::dialect::ReduceScatterOp::name()) == 0 ||
+            op_name.compare(paddle::dialect::AllGatherOp::name()) == 0) {
+          if (phi::is_gpu_place(place) && execution_stream == kDefaultStream) {
+            if (origin_dev_ctx != nullptr) {
+              auto default_stream =
+                  static_cast<phi::GPUContext*>(origin_dev_ctx)->cuda_stream();
+              static_cast<phi::GPUContext*>(dev_ctx)->SetCUDAStream(
+                  default_stream, false);
+            } else {
+              VLOG(3) << "op " << op_name << " ring_id " << ring_id
+                      << " origin_dev_ctx is nullptr";
+            }
           }
-        } else {
-          VLOG(10) << "ring_id " << ring_id
-                   << " not found in comm_context_manager for op " << op_name;
+          return dev_ctx;
         }
+      } else {
+        VLOG(3) << "ring_id " << ring_id
+                << " not found in comm_context_manager for op " << op_name;
       }
     }
 #endif

@@ -549,13 +549,13 @@ class FunctionGeneratorBase:
 
         assert (
             'op' in forward_api_contents.keys()
-        ), "Unable to find \"op\" in forward_api_contents keys"
+        ), 'Unable to find "op" in forward_api_contents keys'
         assert (
             'args' in forward_api_contents.keys()
-        ), "Unable to find \"args\" in forward_api_contents keys"
+        ), 'Unable to find "args" in forward_api_contents keys'
         assert (
             'output' in forward_api_contents.keys()
-        ), "Unable to find \"output\" in forward_api_contents keys"
+        ), 'Unable to find "output" in forward_api_contents keys'
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         (

@@ -30,9 +30,9 @@ namespace paddle::dialect {
 
 const char* ShardTensorOp::attributes_name[1] = {"op_dist_attr"};  // NOLINT
 const char* ReshardOp::attributes_name[1] = {"op_dist_attr"};      // NOLINT
-const char* LocalTensorsFromDistOp::attributes_name[1] = {
+const char* MoESubMeshTensorsOp::attributes_name[1] = {
     "op_dist_attr"};  // NOLINT
-const char* DistTensorFromLocalsOp::attributes_name[1] = {
+const char* MoEGlobalMeshTensorOp::attributes_name[1] = {
     "op_dist_attr"};  // NOLINT
 
 void ShardTensorOp::VerifySig() {
@@ -326,13 +326,13 @@ void ReshardOp::Build(pir::Builder& builder,
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
-TEST_API void paddle::dialect::LocalTensorsFromDistOp::Build(
+TEST_API void paddle::dialect::MoESubMeshTensorsOp::Build(
     pir::Builder& builder,
     pir::OperationArgument& argument,
     pir::Value input,
     const std::vector<TensorDistAttribute>& local_dist_attrs,
     const TensorDistAttribute& global_dist_attr) {
-  VLOG(4) << "Build LocalTensorsFromDistOp";
+  VLOG(4) << "Build MoESubMeshTensorsOp";
   paddle::dialect::DistDenseTensorType input_tensor_type;
   if (input.type().isa<paddle::dialect::DistDenseTensorType>()) {
     input_tensor_type =
@@ -402,37 +402,36 @@ TEST_API void paddle::dialect::LocalTensorsFromDistOp::Build(
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
-OpInfoTuple LocalTensorsFromDistOp::GetOpInfo() {
+OpInfoTuple MoESubMeshTensorsOp::GetOpInfo() {
   return OpInfoTuple({OpInputInfo()},
                      {},
                      {OpOutputInfo()},
                      OpRunTimeInfo(),
-                     "local_tensors_from_dtensor");
+                     "moe_sub_mesh_tensors");
 }
 
-std::vector<std::vector<pir::Value>> LocalTensorsFromDistOp::Vjp(
+std::vector<std::vector<pir::Value>> MoESubMeshTensorsOp::Vjp(
     pir::Operation* op,
     const std::vector<std::vector<pir::Value>>& inputs_,
     const std::vector<std::vector<pir::Value>>& outputs,
     const std::vector<std::vector<pir::Value>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  VLOG(6) << "Start call vjp for local_tensors_from_dtensor op.";
-  PADDLE_ENFORCE_EQ(
-      inputs_.size(),
-      1,
-      common::errors::InvalidArgument(
-          "local_tensors_from_dtensor op's inputs' size should be 1"));
+  VLOG(6) << "Start call vjp for moe_sub_mesh_tensors op.";
+  PADDLE_ENFORCE_EQ(inputs_.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "moe_sub_mesh_tensors op's inputs' size should be 1"));
   PADDLE_ENFORCE_EQ(
       inputs_[0].size(),
       1,
       common::errors::InvalidArgument(
-          "local_tensors_from_dtensor op's inputs[0]'s size should be 1"));
+          "moe_sub_mesh_tensors op's inputs[0]'s size should be 1"));
   auto dist_type = inputs_[0][0].type().dyn_cast<DistTypeInterface>();
 
   PADDLE_ENFORCE_NOT_NULL(
       dist_type,
       common::errors::InvalidArgument(
-          "local_tensors_from_dtensor op's inputs type must be dist type."));
+          "moe_sub_mesh_tensors op's inputs type must be dist type."));
 
   auto& builder = *ApiBuilder::Instance().GetBuilder();
 
@@ -453,19 +452,19 @@ std::vector<std::vector<pir::Value>> LocalTensorsFromDistOp::Vjp(
       inputs_[0][0].type().dyn_cast<DistDenseTensorType>();
   TensorDistAttribute global_dist_attr = global_dist_type.tensor_dist_attr();
   auto grad_op =
-      builder.Build<DistTensorFromLocalsOp>(input_for_grad_op,
-                                            local_dist_attrs,
-                                            global_dist_attr,
-                                            global_dist_type.global_ddim());
+      builder.Build<MoEGlobalMeshTensorOp>(input_for_grad_op,
+                                           local_dist_attrs,
+                                           global_dist_attr,
+                                           global_dist_type.global_ddim());
 
-  VLOG(6) << "End call vjp for local_tensors_from_dtensor op.";
+  VLOG(6) << "End call vjp for moe_sub_mesh_tensors op.";
 
   return {std::vector<pir::Value>{grad_op->result(0)}};
 }
 
-void LocalTensorsFromDistOp::VerifySig() {
+void MoESubMeshTensorsOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
-             "local_tensors_from_dtensor op.";
+             "moe_sub_mesh_tensors op.";
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
@@ -519,20 +518,20 @@ void LocalTensorsFromDistOp::VerifySig() {
         op_dist_attr.num_results(),
         num_results(),
         common::errors::PreconditionNotMet("The op_dist_attr output size of "
-                                           "local_tensors_from_dist op must be "
+                                           "moe_sub_mesh_tensors op must be "
                                            "equal to op output size."));
   }
-  VLOG(4) << "End Verifying for: local_tensors_from_dtensor op.";
+  VLOG(4) << "End Verifying for: moe_sub_mesh_tensors op.";
 }
 
-TEST_API void paddle::dialect::DistTensorFromLocalsOp::Build(
+TEST_API void paddle::dialect::MoEGlobalMeshTensorOp::Build(
     pir::Builder& builder,
     pir::OperationArgument& argument,
     const std::vector<pir::Value>& inputs,
     const std::vector<TensorDistAttribute>& local_dist_attrs,
     const TensorDistAttribute& global_dist_attr,
     const phi::DDim& global_dims) {
-  VLOG(4) << "Build dtensor_from_local_tensors op";
+  VLOG(4) << "Build moe_global_mesh_tensor op";
   paddle::dialect::DistDenseTensorType input_tensor_type;
   for (pir::Value input : inputs) {
     if (input.type().isa<paddle::dialect::DistDenseTensorType>()) {
@@ -580,17 +579,17 @@ TEST_API void paddle::dialect::DistTensorFromLocalsOp::Build(
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
-OpInfoTuple DistTensorFromLocalsOp::GetOpInfo() {
+OpInfoTuple MoEGlobalMeshTensorOp::GetOpInfo() {
   return OpInfoTuple({OpInputInfo()},
                      {},
                      {OpOutputInfo()},
                      OpRunTimeInfo(),
-                     "dtensor_from_local_tensors");
+                     "moe_global_mesh_tensor");
 }
 
-void DistTensorFromLocalsOp::VerifySig() {
+void MoEGlobalMeshTensorOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
-             "dtensor_from_local_tensors op.";
+             "moe_global_mesh_tensor op.";
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
@@ -638,26 +637,26 @@ void DistTensorFromLocalsOp::VerifySig() {
         op_dist_attr.num_operands(),
         num_operands(),
         common::errors::PreconditionNotMet(
-            "The op_dist_attr input size of dtensor_from_local_tensors "
+            "The op_dist_attr input size of moe_global_mesh_tensor "
             "op must be equal to op input size."));
 
     PADDLE_ENFORCE_EQ(
         op_dist_attr.num_results(),
         num_results(),
         common::errors::PreconditionNotMet(
-            "The op_dist_attr output size of dtensor_from_local_tensors op "
+            "The op_dist_attr output size of moe_global_mesh_tensor op "
             "must be equal to op output size."));
   }
-  VLOG(4) << "End Verifying for: dtensor_from_local_tensors op.";
+  VLOG(4) << "End Verifying for: moe_global_mesh_tensor op.";
 }
 
-std::vector<std::vector<pir::Value>> DistTensorFromLocalsOp::Vjp(
+std::vector<std::vector<pir::Value>> MoEGlobalMeshTensorOp::Vjp(
     pir::Operation* op,
     const std::vector<std::vector<pir::Value>>& inputs_,
     const std::vector<std::vector<pir::Value>>& outputs,
     const std::vector<std::vector<pir::Value>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  VLOG(6) << "Start call vjp for dist_tensor_from_local_tensors op.";
+  VLOG(6) << "Start call vjp for moe_global_mesh_tensor op.";
 
   std::vector<TensorDistAttribute> local_dist_attrs;
   for (size_t i = 0; i < inputs_.size(); i++) {
@@ -684,7 +683,7 @@ std::vector<std::vector<pir::Value>> DistTensorFromLocalsOp::Vjp(
 
   auto& builder = *ApiBuilder::Instance().GetBuilder();
 
-  auto grad_op = builder.Build<LocalTensorsFromDistOp>(
+  auto grad_op = builder.Build<MoESubMeshTensorsOp>(
       out_grads[0][0], local_dist_attrs, global_dist_attr);
 
   VLOG(6) << "End call vjp for " << name() << " op.";
@@ -700,5 +699,5 @@ std::vector<std::vector<pir::Value>> DistTensorFromLocalsOp::Vjp(
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ReshardOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::LocalTensorsFromDistOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DistTensorFromLocalsOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MoESubMeshTensorsOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MoEGlobalMeshTensorOp)

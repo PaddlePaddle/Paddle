@@ -726,14 +726,14 @@ class CodeGen:
                     if ret == "":
                         return CHECK_DATA_TYPE_TEMPLATE.format(
                             function=function_name,
-                            inputs=f"{name}, \"{name}\"",
+                            inputs=f'{name}, "{name}"',
                             op_name=op_name,
                         )
                     else:
                         ret += ELSE_TEMPLATE.format(
                             check_statement=CHECK_DATA_TYPE_TEMPLATE.format(
                                 function=function_name,
-                                inputs=f"{name}, \"{name}\"",
+                                inputs=f'{name}, "{name}"',
                                 op_name=op_name,
                             ).strip("\n")
                         )
@@ -748,7 +748,7 @@ class CodeGen:
                         condition=name,
                         check_statement=CHECK_DATA_TYPE_TEMPLATE.format(
                             function=function_name,
-                            inputs=f"{name}.get(), \"{name}\"",
+                            inputs=f'{name}.get(), "{name}"',
                             op_name=op_name,
                         ).strip("\n"),
                     )
@@ -765,7 +765,7 @@ class CodeGen:
                 return ""
             return CHECK_DATA_TYPE_TEMPLATE.format(
                 function=function_name,
-                inputs=f"{name}, \"{name}\"",
+                inputs=f'{name}, "{name}"',
                 op_name=op_name,
             )
         elif len(data_type_candidates) == 2:
@@ -778,7 +778,7 @@ class CodeGen:
             function_name = 'CheckDataTypeOrValue'
             return CHECK_DATA_TYPE_TEMPLATE.format(
                 function=function_name,
-                inputs=f"{dtype_name}, \"{dtype_name}\", {value_name}, \"{value_name}\"",
+                inputs=f'{dtype_name}, "{dtype_name}", {value_name}, "{value_name}"',
                 op_name=op_name,
             )
         return ""

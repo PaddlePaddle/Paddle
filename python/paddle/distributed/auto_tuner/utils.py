@@ -1425,9 +1425,9 @@ def read_metric_log(
             target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
         )
         re_out_of_memory_pattern = (
-            r"Out of memory error on"
-            if paddle.device.is_compiled_with_cuda()
-            else r"out of memory"
+            r"out of memory"
+            if paddle.device.is_compiled_with_custom_device('npu')
+            else r"Out of memory error on"
         )
         out_of_memory_flag = 0
         metric_list = []
