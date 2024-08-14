@@ -14,7 +14,12 @@
 
 import paddle
 
-from .base_reshard_func import ReshardFunction, is_partial, is_replicated
+from .base_reshard_func import (
+    ReshardFunction,
+    is_partial,
+    is_replicated,
+    is_shard,
+)
 
 
 class RToPReshardFunction(ReshardFunction):
@@ -22,7 +27,7 @@ class RToPReshardFunction(ReshardFunction):
         if not is_replicated(src_dist_attr):
             return False
 
-        if not is_partial(dst_dist_attr):
+        if not is_partial(dst_dist_attr) or is_shard(dst_dist_attr):
             return False
 
         in_mesh = src_dist_attr.process_mesh
