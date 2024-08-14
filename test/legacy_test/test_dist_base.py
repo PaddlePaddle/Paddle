@@ -112,7 +112,6 @@ def _insert_comm_op(opt, loss, build_strategy=None):
     opt.nranks = opt.role_maker._worker_num()
     startup_program = paddle.static.default_startup_program()
     opt.startup_program = startup_program
-    paddle.distributed.collective._init_parallel_env("nccl")
 
     block = loss.block
     program = block.program
@@ -333,7 +332,8 @@ class TestDistRunnerBase:
 
     def run_use_fleet_api_trainer(self, args):
         assert args.update_method == "nccl2" or "bkcl"
-        paddle.distributed.collective._init_parallel_env("nccl")
+        backend = "bkcl" if args.update_method == "bkcl" else "nccl"
+        paddle.distributed.collective._init_parallel_env(backend)
 
         self.lr = args.lr
 
