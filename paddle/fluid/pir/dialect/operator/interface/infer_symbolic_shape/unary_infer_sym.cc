@@ -1552,6 +1552,65 @@ bool Pad3dOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool PixelUnshuffleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto x_shape = x_shape_or_data.shape();
+
+  const auto attributes = op->attributes();
+  const int downscale_factor =
+      attributes.at("downscale_factor").dyn_cast<pir::Int32Attribute>().data();
+  const std::string &data_format =
+      op->attribute<pir::StrAttribute>("data_format").AsString();
+
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+
+  PADDLE_ENFORCE_GE(downscale_factor,
+                    1,
+                    common::errors::InvalidArgument(
+                        "downscale_factor should be larger than 0."));
+
+  PADDLE_ENFORCE_EQ(
+      data_format == "NCHW" || data_format == "NHWC",
+      true,
+      common::errors::InvalidArgument("data_format must be one of NCHW and "
+                                      "NHWC. But received data_format: %s",
+                                      data_format));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  const auto divisor = symbol::DimExpr(downscale_factor);
+  const auto remainder_1 = x_shape[2] - (x_shape[2] / divisor) * divisor;
+  const auto remainder_2 = (!channel_last ? x_shape[3] : x_shape[1]) -
+                           (x_shape[2] / divisor) * divisor;
+
+  infer_context->AddEqualCstr(remainder_1, symbol::DimExpr(0));
+  infer_context->AddEqualCstr(remainder_2, symbol::DimExpr(0));
+
+  auto output_shape = x_shape;
+  const auto downscale_factor_ = symbol::DimExpr(downscale_factor);
+  output_shape[0] = x_shape[0];
+  if (!channel_last) {
+    output_shape[1] = x_shape[1] * (downscale_factor_ * downscale_factor_);
+    output_shape[2] = x_shape[2] / downscale_factor_;
+    output_shape[3] = x_shape[3] / downscale_factor_;
+  } else {
+    output_shape[1] = x_shape[1] / downscale_factor_;
+    output_shape[2] = x_shape[2] / downscale_factor_;
+    output_shape[3] = x_shape[3] * (downscale_factor_ * downscale_factor_);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_shape));
+
+  return true;
+}
+
 bool Pool2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &kernel_size_shape_or_data =

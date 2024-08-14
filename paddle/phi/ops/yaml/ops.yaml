@@ -3517,6 +3517,7 @@
   kernel :
     func : pixel_unshuffle
   backward : pixel_unshuffle_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : poisson
   args : (Tensor x)
