@@ -597,7 +597,7 @@
   inplace : (x -> out)
 
 - op : partial_recv
-  args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
+  args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, int num = 1, int id = 0)
   output : Tensor(out)
   infer_meta :
     func: PartialRecvInferMeta
@@ -788,6 +788,7 @@
   kernel :
     func : set_value
   backward: set_value_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed
   args : (Tensor x)
@@ -815,6 +816,7 @@
   output : Tensor(out)
   infer_meta:
     func: UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param: [x]
   kernel:
     func: share_data

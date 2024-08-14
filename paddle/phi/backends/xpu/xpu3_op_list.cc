@@ -824,6 +824,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT64,
                      phi::DataType::INT32,
+                     phi::DataType::BFLOAT16,
                      phi::DataType::BOOL,
                      phi::DataType::FLOAT32})},
       {"resnet_unit",

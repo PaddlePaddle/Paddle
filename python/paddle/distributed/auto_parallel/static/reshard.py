@@ -20,7 +20,7 @@ from functools import reduce
 
 import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
+from paddle.distributed.utils.stream_utils import ExecutionStreamType
 from paddle.framework import LayerHelper, OpProtoHolder, Program, core
 from paddle.utils import unique_name
 
@@ -702,7 +702,7 @@ class Inserter:
         )
         allgather_op._set_attr('op_namescope', "/auto_parallel/reshard")
         allgather_op.dist_attr.execution_stream = (
-            AutoParallelStreamType.CALC_STREAM.value
+            ExecutionStreamType.DefaultStream.value
         )
         idx_offset += 1
 
@@ -3027,7 +3027,7 @@ class Resharder:
     def get_cost(self, op, tensor, cluster):
         # NOTE: The program should be the serial_program which is not been parted
         global _g_special_ops
-        not_supported_op_type = _g_special_ops + ["while"]
+        not_supported_op_type = [*_g_special_ops, 'while']
         reshard_op_cost = None
         if op.type in not_supported_op_type:
             return reshard_op_cost

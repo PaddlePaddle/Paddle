@@ -221,7 +221,7 @@ def build_global_view(
     # Put all labels in alphabetical order
     concat = sorted(''.join(nop_labels).replace('.', ''))
     labels, count = [], []
-    for a, b in zip(['.'] + concat, concat):
+    for a, b in zip(['.', *concat], concat):
         if a != b:
             labels.append(b)
             count.append(1)
@@ -400,16 +400,16 @@ def plan_matmul(
         and k > 0
         and -1 not in np.concatenate((op1_vshape, op2_vshape))
     ):
-        op1_shape = (
-            list(op1_vshape[I])
-            + [np.prod(op1_vshape[J1])]
-            + [np.prod(op1_vshape[K])]
-        )
-        op2_shape = (
-            list(op2_vshape[I])
-            + [np.prod(op2_vshape[J2])]
-            + [np.prod(op2_vshape[K])]
-        )
+        op1_shape = [
+            *list(op1_vshape[I]),
+            np.prod(op1_vshape[J1]),
+            np.prod(op1_vshape[K]),
+        ]
+        op2_shape = [
+            *list(op2_vshape[I]),
+            np.prod(op2_vshape[J2]),
+            np.prod(op2_vshape[K]),
+        ]
 
         # Merge J dims and K dims by reshaping
         step = reshape, [var1], var1, op1_shape
@@ -465,14 +465,14 @@ def plan_matmul(
                 reshape,
                 [var1],
                 var1,
-                list(op1_vshape[I]) + [1] + [np.prod(op1_vshape[K])],
+                [*list(op1_vshape[I]), 1, np.prod(op1_vshape[K])],
             )
             plan.add_step(step)
             step = (
                 reshape,
                 [var2],
                 var2,
-                list(op2_vshape[I]) + [1] + [np.prod(op2_vshape[K])],
+                [*list(op2_vshape[I]), 1, np.prod(op2_vshape[K])],
             )
             plan.add_step(step)
             step = matmul, [var1, var2], var2, False, True
