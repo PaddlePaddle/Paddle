@@ -771,7 +771,7 @@ def tdm_child(
     )
     tree_info.stop_gradient = True
 
-    if in_dynamic_or_pir_mode():
+    if in_pir_mode():
         return _C_ops.tdm_child(x, tree_info, child_nums, c_dtype)
 
     child = helper.create_variable_for_type_inference(dtype=dtype)
