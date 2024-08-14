@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/core/memory/memory.h"
 
 namespace paddle {
 namespace memory {

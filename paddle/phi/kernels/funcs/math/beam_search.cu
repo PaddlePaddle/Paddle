@@ -505,17 +505,17 @@ class BeamSearchFunctor<phi::GPUContext, T> {
                 num_used_threads));
       }
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not implemented other number of sequences yet."));
     }
 
     context.Wait();
     mix_vector.CopyToCPU();
     if (!CheckLoD(selected_lod)) {
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("lod %s is not right in"
-                                       " beam_search, please check your code.",
-                                       LoDToString(selected_lod)));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "lod %s is not right in"
+          " beam_search, please check your code.",
+          LoDToString(selected_lod)));
     }
 
     selected_ids->set_lod(selected_lod);

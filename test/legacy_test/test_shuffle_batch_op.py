@@ -19,7 +19,9 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestShuffleBatchOpBase(OpTest):
@@ -38,6 +40,8 @@ class TestShuffleBatchOpBase(OpTest):
 
     def setUp(self):
         self.op_type = 'shuffle_batch'
+        self.python_api = paddle.incubate.layers.shuffle_batch
+        self.python_out_sig = ["Out"]
         self.dtype = np.float64
         self.shape = self.get_shape()
         x = self.gen_random_array(self.shape)
@@ -53,7 +57,7 @@ class TestShuffleBatchOpBase(OpTest):
         self.attrs = {'startup_seed': 1}
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         x = np.copy(self.inputs['X'])
@@ -76,12 +80,64 @@ class TestShuffleBatchOpBase(OpTest):
         return np.reshape(np.array(arr_list), shape)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False, check_pir=True)
 
 
 class TestShuffleBatchOp2(TestShuffleBatchOpBase):
     def get_shape(self):
         return (4, 30)
+
+
+class TestShuffleBatchAPI(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if not os.name == 'nt' and paddle.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        paddle.enable_static()
+
+    def tearDown(self):
+        paddle.disable_static()
+
+    @test_with_pir_api
+    def test_seed_without_tensor(self):
+        def api_run(seed, place=paddle.CPUPlace()):
+            main_prog, startup_prog = (
+                paddle.static.Program(),
+                paddle.static.Program(),
+            )
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+                out = paddle.incubate.layers.shuffle_batch(x, seed=seed)
+            exe = paddle.static.Executor(place=place)
+            feed = {'x': np.random.random((10, 4)).astype('float32')}
+            exe.run(startup_prog)
+            _ = exe.run(main_prog, feed=feed, fetch_list=[out])
+
+        for place in self.places:
+            api_run(None, place=place)
+            api_run(1, place=place)
+
+    @test_with_pir_api
+    def test_seed_with_tensor(self):
+        def api_run(place=paddle.CPUPlace()):
+            main_prog, startup_prog = (
+                paddle.static.Program(),
+                paddle.static.Program(),
+            )
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+                seed = paddle.static.data(name='seed', shape=[1], dtype='int64')
+                out = paddle.incubate.layers.shuffle_batch(x, seed=seed)
+            exe = paddle.static.Executor(place=place)
+            feed = {
+                'x': np.random.random((10, 4)).astype('float32'),
+                'seed': np.array([1]).astype('int64'),
+            }
+            exe.run(startup_prog)
+            _ = exe.run(main_prog, feed=feed, fetch_list=[out])
+
+        for place in self.places:
+            api_run(place=place)
 
 
 if __name__ == '__main__':

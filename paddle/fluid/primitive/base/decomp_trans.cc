@@ -480,6 +480,10 @@ void DecompProgram::decomp_block(
       auto& builder = *(paddle::dialect::ApiBuilder::Instance().GetBuilder());
       builder.set_insertion_point(op);
       std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
+      if (decomp_res.size() == 0) {
+        // if we don't decomp this op, then leave it intact.
+        continue;
+      }
       std::vector<pir::Value> orig_outs = op->results();
       bool is_next_builtin_split_slice = false;
 

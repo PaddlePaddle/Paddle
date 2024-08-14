@@ -33,14 +33,14 @@ void CudaModuleTester::Compile(const ir::Module& m,
   auto& device_module = std::get<1>(_host_module_device_module_);
   PADDLE_ENFORCE_EQ(host_module.functions().empty(),
                     false,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "host_module.functions() should not be empty"));
   PADDLE_ENFORCE_EQ(device_module.functions().empty(),
                     false,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "device_module.functions() should not be empty"));
 
-  backends::CodeGenCUDA_Dev codegen(DefaultHostTarget());
+  backends::CodeGenCudaDev codegen(DefaultHostTarget());
   auto source_code = codegen.Compile(device_module);
 
   // compile CUDA kernel.
@@ -59,10 +59,10 @@ void CudaModuleTester::Compile(const ir::Module& m,
     std::string kernel_fn_name = fn->name;
     auto fn_kernel = reinterpret_cast<runtime::cuda::CUDAModule*>(cuda_module_)
                          ->GetFunction(0, kernel_fn_name);
-    PADDLE_ENFORCE_EQ(
-        fn_kernel,
-        true,
-        phi::errors::InvalidArgument("%s should not be null", kernel_fn_name));
+    PADDLE_ENFORCE_EQ(fn_kernel,
+                      true,
+                      ::common::errors::InvalidArgument("%s should not be null",
+                                                        kernel_fn_name));
     kernel_handles_.push_back(fn_kernel);
 
     backends::GlobalSymbolRegistry::Global().RegisterFn(
@@ -73,14 +73,14 @@ void CudaModuleTester::Compile(const ir::Module& m,
   jit_ = backends::SimpleJIT::Create();
 
   // compile host module
-  jit_->Link<backends::CodeGenCUDA_Host>(host_module, false);
+  jit_->Link<backends::CodeGenCudaHost>(host_module, false);
 }
 
 void* CudaModuleTester::CreateDeviceBuffer(const cinn_buffer_t* host_buffer) {
-  PADDLE_ENFORCE_EQ(
-      host_buffer->memory,
-      true,
-      phi::errors::InvalidArgument("host_buffer->memory should not be null"));
+  PADDLE_ENFORCE_EQ(host_buffer->memory,
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "host_buffer->memory should not be null"));
   int num_bytes = host_buffer->num_elements() * sizeof(float);
   CUdeviceptr data;
   cuMemAlloc(&data, num_bytes);

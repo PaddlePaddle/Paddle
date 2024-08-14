@@ -40,7 +40,7 @@ class VXXJitCode : public JitCode {
         with_relu_(with_relu) {
     if (!(type_ == operand_type::MUL || type_ == operand_type::ADD ||
           type_ == operand_type::SUB)) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Do not support operand type code: %d.", type));
     }
     this->genCode();

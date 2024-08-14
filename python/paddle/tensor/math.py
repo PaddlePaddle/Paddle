@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -95,6 +95,8 @@ from .ops import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
@@ -442,7 +444,12 @@ def multiplex(
              [3., 4.]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.multiplex(inputs, index)
+    elif in_pir_mode():
+        check_variable_and_dtype(
+            index, "index", ['int32', 'int64'], 'multiplex'
+        )
         return _C_ops.multiplex(inputs, index)
     else:
         helper = LayerHelper('multiplex', **locals())
@@ -2310,9 +2317,9 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
-            x_shape = [1] + x_shape
+            x_shape = [1, *x_shape]
         if len(y_shape) == 1:
-            y_shape = y_shape + [1]
+            y_shape = [*y_shape, 1]
 
         # check the inner 2 dimensions
         if x_shape[-1] != y_shape[-2]:
@@ -7806,7 +7813,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
     if isinstance(y, (float, int)):
         y = paddle.to_tensor(y, dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
+    if out_shape != list(x.shape):
         warnings.warn(
             f"The shape of broadcast output {out_shape} is different from the input tensor x with shape: {x.shape}, please make sure you are using copysign api correctly."
         )

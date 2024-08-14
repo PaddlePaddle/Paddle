@@ -52,7 +52,7 @@ struct UniqueOpFunctor {
     PADDLE_ENFORCE_LT(
         in_->numel(),
         pow(2, 31),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The num of Input(X) elements should be less then INT_MAX, "
             "but received num is %d.",
             in_->numel()));
@@ -81,7 +81,7 @@ struct UniqueOpFunctor {
           index_type == DataType::INT32 || index_type == DataType::INT64;
       PADDLE_ENFORCE_EQ(index_type_match,
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Index holds the wrong type, it holds %s, "
                             "but desires to be %s or %s",
                             DataTypeToString(index_type),

@@ -17,7 +17,7 @@ import numbers
 import os
 import time
 import warnings
-from typing import TYPE_CHECKING, Any, Iterator, Literal, Sequence, TypedDict
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -27,6 +27,9 @@ from paddle.utils import try_import
 from .progressbar import ProgressBar
 
 if TYPE_CHECKING:
+    from typing import Any, Literal, TypedDict
+
+    from collection.abc import Iterator, Sequence
     from typing_extensions import TypeAlias
 
     from .model import Model

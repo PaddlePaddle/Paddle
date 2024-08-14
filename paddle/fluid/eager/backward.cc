@@ -15,7 +15,7 @@
 #include "paddle/fluid/eager/backward.h"
 
 #include "paddle/fluid/eager/general_grad.h"
-#include "paddle/fluid/memory/stats.h"
+#include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace egr {

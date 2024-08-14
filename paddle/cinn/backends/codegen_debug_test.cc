@@ -112,7 +112,7 @@ void __launch_bounds__(512) fn_relu_1_kernel(const float* __restrict__ var_1, fl
 
   backends::nvrtc::Compiler compiler;
 
-  std::string ptx = compiler(CodeGenCUDA_Dev::GetSourceHeader() + source_code);
+  std::string ptx = compiler(CodeGenCudaDev::GetSourceHeader() + source_code);
   ASSERT_FALSE(ptx.empty());
 
   CUDAModule cuda_module(ptx, CUDAModule::Kind::PTX);

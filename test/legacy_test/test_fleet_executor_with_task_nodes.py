@@ -29,11 +29,11 @@ class TestFleetExecutor(unittest.TestCase):
         empty_program = paddle.static.Program()
         with base.program_guard(empty_program, empty_program):
             x = paddle.static.data(
-                name='x', shape=[-1] + list(x_data.shape), dtype=x_data.dtype
+                name='x', shape=[-1, *x_data.shape], dtype=x_data.dtype
             )
             x.desc.set_need_check_feed(False)
             y = paddle.static.data(
-                name='y', shape=[-1] + list(y_data.shape), dtype=y_data.dtype
+                name='y', shape=[-1, *y_data.shape], dtype=y_data.dtype
             )
             y.desc.set_need_check_feed(False)
             z = x + y

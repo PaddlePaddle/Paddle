@@ -200,9 +200,10 @@ std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
   }
   auto val = label - input;
   auto abs_val = abs<T>(val);
+  auto factor = full_scalar<T>(0.5, input.dtype());
   auto ans = where<T>(abs_val <= delta_full,
-                      0.5 * val * val,
-                      delta_full * (abs_val - 0.5 * delta_full));
+                      factor * val * val,
+                      delta_full * (abs_val - factor * delta_full));
   return std::make_tuple(ans, val);
 }
 
@@ -570,13 +571,11 @@ Tensor relu6_decomp(const Tensor& x) {
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
-                                          const IntArray& axis) {
+Tensor squeeze_decomp(const Tensor& x, const IntArray& axis) {
   auto axis_ = process_dims(x, axis.GetData());
   auto out_shape = get_squeeze_dims(x, axis_);
   Tensor out = reshape<T>(x, out_shape);
-  Tensor xshape;
-  return std::make_tuple(out, xshape);
+  return out;
 }
 
 template <typename T>
@@ -856,7 +855,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
       // train: out = input * mask / ( 1.0 - p )
       if (p.to<float>() == 1.0) {
         // Process p=1. for avoid divide zero error (x*mask/(1.0-p))
-        auto zero = full_scalar<T>(0.0, org_dtype);
+        auto zero = full_like_decomp<T>(x, 0.0, org_dtype, x.place());
         return std::make_tuple(x * zero, cast<T>(zero, DataType::UINT8));
       } else {
         auto ans = (x * mask) / ones_p;
@@ -1093,9 +1092,7 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
-                                          int start_axis,
-                                          int end_axis) {
+Tensor flatten_decomp(const Tensor& x, int start_axis, int end_axis) {
   auto x_dim = x.shape();
   if (x_dim.size() == 0) {
     start_axis = 0;
@@ -1108,17 +1105,8 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
   if (has_dynamic_shape(x.shape())) {
     auto x_shape = shape<T>(x);
-    Tensor x_shape_tensor = full<T>({1}, 0, x_shape.dtype());
-    std::vector<Tensor> tmp_shape;
-    tmp_shape.push_back(x_shape_tensor);
-    for (size_t i = 0; i < x_dim.size(); i++) {
-      tmp_shape.push_back(get_slice<T>(x_shape, i));
-    }
-    x_shape_tensor = concat<T>(tmp_shape);
-    x_shape_tensor =
-        backend::full_with_tensor<T>(x_shape_tensor, 0.0, DataType::FLOAT32);
     if (end_axis == start_axis) {
-      return std::make_tuple(backend::reshape<T>(x, x_shape), x_shape_tensor);
+      return backend::reshape<T>(x, x_shape);
     }
     std::vector<Tensor> out_shape;
 
@@ -1138,18 +1126,16 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
     }
 
     Tensor out_shape_tensor = concat<T>(out_shape);
-    return std::make_tuple(backend::reshape<T>(x, out_shape_tensor),
-                           x_shape_tensor);
+    return backend::reshape<T>(x, out_shape_tensor);
   } else {
     std::vector<int64_t> tmp_shape(x_dim);
     tmp_shape.insert(tmp_shape.begin(), 0);
-    auto xshape = full<T>(tmp_shape, 0.0, DataType::FLOAT32);
     if (x_dim.size() == 0) {
       std::vector<int64_t> res_shape(1, 1);
-      return std::make_tuple(reshape<T>(x, res_shape), xshape);
+      return reshape<T>(x, res_shape);
     }
     if (end_axis == start_axis) {
-      return std::make_tuple(reshape<T>(x, x_dim), xshape);
+      return reshape<T>(x, x_dim);
     }
 
     int slice_numel = 1;
@@ -1165,7 +1151,7 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
       out_shape.push_back(x_dim[i]);
     }
 
-    return std::make_tuple(reshape<T>(x, out_shape), xshape);
+    return reshape<T>(x, out_shape);
   }
 }
 
@@ -1472,7 +1458,7 @@ Tensor embedding_decomp(const Tensor& x,
     if (x.dims().size() <= 1) {
       res = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {
-        res = std::get<0>(squeeze_decomp<T>(res, {0}));
+        res = squeeze_decomp<T>(res, {0});
       }
     } else {
       std::vector<int64_t> tar_shape{-1};

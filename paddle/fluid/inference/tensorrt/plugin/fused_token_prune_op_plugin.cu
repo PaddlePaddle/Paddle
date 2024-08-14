@@ -18,13 +18,13 @@
 
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
 #include "paddle/phi/kernels/funcs/fused_token_prune_utils.h"

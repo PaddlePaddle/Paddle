@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/port.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
 
@@ -58,7 +58,7 @@ void SetupTensor(phi::DenseTensor* input,
                  const std::vector<T>& data) {
   PADDLE_ENFORCE_EQ(common::product(dims),
                     static_cast<int64_t>(data.size()),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "common::product(dims) and data.size() are not equal"
                         "common::product(dims) is %d and data.size() is %d",
                         common::product(dims),
@@ -85,7 +85,7 @@ void SetupLoDTensor(phi::DenseTensor* input,
   const size_t level = lod.size() - 1;
   PADDLE_ENFORCE_EQ(dims[0],
                     static_cast<int64_t>((lod[level]).back()),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "dims[0] is not equal with (lod[level]).back()"
                         "while dims[0] is %d and (lod[level]).back() is %d",
                         dims[0],

@@ -193,8 +193,8 @@ void DeleteUnusedTensors(const Scope &scope,
       garbages.emplace_back(var->GetMutable<phi::SelectedRows>()
                                 ->mutable_value()
                                 ->MoveMemoryHolder());
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto *lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
       for (auto &t : *lod_tensor_arr) {
         garbages.emplace_back(t.MoveMemoryHolder());
       }

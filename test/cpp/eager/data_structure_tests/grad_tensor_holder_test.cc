@@ -86,19 +86,19 @@ TEST(GradTensorHolder, Interfaces) {
   const auto& buffers = grad_tensor_holder.Buffers();
   PADDLE_ENFORCE_EQ(static_cast<int>(buffers.size()),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of buffers should be 2, but received %d.",
                         static_cast<int>(buffers.size())));
   PADDLE_ENFORCE_EQ(
       static_cast<int>(buffers[0].size()),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of the first buffer should be 1, but received %d.",
           static_cast<int>(buffers[0].size())));
   PADDLE_ENFORCE_EQ(
       static_cast<int>(buffers[1].size()),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of the second buffer should be 1, but received %d.",
           static_cast<int>(buffers[1].size())));
 
@@ -116,13 +116,13 @@ TEST(GradTensorHolder, Interfaces) {
   PADDLE_ENFORCE_EQ(
       holder_et0_ptr[0],
       1.0f,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The value of holder_et0_ptr[0] should be 1.0f, but received %f.",
           holder_et0_ptr[0]));
   PADDLE_ENFORCE_EQ(
       holder_et1_ptr[0],
       30.0f,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The value of holder_et1_ptr[0] should be 30.0f, but received %f.",
           holder_et1_ptr[0]));
 }
@@ -173,19 +173,19 @@ TEST(GradTensorHolder, SelectedRowsMergeAdd) {
   const auto& buffers = grad_tensor_holder.Buffers();
   PADDLE_ENFORCE_EQ(static_cast<int>(buffers.size()),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of buffers should be 2, but received %d.",
                         static_cast<int>(buffers.size())));
   PADDLE_ENFORCE_EQ(
       static_cast<int>(buffers[0].size()),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of the first buffer should be 1, but received %d.",
           static_cast<int>(buffers[0].size())));
   PADDLE_ENFORCE_EQ(
       static_cast<int>(buffers[1].size()),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of the second buffer should be 1, but received %d.",
           static_cast<int>(buffers[1].size())));
 
