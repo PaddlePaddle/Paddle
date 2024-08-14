@@ -112,6 +112,9 @@ class SequenceMaskTest6(SequenceMaskTestBase):
     def initParameters(self):
         self.maxlen = -1
 
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=False)
+
 
 class SequenceMaskTestBase_tensor_attr(OpTest):
     def initDefaultParameters(self):

@@ -961,23 +961,17 @@ bool SequenceMaskOpInferSymbolicShape(
   const auto &attributes = op->attributes();
   std::vector<symbol::DimExpr> y_dims = x_shape;
   if (op->HasAttribute("maxlen")) {
-    VLOG(3) << "maxlen is attrubute";
     int maxlen = op->attribute<pir::Int64Attribute>("maxlen").data();
     y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
                                 : infer_context->GetNextSymName());
   } else if (op->operand_source(1)) {
     const auto &maxlen_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    // case 1:
     if (maxlen_shape_or_data.data().has_value()) {
       int maxlen = static_cast<int>(
           maxlen_shape_or_data.data().value()[0].Get<int64_t>());
-      VLOG(3) << "maxlen in data:" << maxlen;
-      y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
+      y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen) t556
                                   : infer_context->GetNextSymName());
-    } else {
-      auto maxlen = maxlen_shape_or_data.shape()[0];
-      VLOG(3) << "maxlen in shape:" << maxlen;
     }
 
   } else {
