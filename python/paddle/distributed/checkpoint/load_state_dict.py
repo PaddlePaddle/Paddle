@@ -185,7 +185,8 @@ def get_local_load_files_for_multiple_node(
             else:
                 file_to_ranks[file].append(rank)
 
-    unload_files = set(unload_files)
+    seen = set()
+    unload_files = [x for x in unload_files if not (x in seen or seen.add(x))]
     for file in unload_files:
         sub_rank_load_files = {}
         for rank in file_to_ranks[file]:
