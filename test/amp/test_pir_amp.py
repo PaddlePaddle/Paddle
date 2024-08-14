@@ -164,7 +164,10 @@ class TestPirAMPProgram(unittest.TestCase):
                     out = linear(x)
                     loss = paddle.mean(out)
                 scaled = scaler.scale(loss)
-                scaler.minimize(optimizer, scaled, startup_program=startup)
+                opt_ops, _ = scaler.minimize(
+                    optimizer, scaled, startup_program=startup
+                )
+            np.testing.assert_equal(len(opt_ops), 8)
             cast_op_count = 0
             for op in main.global_block().ops:
                 if op.name() == 'pd_op.cast':

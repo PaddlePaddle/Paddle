@@ -30,7 +30,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 /* CUDA performs better as thread_per_block
    num is between [64, 512] */

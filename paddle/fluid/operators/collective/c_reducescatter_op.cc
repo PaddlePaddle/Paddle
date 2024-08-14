@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <memory>
 
+#include "paddle/common/enforce.h"
+
 namespace paddle::operators {
 
 class CReduceScatterOp : public framework::OperatorWithKernel {
@@ -23,8 +25,15 @@ class CReduceScatterOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceScatter");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "X", "ReduceScatter");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The input 'X' for ReduceScatter must be provided."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"),
+        true,
+        phi::errors::InvalidArgument(
+            "The output 'Out' for ReduceScatter must be provided."));
     int nranks = ctx->Attrs().Get<int>("nranks");
     phi::DDim dim = ctx->GetInputDim("X");
     if (dim[0] > 0 || dim[0] < -1) {

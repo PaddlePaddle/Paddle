@@ -264,6 +264,11 @@ bool IsTrivialKind(OpPatternKind kind);
 void CheckFusionInputValid(const std::vector<ir::Expr>& op_compute_bodies,
                            const std::vector<OpPatternKind>& op_patterns);
 
+static bool IsReduceBody(const ir::Expr& expr_body) {
+  return !(ExprSetFinderUtils::ChildScheduleBlockRealizes *
+           ExprSetFinderUtils::ScheduleBlockRealizeIsInit)(expr_body)
+              .empty();
+}
 }  // namespace trivial_fusion_detail
 }  // namespace pir
 }  // namespace framework

@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import paddle
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
@@ -20,6 +21,7 @@ from paddle.distributed.auto_parallel.static.operators.common import (
     is_data_parallel_reduce_op,
     is_data_parallel_scale_op,
 )
+from paddle.distributed.auto_parallel.static.pir_pass import comm_ops
 from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
@@ -156,9 +158,9 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
 def _append_gradient_merge_backward_op(
     main_program,
     startup_program,
-    params_grads: List[Tuple[Any, Any]],
+    params_grads: list[tuple[Any, Any]],
     dist_context,
-) -> Tuple[List[Tuple[Any, Any]], Dict[str, Any]]:
+) -> tuple[list[tuple[Any, Any]], dict[str, Any]]:
     main_block = main_program.global_block()
     startup_block = startup_program.global_block()
 
@@ -276,41 +278,62 @@ def _pir_append_gradient_merge_backward_op(
     new_params_grads = []
 
     for param, grad in params_grads:
+        if grad is None:
+            continue
+
         assert (
             not param.is_selected_row_type()
         ), "SELECTED_ROWS is not supported in GradientMergeOptimizer for now"
 
         # step1: create gradient_merge var and init with 0
         # Add persistable gradient variables in startup_program
-        with startup_block:
-            paddle.pir.set_insertion_point_to_block_end(startup_block)
-            gradient_merge_var = paddle.full(
-                shape=grad.shape, fill_value=float(0), dtype=grad.dtype
-            )
-            gradient_merge_var.persistable = True
+        paddle.pir.set_insertion_point_to_block_end(startup_block)
+        gradient_merge_var = paddle.full(
+            shape=grad._local_shape, fill_value=0.0, dtype=grad.dtype
+        )
+        gradient_merge_var.persistable = True
 
-            paddle._C_ops.set_persistable_value(
-                gradient_merge_var, param.name + "@GRAD@MERGE"
-            )
+        paddle.pir.set_insertion_point_after(
+            gradient_merge_var.get_defining_op()
+        )
+        paddle._C_ops.set_persistable_value(
+            gradient_merge_var, param.name + "@GRAD@MERGE"
+        )
 
         # step2: Accumulate persistable gradient variables in main_program
         # NOTE(zhaoyingli): inplace operation must be 'a = a + b', cannot be 'a = b + a'
-        with main_block:
-            gard_defining_op = grad.get_defining_op()
-            paddle.pir.set_insertion_point_after(gard_defining_op)
+        gard_defining_op = grad.get_defining_op()
+        paddle.pir.set_insertion_point_after(gard_defining_op)
 
-            new_gradient_merge_var = main_block.add_kwarg(
-                param.name + "@GRAD@MERGE", grad.type()
-            )
-            new_gradient_merge_var.persistable = True
+        new_gradient_merge_var = main_block.add_kwarg(
+            param.name + "@GRAD@MERGE", grad.type()
+        )
+        new_gradient_merge_var.persistable = True
 
-            grad.replace_all_uses_with(new_gradient_merge_var)
-            new_gradient_merge_var_add = paddle._C_ops.add_(
-                new_gradient_merge_var, grad
-            )
-            new_gradient_merge_var_add.get_defining_op().op_role = (
-                gard_defining_op.op_role
-            )
+        new_gradient_merge_var_add = paddle._C_ops.add_(
+            new_gradient_merge_var, grad
+        )
+        new_gradient_merge_var_add.get_defining_op().op_role = (
+            gard_defining_op.op_role
+        )
+
+        opt_ops_use_grad = [
+            op
+            for op in grad.all_used_ops()
+            if op.op_role == int(OpRole.Optimize)
+        ]
+        grad.replace_grad_users_with(
+            new_gradient_merge_var, set(opt_ops_use_grad)
+        )
+
+        # reset gradient merge var to zero after finishing optimization
+        paddle.pir.set_insertion_point_to_block_end(main_block)
+        new_gradient_merge_var_zero = paddle._C_ops.fill_(
+            new_gradient_merge_var, 0.0
+        )
+        new_gradient_merge_var_zero.get_defining_op().op_role = int(
+            OpRole.Optimize
+        )
 
         # step3: Construct new_params_grads and grad_to_gradient_merge
         new_params_grads.append((param, new_gradient_merge_var))
@@ -366,12 +389,7 @@ def _pir_move_reduce_to_optimizer_stage(main_program):
     main_block = main_program.global_block()
 
     for idx, op in list(enumerate(main_block.ops)):
-        if op.name() in [
-            "pd_op.c_allreduce_sum",
-            "pd_op.c_allreduce_avg",
-            "pd_op.c_reduce_sum",
-            "pd_op.c_reduce_avg",
-        ]:
+        if op.name() in comm_ops:
             op_input_names = op.get_input_names()
             # NOTE(sonder): When "@RENAME@" is in the input name, it means that the op has been renamed.
             # Such types input names are caused by shared parameter policy.
@@ -444,8 +462,8 @@ def _pir_remove_cast_for_master_grad(main_program):
 def _create_cond_block_and_update_optimizer(
     main_program,
     cond_var,
-    new_params_to_grads: List[Tuple[Any, Any]],
-    grad_to_gradient_merge: Dict[str, str],
+    new_params_to_grads: list[tuple[Any, Any]],
+    grad_to_gradient_merge: dict[str, str],
     optimize_ops_block,
     k_steps,
     avg,
@@ -626,6 +644,7 @@ def _pir_parse_program(
     avg,
     gradient_sync_after_accumulate,
 ):
+
     # step1: append gradient merge backward op to main_program
     new_params_to_grads = _pir_append_gradient_merge_backward_op(
         main_program, startup_program, params_grads
@@ -647,8 +666,8 @@ def _pir_parse_program(
         for _, new_grad in new_params_to_grads:
             scale = paddle.full([], 1.0 / k_steps)
             new_grad = paddle._C_ops.scale_(new_grad, scale, 0.0, False)
-            new_grad.get_defining_op().op_role = int(OpRole.Backward)
-            scale.get_defining_op().op_role = int(OpRole.Backward)
+            new_grad.get_defining_op().op_role = int(OpRole.Optimize)
+            scale.get_defining_op().op_role = int(OpRole.Optimize)
 
 
 @register_pass("auto_parallel_gradient_merge_pass")

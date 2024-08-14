@@ -347,9 +347,9 @@ class StaticFunction(Generic[_InputT, _RetT]):
                     "When using 'to_static' to convert method of a class, "
                     "please ensure the class inherits from nn.Layer"
                 )
-            self._class_instance._original_funcs[
-                function.__name__
-            ] = self._dygraph_function
+            self._class_instance._original_funcs[function.__name__] = (
+                self._dygraph_function
+            )
         else:
             self._dygraph_function = function
             self._class_instance = None
@@ -452,9 +452,9 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 and self._dygraph_function.__name__
                 not in instance._original_funcs.keys()
             ):
-                instance._original_funcs[
-                    self._dygraph_function.__name__
-                ] = self._dygraph_function
+                instance._original_funcs[self._dygraph_function.__name__] = (
+                    self._dygraph_function
+                )
             new_static_layer._class_instance = instance
             self._descriptor_cache[instance] = new_static_layer
 

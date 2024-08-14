@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -28,7 +30,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(dims, batch, dtype, attrs: List[Dict[str, Any]]):
+        def generate_input1(dims, batch, dtype, attrs: list[dict[str, Any]]):
             if dims == 0:
                 return np.ones([]).astype(dtype)
             elif dims == 1:
@@ -40,10 +42,10 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
             else:
                 return np.ones([batch, 3, 32, 32]).astype(dtype)
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.array([np.random.uniform(1, 10)]).astype("float32")
 
-        def generate_weight2(attrs: List[Dict[str, Any]]):
+        def generate_weight2(attrs: list[dict[str, Any]]):
             return np.array([np.random.uniform(10, 20)]).astype("float32")
 
         for dims in [0, 1, 2, 3, 4]:

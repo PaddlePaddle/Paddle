@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import unittest
 from functools import partial
-from typing import List
+from typing import TYPE_CHECKING
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class TrtConvertIsnanV2Test(TrtLayerAutoScanTest):
@@ -86,9 +91,13 @@ class TrtConvertIsnanV2Test(TrtLayerAutoScanTest):
 
             yield program_config
 
-    def sample_predictor_configs(
-        self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    def sample_predictor_configs(self, program_config) -> Generator[
+        tuple[
+            paddle_infer.Config, tuple[int, int], tuple[float, float] | float
+        ],
+        None,
+        None,
+    ]:
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}

@@ -22,7 +22,7 @@ from paddle.hapi.model import to_list
 
 def one_hot(x, n_class):
     res = np.eye(n_class)[np.array(x).reshape(-1)]
-    res = res.reshape(list(x.shape) + [n_class])
+    res = res.reshape([*list(x.shape), n_class])
     return res
 
 
