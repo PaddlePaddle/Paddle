@@ -61,6 +61,7 @@ def variable_length_memory_efficient_attention(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import math
             >>> import paddle
             >>> from paddle.incubate.nn.functional import variable_length_memory_efficient_attention
