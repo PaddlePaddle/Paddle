@@ -16,6 +16,11 @@ if(NOT WITH_XPU)
   list(REMOVE_ITEM transforms_srcs ${xpu_srcs})
 endif()
 
+if(NOT TENSORRT_FOUND)
+  file(GLOB_RECURSE trt_srcs "tensorrt/*.cc")
+  list(REMOVE_ITEM transforms_srcs ${trt_srcs})
+endif()
+
 set(transforms_deps
     drr
     op_dialect

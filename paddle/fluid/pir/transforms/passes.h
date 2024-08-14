@@ -93,3 +93,7 @@ USE_PIR_PASS(fc_xpu_fuse_pass);
 #ifdef PADDLE_WITH_CINN
 USE_PIR_PASS(convert_MEA_to_FA);
 #endif
+
+#ifdef PADDLE_WITH_TENSORRT
+USE_PIR_PASS(trt_op_marker_pass);
+#endif
