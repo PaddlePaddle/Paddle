@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/common/errors.h"
-#include "paddle/fluid/distributed/collective/process_group.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
