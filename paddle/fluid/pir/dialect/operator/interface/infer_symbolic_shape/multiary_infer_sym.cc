@@ -632,7 +632,8 @@ bool BroadcastTensorsOpInferSymbolicShape(
 
   // 1. Find Output rank = max(Inputs rank)
   for (const auto &input_shape : input_shapes) {
-    target_rank = std::max(target_rank, static_cast<int>(input_shape.size()));
+    target_rank =
+        std::max(target_rank, static_cast<int>(input_shape.shape().size()));
   }
 
   std::vector<symbol::DimExpr> target_dims(target_rank, symbol::DimExpr(0));
@@ -641,10 +642,10 @@ bool BroadcastTensorsOpInferSymbolicShape(
   for (int index = 0; index < target_rank; ++index) {
     symbol::DimExpr target_dim_size(1);
     for (const auto &input_shape : input_shapes) {
-      int axis = static_cast<int>(input_shape.size()) - index - 1;
+      int axis = static_cast<int>(input_shape.shape().size()) - index - 1;
       symbol::DimExpr dim_size(1);
       if (axis >= 0) {
-        dim_size = input_shape[axis];
+        dim_size = static_cast<int>(input_shape.data()[axis]);
       }
 
       if (target_dim_size != dim_size && dim_size != 1 &&
