@@ -1552,6 +1552,57 @@ bool Pad3dOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool PixelShuffleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto x_shape = x_shape_or_data.shape();
+
+  const auto attributes = op->attributes();
+  const int upscale_factor =
+      attributes.at("upscale_factor").dyn_cast<pir::Int32Attribute>().data();
+  const std::string &data_format =
+      op->attribute<pir::StrAttribute>("data_format").AsString();
+
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        input_dims.size()));
+
+  PADDLE_ENFORCE_NE(
+      upscale_factor,
+      0,
+      common::errors::InvalidArgument("upscale_factor should not be 0."));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  const auto &value = (!channel_last ? x_shape[1] : x_shape[3]);
+
+  auto divisor = symbol::DimExpr(upscale_factor * upscale_factor);
+  auto remainder = value - (value / divisor) * divisor;
+  // remainder should be 0, which means the number of channles can be divided by
+  // the upscale_factor ^ 2.
+  infer_context->AddEqualCstr(remainder, symbol::DimExpr(0));
+
+  auto output_shape = x_shape;
+  output_shape[0] = x_shape[0];
+
+  if (!channel_last) {
+    output_shape[1] = x_shape[1] / (upscale_factor * upscale_factor);
+    output_shape[2] = x_shape[2] * upscale_factor;
+    output_shape[3] = x_shape[3] * upscale_factor;
+  } else {
+    output_shape[1] = x_shape[1] * upscale_factor;
+    output_shape[2] = x_shape[2] * upscale_factor;
+    output_shape[3] = x_shape[3] / (upscale_factor * upscale_factor);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_shape));
+  return true;
+}
+
 bool Pool2dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &kernel_size_shape_or_data =
