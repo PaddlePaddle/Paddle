@@ -645,7 +645,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
       int axis = static_cast<int>(input_shape.shape().size()) - index - 1;
       symbol::DimExpr dim_size(1);
       if (axis >= 0) {
-        dim_size = static_cast<int>(input_shape.shape()[axis]);
+        dim_size = input_shape.shape()[axis];
       }
 
       if (target_dim_size != dim_size && dim_size != 1 &&
