@@ -28,7 +28,7 @@ from paddle.base.core import (
 )
 from paddle.base.libpaddle.pir import Block, Operation
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
-from paddle.decomposition.recompute import auto_recompute
+from paddle.decomposition.recompute import DebugPrint, auto_recompute
 from paddle.framework import core
 
 from . import register
@@ -975,8 +975,8 @@ def get_defining_op_indices(program, output_values):
 
 
 def auto_recompute_pir_program(pir_program, outputs=None):
-    print("Start Recompute Pir Program:")
-    print("Before Recompute: ", pir_program)
+    DebugPrint("Start Recompute Pir Program:")
+    DebugPrint("Before Recompute: ", pir_program)
     # prepare essential inputs for auto_recompute
     inputs = get_inputs_from_data_and_parameter(pir_program)
     if outputs is None:

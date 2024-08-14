@@ -1092,14 +1092,14 @@ class _ExecutorCache:
 
                     from paddle.decomposition import decomp
 
-                    pir_grad_var_to_var = decomp.decompose_pir_program(
+                    decomp.decompose_pir_program(
                         pir_program, param_mapping, new_program._grad_var_to_var
                     )
 
                     if core._enable_auto_recompute():
                         print("apply auto_recompute in executor", flush=True)
                         pir_program = decomp.auto_recompute_pir_program(
-                            pir_program, pir_grad_var_to_var
+                            pir_program, None
                         )
 
                     if in_cinn_mode():

@@ -456,8 +456,6 @@ struct LoopDetectionMapping {
     auto intersection = Intersect(after_fuse_upstreams, after_fuse_downstreams);
     intersection.erase(up);
     intersection.erase(down);
-    VLOG(0) << "Can Fuse size() = : " << intersection.size();
-    VLOG(0) << "Can Fuse: " << (intersection.size() == 0);
     return intersection.size() == 0;
   }
 

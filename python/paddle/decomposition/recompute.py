@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import math
+import os
 from typing import TYPE_CHECKING
 
 import paddle
@@ -151,6 +152,12 @@ COMPUTE_INTENSIVE_OPS: list[str] = [
 AGGRESSIVE_RECOMPUTATION = False
 # Restricts the amount of computation recompute can do.
 MAX_DIST_FROM_BW = 3
+
+
+def DebugPrint(*args):
+    flag = os.getenv("FLAGS_print_auto_recompute_debug")
+    if flag and flag.lower() in ("1", "true"):
+        print(*args)
 
 
 def auto_recompute(
@@ -375,7 +382,7 @@ def auto_recompute(
             continue
 
         if value_node in required_bw_value_nodes:
-            print(
+            DebugPrint(
                 "add edge link from: ", value_node.id, " -> ", "sink", " (inf) "
             )
             nx_graph.add_edge(value_node.id + "_in", "sink", capacity=math.inf)
@@ -383,7 +390,7 @@ def auto_recompute(
             continue
 
         if value_node in inputs:
-            print(
+            DebugPrint(
                 "add edge link from: ",
                 " source ",
                 " -> ",
@@ -402,7 +409,7 @@ def auto_recompute(
             _ban_recomputation(value_node)
             and value_node in required_fw_value_nodes
         ):
-            print(
+            DebugPrint(
                 "add edge link from: ",
                 " source ",
                 " -> ",
@@ -430,7 +437,7 @@ def auto_recompute(
 
         users = find_value_node_users(value_node)
         for user in users:
-            print(
+            DebugPrint(
                 "add edge link from: ",
                 value_node.id,
                 " -> ",
@@ -445,7 +452,7 @@ def auto_recompute(
 
     # 1.5  find saved values by minimum cut.
     cut_value, partition = nx.minimum_cut(nx_graph, "source", "sink")
-    print("Cut Value:", cut_value)
+    DebugPrint("Cut Value:", cut_value)
     reachable, non_reachable = partition
     cutset = set()
     for u, nbrs in ((n, nx_graph[n]) for n in reachable):
@@ -461,8 +468,7 @@ def auto_recompute(
     # (TODO: wanghao107): remove it and fix model
     # saved_values = cut_value_nodes | inputs
     saved_values = cut_value_nodes
-    # breakpoint()
-    print("program before recompute:", program)
+    DebugPrint("program before recompute:", program)
     # 2.patition the joint graph by saved values.
     (
         program_after_recompute,
@@ -475,7 +481,7 @@ def auto_recompute(
         fwd_op_end_idx,
         backward_op_start_idx,
     )
-    print("program after recompute:", program_after_recompute)
+    DebugPrint("program after recompute:", program_after_recompute)
     return program_after_recompute, fwd_op_end_idx_after_recompute
 
 
@@ -532,14 +538,6 @@ def partition_joint_graph(
                 return idx
         raise RuntimeError("op not found in program")
 
-    # for value in saved_values:
-    #     print(
-    #         "Saved Values:",
-    #         value,
-    #         getIdx(program, value.get_defining_op()),
-    #         value.id,
-    #     )
-
     # 2. Extract the recompute subgraph and replace forward mid hold values with recompute subgraph's outputs
     program, fwd_op_end_idx = replace_mid_values_with_forward_subgraph(
         program,
@@ -574,17 +572,6 @@ def replace_mid_values_with_forward_subgraph(
             new_chain = list(chain)
             new_chain.append(recompute_value)
             define_op = recompute_value.get_defining_op()
-            # if (define_op.name() == "pd_op.matmul"):
-            #     print("Matmul Chain is: {")
-            #     for value in new_chain:
-            #         print(
-            #             "Matmul Chain is:",
-            #             value,
-            #             value.get_defining_op(),
-            #             getIdx(program, value.get_defining_op()),
-            #             value.id,
-            #         )
-            #     print("}")
             if define_op in marked_recompute_ops:
                 return
             op_inputs = define_op.operands_source()
@@ -646,9 +633,7 @@ def replace_mid_values_with_forward_subgraph(
                 recompute_subgraph_inputs,
                 [],
             )
-        print("Recompute Ops: ", len(recompute_subgraph_ops))
-        for op in recompute_subgraph_ops:
-            print(op, getIdx(program, op))
+        DebugPrint("Recompute Ops: ", len(recompute_subgraph_ops))
         recompute_subgraph = {
             "inputs": recompute_subgraph_inputs,
             "recompute_ops": recompute_subgraph_ops,
@@ -801,7 +786,7 @@ def is_dynamic_value_node(value_node):
     try:
         return -1 in value_node.shape
     except:
-        print("=============sb===============", value_node)
+        DebugPrint("============================", value_node)
         return -1
 
 
