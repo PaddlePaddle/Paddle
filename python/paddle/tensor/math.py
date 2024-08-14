@@ -444,7 +444,12 @@ def multiplex(
              [3., 4.]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.multiplex(inputs, index)
+    elif in_pir_mode():
+        check_variable_and_dtype(
+            index, "index", ['int32', 'int64'], 'multiplex'
+        )
         return _C_ops.multiplex(inputs, index)
     else:
         helper = LayerHelper('multiplex', **locals())
