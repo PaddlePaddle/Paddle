@@ -37,6 +37,7 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.param_attr import ParamAttr
+from paddle.framework import in_pir_mode
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -528,7 +529,7 @@ def shuffle_batch(x: Tensor, seed: int | Tensor | None = None) -> Tensor:
     op_attrs = {}
     if isinstance(seed, int):
         op_attrs["startup_seed"] = seed
-        if paddle.framework.in_pir_mode():
+        if in_pir_mode():
             seed = paddle.full([0], 0, "int64")
             out, _, _ = _C_ops.shuffle_batch(x, seed, op_attrs["startup_seed"])
             return out
@@ -538,7 +539,7 @@ def shuffle_batch(x: Tensor, seed: int | Tensor | None = None) -> Tensor:
                 dtype="int64",
                 persistable=False,
             )
-    if paddle.framework.in_pir_mode():
+    if in_pir_mode():
         out, _, _ = _C_ops.shuffle_batch(x, seed, 0)
         return out
     helper.append_op(
