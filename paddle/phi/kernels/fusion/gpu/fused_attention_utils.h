@@ -30,21 +30,14 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const phi::GPUContext &dev_ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-
   dev_ctx.template Alloc<T>(&tensor, tensor.numel() * sizeof(T));
-
   gpuStream_t stream = nullptr;
   auto comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
       dev_ctx.GetCommContext());
-  PADDLE_ENFORCE_NE(comm_ctx,
-                    nullptr,
-                    common::errors::Unavailable(
-                        "NCCLCommContext is nullptr, collective op should "
-                        "has ring_id attr."));
-
-  stream = comm_ctx->GetStream();
-  comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
-
+  if (comm_ctx) {
+    stream = comm_ctx->GetStream();
+    comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
+  }
 #else
   PADDLE_THROW(common::errors::Unimplemented(
       "PaddlePaddle should compile with NCCL or RCCL when used tensor model "
