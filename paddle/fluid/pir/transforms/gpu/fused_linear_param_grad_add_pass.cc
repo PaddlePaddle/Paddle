@@ -509,6 +509,7 @@ class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
     ps.Add(paddle::drr::Create<FusedMatmulAddGradAddaPattern>(context));
     ps.Add(paddle::drr::Create<FusedMatmulAddGradAddbPattern>(context));
     ps.Add(paddle::drr::Create<FusedMatmulReshapeMatmulAddPattern>(context));
+    ps.Add(paddle::drr::Create<FusedMatmulPrimAddGradAddPattern>(context));
 
     return ps;
   }

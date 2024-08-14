@@ -55,6 +55,7 @@
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/fused_gemm_epilogue_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_linear_param_grad_add_pass.h"
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_debug);
@@ -108,6 +109,7 @@ void ApplyPdToCinnPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(pir::CreateFusedGemmEpiloguePass());
+  pass_manager->AddPass(pir::CreateFusedLinearParamGradAddPass());
   if (FLAGS_enable_fuse_parallel_matmul_pass) {
     pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   }
@@ -119,6 +121,7 @@ void ApplyPdToCinnPass(
 
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
 
+  // pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 
@@ -223,7 +226,7 @@ void ApplyCinnLowerPass(
   pass_manager->AddPass(
       cinn::dialect::ir::CreateSplitGenerateShapeIntoShapeOpsPass());
 
-  pass_manager->EnableIRPrinting();
+  // pass_manager->EnableIRPrinting();
   pass_manager->Run(program);
 }
 

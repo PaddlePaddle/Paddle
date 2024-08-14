@@ -148,6 +148,104 @@ class FusedLinearGeluPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
+// class FusedLinearGradSinglePattern : public paddle::drr::DrrPatternBase {
+//  public:
+//   std::string name() const override { return "FusedLinearGradPattern"; }
+
+//   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
+//     paddle::drr::SourcePattern pat = ctx->SourcePattern();
+//     const auto &matmul_grad = pat.Op(paddle::dialect::MatmulGradOp::name(),
+//                                      {{"transpose_x", pat.Attr("trans_x")},
+//                                       {"transpose_y", pat.Attr("trans_y")}});
+//     const auto &full_int_array = pat.Op(
+//     paddle::dialect::FullIntArrayOp::name() ); const auto &sum = pat.Op(
+//     paddle::dialect::SumOp::name() ); const auto &assign =
+//     pat.Op(paddle::dialect::AssignOp::name());
+
+//     sum( { &pat.Tensor("d_in"), &full_int_array()}, {
+//     &pat.Tensor("bias_grad")  } ); assign( { &pat.Tensor("d_in") }, {  &
+//     pat.Tensor("assign_out") });
+
+//     matmul_grad(
+//         {&pat.Tensor("x"), &pat.Tensor("weight"), &pat.Tensor("assign_out")},
+//         {&pat.Tensor("x_grad"), &pat.Tensor("weight_grad")});
+
+//     paddle::drr::ResultPattern res = pat.ResultPattern();
+
+//     const auto &fused_gemm_epilogue_grad =
+//         res.Op(paddle::dialect::FusedGemmEpilogueGradOp::name(),
+//                {{{"trans_x", pat.Attr("trans_x")},
+//                  {"trans_y", pat.Attr("trans_y")},
+//                  {"activation_grad", res.StrAttr("none")}}});
+
+//     fused_gemm_epilogue_grad({&res.Tensor("x"),
+//                               &res.Tensor("weight"),
+//                               &res.InputNoneTensor(),
+//                               &res.Tensor("d_in")},
+//                              {&res.Tensor("x_grad"),
+//                               &res.Tensor("weight_grad"),
+//                               &res.Tensor("bias_grad")});
+//   }
+// };
+
+class FusedLinearGradSinglePattern
+    : public pir::OpRewritePattern<paddle::dialect::MatmulGradOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MatmulGradOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::MatmulGradOp matmul_grad,
+                       pir::PatternRewriter &rewriter) const override {
+    auto dout = matmul_grad->operand_source(2);
+
+    if (auto assign_op =
+            dout.defining_op()->dyn_cast<paddle::dialect::AssignOp>()) {
+      dout = assign_op->operand_source(0);
+    }
+
+    // dout should have a user(SumOp)
+    bool have_sum_op = false;
+    pir::Value sum_output;
+    for (auto user_it = dout.use_begin(); user_it != dout.use_end();
+         ++user_it) {
+      if (!user_it->owner()) {
+        continue;
+      }
+      if (auto sum_op = user_it->owner()->dyn_cast<paddle::dialect::SumOp>()) {
+        have_sum_op = true;
+        sum_output = sum_op->result(0);
+        break;
+      }
+    }
+
+    if (!have_sum_op) {
+      return false;
+    }
+
+    pir::AttributeMap attr_map;
+    attr_map.emplace("trans_x", matmul_grad.attribute("transpose_x"));
+    attr_map.emplace("trans_y", matmul_grad.attribute("transpose_y"));
+    attr_map.emplace(
+        "activation_grad",
+        pir::StrAttribute::get(pir::IrContext::Instance(), "none"));
+
+    auto fuse_gemm = rewriter.Build<paddle::dialect::FusedGemmEpilogueGradOp>(
+        matmul_grad->operand_source(0),
+        matmul_grad->operand_source(1),
+        pir::Value(),
+        matmul_grad->operand_source(2),
+        attr_map);
+
+    rewriter.ReplaceAllUsesWith(matmul_grad.result(0), fuse_gemm.result(0));
+    rewriter.ReplaceAllUsesWith(matmul_grad.result(1), fuse_gemm.result(1));
+    rewriter.ReplaceAllUsesWith(sum_output, fuse_gemm.result(2));
+
+    // rewriter.EraseOp( matmul_grad );
+    // rewriter.EraseOp( sum_op );
+
+    return true;
+  }
+};
+
 class FusedLinearReluPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedLinearReluPattern"; }
@@ -324,6 +422,7 @@ class FusedGemmEpiloguePass : public pir::PatternRewritePass {
     ps.Add(paddle::drr::Create<FusedLinearGeluGradPattern>(context));
     ps.Add(paddle::drr::Create<FusedLinearReluGradPattern>(context));
 
+    ps.Add<FusedLinearGradSinglePattern>(context);
     return ps;
   }
 };
