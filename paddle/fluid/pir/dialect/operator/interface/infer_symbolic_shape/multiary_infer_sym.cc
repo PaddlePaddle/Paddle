@@ -625,11 +625,9 @@ bool BilinearOpInferSymbolicShape(
 bool BroadcastTensorsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   std::vector<std::vector<symbol::DimExpr>> input_shapes;
-  for (size_t i = 0; i < op->num_operands(); ++i) {
-    const auto &input_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(i));
-    input_shapes.push_back(input_shape_or_data.shape());
-  }
+  const auto &input_shapes =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
   int target_rank = 0;
 
