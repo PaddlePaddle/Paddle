@@ -262,6 +262,7 @@ class TestMoEOp(OpTest):
         np.testing.assert_allclose(
             ref_out, moe_out, rtol=self.rtol, atol=self.atol
         )
+        self.test_check_output()
 
     def test_check_output(self):
         self.check_output(check_pir=True)
