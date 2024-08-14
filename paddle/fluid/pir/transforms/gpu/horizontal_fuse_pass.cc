@@ -59,6 +59,11 @@ class HorizontalFusePattern : public pir::RewritePattern {
 
  private:
   bool IsValidOp(pir::Operation* curr_op, const pir::Value& x) const {
+    // x must be the first operand of fc/gemm_epilogue/matmul
+    if (!(curr_op->num_operands() > 0 && curr_op->operand_source(0) == x)) {
+      return false;
+    }
+
     if (curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
         curr_op->isa<paddle::dialect::FcOp>()) {
       return true;
@@ -76,11 +81,6 @@ class HorizontalFusePattern : public pir::RewritePattern {
         return false;
       }
       return true;
-    }
-
-    // x must be the first operand of fc/gemm_epilogue/matmul
-    if (curr_op->operand_source(0) != x) {
-      return false;
     }
 
     return false;
