@@ -85,8 +85,13 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
 
 uint64_t GetPirVersion() {
   std::string current_path = std::filesystem::current_path().string();
-  std::string paddle_root =
-      current_path.substr(0, current_path.find("Paddle") + 7);
+  std::string paddle_root = "";
+  // For coverage CI
+  if (current_path.find("Paddle") == std::string::npos) {
+    paddle_root = current_path.substr(0, current_path.find("build") + 5);
+  } else {
+    paddle_root = current_path.substr(0, current_path.find("Paddle") + 6);
+  }
   VLOG(8) << "Paddle path: " << paddle_root;
   std::filesystem::path patch_path =
       std::filesystem::path(paddle_root.c_str()) / "paddle" / "fluid" / "pir" /
@@ -109,8 +114,13 @@ uint64_t GetPirVersion() {
 }
 uint64_t GetMaxReleasePirVersion() {
   std::string current_path = std::filesystem::current_path().string();
-  std::string paddle_root =
-      current_path.substr(0, current_path.find("Paddle") + 7);
+  std::string paddle_root = "";
+  // For coverage CI
+  if (current_path.find("Paddle") == std::string::npos) {
+    paddle_root = current_path.substr(0, current_path.find("build") + 5);
+  } else {
+    paddle_root = current_path.substr(0, current_path.find("Paddle") + 6);
+  }
   VLOG(8) << "Paddle path: " << paddle_root;
   std::filesystem::path patch_path =
       std::filesystem::path(paddle_root.c_str()) / "paddle" / "fluid" / "pir" /
