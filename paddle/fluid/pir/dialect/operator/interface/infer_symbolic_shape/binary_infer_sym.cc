@@ -968,11 +968,18 @@ bool SequenceMaskOpInferSymbolicShape(
   } else if (op->operand_source(1)) {
     const auto &maxlen_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    int maxlen =
-        static_cast<int>(maxlen_shape_or_data.data().value()[0].Get<int64_t>());
-    VLOG(3) << "The value of maxlen is" << maxlen;
-    y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
-                                : infer_context->GetNextSymName());
+    // case 1:
+    if (maxlen_shape_or_data.data().has_value()) {
+      int maxlen = static_cast<int>(
+          maxlen_shape_or_data.data().value()[0].Get<int64_t>());
+      VLOG(3) << "maxlen in data:" << maxlen;
+      y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
+                                  : infer_context->GetNextSymName());
+    } else {
+      auto maxlen = maxlen_shape_or_data.shape()[0];
+      VLOG(3) << "maxlen in shape:" << maxlen;
+    }
+
   } else {
     PADDLE_THROW(::common::errors::InvalidArgument(
         "Find maxlen or max_len_tensor Failed"));
