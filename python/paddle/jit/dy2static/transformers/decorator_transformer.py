@@ -134,6 +134,6 @@ class DecoratorTransformer(BaseTransformer):
         callfun_str = f'return {decoded_func}({arg_str})'
         callfun_node = gast.parse(callfun_str).body[0]
 
-        node.body = [orig_func_node] + decofun_nodes + [callfun_node]
+        node.body = [orig_func_node, *decofun_nodes, callfun_node]
 
         return node

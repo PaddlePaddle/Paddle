@@ -1023,9 +1023,9 @@ def get_paddle_extra_install_requirements():
             output = subprocess.check_output(['nvcc', '--version']).decode(
                 'utf-8'
             )
-            version_line = [
+            version_line = next(
                 line for line in output.split('\n') if 'release' in line
-            ][0]
+            )
             version = version_line.split(' ')[-1].split(',')[0]
             cuda_major_version = version.split('.')[0]
         except Exception as e:

@@ -57,13 +57,17 @@ class TestInitializerBase(unittest.TestCase):
         unique_name.dygraph_parameter_name_checker._name_set = set()
 
     def test_wrapper(self):
-        with LazyGuard():
-            fc = Linear(
-                10, 10, weight_attr=self.weight_attr, bias_attr=self.bias_attr
-            )
-        program = fc._startup_program()
-        print(program)
-        self.check_program(program)
+        with paddle.pir_utils.OldIrGuard():
+            paddle.disable_static()
+            with LazyGuard():
+                fc = Linear(
+                    10,
+                    10,
+                    weight_attr=self.weight_attr,
+                    bias_attr=self.bias_attr,
+                )
+            program = fc._startup_program()
+            self.check_program(program)
 
     def check_program(self, program):
         self.assertEqual(program.block(0).var("weight").shape, (10, 10))
@@ -115,14 +119,19 @@ class NestModel(Layer):
 
 class TestNestModelLazy(TestInitializerBase):
     def test_wrapper(self):
-        with LazyGuard():
-            base_model = Linear(
-                10, 10, weight_attr=self.weight_attr, bias_attr=self.bias_attr
-            )
-            nest_model = NestModel(base_model)
+        with paddle.pir_utils.OldIrGuard():
+            paddle.disable_static()
+            with LazyGuard():
+                base_model = Linear(
+                    10,
+                    10,
+                    weight_attr=self.weight_attr,
+                    bias_attr=self.bias_attr,
+                )
+                nest_model = NestModel(base_model)
 
-        self.check_data(nest_model)
-        self.check_program(nest_model)
+            self.check_data(nest_model)
+            self.check_program(nest_model)
 
     def check_data(self, model):
         x = paddle.randn([2, 10])
