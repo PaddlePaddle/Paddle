@@ -875,7 +875,7 @@ bool MarginCrossEntropyOpInferSymbolicShape(
   const auto &one = symbol::DimExpr{1};
 
   if (labels_dims.size() > 1) {
-    infer_context->AddEqualCstr(labels_dims[axis - 1], one);
+    infer_context->AddEqualCstr(labels_dims[axis], one);
   }
 
   infer_context->SetShapeOrDataForValue(
@@ -1048,13 +1048,13 @@ bool IndexSelectStridedOpInferSymbolicShape(
   std::vector<symbol::DimExpr> output_dims(input_dims.begin(),
                                            input_dims.end());
   output_dims.erase(output_dims.begin() + dim);
+  // No need to add any constraints here as we are simply removing a dimension.
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(output_dims)});
 
-  // No need to add any constraints here as we are simply removing a dimension.
   return true;
 }
 
