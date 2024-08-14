@@ -1290,7 +1290,7 @@ class Completer:
         for _ in range(vpp_degree):
             seg_pp_stages.extend(seg_pp_stage)
             if schedule_mode == "ZBVPP":
-                seg_pp_stage = seg_pp_stage[::-1]
+                seg_pp_stage.reverse()
 
         seg_chunk_ids = [i // pp_degree for i in range(num_chunks)]
         part_size = len(seg_op_deps) // num_chunks

@@ -463,7 +463,7 @@ class VScheduleCreator:
     ):
         stage_order = list(range(self.num_stage))
         if forward_insert_order == "down":
-            stage_order = stage_order[::-1]
+            stage_order.reverse()
 
         stage_last_job = self._stage_job_schedule[stage_order[0]][-1]
         end_point_job_start_time = self._job_end_times[
