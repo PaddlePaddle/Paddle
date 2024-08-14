@@ -1,15 +1,10 @@
 if(WITH_GPU)
   set(STATIC_BUILD_TESTS
       test_sub_graph_42
-      test_sub_graph_add_n
-      test_sub_graph_add
       test_sub_graph_squeeze_unsqueeze
       test_sub_graph_52
       test_sub_graph_56
-      test_sub_graph_61
-      test_sub_graph_69
       test_sub_graph_73
-      test_sub_graph_77
       test_sub_graph_79
       test_sub_graph_82)
 

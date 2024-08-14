@@ -50,18 +50,20 @@ def get_program(args):
             conv_layer._use_cudnn = args.use_cudnn
             conv = conv_layer(data)
             bn = paddle.nn.BatchNorm(
-                num_channels=conv.shape[1]
-                if args.layout == "NCHW"
-                else conv.shape[3],
+                num_channels=(
+                    conv.shape[1] if args.layout == "NCHW" else conv.shape[3]
+                ),
                 param_attr=base.ParamAttr(name='bn_scale'),
                 bias_attr=base.ParamAttr(name='bn_bias'),
                 moving_mean_name='bn_moving_mean',
                 moving_variance_name='bn_moving_variance',
                 data_layout=args.layout,
                 is_test=args.only_forward,
-                dtype=convert_dtype(args.dtype)
-                if args.dtype != np.uint16
-                else "bfloat16",
+                dtype=(
+                    convert_dtype(args.dtype)
+                    if args.dtype != np.uint16
+                    else "bfloat16"
+                ),
             )(conv)
             if core.is_compiled_with_rocm():
                 bn = paddle.cast(bn, 'float32')

@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/fluid/platform/tensorrt/helper.h"
+#include "paddle/fluid/platform/tensorrt/trt_plugin.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
@@ -142,6 +143,9 @@ class TensorRTEngine {
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : params_(params), logger_(logger) {
     dy::initLibNvInferPlugins(&logger_, "");
+    static std::once_flag trt_plugin_registered;
+    std::call_once(trt_plugin_registered,
+                   []() { TrtPluginRegistry::Global()->RegistToTrt(); });
   }
 
   // Add an input and set its name, data type and dimension.

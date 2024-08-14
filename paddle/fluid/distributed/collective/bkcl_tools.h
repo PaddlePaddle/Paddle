@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/distributed/types.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace distributed {

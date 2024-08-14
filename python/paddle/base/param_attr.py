@@ -176,18 +176,15 @@ class ParamAttr:
 
     @overload
     @staticmethod
-    def _to_attr(arg: None) -> ParamAttr:
-        ...
+    def _to_attr(arg: None) -> ParamAttr: ...
 
     @overload
     @staticmethod
-    def _to_attr(arg: ParamAttrLike) -> ParamAttr:
-        ...
+    def _to_attr(arg: ParamAttrLike) -> ParamAttr: ...
 
     @overload
     @staticmethod
-    def _to_attr(arg: Sequence[ParamAttrLike]) -> list[ParamAttr]:
-        ...
+    def _to_attr(arg: Sequence[ParamAttrLike]) -> list[ParamAttr]: ...
 
     @staticmethod
     def _to_attr(arg):

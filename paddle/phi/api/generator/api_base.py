@@ -19,6 +19,7 @@ import re
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
+ORIGIN_PREFIX_TENSOR_NAME = 'origin_input_'
 
 
 def parse_plain_list(s: str, sep=",") -> list[str]:
@@ -55,6 +56,8 @@ class BaseAPI:
 
         self.is_base_api = True
         self.is_only_composite_api = False
+        # Whether to generate code for inplace API
+        self.is_inplace_context = False
         if 'invoke' in api_item_yaml:
             self.is_base_api = False
             self.invoke = api_item_yaml['invoke']
@@ -92,6 +95,12 @@ class BaseAPI:
 
     def get_api_func_name(self):
         return self.api
+
+    def is_inplace_input(self, input_name):
+        is_inplace_api = (
+            self.get_api_func_name()[-1] == "_" or self.is_inplace_context
+        )
+        return is_inplace_api and input_name in self.inplace_map.values()
 
     def get_input_tensor_args(self, inplace_flag=False):
         input_args = []
@@ -599,13 +608,25 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         for param in infer_meta_params:
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
-                    param_code = (
-                        param_code
-                        + "MakeMetaTensor(*"
-                        + PREFIX_TENSOR_NAME
-                        + param
-                        + "), "
-                    )
+                    if self.is_inplace_input(param):
+                        meta_tensor_code += f"""
+{code_indent}  auto {ORIGIN_PREFIX_TENSOR_NAME}{param} = *{PREFIX_TENSOR_NAME}{param};
+"""
+                        param_code = (
+                            param_code
+                            + "MakeMetaTensor("
+                            + ORIGIN_PREFIX_TENSOR_NAME
+                            + param
+                            + "), "
+                        )
+                    else:
+                        param_code = (
+                            param_code
+                            + "MakeMetaTensor(*"
+                            + PREFIX_TENSOR_NAME
+                            + param
+                            + "), "
+                        )
                 elif (
                     self.inputs['input_info'][param]
                     == "const std::vector<Tensor>&"
@@ -1166,7 +1187,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     kernel_args.append(PREFIX_TENSOR_NAME + param)
                 else:
                     if self.inputs['input_info'][param] == "const Tensor&":
-                        kernel_args.append("*" + PREFIX_TENSOR_NAME + param)
+                        if self.is_inplace_input(param):
+                            kernel_args.append(
+                                ORIGIN_PREFIX_TENSOR_NAME + param
+                            )
+                        else:
+                            kernel_args.append("*" + PREFIX_TENSOR_NAME + param)
                     elif (
                         self.inputs['input_info'][param]
                         == "const std::vector<Tensor>&"
@@ -1371,6 +1397,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
   }}
 """
 
+    def gene_base_api_code_for_inplace(self):
+        self.is_inplace_context = True
+        code = self.gene_base_api_code(inplace_flag=True)
+        self.is_inplace_context = False
+        return code
+
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
@@ -1416,7 +1448,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
             if len(self.inplace_map) > 0:
                 if self.api[-1] == '_':
                     api_code = ""
-                api_code = api_code + self.gene_base_api_code(inplace_flag=True)
+                api_code = api_code + self.gene_base_api_code_for_inplace()
             return api_code
         elif self.is_only_composite_api:
             # for composite and invoke api, dygraph use prim::xxx_grad method

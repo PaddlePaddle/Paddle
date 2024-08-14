@@ -22,46 +22,21 @@ COMMON_DECLARE_bool(use_stride_kernel);
 namespace phi {
 
 template <typename Context>
-void FlattenInferStridedKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               int start_axis UNUSED,
-                               int stop_axis UNUSED,
-                               DenseTensor* out,
-                               DenseTensor* xshape) {
+void FlattenStridedKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          int start_axis UNUSED,
+                          int stop_axis UNUSED,
+                          DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
   ReshapeStridedKernel<Context>(
-      dev_ctx,
-      x,
-      IntArray(common::vectorize<int64_t>(out->dims())),
-      out,
-      xshape);
-}
-
-template <typename Context>
-void FlattenStridedKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          int start_axis,
-                          int stop_axis,
-                          DenseTensor* out,
-                          DenseTensor* xshape) {
-  if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(common::errors::Fatal(
-        "FLAGS_use_stride_kernel is closed. Strided kernel "
-        "be called, something wrong has happened!"));
-  }
-  FlattenInferStridedKernel<Context>(
-      dev_ctx, x, start_axis, stop_axis, out, xshape);
+      dev_ctx, x, IntArray(common::vectorize<int64_t>(out->dims())), out);
 }
 
 }  // namespace phi
-
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten_infer,
-                                         STRIDED,
-                                         phi::FlattenInferStridedKernel) {}
 
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(flatten,
                                          STRIDED,

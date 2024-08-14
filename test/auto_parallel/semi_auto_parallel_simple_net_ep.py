@@ -101,10 +101,8 @@ class DemoLayer(nn.Layer):
     def forward(self, x):
         h = self.gate(x)
         if self.config.run_ep:
-            local_val_list = (
-                dist.auto_parallel.api.local_tensor_list_from_dtensor(
-                    h, self.config.mesh, 0, [dist.Shard(0)]
-                )
+            local_val_list = dist.auto_parallel.api.moe_sub_mesh_tensors(
+                h, self.config.mesh, 0, [dist.Shard(0)]
             )
         else:
             local_val_list = paddle.split(h, num_or_sections=2, axis=0)
@@ -113,7 +111,7 @@ class DemoLayer(nn.Layer):
             local_val = local_val_list[i]
             expert_out_list.append(expert(local_val))
         if self.config.run_ep:
-            out = dist.auto_parallel.api.dtensor_from_local_list(
+            out = dist.auto_parallel.api.moe_global_mesh_tensor(
                 expert_out_list, self.config.mesh, [dist.Shard(0)], 0
             )
         else:

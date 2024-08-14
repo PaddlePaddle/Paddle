@@ -17,10 +17,10 @@
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/stream.h"
@@ -97,6 +97,7 @@ class AllocatorFacade {
 #elif defined(PADDLE_WITH_XPU)
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, XPUStream stream);
+  void SetDefaultStream(const phi::XPUPlace& place, XPUStream stream);
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
