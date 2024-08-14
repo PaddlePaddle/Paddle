@@ -644,6 +644,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
     for (const auto &input_shape : input_shapes) {
       int axis = static_cast<int>(input_shape.shape().size()) - index - 1;
       symbol::DimExpr dim_size(1);
+      printf("===1===");
       if (axis >= 0) {
         dim_size = input_shape.shape()[axis];
       }
@@ -655,14 +656,14 @@ bool BroadcastTensorsOpInferSymbolicShape(
             "please check axis = %d in reverse order",
             index));
       }
-
       if (dim_size != 1) {
         target_dim_size = dim_size;
       }
     }
+    printf("===2===");
     target_dims[target_rank - index - 1] = target_dim_size;
   }
-
+  printf("===3===");
   // 3. Set Output Dim
   for (size_t i = 0; i < op->num_results(); ++i) {
     infer_context->SetShapeOrDataForValue(
