@@ -2245,6 +2245,7 @@
     func : generate_proposals
     data_type : anchors
   optional : rpn_rois_num
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : graph_khop_sampler
   args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, int[] sample_sizes, bool return_eids)
@@ -2276,6 +2277,7 @@
     func : grid_sample
     data_type : x
   backward : grid_sample_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : group_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
@@ -2302,6 +2304,7 @@
   optional: h0, bias
   intermediate: batch_gate, batch_reset_hidden_prev, batch_hidden
   backward: gru_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gru_unit
   args: (Tensor input, Tensor hidden_prev, Tensor weight, Tensor bias, int activation
@@ -2314,6 +2317,7 @@
   optional: bias
   intermediate: gate, reset_hidden_prev
   backward: gru_unit_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
