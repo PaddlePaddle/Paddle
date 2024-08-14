@@ -1613,6 +1613,52 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool QrOpInferSymbolicShape(pir::Operation *op,
+                            pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape.shape();
+  int x_rank = x_dims.size();
+
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      common::errors::InvalidArgument(
+          "The rank of input must be greater than or equal to 2"));
+
+  symbol::DimExpr m_dim = x_dims[x_rank - 2];
+  symbol::DimExpr n_dim = x_dims[x_rank - 1];
+  symbol::DimExpr min_mn = m_dim < n_dim ? m_dim : n_dim;
+
+  std::string mode = op->attribute<pir::StrAttribute>("mode").AsString();
+  bool compute_q = false;
+  bool reduced_mode = false;
+  std::tie(compute_q, reduced_mode) = phi::funcs::ParseQrMode(mode);
+
+  if (compute_q) {
+    symbol::DimExpr k_dim = reduced_mode ? min_mn : m_dim;
+    std::vector<symbol::DimExpr> q_dims = x_dims;
+    q_dims[x_rank - 1] = k_dim;
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(q_dims)});
+  } else {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs({})});
+  }
+
+  symbol::DimExpr k_dim = reduced_mode ? min_mn : m_dim;
+  std::vector<symbol::DimExpr> r_dims = x_dims;
+  r_dims[x_rank - 2] = k_dim;
+  r_dims[x_rank - 1] = n_dim;
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(r_dims)});
+
+  return true;
+}
+
 bool RepeatInterleaveOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);

@@ -3668,6 +3668,7 @@
   kernel :
     func : qr
   backward : qr_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : radam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor beta1_pow, Tensor beta2_pow, Tensor rho, Tensor moment1, Tensor moment2, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
