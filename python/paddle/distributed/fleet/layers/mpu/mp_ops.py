@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.autograd import PyLayer
@@ -22,6 +26,10 @@ from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import ParamAttrLike, Size2
 
 
 class c_identity_eager(PyLayer):
@@ -696,16 +704,16 @@ def _parallel_embedding(
 
 
 def split(
-    x,
-    size,
-    operation,
-    axis=0,
-    num_partitions=1,
-    gather_out=True,
-    weight_attr=None,
-    bias_attr=None,
-    name=None,
-):
+    x: Tensor,
+    size: Size2,
+    operation: Literal['linear', 'embedding'],
+    axis: int = 0,
+    num_partitions: int = 1,
+    gather_out: bool = True,
+    weight_attr: ParamAttrLike | None = None,
+    bias_attr: ParamAttrLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
 
     Split the weight of the specified operation into multiple devices
@@ -814,7 +822,7 @@ def split(
             >>> import paddle.distributed.fleet as fleet
 
             >>> paddle.enable_static()
-            >>> paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            >>> paddle.set_device(f'gpu:{paddle.distributed.ParallelEnv().dev_id}')
             >>> fleet.init(is_collective=True)
             >>> data = paddle.randint(0, 8, shape=[10,4])
             >>> emb_out = paddle.distributed.split(

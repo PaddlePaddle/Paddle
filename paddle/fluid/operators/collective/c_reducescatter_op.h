@@ -31,7 +31,7 @@ template <typename T, typename DeviceContext>
 class CReduceScatterOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx UNUSED) const override {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unimplemented cpu kernel for CReduceScatterOp."));
   }
 };

@@ -23,9 +23,9 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
@@ -38,27 +38,26 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    BKCLDataType dtype =
-        platform::ToBKCLDataType(framework::TransToProtoVarType(x->dtype()));
+    BKCLDataType dtype = phi::ToBKCLDataType(x->dtype());
 
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");
     int rid = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_concat must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -95,7 +94,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
       if (FLAGS_dynamic_static_unified_comm) {
         PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "You choose to use new communication library by "
                               "setting environment "
                               "variable FLAGS_dynamic_static_unified_comm "
@@ -107,7 +106,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(
             comm_ctx,
             nullptr,
-            phi::errors::Unavailable(
+            common::errors::Unavailable(
                 "BKCLCommContext is nullptr, collective op should "
                 "has ring_id attr."));
         stream = comm_ctx->GetStream();
@@ -118,7 +117,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             nranks,
             comm->nranks(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "nranks: %s should equal to %s", nranks, comm->nranks()));
         stream = comm->stream();
         VLOG(3) << "old BKCLCommContext has rid " << rid;
@@ -151,7 +150,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
     dev_ctx.template Alloc(out, x->dtype());
     functor(dev_ctx, inputs, axis, out);
 #else
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with XPU."));
 #endif
   }

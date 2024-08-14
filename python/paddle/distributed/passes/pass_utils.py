@@ -20,6 +20,7 @@ from functools import reduce
 import paddle
 from paddle.base import core
 from paddle.base.framework import Parameter, Program
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
@@ -140,7 +141,7 @@ def split_program(program, op_indices):
     op_indices = [idx if idx >= 0 else idx + op_num for idx in op_indices]
 
     if op_indices[0] != 0:
-        op_indices = [0] + op_indices
+        op_indices = [0, *op_indices]
     if op_indices[-1] != op_num:
         op_indices.append(op_num)
 
@@ -293,6 +294,30 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
 
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
+
+    return type_to_program
+
+
+def set_pir_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
+    assert num_micro_batches >= 1, "num_micro_batches needs to be >= 1"
+    type_to_var_names = {}
+    type_to_program = dict(zip(job_types, sub_programs))
+    for type, program in type_to_program.items():
+        type_to_var_names[type] = set()
+        ops = program.global_block().ops
+        for op in ops:
+            if op.name() == "builtin.shadow_output":
+                # if a value is renamed by shadow_output,
+                # it will be used by other sub_programs
+                type_to_var_names[type].add(op.attrs()["output_name"])
+
+    assert (
+        len(type_to_var_names["backward"]) == 0
+    ), f"The backward sub_program can't have skip_gc_vars. But it is {type_to_var_names['backward']}."
+
+    for job in jobs:
+        job_type = job.type()
+        job.set_skip_gc_vars(type_to_var_names[job_type])
 
     return type_to_program
 
@@ -681,6 +706,197 @@ def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
 
     # It MUST return in this order
     return [fwd_prog, bwd_prog, opt_prog]
+
+
+def forward_complete_op_role(main_program):
+    all_ops = main_program.global_block().ops
+    ops_len = len(all_ops)
+    if len(all_ops) == 0:
+        return
+
+    iop = 0
+    first_left_op_role = None
+    first_right_op_role = None
+    while iop < ops_len:
+        if all_ops[iop].op_role is not None:
+            first_left_op_role = all_ops[iop].op_role
+            iop += 1
+            continue
+        else:
+            right_idx = iop + 1
+            while right_idx < ops_len and all_ops[right_idx].op_role is None:
+                right_idx += 1
+            if right_idx >= ops_len:  # [first_left_op_role, xx, xx, xx, xx]
+                assert (
+                    first_left_op_role is not None
+                ), "first_left_op_role can't be None."
+                for idx in range(iop, right_idx):
+                    all_ops[idx].op_role = first_left_op_role
+                break
+            else:  # [first_left_op_role, xx, xx, xx, xx, first_right_op_role]
+                first_right_op_role = all_ops[right_idx].op_role
+                assert (
+                    first_left_op_role is None
+                    or first_left_op_role == first_right_op_role
+                ), f"The left and right operators of (idx[{iop}]) have different op_role."
+                for idx in range(iop, right_idx):
+                    all_ops[idx].op_role = first_right_op_role
+                    iop = right_idx + 1
+    if first_left_op_role is None and first_right_op_role is None:
+        raise ValueError("all the ops don't have the op_role.")
+
+
+# complete the op_role of the new added ops
+@signature_safe_contextmanager
+def auto_complete_op_role(program, op_role, insert_point):
+    initial_num_ops = program.num_ops()
+    origin_insert_point = insert_point
+
+    try:
+        yield
+    finally:
+        current_num_ops = program.num_ops()
+
+        if op_role is not None and current_num_ops > initial_num_ops:
+            for _ in range(current_num_ops - initial_num_ops):
+                new_added_op = insert_point.prev()
+                if new_added_op.op_role is not None:
+                    break
+
+                new_added_op.op_role = op_role
+                paddle.pir.set_insertion_point(new_added_op)
+                insert_point = paddle.pir.get_current_insertion_point()
+
+            paddle.pir.set_insertion_point(origin_insert_point)
+
+
+def _split_program_into_forward_backward_optimize(
+    main_program, enable_send_recv_overlap=False
+):
+    forward_complete_op_role(main_program)
+    complete_ops = main_program.global_block().ops
+
+    fwd_program = main_program.clone()
+    bwd_program = main_program.clone()
+    opt_program = main_program.clone()
+    fwd_ops = fwd_program.global_block().ops
+    bwd_ops = bwd_program.global_block().ops
+    opt_ops = opt_program.global_block().ops
+    opt_block = opt_program.global_block()
+    bwd_block = bwd_program.global_block()
+
+    region = "opt"
+    for op_idx in range(len(complete_ops) - 1, -1, -1):
+        if complete_ops[op_idx].op_role is not None:
+            if complete_ops[op_idx].op_role == 1:
+                region = "bwd"
+            elif complete_ops[op_idx].op_role == 0:
+                region = "fwd"
+            elif complete_ops[op_idx].op_role == 2:
+                region = "opt"
+
+        if region == "opt":
+            fwd_ops[op_idx].erase()
+            bwd_ops[op_idx].erase()
+        elif region == "bwd":
+            fwd_ops[op_idx].erase()
+            # in optimize program, both forward and backward ops should be removed
+            for idx in range(opt_ops[op_idx].num_results()):
+                # if this op's output is used, create the persistable
+                # var to be used in other programs.
+                result_in_opt = opt_ops[op_idx].result(idx)
+                if result_in_opt.use_empty() is False:
+                    name = (
+                        "var_"
+                        + str(op_idx)
+                        + "_"
+                        + complete_ops[op_idx].name()
+                        + "_"
+                        + str(idx)
+                    )
+                    paddle.pir.set_insertion_point_after(bwd_ops[op_idx])
+                    paddle._C_ops.set_persistable_value(
+                        bwd_ops[op_idx].result(idx), name
+                    )
+                    # bwd_ops[op_idx].result(idx).persistable = True
+                    new_result_var_in_opt = opt_block.add_kwarg(
+                        name, result_in_opt.type()
+                    )
+                    new_result_var_in_opt.persistable = (
+                        result_in_opt.persistable
+                    )
+                    opt_ops[op_idx].result(idx).replace_all_uses_with(
+                        new_result_var_in_opt
+                    )
+            opt_ops[op_idx].erase()
+        else:
+            # in backward program, only the forward ops should be removed
+            for idx in range(opt_ops[op_idx].num_results()):
+                # if this op's output is used, create the persistable
+                # var to be used in other programs.
+                result_in_opt = opt_ops[op_idx].result(idx)
+                result_in_bwd = bwd_ops[op_idx].result(idx)
+
+                if (
+                    result_in_opt.use_empty() is False
+                    or result_in_bwd.use_empty() is False
+                ):
+                    if (
+                        fwd_ops[op_idx].name() == "pd_op.data"
+                        or fwd_ops[op_idx].name() == "builtin.parameter"
+                    ):
+                        name = fwd_ops[op_idx].result(idx).name
+                        # fwd_ops[op_idx].result(idx).persistable = True
+                    else:
+                        result_value = complete_ops[op_idx].result(idx)
+                        used_ops = result_value.all_used_ops()
+                        shadow_output_op_used = None
+                        for used_op in used_ops:
+                            if used_op.name() == "builtin.shadow_output":
+                                shadow_output_op_used = used_op
+                        if shadow_output_op_used is not None:
+                            name = shadow_output_op_used.attrs()["output_name"]
+                            # fwd_ops[op_idx].result(idx).persistable = True
+                        else:
+                            name = (
+                                "var_"
+                                + str(op_idx)
+                                + "_"
+                                + complete_ops[op_idx].name()
+                                + "_"
+                                + str(idx)
+                            )
+                            paddle.pir.set_insertion_point_after(
+                                fwd_ops[op_idx]
+                            )
+                            paddle._C_ops.set_persistable_value(
+                                fwd_ops[op_idx].result(idx), name
+                            )
+                            # fwd_ops[op_idx].result(idx).persistable = True
+                if result_in_opt.use_empty() is False:
+                    new_result_var_in_opt = opt_block.add_kwarg(
+                        name, result_in_opt.type()
+                    )
+                    new_result_var_in_opt.persistable = (
+                        result_in_opt.persistable
+                    )
+                    opt_ops[op_idx].result(idx).replace_all_uses_with(
+                        new_result_var_in_opt
+                    )
+                if result_in_bwd.use_empty() is False:
+                    new_result_var_in_bwd = bwd_block.add_kwarg(
+                        name, result_in_bwd.type()
+                    )
+                    new_result_var_in_bwd.persistable = (
+                        result_in_bwd.persistable
+                    )
+                    bwd_ops[op_idx].result(idx).replace_all_uses_with(
+                        new_result_var_in_bwd
+                    )
+            opt_ops[op_idx].erase()
+            bwd_ops[op_idx].erase()
+
+    return fwd_program, bwd_program, opt_program
 
 
 def _program_for_vpp(
@@ -1295,10 +1511,11 @@ def split_matmul_grad_to_matmul(
         assert (
             x_dims[0:2] == out_grad_dims[0:2]
         ), f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
-    new_x_dims = [x_dims[0] * x_dims[1]] + list(x_dims[2:])
-    new_out_grad_dims = [out_grad_dims[0] * out_grad_dims[1]] + list(
-        out_grad_dims[2:]
-    )
+    new_x_dims = [x_dims[0] * x_dims[1], *list(x_dims[2:])]
+    new_out_grad_dims = [
+        out_grad_dims[0] * out_grad_dims[1],
+        *out_grad_dims[2:],
+    ]
 
     # NOTE(Ruibiao): Why insert reshape op here?
     # When the rank of input matrix is 3, MatmulGradKernel use reshape to fold the first two dimensions of x and out_grad (see FoldInitDims in matmul_grad_kernel_impl.h), and then calls blas.Matmul to calculate y_grad.

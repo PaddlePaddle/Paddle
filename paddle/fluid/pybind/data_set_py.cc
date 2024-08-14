@@ -59,18 +59,19 @@ class IterableDatasetWrapper {
         tensors_() {
 #if defined _WIN32
     PADDLE_THROW(
-        phi::errors::Unimplemented("Dataset is not supported on Windows"));
+        common::errors::Unimplemented("Dataset is not supported on Windows"));
 #elif defined __APPLE__
-    PADDLE_THROW(phi::errors::Unimplemented("Dataset is not supported on MAC"));
+    PADDLE_THROW(
+        common::errors::Unimplemented("Dataset is not supported on MAC"));
 #else
     size_t device_num = places_.size();
     PADDLE_ENFORCE_GT(device_num,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The number of devices must be larger than 0"));
     PADDLE_ENFORCE_GT(slots_.size(),
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The number of slots must be larger than 0"));
     scopes_.reserve(device_num);
     tensors_.reserve(device_num);
@@ -93,18 +94,18 @@ class IterableDatasetWrapper {
     PADDLE_ENFORCE_EQ(
         is_started_,
         false,
-        phi::errors::AlreadyExists("Reader has been started already"));
+        common::errors::AlreadyExists("Reader has been started already"));
     data_feeds_ = dataset_->GetReaders();
     PADDLE_ENFORCE_EQ(data_feeds_.size(),
                       places_.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Device number does not match reader number"));
     for (size_t i = 0; i < places_.size(); ++i) {
       data_feeds_[i]->AssignFeedVar(*scopes_[i]);
       data_feeds_[i]->SetPlace(phi::CPUPlace());
       PADDLE_ENFORCE_EQ(data_feeds_[i]->Start(),
                         true,
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "Failed to start the reader on device %d.", i));
     }
     is_started_ = true;
@@ -117,7 +118,7 @@ class IterableDatasetWrapper {
     PADDLE_ENFORCE_EQ(
         is_started_,
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "Reader must be started when getting next batch data."));
     size_t device_num = places_.size();
 
@@ -180,7 +181,7 @@ class IterableDatasetWrapper {
     PADDLE_ENFORCE_LE(
         lod.size(),
         1,
-        phi::errors::InvalidArgument("LoD level must be not larger than 1"));
+        common::errors::InvalidArgument("LoD level must be not larger than 1"));
     if (!drop_last_) return true;
 
     if (lod.empty()) {

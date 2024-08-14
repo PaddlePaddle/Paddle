@@ -22,12 +22,12 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
-#include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/store/store.h"
+#include "paddle/phi/core/platform/device_event.h"
 
 namespace paddle {
 namespace distributed {
@@ -65,7 +65,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
    private:
     bool block_cpu_in_wait_{false};
-    platform::DeviceEvent comm_event_;  // event on comm stream
+    std::shared_ptr<platform::DeviceEvent> comm_event_;  // event on comm stream
     Place task_place_;
     int gid_;
   };

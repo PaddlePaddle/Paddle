@@ -23,10 +23,10 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/type_defs.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
@@ -110,7 +110,7 @@ PhiKernelInstruction::PhiKernelInstruction(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
   PADDLE_ENFORCE_NOT_NULL(
       yaml_interface,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "can not find OpYamlInfoInterface from [%s]", phi_op_name_));
   paddle::dialect::OpYamlInfoParser yaml_info_parser(
       yaml_interface->get_op_info_(op_name),
@@ -181,9 +181,9 @@ PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 void PhiKernelInstruction::Run() {
   VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
-    platform::RecordEvent record_event("PhiKernelInstruction::infermeta",
-                                       platform::TracerEventType::UserDefined,
-                                       1);
+    phi::RecordEvent record_event("PhiKernelInstruction::infermeta",
+                                  platform::TracerEventType::UserDefined,
+                                  1);
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
   VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
@@ -192,9 +192,9 @@ void PhiKernelInstruction::Run() {
   }
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   {
-    platform::RecordEvent record_event("PhiKernelInstruction::kernel launch",
-                                       platform::TracerEventType::UserDefined,
-                                       1);
+    phi::RecordEvent record_event("PhiKernelInstruction::kernel launch",
+                                  platform::TracerEventType::UserDefined,
+                                  1);
     (*(phi_kernel_))(&(kernel_context_));
   }
 

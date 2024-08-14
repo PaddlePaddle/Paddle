@@ -207,7 +207,7 @@ TEST(FusedMultiTransformerDecoderPass, basic) {
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
                     num_nodes_after + 60,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "After the fused_multi_transformer_decoder_pass, The "
                         "node num in graph "
                         "should be %d, but the result is %d",
@@ -215,7 +215,7 @@ TEST(FusedMultiTransformerDecoderPass, basic) {
                         num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "After the fused_multi_transformer_decoder pass, "
                         "there should be one fused_multi_transformer op, "
                         "but the result is %d",
@@ -362,14 +362,14 @@ TEST(FusedMultiTransformerDecoderFuseQKVPass, basic) {
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
       num_nodes_after + 52,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After the fused_multi_transformer_decoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
           num_nodes_before - 52,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "After the fused_multi_transformer_decoder_fuse_qkv "
                         "pass, there should be one fused_multi_transformer "
                         "op, but the result is %d",
@@ -526,14 +526,14 @@ TEST(MultiDevicesFusedMultiTransformerDecoderFuseQKVPass, basic) {
   PADDLE_ENFORCE_EQ(
       num_nodes_before,
       num_nodes_after + 60,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "After the fused_multi_transformer_decoder_fuse_qkv_pass, "
           "The node num in graph should be %d, but the result is %d",
           num_nodes_before - 60,
           num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fused_nodes_after,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "After the fused_multi_transformer_decoder_fuse_qkv "
                         "multi-devices pass, there should be one "
                         "fused_multi_transformer op, but the result is %d",

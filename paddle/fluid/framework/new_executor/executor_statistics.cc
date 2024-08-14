@@ -25,8 +25,8 @@
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/os_info.h"
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 PHI_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,
@@ -128,7 +128,7 @@ int StatisticsEngine::Init(const platform::NodeTrees& trees) {
     LOG(WARNING) << "Duplicate initialization for StatisticsEngine";
     return -1;
   }
-  if (platform::GetCurrentThreadName() != "MainThread") {
+  if (phi::GetCurrentThreadName() != "MainThread") {
     LOG(WARNING) << "StatisticsEngin must run on the main thread";
     return -1;
   }
@@ -137,7 +137,7 @@ int StatisticsEngine::Init(const platform::NodeTrees& trees) {
   InitInnerthreadPriorityForStdEvents();
   InitInterthreadPriorityForStdEvents();
   // determine executor type
-  uint64_t main_tid = platform::GetCurrentThreadId().sys_tid;
+  uint64_t main_tid = phi::GetCurrentThreadId().sys_tid;
   for (const auto& kv : trees.GetNodeTrees()) {
     if (kv.first != main_tid) {
       continue;

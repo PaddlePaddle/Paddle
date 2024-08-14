@@ -100,7 +100,7 @@ namespace paddle::framework::ir {
 
 void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_skip_layernorm_fuse", graph);
   bool enable_int8 = Get<bool>("enable_int8");
   bool use_varseqlen = Get<bool>("use_varseqlen");

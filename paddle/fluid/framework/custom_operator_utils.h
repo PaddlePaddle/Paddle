@@ -40,7 +40,7 @@ static T* DynLoad(void* handle, std::string name) {
 #endif  // !_WIN32
   PADDLE_ENFORCE_NOT_NULL(
       func,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Failed to load dynamic operator library, error message(%s).",
           errorno));
   return func;
@@ -203,7 +203,7 @@ static void CheckDefaultInferShapeDtype(
     PADDLE_ENFORCE_EQ(
         OpMetaInfoHelper::GetInputs(custom_op_meta).size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple inputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the "
@@ -216,7 +216,7 @@ static void CheckDefaultInferShapeDtype(
     PADDLE_ENFORCE_EQ(
         OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple outputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the "
@@ -230,7 +230,7 @@ static void CheckDefaultInferShapeDtype(
     PADDLE_ENFORCE_EQ(
         inplace_map.size(),
         OpMetaInfoHelper::GetOutputs(custom_op_meta).size(),
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator uses `SetInplaceMap` without setting the "
             "InferShapeFn/InferDtypeFn. However, `Outputs` size = %d does not "
             "match the "
@@ -291,7 +291,7 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
           PADDLE_ENFORCE_EQ(
               bwd_inputs_name.size() == 1UL && bwd_outputs_name.size() == 1UL,
               true,
-              phi::errors::Unavailable(
+              common::errors::Unavailable(
                   "Custom grad operator infershape error. "
                   "If a custom grad operator contains only one input and "
                   "only one output, the input shape will be directly set "
@@ -315,7 +315,7 @@ static std::vector<std::vector<int64_t>> RunDefaultInferShape(
     } else if (vec_input_shapes.size() == 1) {
       output_shapes = vec_input_shapes[0];
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "We only allow a custom operator that contains only one input "
           "and only one output without setting the InferShapeFn. "));
     }
@@ -396,7 +396,7 @@ static std::vector<DataType> RunDefaultInferDtype(
     } else if (vec_input_dtypes.size() == 1) {
       output_dtypes = vec_input_dtypes[0];
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
+      PADDLE_THROW(common::errors::Unavailable(
           "We only allow a custom operator that contains only one input "
           "and only one output without setting the InferDtypeFn. "));
     }
@@ -447,7 +447,7 @@ static std::vector<std::vector<int64_t>> RunInferShape(
       if (paddle::framework::detail::IsDuplicableVar(out_name)) {
         PADDLE_ENFORCE(
             inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator only supports `paddle::Vec(...)` inputs and "
                 "cannot support `paddle::Vec(...)` output without setting "
                 "InplaceMap. If you have to use `paddle::Vec(...)` output, "
@@ -516,7 +516,7 @@ static std::vector<DataType> RunInferDtype(
       if (paddle::framework::detail::IsDuplicableVar(out_name)) {
         PADDLE_ENFORCE(
             inplace_reverse_map.find(out_name) != inplace_reverse_map.end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Custom operator only supports `paddle::Vec(...)` inputs and "
                 "cannot support `paddle::Vec(...)` output without setting "
                 "InplaceMap. If you have to use `paddle::Vec(...)` output, "

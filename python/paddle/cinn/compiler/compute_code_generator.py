@@ -119,8 +119,7 @@ class ComputeCodeGenerator(ast.NodeVisitor):
                     ):
                         self.inputs_signature.append("i32")
                     elif (
-                        2**63 <= arg_annotation
-                        and arg_annotation <= 2**64 - 1
+                        2**63 <= arg_annotation and arg_annotation <= 2**64 - 1
                     ):
                         self.inputs_signature.append("u64")
                     else:

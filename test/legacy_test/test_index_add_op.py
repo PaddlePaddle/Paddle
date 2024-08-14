@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -29,12 +30,13 @@ def compute_index_add_ref(
         axis = axis + len(x_shape)
     if axis != 0:
         outer_loop = np.prod(x_shape[:axis]).astype(int)
-        x_reshape = [outer_loop] + list(x_shape[axis:])
+        x_reshape = [outer_loop, *x_shape[axis:]]
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
 
         add_value_reshape = [
-            np.prod(add_value_shape[:axis]).astype(int)
-        ] + list(add_value_shape[axis:])
+            np.prod(add_value_shape[:axis]).astype(int),
+            *add_value_shape[axis:],
+        ]
 
         add_value_np_reshape = np.reshape(
             add_value_np, tuple(add_value_reshape)
@@ -185,7 +187,13 @@ class TestIndexAddAPI(unittest.TestCase):
         self.index_type = np.int32
 
     def setPlace(self):
-        self.place = ['cpu']
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
 

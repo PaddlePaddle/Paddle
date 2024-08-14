@@ -56,7 +56,7 @@ ShareTensorBufferFunctor::ShareTensorBufferFunctor(
       share_dims_and_dtype_(share_dims_and_dtype) {
   PADDLE_ENFORCE_EQ(in_var_infos_.size(),
                     out_var_names_.size(),
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The number of input variables and output variables "
                         "should be equal, but got number of input variables is "
                         "%d and number of output variables is %d.",
@@ -80,11 +80,11 @@ void ShareTensorBufferFunctor::AddReuseVarPair(
     const ir::MemOptVarInfo *in_var_info, const std::string &out_var_name) {
   PADDLE_ENFORCE_NOT_NULL(
       in_var_info,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input variables to be inplaced should not be NULL."));
   PADDLE_ENFORCE_NE(in_var_info->Name(),
                     out_var_name,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input variable and output variable to be inplaced "
                         "cannot have the same name: %s.",
                         out_var_name));
@@ -95,25 +95,25 @@ void ShareTensorBufferFunctor::AddReuseVarPair(
 void ShareTensorBufferFunctor::CallOnce() {
   PADDLE_ENFORCE(
       in_out_vars_.empty(),
-      phi::errors::InvalidArgument("The input-output variable pairs to be "
-                                   "inplaced should be initialized here."));
+      common::errors::InvalidArgument("The input-output variable pairs to be "
+                                      "inplaced should be initialized here."));
   for (size_t i = 0; i < in_var_infos_.size(); ++i) {
     auto *in_var = exec_scope_->FindVar(in_var_infos_[i]->Name());
     auto *out_var = exec_scope_->FindVar(out_var_names_[i]);
     PADDLE_ENFORCE_NOT_NULL(
         in_var,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "The variable(%s) to be inplaced is not found in scope.",
             in_var_infos_[i]->Name()));
     PADDLE_ENFORCE_NOT_NULL(
         out_var,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "The variable(%s) to be inplaced is not found in scope.",
             out_var_names_[i]));
     PADDLE_ENFORCE_NE(
         in_var,
         out_var,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The input variable and output variable to be inplaced "
             "cannot be the same variable(%s).",
             out_var_names_[i]));
@@ -124,7 +124,7 @@ void ShareTensorBufferFunctor::CallOnce() {
 void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
   if (!exec_scope_ || is_variant_scope_) {
     PADDLE_ENFORCE_NOT_NULL(exec_scope,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "The given execution scope should not be NULL "
                                 "if the cached scope is NULL."));
     exec_scope_ = exec_scope;
@@ -133,7 +133,7 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
   } else {
     PADDLE_ENFORCE_EQ(exec_scope_,
                       exec_scope,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The given execution scope and the cached execution "
                           "scope should be the same."));
   }

@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 
 #include <sstream>
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace utils {
@@ -46,7 +47,10 @@ DotNode::DotNode(const std::string& name,
 
 std::string DotNode::repr() const {
   std::stringstream ss;
-  CHECK(!name.empty());
+  PADDLE_ENFORCE_NE(name.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The name of DotNode is empty! Please check."));
   ss << id_;
   if (attrs.empty()) {
     ss << "[label=" << '"' << name << '"' << "]";
@@ -72,8 +76,14 @@ DotCluster::DotCluster(const std::string& name,
 
 std::string DotEdge::repr() const {
   std::stringstream ss;
-  CHECK(!source.empty());
-  CHECK(!target.empty());
+  PADDLE_ENFORCE_NE(source.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The source of DotEdge is empty! Please check."));
+  PADDLE_ENFORCE_NE(target.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The target of DotEdge is empty! Please check."));
   ss << source << "->" << target;
   for (size_t i = 0; i < attrs.size(); i++) {
     if (i == 0) {
@@ -91,7 +101,10 @@ void DotLang::AddNode(const std::string& id,
                       std::string cluster_id,
                       bool allow_duplicate) {
   if (!allow_duplicate) {
-    CHECK(!nodes_.count(id)) << "duplicate Node '" << id << "'";
+    PADDLE_ENFORCE_EQ(!nodes_.count(id),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Duplicate Node %s, please check.", id));
   }
   if (!nodes_.count(id)) {
     if (label.empty()) {
@@ -99,8 +112,10 @@ void DotLang::AddNode(const std::string& id,
     }
     nodes_.emplace(id, DotNode{label, attrs, cluster_id});
     if (!cluster_id.empty()) {
-      CHECK(clusters_.count(cluster_id)) << "Cluster '" << cluster_id << "'"
-                                         << " is not existed";
+      PADDLE_ENFORCE_GE(clusters_.count(cluster_id),
+                        1,
+                        ::common::errors::InvalidArgument(
+                            "Cluster %s is not existed.", cluster_id));
       clusters_[cluster_id].Insert(&nodes_[id]);
     }
   }
@@ -108,19 +123,32 @@ void DotLang::AddNode(const std::string& id,
 
 void DotLang::AddCluster(const std::string& id,
                          const std::vector<DotAttr>& attrs) {
-  CHECK(!clusters_.count(id)) << "duplicate Cluster '" << id << "'";
+  PADDLE_ENFORCE_EQ(!clusters_.count(id),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Duplicate Cluster %s, please check.", id));
   clusters_.emplace(id, DotCluster{id, attrs});
 }
 
 void DotLang::AddEdge(const std::string& source,
                       const std::string& target,
                       const std::vector<DotAttr>& attrs) {
-  CHECK(!source.empty());
-  CHECK(!target.empty());
-  CHECK(nodes_.find(source) != nodes_.end())
-      << "Call AddNode to add " << source << " to dot first";
-  CHECK(nodes_.find(target) != nodes_.end())
-      << "Call AddNode to add " << target << " to dot first";
+  PADDLE_ENFORCE_NE(source.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The source of AddEdge is empty! Please check."));
+  PADDLE_ENFORCE_NE(target.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The target of AddEdge is empty! Please check."));
+  PADDLE_ENFORCE_EQ(nodes_.find(source) != nodes_.end(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Call AddNote to add %s to dot first.", source));
+  PADDLE_ENFORCE_EQ(nodes_.find(target) != nodes_.end(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Call AddNote to add %s to dot first.", target));
   auto sid = nodes_.at(source).id();
   auto tid = nodes_.at(target).id();
   edges_.emplace_back(sid, tid, attrs);

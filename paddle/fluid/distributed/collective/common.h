@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 namespace paddle {

@@ -29,7 +29,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -106,7 +106,7 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
   PADDLE_ENFORCE_EQ(
       ret.size() % 2,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of attribute %s must be an even number, but got %d",
           OpProtoAndCheckerMaker::OpRoleVarAttrName(),
           ret.size()));

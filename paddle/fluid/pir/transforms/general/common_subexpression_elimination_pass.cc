@@ -548,16 +548,28 @@ void ReplaceOpWith(pir::Operation* op, pir::Operation* new_op) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     auto value = op->result(i);
     auto new_value = new_op->result(i);
-    for (auto it = value.use_begin(); it != value.use_end(); ++it) {
-      // NOTE(SigureMo): If the value has a shadow output, we could not replace
-      // it directly. It will cause a value has two shadow outputs. It is
-      // invalid for executor, so we make a copy by inserting a assign op.
-      if (it->owner()->isa<pir::ShadowOutputOp>()) {
-        new_value = CreateAssignOp(new_value, new_op, op->GetParent());
-        break;
+    // NOTE(SigureMo): If the value has a shadow output, we could not replace
+    // it directly. It will cause a value has two shadow outputs. It is
+    // invalid for executor, so we make a copy by inserting a assign op.
+    const bool used_by_shadow_output = [](const pir::Value& value) {
+      bool used_by_shadow_output = false;
+      for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+        if (it->owner()->isa<pir::ShadowOutputOp>()) {
+          used_by_shadow_output = true;
+          break;
+        }
       }
+      return used_by_shadow_output;
+    }(value);
+    value.ReplaceUsesWithIf(new_value, [](pir::OpOperand operand) {
+      return !operand.owner()->isa<pir::ShadowOutputOp>();
+    });
+    if (used_by_shadow_output) {
+      auto copied_value = CreateAssignOp(new_value, new_op, op->GetParent());
+      value.ReplaceUsesWithIf(copied_value, [](pir::OpOperand operand) {
+        return operand.owner()->isa<pir::ShadowOutputOp>();
+      });
     }
-    value.ReplaceAllUsesWith(new_value);
   }
   op->Erase();
 }

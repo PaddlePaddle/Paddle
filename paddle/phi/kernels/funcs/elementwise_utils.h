@@ -55,7 +55,7 @@ inline void GetMidDims(const DDim &x_dims,
     if (x_dims[i + axis] != y_dims[i]) {
       PADDLE_ENFORCE_EQ(y_dims[i] == 1 || x_dims[i + axis] == 1,
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Broadcast dimension mismatch. Operands "
                             "could not be broadcast together with the shape of "
                             "X = [%s] and the shape of Y = [%s]. Received [%d] "

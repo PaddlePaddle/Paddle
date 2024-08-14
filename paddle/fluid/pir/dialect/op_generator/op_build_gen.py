@@ -65,11 +65,13 @@ _INFERMETA_NEED_META_CONFIG = {
     'StackInferMeta',
     'FusedConvInferMeta',
     # nullary.h
+    'CreateInferMeta',
     'EyeInferMeta',
     # ternary.h
     'AccuracyInferMeta',
     'BoxCoderInferMeta',
     'InstanceNormInferMeta',
+    'GroupNormInferMeta',
     'LayerNormInferMeta',
     'MatchMatrixTensorInferMeta',
     'MultiClassNMSInferMeta',
@@ -498,7 +500,7 @@ def GenBuildOutputs(
     {name} = phi::IntArray(std::vector<int64_t>({name}_size, -1));
     {name}.SetFromTensor(true);
   }} else {{
-    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
+    PADDLE_THROW(common::errors::Unimplemented("Only support VectorType or DenseTensorType"));
   }}\n"""
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  std::vector<int64_t> {name};
@@ -518,7 +520,7 @@ def GenBuildOutputs(
     }}
     {name} = std::vector<int64_t>({name}_size, -1);
   }} else {{
-    PADDLE_THROW(phi::errors::Unimplemented("Only support VectorType or DenseTensorType"));
+    PADDLE_THROW(common::errors::Unimplemented("Only support VectorType or DenseTensorType"));
   }}\n"""
 
     CREATE_SCALAR_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  phi::Scalar {name};
@@ -829,7 +831,7 @@ def gen_build_func_str(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<{attr_ir_type}>().data();
 """
@@ -837,7 +839,7 @@ def gen_build_func_str(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<pir::StrAttribute>().AsString();
 """
@@ -845,7 +847,7 @@ def gen_build_func_str(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name};
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
@@ -856,7 +858,7 @@ def gen_build_func_str(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
 """
@@ -864,7 +866,7 @@ def gen_build_func_str(
   PADDLE_ENFORCE_NE(
       attributes.find("{attribute_name}"),
       attributes.end(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'{attribute_name}' Attribute is expected for {op_name}. "));
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{attr_type}>();
 """

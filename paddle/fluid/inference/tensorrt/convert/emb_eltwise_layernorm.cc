@@ -27,7 +27,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     VLOG(4) << "convert EmbEltwiseLayerNorm op to tensorrt layer";
     // get the presistable var's data
     auto GetWeight = [&](const std::string& var_name,
-                         framework::DDim* dim) -> TensorRTEngine::Weight {
+                         phi::DDim* dim) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       *dim = temp_tensor->dims();
@@ -48,8 +48,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     std::vector<nvinfer1::Weights> input_embs;
     std::vector<int> emb_sizes;
     TensorRTEngine::Weight weight;
-    framework::DDim emb_dims;
-    framework::DDim bias_dims, scale_dims;
+    phi::DDim emb_dims;
+    phi::DDim bias_dims, scale_dims;
     TensorRTEngine::Weight bias_weight, scale_weight;
 
     int64_t bias_size = common::product(bias_dims);
@@ -91,7 +91,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       PADDLE_ENFORCE_EQ(
           output_fp16,
           1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Only Precision::KHalf(fp16) is supported when infering "
               "ernie(bert) model with config.EnableVarseqlen(). "
               "But Precision::KFloat32 is setted."));
@@ -152,7 +152,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                    "with_interleaved";
         if (!enable_int8) {
           PADDLE_THROW(
-              phi::errors::Fatal("use with_interleaved must be int8."));
+              common::errors::Fatal("use with_interleaved must be int8."));
         }
         auto* shuffler_embed = TRT_ENGINE_ADD_LAYER(
             engine_, Shuffle, *(plugin_layer->getOutput(0)));

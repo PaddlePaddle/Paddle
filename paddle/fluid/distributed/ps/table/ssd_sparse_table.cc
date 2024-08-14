@@ -720,7 +720,7 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
         std::stringstream ss;
         ss << "SSDSparseTable save failed, retry it! path:"
            << channel_config.path;
-        PADDLE_THROW(phi::errors::Fatal(ss.str()));
+        PADDLE_THROW(common::errors::Fatal(ss.str()));
       }
     }
     write_channel->close();
@@ -1663,7 +1663,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           std::stringstream ss;
           ss << "DownpourSparseSSDTable save failed, retry it! path:"
              << channel_config.path;
-          PADDLE_THROW(phi::errors::Fatal(ss.str()));
+          PADDLE_THROW(common::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -1706,7 +1706,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
             std::stringstream ss;
             ss << "SSDSparseTable save failed, retry it! path:"
                << channel_config.path;
-            PADDLE_THROW(phi::errors::Fatal(ss.str()));
+            PADDLE_THROW(common::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -1991,7 +1991,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           std::stringstream ss;
           ss << "DownpourSparseSSDTable save failed, retry it! path:"
              << channel_config.path;
-          PADDLE_THROW(phi::errors::Fatal(ss.str()));
+          PADDLE_THROW(common::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -2023,7 +2023,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           std::stringstream ss;
           ss << "DownpourSparseSSDTable save feature failed, retry it! path:"
              << channel_config_for_slot_feature.path;
-          PADDLE_THROW(phi::errors::Fatal(ss.str()));
+          PADDLE_THROW(common::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region_for_slot_feature->reset();
@@ -2067,7 +2067,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
             std::stringstream ss;
             ss << "SSDSparseTable save failed, retry it! path:"
                << channel_config.path;
-            PADDLE_THROW(phi::errors::Fatal(ss.str()));
+            PADDLE_THROW(common::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -2119,7 +2119,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
             std::stringstream ss;
             ss << "SSDSparseTable save feature failed, retry it! path:"
                << channel_config_for_slot_feature.path;
-            PADDLE_THROW(phi::errors::Fatal(ss.str()));
+            PADDLE_THROW(common::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;

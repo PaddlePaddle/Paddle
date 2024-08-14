@@ -35,7 +35,7 @@ class Unsqueeze2OpConverter : public OpConverter {
     PADDLE_ENFORCE_GT(
         axes.size(),
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Attr(axes).size should be > 0 in unsqueeze2 op in TensorRT,"
             "but received axes.size() = %d.",
             axes.size()));

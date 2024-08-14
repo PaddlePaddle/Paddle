@@ -125,7 +125,7 @@ void FFN(const phi::GPUContext& dev_ctx,
     // TODO(Xreki): support post layer_norm case when add_residual is false.
     PADDLE_ENFORCE_EQ(add_residual,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Attribute add_residual is expected to be true "
                           "when pre_layer_norm is false."));
 

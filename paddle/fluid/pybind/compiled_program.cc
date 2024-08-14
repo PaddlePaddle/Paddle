@@ -67,19 +67,16 @@
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
+#include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
-#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
@@ -113,6 +110,9 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/profiler.h"
 #include "paddle/utils/none.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -131,19 +131,19 @@
 #ifndef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/capi/capi.h"
 #endif
 
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
@@ -171,7 +171,7 @@
 COMMON_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
-PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
+PYBIND11_MAKE_OPAQUE(phi::TensorArray);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
@@ -228,7 +228,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.reduce_ = strategy;
@@ -258,7 +258,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, const std::string &path) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.debug_graphviz_path_ = path;
@@ -283,7 +283,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](const BuildStrategy &self) { return self.num_trainers_; },
           [](BuildStrategy &self, int num_trainers) {
 #ifdef WIN32
-            PADDLE_THROW(phi::errors::Unavailable(
+            PADDLE_THROW(common::errors::Unavailable(
                 "Distribution mode is not supported on Windows platform."));
 #endif
             self.num_trainers_ = num_trainers;
@@ -335,7 +335,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, "
                                   "cannot be configured again."));
             self.build_cinn_pass_ = b;
@@ -362,7 +362,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_elewise_add_act_ops_ = b;
@@ -388,7 +388,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_gemm_epilogue_ = b;
@@ -416,7 +416,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finlaized, cannot be "
                                   "configured again."));
             self.fuse_dot_product_attention_ = b;
@@ -442,7 +442,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_adamw_ = b;
@@ -465,7 +465,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fused_attention_ = b;
@@ -491,7 +491,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fused_feedforward_ = b;
@@ -517,7 +517,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.sequential_run_ = b;
@@ -542,13 +542,13 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_resunit_ = b;
 #ifndef PADDLE_WITH_CUDNN_FRONTEND
             if (self.fuse_resunit_) {
-              PADDLE_THROW(phi::errors::PreconditionNotMet(
+              PADDLE_THROW(common::errors::PreconditionNotMet(
                   "Paddle is not built with CUDNN Frontend support."));
             }
 #endif
@@ -572,7 +572,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_bn_act_ops_ = b;
@@ -598,7 +598,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_bn_add_act_ops_ = b;
@@ -624,7 +624,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.enable_auto_fusion_ = b;
@@ -653,7 +653,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.fuse_relu_depthwise_conv_ = b;
@@ -684,7 +684,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, "
                                   "cannot be configured again."));
             self.fuse_broadcast_ops_ = b;
@@ -715,7 +715,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, "
                                   "cannot be configured again."));
             self.fuse_all_optimizer_ops_ = b;
@@ -726,7 +726,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_NE(self.IsFinalized(),
                               true,
-                              phi::errors::PreconditionNotMet(
+                              common::errors::PreconditionNotMet(
                                   "BuildStrategy has been finalized, cannot be "
                                   "configured again."));
             self.sync_batch_norm_ = b;
@@ -765,7 +765,7 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
             } else if (PyBool_Check(py_obj)) {
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
+              PADDLE_THROW(common::errors::InvalidArgument(
                   "BuildStrategy.memory_optimize must be set to None, False "
                   "or True"));
             }

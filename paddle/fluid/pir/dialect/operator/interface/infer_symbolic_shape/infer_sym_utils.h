@@ -22,7 +22,7 @@ inline bool GetBoolAttr(const pir::Operation *op, const std::string &str) {
   const auto &attr_map = op->attributes();
   PADDLE_ENFORCE(
       attr_map.count(str),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "attr [%s] MUST in attribute map for [%s] op", str, op->name()));
   return attr_map.at(str).dyn_cast<pir::BoolAttribute>().data();
 }
@@ -60,19 +60,19 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
   const auto &attr_map = op->attributes();
   PADDLE_ENFORCE(
       attr_map.count(name),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "attr [%s] MUST in attribute map for [%s] op", name, op->name()));
   const auto &val = attr_map.at(name);
 
   PADDLE_ENFORCE(val.isa<::pir::ArrayAttribute>(),
-                 phi::errors::PreconditionNotMet(
+                 common::errors::PreconditionNotMet(
                      "axis Type MUST ArrayAttribute for [%s] op", op->name()));
   auto array_list = val.dyn_cast<::pir::ArrayAttribute>().AsVector();
   std::vector<T> vec_res;
   if (array_list.size() > 0) {
     PADDLE_ENFORCE_EQ(array_list[0].isa<value_type>(),
                       true,
-                      phi::errors::Unimplemented(
+                      common::errors::Unimplemented(
                           "the 0th elementwise MUST be ir::Int64Attribute"));
     for (size_t i = 0; i < array_list.size(); ++i) {
       vec_res.push_back(array_list[i].dyn_cast<value_type>().data());
@@ -81,23 +81,53 @@ std::vector<T> GetVectorAttr(const ::pir::Operation *op,
   return vec_res;
 }
 
-inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
-  if (shapeordata.isa<TensorListExprs>()) {
-    ExprVec result;
-    TensorListExprs list =
-        shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-    for (size_t i = 0; i < list.size(); i++) {
-      if (list[i].data().has_value()) {
-        for (auto expr : list[i].data().value()) {
-          result.emplace_back(expr);
+// Complete means that all the items in tensor or tensor_list have symbolic data
+// representations.
+inline bool HasCompleteData(const ShapeOrData &shapeordata) {
+  return shapeordata.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        return impl.data().has_value();
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        for (size_t i = 0; i < impl.size(); i++) {
+          if (!impl[i].data().has_value()) {
+            return false;
+          }
         }
-      }
-    }
-    return result;
-  } else {
-    return shapeordata.data().value();
-  }
+        return true;
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) {
+        return false;
+      },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) { return false; });
 }
+
+inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
+  PADDLE_ENFORCE_EQ(
+      HasCompleteData(shapeordata),
+      true,
+      common::errors::Fatal("ShapeOrDataDimExprs must have complete data info "
+                            "when calling GetExprVecFromData"));
+  ExprVec result;
+  shapeordata.Match(
+      [&](const symbol::TensorShapeOrDataDimExprs &impl) {
+        result = impl.data().value();
+      },
+      [&](const symbol::TensorListShapeOrDataDimExprs &impl) {
+        for (size_t i = 0; i < impl.size(); i++) {
+          for (auto expr : impl[i].data().value()) {
+            result.emplace_back(expr);
+          }
+        }
+      },
+      [&](const symbol::RankedTensorArrayShapeOrDataDimExprs &impl) { return; },
+      [&](const symbol::NullShapeOrDataDimExpr &impl) { return; });
+  return result;
+}
+
+ExprVec GetOrCreateExprVecFromData(
+    const ShapeOrData &shapeordata,
+    pir::InferSymbolicShapeContext *infer_context);
 
 inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
   const auto GetShapeExprsFromList = [&]() {

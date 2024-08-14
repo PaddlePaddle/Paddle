@@ -33,7 +33,7 @@ void Expand(const Context& dev_ctx,
   auto expand_times = shape.GetData();
   PADDLE_ENFORCE_EQ(static_cast<size_t>(in_dims.size()),
                     expand_times.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The number of elements (%d) of 'expand_times' for "
                         "Op(expand) must be equal to the number "
                         "of dimensions (%d) of the input.",
@@ -75,14 +75,14 @@ void LegacyExpandKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       rank,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of dimensions of the input 'x' for Op(expand) "
           "must be greater than or equal to 1, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
       MAX_RANK_SUPPORTED,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of dimensions of the input 'x' for Op(expand) "
           "must be less than or equal to %d, but the value received is %d.",
           MAX_RANK_SUPPORTED,
@@ -125,14 +125,14 @@ void ExpandBackward(const Context& dev_ctx,
   size_t reduce_size = reduce_dims_vec.size();
   PADDLE_ENFORCE_EQ(reshape_size,
                     reshape_dims_vec.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Inconsistent size between template Dims (%d) and "
                         "reshape dimensions (%d).",
                         reshape_size,
                         reshape_dims_vec.size()));
   PADDLE_ENFORCE_EQ(reduce_size,
                     reduce_dims_vec.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Inconsistent size between template Dims (%d) and "
                         "reduce dimensions (%d).",
                         reduce_size,
@@ -193,17 +193,17 @@ void LegacyExpandGradKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out0);
     phi::Copy(dev_ctx, *in0, dev_ctx.GetPlace(), false, out0);
   } else {
-    PADDLE_ENFORCE_GE(
-        dims,
-        1,
-        phi::errors::InvalidArgument("The number of dimensions of the input "
-                                     "'Out@GRAD' for Op(expand_grad)"
-                                     " must be greater than or equal to 1, but "
-                                     "the value received is %d.",
-                                     dims));
+    PADDLE_ENFORCE_GE(dims,
+                      1,
+                      common::errors::InvalidArgument(
+                          "The number of dimensions of the input "
+                          "'Out@GRAD' for Op(expand_grad)"
+                          " must be greater than or equal to 1, but "
+                          "the value received is %d.",
+                          dims));
     PADDLE_ENFORCE_LE(dims,
                       MAX_RANK_SUPPORTED,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The number of dimensions of the input 'Out@GRAD' "
                           "for Op(expand_grad) must be less than or equal "
                           "to %d, but the value received is %d.",
@@ -243,7 +243,7 @@ void LegacyExpandGradKernel(const Context& dev_ctx,
             dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, in_grad);
         break;
       default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Only support tensor with rank being between 1 and %d. But "
             "received tensor's rank = %d.",
             MAX_RANK_SUPPORTED,

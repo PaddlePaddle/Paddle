@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import itertools
+import os
 import weakref
 from collections import OrderedDict
+from distutils.util import strtobool
 
 import numpy as np
 
@@ -150,13 +152,10 @@ def flatten_dense_tensors(
         else:
             param_storage.buffer.main_grad = grad_storage.buffer
         param_storage.buffer.stop_gradient = False
-        outputs = (param_storage,) + outputs
+        outputs = (param_storage, *outputs)
 
     if release_grad:
-        outputs = outputs + (
-            _buffer_size,
-            _param2offset,
-        )
+        outputs = (*outputs, _buffer_size, _param2offset)
 
     return outputs
 
@@ -480,9 +479,9 @@ class FusedCommBuffer:
             )
 
         if self._act == HOOK_ACTION.REDUCE_SCATTER:
-            self._sharding_param_grad_view[
-                param.name
-            ]._grad_buffer = self.grad_storage
+            self._sharding_param_grad_view[param.name]._grad_buffer = (
+                self.grad_storage
+            )
             tmp_var = self._sharding_param_grad_view[
                 param.name
             ]._slice_grad_from_buffer()
@@ -601,6 +600,14 @@ class FusedCommBuffer:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
 
+        need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
+        if need_check:
+            naninf = paddle.isfinite(self.grad_storage).all()
+            if not naninf.item():
+                raise ValueError(
+                    f"Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
+                )
+
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(
                 self.grad_storage,
@@ -694,25 +701,29 @@ def obtain_storage(
 def filter_params(params, is_fp32, is_distributed, need_clip):
     params = list(
         filter(
-            lambda x: x.is_distributed
-            if is_distributed
-            else (not x.is_distributed),
+            lambda x: (
+                x.is_distributed if is_distributed else (not x.is_distributed)
+            ),
             params,
         )
     )
     params = list(
         filter(
-            lambda x: getattr(x, 'need_clip', True)
-            if need_clip
-            else (not getattr(x, 'need_clip', True)),
+            lambda x: (
+                getattr(x, 'need_clip', True)
+                if need_clip
+                else (not getattr(x, 'need_clip', True))
+            ),
             params,
         )
     )
     params = list(
         filter(
-            lambda x: x.dtype == paddle.float32
-            if is_fp32
-            else x.dtype != paddle.float32,
+            lambda x: (
+                x.dtype == paddle.float32
+                if is_fp32
+                else x.dtype != paddle.float32
+            ),
             params,
         )
     )

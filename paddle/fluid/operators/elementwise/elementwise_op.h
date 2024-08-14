@@ -45,7 +45,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Y").front(),
         framework::proto::VarType::LOD_TENSOR,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input var's type should be phi::DenseTensor, but the "
             "received is %s [%s].",
             ctx->GetInputsVarType("Y").front(),
@@ -56,7 +56,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Y").size(),
           1u,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
               "), Y must be scalar, the size of Y should be 1. "
               "But reveived the size of Y = %s.",
@@ -64,14 +64,14 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Y")[0],
           1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
               "), Y must be scalar, the first dimension of Y should be 1. "
               "But reveived the first dimension of Y = %s.",
               ctx->GetInputDim("Y")[0]));
     } else if (ctx->GetInputsVarType("X").front() !=
                framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Input X's type[%s] is not supported by elementwise_op. Please set "
           "its type to LOD_TENSOR.",
           ctx->GetInputsVarType("X").front()));
@@ -88,7 +88,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       if (x_dims.size() == y_dims.size()) {
         PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "axis should be -1 or 0 while the dimension of "
                               "tensor X (%s) is equal to the dimension of "
                               "tensor Y (%s), but received axis: %s",
@@ -98,7 +98,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       }
       PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The axis range must be [%s, %s), but axis is %s. "
                             "Please set the axis again.",
                             -1 * max_dim,

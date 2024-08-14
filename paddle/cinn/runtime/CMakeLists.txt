@@ -21,6 +21,6 @@ endif()
 
 add_subdirectory(cuda)
 add_subdirectory(cpu)
-if(CINN_WITH_HIP)
+if(WITH_ROCM)
   add_subdirectory(hip)
 endif()

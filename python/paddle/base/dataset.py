@@ -13,6 +13,8 @@
 # limitations under the License.
 """This is definition of dataset class, which is high performance IO."""
 
+from __future__ import annotations
+
 from google.protobuf import text_format
 
 import paddle
@@ -41,7 +43,7 @@ class DatasetFactory:
         """Init."""
         pass
 
-    def create_dataset(self, datafeed_class="QueueDataset"):
+    def create_dataset(self, datafeed_class="QueueDataset") -> DatasetBase:
         """
         Create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
         the default is "QueueDataset".

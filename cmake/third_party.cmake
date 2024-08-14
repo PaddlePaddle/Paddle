@@ -55,8 +55,35 @@ if(NOT WITH_SETUP_INSTALL)
     WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
     RESULT_VARIABLE result_var)
   if(NOT result_var EQUAL 0)
-    message(
-      FATAL_ERROR "Failed to update submodule, please check your network !")
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+      set(THIRD_PARTY_TAR_URL
+          https://xly-devops.bj.bcebos.com/PR/build_whl/0/third_party.tar.gz
+          CACHE STRING "third_party.tar.gz url")
+      execute_process(
+        COMMAND wget -q ${THIRD_PARTY_TAR_URL}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        RESULT_VARIABLE wget_result)
+      if(NOT wget_result EQUAL 0)
+        message(
+          FATAL_ERROR
+            "Failed to download third_party.tar.gz, please check your network !"
+        )
+      else()
+        execute_process(
+          COMMAND tar -xzf third_party.tar.gz -C ${CMAKE_SOURCE_DIR}/
+          WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+          RESULT_VARIABLE tar_result)
+        if(NOT tar_result EQUAL 0)
+          message(
+            FATAL_ERROR
+              "Failed to extract third_party.tar.gz, please make sure tar.gz file is not corrupted !"
+          )
+        endif()
+      endif()
+    else()
+      message(
+        FATAL_ERROR "Failed to update submodule, please check your network !")
+    endif()
   endif()
 
 endif()

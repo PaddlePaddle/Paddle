@@ -130,8 +130,8 @@ TEST(bfloat16, floating) {
   PADDLE_ENFORCE_EQ(
       std::is_floating_point<bfloat16>::value,
       true,
-      phi::errors::Fatal("std::is_floating_point with bfloat16 data type "
-                         "should be equal to true but it is not"));
+      common::errors::Fatal("std::is_floating_point with bfloat16 data type "
+                            "should be equal to true but it is not"));
 }
 
 TEST(bfloat16, print) {

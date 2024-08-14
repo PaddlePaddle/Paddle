@@ -33,18 +33,18 @@ class InstanceNormOpConverter : public OpConverter {
     auto* bias_var = scope.FindVar(op_desc.Input("Bias")[0]);
     PADDLE_ENFORCE_NOT_NULL(
         scale_var,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input [Scale] of instance_norm op converter should not be null"));
     PADDLE_ENFORCE_NOT_NULL(
         bias_var,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input [Bias] of instance_norm op converter should not be null"));
     auto* scale_tensor = scale_var->GetMutable<phi::DenseTensor>();
     auto* bias_tensor = bias_var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         scale_tensor->numel(),
         bias_tensor->numel(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Num of input [Scale] and [Bias] of instance_norm op converter "
             "should be equal. Got Scale num = %ld, but Bias num = %ld",
             scale_tensor->numel(),

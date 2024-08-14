@@ -35,7 +35,7 @@ PDNode *PDPattern::NewNode(const std::string &name) {
     PADDLE_ENFORCE_EQ(
         node_map_.count(name),
         0UL,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "PDNode's name should be unique, get duplicate [%s]", name));
   }
 
@@ -50,7 +50,7 @@ PDNode *PDPattern::NewNode(PDNode::teller_t &&teller, const std::string &name) {
     PADDLE_ENFORCE_EQ(
         node_map_.count(name),
         0UL,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "PDNode's name should be unique, get duplicate [%s]", name));
   }
 
@@ -71,14 +71,14 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
   PADDLE_ENFORCE_NOT_NULL(a,
-                          phi::errors::NotFound("PDNode %s is not found.",
-                                                a->name()));  // NOLINT
+                          common::errors::NotFound("PDNode %s is not found.",
+                                                   a->name()));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(b,
-                          phi::errors::NotFound("PDNode %s is not found.",
-                                                b->name()));  // NOLINT
+                          common::errors::NotFound("PDNode %s is not found.",
+                                                   b->name()));  // NOLINT
   PADDLE_ENFORCE_NE(a,
                     b,
-                    phi::errors::PermissionDenied(
+                    common::errors::PermissionDenied(
                         "Cannot connect the same node in the graph."));
   edges_.emplace_back(a, b);
 }
@@ -720,12 +720,12 @@ bool IsNthInput(Node *var, Node *op, const std::string &argument, size_t nth) {
   PADDLE_ENFORCE_EQ(
       var->IsVar(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function IsNthInput must be Node::Var"));
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Second parameter of function IsNthInput must be Node::Op"));
   if (!HasInput(op, argument) || op->Op()->Input(argument).size() <= nth)
     return false;
@@ -736,7 +736,7 @@ bool HasInput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function HasInput must be Node::Op"));
   auto const &names = op->Op()->InputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
@@ -748,7 +748,7 @@ bool HasOutput(Node *op, const std::string &argument) {
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function HasOutput must be Node::Op"));
   auto const &names = op->Op()->OutputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
@@ -760,12 +760,12 @@ bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
   PADDLE_ENFORCE_EQ(
       var->IsVar(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "First parameter of function IsNthOutput must be Node::Var"));
   PADDLE_ENFORCE_EQ(
       op->IsOp(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Second parameter of function IsNthOutput must be Node::Op"));
   if (!HasOutput(op, argument) || op->Op()->Output(argument).size() <= nth)
     return false;

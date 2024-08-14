@@ -33,11 +33,11 @@ class TransLayerNormOpConverter : public OpConverter {
                           : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Bias) of layer_norm should not be null."));
     PADDLE_ENFORCE_NOT_NULL(
         Scale_v,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Scale) of layer_norm should not be null."));
 
     auto* Bias_t = Bias_v->GetMutable<phi::DenseTensor>();
@@ -69,7 +69,7 @@ class TransLayerNormOpConverter : public OpConverter {
               with_fp16);
       layernorm_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "trans_layernorm do not support static shape mode yet"));
     }
 

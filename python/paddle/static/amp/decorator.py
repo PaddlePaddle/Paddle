@@ -228,14 +228,14 @@ class OptimizerWithMixedPrecision:
         # Ensure the data type of learning rate vars is float32 (same as the
         # master parameter dtype)
         if isinstance(self._optimizer._learning_rate, float):
-            self._optimizer._learning_rate_map[
-                default_main_program()
-            ] = paddle.static.create_global_var(
-                name=unique_name.generate("learning_rate"),
-                shape=[1],
-                value=float(self._optimizer._learning_rate),
-                dtype='float32',
-                persistable=True,
+            self._optimizer._learning_rate_map[default_main_program()] = (
+                paddle.static.create_global_var(
+                    name=unique_name.generate("learning_rate"),
+                    shape=[1],
+                    value=float(self._optimizer._learning_rate),
+                    dtype='float32',
+                    persistable=True,
+                )
             )
 
     def backward(

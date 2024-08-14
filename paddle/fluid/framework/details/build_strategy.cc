@@ -174,7 +174,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
             AppendPass("all_reduce_mode_multi_devices_pass").get();
         break;
       default:
-        PADDLE_THROW(phi::errors::Unimplemented("Unknown reduce strategy."));
+        PADDLE_THROW(common::errors::Unimplemented("Unknown reduce strategy."));
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
@@ -215,7 +215,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #else
     PADDLE_ENFORCE_NE(FLAGS_use_mkldnn,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "FLAGS_use_mkldnn has been set to True, but "
                           "PaddlePaddle is compiled without MKLDNN. "
                           "Please compile PaddlePaddle with MKLDNN first."));
@@ -261,7 +261,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
     PADDLE_ENFORCE_EQ(
         graph->IsMainGraph(),
         true,
-        phi::errors::InvalidArgument("This graph is not main_graph"));
+        common::errors::InvalidArgument("This graph is not main_graph"));
   }
   // Create a default one if not finalized by user.
   CreatePassesFromStrategy(false);

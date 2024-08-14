@@ -34,7 +34,7 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         with_fp16,
         true,
-        phi::errors::Unimplemented(
+        common::errors::Unimplemented(
             "Trt cross attention oss plugin only support fp16 mode yet."));
     framework::OpDesc op_desc(op, nullptr);
     auto* input_q = engine_->GetITensor(op_desc.Input("Input_q").front());

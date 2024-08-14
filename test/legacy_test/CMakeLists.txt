@@ -246,7 +246,7 @@ if(APPLE)
   endif()
   message(
     WARNING
-      "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass_deprecated \n test_detection_map_op \n test_dist_se_resnext_*"
+      "These tests has been disabled in OSX before being fixed: \n test_detection_map_op \n test_dist_se_resnext_*"
   )
   # this op is not support on mac
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
@@ -441,6 +441,7 @@ list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
+list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
@@ -532,17 +533,20 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
+list(REMOVE_ITEM TEST_OPS "test_stride")
 list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_weight_decay)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
   list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
   list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_geo)
-  list(REMOVE_ITEM DIST_TEST_OPS test_dist_fleet_ctr2)
 endif()
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
+py_test_modules(
+  test_imperative_ocr_attention_model MODULES
+  test_imperative_ocr_attention_model ENVS FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 if(WITH_GPU
    OR WITH_XPU
@@ -767,9 +771,6 @@ if(NOT WIN32 AND NOT APPLE)
 endif()
 
 if(WITH_DISTRIBUTE)
-  if(NOT WITH_COVERAGE)
-    set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 200)
-  endif()
   set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
                                                                        200)
   set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
@@ -847,6 +848,7 @@ set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
@@ -1016,8 +1018,10 @@ set(TEST_CINN_OPS
     test_scatter_op
     test_reverse_op
     test_roll_op
+    test_metrics
     test_meshgrid_op
     test_index_select_op
+    test_instance_norm_op
     test_mean_op
     test_clip_op
     test_gather_op
@@ -1107,7 +1111,8 @@ set(STATIC_BUILD_TESTS
     test_shuffle_batch_op
     test_update_loss_scaling_op
     test_segment_ops
-    test_while_op)
+    test_while_op
+    test_tensor_array_to_tensor)
 
 if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
@@ -1174,6 +1179,8 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
 endif()
 
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)
+py_test_modules(test_stride MODULES test_stride ENVS
+                FLAGS_use_stride_kernel=true)
 
 set_pir_tests_properties()
 
@@ -1228,6 +1235,8 @@ set_tests_properties(test_data_norm_op PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_deformable_conv_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer PROPERTIES TIMEOUT 150)
 set_tests_properties(test_regularizer_api PROPERTIES TIMEOUT 150)
+set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
+                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 60)
@@ -1243,3 +1252,7 @@ py_test_modules(test_install_check_pir MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1 FLAGS_enable_pir_in_executor=1)
 set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
+set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
+                                                                        120)
+set_tests_properties(test_imperative_selected_rows_to_lod_tensor
+                     PROPERTIES TIMEOUT 200)

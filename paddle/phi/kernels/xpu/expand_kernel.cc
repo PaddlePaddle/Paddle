@@ -35,13 +35,13 @@ void ExpandKernel(const Context& ctx,
     PADDLE_ENFORCE_NE(
         expand_shape[i],
         0,
-        phi::errors::InvalidArgument("The expanded size cannot be zero."));
+        common::errors::InvalidArgument("The expanded size cannot be zero."));
     if (i < diff) {  // expand_shape = [3,4,-1,-1], X = [10,2] -->
                      // final_expand_shape = [3,4,10,2]
       PADDLE_ENFORCE_GT(
           expand_shape[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The expanded size (%d) for non-existing dimensions must be "
               "positive for expand_v2 op.",
               expand_shape[i]));
@@ -53,7 +53,7 @@ void ExpandKernel(const Context& ctx,
         PADDLE_ENFORCE_EQ(
             vec_in_dims[i],
             expand_shape[i],
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The value (%d) of the non-singleton dimension does not match"
                 " the corresponding value (%d) in shape for expand_v2 op.",
                 vec_in_dims[i],
@@ -67,7 +67,7 @@ void ExpandKernel(const Context& ctx,
       PADDLE_ENFORCE_EQ(
           expand_shape[i],
           -1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "When the value in shape is negative for expand_v2 op, "
               "only -1 is supported, but the value received is %d.",
               expand_shape[i]));
@@ -79,7 +79,7 @@ void ExpandKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       rank,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The rank of the input 'X' for expand_v2_npu op must be positive, "
           "but the value received is %d.",
           rank));
@@ -87,7 +87,7 @@ void ExpandKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       shape_size,
       rank,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number (%d) of elements of 'shape' for expand_v2_npu op must "
           "be "
           "greater than or equal to the rank (%d) of the input 'X'.",
@@ -116,12 +116,13 @@ void ExpandKernel(const Context& ctx,
     r = xpu::broadcast<XPUType>(
         ctx.x_context(), x_data, out_data, x_shape, out_shape);
   }
-  PADDLE_ENFORCE_EQ(r,
-                    XPU_SUCCESS,
-                    phi::errors::External("XPU API(broadcast) return wrong "
-                                          "value[%d %s] in ExpandV2XPUKernel.",
-                                          r,
-                                          XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_EQ(
+      r,
+      XPU_SUCCESS,
+      common::errors::External("XPU API(broadcast) return wrong "
+                               "value[%d %s] in ExpandV2XPUKernel.",
+                               r,
+                               XPUAPIErrorMsg[r]));
 }
 }  // namespace phi
 

@@ -173,6 +173,11 @@ PD_DEFINE_bool(
     "technique which contract fp multiplication and addition/subtraction into "
     "multiply-add operation. It may result in different fp precision.");
 
+PD_DEFINE_bool(
+    cinn_compile_with_hiprtc,
+    BoolFromEnv("FLAGS_cinn_compile_with_hiprtc", false),
+    "Compile hip source code with hiprtc if true, otherwise use hipcc.");
+
 // FLAGS for performance analysis and accuracy debug
 PD_DEFINE_bool(cinn_sync_run,
                BoolFromEnv("FLAGS_cinn_sync_run", false),
@@ -323,7 +328,7 @@ bool GetCinnCudnnDeterministic() {
 #ifdef CINN_WITH_CUDNN
   return FLAGS_cinn_cudnn_deterministic;
 #else
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "CINN is compiled without cuDNN, this api is invalid!"));
   return false;
 #endif
@@ -350,6 +355,8 @@ bool CanUseNvccCompiler() {
          (!FLAGS_cinn_compile_with_nvrtc);
 }
 
+bool UseHipccCompiler() { return !FLAGS_cinn_compile_with_hiprtc; }
+
 bool IsCompiledWithCUDA() {
 #if !defined(CINN_WITH_CUDA)
   return false;
@@ -367,7 +374,7 @@ bool IsCompiledWithCUDNN() {
 }
 
 void CheckCompileOptionImpl(cinn::common::UnknownArch) {
-  PADDLE_THROW(phi::errors::Fatal("unknown architecture"));
+  PADDLE_THROW(::common::errors::Fatal("unknown architecture"));
 }
 
 void CheckCompileOptionImpl(cinn::common::X86Arch) {
@@ -382,7 +389,7 @@ void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
 #if defined(CINN_WITH_CUDNN)
   // Do nothing;
 #else
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "Current CINN version does not support NVGPU, please try to "
       "recompile with -DWITH_CUDA."));
 #endif
@@ -392,7 +399,7 @@ void CheckCompileOptionImpl(cinn::common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
   // Do nothing;
 #else
-  PADDLE_THROW(phi::errors::Fatal(
+  PADDLE_THROW(::common::errors::Fatal(
       "Current CINN version does not support HygonDCU, please try to "
       "recompile with -DWITH_ROCM."));
 #endif

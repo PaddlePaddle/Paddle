@@ -30,13 +30,14 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/tensorrt/engine_params.h"
 #include "paddle/fluid/platform/tensorrt/helper.h"
+#include "paddle/fluid/platform/tensorrt/trt_plugin.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/core/stream.h"
 
 COMMON_DECLARE_bool(trt_ibuilder_cache);
@@ -79,15 +80,15 @@ class TrtCudaGraph {
     // be used.
     const auto ret = cudaStreamEndCapture(stream, &cuda_graph_);
     if (ret == cudaErrorStreamCaptureInvalidated) {
-      PADDLE_ENFORCE_EQ(
-          cuda_graph_ == nullptr,
-          true,
-          phi::errors::PreconditionNotMet("CudaGraph capture stream failed."));
+      PADDLE_ENFORCE_EQ(cuda_graph_ == nullptr,
+                        true,
+                        common::errors::PreconditionNotMet(
+                            "CudaGraph capture stream failed."));
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(ret);
-      PADDLE_ENFORCE_NOT_NULL(
-          cuda_graph_,
-          phi::errors::PreconditionNotMet("CudaGraph capture stream failed."));
+      PADDLE_ENFORCE_NOT_NULL(cuda_graph_,
+                              common::errors::PreconditionNotMet(
+                                  "CudaGraph capture stream failed."));
       PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphDestroy(cuda_graph_));
       cuda_graph_ = nullptr;
     }
@@ -142,6 +143,9 @@ class TensorRTEngine {
                  nvinfer1::ILogger& logger = NaiveLogger::Global())
       : params_(params), logger_(logger) {
     dy::initLibNvInferPlugins(&logger_, "");
+    static std::once_flag trt_plugin_registered;
+    std::call_once(trt_plugin_registered,
+                   []() { TrtPluginRegistry::Global()->RegistToTrt(); });
   }
 
   // Add an input and set its name, data type and dimension.
@@ -180,7 +184,7 @@ class TensorRTEngine {
   void ResetContext() {
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "You should build engine first and then set the context."));
     std::unique_lock<std::mutex> lock(mutex_);
     infer_context_[predictor_id_per_thread].reset(nullptr);
@@ -191,14 +195,14 @@ class TensorRTEngine {
   nvinfer1::IHostMemory* Serialize() {
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The TensorRT engine must be built first before serialization"));
 #if IS_TRT_VERSION_LT(8000)
     ihost_memory_.reset(infer_engine_->serialize());
 #else
     PADDLE_ENFORCE_NOT_NULL(
         ihost_memory_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "TensorRT >= 8.0 requires that buildSerializedNetwork is called"));
 #endif
     return ihost_memory_.get();
@@ -274,7 +278,7 @@ class TensorRTEngine {
     std::string name_with_suffix = w_name + splitter + suffix;
     PADDLE_ENFORCE_EQ(weight_map.count(name_with_suffix),
                       0,
-                      phi::errors::AlreadyExists(
+                      common::errors::AlreadyExists(
                           "The weight named %s is set into the weight map "
                           "twice in TRT OP converter.",
                           name_with_suffix));
@@ -341,7 +345,7 @@ class TensorRTEngine {
       } else {
         PADDLE_ENFORCE_EQ(params_.min_input_shape[name].size(),
                           input_shape.size(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "TRT dynamic_shape min_input_shape %s size not "
                               "equal, the min_input_shape[%s].size()=%d"
                               ", but the runtime_input_shape[%s].size()=%d.",
@@ -393,7 +397,7 @@ class TensorRTEngine {
       } else {
         PADDLE_ENFORCE_EQ(params_.min_shape_tensor[name].size(),
                           shape_tensor.size(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "TRT dynamic_shape min_shape_tensor %s size not "
                               "equal, the min_shape_tensor[%s].size()=%d"
                               ", but the runtime_shape_tensor[%s].size()=%d.",
