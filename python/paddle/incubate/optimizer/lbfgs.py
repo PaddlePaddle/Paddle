@@ -11,16 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
+from typing import TYPE_CHECKING, Callable
 
 import paddle
 from paddle.optimizer import Optimizer
 from paddle.utils import deprecated
 
 from .line_search_dygraph import _strong_wolfe
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
 
 
 @deprecated(since="2.5.0", update_to="paddle.optimizer.LBFGS", level=1)
@@ -118,18 +124,18 @@ class LBFGS(Optimizer):
 
     def __init__(
         self,
-        learning_rate=1.0,
-        max_iter=20,
-        max_eval=None,
-        tolerance_grad=1e-7,
-        tolerance_change=1e-9,
-        history_size=100,
-        line_search_fn=None,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        name=None,
-    ):
+        learning_rate: float = 1.0,
+        max_iter: int = 20,
+        max_eval: int | None = None,
+        tolerance_grad: float = 1e-7,
+        tolerance_change: float = 1e-9,
+        history_size: int = 100,
+        line_search_fn: str | None = None,
+        parameters: list[Tensor] | tuple[Tensor] | None = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        name: str | None = None,
+    ) -> Tensor:
         if max_eval is None:
             max_eval = max_iter * 5 // 4
 
@@ -165,7 +171,7 @@ class LBFGS(Optimizer):
 
         self._numel_cache = None
 
-    def state_dict(self):
+    def state_dict(self) -> dict[str, Tensor]:
         r"""Returns the state of the optimizer as a :class:`dict`.
 
         Return:
@@ -226,7 +232,7 @@ class LBFGS(Optimizer):
         self._set_param(x)
         return loss, flat_grad
 
-    def step(self, closure):
+    def step(self, closure: Callable) -> Tensor:
         """
         Performs a single optimization step.
 
