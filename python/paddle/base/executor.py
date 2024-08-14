@@ -425,7 +425,7 @@ def has_fetch_operators(
     return fetch_count > 0
 
 
-def has_fetch_operations(
+def has_fetch_operations_and_is_startup_program(
     block, fetch_targets, fetch_holder_name, fetch_op='pd_op.fetch'
 ):
     """Check whether the block already has fetch operation.
@@ -447,11 +447,14 @@ def has_fetch_operations(
     """
     from paddle.autograd.backward_utils import ValueSet
 
+    is_startup_program = False
     fetch_info = [[], []]
     for op in block.ops:
         if op.name() == fetch_op:
             fetch_info[0].append(op.operand_source(0))
             fetch_info[1].append(op.attrs()["name"])
+        elif op.name() == "builtin.set_parameter":
+            is_startup_program = True
 
     need_fetch_info = []
     for i, fetch_var in enumerate(fetch_targets):
@@ -463,7 +466,7 @@ def has_fetch_operations(
         elif fetch_var not in ValueSet(fetch_info[0]):
             need_fetch_info.append(fetch_var)
 
-    return need_fetch_info
+    return need_fetch_info, is_startup_program
 
 
 def _add_feed_fetch_ops(
@@ -535,8 +538,10 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    need_fetch_info = has_fetch_operations(
-        global_block, fetch_list, fetch_var_name, fetch_op
+    need_fetch_info, is_startup_program = (
+        has_fetch_operations_and_is_startup_program(
+            global_block, fetch_list, fetch_var_name, fetch_op
+        )
     )
     if need_fetch_info:
         with paddle.static.program_guard(program):
@@ -544,6 +549,8 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
                 assert isinstance(
                     fetch_input, Value
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
+                if is_startup_program:
+                    fetch_input = paddle._pir_ops.parameter(fetch_input.name)
                 out = paddle._pir_ops.fetch(
                     fetch_input, fetch_var_name + str(i), i
                 )
@@ -555,11 +562,15 @@ def _add_single_pir_fetch_op(program, fetch_value, fetch_name, fetch_col):
 
     global_block = program.global_block()
     fetch_op = "pd_op.fetch"
-    need_fetch_info = has_fetch_operations(
-        global_block, [fetch_value], fetch_name, fetch_op
+    need_fetch_info, is_startup_program = (
+        has_fetch_operations_and_is_startup_program(
+            global_block, [fetch_value], fetch_name, fetch_op
+        )
     )
     if need_fetch_info:
         with paddle.static.program_guard(program):
+            if is_startup_program:
+                fetch_value = paddle._pir_ops.parameter(fetch_value.name)
             out = paddle._pir_ops.fetch(fetch_value, fetch_name, fetch_col)
             out.persistable = True
 

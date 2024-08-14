@@ -21,6 +21,7 @@ from scipy.special import expit, logit
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 def loss_wrapper(
@@ -336,6 +337,7 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
 
 
 class TestSigmoidCrossEntropyWithLogitsOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
