@@ -588,6 +588,7 @@
     backend : x
   inplace: (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bitwise_not
   args : (Tensor x)
@@ -612,6 +613,7 @@
     backend : x
   inplace: (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bitwise_right_shift
   args : (Tensor x, Tensor y, bool is_arithmetic = true)
@@ -1084,6 +1086,7 @@
     func: crf_decoding
     data_type: emission
   optional: label, length
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : crop
   args : (Tensor x, IntArray shape = {}, IntArray offsets = {})
@@ -1702,6 +1705,7 @@
   kernel :
     func : fake_dequantize_max_abs
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
@@ -1711,6 +1715,7 @@
   kernel :
     func : fake_quantize_abs_max
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_dequantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
@@ -1758,6 +1763,7 @@
     data_type : x
   optional : iter, out_scales
   inplace: (in_scale -> out_scale)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
@@ -3714,6 +3720,7 @@
     data_type : dtype
     backend : place
   traits : pir::SideEffectTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rank_attention
   args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
@@ -4018,6 +4025,7 @@
   output : Tensor(out)
   infer_meta :
     func : ScatterInferMeta
+    spmd_rule : ScatterInferSpmd
   kernel :
     func : scatter
     data_type : x
@@ -4056,6 +4064,7 @@
     data_type : x
   intermediate : summed_ids
   backward : segment_pool_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : selu
   args : (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717)
@@ -4185,6 +4194,7 @@
   output: Tensor (out)
   infer_meta:
     func: ShareDataInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel:
     func: share_data {dense -> dense}
           share_data_sr {selected_rows -> selected_rows}
@@ -4602,6 +4612,7 @@
   kernel:
     func: tdm_child
     data_type: x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tdm_sampler
   args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
@@ -4923,6 +4934,7 @@
   data_transform :
     skip_transform : found_infinite
   inplace : (x -> out), (prev_loss_scaling -> loss_scaling), (in_good_steps -> out_good_steps), (in_bad_steps -> out_bad_steps)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : view_dtype
   args : (Tensor input, DataType dtype)
@@ -5040,6 +5052,7 @@
   kernel :
     func : yolo_box
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : yolo_box_head
   args : (Tensor x, int[] anchors, int class_num)
@@ -5049,6 +5062,7 @@
   kernel :
     func : yolo_box_head
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : yolo_box_post
   args : (Tensor boxes0, Tensor boxes1, Tensor boxes2, Tensor image_shape, Tensor image_scale, int[] anchors0, int[] anchors1, int[] anchors2, int class_num, float conf_thresh, int downsample_ratio0, int downsample_ratio1, int downsample_ratio2, bool clip_bbox, float scale_x_y, float nms_threshold)
@@ -5058,6 +5072,7 @@
   kernel :
     func : yolo_box_post
     data_type : boxes0
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : yolo_loss
   args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0)
