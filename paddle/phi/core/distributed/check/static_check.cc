@@ -81,7 +81,12 @@ void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
       out_size * out_size_factor,
       in_size * in_size_factor,
       common::errors::InvalidArgument(
-          "Input and output tensors should have matching sizes."));
+          "Input and output tensors should have matching sizes. "
+          "out_size=%ld, out_size_factor=%d, in_size=%ld, in_size_factor=%d",
+          out_size,
+          out_size_factor,
+          in_size,
+          in_size_factor));
 }
 
 void CommStaticCheck::CheckShape(const phi::DenseTensor& out_tensor,
