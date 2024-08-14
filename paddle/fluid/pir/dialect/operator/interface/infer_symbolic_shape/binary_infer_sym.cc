@@ -935,6 +935,13 @@ bool MarginCrossEntropyOpInferSymbolicShape(
   return true;
 }
 
+// bool MatmulWithFlattenOpInferSymbolicShape(pir::Operation *op,
+//                                            pir::InferSymbolicShapeContext
+//                                            *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool MvOpInferSymbolicShape(pir::Operation *op,
                             pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -965,13 +972,6 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
 // bool PriorBoxOpInferSymbolicShape(pir::Operation *op,
 //                                   pir::InferSymbolicShapeContext
 //                                   *infer_context) {
-//   // pass
-//   return true;
-// }
-
-// bool PruneGateByCapacityOpInferSymbolicShape(pir::Operation *op,
-//                                              pir::InferSymbolicShapeContext
-//                                              *infer_context) {
 //   // pass
 //   return true;
 // }

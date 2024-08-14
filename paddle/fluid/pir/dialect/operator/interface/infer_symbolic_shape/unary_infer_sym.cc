@@ -1429,13 +1429,6 @@ bool NumelOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-// bool PartialConcatOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
-
 // bool PixelShuffleOpInferSymbolicShape(pir::Operation *op,
 //                                       pir::InferSymbolicShapeContext
 //                                       *infer_context) {

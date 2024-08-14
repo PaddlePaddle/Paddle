@@ -922,13 +922,6 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-// bool DgcOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext
-//                              *infer_context) {
-//   // pass
-//   return true;
-// }
-
 bool FakeQuantizeRangeAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -1153,6 +1146,20 @@ bool FlashAttnOpInferSymbolicShape(
   }
   return true;
 }
+
+// bool FusedFeedforwardOpInferSymbolicShape(pir::Operation *op,
+//                                           pir::InferSymbolicShapeContext
+//                                           *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool FusedAttentionOpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
+//   // pass
+//   return true;
+// }
 
 // bool FlashAttnQkvpackedOpInferSymbolicShape(pir::Operation *op,
 //                                             pir::InferSymbolicShapeContext
@@ -1622,11 +1629,17 @@ bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
 //   return true;
 // }
 
-// bool RandomRoutingOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
+// bool QuantizeLinearOpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
 //   // pass
 //   return true;
+// }
+
+// bool QuantizeLinear_OpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
+//   return QuantizeLinearOpInferSymbolicShape(op, infer_context);
 // }
 
 // bool RankAttentionOpInferSymbolicShape(pir::Operation *op,
