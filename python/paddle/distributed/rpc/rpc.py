@@ -146,7 +146,7 @@ def init_rpc(
     logger.info(f"Trainer {rank}: Init RPC done!")
 
 
-def rpc_sync_framework(
+def rpc_sync(
     to: str,
     fn: callable,
     args: tuple | None = None,
