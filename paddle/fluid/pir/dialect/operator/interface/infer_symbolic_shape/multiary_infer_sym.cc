@@ -101,6 +101,34 @@ bool AddNOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool TdmSamplerOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  bool output_positive = op->attribute<pir::BoolAttribute>("output_positive").data();
+  std::vector<int> neg_samples_num_list =
+      paddle::dialect::details::GetVectorAttr<int>(op, "neg_samples_num_list");
+
+  int64_t sample_res_length = 0;
+  for (int sample_nums : neg_samples_num_list) {
+    sample_res_length += sample_nums + static_cast<int64_t>(output_positive);
+  }
+
+  symbol::DimExpr batch_size = x_dims[0];
+  symbol::DimExpr sample_res_dim(sample_res_length);
+
+  std::vector<symbol::DimExpr> output_dims = {batch_size, sample_res_dim};
+  symbol::TensorShapeOrDataDimExprs output_shape(output_dims);
+
+  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{output_shape});
+  infer_context->SetShapeOrDataForValue(op->result(1), symbol::ShapeOrDataDimExprs{output_shape});
+  infer_context->SetShapeOrDataForValue(op->result(2), symbol::ShapeOrDataDimExprs{output_shape});
+
+  return true;
+}
+
 bool AddmmOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
