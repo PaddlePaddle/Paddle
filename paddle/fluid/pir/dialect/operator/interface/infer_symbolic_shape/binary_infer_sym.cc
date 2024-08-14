@@ -208,9 +208,9 @@ bool BmmOpInferSymbolicShape(pir::Operation *op,
   auto cal_shape_fn = [](const symbol::DimExpr &x,
                          const symbol::DimExpr &y,
                          const std::string &error_str) -> symbol::DimExpr {
-    if (x.is_dynamic()) {
+    if (x == -1) {
       return y;
-    } else if (y.is_dynamic()) {
+    } else if (y == -1) {
       return x;
     }
     PADDLE_ENFORCE_EQ(x, y, common::errors::InvalidArgument(error_str, x, y));
