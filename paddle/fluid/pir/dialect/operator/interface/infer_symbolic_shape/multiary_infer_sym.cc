@@ -1290,7 +1290,7 @@ bool RoiPoolOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
   const auto &rois_num_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-
+  const auto &rois_num_shape = rois_num_shape_or_data.shape();
   if (!rois_num_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
     PADDLE_ENFORCE_EQ(
         rois_num_shape.size(),
@@ -1300,8 +1300,6 @@ bool RoiPoolOpInferSymbolicShape(
             "but received the number of rois with %d dimension",
             rois_num_shape.size()));
   }
-
-  const auto &rois_num_shape = rois_num_shape_or_data.shape();
 
   int pooled_height =
       op->attribute<pir::Int32Attribute>("pooled_height").data();
