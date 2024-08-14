@@ -1053,6 +1053,7 @@
     func : correlation
     data_type : input1
   backward : correlation_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cos
   args : (Tensor x)

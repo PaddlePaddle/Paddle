@@ -220,6 +220,57 @@ bool Binomial_OpInferSymbolicShape(
 //   return true;
 // }
 
+bool CorrelationOpInferSymbolicShape(pir::Operation *op,
+                                     pir::InferSymbolicShapeContext *infer_context) {
+  // 获取输入张量的符号形状
+  const auto &input1_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &input2_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  // 获取输入张量的维度
+  const std::vector<symbol::DimExpr> &input1_dims = input1_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &input2_dims = input2_shape_or_data.shape();
+
+  // 检查输入张量的rank是否为4
+  PADDLE_ENFORCE_EQ(input1_dims.size(), 4,
+                    common::errors::InvalidArgument(
+                        "Input(X) of CorrelationOp must be 4 dims. But received dims is %d.",
+                        input1_dims.size()));
+  PADDLE_ENFORCE_EQ(input2_dims.size(), 4,
+                    common::errors::InvalidArgument(
+                        "Input(Y) of CorrelationOp must be 4 dims. But received dims is %d.",
+                        input2_dims.size()));
+
+  // 获取属性
+  int pad_size = op->attribute<pir::Int32Attribute>("pad_size").data();
+  int kernel_size = op->attribute<pir::Int32Attribute>("kernel_size").data();
+  int max_displacement = op->attribute<pir::Int32Attribute>("max_displacement").data();
+  int stride1 = op->attribute<pir::Int32Attribute>("stride1").data();
+  int stride2 = op->attribute<pir::Int32Attribute>("stride2").data();
+  int corr_type_multiply = op->attribute<pir::Int32Attribute>("corr_type_multiply").data(); // Unused attribute
+
+  // 使用CorrelationOutputSize函数计算输出形状
+  std::vector<int64_t> output_shape = CorrelationOutputSize(
+      input1_dims[0].AsConstant(), // batch size
+      input1_dims[2].AsConstant(), // height
+      input1_dims[3].AsConstant(), // width
+      stride1,
+      stride2,
+      kernel_size,
+      pad_size,
+      max_displacement);
+
+  // 构建输出张量的符号形状
+  std::vector<symbol::DimExpr> output_shape_expr;
+  for (const auto &dim : output_shape) {
+    output_shape_expr.push_back(symbol::DimExpr(dim));
+  }
+
+  // 设置输出张量的符号形状
+  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(output_shape_expr)});
+
+  return true;
+}
+
 bool CtcAlignOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
