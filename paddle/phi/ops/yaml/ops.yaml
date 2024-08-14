@@ -1084,6 +1084,7 @@
     func: crf_decoding
     data_type: emission
   optional: label, length
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : crop
   args : (Tensor x, IntArray shape = {}, IntArray offsets = {})
@@ -1702,6 +1703,7 @@
   kernel :
     func : fake_dequantize_max_abs
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
@@ -1711,6 +1713,7 @@
   kernel :
     func : fake_quantize_abs_max
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fake_quantize_dequantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
@@ -1758,6 +1761,7 @@
     data_type : x
   optional : iter, out_scales
   inplace: (in_scale -> out_scale)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fft_c2c
   args : (Tensor x, int64_t[] axes, str normalization, bool forward)
@@ -3717,6 +3721,7 @@
     data_type : dtype
     backend : place
   traits : pir::SideEffectTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : rank_attention
   args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
@@ -4021,6 +4026,7 @@
   output : Tensor(out)
   infer_meta :
     func : ScatterInferMeta
+    spmd_rule : ScatterInferSpmd
   kernel :
     func : scatter
     data_type : x
@@ -4059,6 +4065,7 @@
     data_type : x
   intermediate : summed_ids
   backward : segment_pool_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : selu
   args : (Tensor x, float scale=1.0507009873554804934193349852946, float alpha=1.6732632423543772848170429916717)
@@ -4188,6 +4195,7 @@
   output: Tensor (out)
   infer_meta:
     func: ShareDataInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel:
     func: share_data {dense -> dense}
           share_data_sr {selected_rows -> selected_rows}

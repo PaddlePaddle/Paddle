@@ -431,7 +431,7 @@ class UtilBase:
                 else:
                     shape = [dim]
 
-                shape = [batch_size] + shape
+                shape = [batch_size, *shape]
                 dim = dim * batch_size
 
                 for line in open(fn, 'r'):
@@ -606,9 +606,9 @@ class UtilBase:
                         feed_tensors.append(
                             np.array(
                                 np.random.random(
-                                    tuple(
-                                        [config.batch_size]
-                                        + list(feed_config.feeded_vars_dims[i])
+                                    (
+                                        config.batch_size,
+                                        *feed_config.feeded_vars_dims[i],
                                     )
                                 ),
                                 dtype=feed_config.feeded_vars_types[i],
@@ -617,9 +617,9 @@ class UtilBase:
                     elif var.lod_level == 1:
                         t = np.array(
                             np.random.random(
-                                tuple(
-                                    [config.batch_size]
-                                    + list(feed_config.feeded_vars_dims[i])
+                                (
+                                    config.batch_size,
+                                    *feed_config.feeded_vars_dims[i],
                                 )
                             ),
                             dtype=feed_config.feeded_vars_types[i],
