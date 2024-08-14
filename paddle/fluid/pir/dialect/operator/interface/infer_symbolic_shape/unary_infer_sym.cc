@@ -1569,7 +1569,7 @@ bool PixelShuffleOpInferSymbolicShape(
                     common::errors::InvalidArgument(
                         "Input should be a 4-D tensor of format [N, C, H, W] "
                         "or [N, H, W, C], but got %u.",
-                        input_dims.size()));
+                        x_shape.size()));
 
   PADDLE_ENFORCE_NE(
       upscale_factor,
