@@ -242,18 +242,6 @@ bool ArgsortOpInferSymbolicShape(
   return true;
 }
 
-bool ShadowFeedTensorsOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  pir::Value operand_source = op->operand_source(0);
-  const symbol::TensorListShapeOrDataDimExprs &shape_or_data_list =
-      infer_context->GetShapeOrDataForValue(operand_source)
-          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
-  for (size_t i = 0; i < shape_or_data_list.size(); ++i) {
-    infer_context->SetShapeOrDataForValue(op->result(i), shape_or_data_list[i]);
-  }
-  return true;
-}
-
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {}  // namespace cinn::dialect

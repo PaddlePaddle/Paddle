@@ -1487,12 +1487,8 @@ bool MulticlassNms3OpInferSymbolicShape(
       common::errors::InvalidArgument(
           "The rank of Input(Scores) must be 2 or 3. But received rank = %d",
           score_size));
-  PADDLE_ENFORCE_EQ(
-      box_dims.size(),
-      3,
-      common::errors::InvalidArgument(
-          "The rank of Input(BBoxes) must be 3. But received rank = %d",
-          box_dims.size()));
+
+  infer_context->AddEqualCstr(box_dims.size(), symbol::DimExpr(3));
 
   if (score_size == 3) {
     PADDLE_ENFORCE_EQ(
@@ -1508,7 +1504,6 @@ bool MulticlassNms3OpInferSymbolicShape(
   }
 
   const auto &next_symbol_out_and_index = infer_context->GetNextSymName();
-  const auto &next_symbol_nms_rois_num = infer_context->GetNextSymName();
 
   std::vector<symbol::DimExpr> out_shape;
   out_shape.emplace_back(next_symbol_out_and_index);
@@ -1519,7 +1514,7 @@ bool MulticlassNms3OpInferSymbolicShape(
   index_shape.emplace_back(1);
 
   std::vector<symbol::DimExpr> nms_rois_num_shape;
-  nms_rois_num_shape.emplace_back(next_symbol_nms_rois_num);
+  nms_rois_num_shape.emplace_back(infer_context->GetNextSymName());
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
