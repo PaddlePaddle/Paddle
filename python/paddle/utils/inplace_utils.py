@@ -56,11 +56,6 @@ def _inplace_apis_in_dygraph_only_(
                             raise ValueError(
                                 f'Sorry about what\'s happened. In to_static mode, {func.__name__}\'s output variable {arg.name} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {arg.name} = {arg.name}.assign().'
                             )
-                    # check()
-                    # 定义的 op，作为第一个返回值
-                    # define_op == "pd_op.transpose" and define_op.result(0) == "x"
-                    # 被 op 使用，并作为第一个参数
-                    # for all_used_ops, "x" == op.operand_source(0)
 
             origin_func = f"{func.__module__}.{origin_api_name}"
             return eval(origin_func)(*args, **kwargs)
