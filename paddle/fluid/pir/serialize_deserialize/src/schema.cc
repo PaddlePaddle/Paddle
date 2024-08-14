@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
+#include <cstdlib>
 #include <filesystem>
 #include "paddle/phi/core/enforce.h"
 namespace pir {
@@ -84,18 +85,12 @@ std::string DialectIdMap::GetDecompressDialectId(const std::string& id) {
 }
 
 uint64_t GetPirVersion() {
-  std::string current_path = std::filesystem::current_path().string();
-  std::string paddle_root = "";
-  // For coverage CI
-  if (current_path.find("Paddle") == std::string::npos) {
-    paddle_root = paddle_root = "/paddle/build";
-  } else {
-    paddle_root = current_path.substr(0, current_path.find("Paddle") + 6);
-  }
+  VLOG(8) << "Get PIR Version: ";
+  const char* paddle_root = PADDLE_ROOT;
   VLOG(8) << "Paddle path: " << paddle_root;
-  std::filesystem::path patch_path =
-      std::filesystem::path(paddle_root.c_str()) / "paddle" / "fluid" / "pir" /
-      "serialize_deserialize" / "patch";
+  std::filesystem::path patch_path = std::filesystem::path(paddle_root) /
+                                     "paddle" / "fluid" / "pir" /
+                                     "serialize_deserialize" / "patch";
   VLOG(8) << "Patch path: " << patch_path;
   int version = 0;
   for (auto& v : std::filesystem::directory_iterator(patch_path)) {
@@ -113,18 +108,11 @@ uint64_t GetPirVersion() {
   return version;
 }
 uint64_t GetMaxReleasePirVersion() {
-  std::string current_path = std::filesystem::current_path().string();
-  std::string paddle_root = "";
-  // For coverage CI
-  if (current_path.find("Paddle") == std::string::npos) {
-    paddle_root = "/paddle/build";
-  } else {
-    paddle_root = current_path.substr(0, current_path.find("Paddle") + 6);
-  }
+  const char* paddle_root = PADDLE_ROOT;
   VLOG(8) << "Paddle path: " << paddle_root;
-  std::filesystem::path patch_path =
-      std::filesystem::path(paddle_root.c_str()) / "paddle" / "fluid" / "pir" /
-      "serialize_deserialize" / "patch";
+  std::filesystem::path patch_path = std::filesystem::path(paddle_root) /
+                                     "paddle" / "fluid" / "pir" /
+                                     "serialize_deserialize" / "patch";
   VLOG(8) << "Patch path: " << patch_path;
   int version = 0;
   for (auto& v : std::filesystem::directory_iterator(patch_path)) {

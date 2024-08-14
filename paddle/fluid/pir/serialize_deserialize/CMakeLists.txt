@@ -10,6 +10,9 @@ target_compile_definitions(yaml INTERFACE YAML_CPP_STATIC_DEFINE)
 if(NOT WIN32 AND NOT APPLE)
   link_libraries(stdc++fs)
 endif()
+
+add_definitions(-DPADDLE_ROOT="${PADDLE_SOURCE_DIR}")
+
 cc_library(
   pir_save_load
   SRCS ${SERIALIZE_DESERIALIZE_CPP_SOURCES}

@@ -81,18 +81,11 @@ bool ReadModule(const std::string& file_path,
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
     if (file_version != pir_version) {
       builder.SetFileVersion(file_version);
-      std::string current_path = std::filesystem::current_path().string();
-      std::string paddle_root = "";
-      // For coverage CI
-      if (current_path.find("Paddle") == std::string::npos) {
-        paddle_root = "/paddle/build";
-      } else {
-        paddle_root = current_path.substr(0, current_path.find("Paddle") + 6);
-      }
+      const char* paddle_root = PADDLE_ROOT;
       VLOG(8) << "Paddle path: " << paddle_root;
-      std::filesystem::path patch_path =
-          std::filesystem::path(paddle_root.c_str()) / "paddle" / "fluid" /
-          "pir" / "serialize_deserialize" / "patch";
+      std::filesystem::path patch_path = std::filesystem::path(paddle_root) /
+                                         "paddle" / "fluid" / "pir" /
+                                         "serialize_deserialize" / "patch";
       VLOG(8) << "Patch path: " << patch_path;
       builder.BuildPatch(patch_path.string());
     }
