@@ -156,7 +156,17 @@ def get_local_load_files_for_multiple_node(
             need_files.remove(file)
         cross_node_file_names += file_need_to_remove
 
+    not_read_file_ranks = []
+    for rank, files in rank_to_need_files.items():
+        if len(files) == 0:
+            not_read_file_ranks.append(rank)
+    for rank in not_read_file_ranks:
+        rank_to_need_files.pop(rank)
+
     rank_load_files = get_local_load_files(rank_to_need_files)
+
+    for rank in not_read_file_ranks:
+        rank_load_files[rank] = []
 
     cur_load_files = []
     for rank, load_file in rank_load_files.items():
@@ -168,16 +178,20 @@ def get_local_load_files_for_multiple_node(
             unload_files.append(file)
 
     file_to_ranks = {}
-    for rank, files in rank_to_need_files.items():
-        if file not in unload_files:
-            file_to_ranks = [rank]
-        else:
-            file_to_ranks[file].append(rank)
+    for rank, files in rank_to_local_data_files.items():
+        for file in files:
+            if file not in file_to_ranks:
+                file_to_ranks[file] = [rank]
+            else:
+                file_to_ranks[file].append(rank)
 
+    unload_files = set(unload_files)
     for file in unload_files:
-        can_access_file_ranks = file_to_ranks[file]
+        sub_rank_load_files = {}
+        for rank in file_to_ranks[file]:
+            sub_rank_load_files[rank] = rank_load_files[rank]
         min_rank = min(
-            rank_load_files, key=lambda rank: len(rank_load_files[rank])
+            sub_rank_load_files, key=lambda rank: len(sub_rank_load_files[rank])
         )
         rank_load_files[min_rank].append(file)
 
@@ -282,7 +296,6 @@ def get_local_load_files(rank_to_files):
         logger.debug(
             f"update rank_to_read_files:{rank_to_read_files}, rank_to_not_read_files:{rank_to_not_read_files}, ranks:{ranks}, rank_file:{rank_file}"
         )
-
     return rank_to_read_files
 
 
