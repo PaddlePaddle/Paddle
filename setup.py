@@ -1408,12 +1408,12 @@ def get_package_data_and_package_dir():
         '*.pyi',
     ]
     package_data['paddle.framework'] = [
-        *package_data.get('paddle.framework', []), 
-        '*.pyi'
+        *package_data.get('paddle.framework', []),
+        '*.pyi',
     ]
     package_data['paddle.base'] = [
         *package_data.get('paddle.base', []),
-        '*.pyi'
+        '*.pyi',
     ]
     package_data['paddle.tensor'] = [
         *package_data.get('paddle.tensor', []),
@@ -1421,28 +1421,28 @@ def get_package_data_and_package_dir():
     ]
     package_data['paddle._typing'] = [
         *package_data.get('paddle._typing', []),
-        '*.pyi'
+        '*.pyi',
     ]
     package_data['paddle._typing.libs'] = [
         *package_data.get('paddle._typing.libs', []),
-        '*.pyi', 
-        '*.md'
+        '*.pyi',
+        '*.md',
     ]
     package_data['paddle._typing.libs.libpaddle'] = [
         *package_data.get('paddle._typing.libs.libpaddle', []),
-        '*.pyi'
+        '*.pyi',
     ]
     package_data['paddle._typing.libs.libpaddle.pir'] = [
         *package_data.get('paddle._typing.libs.libpaddle.pir', []),
-        '*.pyi'
+        '*.pyi',
     ]
     package_data['paddle._typing.libs.libpaddle.eager'] = [
         *package_data.get('paddle._typing.libs.libpaddle.eager', []),
-        '*.pyi'
+        '*.pyi',
     ]
     package_data['paddle._typing.libs.libpaddle.eager.ops'] = [
         *package_data.get('paddle._typing.libs.libpaddle.eager.ops', []),
-        '*.pyi'
+        '*.pyi',
     ]
 
     return package_data, package_dir, ext_modules
