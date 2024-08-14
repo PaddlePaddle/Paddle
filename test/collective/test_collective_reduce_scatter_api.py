@@ -59,7 +59,6 @@ class TestCollectiveReduceScatterAPI(test_base.TestDistBase):
                 "reduce_scatter",
                 "nccl",
                 dtype=dtype,
-                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_allgather_nccl_with_new_comm_pir(self):
@@ -80,7 +79,6 @@ class TestCollectiveReduceScatterAPI(test_base.TestDistBase):
                 "nccl",
                 dtype=dtype,
                 need_envs={
-                    "FLAGS_dynamic_static_unified_comm": "true",
                     "FLAGS_enable_pir_in_executor": "1",
                 },
             )

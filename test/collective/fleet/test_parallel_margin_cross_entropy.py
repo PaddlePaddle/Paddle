@@ -23,7 +23,6 @@ class TestParallelMarginSoftmaxWithCrossEntropy(TestMultipleAccelerators):
     def test_parallel_margin_cross_entropy(self):
         self.run_mnist_2accelerators(
             'parallel_margin_cross_entropy.py',
-            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
 
