@@ -212,7 +212,7 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
     int num_columns = num_rows;
   }
   std::vector<symbol::DimExpr> out_dims = {num_rows, num_columns};
-  infer_context->SetShapeOrDataForValuel(
+  infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
 
   return true;
