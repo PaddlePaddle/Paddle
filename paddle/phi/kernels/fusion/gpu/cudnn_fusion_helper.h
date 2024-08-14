@@ -52,7 +52,7 @@ class CudnnFusionOp {
     PADDLE_ENFORCE_EQ(
         plan_created_,
         true,
-        phi::errors::Fatal(
+        common::errors::Fatal(
             "CudnnFusionOp exec requested without a valid 'plan', need: "
             "<set const params>, GetWorkspaceSizeBytes(), Execute()."));
     PADDLE_ENFORCE_GPU_SUCCESS(

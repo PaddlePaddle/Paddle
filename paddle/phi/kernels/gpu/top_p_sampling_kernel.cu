@@ -236,11 +236,11 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[],
 template <typename T>
 __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input) {
 #pragma unroll
-  for (int offset = 16; offset > 0; offset >>= 1) {
-    T tmp_val =
-        phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-    int tmp_id =
-        phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+  for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
+    T tmp_val = phi::backends::gpu::CudaShuffleDownSync(
+        FINAL_MASK, input.v, offset, WARP_SIZE);
+    int tmp_id = phi::backends::gpu::CudaShuffleDownSync(
+        FINAL_MASK, input.id, offset, WARP_SIZE);
     if (static_cast<float>(input.v) < static_cast<float>(tmp_val)) {
       input.v = tmp_val;
       input.id = tmp_id;
@@ -268,7 +268,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
       shared_max[wid] = input_now;
     }
     __syncthreads();
-    input_now = (tid < BlockSize / 32)
+    input_now = (tid < BlockSize / WARP_SIZE)
                     ? shared_max[lane]
                     : Pair<T>(std::numeric_limits<T>::min(), -1);
     if (wid == 0) {
@@ -297,7 +297,7 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
       if (*beam >= MaxLength) break;
     } else {
 #ifdef PADDLE_WITH_HIP
-      unsigned mask = 0u;
+      uint64_t mask = 0u;
       mask = __ballot(true);
       if (tid_max / WARP_SIZE == wid) {
         if (__shfl_down(*beam, tid_max % WARP_SIZE, WARP_SIZE) == MaxLength)
@@ -348,8 +348,8 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
                                      const int k,
                                      const bool need_batch_random) {
   const int tid = threadIdx.x;
-  const int wid = tid / 32;
-  const int lane = tid % 32;
+  const int wid = tid / WARP_SIZE;
+  const int lane = tid % WARP_SIZE;
   const int bid = blockIdx.x;
   const float threshold_now =
       threshold ? static_cast<float>(threshold[bid]) : 0.f;
@@ -364,7 +364,7 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
     topk_scores_now = topk_scores + bid * k;
   }
 
-  __shared__ Pair<T> shared_max[BlockSize / 32];
+  __shared__ Pair<T> shared_max[BlockSize / WARP_SIZE];
   __shared__ Pair<T> beam_max[TopPBeamTopK];
 
   Pair<T> topk[MaxLength];
@@ -452,8 +452,8 @@ __global__ void KeMatrixTopPBeamTopKFt(const T* src,
                                        const int k,
                                        const bool need_batch_random) {
   const int tid = threadIdx.x;
-  const int wid = tid / 32;
-  const int lane = tid % 32;
+  const int wid = tid / WARP_SIZE;
+  const int lane = tid % WARP_SIZE;
   const int bid = blockIdx.x;
   const float threshold_now =
       threshold ? static_cast<float>(threshold[bid]) : 0.f;
@@ -467,7 +467,7 @@ __global__ void KeMatrixTopPBeamTopKFt(const T* src,
     topk_scores_now = topk_scores + bid * k;
   }
 
-  __shared__ Pair<T> shared_max[BlockSize / 32];
+  __shared__ Pair<T> shared_max[BlockSize / WARP_SIZE];
   __shared__ Pair<T> beam_max[TopPBeamTopK];
 
   Pair<T> topk[MaxLength];
@@ -674,9 +674,9 @@ __global__ void topp_sampling(T* sorted_probs,
   __shared__ int stop_shared;
   const int tid = threadIdx.x;
   const int bid = blockIdx.x;
-  constexpr int NUM_WARPS = BLOCK_SIZE / 32;
-  const int lane_id = tid % 32;
-  const int warp_id = tid / 32;
+  constexpr int NUM_WARPS = BLOCK_SIZE / WARP_SIZE;
+  const int lane_id = tid % WARP_SIZE;
+  const int warp_id = tid / WARP_SIZE;
   const float p_t = static_cast<float>(top_ps[bid]);
   const float threshold_now =
       threshold ? static_cast<float>(threshold[bid]) : 0.f;
@@ -807,9 +807,9 @@ __global__ void topp_sampling_ft(T* sorted_probs,
   __shared__ float rand_p;
   const int tid = threadIdx.x;
   const int bid = blockIdx.x;
-  constexpr int NUM_WARPS = BLOCK_SIZE / 32;
-  const int lane_id = tid % 32;
-  const int warp_id = tid / 32;
+  constexpr int NUM_WARPS = BLOCK_SIZE / WARP_SIZE;
+  const int lane_id = tid % WARP_SIZE;
+  const int warp_id = tid / WARP_SIZE;
   const float p_t = static_cast<float>(top_ps[bid]);
   const float threshold_now =
       threshold ? static_cast<float>(threshold[bid]) : 0.f;
@@ -919,8 +919,13 @@ __global__ void topp_sampling_ft(T* sorted_probs,
     }
   }
   if (!skip) {
+#ifdef PADDLE_WITH_HIP
+    int active_lane_id =
+        WARP_SIZE - __popcll(selected_shared[warp_id]);  // first not 0
+#else
     int active_lane_id =
         WARP_SIZE - __popc(selected_shared[warp_id]);  // first not 0
+#endif
     if (lane_id == active_lane_id) {
       float val = static_cast<float>(sorted_probs[offset + i_activate]);
 #ifdef DEBUG_TOPP

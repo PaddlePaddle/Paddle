@@ -48,8 +48,8 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
             ->mutable_value()
             ->MoveMemoryHolder());
     var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-  } else if (var->IsType<LoDTensorArray>()) {
-    auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+  } else if (var->IsType<phi::TensorArray>()) {
+    auto* tensor_arr = var->GetMutable<phi::TensorArray>();
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder());
     }

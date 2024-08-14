@@ -32,6 +32,8 @@ bool HasDistInput(const std::vector<pir::Value>& inputs,
                   ProcessMeshAttribute* p_mesh_attr = nullptr);
 bool AllInputAreDist(const std::vector<pir::Value>& inputs);
 
+pir::Attribute GetTensorDistAttr(pir::Type type);
+
 void CvtAllInputsToDist(const std::vector<pir::Value>& inputs,
                         ProcessMeshAttribute mesh_attr);
 

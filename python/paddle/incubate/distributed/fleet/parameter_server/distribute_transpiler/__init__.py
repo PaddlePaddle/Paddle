@@ -117,9 +117,9 @@ class FleetTranspiler(Fleet):
 
         def sync_strategy_envs():
             kwargs = {}
-            kwargs[
-                "pserver_endpoints"
-            ] = self._role_maker.get_pserver_endpoints()
+            kwargs["pserver_endpoints"] = (
+                self._role_maker.get_pserver_endpoints()
+            )
             kwargs["trainer_id"] = self._role_maker.worker_index()
             return kwargs
 
@@ -851,10 +851,10 @@ class ParameterServerOptimizer(DistributedOptimizer):
         no_grad_set=None,
         callbacks=None,
     ):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def apply_gradients(self, params_grads):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _build_trainer_programs(self, compiled_config):
         _main = fleet._origin_main_program.clone()

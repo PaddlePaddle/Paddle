@@ -27,9 +27,9 @@ void ViewShapeKernel(const Context& dev_ctx,
                      const std::vector<int64_t>& dims,
                      DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   // infer dims
   auto infer_dim = -1;
@@ -39,18 +39,19 @@ void ViewShapeKernel(const Context& dev_ctx,
   for (int dim = 0, ndim = dims_copy.size(); dim < ndim; ++dim) {
     if (dims_copy[dim] == -1) {
       if (infer_dim >= 0) {
-        PADDLE_THROW(phi::errors::Fatal("Only one dimension can be inferred"));
+        PADDLE_THROW(
+            common::errors::Fatal("Only one dimension can be inferred"));
       }
       infer_dim = dim;
     } else if (dims_copy[dim] >= 0) {
       new_size *= dims_copy[dim];
     } else {
-      PADDLE_THROW(phi::errors::OutOfRange("Tensor idx is out of range"));
+      PADDLE_THROW(common::errors::OutOfRange("Tensor idx is out of range"));
     }
   }
   PADDLE_ENFORCE_NE(new_size,
                     0,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "cannot reshape tensor of 0 elements into shape "));
   if (infer_dim >= 0 && new_size > 0 && numel % new_size == 0) {
     dims_copy[infer_dim] = numel / new_size;
@@ -67,7 +68,7 @@ void ViewShapeKernel(const Context& dev_ctx,
     out->ResetHolder(input.Holder());
     out->ShareInplaceVersionCounterWith(input);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The Tensor can not be viewed, please call reshape."));
   }
 }
@@ -78,9 +79,9 @@ void ViewDtypeKernel(const Context& dev_ctx,
                      DataType dtype,
                      DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   size_t input_dtype_size = phi::SizeOf(input.dtype());
   size_t output_dtype_size = phi::SizeOf(dtype);
@@ -92,13 +93,13 @@ void ViewDtypeKernel(const Context& dev_ctx,
     out->ResetHolder(input.Holder());
     out->ShareInplaceVersionCounterWith(input);
   } else if (input_dtype_size == 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The Tensor's shape is [] can not be viewed."));
   } else if (input_dtype_size > output_dtype_size) {
     PADDLE_ENFORCE_EQ(
         input.strides()[input.strides().size() - 1],
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input.strides[-1] must be 1 to view %s as %s, but got %d",
             input.dtype(),
             dtype,
@@ -127,7 +128,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         input.strides()[input.strides().size() - 1],
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input.strides[%d] must be 1 to view %s as %s, but got %d",
             input.strides().size() - 1,
             input.dtype(),
@@ -137,7 +138,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         input.dims()[input.dims().size() - 1] % times,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input.shape[%d](%d) must be multiple of %d to view %s as %s",
             input.dims().size() - 1,
             input.dims()[input.dims().size() - 1],
@@ -147,7 +148,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         input.offset() % times,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input.offset(%d) must be multiple of %d to view %s as %s",
             input.offset(),
             times,
@@ -163,13 +164,13 @@ void ViewDtypeKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_EQ(
           output_stride[i] % times,
           0,
-          phi::errors::InvalidArgument("input.strides[%d](%d) must be be "
-                                       "multiple of %d to view %s as %s",
-                                       i,
-                                       output_stride[i],
-                                       times,
-                                       input.dtype(),
-                                       dtype));
+          common::errors::InvalidArgument("input.strides[%d](%d) must be be "
+                                          "multiple of %d to view %s as %s",
+                                          i,
+                                          output_stride[i],
+                                          times,
+                                          input.dtype(),
+                                          dtype));
       output_stride[i] = output_stride[i] / times;  // NOLINT
     }
     output_stride[output_stride.size() - 1] = 1;

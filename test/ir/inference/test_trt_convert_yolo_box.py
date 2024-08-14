@@ -18,13 +18,16 @@ import os
 import unittest
 from functools import partial
 from itertools import product
-from typing import Any, Generator
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
 from trt_layer_auto_scan_test import SkipReasons, TrtLayerAutoScanTest
 
 import paddle.inference as paddle_infer
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):

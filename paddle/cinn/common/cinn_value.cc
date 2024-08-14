@@ -160,17 +160,26 @@ CINNValue::CINNValue(const std::string &value)
 }
 CINNValue::CINNValue(const Var &value)
     : cinn_pod_value_t(cinn_value_t(), TypeCode<Var>()) {
-  CHECK(value.defined());
+  PADDLE_ENFORCE_EQ(
+      value.defined(),
+      true,
+      ::common::errors::InvalidArgument("The input of Var is not defined."));
   shared_ = value;
 }
 CINNValue::CINNValue(const Expr &value)
     : cinn_pod_value_t(cinn_value_t(), TypeCode<Expr>()) {
-  CHECK(value.defined());
+  PADDLE_ENFORCE_EQ(
+      value.defined(),
+      true,
+      ::common::errors::InvalidArgument("The input of Expr is not defined."));
   shared_ = value;
 }
 CINNValue::CINNValue(const CINNValuePack &value)
     : cinn_pod_value_t(cinn_value_t(), TypeCode<CINNValuePack>()) {
-  CHECK(value.defined());
+  PADDLE_ENFORCE_EQ(value.defined(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input of CINNValuePack is not defined."));
   shared_ = value;
 }
 
@@ -194,7 +203,11 @@ const CINNValue &_CINNValuePack_::operator[](int offset) const {
   return values_[offset];
 }
 void _CINNValuePack_::AddValue(const CINNValue &value) {
-  CHECK(value.defined());
+  PADDLE_ENFORCE_EQ(
+      value.defined(),
+      true,
+      ::common::errors::InvalidArgument("The CINNValue is not defined. Which "
+                                        "can't be added to CINNValuePack."));
   values_.push_back(value);
 }
 void _CINNValuePack_::Clear() { values_.clear(); }

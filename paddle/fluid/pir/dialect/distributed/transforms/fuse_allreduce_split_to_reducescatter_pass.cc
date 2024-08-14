@@ -23,7 +23,7 @@
 
 namespace {
 // matmul+c_allreduce_sum_+assign+full+split_with_num+builtin_slice ->
-// c_reducescatter
+// reduce_scatter
 class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedAllReduceSplitPattern1"; }
@@ -76,17 +76,15 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
-    const auto &c_reducescatter =
-        res.Op(paddle::dialect::CReducescatterOp::name(),
-               {{"ring_id", pat.Attr("ring_id")},
-                {"nranks", pat.Attr("num")},
-                {"use_calc_stream", pat.Attr("use_calc_stream")}},
+    const auto &reduce_scatter =
+        res.Op(paddle::dialect::ReduceScatterOp::name(),
+               {{"ring_id", pat.Attr("ring_id")}, {"nranks", pat.Attr("num")}},
                {{"execution_stream", pat.Attr("execution_stream")},
                 {"force_record_event", pat.Attr("force_record_event")},
                 {"event_to_record", pat.Attr("event_to_record")},
                 {"events_to_wait", pat.Attr("events_to_wait")}});
 
-    c_reducescatter({&res.Tensor("input_grad_partial")}, {&res.Tensor("out")});
+    reduce_scatter({&res.Tensor("input_grad_partial")}, {&res.Tensor("out")});
   }
 };
 
@@ -128,7 +126,7 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
 //       |                     |
 //      out1               all_gather
 //       |                     |
-// c_reducescatter        out_g_assign  bias_g
+// reduce_scatter        out_g_assign  bias_g
 //       |                     |
 //      out2    bias       add_grad
 //       |-------|-------------|
@@ -197,11 +195,9 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     const auto &res_matmul = res.Op(paddle::dialect::MatmulOp::name(),
                                     {{"transpose_x", pat.Attr("trans_x")},
                                      {"transpose_y", pat.Attr("trans_y")}});
-    const auto &res_c_reducescatter =
-        res.Op(paddle::dialect::CReducescatterOp::name(),
-               {{"ring_id", pat.Attr("ring_id")},
-                {"nranks", pat.Attr("num")},
-                {"use_calc_stream", pat.Attr("use_calc_stream")}},
+    const auto &res_reduce_scatter =
+        res.Op(paddle::dialect::ReduceScatterOp::name(),
+               {{"ring_id", pat.Attr("ring_id")}, {"nranks", pat.Attr("num")}},
                {{"force_record_event", pat.Attr("force_record_event")},
                 {"event_to_record", pat.Attr("event_to_record")},
                 {"events_to_wait", pat.Attr("events_to_wait")}});
@@ -219,7 +215,7 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
                 {"transpose_y", pat.Attr("mm_g_trans_y")}});
 
     res.Tensor("out1") = res_matmul(res.Tensor("input"), res.Tensor("weight"));
-    res.Tensor("out2") = res_c_reducescatter(res.Tensor("out1"));
+    res.Tensor("out2") = res_reduce_scatter(res.Tensor("out1"));
     res.Tensor("out6") = res_add(res.Tensor("out2"), res.Tensor("bias"));
 
     res_add_grad(

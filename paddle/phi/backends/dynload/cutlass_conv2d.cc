@@ -35,7 +35,7 @@ void* GetCutlassConv2dHandle() {
 
     PADDLE_ENFORCE_NOT_NULL(
         cutlass_dso_handle,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "libCutlassConv2d.so is needed, "
             "but libCutlassConv2d.so is not found.\n"
             "  Suggestions:\n"

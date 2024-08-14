@@ -78,7 +78,7 @@ inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
     auto* dev_ctx = static_cast<phi::CPUContext*>(pool.Get(tensor.place()));
     return phi::TransferLayout(*dev_ctx, tensor, layout);
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Unsupported data layout cast from CPU to GPU."));
   }
   return tensor;
@@ -108,7 +108,7 @@ phi::DenseTensor CastDataType(const Context& dev_ctx,
     case DataType::UINT8:
       return phi::Cast<uint8_t>(dev_ctx, tensor, dtype);
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
           tensor.dtype()));
   }
@@ -136,7 +136,7 @@ phi::DenseTensor CastDataType(const phi::GPUContext& dev_ctx,
     case DataType::UINT8:
       return phi::Cast<uint8_t>(dev_ctx, tensor, dtype);
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Data type (%s) is not supported when casting data type.",
           tensor.dtype()));
   }
@@ -182,7 +182,7 @@ inline phi::DenseTensor TransDataType(const phi::DenseTensor& tensor,
     return out;
 #endif
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Place type is not supported when casting data type."));
   }
   return out;
@@ -277,7 +277,7 @@ phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor) {
     return dense_out;
 #endif
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Place type is not supported when casting data type."));
   }
 
@@ -525,7 +525,7 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
       return out_new;
     }
   }
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "The impl() of input tensor is nullptr, it doesn't support for "
       "selected_rows data transform now."));
 }
@@ -562,7 +562,7 @@ std::shared_ptr<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
     }
     return std::static_pointer_cast<phi::SparseCooTensor>(tensor_in);
   }
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "The impl() of input tensor is nullptr, it doesn't support for "
       "SparseCooTensor data transform now."));
 }
@@ -601,7 +601,7 @@ std::shared_ptr<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
     }
     return std::static_pointer_cast<phi::SparseCsrTensor>(tensor_in);
   }
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "The impl() of input tensor is nullptr, it doesn't support for "
       "SparseCsrTensor data transform now."));
 }
@@ -626,7 +626,7 @@ std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
 
     return std::make_shared<phi::DenseTensor>(Trans2Contiguous(dense_tensor));
   }
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "The impl() of input tensor is nullptr, it doesn't support for "
       "DenseTensor data transform now."));
 }
@@ -699,7 +699,7 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
       true,
-      phi::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
+      common::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
 
   auto tensor_in = tensor.impl();
   const auto& tensor_dist_attr = paddle::get<0>(dist_attr);
@@ -730,14 +730,14 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
       paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
           dist_attrs),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Arg must be a vector of TensorDistAttr"));
   const auto& tensor_dist_attrs = PADDLE_GET_CONST(
       std::vector<phi::distributed::TensorDistAttr>, dist_attrs);
 
   PADDLE_ENFORCE_EQ(tensors.size(),
                     tensor_dist_attrs.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Tensor's size should be equal to dist_attrs' size."));
 
   std::vector<std::shared_ptr<phi::distributed::DistTensor>> out;
@@ -836,7 +836,7 @@ void SetInplaceOutputCorrectDistAttr(
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
       true,
-      phi::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
+      common::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
   SetInplaceOutputCorrectDistAttr(
       dev_ctx, tensor, paddle::get<0>(dist_attr), use_general_spmd_rule);
 }
@@ -882,7 +882,7 @@ void SetInplaceOutputCorrectDistAttr(
       paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
           dist_attr),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Arg must be a vector of TensorDistAttr"));
   SetInplaceOutputCorrectDistAttr(
       dev_ctx, tensors, paddle::get<1>(dist_attr), use_general_spmd_rule);
@@ -898,7 +898,7 @@ void ReshardKernelOutputToApiOutput(
     PADDLE_ENFORCE_NE(
         tensor_out,
         nullptr,
-        phi::errors::InvalidArgument("The output tensor is nullptr."));
+        common::errors::InvalidArgument("The output tensor is nullptr."));
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_out.get());
     dist_tensor->unsafe_set_dims(src_tensor->dims());
@@ -934,7 +934,7 @@ void ReshardKernelOutputToApiOutput(
   PADDLE_ENFORCE_EQ(
       src_tensors.size(),
       dst_tensors.size(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "src_tensors.size() [%d] and dst_tensors.size() [%d] not match",
           src_tensors.size(),
           dst_tensors.size()));

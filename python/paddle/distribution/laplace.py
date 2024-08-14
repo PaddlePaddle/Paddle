@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -23,6 +23,8 @@ from paddle.base import framework
 from paddle.distribution import distribution
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
 
@@ -57,6 +59,7 @@ class Laplace(distribution.Distribution):
                 1.31554604)
 
     """
+
     loc: Tensor
     scale: Tensor
 

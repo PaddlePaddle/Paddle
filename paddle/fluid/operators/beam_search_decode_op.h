@@ -21,8 +21,8 @@ namespace paddle {
 namespace operators {
 
 struct BeamSearchDecodeFunctor {
-  BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
-                          const LoDTensorArray& step_scores,
+  BeamSearchDecodeFunctor(const phi::TensorArray& step_ids,
+                          const phi::TensorArray& step_scores,
                           phi::DenseTensor* id_tensor,
                           phi::DenseTensor* score_tensor,
                           size_t beam_size,
@@ -105,10 +105,10 @@ struct BeamSearchDecodeFunctor {
   // TODO(Superjomn) Here might result serious performance issue in the
   // concurrency
   // scenarios.
-  const LoDTensorArray& step_ids_origin_;
-  const LoDTensorArray& step_scores_origin_;
-  LoDTensorArray step_ids_ = LoDTensorArray();
-  LoDTensorArray step_scores_ = LoDTensorArray();
+  const phi::TensorArray& step_ids_origin_;
+  const phi::TensorArray& step_scores_origin_;
+  phi::TensorArray step_ids_ = phi::TensorArray();
+  phi::TensorArray step_scores_ = phi::TensorArray();
   phi::DenseTensor* id_tensor_;
   phi::DenseTensor* score_tensor_;
 };

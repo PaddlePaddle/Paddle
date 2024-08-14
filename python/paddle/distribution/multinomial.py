@@ -70,6 +70,7 @@ class Multinomial(distribution.Distribution):
               [0., 6., 4.],
               [3., 3., 4.]]])
     """
+
     total_count: int
     probs: Tensor
 

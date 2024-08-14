@@ -28,9 +28,14 @@ class TestAdamWFP16XPU(unittest.TestCase):
         # read modified scale_value
         self.assertEqual(x.get_tensor().get_xpu_scale_value(), -1.25)
 
-    def test_state_dict(self):
-        os.environ["xpu_adamw_moment_dtype"] = "fp16"
-
+    def _test_state_dict(self):
+        xpu_adamw_moment_dtype = os.getenv(
+            "xpu_adamw_moment_dtype", default="fp32"
+        )
+        if xpu_adamw_moment_dtype == "fp16":
+            use_fp16 = True
+        else:
+            use_fp16 = False
         linear = paddle.nn.Linear(10, 10)
         inp = paddle.rand([10, 10], dtype="float32")
         out = linear(inp)
@@ -51,8 +56,24 @@ class TestAdamWFP16XPU(unittest.TestCase):
 
         # read scale_value in state dict
         state_dict_1 = adam.state_dict()
-        self.assertTrue("linear_0.w_0_moment1_0.SCALE_VALUE" in state_dict_1)
-        self.assertTrue("linear_0.b_0_moment1_0.SCALE_VALUE" in state_dict_1)
+        if use_fp16:
+            self.assertTrue(
+                "linear_0.w_0_moment1_0.SCALE_VALUE" in state_dict_1
+            )
+            self.assertTrue(
+                "linear_0.b_0_moment1_0.SCALE_VALUE" in state_dict_1
+            )
+        else:
+            self.assertTrue(
+                "linear_0.w_0_moment1_0.SCALE_VALUE" not in state_dict_1
+            )
+            self.assertTrue(
+                "linear_0.b_0_moment1_0.SCALE_VALUE" not in state_dict_1
+            )
+
+        if not use_fp16:
+            # do not need "overwrite" and "check overwritten value" below
+            return
 
         # overwrite scale_value
         state_dict_1["linear_0.w_0_moment1_0.SCALE_VALUE"] = 0.75
@@ -69,6 +90,12 @@ class TestAdamWFP16XPU(unittest.TestCase):
         self.assertEqual(
             state_dict_2["linear_0.b_0_moment1_0.SCALE_VALUE"], 12.3125
         )
+
+    def test_state_dict(self):
+        os.environ["xpu_adamw_moment_dtype"] = "fp16"
+        self._test_state_dict()
+        os.environ["xpu_adamw_moment_dtype"] = "fp32"
+        self._test_state_dict()
 
 
 if __name__ == '__main__':

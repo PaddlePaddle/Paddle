@@ -170,10 +170,10 @@ KernelKeyMap KernelFactory::SelectKernelMap(
 bool KernelFactory::HasKernel(const std::string& kernel_name,
                               const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
-  PADDLE_ENFORCE_NE(
-      iter,
-      kernels_.end(),
-      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  PADDLE_ENFORCE_NE(iter,
+                    kernels_.end(),
+                    common::errors::NotFound(
+                        "The kernel `%s` is not registered.", kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end() &&
@@ -233,10 +233,10 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     bool use_strided_kernel) const {
   auto iter = kernels_.find(kernel_name);
 
-  PADDLE_ENFORCE_NE(
-      iter,
-      kernels_.end(),
-      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  PADDLE_ENFORCE_NE(iter,
+                    kernels_.end(),
+                    common::errors::NotFound(
+                        "The kernel `%s` is not registered.", kernel_name));
 
   if (FLAGS_use_stride_kernel && use_strided_kernel) {
     auto stride_kernel_iter = iter->second.find(
@@ -280,7 +280,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   PADDLE_ENFORCE_NE(
       kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU,
       true,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The kernel with key %s of kernel `%s` is not registered. %s",
           kernel_key,
           kernel_name,
@@ -339,7 +339,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     PADDLE_ENFORCE_NE(
         kernel_iter,
         iter->second.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "The kernel with key %s of kernel `%s` is not registered and "
             "fail to fallback to CPU one. %s",
             kernel_key,
@@ -356,7 +356,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The kernel with key %s of kernel `%s` is not registered. %s "
           "The current value of FLAGS_enable_api_kernel_fallback(bool,"
           " default true) is false. If you want to fallback this kernel"
@@ -371,10 +371,10 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
 const KernelArgsDef& KernelFactory::GetFirstKernelArgsDef(
     const std::string& kernel_name) const {
   auto iter = kernels_.find(kernel_name);
-  PADDLE_ENFORCE_NE(
-      iter,
-      kernels_.end(),
-      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  PADDLE_ENFORCE_NE(iter,
+                    kernels_.end(),
+                    common::errors::NotFound(
+                        "The kernel `%s` is not registered.", kernel_name));
   return iter->second.cbegin()->second.args_def();
 }
 
@@ -538,10 +538,10 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
 // }
 std::string KernelSelectionErrorMessage(const std::string& kernel_name,
                                         const KernelKey& target_key) {
-  PADDLE_ENFORCE_NE(
-      KernelFactory::Instance().kernels().find(kernel_name),
-      KernelFactory::Instance().kernels().end(),
-      phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
+  PADDLE_ENFORCE_NE(KernelFactory::Instance().kernels().find(kernel_name),
+                    KernelFactory::Instance().kernels().end(),
+                    common::errors::NotFound(
+                        "The kernel `%s` is not registered.", kernel_name));
 
   // Init data structure
   bool support_backend = false;

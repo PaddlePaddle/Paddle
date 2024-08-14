@@ -70,7 +70,7 @@ class LoDTensor2BatchFunctor {
       PADDLE_ENFORCE_GT(
           lods.size(),
           2UL,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The LoD of LoDTensor should include at least 2-level "
               "sequence information, but got the LoD level is %lu. Please "
               "check the input value.",
@@ -78,7 +78,7 @@ class LoDTensor2BatchFunctor {
       PADDLE_ENFORCE_EQ(
           lods[1].size(),
           static_cast<size_t>(lod_tensor.dims()[0]),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The LoD information should be consistent with the dims, but got "
               "%lu != %lu. Please check the input value.",
               lods[1].size(),
@@ -91,7 +91,7 @@ class LoDTensor2BatchFunctor {
     auto lods = lod_tensor.lod();
     PADDLE_ENFORCE_EQ(lods.size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Only support one level sequence now, but got the "
                           "LoD level is %lu. Please check the input value.",
                           lods.size()));
@@ -183,7 +183,7 @@ class Batch2LoDTensorFunctor {
     PADDLE_ENFORCE_GT(
         in_lod.size(),
         2UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The LoD of LoDTensor should include at least 2-level "
             "sequence information, but got the LoD level is %lu. Please check "
             "the input value.",
@@ -191,7 +191,7 @@ class Batch2LoDTensorFunctor {
     PADDLE_ENFORCE_EQ(
         in_lod[1].size(),
         static_cast<size_t>(lod_tensor->dims()[0]),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The LoD information should be consistent with the dims, but got "
             "%lu != %lu. Please check the input value.",
             in_lod[1].size(),

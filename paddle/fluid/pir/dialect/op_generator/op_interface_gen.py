@@ -26,11 +26,11 @@ CHECK_INPUT_TEMPLATE = """
     PADDLE_ENFORCE_EQ(
       inputs_.size(),
       {inputs_size},
-      phi::errors::InvalidArgument("{op_name} op's inputs size should be {inputs_size}, but now is %d.", inputs_.size()));
+      common::errors::InvalidArgument("{op_name} op's inputs size should be {inputs_size}, but now is %d.", inputs_.size()));
     PADDLE_ENFORCE_EQ(
       outputs.size(),
       {outputs_size},
-      phi::errors::InvalidArgument("{op_name} op's outputs size should be {outputs_size}, but now is %d.", outputs.size()));
+      common::errors::InvalidArgument("{op_name} op's outputs size should be {outputs_size}, but now is %d.", outputs.size()));
 """
 
 OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """

@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import itertools
 import re
-from typing import Dict, List, Sequence
+from typing import TYPE_CHECKING
 
 from type_mapping import (
     attr_types_map,
@@ -29,6 +30,9 @@ from type_mapping import (
     phi_attr_types_map,
     sr_output_types_map,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def get_infer_var_type_func(op_name):
@@ -238,7 +242,7 @@ def to_composite_grad_opmaker_name(backward_op_name):
     return composite_grad_opmaker_name
 
 
-def to_variable_names(dict_list: List[Dict], key: str) -> List[str]:
+def to_variable_names(dict_list: list[dict], key: str) -> list[str]:
     names = []
     for var in dict_list:
         names.append(var[key])

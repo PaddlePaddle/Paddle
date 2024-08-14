@@ -49,7 +49,7 @@ class OperationFactory {
     PADDLE_ENFORCE_NE(
         iter,
         op_creator_map.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "The op to be created is not found."
             "Suggest fix: Place check if the op named %s has been registered.",
             op_name));

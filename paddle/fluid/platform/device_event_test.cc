@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_event.h"
+#include "paddle/phi/core/platform/device_event.h"
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"

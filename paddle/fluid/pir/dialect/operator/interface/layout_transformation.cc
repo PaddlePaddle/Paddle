@@ -80,7 +80,7 @@ template <>
 common::DataLayout PreferLayoutImpl<Conv2dOp>(pir::Operation* op) {
   auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
   if (!data_format_attr) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "op (%s) should have attribute `data_format`, but got %s",
         op,
         data_format_attr));
@@ -121,7 +121,7 @@ template <>
 common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
   auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
   if (!data_format_attr) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "op (%s) should have attribute `data_format`, but got %s",
         op,
         data_format_attr));
@@ -188,7 +188,7 @@ template <>
 bool CanBeModifiedImpl<FusedConv2dAddActOp>(pir::Operation* op) {
   auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
   if (!data_format_attr) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "op (%s) should have attribute `data_format`, but got %s",
         op,
         data_format_attr));

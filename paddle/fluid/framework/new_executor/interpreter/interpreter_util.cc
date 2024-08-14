@@ -27,7 +27,6 @@
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
-#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
@@ -39,6 +38,7 @@
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/memory/stats.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
@@ -978,8 +978,7 @@ void BuildOpFuncList(const phi::Place& place,
       std::rethrow_exception(std::current_exception());
     } catch (std::exception& ex) {
       LOG(WARNING) << op_type << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
+                   << common::demangle(typeid(ex).name()) << ", " << ex.what();
       std::rethrow_exception(std::current_exception());
     } catch (...) {
       LOG(WARNING) << op_type << " raises an unknown exception";
@@ -1090,8 +1089,8 @@ void BuildOpFuncList(const phi::Place& place,
                                      ->mutable_value()
                                      ->MoveMemoryHolder());
           var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-        } else if (var->IsType<LoDTensorArray>()) {
-          auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+        } else if (var->IsType<phi::TensorArray>()) {
+          auto* tensor_arr = var->GetMutable<phi::TensorArray>();
           for (auto& t : *tensor_arr) {
             garbages->emplace_back(t.MoveMemoryHolder());
           }
@@ -1137,8 +1136,8 @@ void BuildOpFuncList(const phi::Place& place,
                                  ->mutable_value()
                                  ->MoveMemoryHolder());
       var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto* tensor_arr = var->GetMutable<phi::TensorArray>();
       for (auto& t : *tensor_arr) {
         garbages->emplace_back(t.MoveMemoryHolder());
       }

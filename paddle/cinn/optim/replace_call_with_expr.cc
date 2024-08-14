@@ -35,7 +35,7 @@ struct ReplaceCallWithExprModifier : public ir::IRMutator<> {
     PADDLE_ENFORCE_EQ(
         !node->name.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Call node must have a name, but an empty name was found."));
 
     VLOG(3) << "Processing Call node " << *op;

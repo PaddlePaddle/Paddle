@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.distributed.passes.pass_utils import AutoParallelStreamType
 
 from ..process_group import new_process_group
 from .base_reshard_func import (
@@ -76,8 +77,11 @@ class PToSReshardFunction(ReshardFunction):
 
         num_of_process = len(src_mesh.process_ids)
         group = new_process_group(sorted(src_mesh.process_ids))
-        dst_value = paddle._C_ops.c_reducescatter(
-            src_value, group.id, num_of_process, True
+        dst_value = paddle._C_ops.reduce_scatter(
+            src_value, group.id, num_of_process
+        )
+        dst_value.get_defining_op().set_execution_stream(
+            AutoParallelStreamType.CALC_STREAM.value
         )
 
         # set dist type and dist attr
