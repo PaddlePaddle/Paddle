@@ -20,7 +20,7 @@ import os
 import pickle
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, TypedDict, Unpack, overload
 
 import numpy as np
 
@@ -72,11 +72,35 @@ from .pir_io import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     import numpy.typing as npt
+    from typing_extensions import NotRequired
 
     from paddle import Tensor
+
+    class _NormalizeProgramKwargs(TypedDict):
+        skip_prune_program: NotRequired[bool]
+
+    class _SerializeProgramKwargs(TypedDict):
+        program: NotRequired[Program]
+        legacy_format: NotRequired[bool]
+
+    class _SerializePersistablesKwargs(TypedDict):
+        program: NotRequired[Program]
+
+    class _SaveInferenceModelKwargs(TypedDict):
+        program: NotRequired[Program]
+        clip_extra: NotRequired[bool]
+        legacy_format: NotRequired[bool]
+
+    class _LoadInferenceModelKwargs(TypedDict):
+        model_filename: NotRequired[str]
+        params_filename: NotRequired[str]
+
+    class _SaveKwargs(TypedDict):
+        pickle_protocol: NotRequired[int]
+
 
 __all__ = []
 
@@ -108,7 +132,7 @@ def _clone_var_in_block(block, var):
 
 def prepend_feed_ops(
     inference_program: Program,
-    feed_target_names: list[str],
+    feed_target_names: Sequence[str],
     feed_holder_name: str = 'feed',
 ) -> None:
     if len(feed_target_names) == 0:
@@ -139,7 +163,7 @@ def prepend_feed_ops(
 
 def append_fetch_ops(
     inference_program: Program,
-    fetch_target_names: list[str],
+    fetch_target_names: Sequence[str],
     fetch_holder_name: str = 'fetch',
 ) -> None:
     global_block = inference_program.global_block()
@@ -162,7 +186,7 @@ def normalize_program(
     program: Program,
     feed_vars: Tensor | list[Tensor],
     fetch_vars: Tensor | list[Tensor],
-    **kwargs: Any,
+    **kwargs: Unpack[_NormalizeProgramKwargs],
 ) -> Program:
     """
 
@@ -288,7 +312,7 @@ def normalize_program(
 def serialize_program(
     feed_vars: Tensor | list[Tensor],
     fetch_vars: Tensor | list[Tensor],
-    **kwargs: Any,
+    **kwargs: Unpack[_SerializeProgramKwargs],
 ) -> bytes:
     """
 
@@ -353,7 +377,7 @@ def serialize_persistables(
     feed_vars: Tensor | list[Tensor],
     fetch_vars: Tensor | list[Tensor],
     executor: Executor,
-    **kwargs: Any,
+    **kwargs: Unpack[_SerializePersistablesKwargs],
 ) -> bytes:
     """
 
@@ -498,7 +522,7 @@ def save_inference_model(
     feed_vars: Tensor | list[Tensor],
     fetch_vars: Tensor | list[Tensor],
     executor: Executor,
-    **kwargs: Any,
+    **kwargs: Unpack[_SaveInferenceModelKwargs],
 ) -> None:
     """
     Save current model and its parameters to given path. i.e.
@@ -818,8 +842,10 @@ def load_from_file(path: str) -> bytes:
 
 @static_only
 def load_inference_model(
-    path_prefix: str | None, executor: Executor, **kwargs: Any
-) -> list[Program, list[str], list[Tensor]]:
+    path_prefix: str | None,
+    executor: Executor,
+    **kwargs: Unpack[_LoadInferenceModelKwargs],
+) -> list[Program | list[str] | list[Tensor]]:
     """
 
     Load inference model from a given path. By this API, you can get the model
@@ -1019,11 +1045,11 @@ def load_inference_model(
 def save_vars(
     executor: Executor,
     dirname: None,
-    main_program: Program | None = None,
-    vars: list[Tensor] | None = None,
-    predicate: callable[[Tensor], bool] | None = None,
-    filename: None = None,
-) -> None:
+    main_program: Program | None = ...,
+    vars: list[Tensor] | None = ...,
+    predicate: Callable[[Tensor], bool] | None = ...,
+    filename: None = ...,
+) -> bytes:
     ...
 
 
@@ -1032,11 +1058,11 @@ def save_vars(
 def save_vars(
     executor: Executor,
     dirname: str,
-    main_program: Program | None = None,
-    vars: list[Tensor] | None = None,
-    predicate: callable[[Tensor], bool] | None = None,
-    filename: str = None,
-) -> bytes:
+    main_program: Program | None = ...,
+    vars: list[Tensor] | None = ...,
+    predicate: Callable[[Tensor], bool] | None = ...,
+    filename: str = ...,
+) -> None:
     ...
 
 
@@ -1210,7 +1236,7 @@ def load_vars(
     dirname: str,
     main_program: Program | None = None,
     vars: list[Tensor] | None = None,
-    predicate: callable[[Tensor], bool] | None = None,
+    predicate: Callable[[Tensor], bool] | None = None,
     filename: str | None = None,
 ) -> None:
     """
@@ -1465,7 +1491,10 @@ def load_vars(
 
 @static_only
 def save(
-    program: Program, model_path: str, protocol: int = 4, **configs: Any
+    program: Program,
+    model_path: str,
+    protocol: int = 4,
+    **configs: Unpack[_SaveKwargs],
 ) -> None:
     """
 
