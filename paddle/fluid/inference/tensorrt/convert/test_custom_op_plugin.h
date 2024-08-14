@@ -148,7 +148,14 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
           fc->nbFields));
     // float_attr
     auto attr_field = (fc->fields)[0];
-    CHECK(attr_field.type == nvinfer1::PluginFieldType::kFLOAT32);
+    PADDLE_ENFORCE_EQ(
+        attr_field.type,
+        nvinfer1::PluginFieldType::kFLOAT32,
+        phi::errors::InvalidArgument(
+          "The attr_field type must be "
+          "nvinfer1::PluginFieldType::kFLOAT32, "
+          "but got %s.",
+          attr_field.type));
     PADDLE_ENFORCE_EQ(
         attr_field.length,
         1,
@@ -167,7 +174,14 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
 
     // int_attr
     attr_field = (fc->fields)[1];
-    CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
+    PADDLE_ENFORCE_EQ(
+        attr_field.type,
+        nvinfer1::PluginFieldType::kINT32,
+        phi::errors::InvalidArgument(
+          "The attr_field type must be "
+          "nvinfer1::PluginFieldType::kINT32, "
+          "but got %s.",
+          attr_field.type));
     PADDLE_ENFORCE_EQ(
         attr_field.length,
         1,
@@ -186,7 +200,14 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
 
     // bool_attr
     attr_field = (fc->fields)[2];
-    CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
+    PADDLE_ENFORCE_EQ(
+        attr_field.type,
+        nvinfer1::PluginFieldType::kINT32,
+        phi::errors::InvalidArgument(
+          "The attr_field type must be "
+          "nvinfer1::PluginFieldType::kINT32, "
+          "but got %s.",
+          attr_field.type));
     PADDLE_ENFORCE_EQ(
         attr_field.length,
         1,
@@ -205,7 +226,14 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
 
     // string_attr
     attr_field = (fc->fields)[3];
-    CHECK(attr_field.type == nvinfer1::PluginFieldType::kCHAR);
+    PADDLE_ENFORCE_EQ(
+        attr_field.type,
+        nvinfer1::PluginFieldType::kCHAR,
+        phi::errors::InvalidArgument(
+          "The attr_field type must be "
+          "nvinfer1::PluginFieldType::kCHAR, "
+          "but got %s.",
+          attr_field.type));
     std::string expect_string_attr = "test_string_attr";
     PADDLE_ENFORCE_EQ(
         (size_t)attr_field.length,
@@ -219,11 +247,25 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
     )
     const char* receive_string_attr =
         reinterpret_cast<const char*>(attr_field.data);
-    CHECK(expect_string_attr == std::string(receive_string_attr));
+    PADDLE_ENFORCE_EQ(
+        expect_string_attr,
+        std::string(receive_string_attr),
+        phi::errors::InvalidArgument(
+          "The received string attribute '%s' "
+          "does not match the expected value '%s'.",
+          receive_string_attr.c_str(),
+          expect_string_attr.c_str()));
 
     // ints_attr
     attr_field = (fc->fields)[4];
-    CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
+    PADDLE_ENFORCE_EQ(
+        attr_field.type,
+        nvinfer1::PluginFieldType::kINT32,
+        phi::errors::InvalidArgument(
+          "The attr_field type must be "
+          "nvinfer1::PluginFieldType::kINT32, "
+          "but got %s.",
+          attr_field.type));
     PADDLE_ENFORCE_EQ(
         attr_field.length,
         3,
@@ -256,7 +298,14 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
 
     // floats_attr
     attr_field = (fc->fields)[5];
-    CHECK(attr_field.type == nvinfer1::PluginFieldType::kFLOAT32);
+    PADDLE_ENFORCE_EQ(
+        attr_field.type,
+        nvinfer1::PluginFieldType::kFLOAT32,
+        phi::errors::InvalidArgument(
+          "The attr_field type must be "
+          "nvinfer1::PluginFieldType::kFLOAT32, "
+          "but got %s.",
+          attr_field.type));
     PADDLE_ENFORCE_EQ(
         attr_field.length,
         3,
@@ -289,7 +338,14 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
 
     // bools_attr
     attr_field = (fc->fields)[6];
-    CHECK(attr_field.type == nvinfer1::PluginFieldType::kINT32);
+    PADDLE_ENFORCE_EQ(
+        attr_field.type,
+        nvinfer1::PluginFieldType::kINT32,
+        phi::errors::InvalidArgument(
+          "The attr_field type must be "
+          "nvinfer1::PluginFieldType::kINT32, "
+          "but got %s.",
+          attr_field.type));
     PADDLE_ENFORCE_EQ(
         attr_field.length,
         3,
