@@ -1487,8 +1487,12 @@ bool MulticlassNms3OpInferSymbolicShape(
       common::errors::InvalidArgument(
           "The rank of Input(Scores) must be 2 or 3. But received rank = %d",
           score_size));
-
-  infer_context->AddEqualCstr(box_dims.size(), 3);
+  PADDLE_ENFORCE_EQ(
+      box_dims.size(),
+      3,
+      common::errors::InvalidArgument(
+          "The rank of Input(BBoxes) must be 3. But received rank = %d",
+          box_dims.size()));
 
   if (score_size == 3) {
     PADDLE_ENFORCE_EQ(
