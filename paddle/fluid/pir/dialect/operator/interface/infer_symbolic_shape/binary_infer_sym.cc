@@ -961,7 +961,7 @@ bool SequenceMaskOpInferSymbolicShape(
   const auto &attributes = op->attributes();
   std::vector<symbol::DimExpr> y_dims = x_shape;
   if (op->HasAttribute("maxlen")) {
-    PADDLE_THROW(::common::errors::InvalidArgument("Find maxlen"));
+    VLOG(3) << "maxlen is attrubute";
     int maxlen = op->attribute<pir::Int64Attribute>("maxlen").data();
     y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
                                 : infer_context->GetNextSymName());
@@ -970,8 +970,7 @@ bool SequenceMaskOpInferSymbolicShape(
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
     int maxlen =
         static_cast<int>(maxlen_shape_or_data.data().value()[0].Get<int64_t>());
-    PADDLE_THROW(::common::errors::InvalidArgument("The value of maxlen is %d.",
-                                                   maxlen));
+    VLOG(3) << "The value of maxlen is" << maxlen;
     y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
                                 : infer_context->GetNextSymName());
   } else {
