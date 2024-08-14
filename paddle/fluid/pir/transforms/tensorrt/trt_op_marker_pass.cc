@@ -934,7 +934,7 @@ class MultiplyOpPattern
      pir::Value y = op.operand_source(1);
      auto x_dtype = pir::GetDataTypeFromValue(x);
      auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()){
+     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
        VLOG(3) << "elementwise_sub do not support boolean datatype.";
        return false;
      }
@@ -957,7 +957,7 @@ class MultiplyOpPattern
      pir::Value y = op.operand_source(1);
      auto x_dtype = pir::GetDataTypeFromValue(x);
      auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()){
+     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
        VLOG(3) << "elementwise_div do not support boolean datatype.";
        return false;
      }
@@ -979,14 +979,10 @@ class ElementwisePowOpPattern : public pir::OpRewritePattern<paddle::dialect::El
      pir::Value y = op.operand_source(1);
      auto x_dtype = pir::GetDataTypeFromValue(x);
      auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()){
-       VLOG(3) << "elementwise_pow do not support boolean datatype.";
+     if(x_dtype.isa<pir::BoolType>()||x_dtype.isa<pir::Int32Type>()|| y_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::Int32Type>()){
+       VLOG(3) << "elementwise_pow do not support boolean datatype and int32 datatype.";
        return false;
      }
-     if(x_dtype.isa<pir::Int32Type>()){
-      VLOG(3) << "elementwise_pow do not support int32 datatype.";
-      return false;
-    }
      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
      return true;
    }
@@ -1004,7 +1000,7 @@ class MinimumOpPattern : public pir::OpRewritePattern<paddle::dialect::MinimumOp
      pir::Value y = op.operand_source(1);
      auto x_dtype = pir::GetDataTypeFromValue(x);
      auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()){
+     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
        VLOG(3) << "elementwise_min do not support boolean datatype.";
        return false;
      }
@@ -1026,7 +1022,7 @@ class MaximumOpPattern : public pir::OpRewritePattern<paddle::dialect::MaximumOp
      pir::Value y = op.operand_source(1);
      auto x_dtype = pir::GetDataTypeFromValue(x);
      auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()){
+     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
        VLOG(3) << "elementwise_max do not support boolean datatype.";
        return false;
      }
@@ -1049,7 +1045,7 @@ class FloorDivideOpPattern : public pir::OpRewritePattern<paddle::dialect::Floor
      pir::Value y = op.operand_source(1);
      auto x_dtype = pir::GetDataTypeFromValue(x);
      auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()){
+     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
        VLOG(3) << "elementwise_floordiv do not support boolean datatype.";
        return false;
      }
@@ -1071,7 +1067,7 @@ class RemainderOpPattern : public pir::OpRewritePattern<paddle::dialect::Remaind
      pir::Value y = op.operand_source(1);
      auto x_dtype = pir::GetDataTypeFromValue(x);
      auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()){
+     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
        VLOG(3) << "elementwise_mod do not support boolean datatype.";
        return false;
      }
