@@ -71,10 +71,12 @@ void RunTrivialInlineInstr(const std::shared_ptr<TrivialInlineInstr>& instr,
 
 void RunTmpTransformInstr(const std::shared_ptr<TmpTransformInstr>& instr,
                           FusionInterpreter* interpreter) {
-  PADDLE_ENFORCE(interpreter->scope.count(instr->upstream_),
-                 "Can not find Upstream.");
-  PADDLE_ENFORCE(interpreter->scope.count(instr->downstream_),
-                 "Can not find Downstream.");
+  PADDLE_ENFORCE_GT(interpreter->scope.count(instr->upstream_),
+                    0,
+                    "Can not find TmpTransformInstr uptream.");
+  PADDLE_ENFORCE_GT(interpreter->scope.count(instr->downstream_),
+                    0,
+                    "Can not find TmpTransformInstr downstream.");
 
   PADDLE_ENFORCE_EQ(
       interpreter->scope[instr->downstream_]->fusion_ops.size(),
