@@ -45,6 +45,7 @@ from ..base.framework import (  # noqa: F401
     _global_flags,
     _set_expected_place,
     _stride_in_no_check_dy2st_diff as _no_check_dy2st_diff,
+    check_view_value,
     convert_np_dtype_to_dtype_,
     deprecate_stat_dict,
     disable_signal_handler,

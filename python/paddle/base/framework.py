@@ -103,6 +103,43 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "atan2_grad": ['X1', 'X2'],
 }
 
+stride_ops = [
+    "pd_op.slice",
+    "pd_op.strided_slice",
+    "pd_op.index_select",
+    "pd_op.split",
+    "pd_op.unsqueeze",
+    "pd_op.unsqueeze2",
+    "pd_op.squeeze",
+    "pd_op.squeeze2",
+    "pd_op.transpose",
+    "pd_op.transpose2",
+    "pd_op.unbind",
+    "pd_op.diagonal",
+    "pd_op.flatten",
+    "pd_op.imag",
+    "pd_op.real",
+    "pd_op.reshape",
+    "pd_op.reshape2",
+    "pd_op.as_real",
+]
+
+
+def check_view_value(value: pir.Value) -> bool:
+    define_op = value.get_defining_op()
+    used_ops = value.all_used_ops()
+    used_ops_not_in_stride = all(x.name() not in stride_ops for x in used_ops)
+    if define_op.name() in stride_ops and used_ops_not_in_stride:
+        return False
+    if define_op in stride_ops:
+        if define_op.result(0).is_same(value):
+            return True
+    if not used_ops_not_in_stride:
+        for op in used_ops:
+            if op.operand_source(0).is_same(value):
+                return True
+    return False
+
 
 def _global_flags():
     return _global_flags_
