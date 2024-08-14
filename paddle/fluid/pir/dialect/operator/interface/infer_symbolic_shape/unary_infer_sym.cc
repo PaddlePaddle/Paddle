@@ -579,11 +579,17 @@ bool DecodeJpegOpInferSymbolicShape(
   std::vector<symbol::DimExpr> out_dims;
 
   if (mode == "unchanged") {
-    out_dims = {symbol::DimExpr(-1), symbol::DimExpr(-1), symbol::DimExpr(-1)};
+    out_dims = {infer_context->GetNextSymName(),
+                infer_context->GetNextSymName(),
+                infer_context->GetNextSymName()};
   } else if (mode == "gray") {
-    out_dims = {symbol::DimExpr(1), symbol::DimExpr(-1), symbol::DimExpr(-1)};
+    out_dims = {symbol::DimExpr(1),
+                infer_context->GetNextSymName(),
+                infer_context->GetNextSymName()};
   } else if (mode == "rgb") {
-    out_dims = {symbol::DimExpr(3), symbol::DimExpr(-1), symbol::DimExpr(-1)};
+    out_dims = {symbol::DimExpr(3),
+                infer_context->GetNextSymName(),
+                infer_context->GetNextSymName()};
   } else {
     PADDLE_THROW(common::errors::Fatal(
         "The provided mode is not supported for JPEG files on GPU: ", mode));
