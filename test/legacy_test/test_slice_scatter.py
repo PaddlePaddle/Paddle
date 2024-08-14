@@ -59,15 +59,8 @@ class TestSliceScatterApi(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
 
-        self.init_dtype()
         self.init_shape()
 
-        self.x_np = np.random.random(self.x_shape).astype(
-            'uint16' if self.dtype == 'bfloat16' else self.dtype
-        )
-        self.value_np = np.random.random(self.value_shape).astype(
-            'uint16' if self.dtype == 'bfloat16' else self.dtype
-        )
         self.place = []
         if (
             os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
@@ -77,6 +70,14 @@ class TestSliceScatterApi(unittest.TestCase):
             self.place.append(paddle.CPUPlace())
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
+
+    def init_np(self):
+        self.x_np = np.random.random(self.x_shape).astype(
+            'uint16' if self.dtype == 'bfloat16' else self.dtype
+        )
+        self.value_np = np.random.random(self.value_shape).astype(
+            'uint16' if self.dtype == 'bfloat16' else self.dtype
+        )
 
     def init_dtype(self):
         self.dtype = 'float64'
@@ -92,6 +93,8 @@ class TestSliceScatterApi(unittest.TestCase):
     @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
+        self.init_dtype()
+        self.init_np()
 
         for place in self.place:
             with paddle.static.program_guard(paddle.static.Program()):
@@ -129,6 +132,8 @@ class TestSliceScatterApi(unittest.TestCase):
             np.testing.assert_allclose(res, out_ref)
 
     def test_api_dygraph(self):
+        self.init_dtype()
+        self.init_np()
         for place in self.place:
             paddle.disable_static(place)
             x_tensor = paddle.to_tensor(self.x_np)
