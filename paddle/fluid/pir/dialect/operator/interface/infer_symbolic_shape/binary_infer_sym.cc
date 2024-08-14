@@ -241,7 +241,7 @@ bool CorrelationOpInferSymbolicShape(pir::Operation *op,
   int stride1 = op->attribute<pir::Int32Attribute>("stride1").data();
   int stride2 = op->attribute<pir::Int32Attribute>("stride2").data();
 
-  std::vector<int64_t> output_shape = CorrelationOutputSize(
+  std::vector<int64_t> output_shape = phi::CorrelationOutputSize(
       input1_shape[0].Get<std::int64_t>(), // batch size
       input1_shape[2].Get<std::int64_t>(), // height
       input1_shape[3].Get<std::int64_t>(), // width
