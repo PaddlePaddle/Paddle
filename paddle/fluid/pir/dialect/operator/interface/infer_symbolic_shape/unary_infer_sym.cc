@@ -1576,6 +1576,13 @@ bool PixelShuffleOpInferSymbolicShape(
       0,
       common::errors::InvalidArgument("upscale_factor should not be 0."));
 
+  PADDLE_ENFORCE_EQ(
+      data_format == "NCHW" || data_format == "NHWC",
+      true,
+      common::errors::InvalidArgument("data_format must be one of NCHW and "
+                                      "NHWC. But received data_format: %s",
+                                      data_format));
+
   const bool channel_last = (data_format == "NHWC");
 
   const auto &value = (!channel_last ? x_shape[1] : x_shape[3]);
@@ -1589,14 +1596,16 @@ bool PixelShuffleOpInferSymbolicShape(
   auto output_shape = x_shape;
   output_shape[0] = x_shape[0];
 
+  const auto upscale_factor_ = symbol::DimExpr(upscale_factor);
+
   if (!channel_last) {
-    output_shape[1] = x_shape[1] / (upscale_factor * upscale_factor);
-    output_shape[2] = x_shape[2] * upscale_factor;
-    output_shape[3] = x_shape[3] * upscale_factor;
+    output_shape[1] = x_shape[1] / (upscale_factor_ * upscale_factor_);
+    output_shape[2] = x_shape[2] * upscale_factor_;
+    output_shape[3] = x_shape[3] * upscale_factor_;
   } else {
-    output_shape[1] = x_shape[1] * upscale_factor;
-    output_shape[2] = x_shape[2] * upscale_factor;
-    output_shape[3] = x_shape[3] / (upscale_factor * upscale_factor);
+    output_shape[1] = x_shape[1] * upscale_factor_;
+    output_shape[2] = x_shape[2] * upscale_factor_;
+    output_shape[3] = x_shape[3] / (upscale_factor_ * upscale_factor_);
   }
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::TensorShapeOrDataDimExprs(output_shape));
