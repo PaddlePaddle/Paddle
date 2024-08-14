@@ -17,15 +17,22 @@ from __future__ import annotations
 import functools
 import sys
 from contextlib import ContextDecorator, contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeVar
 from warnings import warn
+
+from typing_extensions import ParamSpec
 
 from paddle.base import core
 from paddle.base.core import TracerEventType, _RecordEvent
 
+_InputT = ParamSpec("_InputT")
+_RetT = TypeVar("_RetT")
 if TYPE_CHECKING:
     import types
+    from collections.abc import Callable
+    from typing import Generator
 
+    from .model import Model
 _is_profiler_used = False
 _has_optimizer_wrapped = False
 
@@ -74,6 +81,10 @@ class RecordEvent(ContextDecorator):
         RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of `RECORD`.
     """
 
+    name: str
+    event_type: TracerEventType
+    event: _RecordEvent
+
     def __init__(
         self,
         name: str,
@@ -95,7 +106,7 @@ class RecordEvent(ContextDecorator):
     ):
         self.end()
 
-    def begin(self):
+    def begin(self) -> None:
         r"""
         Record the time of beginning.
 
@@ -127,7 +138,7 @@ class RecordEvent(ContextDecorator):
         else:
             self.event = _RecordEvent(self.name, self.event_type)
 
-    def end(self):
+    def end(self) -> None:
         r"""
         Record the time of ending.
 
@@ -150,7 +161,7 @@ class RecordEvent(ContextDecorator):
             self.event.end()
 
 
-def load_profiler_result(filename: str):
+def load_profiler_result(filename: str) -> core.ProfilerResult:
     r"""
     Load dumped profiler data back to memory.
 
@@ -179,14 +190,16 @@ def load_profiler_result(filename: str):
     return core.load_profiler_result(filename)
 
 
-def in_profiler_mode():
+def in_profiler_mode() -> bool:
     return _is_profiler_used
 
 
 def wrap_optimizers():
-    def optimizer_wrapper(func):
+    def optimizer_wrapper(
+        func: Callable[_InputT, _RetT]
+    ) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if in_profiler_mode():
                 with RecordEvent(
                     'Optimization Step', event_type=TracerEventType.Optimization
@@ -244,7 +257,9 @@ def _nvprof_range(iter_id, start, end, exit_after_prof=True):
 
 
 @contextmanager
-def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
+def job_schedule_profiler_range(
+    iter_id: int, start: int, end: int, exit_after_prof: bool = True
+) -> Generator[bool, Any, None]:
     if start >= end:
         yield False
         return
@@ -261,8 +276,12 @@ def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
 
 
 def switch_job_schedule_profiler(
-    model, iter_id, start, end, exit_after_prof=True
-):
+    model: Model,
+    iter_id: int,
+    start: int,
+    end: int,
+    exit_after_prof: bool = True,
+) -> None:
     with job_schedule_profiler_range(
         iter_id, start, end, exit_after_prof
     ) as status:
