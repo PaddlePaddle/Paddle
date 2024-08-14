@@ -3494,6 +3494,7 @@
     spmd_rule : UnsqueezeGradInferSpmd
   kernel :
     func : unsqueeze_grad
+    param : [x, out_grad]
     data_type : out_grad
   no_need_buffer : x
   inplace : (out_grad -> x_grad)
