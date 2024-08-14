@@ -1463,7 +1463,7 @@ bool RoiAlignOpInferSymbolicShape(
 bool MoeOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
@@ -1488,7 +1488,7 @@ bool MulticlassNms3OpInferSymbolicShape(
           "The rank of Input(Scores) must be 2 or 3. But received rank = %d",
           score_size));
 
-  infer_context->AddEqualCstr(box_dims.size(), symbol::DimExpr(3));
+  infer_context->AddEqualCstr(box_dims.size(), 3);
 
   if (score_size == 3) {
     PADDLE_ENFORCE_EQ(
