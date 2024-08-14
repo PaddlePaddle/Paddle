@@ -78,7 +78,7 @@ void ReplaceWithCinnReshapeOp(OpT op,
                               const std::vector<int> &out_shape) {
   PADDLE_ENFORCE_EQ(
       op->num_results(),
-      CUDA_C_16F,
+      1U,
       ::common::errors::PreconditionNotMet(
           "The size of source op outputs must be 1, but received %d.",
           op->num_results()));
