@@ -652,7 +652,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
 
       if (target_dim_size != dim_size && dim_size != 1 &&
           target_dim_size != 1) {
-        PADDLE_THROW(errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "BroadcastTensorsOp inputs do not satisfy broadcast semantics, "
             "please check axis = %d in reverse order",
             index));
