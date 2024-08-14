@@ -1317,8 +1317,8 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
           axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
-          "MaxOpInferSymbolicShape: 'axis' only "
-          "support FullIntArrayOp's result now."));
+          "MeanOpInferSymbolicShape: 'axis' only support FullIntArrayOp's "
+          "result now."));
     }
     return axis_vec;
   }();
