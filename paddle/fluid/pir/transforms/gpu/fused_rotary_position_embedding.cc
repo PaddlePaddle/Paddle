@@ -104,11 +104,10 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     const auto &concat_op_k = pat.Op(paddle::dialect::ConcatOp::name());
     const auto &combine_k = pat.Op(pir::CombineOp::name());
 
-    squeeze({&pat.Tensor("cos"), &full_13()},
-            {&pat.Tensor("squeeze_out_cos"), &pat.Tensor("xshape")});
+    squeeze({&pat.Tensor("cos"), &full_13()}, {&pat.Tensor("squeeze_out_cos")});
 
     squeeze_1({&pat.Tensor("sin"), &full_12()},
-              {&pat.Tensor("squeeze_out_sin"), &pat.Tensor("xshape")});
+              {&pat.Tensor("squeeze_out_sin")});
 
     unsqueeze({&pat.Tensor("position_ids"), &full_11()},
               {&pat.Tensor("unsqueeze_s_out_cos"), &pat.Tensor("xshape")});
