@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import multiprocessing
 import os
@@ -44,7 +45,7 @@ __all__ = []
 
 
 class ParallelEnvArgs:
-    def __init__(self):
+    def __init__(self) -> None:
         # Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..
         self.cluster_node_ips = None
 
@@ -68,7 +69,7 @@ class ParallelEnvArgs:
         self.selected_devices = None
 
 
-def _options_valid_check(options):
+def _options_valid_check(options: dict[str]) -> None:
     # `print_config` keeped as a debug options, not show to users
     supported_options = [
         'start_method',
@@ -99,7 +100,7 @@ def _options_valid_check(options):
                 )
 
 
-def _get_default_nprocs():
+def _get_default_nprocs() -> int:
     device = get_device()
     if 'gpu' in device:
         return core.get_cuda_device_count()
@@ -115,7 +116,7 @@ def _get_default_nprocs():
         )
 
 
-def _get_default_backend():
+def _get_default_backend() -> str:
     device = get_device()
     if 'gpu' in device:
         return 'nccl'
@@ -131,7 +132,7 @@ def _get_default_backend():
         )
 
 
-def _get_node_ip(ips):
+def _get_node_ip(ips: str) -> str:
     node_ip = None
     node_ips = [x.strip() for x in ips.split(',')]
     if len(node_ips) == 1:
@@ -141,7 +142,9 @@ def _get_node_ip(ips):
     return node_ip
 
 
-def _get_subprocess_env_list(nprocs, options):
+def _get_subprocess_env_list(
+    nprocs: int, options: dict[str]
+) -> list[dict[str, str]]:
     # NOTE (xiongkun03) Why put backend deduction  here ?
     # Because _get_subprocess_env_list is used by many testcases.
     # So for compatibility, we put backend deduction here
@@ -330,14 +333,14 @@ def _get_subprocess_env_list(nprocs, options):
     return processes_env_list
 
 
-def _remove_risky_env():
+def _remove_risky_env() -> None:
     # remove useless env vars
     # no copy, each process will hold env vars itself
     os.environ.pop("http_proxy", None)
     os.environ.pop("https_proxy", None)
 
 
-def _set_trainer_env(env_dict, backend):
+def _set_trainer_env(env_dict: dict[str, str], backend: str) -> None:
     # NOTE(chenweihang): [ Why need set FLAGS_selected_gpus or FLAGS_selected_xpus here? ]
     # When the child process starts, it will inherit the configuration of the
     # main process and set the FLAGS once, but the environment variable has
@@ -361,7 +364,14 @@ def _set_trainer_env(env_dict, backend):
         os.environ[var_name] = env_dict[var_name]
 
 
-def _func_wrapper(func, args, error_queue, return_queue, env_dict, backend):
+def _func_wrapper(
+    func: callable,
+    args: tuple,
+    error_queue: multiprocessing.SimpleQueue,
+    return_queue: multiprocessing.SimpleQueue,
+    env_dict: dict[str, str],
+    backend: str,
+) -> None:
     try:
         # config subprocess environment variables
         _remove_risky_env()
@@ -380,7 +390,12 @@ def _func_wrapper(func, args, error_queue, return_queue, env_dict, backend):
 
 
 class MultiprocessContext:
-    def __init__(self, processes, error_queues, return_queues):
+    def __init__(
+        self,
+        processes: list[multiprocessing.Process],
+        error_queues: list[multiprocessing.SimpleQueue],
+        return_queues: list[multiprocessing.SimpleQueue],
+    ) -> None:
         self.error_queues = error_queues
         # NOTE(chenweihang): The `spawn` method is mainly used
         # to wrap the outermost execution function of the program for
@@ -393,7 +408,7 @@ class MultiprocessContext:
             process.sentinel: index for index, process in enumerate(processes)
         }
 
-    def join(self, timeout=None):
+    def join(self, timeout: float | None = None) -> bool:
         if len(self.sentinels) == 0:
             return True
 
@@ -420,7 +435,7 @@ class MultiprocessContext:
 
         self._throw_exception(error_index)
 
-    def _throw_exception(self, error_index):
+    def _throw_exception(self, error_index: int) -> None:
         if self.error_queues[error_index].empty():
             exitcode = self.processes[error_index].exitcode
             if exitcode < 0:
@@ -445,7 +460,14 @@ class MultiprocessContext:
         raise Exception(msg)
 
 
-def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
+def spawn(
+    func: callable,
+    args: list | tuple | None = None,
+    nprocs: int = -1,
+    join: bool = True,
+    daemon: bool = False,
+    **options: dict[str, str],
+) -> MultiprocessContext:
     """
     Start multiple processes with ``spawn`` method for parallel training.
 

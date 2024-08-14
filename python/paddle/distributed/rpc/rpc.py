@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import datetime
 import os
@@ -35,7 +36,7 @@ _barrier_store = None
 _barrier_count = 0
 
 
-def _set_barrier_store(store):
+def _set_barrier_store(store: core.TCPStore) -> None:
     global _barrier_store
     _barrier_store = store
 
@@ -45,12 +46,12 @@ def _del_barrier_store():
     del _barrier_store
 
 
-def _set_self_info(name, rank, ip, port):
+def _set_self_info(name: str, rank: int, ip: str, port: int) -> None:
     self_info = pickle.dumps(WorkerInfo(name, rank, ip, port))
     _barrier_store.set(str(rank), self_info)
 
 
-def _exchange_all_service_infos(world_size):
+def _exchange_all_service_infos(world_size: int) -> list[WorkerInfo]:
     all_infos = []
     s = set()
     for rank in range(world_size):
@@ -63,14 +64,19 @@ def _exchange_all_service_infos(world_size):
     return all_infos
 
 
-def _gen_endpoint():
+def _gen_endpoint() -> str:
     node = Node()
     ip = node.get_host_ip()
     free_port = node.get_free_port()
     return f"{ip}:{free_port}"
 
 
-def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
+def init_rpc(
+    name: str,
+    rank: int | None = None,
+    world_size: int | None = None,
+    master_endpoint: str | None = None,
+) -> None:
     """
     init rpc.
 
@@ -140,7 +146,13 @@ def init_rpc(name, rank=None, world_size=None, master_endpoint=None):
     logger.info(f"Trainer {rank}: Init RPC done!")
 
 
-def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
+def rpc_sync_framework(
+    to: str,
+    fn: callable,
+    args: tuple | None = None,
+    kwargs: dict | None = None,
+    timeout: int = _DEFAULT_RPC_TIMEOUT,
+) -> core.FutureWrapper:
     """
     Make a blocking RPC call to run function ``fn`` on worker ``to``. Attention: Users must use this API in a secure network environment.
 
@@ -180,7 +192,13 @@ def rpc_sync(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     return fut.wait()
 
 
-def rpc_async(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
+def rpc_async_framework(
+    to: str,
+    fn: callable,
+    args: tuple | None = None,
+    kwargs: dict | None = None,
+    timeout: int = _DEFAULT_RPC_TIMEOUT,
+) -> core.FutureWrapper:
     """
     Make a non-blocking RPC call to run function ``fn`` on worker ``to``. Attention: Users must use this API in a secure network environment.
 
@@ -224,7 +242,9 @@ def rpc_async(to, fn, args=None, kwargs=None, timeout=_DEFAULT_RPC_TIMEOUT):
     return _invoke_rpc(to, fn, args, kwargs, timeout)
 
 
-def _invoke_rpc(to, fn, args, kwargs, timeout):
+def _invoke_rpc(
+    to: str, fn: callable, args: tuple, kwargs: dict, timeout: int
+) -> core.FutureWrapper:
     args = args if args else ()
     kwargs = kwargs if kwargs else {}
     serial_obj = _serialize(PythonFunc(fn, args, kwargs))
@@ -234,7 +254,7 @@ def _invoke_rpc(to, fn, args, kwargs, timeout):
     return future
 
 
-def _barrier_never_timeout(global_rank, global_world_size):
+def _barrier_never_timeout(global_rank: int, global_world_size: int) -> None:
     # max timeout
     timeout = datetime.timedelta(days=_BARRIER_TIMEOUT_MAX_DAYS)
 
@@ -273,7 +293,7 @@ def _barrier_never_timeout(global_rank, global_world_size):
         _barrier_store.add(barrier_prefix + str(global_rank), 1)
 
 
-def shutdown():
+def shutdown() -> None:
     """
     Perform a shutdown of the RPC agent, stop the worker and destroy the agent.
     This will block until all local and remote RPC processes reach this method
@@ -304,7 +324,7 @@ def shutdown():
     logger.info(f"Trainer {rank}: rpc shutdown!")
 
 
-def get_worker_info(name):
+def get_worker_info(name: str) -> WorkerInfo:
     """
     Get worker information by worker name.
 
@@ -334,7 +354,7 @@ def get_worker_info(name):
     return core.rpc_get_worker_info(name)
 
 
-def get_all_worker_infos():
+def get_all_worker_infos() -> list[WorkerInfo]:
     """
     Get all worker informations.
 
@@ -361,7 +381,7 @@ def get_all_worker_infos():
     return core.rpc_get_all_worker_infos()
 
 
-def get_current_worker_info():
+def get_current_worker_info() -> WorkerInfo:
     """
     Get current worker information.
 
