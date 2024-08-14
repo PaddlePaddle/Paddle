@@ -3625,8 +3625,6 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   }
 
   param_map->PushValue(input_xshape_name, xshape_value);
-  auto* defining_op = xshape_value.dyn_cast<pir::OpResult>().owner();
-
   PADDLE_ENFORCE_EQ(param_map->Has(input_outgrad_name),
                     true,
                     common::errors::InvalidArgument(
