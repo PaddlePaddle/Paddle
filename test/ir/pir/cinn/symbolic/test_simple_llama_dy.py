@@ -67,16 +67,6 @@ class Parser:
                         op.result(1).first_use().owner()
                     )
 
-            if op.name() == "pd_op.unsqueeze":
-                if (
-                    op.result(1).initialized()
-                    and not op.result(1).use_empty()
-                    and op.result(1).first_use().owner().name() == "pd_op.fetch"
-                ):
-                    program.global_block().remove_op(
-                        op.result(1).first_use().owner()
-                    )
-
             if (
                 op.name() == "pd_op.batch_norm_"
                 or op.name() == "pd_op.batch_norm"
