@@ -44,6 +44,15 @@ static OpPatternKind GetOpPatternKind(const ::pir::Operation* op) {
   return hlir::framework::pir::CompatibleInfo::OpKind(*op);
 }
 
+static std::string GetNewTmpId(std::string origin_id) {
+  if (origin_id.find('_tmp') == std::string::npos) {
+    return origin_id + "_tmp_0";
+  } else {
+    int ith = std::stoi(origin_id.substr(origin_id.size() - 1));
+    return origin_id.substr(0, origin_id.size() - 1) + std::to_string(ith + 1);
+  }
+}
+
 static size_t GetRank(pir::Value value) {
   return value.type().dyn_cast<pir::DenseTensorType>().dims().size();
 }
