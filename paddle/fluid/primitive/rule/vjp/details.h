@@ -1119,7 +1119,7 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
-void squeeze_grad(const Tensor& xshape,
+void squeeze_grad(const Tensor& x,
                   const Tensor& out_grad,
                   const IntArray& axis,
                   Tensor* x_grad) {

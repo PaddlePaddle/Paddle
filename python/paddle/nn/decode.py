@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from paddle import Tensor
-    from paddle._typing import NestedStructure
     from paddle.nn import Embedding, Layer, RNNCellBase
 
 
@@ -1028,7 +1027,7 @@ def dynamic_decode(
     is_test: bool = ...,
     return_length: Literal[False] = ...,
     **kwargs: Any,
-) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor]]: ...
+) -> tuple[Tensor, BeamSearchDecoder.StateWrapper]: ...
 
 
 @overload
@@ -1041,7 +1040,7 @@ def dynamic_decode(
     is_test: bool = ...,
     return_length: Literal[True] = ...,
     **kwargs: Any,
-) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor], Tensor]: ...
+) -> tuple[Tensor, BeamSearchDecoder.StateWrapper, Tensor]: ...
 
 
 @overload
@@ -1055,8 +1054,8 @@ def dynamic_decode(
     return_length: bool = ...,
     **kwargs: Any,
 ) -> (
-    tuple[NestedStructure[Tensor], NestedStructure[Tensor]]
-    | tuple[NestedStructure[Tensor], NestedStructure[Tensor], Tensor]
+    tuple[Tensor, BeamSearchDecoder.StateWrapper]
+    | tuple[Tensor, BeamSearchDecoder.StateWrapper, Tensor]
 ): ...
 
 

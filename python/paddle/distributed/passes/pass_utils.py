@@ -20,6 +20,7 @@ from functools import reduce
 import paddle
 from paddle.base import core
 from paddle.base.framework import Parameter, Program
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
@@ -140,7 +141,7 @@ def split_program(program, op_indices):
     op_indices = [idx if idx >= 0 else idx + op_num for idx in op_indices]
 
     if op_indices[0] != 0:
-        op_indices = [0] + op_indices
+        op_indices = [0, *op_indices]
     if op_indices[-1] != op_num:
         op_indices.append(op_num)
 
@@ -312,7 +313,7 @@ def set_pir_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
 
     assert (
         len(type_to_var_names["backward"]) == 0
-    ), "The backward sub_program can't have skip_gc_vars."
+    ), f"The backward sub_program can't have skip_gc_vars. But it is {type_to_var_names['backward']}."
 
     for job in jobs:
         job_type = job.type()
@@ -745,7 +746,31 @@ def forward_complete_op_role(main_program):
         raise ValueError("all the ops don't have the op_role.")
 
 
-def _pir_program_for_fthenb_and_1f1b(
+# complete the op_role of the new added ops
+@signature_safe_contextmanager
+def auto_complete_op_role(program, op_role, insert_point):
+    initial_num_ops = program.num_ops()
+    origin_insert_point = insert_point
+
+    try:
+        yield
+    finally:
+        current_num_ops = program.num_ops()
+
+        if op_role is not None and current_num_ops > initial_num_ops:
+            for _ in range(current_num_ops - initial_num_ops):
+                new_added_op = insert_point.prev()
+                if new_added_op.op_role is not None:
+                    break
+
+                new_added_op.op_role = op_role
+                paddle.pir.set_insertion_point(new_added_op)
+                insert_point = paddle.pir.get_current_insertion_point()
+
+            paddle.pir.set_insertion_point(origin_insert_point)
+
+
+def _split_program_into_forward_backward_optimize(
     main_program, enable_send_recv_overlap=False
 ):
     forward_complete_op_role(main_program)
@@ -1393,10 +1418,11 @@ def split_matmul_grad_to_matmul(
         assert (
             x_dims[0:2] == out_grad_dims[0:2]
         ), f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
-    new_x_dims = [x_dims[0] * x_dims[1]] + list(x_dims[2:])
-    new_out_grad_dims = [out_grad_dims[0] * out_grad_dims[1]] + list(
-        out_grad_dims[2:]
-    )
+    new_x_dims = [x_dims[0] * x_dims[1], *list(x_dims[2:])]
+    new_out_grad_dims = [
+        out_grad_dims[0] * out_grad_dims[1],
+        *out_grad_dims[2:],
+    ]
 
     # NOTE(Ruibiao): Why insert reshape op here?
     # When the rank of input matrix is 3, MatmulGradKernel use reshape to fold the first two dimensions of x and out_grad (see FoldInitDims in matmul_grad_kernel_impl.h), and then calls blas.Matmul to calculate y_grad.

@@ -677,6 +677,48 @@ void dispatch_moe_gemm_to_cutlass(const T* A,
           stream,
           occupancy);
       break;
+    case CutlassTileConfig::CtaShape64x128x64_WarpShape64x64x64:
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<64, 128, 64>,
+                           cutlass::gemm::GemmShape<64, 64, 64>>(
+          A,
+          B,
+          weight_scales,
+          biases,
+          C,
+          total_rows_before_expert,
+          gemm_n,
+          gemm_k,
+          num_experts,
+          gemm_config,
+          multi_processor_count,
+          stream,
+          occupancy);
+      break;
+    case CutlassTileConfig::CtaShape128x128x64_WarpShape64x64x64:
+      dispatch_gemm_config<T,
+                           WeightType,
+                           arch,
+                           EpilogueTag,
+                           cutlass::gemm::GemmShape<128, 128, 64>,
+                           cutlass::gemm::GemmShape<64, 64, 64>>(
+          A,
+          B,
+          weight_scales,
+          biases,
+          C,
+          total_rows_before_expert,
+          gemm_n,
+          gemm_k,
+          num_experts,
+          gemm_config,
+          multi_processor_count,
+          stream,
+          occupancy);
+      break;
     case CutlassTileConfig::CtaShape128x128x64_WarpShape128x32x64:
       dispatch_gemm_config<T,
                            WeightType,

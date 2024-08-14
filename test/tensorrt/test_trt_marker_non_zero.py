@@ -46,7 +46,11 @@ class TestNonZeroTRTPattern(PassTest):
     def setUp(self):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
+<<<<<<< HEAD
         self.trt_expected_ops = {"pd_op.non_zero"}
+=======
+        self.trt_expected_ops = {"pd_op.nonzero"}
+>>>>>>> 777c5581498b8365616c039550ed103072b20e59
 
     def test_check_output(self):
         self.check_pass_correct()

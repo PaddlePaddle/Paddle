@@ -231,6 +231,56 @@ class TestAdamWOp(unittest.TestCase):
             adam.step()
             adam.clear_gradients()
 
+    def test_adamw_op(self):
+        paddle.enable_static()
+        place = base.CPUPlace()
+        shape = [2, 3, 8, 8]
+        exe = base.Executor(place)
+        train_prog = base.Program()
+        startup = base.Program()
+        with base.program_guard(train_prog, startup):
+            with base.unique_name.guard():
+                data = paddle.static.data(name="data", shape=shape)
+                conv = paddle.nn.Conv2D(
+                    in_channels=3,
+                    out_channels=8,
+                    kernel_size=3,
+                )(data)
+                loss = paddle.mean(conv)
+                if paddle.framework.in_pir_mode():
+                    beta1 = paddle.pir.core.create_persistable_value(
+                        shape=[1],
+                        dtype='float32',
+                        initializer=paddle.nn.initializer.Constant(0.85),
+                    )
+                    beta2 = paddle.pir.core.create_persistable_value(
+                        shape=[1],
+                        dtype='float32',
+                        initializer=paddle.nn.initializer.Constant(0.95),
+                    )
+                else:
+                    beta1 = paddle.static.create_global_var(
+                        shape=[1], value=0.85, dtype='float32', persistable=True
+                    )
+                    beta2 = paddle.static.create_global_var(
+                        shape=[1], value=0.95, dtype='float32', persistable=True
+                    )
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                )
+                opt.minimize(loss)
+
+        exe.run(startup)
+        data_np = np.random.random(shape).astype('float32')
+        rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
+        assert rets[0] is not None
+        paddle.disable_static()
+
     def test_adamw_op_dygraph_bypassing_step(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
