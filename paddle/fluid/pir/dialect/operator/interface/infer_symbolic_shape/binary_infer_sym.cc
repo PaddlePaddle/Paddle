@@ -16,6 +16,7 @@
 #include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
+#include "paddle/phi/kernels/funcs/correlation_funcs.h"
 
 COMMON_DECLARE_bool(manually_trans_conv_filter);
 
@@ -240,7 +241,7 @@ bool CorrelationOpInferSymbolicShape(pir::Operation *op,
   int stride1 = op->attribute<pir::Int32Attribute>("stride1").data();
   int stride2 = op->attribute<pir::Int32Attribute>("stride2").data();
 
-  std::vector<int64_t> output_shape = phi::CorrelationOutputSize(
+  std::vector<int64_t> output_shape = CorrelationOutputSize(
       input1_shape[0].Get<std::int64_t>(), // batch size
       input1_shape[2].Get<std::int64_t>(), // height
       input1_shape[3].Get<std::int64_t>(), // width
@@ -255,7 +256,6 @@ bool CorrelationOpInferSymbolicShape(pir::Operation *op,
     output_shape_expr.push_back(symbol::DimExpr(dim));
   }
 
-  // 设置输出张量的符号形状
   infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(output_shape_expr)});
 
   return true;
