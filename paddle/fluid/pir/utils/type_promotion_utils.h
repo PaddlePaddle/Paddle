@@ -15,6 +15,7 @@
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/amp_utils.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/phi/common/type_promotion.h"
 
 namespace pir {
@@ -34,6 +35,10 @@ std::vector<int64_t> GetValueShape(const pir::Value& value) {
   if (value.type().isa<paddle::dialect::DenseTensorType>()) {
     return phi::vectorize(
         value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+  } else if (value.type().isa<paddle::dialect::DistDenseTensorType>()) {
+    return phi::vectorize(value.type()
+                              .dyn_cast<paddle::dialect::DistDenseTensorType>()
+                              .global_ddim());
   } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
     return phi::vectorize(
         value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dims());
