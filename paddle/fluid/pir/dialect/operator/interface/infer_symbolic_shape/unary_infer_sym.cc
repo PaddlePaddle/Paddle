@@ -1382,7 +1382,7 @@ bool NanmedianOpInferSymbolicShape(
       if (x_rank == 0) {
         infer_context->AddGreatThanOneCstr(axis_list[i]);
       } else {
-        PADDLE_ENFORCE_LT(axis_list[i].dyn_cast<int64_t>(),
+        PADDLE_ENFORCE_LT(axis_list[i],
                           x_rank,
                           common::errors::InvalidArgument(
                               "each element of the axis should be in the "
@@ -1390,7 +1390,7 @@ bool NanmedianOpInferSymbolicShape(
                               "which dimension = %d. But received axis = %d.",
                               x_rank,
                               axis_list[i]));
-        PADDLE_ENFORCE_GE(axis_list[i].dyn_cast<int64_t>(),
+        PADDLE_ENFORCE_GE(axis_list[i],
                           -x_rank,
                           common::errors::InvalidArgument(
                               "each element of the axis should be in the "
@@ -1399,17 +1399,13 @@ bool NanmedianOpInferSymbolicShape(
                               x_rank,
                               axis_list[i]));
       }
-      if (axis_list[i].dyn_cast<int64_t>() < 0)
-        axis_list[i] =
-            symbol::DimExpr(axis_list[i].dyn_cast<int64_t>() + x_rank);
+      if (axis_list[i] < 0) axis_list[i] += x_rank;
       PADDLE_ENFORCE_EQ(
-          std::find(formatted_axis.begin(),
-                    formatted_axis.end(),
-                    axis_list[i].dyn_cast<int64_t>()),
+          std::find(formatted_axis.begin(), formatted_axis.end(), axis_list[i]),
           formatted_axis.end(),
           common::errors::InvalidArgument(
               "Attr(axes) has duplicated elements: %d.", axis_list[i]));
-      formatted_axis.emplace_back(axis_list[i].dyn_cast<int64_t>());
+      formatted_axis.emplace_back(axis_list[i]);
     }
 
     for (int64_t i = 0; i < x_rank; i++) {
