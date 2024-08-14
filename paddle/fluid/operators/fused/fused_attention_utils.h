@@ -51,7 +51,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     auto place = dev_ctx.GetPlace();
     void *recvbuff =
         dev_ctx.template Alloc<T>(&tensor, tensor.numel() * sizeof(T));
-    gpuStream_t stream = dev_ctx.stream();;
+    gpuStream_t stream = dev_ctx.stream();
     paddle::platform::NCCLComm *comm = nullptr;
     phi::distributed::NCCLCommContext *comm_ctx = nullptr;
 
