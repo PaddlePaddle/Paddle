@@ -475,7 +475,7 @@ struct LoopDetectionMapping {
       auto node = uf_set_->GetSetFromGraph(raw_node);
       if (all_nodes_.count(node) && node != cur) res.insert(node);
     }
-    upstreams_[cur] = res;
+    downstreams_[cur] = res;
     return res;
   }
 };
