@@ -720,6 +720,42 @@ bool DistributeFpnProposalsOpInferSymbolicShape(
   return true;
 }
 
+bool FakeChannelWiseQuantizeDequantizeAbsMaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
+  int quant_axis = op->attribute<pir::Int32Attribute>("quant_axis").data();
+
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    common::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  PADDLE_ENFORCE_EQ(
+      quant_axis == 0 || quant_axis == 1,
+      true,
+      common::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                      "the received is %d",
+                                      quant_axis));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(x_shape_or_data.shape())});
+
+  std::vector<symbol::DimExpr> out_scale_shape = {
+      x_shape_or_data.shape()[quant_axis]};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_scale_shape)});
+
+  return true;
+}
+
 bool EigOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -761,19 +797,77 @@ bool EigvalshOpInferSymbolicShape(
   return EighOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FractionalMaxPool2DOpInferSymbolicShape(pir::Operation *op,
-//                                              pir::InferSymbolicShapeContext
-//                                              *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FractionalMaxPoolOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
 
-// bool FractionalMaxPool3DOpInferSymbolicShape(pir::Operation *op,
-//                                              pir::InferSymbolicShapeContext
-//                                              *infer_context) {
-//   // pass
-//   return true;
-// }
+  PADDLE_ENFORCE_EQ(
+      (x_dims.size() == 4 || x_dims.size() == 5),
+      true,
+      phi::errors::InvalidArgument(
+          "Pooling input should be 4-D or 5-D tensor but received %dD-Tensor",
+          x_dims.size()));
+
+  std::vector<int> output_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+  std::vector<int> kernel_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
+
+  std::vector<symbol::DimExpr> output_shape = {x_dims[0], x_dims[1]};
+  for (const auto &dim : output_size) {
+    output_shape.emplace_back(symbol::DimExpr(dim));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
+
+bool FractionalMaxPool3dOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FractionalMaxPoolOpInferSymbolicShape(op, infer_context);
+}
+
+bool FractionalMaxPool2dOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FractionalMaxPoolOpInferSymbolicShape(op, infer_context);
+}
+
+bool FakeQuantizeAbsMaxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+
+  int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
+
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    common::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(1)})});
+
+  return true;
+}
 
 bool FakeChannelWiseQuantizeAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -789,6 +883,7 @@ bool FakeChannelWiseQuantizeAbsMaxOpInferSymbolicShape(
                         "'bit_length' should be between 1 and 16, but "
                         "the received is %d",
                         bit_length));
+
   PADDLE_ENFORCE_EQ(
       quant_axis == 0 || quant_axis == 1,
       true,
@@ -968,12 +1063,6 @@ bool FlattenOpInferSymbolicShape(
   symbol::ShapeOrDataDimExprs out_shape_data{
       symbol::TensorShapeOrDataDimExprs(out_shape)};
   infer_context->SetShapeOrDataForValue(op->result(0), out_shape_data);
-
-  std::vector<symbol::DimExpr> xshape_shape = x_shape;
-  xshape_shape.insert(xshape_shape.begin(), symbol::DimExpr{0});
-  symbol::ShapeOrDataDimExprs xshape_shape_data{
-      symbol::TensorShapeOrDataDimExprs(xshape_shape)};
-  infer_context->SetShapeOrDataForValue(op->result(1), xshape_shape_data);
   return true;
 }
 
@@ -2277,8 +2366,6 @@ bool SqueezeOpInferSymbolicShape(
 
   pir::Value res = op->result(0);
   infer_context->SetShapeOrDataForValue(res, shape_data);
-  infer_context->SetShapeOrDataForValue(
-      op->result(1), CreateShapeOrDataForXShape(x_shape_or_data));
 
   return true;
 }

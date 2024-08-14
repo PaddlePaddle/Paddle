@@ -187,7 +187,7 @@ class ParallelTuner:
                 combination,
                 target,
                 check,
-                partial_candidate + [combination[i]],
+                [*partial_candidate, combination[i]],
                 candidates,
                 num_candidates,
                 skip_prob,

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 from typing_extensions import TypeAlias
 
@@ -32,6 +32,8 @@ from .math import _get_reduce_axis_with_tensor
 from .search import where
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
 _Interpolation: TypeAlias = Literal[

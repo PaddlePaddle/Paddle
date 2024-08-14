@@ -127,7 +127,7 @@ class IterableDataset(Dataset[_T]):
             >>> from paddle.io import IterableDataset
 
             >>> # define a random dataset
-            >>> class RandomDataset(IterableDataset):
+            >>> class RandomDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -159,7 +159,7 @@ class IterableDataset(Dataset[_T]):
             >>> import numpy as np
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            >>> class SplitedIterableDataset(IterableDataset):
+            >>> class SplitedIterableDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, start, end):
             ...         self.start = start
             ...         self.end = end
@@ -214,7 +214,7 @@ class IterableDataset(Dataset[_T]):
             >>> import numpy as np
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            >>> class RangeIterableDataset(IterableDataset):
+            >>> class RangeIterableDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, start, end):
             ...         self.start = start
             ...         self.end = end
@@ -228,7 +228,7 @@ class IterableDataset(Dataset[_T]):
             >>> def worker_init_fn(worker_id):
             ...     worker_info = get_worker_info()
             ...
-            ...     dataset = worker_info.dataset
+            ...     dataset: RangeIterableDataset = worker_info.dataset # type: ignore[assignment]
             ...     start = dataset.start
             ...     end = dataset.end
             ...     num_per_worker = int(
@@ -550,14 +550,14 @@ def random_split(
             2
 
             >>> # output of the first subset
-            >>> for idx, v in enumerate(a_list[0]):  # type: ignore[arg-type, var-annotated]
+            >>> for idx, v in enumerate(a_list[0]):
             ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 7
             1 6
             2 5
 
             >>> # output of the second subset
-            >>> for idx, v in enumerate(a_list[1]):  # type: ignore[arg-type, var-annotated]
+            >>> for idx, v in enumerate(a_list[1]):
             ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 1
             1 9
