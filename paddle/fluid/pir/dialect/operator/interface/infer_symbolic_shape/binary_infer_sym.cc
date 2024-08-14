@@ -394,7 +394,7 @@ bool ConvTransposeOpInferSymbolicShape(pir::Operation *op,
         phi::errors::InvalidArgument(
             "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
-  const symbol::DimExpr &C = (data_layout != DataLayout::kNHWC ? x_shape[1] 
+  const symbol::DimExpr C = (data_layout != DataLayout::kNHWC ? x_shape[1] 
                                                      : x_shape[x_shape.size() - 1]);
   infer_context->AddEqualCstr(filter_shape[0], C);                                                 
   const std::vector<symbol::DimExpr> x_data_dims =
