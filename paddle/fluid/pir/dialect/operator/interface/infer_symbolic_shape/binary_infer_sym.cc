@@ -115,7 +115,9 @@ bool ApplyPerChannelScaleOpInferSymbolicShape(
 
   infer_context->AddEqualCstr(x_shape[1], scales_shape[0]);
 
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   return true;
 }
