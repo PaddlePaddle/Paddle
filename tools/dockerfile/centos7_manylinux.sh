@@ -62,7 +62,7 @@ function make_cuda123cudnn900trt8616() {
 
 function make_cuda124cudnn911trt8616() {
   sed 's/<baseimg>/12.4.1-cudnn-devel-rockylinux8/g' Dockerfile.rockylinux8 >Dockerfile.tmp
-  sed -i "s#<install_gcc>#RUN dnf install -y gcc-toolset-12-gcc* \&\& scl enable gcc-toolset-12 bash \&\& echo 'source /opt/rh/rh-gcc-toolset12/enable' >>~/.bashrc #g" Dockerfile.tmp
+  sed -i "s#<install_gcc>#RUN dnf install -y gcc-toolset-12-gcc* \&\& source /opt/rh/gcc-toolset-12/enable \&\& echo 'source /opt/rh/gcc-toolset-12/enable' >>~/.bashrc #g" Dockerfile.tmp
   sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_cudnn.sh cudnn911 \nENV CUDNN_VERSION=9.1.1 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
   sed -i "s#build_scripts/install_trt.sh#build_scripts/install_trt.sh trt8616#g" Dockerfile.tmp
   sed -i '/CMD/iRUN ldconfig' Dockerfile.tmp
