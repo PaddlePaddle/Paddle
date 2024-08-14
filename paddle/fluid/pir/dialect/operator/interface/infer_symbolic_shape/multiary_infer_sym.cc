@@ -624,16 +624,16 @@ bool BilinearOpInferSymbolicShape(
 
 bool BroadcastTensorsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &input_shapes =
+  const auto &input_shape_or_data_list =
       infer_context->GetShapeOrDataForValue(op->operand_source(0))
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
   int target_rank = 0;
 
   // 1. Find Output rank = max(Inputs rank)
-  for (const auto &input_shape : input_shapes) {
-    target_rank =
-        std::max(target_rank, static_cast<int>(input_shape.shape().size()));
+  for (const auto &input_shape_or_data : input_shape_or_data_list) {
+    target_rank = std::max(
+        target_rank, static_cast<int>(input_shape_or_data.shape().size()));
   }
 
   std::vector<symbol::DimExpr> target_dims(target_rank, symbol::DimExpr(0));
@@ -641,11 +641,12 @@ bool BroadcastTensorsOpInferSymbolicShape(
   // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
   for (int index = 0; index < target_rank; ++index) {
     symbol::DimExpr target_dim_size(1);
-    for (const auto &input_shape : input_shapes) {
-      int axis = static_cast<int>(input_shape.shape().size()) - index - 1;
+    for (const auto &input_shape_or_data : input_shape_or_data_list) {
+      int axis =
+          static_cast<int>(input_shape_or_data.shape().size()) - index - 1;
       symbol::DimExpr dim_size(1);
       if (axis >= 0) {
-        dim_size = input_shape.shape()[axis];
+        dim_size = input_shape_or_data.shape()[axis];
       }
 
       if (target_dim_size != dim_size && dim_size != 1 &&
@@ -663,13 +664,11 @@ bool BroadcastTensorsOpInferSymbolicShape(
   }
   // 3. Set Output Dim
   for (size_t i = 0; i < op->num_results(); ++i) {
-    printf("===%u===", i);
     infer_context->SetShapeOrDataForValue(
         op->result(i),
         symbol::ShapeOrDataDimExprs{
             symbol::TensorShapeOrDataDimExprs(target_dims)});
   }
-  printf("===4===");
 
   return true;
 }
