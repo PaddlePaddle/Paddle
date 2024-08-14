@@ -61,8 +61,6 @@ def variable_length_memory_efficient_attention(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> # doctest: +SKIP('Number of sample edges dismatch, the sample kernel has error.')
             >>> import math
             >>> import paddle
             >>> from paddle.incubate.nn.functional import variable_length_memory_efficient_attention
