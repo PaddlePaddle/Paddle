@@ -192,7 +192,7 @@ def rpc_sync_framework(
     return fut.wait()
 
 
-def rpc_async_framework(
+def rpc_async(
     to: str,
     fn: callable,
     args: tuple | None = None,
