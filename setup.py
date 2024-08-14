@@ -1027,9 +1027,9 @@ def get_paddle_extra_install_requirements():
             output = subprocess.check_output(['nvcc', '--version']).decode(
                 'utf-8'
             )
-            version_line = [
+            version_line = next(
                 line for line in output.split('\n') if 'release' in line
-            ][0]
+            )
             version = version_line.split(' ')[-1].split(',')[0]
             cuda_major_version = version.split('.')[0]
         except Exception as e:
@@ -1402,37 +1402,48 @@ def get_package_data_and_package_dir():
         ext_modules = []
 
     # type hints
-    package_data['paddle'] = package_data.get('paddle', []) + [
+    package_data['paddle'] = [
+        *package_data.get('paddle', []),
         'py.typed',
         '*.pyi',
     ]
-    package_data['paddle.framework'] = package_data.get(
-        'paddle.framework', []
-    ) + ['*.pyi']
-    package_data['paddle.base'] = package_data.get('paddle.base', []) + [
+    package_data['paddle.framework'] = [
+        *package_data.get('paddle.framework', []), 
         '*.pyi'
     ]
-    package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
-        'tensor.pyi'
-    ]
-    package_data['paddle._typing'] = package_data.get('paddle._typing', []) + [
+    package_data['paddle.base'] = [
+        *package_data.get('paddle.base', []),
         '*.pyi'
     ]
-    package_data['paddle._typing.libs'] = package_data.get(
-        'paddle._typing.libs', []
-    ) + ['*.pyi', '*.md']
-    package_data['paddle._typing.libs.libpaddle'] = package_data.get(
-        'paddle._typing.libs.libpaddle', []
-    ) + ['*.pyi']
-    package_data['paddle._typing.libs.libpaddle.pir'] = package_data.get(
-        'paddle._typing.libs.libpaddle.pir', []
-    ) + ['*.pyi']
-    package_data['paddle._typing.libs.libpaddle.eager'] = package_data.get(
-        'paddle._typing.libs.libpaddle.eager', []
-    ) + ['*.pyi']
-    package_data['paddle._typing.libs.libpaddle.eager.ops'] = package_data.get(
-        'paddle._typing.libs.libpaddle.eager.ops', []
-    ) + ['*.pyi']
+    package_data['paddle.tensor'] = [
+        *package_data.get('paddle.tensor', []),
+        'tensor.pyi',
+    ]
+    package_data['paddle._typing'] = [
+        *package_data.get('paddle._typing', []),
+        '*.pyi'
+    ]
+    package_data['paddle._typing.libs'] = [
+        *package_data.get('paddle._typing.libs', []),
+        '*.pyi', 
+        '*.md'
+    ]
+    package_data['paddle._typing.libs.libpaddle'] = [
+        *package_data.get('paddle._typing.libs.libpaddle', []),
+        '*.pyi'
+    ]
+    package_data['paddle._typing.libs.libpaddle.pir'] = [
+        *package_data.get('paddle._typing.libs.libpaddle.pir', []),
+        '*.pyi'
+    ]
+    package_data['paddle._typing.libs.libpaddle.eager'] = [
+        *package_data.get('paddle._typing.libs.libpaddle.eager', []),
+        '*.pyi'
+    ]
+    package_data['paddle._typing.libs.libpaddle.eager.ops'] = [
+        *package_data.get('paddle._typing.libs.libpaddle.eager.ops', []),
+        '*.pyi'
+    ]
 
     return package_data, package_dir, ext_modules
 
