@@ -366,10 +366,15 @@ bool AsStridedOpInferSymbolicShape(
   const std::vector<int> &shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "dims");
 
+  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
   int rank = shape.size();
   std::vector<symbol::DimExpr> out_shape;
   for (int i = 0; i < rank; ++i) {
-    out_shape.push_back(symbol::DimExpr(shape[i]));
+    if (shape[i] == -1) {
+      out_shape.push_back(out_unknown);
+    } else {
+      out_shape.push_back(symbol::DimExpr(shape[i]));
+    }
   }
 
   infer_context->SetShapeOrDataForValue(
