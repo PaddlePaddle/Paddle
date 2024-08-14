@@ -207,13 +207,13 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
   const auto &num_rows_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   int num_rows =
-      static_cast<int>(maxlen_shape_or_data.data().value()[0].Get<int64_t>());
+      static_cast<int>(num_rows_shape_or_data.data().value()[0].Get<int64_t>());
   int num_columns;
   if (op->operand_source(1)) {
-    const auto &num_rows_shape_or_data =
+    const auto &num_columns_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    num_columns =
-        static_cast<int>(maxlen_shape_or_data.data().value()[0].Get<int64_t>());
+    num_columns = static_cast<int>(
+        num_columns_shape_or_data.data().value()[0].Get<int64_t>());
   } else {
     num_columns = num_rows;
   }
