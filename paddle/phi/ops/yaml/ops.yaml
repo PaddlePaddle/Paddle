@@ -1319,6 +1319,7 @@
     func: detection_map
     data_type: detect_res
   optional: has_state, pos_count, true_pos, false_pos
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dgc
   args : (Tensor u, Tensor v, Tensor grad, Tensor param, Tensor current_step, Tensor nranks, float m=0.9, bool use_nesterov=true, float[] sparsity={}, float rampup_begin_step=0.0, float rampup_step=0.0, float regular_coeff=0.0, int regular_type=0)
