@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import paddle
@@ -19,7 +20,13 @@ from paddle import base
 
 
 def get_places():
-    places = [base.CPUPlace()]
+    places = []
+    if (
+        os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+        in ['1', 'true', 'on']
+        or not base.is_compiled_with_cuda()
+    ):
+        places.append(base.CPUPlace())
     if base.is_compiled_with_cuda():
         places.append(base.CUDAPlace(0))
     return places

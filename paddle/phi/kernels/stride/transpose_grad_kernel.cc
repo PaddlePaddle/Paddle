@@ -28,9 +28,9 @@ void TransposeGradStridedKernel(const Context& dev_ctx,
                                 const std::vector<int>& axis,
                                 DenseTensor* x_grad) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   size_t axis_size = axis.size();
   std::vector<int> formatted_axis = axis;

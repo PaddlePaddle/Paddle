@@ -40,7 +40,7 @@ void CudnnLSTMKernel(
     DenseTensor* last_c,
     DenseTensor* reserve,
     DenseTensor* state_out) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "CPU is not support for cudnn_lstm now. Will be add in the future"));
 }
 

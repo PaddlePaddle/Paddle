@@ -47,7 +47,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
   PADDLE_ENFORCE_GT(
       axis_dim,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The axis dimension should be larger than 0, but received "
           "axis dimension is %d.",
           axis_dim));
@@ -56,7 +56,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
   PADDLE_ENFORCE_GT(
       n,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The size of axis should be larger than 0, but received "
           "SizeToAxis of logit_grad is %d.",
           n));
@@ -185,8 +185,8 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         dtype,
         phi::CppTypeToDataType<T>::Type(),
-        phi::errors::InvalidArgument("The Input(Label) should be with the "
-                                     "same data type as kernel data type."));
+        common::errors::InvalidArgument("The Input(Label) should be with the "
+                                        "same data type as kernel data type."));
     CrossEntropyWithSoftmaxGradCPUKernel<T, T>(dev_ctx,
                                                label,
                                                softmax,

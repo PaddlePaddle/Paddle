@@ -72,8 +72,8 @@ class AttnLayerNorm {
                                                   quant_max_bound,
                                                   quant_min_bound));
       default:
-        PADDLE_THROW(
-            phi::errors::InvalidArgument("Feature_size must be larger than 1"));
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "Feature_size must be larger than 1"));
         break;
     }
   }

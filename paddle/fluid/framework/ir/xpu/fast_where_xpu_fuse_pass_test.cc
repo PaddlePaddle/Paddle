@@ -30,20 +30,20 @@ namespace ir {
   PADDLE_ENFORCE_EQ(                                                          \
       num_op_nodes,                                                           \
       1,                                                                      \
-      platform::errors::PreconditionNotMet(                                   \
+      common::errors::PreconditionNotMet(                                     \
           "The graph contains only one op node, but %d op nodes found.",      \
           num_op_nodes));                                                     \
   auto fast_where_xpu_op_nodes = GetOpNodes(graph, "fast_where_xpu");         \
   PADDLE_ENFORCE_EQ(fast_where_xpu_op_nodes.size(),                           \
                     1,                                                        \
-                    platform::errors::PreconditionNotMet(                     \
+                    common::errors::PreconditionNotMet(                       \
                         "The graph contains only a fast_where_xpu op node, "  \
                         "but %d op nodes found.",                             \
                         fast_where_xpu_op_nodes.size()));                     \
   const auto& x_name = fast_where_xpu_op_nodes[0]->Op()->Input("x")[0];       \
   PADDLE_ENFORCE_EQ(x_name,                                                   \
                     #x,                                                       \
-                    platform::errors::PreconditionNotMet(                     \
+                    common::errors::PreconditionNotMet(                       \
                         "The input 'x' of fast_where_xpu op should be '%s', " \
                         "but receive '%s'.",                                  \
                         #x,                                                   \
@@ -51,7 +51,7 @@ namespace ir {
   const auto& y_name = fast_where_xpu_op_nodes[0]->Op()->Input("y")[0];       \
   PADDLE_ENFORCE_EQ(y_name,                                                   \
                     #y,                                                       \
-                    platform::errors::PreconditionNotMet(                     \
+                    common::errors::PreconditionNotMet(                       \
                         "The input 'y' of fast_where_xpu op should be '%s', " \
                         "but receive '%s'.",                                  \
                         #y,                                                   \
@@ -189,28 +189,28 @@ TEST(FastWhereXPUFusePass, one_case5) {
   PADDLE_ENFORCE_EQ(                                                          \
       num_op_nodes,                                                           \
       2,                                                                      \
-      platform::errors::PreconditionNotMet(                                   \
+      common::errors::PreconditionNotMet(                                     \
           "The graph contains only two op nodes, but %d op nodes found.",     \
           num_op_nodes));                                                     \
   auto logical_op_nodes = GetOpNodes(graph, #logical_op);                     \
   PADDLE_ENFORCE_EQ(                                                          \
       logical_op_nodes.size(),                                                \
       1,                                                                      \
-      platform::errors::PreconditionNotMet(                                   \
+      common::errors::PreconditionNotMet(                                     \
           "The graph contains only a '%s' op node, but %d op nodes found.",   \
           #logical_op,                                                        \
           logical_op_nodes.size()));                                          \
   auto fast_where_xpu_op_nodes = GetOpNodes(graph, "fast_where_xpu");         \
   PADDLE_ENFORCE_EQ(fast_where_xpu_op_nodes.size(),                           \
                     1,                                                        \
-                    platform::errors::PreconditionNotMet(                     \
+                    common::errors::PreconditionNotMet(                       \
                         "The graph contains only a fast_where_xpu op node, "  \
                         "but %d op nodes found.",                             \
                         fast_where_xpu_op_nodes.size()));                     \
   const auto& x_name = fast_where_xpu_op_nodes[0]->Op()->Input("x")[0];       \
   PADDLE_ENFORCE_EQ(x_name,                                                   \
                     #x,                                                       \
-                    platform::errors::PreconditionNotMet(                     \
+                    common::errors::PreconditionNotMet(                       \
                         "The input 'x' of fast_where_xpu op should be '%s', " \
                         "but receive '%s'.",                                  \
                         #x,                                                   \
@@ -218,7 +218,7 @@ TEST(FastWhereXPUFusePass, one_case5) {
   const auto& y_name = fast_where_xpu_op_nodes[0]->Op()->Input("y")[0];       \
   PADDLE_ENFORCE_EQ(y_name,                                                   \
                     #y,                                                       \
-                    platform::errors::PreconditionNotMet(                     \
+                    common::errors::PreconditionNotMet(                       \
                         "The input 'y' of fast_where_xpu op should be '%s', " \
                         "but receive '%s'.",                                  \
                         #y,                                                   \

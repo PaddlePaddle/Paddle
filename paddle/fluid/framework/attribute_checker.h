@@ -28,8 +28,8 @@ class GreaterThanChecker {
     PADDLE_ENFORCE_GT(
         value,
         lower_bound_,
-        platform::errors::OutOfRange("Check for attribute value greater than "
-                                     "a certain value failed."));
+        common::errors::OutOfRange("Check for attribute value greater than "
+                                   "a certain value failed."));
   }
 
  private:
@@ -44,8 +44,8 @@ class EqualGreaterThanChecker {
     PADDLE_ENFORCE_GE(
         value,
         lower_bound_,
-        platform::errors::OutOfRange("Check for attribute value equal or "
-                                     "greater than a certain value failed."));
+        common::errors::OutOfRange("Check for attribute value equal or "
+                                   "greater than a certain value failed."));
   }
 
  private:
@@ -70,12 +70,12 @@ class TypedAttrVarInfoChecker {
   void check(const VarDesc* var_desc) const {
     PADDLE_ENFORCE_NOT_NULL(
         var_desc,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Required Attribute with Variable type shall not be nullptr."));
     auto shape = var_desc->GetShape();
     PADDLE_ENFORCE_LE(shape.size(),
                       1U,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Required shape rank of Attribute(%s) <= 1, "
                           "but received rank == %s",
                           var_desc->Name(),
@@ -90,7 +90,7 @@ class TypedAttrVarInfoChecker {
                      dtype == proto::VarType::Type::VarType_Type_INT64);
       PADDLE_ENFORCE_EQ(is_int,
                         true,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required dtype of Attribute(%s) shall be "
                             "int32|int64, but received %s.",
                             var_desc->Name(),
@@ -102,12 +102,12 @@ class TypedAttrVarInfoChecker {
     for (auto& var_desc : var_descs) {
       PADDLE_ENFORCE_NOT_NULL(
           var_desc,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Required Attribute with Variable type shall not be nullptr."));
       auto shape = var_desc->GetShape();
       PADDLE_ENFORCE_LE(shape.size(),
                         1U,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Required shape rank of Attribute(%s) <= 1, "
                             "but received rank == %s",
                             var_desc->Name(),
@@ -115,7 +115,7 @@ class TypedAttrVarInfoChecker {
       PADDLE_ENFORCE_EQ(
           shape.size() == 0U || shape[0] == 1U || shape[0] == -1,
           true,
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Required shape is (), or shape[0] of Attribute(%s) == 1 or -1, "
               "but received shape[0] == %s",
               var_desc->Name(),
@@ -146,9 +146,9 @@ class EnumInContainer {
     PADDLE_ENFORCE_NE(
         container_.find(val),
         container_.end(),
-        platform::errors::NotFound("Value %s is not in enum container %s.",
-                                   val,
-                                   ContainerDebugString()));
+        common::errors::NotFound("Value %s is not in enum container %s.",
+                                 val,
+                                 ContainerDebugString()));
   }
 
  private:
@@ -218,9 +218,9 @@ class TypedAttrChecker {
     PADDLE_ENFORCE_EQ(
         default_value_setter_.empty(),
         true,
-        platform::errors::AlreadyExists("Attribute (%s) has a default value "
-                                        "and cannot be set repeatedly.",
-                                        attr_name_));
+        common::errors::AlreadyExists("Attribute (%s) has a default value "
+                                      "and cannot be set repeatedly.",
+                                      attr_name_));
     default_value_setter_.push_back(DefaultValueSetter<T>(default_value));
     return *this;
   }
@@ -245,7 +245,7 @@ class TypedAttrChecker {
     if (it != attr_map->end() && HasAttrVar(it->second)) {
       PADDLE_ENFORCE_EQ(attr_->support_tensor(),
                         true,
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Found Attribute('%s') with type(Variable), but it "
                             "doesn't support phi::DenseTensor type.",
                             attr_name_));
@@ -269,7 +269,7 @@ class TypedAttrChecker {
         PADDLE_ENFORCE_EQ(
             default_value_setter_.empty(),
             false,
-            platform::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Attribute (%s) is not set correctly.", attr_name_));
         // default_value_setter_ has no more than one element
         auto tmp = attr_map->emplace(attr_name_, default_value_setter_[0]());

@@ -369,7 +369,7 @@ void IrPrinter::AddValueAlias(Value v, const std::string& alias) {
   const void* key = v.impl();
   PADDLE_ENFORCE_EQ(aliases_.find(key),
                     aliases_.end(),
-                    phi::errors::InvalidArgument("Value already has alias"));
+                    common::errors::InvalidArgument("Value already has alias"));
   aliases_[key] = alias;
 }
 

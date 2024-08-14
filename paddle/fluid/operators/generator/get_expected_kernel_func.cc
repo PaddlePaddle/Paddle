@@ -105,7 +105,7 @@ phi::KernelKey GetConcatExpectedKernelType(
   }
   if (flag == 0) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("All Inputs of Concat OP are Empty!"));
+        common::errors::InvalidArgument("All Inputs of Concat OP are Empty!"));
   }
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
@@ -127,7 +127,7 @@ phi::KernelKey GetReduceExpectedKernelType(
             ctx.GetPlace().GetType() == phi::AllocationType::XPU ||
             ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "float16 can only be used on GPU or NPU or XPU place"));
   }
   return phi::KernelKey(input_data_type, ctx.GetPlace());
@@ -161,8 +161,8 @@ phi::KernelKey GetAssignExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   const framework::Variable* var = ctx.InputVar("X");
-  if (var->IsType<framework::LoDTensorArray>()) {
-    auto t_arr = var->Get<framework::LoDTensorArray>();
+  if (var->IsType<phi::TensorArray>()) {
+    auto t_arr = var->Get<phi::TensorArray>();
     // NOTE(liym27): Support an empty tensor array as Input.
     // And set the kernel type is float.
     if (t_arr.empty()) {
@@ -235,7 +235,7 @@ phi::KernelKey GetSoftmaxExpectedKernelType(
             ctx.GetPlace().GetType() == phi::AllocationType::XPU ||
             ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "float16 can only be used on GPU/XPU and custom place"));
   }
   return phi::KernelKey(
@@ -254,7 +254,7 @@ phi::KernelKey GetSoftmaxGradExpectedKernelType(
     if (!(ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
           ctx.GetPlace().GetType() == phi::AllocationType::XPU ||
           ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM))
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "float16 can only be used on GPU/XPU and custom place"));
   }
   return phi::KernelKey(
@@ -265,15 +265,15 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   auto* in_var = ctx.InputVar("Input");
-  auto is_in_var_array = in_var->IsType<framework::LoDTensorArray>();
+  auto is_in_var_array = in_var->IsType<phi::TensorArray>();
   if (is_in_var_array) {
-    auto& tensor_array = in_var->Get<framework::LoDTensorArray>();
+    auto& tensor_array = in_var->Get<phi::TensorArray>();
     for (auto& tensor : tensor_array) {
       if (!(tensor.place().GetType() == phi::AllocationType::GPUPINNED)) {
         PADDLE_ENFORCE_EQ(
             phi::is_same_place(tensor.place(), ctx.device_context().GetPlace()),
             true,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Place of context is %s. Place of input tensor is %s. They "
                 "are should be same, but reveived different place.",
                 string::to_string(ctx.device_context().GetPlace()),
@@ -376,14 +376,14 @@ phi::KernelKey GetInstanceNormExpectedKernelType(
         in_param_type,
         framework::TransToProtoVarType(
             ctx.Input<phi::DenseTensor>("Scale")->dtype()),
-        phi::errors::InvalidArgument("Scale input should be of float type"));
+        common::errors::InvalidArgument("Scale input should be of float type"));
   }
   if (ctx.HasInput("Bias")) {
     PADDLE_ENFORCE_EQ(
         in_param_type,
         framework::TransToProtoVarType(
             ctx.Input<phi::DenseTensor>("Bias")->dtype()),
-        phi::errors::InvalidArgument("Bias input should be of float type"));
+        common::errors::InvalidArgument("Bias input should be of float type"));
   }
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
@@ -420,7 +420,7 @@ phi::KernelKey GetConvExpectedKernelType(
     PADDLE_ENFORCE_EQ(
         input_data_type,
         filter_data_type,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "input and filter data type should be consistent, "
             "but received input data type is %s and filter type "
             "is %s",

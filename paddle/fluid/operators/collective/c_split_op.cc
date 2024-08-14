@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_split_op.h"
 
+#include "paddle/common/enforce.h"
+
 namespace paddle {
 namespace operators {
 
@@ -22,43 +24,49 @@ class CSplitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "c_split");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "c_split");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The input 'X' for c_split must be provided."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The output 'Out' for c_split must be provided."));
     int nranks = ctx->Attrs().Get<int>("nranks");
     int rank = ctx->Attrs().Get<int>("rank");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
         nranks,
         2,
-        phi::errors::InvalidArgument("The number of ranks (%d) for c_split "
-                                     "must be greater than 1.",
-                                     nranks));
+        common::errors::InvalidArgument("The number of ranks (%d) for c_split "
+                                        "must be greater than 1.",
+                                        nranks));
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for c_split must be non-negative.", ring_id));
     PADDLE_ENFORCE_GE(
         rank,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The rank (%d) for c_split must be non-negative.", rank));
-    PADDLE_ENFORCE_LT(
-        rank,
-        nranks,
-        phi::errors::InvalidArgument("The value of rank (%d) for c_split must "
-                                     "be less than that of nranks.",
-                                     rank,
-                                     nranks));
+    PADDLE_ENFORCE_LT(rank,
+                      nranks,
+                      common::errors::InvalidArgument(
+                          "The value of rank (%d) for c_split must "
+                          "be less than that of nranks.",
+                          rank,
+                          nranks));
 
     phi::DDim dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(
         dim[dim.size() - 1] % nranks,
         0,
-        phi::errors::InvalidArgument("The last dimension (%d) of the X "
-                                     "should be divisible by nranks (%d)",
-                                     dim[dim.size() - 1],
-                                     nranks));
+        common::errors::InvalidArgument("The last dimension (%d) of the X "
+                                        "should be divisible by nranks (%d)",
+                                        dim[dim.size() - 1],
+                                        nranks));
 
     dim[dim.size() - 1] = dim[dim.size() - 1] / nranks;
     if (dim[0] < 0) dim[0] = -1;

@@ -20,13 +20,32 @@ namespace pir {
 
 void PatchBuilder::BuildPatch(const std::string& path) {
   patch_json = YamlParser(path);
+  VLOG(6) << "patch: " << patch_json;
   for (auto patch_info : patch_json["op_patches"]) {
     op_patches_[patch_info["op_name"]] = patch_info["patch"];
   }
+  for (auto patch_info : patch_json["type_patches"]) {
+    type_patches_[patch_info["type_name"]] = patch_info["patch"];
+  }
+  for (auto patch_info : patch_json["attr_patches"]) {
+    attr_patches_[patch_info["attr_name"]] = patch_info["patch"];
+  }
 }
 
-Json PatchBuilder::GetJsonOpPatch(const std::string& name) {
-  return op_patches_[name];
+std::unordered_map<std::string, Json> PatchBuilder::GetOpAttrPatchMap(
+    const Json op_patch) {
+  std::unordered_map<std::string, Json> op_attr_patch;
+  if (op_patch.count(ATTRS)) {
+    for (Json item : op_patch[ATTRS]) {
+      op_attr_patch[item[NAME]] = item;
+    }
+  }
+  if (op_patch.count(OPRESULTS_ATTRS)) {
+    for (Json item : op_patch[OPRESULTS_ATTRS]) {
+      op_attr_patch[item[NAME]] = item;
+    }
+  }
+  return op_attr_patch;
 }
 
 void PatchBuilder::ApplyOpPatches(const std::string& op_name,
@@ -67,10 +86,42 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
     }
     return;
   }
-  // for (auto item : patch[ATTRS]) {
-  //   std::string attr_name = item[NAME].get<std::string>();
-  // }
-  json->merge_patch(patch);
+  // TODO(czy): Deal with io patches
+  // Json* json_in = &json->at(OPOPERANDS);
+  // json_in->merge_patch(patch[OPOPERANDS]);
+  // Json* json_out = &json->at(OPRESULTS);
+  // json_out->merge_patch(patch[OPRESULTS]);
 }
 
+void PatchBuilder::ApplyTypePatches(const std::string& type_name,
+                                    Json* json,
+                                    Json patch) {
+  json->at(ID) = patch["NEW_NAME"];
+  if (type_name == pir::DenseTensorType::name()) {
+    std::string name = json->at(DATA).at(0).get<std::string>();
+    if (HasTypePatch(name)) {
+      Json patch_json = type_patches_[name];
+      ApplyTypePatches(name, &json->at(DATA).at(0), patch_json);
+    }
+  }
+}
+
+void PatchBuilder::ApplyAttrPatches(const std::string& attr_name,
+                                    Json* json,
+                                    Json patch) {
+  if (patch.contains("NEW_NAME")) {
+    json->at(NAME) = patch["NEW_NAME"];
+  } else {
+    json->merge_patch(patch);
+  }
+  VLOG(8) << attr_name << ": " << json;
+}
+
+void PatchBuilder::ApplyAttrTypePatches(const std::string& attr_name,
+                                        Json* json,
+                                        Json patch) {
+  if (patch.contains("NEW_NAME")) {
+    json->at(ID) = patch["NEW_NAME"];
+  }
+}
 }  // namespace pir

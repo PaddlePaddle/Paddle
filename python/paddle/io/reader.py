@@ -24,9 +24,7 @@ from typing import (
     Any,
     AnyStr,
     Callable,
-    Mapping,
     Protocol,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -49,14 +47,15 @@ from .dataloader.dataloader_iter import (
 
 if TYPE_CHECKING:
     import numbers
+    from collections.abc import Mapping, Sequence
 
     import numpy.typing as npt
 
     from paddle import Tensor
     from paddle._typing import PlaceLike
+    from paddle._typing.device_like import _Place
+    from paddle.io.dataloader.dataloader_iter import _DataLoaderIterBase
     from paddle.io.dataloader.dataset import Dataset
-
-    from .dataloader.dataloader_iter import _DataLoaderIterBase
 
     _K = TypeVar('_K')
     _V = TypeVar('_V')
@@ -65,24 +64,21 @@ if TYPE_CHECKING:
         @overload
         def __call__(
             self, batch: Sequence[npt.NDArray[Any]] | Sequence[numbers.Number]
-        ) -> npt.NDArray[Any]:
-            ...
+        ) -> npt.NDArray[Any]: ...
 
         @overload
-        def __call__(self, batch: Sequence[Tensor]) -> Tensor:
-            ...
+        def __call__(self, batch: Sequence[Tensor]) -> Tensor: ...
 
         @overload
-        def __call__(self, batch: Sequence[AnyStr]) -> AnyStr:
-            ...
+        def __call__(self, batch: Sequence[AnyStr]) -> AnyStr: ...
 
         @overload
-        def __call__(self, batch: Sequence[Mapping[_K, _V]]) -> Mapping[_K, _V]:
-            ...
+        def __call__(
+            self, batch: Sequence[Mapping[_K, _V]]
+        ) -> Mapping[_K, _V]: ...
 
         @overload
-        def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]:
-            ...
+        def __call__(self, batch: Sequence[Sequence[_V]]) -> Sequence[_V]: ...
 
 
 # NOTE: [ avoid hanging & failed quickly ]
@@ -437,19 +433,23 @@ class DataLoader:
     collate_fn: _CollateFn | None
     use_buffer_reader: bool
     prefetch_factor: int
-    worker_init_fn: Callable[[int], None]
-    dataset: Dataset
+    worker_init_fn: Callable[[int], None] | None
+    dataset: Dataset[Any]
     feed_list: Sequence[Tensor] | None
-    places: Sequence[PlaceLike] | None
+    places: list[_Place]
     num_workers: int
     dataset_kind: _DatasetKind
     use_shared_memory: bool
+    timeout: int
+    batch_sampler: BatchSampler | _InfiniteIterableSampler | None
+    drop_last: bool
+    auto_collate_batch: bool
 
     def __init__(
         self,
-        dataset: Dataset,
+        dataset: Dataset[Any],
         feed_list: Sequence[Tensor] | None = None,
-        places: Sequence[PlaceLike] | None = None,
+        places: PlaceLike | Sequence[PlaceLike] | None = None,
         return_list: bool = True,
         batch_sampler: BatchSampler | None = None,
         batch_size: int = 1,
@@ -461,7 +461,7 @@ class DataLoader:
         prefetch_factor: int = 2,
         use_shared_memory: bool = True,
         timeout: int = 0,
-        worker_init_fn: Callable[[int], None] = None,
+        worker_init_fn: Callable[[int], None] | None = None,
         persistent_workers: bool = False,
     ) -> None:
         self.return_list = return_list

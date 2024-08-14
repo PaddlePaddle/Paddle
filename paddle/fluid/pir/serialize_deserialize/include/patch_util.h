@@ -17,9 +17,19 @@
 
 namespace pir {
 
-Json GetAttrTypeJson(const YAML::Node &action);
+Json GetAttrJson(const YAML::Node &action);
+
+Json GetTypeJson(const YAML::Node &action);
 
 Json BuildAttrJsonPatch(const YAML::Node &action);
+
+Json BuildTypeJsonPatch(const YAML::Node &action);
+
+Json ParseOpPatches(const YAML::Node &root);
+
+Json ParseAttrPatches(const YAML::Node &root);
+
+Json ParseTypePatches(const YAML::Node &root);
 
 Json YamlParser(const std::string &yaml_file);
 

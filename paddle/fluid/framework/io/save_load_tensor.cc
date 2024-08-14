@@ -30,10 +30,10 @@ void SaveTensor(const phi::DenseTensor& x,
   MkDirRecursively(DirName(new_path).c_str());
 
   std::ofstream fout(new_path, std::ios::binary);
-  PADDLE_ENFORCE_EQ(
-      static_cast<bool>(fout),
-      true,
-      phi::errors::Unavailable("Cannot open %s to save variables.", new_path));
+  PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                    true,
+                    common::errors::Unavailable(
+                        "Cannot open %s to save variables.", new_path));
   framework::SerializeToStream(fout, x);
 
   fout.close();
@@ -43,12 +43,12 @@ void LoadTensor(const std::string& file_path, phi::DenseTensor* out) {
   std::ifstream fin(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
-                    phi::errors::Unavailable(
+                    common::errors::Unavailable(
                         "Load operator fail to open file %s, please check "
                         "whether the model file is complete or damaged.",
                         file_path));
   PADDLE_ENFORCE_NOT_NULL(out,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The variable to be loaded cannot be found."));
 
   framework::DeserializeFromStream(fin, out);

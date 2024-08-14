@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 
@@ -20,6 +21,7 @@ import gradient_checker
 import numpy as np
 import parameterized as param
 from decorator_helper import prog_scope
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -114,7 +116,13 @@ class TestAddHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -218,7 +226,13 @@ class TestSubtractHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -322,7 +336,13 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -403,7 +423,13 @@ class TestSiluHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -484,7 +510,13 @@ class TestExpHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -565,7 +597,13 @@ class TestLogHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -645,7 +683,13 @@ class TestAbsHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -720,7 +764,13 @@ class TestMinimumHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -794,11 +844,80 @@ class TestMaximumHighGradCheck(unittest.TestCase):
 
     def test_high_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
             self.func_double(p)
+
+
+@param.parameterized_class(
+    ('shape1', 'shape2'),
+    [
+        ([2], [2], True),
+        ([2, 3], [2, 3], True),
+        ([2, 3, 4], [2, 3, 4], True),
+        ([2, 3, 3, 4], [2, 3, 3, 4], True),
+    ],
+)
+class TestMaximumHighGradCheck2(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.shape1 = cls.shape1
+        cls.shape2 = cls.shape2
+
+    def _grad(self, y, x, order):
+        u = y
+        dx = paddle.ones_like(x)
+        for _ in range(order):
+            dx = paddle.grad(u, x, create_graph=True)[0]
+            u = dx
+        return dx
+
+    def func_double(self, place, x_stop, y_stop):
+        x = paddle.randn(self.shape1).astype("float32")
+        x.stop_gradient = x_stop
+        y = paddle.randn(self.shape2).astype("float32")
+        y.stop_gradient = y_stop
+
+        # wraping with tanh to enable high order gradient
+        z = paddle.maximum(paddle.tanh(x), paddle.tanh(y))
+
+        if not x.stop_gradient:
+            dzdx = self._grad(z, x, 2)
+        if not y.stop_gradient:
+            dzdy = self._grad(z, y, 2)
+
+    def func_triple(self, place, x_stop, y_stop):
+        x = paddle.randn(self.shape1).astype("float32")
+        x.stop_gradient = x_stop
+        y = paddle.randn(self.shape2).astype("float32")
+        y.stop_gradient = y_stop
+
+        # wraping with tanh to enable high order gradient
+        z = paddle.maximum(paddle.tanh(x), paddle.tanh(y))
+
+        if not x.stop_gradient:
+            dzdx = self._grad(z, x, 3)
+        if not y.stop_gradient:
+            dzdy = self._grad(z, y, 3)
+
+    def test_high_grad(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            for x_stop in [False, True]:
+                for y_stop in [False, True]:
+                    with dygraph_guard():
+                        self.func_double(p, x_stop, y_stop)
+                        self.func_triple(p, x_stop, y_stop)
 
 
 if __name__ == '__main__':

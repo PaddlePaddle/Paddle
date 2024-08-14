@@ -141,7 +141,6 @@ if(WITH_TESTING)
     message(STATUS "Skip tests unrelated to CUDA/TRT")
   else()
     add_subdirectory(amp)
-    add_subdirectory(asp)
     add_subdirectory(autograd)
     add_subdirectory(custom_kernel)
     add_subdirectory(custom_op)
@@ -170,6 +169,7 @@ if(WITH_TESTING)
   add_subdirectory(quantization)
   add_subdirectory(rnn)
   add_subdirectory(sequence)
+  add_subdirectory(tensorrt)
   # add_subdirectory(white_list)
 
   if(WITH_DISTRIBUTE)
@@ -190,6 +190,10 @@ if(WITH_TESTING)
   if(WITH_XPU)
     add_subdirectory(xpu)
   endif()
+
+  # add tests for scripts from `Paddle/tools`
+  add_subdirectory(tools)
+
 endif()
 
 if(WITH_CPP_DIST)

@@ -26,8 +26,8 @@ extern "C" {
 #include <utility>
 #include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 #include "paddle/utils/test_macros.h"
 

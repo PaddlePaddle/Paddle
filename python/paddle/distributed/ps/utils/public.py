@@ -112,13 +112,13 @@ class TrainerRuntimeConfig:
         self.runtime_configs['communicator_send_queue_size'] = os.getenv(
             "FLAGS_communicator_send_queue_size", send_queue_size
         )
-        self.runtime_configs[
-            'communicator_independent_recv_thread'
-        ] = os.getenv("FLAGS_communicator_independent_recv_thread", "1")
-        self.runtime_configs[
-            'communicator_min_send_grad_num_before_recv'
-        ] = os.getenv(
-            "FLAGS_communicator_min_send_grad_num_before_recv", num_threads
+        self.runtime_configs['communicator_independent_recv_thread'] = (
+            os.getenv("FLAGS_communicator_independent_recv_thread", "1")
+        )
+        self.runtime_configs['communicator_min_send_grad_num_before_recv'] = (
+            os.getenv(
+                "FLAGS_communicator_min_send_grad_num_before_recv", num_threads
+            )
         )
         self.runtime_configs['communicator_thread_pool_size'] = os.getenv(
             "FLAGS_communicator_thread_pool_size", "5"
@@ -176,9 +176,9 @@ class TrainerRuntimeConfig:
                     f'communicator_max_merge_var_num = {max_merge_var_num}, CPU_NUM = '
                     f'{num_threads}. communicator_max_merge_var_num will be forced to {num_threads}.'
                 )
-                self.runtime_configs[
-                    'communicator_max_merge_var_num'
-                ] = num_threads
+                self.runtime_configs['communicator_max_merge_var_num'] = (
+                    num_threads
+                )
             if send_queue_size != num_threads:
                 print(
                     f'WARNING: In {mode_str} mode, communicator_send_queue_size '
@@ -186,9 +186,9 @@ class TrainerRuntimeConfig:
                     f'communicator_send_queue_size = {send_queue_size}, CPU_NUM = '
                     f'{num_threads}. communicator_send_queue_size will be forced to {num_threads}.'
                 )
-                self.runtime_configs[
-                    'communicator_send_queue_size'
-                ] = num_threads
+                self.runtime_configs['communicator_send_queue_size'] = (
+                    num_threads
+                )
 
         return {key: str(self.runtime_configs[key]) for key in need_keys}
 

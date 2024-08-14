@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import gradient_checker
@@ -39,7 +40,7 @@ class TestConcatOp(OpTest):
         self.attrs = {'axis': self.axis}
         if self.axis < 0:
             self.actual_axis = self.axis + len(self.x0.shape)
-            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+            self.actual_axis = max(0, self.actual_axis)
         else:
             self.actual_axis = self.axis
 
@@ -191,7 +192,7 @@ class TestConcatOp6(TestConcatOp):
         self.attrs = {'axis': self.axis}
         if self.axis < 0:
             self.actual_axis = self.axis + len(self.x0.shape)
-            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+            self.actual_axis = max(0, self.actual_axis)
         else:
             self.actual_axis = self.axis
         out = np.concatenate((self.x0, self.x1, self.x2), axis=self.actual_axis)
@@ -228,7 +229,7 @@ class TestConcatOp7(TestConcatOp):
         self.attrs = {'axis': self.axis}
         if self.axis < 0:
             self.actual_axis = self.axis + len(self.x0.shape)
-            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+            self.actual_axis = max(0, self.actual_axis)
         else:
             self.actual_axis = self.axis
 
@@ -301,9 +302,7 @@ def create_test_AxisTensor(parent):
 
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = (
-                    self.actual_axis if self.actual_axis > 0 else 0
-                )
+                self.actual_axis = max(0, self.actual_axis)
             else:
                 self.actual_axis = self.axis
 
@@ -369,9 +368,7 @@ def create_test_fp16(parent):
             self.attrs = {'axis': self.axis}
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = (
-                    self.actual_axis if self.actual_axis > 0 else 0
-                )
+                self.actual_axis = max(0, self.actual_axis)
             else:
                 self.actual_axis = self.axis
 
@@ -474,9 +471,7 @@ def create_test_bf16(parent):
             self.attrs = {'axis': self.axis}
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = (
-                    self.actual_axis if self.actual_axis > 0 else 0
-                )
+                self.actual_axis = max(0, self.actual_axis)
             else:
                 self.actual_axis = self.axis
 
@@ -832,7 +827,13 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -876,7 +877,13 @@ class TestConcatTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -896,7 +903,7 @@ class TestConcatOpAutoParallel(OpTest):
         self.attrs = {'axis': self.axis}
         if self.axis < 0:
             self.actual_axis = self.axis + len(self.x0.shape)
-            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+            self.actual_axis = max(0, self.actual_axis)
         else:
             self.actual_axis = self.axis
 

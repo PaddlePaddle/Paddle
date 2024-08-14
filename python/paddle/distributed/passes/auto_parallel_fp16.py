@@ -224,9 +224,9 @@ class FP16State:
         Mark amp options info for backward ops according to forward ops
         """
         if is_forward_op(op):
-            self.forward_op_to_amp_options[
-                op.desc.original_id()
-            ] = op.amp_options
+            self.forward_op_to_amp_options[op.desc.original_id()] = (
+                op.amp_options
+            )
         elif is_backward_op(op):
             if op.desc.original_id() in self.grad_op_to_op_map:
                 if (

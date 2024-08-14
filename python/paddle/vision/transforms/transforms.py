@@ -62,15 +62,12 @@ _RetT = TypeVar(
 
 class _Transform(Protocol, Generic[_InputT, _RetT]):
     @overload
-    def __call__(self, data: _InputT) -> _RetT:
-        ...
+    def __call__(self, data: _InputT) -> _RetT: ...
 
     @overload
-    def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]:
-        ...
+    def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]: ...
 
-    def __call__(self, data) -> Any:
-        ...
+    def __call__(self, data) -> Any: ...
 
 
 __all__ = []
@@ -152,12 +149,10 @@ class Compose(_Transform[_InputT, _RetT]):
         self.transforms = transforms
 
     @overload
-    def __call__(self, data: _InputT) -> _RetT:
-        ...
+    def __call__(self, data: _InputT) -> _RetT: ...
 
     @overload
-    def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]:
-        ...
+    def __call__(self, data: tuple[_InputT, ...]) -> tuple[_RetT, ...]: ...
 
     def __call__(self, data) -> Any:
         for f in self.transforms:
@@ -308,12 +303,10 @@ class BaseTransform(_Transform[_InputT, _RetT]):
         pass
 
     @overload
-    def __call__(self, inputs: _InputT) -> _RetT:
-        ...
+    def __call__(self, inputs: _InputT) -> _RetT: ...
 
     @overload
-    def __call__(self, inputs: tuple[_InputT, ...]) -> tuple[_RetT, ...]:
-        ...
+    def __call__(self, inputs: tuple[_InputT, ...]) -> tuple[_RetT, ...]: ...
 
     def __call__(self, inputs) -> Any:
         """Apply transform on single input data"""
@@ -464,11 +457,11 @@ class Resize(BaseTransform[_InputT, _RetT]):
 
             >>> fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
             >>> transform = Resize(size=224)
-            >>> converted_img = transform(fake_img)
+            >>> converted_img = transform(fake_img) # type: ignore[call-overload]
             >>> print(converted_img.size)
             (262, 224)
             >>> transform = Resize(size=(200,150))
-            >>> converted_img = transform(fake_img)
+            >>> converted_img = transform(fake_img) # type: ignore[call-overload]
             >>> print(converted_img.size)
             (150, 200)
     """
@@ -1046,10 +1039,10 @@ class BrightnessTransform(BaseTransform[_InputT, _RetT]):
 
             >>> transform = BrightnessTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> print(fake_img.load()[1,1])
+            >>> print(fake_img.load()[1,1]) # type: ignore[index]
             (60, 169, 34)
             >>> # doctest: +SKIP('random sample in Brightness function')
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img) # type: ignore[call-overload]
             >>> print(fake_img.load()[1,1])
             (68, 192, 38)
 
@@ -1801,7 +1794,7 @@ class RandomRotation(BaseTransform[_InputT, _RetT]):
         degrees: float | Sequence[float],
         interpolation: _InterpolationPil | _InterpolationCv2 = 'nearest',
         expand: bool = False,
-        center: tuple[float, float] = None,
+        center: tuple[float, float] | None = None,
         fill: Size3 = 0,
         keys: _TransformInputKeys | None = None,
     ) -> None:

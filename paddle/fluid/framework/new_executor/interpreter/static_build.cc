@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
@@ -21,7 +22,6 @@
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
-#include "paddle/fluid/platform/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
@@ -294,7 +294,7 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
                !var->IsInitialized()) {
       return var->template GetMutable<paddle::framework::RawTensor>();
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type when get tensor.",
           framework::ToTypeName(var->Type())));
     }
@@ -305,27 +305,27 @@ phi::TensorBase* GetTensorFormVar(framework::Variable* var) {
 }
 
 template <class TensorType>
-void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
+void FakeInitializeTensor(const phi::DeviceContext& dev_ctx,
                           const phi::Place& place,
                           const phi::DataType& dtype,
                           const phi::DataLayout& layout,
                           TensorType* tensor) {
   PADDLE_ENFORCE_NE(place.GetType(),
                     phi::AllocationType::UNDEFINED,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The place %s to fake intialize is not valid.", place));
   PADDLE_ENFORCE_NE(dtype,
                     phi::DataType::UNDEFINED,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The dtype %s to fake intialize is not valid.", dtype));
   PADDLE_ENFORCE_NE(
       layout,
       phi::DataLayout::UNDEFINED,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The layout %s to fake intialize is not valid.", layout));
   PADDLE_ENFORCE_NOT_NULL(
       tensor,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The tensor to fake intialize should not be null."));
 
   if (tensor->initialized() && place == tensor->place() &&
@@ -335,7 +335,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
 
   // set place
   if (tensor->initialized()) {  // avoid overwriting valid data
-    platform::DeviceContext* dev_ctx_for_copy = nullptr;
+    phi::DeviceContext* dev_ctx_for_copy = nullptr;
     if (place.GetType() != AllocationType::CPU) {
       dev_ctx_for_copy = phi::DeviceContextPool::Instance().Get(place);
     } else {
@@ -352,7 +352,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
     } else {
       PADDLE_ENFORCE_EQ(place,
                         dev_ctx.GetPlace(),
-                        phi::errors::Unavailable(
+                        common::errors::Unavailable(
                             "The place %s for fack alloc is not equal to "
                             "the place %s of DeviceContext.",
                             place,
@@ -373,7 +373,7 @@ void FakeInitializeTensor(const platform::DeviceContext& dev_ctx,
           << ", place = " << place << ", layout = " << layout;
 }
 
-void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
+void FakeInitializeTensorBase(const phi::DeviceContext& dev_ctx,
                               const phi::Place& place,
                               const phi::DataType& dtype,
                               const phi::DataLayout& layout,
@@ -403,7 +403,7 @@ void FakeInitializeTensorBase(const platform::DeviceContext& dev_ctx,
     FakeInitializeTensor(
         dev_ctx, place, dtype, layout, dynamic_cast<phi::TensorArray*>(tensor));
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported `%s` type when fake initialize tensor.",
         tensor->type_info().name()));
   }
@@ -415,7 +415,7 @@ void RunConditionalBlockPreStaticBuild(const framework::Scope& scope,
   auto* scope_var = scope.FindVar(op.Output("Scope"));
   PADDLE_ENFORCE_NOT_NULL(
       scope_var,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Expect Scope variable to be set in conditional_block_op, but "
           "got a null Scope variable. Please set the Scope variable."));
 
@@ -462,7 +462,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
                                  const OperatorBase& op) {
   PADDLE_ENFORCE_NOT_NULL(
       scope.FindVar(op.Input("Condition")),
-      platform::errors::NotFound("Input(Condition) of WhileOp is not found."));
+      common::errors::NotFound("Input(Condition) of WhileOp is not found."));
 
 #ifdef PADDLE_WITH_DNNL
   // Executor on being destroyed clears oneDNN cache and resets
@@ -521,7 +521,7 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
 
   PADDLE_ENFORCE_EQ(step_scopes->size(),
                     0,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The Output(StepScope) of WhileOp should be empty."));
 
   auto& skip_vars =
@@ -628,9 +628,9 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
         auto* t = var->GetMutable<phi::DenseTensor>();
         framework::LoD empty_lod;
         t->set_lod(empty_lod);
-      } else if (var->IsType<framework::LoDTensorArray>()) {
+      } else if (var->IsType<phi::TensorArray>()) {
         // Clear elements of all tensor arrays.
-        auto* t = var->GetMutable<framework::LoDTensorArray>();
+        auto* t = var->GetMutable<phi::TensorArray>();
         t->clear();
       }
     }
@@ -700,7 +700,7 @@ void FakeInitializeOutputsForOperatorBase(
       if (out_var_info_before_build[i] != out_var_info_after_build[i]) {
         auto var_name = out_var_info_before_build[i].name_;
         if (following_input_vars.count(var_name)) {
-          PADDLE_THROW(phi::errors::PreconditionNotMet(
+          PADDLE_THROW(common::errors::PreconditionNotMet(
               "The output %s s' dtype/place of %s is "
               "changed after static build. Befer static build, the "
               "dtype is %s, place is %s. After static "
@@ -728,13 +728,13 @@ void FakeInitializeOutputsForOperatorBase(
 
     auto& outputs = op.Outputs("Out");
     auto& var_types = reader->VarTypes();
-    PADDLE_ENFORCE_EQ(
-        outputs.size(),
-        var_types.size(),
-        phi::errors::Unavailable("The output size of read_op (%d) should equal "
-                                 "to the var_types size of ReaderHolder (%d).",
-                                 outputs.size(),
-                                 var_types.size()));
+    PADDLE_ENFORCE_EQ(outputs.size(),
+                      var_types.size(),
+                      common::errors::Unavailable(
+                          "The output size of read_op (%d) should equal "
+                          "to the var_types size of ReaderHolder (%d).",
+                          outputs.size(),
+                          var_types.size()));
 
     for (size_t i = 0; i < outputs.size(); ++i) {
       const std::string& parameter_name = outputs[i];
@@ -747,8 +747,8 @@ void FakeInitializeOutputsForOperatorBase(
       }
     }
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Can not static build for op: %s", op_type));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Can not static build for op: %s", op_type));
   }
 }
 
@@ -792,13 +792,13 @@ void FakeInitializeOutputsForFunctionKernel(
     const phi::Kernel& phi_kernel,
     const phi::KernelSignature& kernel_sig,
     const RuntimeContext& runtime_ctx,
-    const platform::DeviceContext& dev_ctx) {
+    const phi::DeviceContext& dev_ctx) {
   const std::string& op_type = op.Type();
   auto output_names = kernel_sig.output_names;
   auto output_defs = phi_kernel.args_def().output_defs();
   PADDLE_ENFORCE_EQ(output_names.size(),
                     output_defs.size(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of outputs_args names (%d) must be equal to "
                         "the size of kernel output_defs (%d).",
                         output_names.size(),
@@ -850,7 +850,7 @@ void FakeInitializeOutputsForFunctionKernel(
                 GetTensorFormVar(runtime_ctx.inputs.find("X")->second.at(0));
             backend = phi::TransToPhiBackend(x->place());
           } else {
-            PADDLE_THROW(phi::errors::Unimplemented(
+            PADDLE_THROW(common::errors::Unimplemented(
                 "Unsupported UNDEFINED backend for op: %s, parameter: %s",
                 op_type,
                 parameter_name));

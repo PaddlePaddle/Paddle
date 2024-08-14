@@ -71,7 +71,7 @@ bool HasCUDNN() {
 void EnforceCUDNNLoaded(const char* fn_name) {
   PADDLE_ENFORCE_NOT_NULL(
       cudnn_dso_handle,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "Cannot load cudnn shared library. Cannot invoke method %s.",
           fn_name));
 }

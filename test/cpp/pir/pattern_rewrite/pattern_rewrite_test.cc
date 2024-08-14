@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -32,7 +33,6 @@
 #include "paddle/fluid/pir/transforms/gpu/conv2d_add_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/gpu/conv2d_bn_fuse_pass.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
@@ -84,12 +84,12 @@ void Operation1::VerifySig() {
   auto &attributes = this->attributes();
   if (attributes.count("op2_attr1") == 0 ||
       (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Type of attribute: parameter_name is not right."));
   }
   if (attributes.count("op2_attr2") == 0 ||
       (!attributes.at("op2_attr2").isa<pir::StrAttribute>())) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Type of attribute: parameter_name is not right."));
   }
 }
@@ -220,7 +220,7 @@ class RedundantTransposeFusePattern
       std::vector<int> axis_first = GetAxis(prev_trans_op);
       PADDLE_ENFORCE_EQ(axis_first.size(),
                         axis_last.size(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "transpose op's perm rank should be same."));
       auto new_perm = GetPerm(axis_first, axis_last);
       rewriter.set_insertion_point(op);

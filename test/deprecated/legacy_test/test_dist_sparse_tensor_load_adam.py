@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import unittest
 
 from test_dist_sparse_tensor_load_sgd_deprecated import TestSparseLoadProgram

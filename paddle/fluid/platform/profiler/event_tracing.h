@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
 
 namespace paddle {

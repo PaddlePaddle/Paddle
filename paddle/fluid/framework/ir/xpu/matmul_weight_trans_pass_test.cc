@@ -45,7 +45,7 @@ TEST(MatMulWeightTransPass, basic) {
   PADDLE_ENFORCE_EQ(
       trans_y,
       false,
-      platform::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The attribute of matmul_v2 trans_y should be false after pass"));
 }
 

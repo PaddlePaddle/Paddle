@@ -71,8 +71,8 @@ void InferenceProcessPass::ApplyImpl(ir::Graph* graph) const {
     PADDLE_ENFORCE_GE(
         batches_per_step,
         num_ipus,
-        platform::errors::InvalidArgument("Batched per step should be equal or "
-                                          "greater than the number of IPUs"));
+        common::errors::InvalidArgument("Batched per step should be equal or "
+                                        "greater than the number of IPUs"));
     ipu_strategy_instance_->batches_per_step = batches_per_step;
   }
 

@@ -28,7 +28,7 @@ const Attribute &InferNoNeedBufferVarsContext::GetAttr(
   PADDLE_ENFORCE_NE(
       iter,
       attrs_.end(),
-      platform::errors::NotFound("Cannot find attribute (%s).", name));
+      common::errors::NotFound("Cannot find attribute (%s).", name));
   return iter->second;
 }
 

@@ -26,7 +26,7 @@ void Layout::Verify() {
       PADDLE_ENFORCE_EQ(
           axis->name.size(),
           1U,
-          phi::errors::InvalidArgument("axis name size must be 1"));
+          ::common::errors::InvalidArgument("axis name size must be 1"));
       auto axis_name = axis->name[0];
       CHECK((axis_name >= 'A' && axis_name <= 'Z') ||
             (axis_name >= 'a' && axis_name <= 'z'));
@@ -39,7 +39,7 @@ void Layout::Verify() {
       PADDLE_ENFORCE_EQ(
           axis->name.size(),
           1U,
-          phi::errors::InvalidArgument("axis name size must be 1"));
+          ::common::errors::InvalidArgument("axis name size must be 1"));
       auto axis_name = axis->name[0];
       if (axis_name >= 'a' && axis_name <= 'z') {
         CHECK(axis_names_.find(axis_name + offset) != axis_names_.npos)
@@ -54,24 +54,24 @@ Layout::Layout(const std::string& name) {
   std::vector<Var> axes;
   for (char c : name) {
     if (c >= 'A' && c <= 'Z') {
-      PADDLE_ENFORCE_EQ(
-          factor,
-          0,
-          phi::errors::InvalidArgument("The factor should be equal to 0."));
+      PADDLE_ENFORCE_EQ(factor,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The factor should be equal to 0."));
       axes.push_back(ir::Var(std::string(1, c)));
     } else if (c >= '0' && c <= '9') {
       factor = 10 * factor + c - '0';
     } else if (c >= 'a' && c <= 'z') {
-      PADDLE_ENFORCE_GT(
-          factor,
-          0,
-          phi::errors::InvalidArgument("The factor should be greater than 0."));
+      PADDLE_ENFORCE_GT(factor,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The factor should be greater than 0."));
       axes.push_back(ir::Var(factor, std::string(1, c)));
       factor = 0;
     } else {
       std::stringstream ss;
       ss << "Invalid layout: " << name;
-      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+      PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
     }
   }
   name_ = name;

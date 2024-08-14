@@ -141,7 +141,7 @@ class TestSpectralNormOp2(TestSpectralNormOp):
 
 class TestSpectralNormOpError(unittest.TestCase):
     @test_with_pir_api
-    def test_errors(self):
+    def test_static_errors(self):
         with program_guard(Program(), Program()):
 
             def test_Variable():
@@ -176,11 +176,53 @@ class TestSpectralNormOpError(unittest.TestCase):
             # the dim must be 0 or 1
             self.assertRaises(ValueError, test_dim_out_of_range_2)
 
+    @test_with_pir_api
+    def test_nn_api_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_Variable():
+                weight_1 = np.random.random((2, 4)).astype("float32")
+                paddle.nn.SpectralNorm(weight_1.shape, dim=1, power_iters=2)(
+                    weight_1
+                )
+
+            # the weight type of spectral_norm must be Variable
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_weight_dtype():
+                weight_2 = np.random.random((2, 4)).astype("int32")
+                paddle.nn.SpectralNorm(
+                    weight_2.shape, dim=1, power_iters=2, dtype="int32"
+                )(weight_2)
+
+            # the data type of type must be float32 or float64
+            self.assertRaises(TypeError, test_weight_dtype)
+
+            def test_dim_out_of_range_1():
+                weight_3 = np.random.random((2, 4)).astype("float32")
+                tensor_3 = paddle.to_tensor(weight_3)
+                paddle.nn.SpectralNorm(
+                    weight_3.shape, dim=1382376303, power_iters=2
+                )(tensor_3)
+
+            # the dim must be 0 or 1
+            self.assertRaises(AssertionError, test_dim_out_of_range_1)
+
+            def test_dim_out_of_range_2():
+                weight_4 = np.random.random((2, 4)).astype("float32")
+                tensor_4 = paddle.to_tensor(weight_4)
+                paddle.nn.SpectralNorm(weight_4.shape, dim=-1, power_iters=2)(
+                    tensor_4
+                )
+
+            # the dim must be 0 or 1
+            self.assertRaises(ValueError, test_dim_out_of_range_2)
+
 
 class TestDygraphSpectralNormOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            shape = (2, 4, 3, 3)
+            shape = (2, 4)
             spectralNorm = paddle.nn.SpectralNorm(shape, dim=1, power_iters=2)
 
             def test_Variable():

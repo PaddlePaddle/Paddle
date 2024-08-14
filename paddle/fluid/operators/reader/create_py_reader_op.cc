@@ -35,7 +35,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "No LoDTensorBlockingQueueHolder variable with name %s found. This "
             "may be because the DataLoader is defined in another Scope, "
             "which is different from the Scope when calling Executor.run.",

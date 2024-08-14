@@ -80,7 +80,7 @@ bool ReadModule(const std::string& file_path,
     if (file_version != pir_version) {
       std::string cur_file = std::string(__FILE__);
       std::string yaml_file =
-          cur_file.substr(0, cur_file.rfind('/')) + "/patch.yaml";
+          cur_file.substr(0, cur_file.rfind('/')) + "../patch/patch.yaml";
       builder.BuildPatch(yaml_file);  // TODO(czy) : find file patch
     }
   } else {

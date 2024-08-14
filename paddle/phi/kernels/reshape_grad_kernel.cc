@@ -25,8 +25,12 @@ namespace phi {
 
 template <typename Context>
 void ReshapeGradKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
+  // NOTE: [Why not to use x.dims() ?]
+  // Because inplace strategy is different between old IR and PIR,
+  // we need fix it into x.dims() after cleaning old IR system.
   auto x_dims = x_grad->dims();
   phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   x_grad->Resize(x_dims);
@@ -35,6 +39,7 @@ void ReshapeGradKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_XPU
 template <>
 void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
+                                        const DenseTensor& x,
                                         const DenseTensor& out_grad,
                                         DenseTensor* x_grad) {
   auto x_dims = x_grad->dims();
@@ -53,10 +58,10 @@ void ReshapeGradKernel<phi::XPUContext>(const XPUContext& dev_ctx,
 
 template <typename Context>
 void ReshapeDoubleGradKernel(const Context& dev_ctx,
-                             const DenseTensor& out_grad UNUSED,
+                             const DenseTensor& out_grad,
                              const DenseTensor& x_grad_grad,
                              DenseTensor* out_grad_grad) {
-  ReshapeGradKernel(dev_ctx, x_grad_grad, out_grad_grad);
+  ReshapeGradKernel(dev_ctx, out_grad, x_grad_grad, out_grad_grad);
 }
 
 }  // namespace phi
