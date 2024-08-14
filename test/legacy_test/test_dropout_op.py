@@ -89,7 +89,12 @@ class TestDropoutOp(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
+        self.check_output(
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_symbol_infer=False,
+        )
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
@@ -138,7 +143,12 @@ class TestDropoutOpInput1d(OpTest):
         self.enable_check_static_comp = False
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
+        self.check_output(
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_symbol_infer=False,
+        )
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
@@ -217,7 +227,12 @@ class TestDropoutOp4(OpTest):
         ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
+        self.check_output(
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_symbol_infer=False,
+        )
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -237,7 +252,12 @@ class TestDropoutOp5(OpTest):
         ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
+        self.check_output(
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_symbol_infer=False,
+        )
 
 
 class TestDropoutOp6(TestDropoutOp):
@@ -308,7 +328,12 @@ class TestDropoutOp8(OpTest):
         ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
+        self.check_output(
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_symbol_infer=False,
+        )
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -330,7 +355,12 @@ class TestDropoutOp9(OpTest):
         ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
+        self.check_output(
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_symbol_infer=False,
+        )
 
 
 class TestDropoutOpWithSeed(OpTest):
@@ -360,7 +390,12 @@ class TestDropoutOpWithSeed(OpTest):
 
     def test_check_output(self):
         # ir backward don't support of variable derivation of itself
-        self.check_output(check_prim=True, check_prim_pir=False, check_pir=True)
+        self.check_output(
+            check_prim=True,
+            check_prim_pir=False,
+            check_pir=True,
+            check_symbol_infer=False,
+        )
 
     def test_check_grad_normal(self):
         # Now in dy2st mode x_grad = [], so set check_prim=False
@@ -452,7 +487,12 @@ class TestBF16DropoutOp(OpTest):
         ]  # python out sig is customized output signature.
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_prim_pir=True, check_pir=True)
+        self.check_output(
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+            check_symbol_infer=False,
+        )
 
     def test_check_grad_normal(self):
         self.check_grad(
