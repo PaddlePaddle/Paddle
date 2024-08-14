@@ -18,7 +18,7 @@
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 #include "paddle/common/errors.h"
-#include "paddle/phi/core/distributed/collective/process_group.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
@@ -30,13 +30,30 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const phi::GPUContext &dev_ctx) {
   if (ring_id == -1) return;
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  dev_ctx.template Alloc<T>(&tensor, tensor.numel() * sizeof(T));
+  auto dtype = phi::ToNCCLDataType(tensor.dtype());
+  int64_t numel = tensor.numel();
+  const void *sendbuff = tensor.data<T>();
+  auto place = dev_ctx.GetPlace();
+  void *recvbuff =
+      dev_ctx.template Alloc<T>(&tensor, tensor.numel() * sizeof(T));
+
   gpuStream_t stream = nullptr;
-  auto comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+  paddle::platform::NCCLComm *comm = nullptr;
+  phi::distributed::NCCLCommContext *comm_ctx = nullptr;
+  comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
       dev_ctx.GetCommContext());
   if (comm_ctx) {
     stream = comm_ctx->GetStream();
+  } else {
+    comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
+
+    stream = dev_ctx.stream();
+  }
+  if (comm_ctx) {
     comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+        sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
   }
 #else
   PADDLE_THROW(common::errors::Unimplemented(
