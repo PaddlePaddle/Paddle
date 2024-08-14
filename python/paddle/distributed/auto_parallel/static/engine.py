@@ -2131,6 +2131,9 @@ class Engine:
 
         return feed_list
 
+    def get_feed_name_list(self) -> list[str]:
+        return [spec.name for spec in self._inputs_spec + self._labels_spec]
+
     def _prepare_dataloader(
         self,
         dataset,
