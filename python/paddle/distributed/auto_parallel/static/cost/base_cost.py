@@ -32,7 +32,7 @@ COMM_OP_TYPE = [
     "c_allreduce_sum",
     "c_identity",
 ]
-NON_COMP_TYPE = ["while"] + COMM_OP_TYPE
+NON_COMP_TYPE = ["while", *COMM_OP_TYPE]
 _g_op_cost_factory = {}
 
 
