@@ -454,7 +454,7 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
                 for attr in reuse_op['attrs']:
                     if args_index < len(args_list):
                         attr_value = (
-                            f"this->GetAttr(\"{args_list[args_index]}\")"
+                            f'this->GetAttr("{args_list[args_index]}")'
                             if args_list[args_index] in bw_fluid_attrs_set
                             else args_list[args_index]
                         )

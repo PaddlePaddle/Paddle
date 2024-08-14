@@ -45,7 +45,10 @@ void ExternFunctionEmitterRegistry::Register(const ExternFuncID& name,
                  utils::GetStreamCnt(name).c_str());
   }
 #endif  // CINN_WITH_DEBUG
-  CHECK(!x.empty()) << "Extern Function name is empty.";
+  PADDLE_ENFORCE_EQ(
+      !x.empty(),
+      true,
+      phi::errors::InvalidArgument("Extern Function name is empty."));
   data_[name] = x;
 }
 
@@ -68,7 +71,10 @@ ExternFunctionEmitterRegistry::ExternFunctionEmitterRegistry() {}
 
 const FunctionProto& ExternFunctionEmitter::func_proto() const {
   auto* proto = ExternFunctionProtoRegistry::Global().Lookup(func_name());
-  CHECK(proto) << "No prototype of function [" << func_name() << "]";
+  PADDLE_ENFORCE_NOT_NULL(
+      proto,
+      phi::errors::InvalidArgument("No prototype of function [" +
+                                   std::string(func_name()) + "]"));
   return *proto;
 }
 

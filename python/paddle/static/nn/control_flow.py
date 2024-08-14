@@ -903,7 +903,7 @@ def _deal_with_undefined_var(output_vars, loop_vars):
 
     def create_var_like(o_var):
         if (
-            isinstance(o_var, (Variable,) + support_ret_buildin_type)
+            isinstance(o_var, (Variable, *support_ret_buildin_type))
             or o_var is None
         ):
             return create_undefined_variable()
@@ -1456,7 +1456,7 @@ class OutputSelector:
                 ]
 
         if any(isinstance(out, paddle.pir.Value) for out in outs) and all(
-            isinstance(out, (paddle.pir.Value,) + promotion_builtin_types)
+            isinstance(out, (paddle.pir.Value, *promotion_builtin_types))
             for out in outs
         ):
             warnings.warn(
@@ -1950,10 +1950,10 @@ def select_input_with_buildin_type(inputs, mask, name):
         )
     elif (
         isinstance(false_var, UndefinedVar)
-        and isinstance(true_var, (Variable,) + support_ret_buildin_type)
+        and isinstance(true_var, (Variable, *support_ret_buildin_type))
     ) or (
         isinstance(true_var, UndefinedVar)
-        and isinstance(false_var, (Variable,) + support_ret_buildin_type)
+        and isinstance(false_var, (Variable, *support_ret_buildin_type))
     ):
         true_var, false_var = to_static_variable(true_var), to_static_variable(
             false_var
