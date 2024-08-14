@@ -17,7 +17,6 @@ from __future__ import annotations
 import copy
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import paddle
 from paddle.distributed.communication.group import is_initialized
@@ -29,22 +28,18 @@ from .utils import (
     flatten_state_dict,
 )
 
-if TYPE_CHECKING:
-    from paddle import Tensor
-    from paddle.distributed.collective import Group
-
 
 @dataclass(frozen=True)
 class ReadItem:
     local_tensor_index: LocalTensorIndex
     rank: int
     dtype: str
-    cur_offset: tuple[int, ...]
-    storage_offset: tuple[int, ...]
-    lengths: tuple[int, ...]
+    cur_offset: tuple[int]
+    storage_offset: tuple[int]
+    lengths: tuple[int]
 
 
-PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list[str], list[str]]] = {}
+PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 
 
 def get_checkpoint_files(path, use_cache=True):
@@ -136,14 +131,62 @@ def get_rank_to_files(
         )
 
     rank_to_files = {}
-    for rank, local_files in enumerate(global_data_files):
-        if len(local_files) > 0:
-            local_files = [
-                f for f in local_files if f in all_necessary_files[rank]
-            ]
-            rank_to_files[rank] = local_files
+    for rank, need_files in enumerate(all_necessary_files):
+        seen = set()
+        unique_need_files = [
+            x for x in need_files if not (x in seen or seen.add(x))
+        ]
+        rank_to_files[rank] = unique_need_files
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
     return rank_to_files, missing_keys
+
+
+def get_local_load_files_for_multiple_node(
+    rank_to_files, rank_to_local_data_files
+):
+    cross_node_file_names = []
+    rank_to_need_files = copy.deepcopy(rank_to_files)
+    for rank, need_files in rank_to_need_files.items():
+        local_data_files = rank_to_local_data_files[rank]
+        file_need_to_remove = []
+        for file in need_files:
+            if file not in local_data_files:
+                file_need_to_remove.append(file)
+        for file in file_need_to_remove:
+            need_files.remove(file)
+        cross_node_file_names += file_need_to_remove
+
+    rank_load_files = get_local_load_files(rank_to_need_files)
+
+    cur_load_files = []
+    for rank, load_file in rank_load_files.items():
+        cur_load_files += load_file
+
+    unload_files = []
+    for file in cross_node_file_names:
+        if file not in cur_load_files:
+            unload_files.append(file)
+
+    file_to_ranks = {}
+    for rank, files in rank_to_need_files.items():
+        if file not in unload_files:
+            file_to_ranks = [rank]
+        else:
+            file_to_ranks[file].append(rank)
+
+    for file in unload_files:
+        can_access_file_ranks = file_to_ranks[file]
+        min_rank = min(
+            rank_load_files, key=lambda rank: len(rank_load_files[rank])
+        )
+        rank_load_files[min_rank].append(file)
+
+    cur_rank = paddle.distributed.get_rank()
+    if cur_rank in rank_load_files:
+        return rank_load_files[cur_rank]
+    else:
+        logger.warning(f"rank:{cur_rank} does not need to load checkpoint")
+        return []
 
 
 def get_local_load_files(rank_to_files):
@@ -170,7 +213,7 @@ def get_local_load_files(rank_to_files):
             if file not in file_to_ranks:
                 file_to_ranks[file] = []
             file_to_ranks[file].append(rank)
-    rank_to_not_read_files = copy.copy(rank_to_files)
+    rank_to_not_read_files = copy.deepcopy(rank_to_files)
     rank_to_read_files = {rank: [] for rank in rank_to_not_read_files.keys()}
     for file, ranks in file_to_ranks.items():
         if len(ranks) == 1:
@@ -240,12 +283,7 @@ def get_local_load_files(rank_to_files):
             f"update rank_to_read_files:{rank_to_read_files}, rank_to_not_read_files:{rank_to_not_read_files}, ranks:{ranks}, rank_file:{rank_file}"
         )
 
-    cur_rank = paddle.distributed.get_rank()
-    if cur_rank in rank_to_read_files:
-        return rank_to_read_files[cur_rank]
-    else:
-        logger.warning(f"rank:{cur_rank} does not need to load checkpoint")
-        return []
+    return rank_to_read_files
 
 
 def get_load_infos(metadata_list, local_load_files, process_group, use_dist):
@@ -406,10 +444,11 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
 
 
 def load_state_dict(
-    state_dict: dict[str, Tensor],
-    path: str,
-    process_group: Group | None = None,
-    coordinator_rank: int = 0,
+    state_dict,
+    path,
+    process_group=None,
+    coordinator_rank=0,
+    offload=True,
 ) -> None:
     """
     Load the state_dict inplace from a checkpoint path.
@@ -486,11 +525,37 @@ def load_state_dict(
         if len(rank_to_files) <= 0:
             return
 
-        local_load_files = get_local_load_files(rank_to_files)
+        cur_rank = paddle.distributed.get_rank()
+        global_local_data_files = []
+        if use_dist:
+            paddle.distributed.all_gather_object(
+                global_local_data_files,
+                {cur_rank: local_data_files},
+                process_group,
+            )
+        else:
+            global_local_data_files = [{cur_rank: local_data_files}]
+
+        rank_to_local_data_files = {}
+        for d in global_local_data_files:
+            rank_to_local_data_files.update(d)
+
+        local_load_files = get_local_load_files_for_multiple_node(
+            rank_to_files, rank_to_local_data_files
+        )
 
         source_state_dict = {}
         for file in local_load_files:
-            source_state_dict[file] = paddle.load(os.path.join(path, file))
+            if offload:
+                state_dict = paddle.load(
+                    os.path.join(path, file), return_numpy=True
+                )
+                source_state_dict[file] = {
+                    key: paddle.to_tensor(value, place=paddle.CPUPlace())
+                    for key, value in state_dict.items()
+                }
+            else:
+                source_state_dict[file] = paddle.load(os.path.join(path, file))
 
         state_dict_in_cpu = []
         for k, v in flat_state_dict.items():
@@ -498,7 +563,14 @@ def load_state_dict(
                 state_dict_in_cpu.append(k)
                 flat_state_dict[k] = v.cuda()
 
-        _load_state_dict(flat_state_dict, source_state_dict, metadata_list)
+        _load_state_dict(
+            flat_state_dict,
+            source_state_dict,
+            metadata_list,
+            process_group,
+            coordinator_rank,
+            offload,
+        )
 
         for k, v in flat_state_dict.items():
             if k in state_dict_in_cpu:
@@ -514,8 +586,10 @@ def _load_state_dict(
     metadata_list,
     process_group=None,
     coordinator_rank=0,
+    offload=False,
 ) -> None:
     with paddle.base.dygraph.guard():
+
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
         local_load_files = list(source_state_dict.keys())
         # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
@@ -543,6 +617,10 @@ def _load_state_dict(
                 storage_local_tensor = storage_state_dict[
                     item.local_tensor_index.tensor_key
                 ]
+
+                if offload:
+                    storage_local_tensor = storage_local_tensor.cuda()
+
                 storage_offsets = item.storage_offset
                 storage_lengths = item.lengths
                 storage_ends = [
