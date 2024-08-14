@@ -221,30 +221,37 @@ bool Binomial_OpInferSymbolicShape(
 //   return true;
 // }
 
-bool CorrelationOpInferSymbolicShape(pir::Operation *op,
-                                     pir::InferSymbolicShapeContext *infer_context) {
-  const auto &input1_shape = infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  const auto &input2_shape = infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+bool CorrelationOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input1_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &input2_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
-  PADDLE_ENFORCE_EQ(input1_shape.size(), 4,
-                    common::errors::InvalidArgument(
-                        "Input(X) of CorrelationOp must be 4 dims. But received dims is %d.",
-                        input1_shape.size()));
-  PADDLE_ENFORCE_EQ(input2_shape.size(), 4,
-                    common::errors::InvalidArgument(
-                        "Input(Y) of CorrelationOp must be 4 dims. But received dims is %d.",
-                        input2_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      input1_shape.size(),
+      4,
+      common::errors::InvalidArgument(
+          "Input(X) of CorrelationOp must be 4 dims. But received dims is %d.",
+          input1_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      input2_shape.size(),
+      4,
+      common::errors::InvalidArgument(
+          "Input(Y) of CorrelationOp must be 4 dims. But received dims is %d.",
+          input2_shape.size()));
 
   int pad_size = op->attribute<pir::Int32Attribute>("pad_size").data();
   int kernel_size = op->attribute<pir::Int32Attribute>("kernel_size").data();
-  int max_displacement = op->attribute<pir::Int32Attribute>("max_displacement").data();
+  int max_displacement =
+      op->attribute<pir::Int32Attribute>("max_displacement").data();
   int stride1 = op->attribute<pir::Int32Attribute>("stride1").data();
   int stride2 = op->attribute<pir::Int32Attribute>("stride2").data();
 
   std::vector<int64_t> output_shape = phi::CorrelationOutputSize(
-      input1_shape[0].Get<std::int64_t>(), // batch size
-      input1_shape[2].Get<std::int64_t>(), // height
-      input1_shape[3].Get<std::int64_t>(), // width
+      input1_shape[0].Get<std::int64_t>(),  // batch size
+      input1_shape[2].Get<std::int64_t>(),  // height
+      input1_shape[3].Get<std::int64_t>(),  // width
       stride1,
       stride2,
       kernel_size,
@@ -256,7 +263,10 @@ bool CorrelationOpInferSymbolicShape(pir::Operation *op,
     output_shape_expr.push_back(symbol::DimExpr(dim));
   }
 
-  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(output_shape_expr)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape_expr)});
 
   return true;
 }
