@@ -3287,6 +3287,7 @@
     func : multinomial
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multiplex
   args : (Tensor[] inputs, Tensor index)

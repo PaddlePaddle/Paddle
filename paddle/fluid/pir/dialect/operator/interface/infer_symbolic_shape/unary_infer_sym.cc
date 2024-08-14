@@ -1313,19 +1313,131 @@ bool MatrixPowerOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool MultinomialOpInferSymbolicShape(pir::Operation *op,
-//                                      pir::InferSymbolicShapeContext
-//                                      *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MultinomialOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  ExprVec x_dims = [&] {
+    ExprVec dims;
+    const auto &x_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
+    dims = x_shape_or_data.shape();
+    return dims;
+  }();
+  const auto &num_samples_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  size_t x_rank = x_dims.size();
+  PADDLE_ENFORCE_GT(x_rank,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The number of dimensions of the input probability "
+                        "distribution should be > 0, but got %d.",
+                        x_rank));
+  PADDLE_ENFORCE_LE(x_rank,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The number of dimensions of the input probability "
+                        "distribution should be <= 2, but got %d.",
+                        x_rank));
+  ExprVec out_dims(x_rank);
+  for (size_t i = 0; i < x_rank - 1; i++) {
+    out_dims[i] = x_dims[i];
+  }
 
-// bool NanmedianOpInferSymbolicShape(pir::Operation *op,
-//                                    pir::InferSymbolicShapeContext
-//                                    *infer_context) {
-//   // pass
-//   return true;
-// }
+  ExprVec num_samples_data = details::GetOrCreateExprVecFromData(
+      num_samples_shape_or_data, infer_context);
+
+  if (!num_samples_data.empty()) {
+    out_dims[x_rank - 1] = num_samples_data[0];
+  } else {
+    out_dims[x_rank - 1] = symbol::DimExpr(infer_context->GetNextSymName());
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
+bool NanmedianOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  auto axes_gen_op = op->operand_source(1).defining_op();
+  std::vector<int64_t> axis_list = details::GetVectorAttr(
+      axes_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  auto &x_dim = x_shape_or_data.shape();
+  int64_t x_rank = x_dim.size();
+
+  ExprVec out_dim;
+  bool keep_dim = op->attribute<pir::BoolAttribute>("keep_dim").data();
+  if (!axis_list.empty()) {
+    if (keep_dim) {
+      for (int64_t i = 0; i < x_rank; i++) {
+        out_dim.emplace_back(1);
+      }
+    }
+  } else {
+    std::vector<int64_t> formatted_axis;
+    for (size_t i = 0; i < axis_list.size(); i++) {
+      if (x_rank == 0) {
+        infer_context->AddGreatThanOneCstr(axis_list[i]);
+      } else {
+        PADDLE_ENFORCE_LT(axis_list[i].dyn_cast<int64_t>(),
+                          x_rank,
+                          common::errors::InvalidArgument(
+                              "each element of the axis should be in the "
+                              "range [ -dimension(X), dimension(X) ) "
+                              "which dimension = %d. But received axis = %d.",
+                              x_rank,
+                              axis_list[i]));
+        PADDLE_ENFORCE_GE(axis_list[i].dyn_cast<int64_t>(),
+                          -x_rank,
+                          common::errors::InvalidArgument(
+                              "each element of the axis should be in the "
+                              "range [ -dimension(X), dimension(X) ) "
+                              "which dimension = %d. But received axis = %d.",
+                              x_rank,
+                              axis_list[i]));
+      }
+      if (axis_list[i].dyn_cast<int64_t>() < 0)
+        axis_list[i] =
+            symbol::DimExpr(axis_list[i].dyn_cast<int64_t>() + x_rank);
+      PADDLE_ENFORCE_EQ(
+          std::find(formatted_axis.begin(),
+                    formatted_axis.end(),
+                    axis_list[i].dyn_cast<int64_t>()),
+          formatted_axis.end(),
+          common::errors::InvalidArgument(
+              "Attr(axes) has duplicated elements: %d.", axis_list[i]));
+      formatted_axis.emplace_back(axis_list[i].dyn_cast<int64_t>());
+    }
+
+    for (int64_t i = 0; i < x_rank; i++) {
+      if (std::find(formatted_axis.begin(), formatted_axis.end(), i) ==
+          formatted_axis.end()) {
+        out_dim.emplace_back(x_dim[i]);  // NOLINT
+      } else if (keep_dim) {
+        out_dim.emplace_back(1);
+      }
+    }
+  }
+
+  auto median_dim = out_dim;
+  std::string mode = op->attribute<pir::StrAttribute>("mode").AsString();
+  if (mode == "avg") {
+    median_dim.emplace_back(2);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dim)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(median_dim)});
+
+  return true;
+}
 
 bool NormOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
