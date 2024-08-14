@@ -1290,6 +1290,17 @@ bool RoiPoolOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
   const auto &rois_num_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  if (!rois_num_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    PADDLE_ENFORCE_EQ(
+        rois_num_shape.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The number of rois should be a 1-D tensor with shape (num_rois), "
+            "but received the number of rois with %d dimension",
+            rois_num_shape.size()));
+  }
+
   const auto &rois_num_shape = rois_num_shape_or_data.shape();
 
   int pooled_height =
@@ -1313,16 +1324,6 @@ bool RoiPoolOpInferSymbolicShape(
                         rois_shape.size()));
   const auto &four = symbol::DimExpr(4);
   infer_context->AddEqualCstr(rois_shape[1], four);
-
-  if (!rois_num_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
-    PADDLE_ENFORCE_EQ(
-        rois_num_shape.size(),
-        1,
-        phi::errors::InvalidArgument(
-            "The number of rois should be a 1-D tensor with shape (num_rois), "
-            "but received the number of rois with %d dimension",
-            rois_num_shape.size()));
-  }
 
   infer_context->AddEqualCstr(x_shape[1],
                               output_channels * pooled_height * pooled_width);

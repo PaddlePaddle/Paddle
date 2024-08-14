@@ -1034,24 +1034,15 @@ bool GumbelSoftmaxOpInferSymbolicShape(
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
 
   if (rank > 0) {
-    PADDLE_ENFORCE_GE(axis,
-                      -static_cast<int>(rank),
-                      common::errors::InvalidArgument(
-                          "Attr(axis) value should be in range [-R, R-1], "
-                          "R is the rank of Input(X)."));
-    PADDLE_ENFORCE_LT(axis,
-                      static_cast<int>(rank),
-                      common::errors::InvalidArgument(
-                          "Attr(axis) value should be in range [-R, R-1], "
-                          "R is the rank of Input(X)."));
+    PADDLE_ENFORCE_EQ(
+        axis >= -static_cast<int>(rank) || axis < static_cast<int>(rank),
+        true,
+        common::errors::InvalidArgument(
+            "Attr(axis) value should be in range [-R, R-1], "
+            "R is the rank of Input(X)."));
   } else if (rank == 0) {
-    PADDLE_ENFORCE_GE(axis,
-                      -1,
-                      common::errors::InvalidArgument(
-                          "Attr(axis) value should be in range [-1, "
-                          "0] when input is 0D Tensor "));
-    PADDLE_ENFORCE_LE(axis,
-                      0,
+    PADDLE_ENFORCE_EQ(axis >= -1 || axis <= 0,
+                      true,
                       common::errors::InvalidArgument(
                           "Attr(axis) value should be in range [-1, "
                           "0] when input is 0D Tensor "));
