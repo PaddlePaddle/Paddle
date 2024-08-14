@@ -966,11 +966,12 @@ bool SequenceMaskOpInferSymbolicShape(
     y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
                                 : infer_context->GetNextSymName());
   } else if (op->operand_source(1)) {
-    PADDLE_THROW(::common::errors::InvalidArgument("Find operand_source"));
     const auto &maxlen_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
     int maxlen =
         static_cast<int>(maxlen_shape_or_data.data().value()[0].Get<int64_t>());
+    PADDLE_THROW(::common::errors::InvalidArgument("The value of maxlen is %d.",
+                                                   maxlen));
     y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
                                 : infer_context->GetNextSymName());
   } else {
