@@ -915,8 +915,9 @@ class SqueezeOpPattern
                   in_shape[i]));
         }
       }
-
-      ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
+      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
+          op->operand_source(0), output_shape);
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
       rewriter.EraseOp(op);
 
       return true;
@@ -956,10 +957,7 @@ class UnsqueezeOpPattern
           output_shape.push_back(1);
         }
       }
-      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
-          op->operand_source(0), output_shape);
-      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
-
+      ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
       rewriter.EraseOp(op);
 
       return true;
