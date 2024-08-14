@@ -188,6 +188,79 @@ class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
                 )
 
 
+class TestFakeChannelWiseQuantizeDequantizeAbsMaxOp(OpTest):
+    def setUp(self):
+        self.op_type = 'fake_channel_wise_quantize_dequantize_abs_max'
+        self.attrs = {'bit_length': 8}
+
+    def _fake_channel_wise_quantize_dequantize_abs_max(
+        self,
+        dtype,
+        input_shape,
+        quant_axis,
+        distribution,
+        round_type='TiesToEven',
+    ):
+        assert quant_axis in [0, 1], 'quant_axis should be 0 or 1.'
+        input_data = distribution(input_shape).astype(dtype)
+        compute_type = get_compute_type(dtype)
+        bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
+        output_data = input_data.copy().astype(compute_type)
+        compute_axis = tuple(
+            i for i in range(len(input_shape)) if i != quant_axis
+        )
+        scale_broadcast = np.amax(input_data, axis=compute_axis, keepdims=True)
+        if round_type == 'TiesToEven':
+            round_out = np.round(bnt * output_data / scale_broadcast)
+            output_data = (
+                np.clip(round_out, -bnt - 1, bnt) * scale_broadcast / bnt
+            )
+            self.attrs['round_type'] = 0
+        else:
+            output_data = (
+                round_c(bnt * output_data / scale_broadcast)
+                * scale_broadcast
+                / bnt
+            )
+            self.attrs['round_type'] = 1
+        if quant_axis == 1:
+            scale_broadcast = np.transpose(scale_broadcast, (1,) + compute_axis)
+        scale = scale_broadcast.reshape(input_shape[quant_axis], -1)[:, 0]
+        self.python_api = fake_channel_wise_quantize_dequantize_abs_max_wrapper
+        self.inputs = {'X': input_data}
+        self.outputs = {'Out': output_data, 'OutScale': scale}
+        self.dtype = dtype
+        self.attrs['quant_axis'] = quant_axis
+        self.check_output(check_dygraph=False, check_pir=True)
+        gradient = [np.ones(input_data.shape) / np.prod(input_data.shape)]
+        self.check_grad(['X'], 'Out', user_defined_grads=gradient)
+
+    def test_channel_wise_fake_quant_dequant_abs_max(self):
+        input_shape_quant_axis_options = [
+            [(3, 4, 64, 64), 0],
+            [(15, 20, 5, 5), 1],
+            [(30, 15), 0],
+            [(30, 15), 1],
+        ]
+        round_type_options = ['TiesToEven', 'TiesAwayFromZero']
+        for input_shape_quant_axis, round_type in itertools.product(
+            input_shape_quant_axis_options, round_type_options
+        ):
+            input_shape, quant_axis = input_shape_quant_axis
+            with self.subTest(
+                input_shape=input_shape,
+                quant_axis=quant_axis,
+                round_type=round_type,
+            ):
+                self._fake_channel_wise_quantize_dequantize_abs_max(
+                    np.float32,
+                    input_shape,
+                    quant_axis,
+                    np.random.random,
+                    round_type=round_type,
+                )
+
+
 class TestFakeQuantizeRangeAbsMaxOp(OpTest):
     def setUp(self):
         self.op_type = 'fake_quantize_range_abs_max'

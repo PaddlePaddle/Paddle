@@ -16,11 +16,9 @@
 #include <error.h>
 #include <iostream>
 #include <string>
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
-#include "paddle/fluid/distributed/collective/types.h"
+#include "paddle/phi/core/distributed/collective/types.h"
 
 #ifdef HOST
 #undef HOST

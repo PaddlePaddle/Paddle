@@ -1695,6 +1695,7 @@
   kernel :
     func : fake_channel_wise_quantize_dequantize_abs_max
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
   backward : fake_channel_wise_quantize_dequantize_abs_max_grad
 
 - op : fake_dequantize_max_abs
@@ -4432,16 +4433,15 @@
 
 - op : squeeze
   args : (Tensor x, IntArray axis={})
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : SqueezeWithXShapeInferMeta
+    func : SqueezeInferMeta
     spmd_rule : SqueezeInferSpmd
   kernel :
     func : squeeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
-  intermediate : xshape
   backward : squeeze_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 

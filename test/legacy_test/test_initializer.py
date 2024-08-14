@@ -72,41 +72,43 @@ class TestConstantInitializer(unittest.TestCase):
 
     def test_constant_initializer_default_value(self, dtype="float32"):
         """Test the constant initializer with default value"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.Constant(),
-            )
-        num_ops = 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'fill_constant')
-        self.assertAlmostEqual(init_op.attr('value'), 0.0, delta=DELTA)
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.Constant(),
+                )
+            num_ops = 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'fill_constant')
+            self.assertAlmostEqual(init_op.attr('value'), 0.0, delta=DELTA)
+            return block
 
     def test_constant_initializer(self, dtype="float32"):
         """Test constant initializer with supplied value"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.Constant(2.3),
-            )
-        num_ops = 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'fill_constant')
-        self.assertAlmostEqual(init_op.attr('value'), 2.3, delta=DELTA)
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.Constant(2.3),
+                )
+            num_ops = 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'fill_constant')
+            self.assertAlmostEqual(init_op.attr('value'), 2.3, delta=DELTA)
+            return block
 
     def test_constant_initializer_fp16(self):
         """Test constant initializer with float16"""
@@ -124,95 +126,101 @@ class TestConstantInitializer(unittest.TestCase):
 class TestUniformInitializer(unittest.TestCase):
     def test_uniform_initializer_default_value(self, dtype="float32"):
         """Test the uniform initializer with default value"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.Uniform(),
-            )
-        num_ops = 2 if dtype == "float16" else 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'uniform_random')
-        self.assertAlmostEqual(init_op.attr('min'), -1.0, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), 1.0, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+            num_ops = 2 if dtype == "float16" else 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'uniform_random')
+            self.assertAlmostEqual(init_op.attr('min'), -1.0, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('max'), 1.0, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
+            return block
 
     def test_uniform_initializer_random_seed(self):
         """Test the uniform initializer with manually setting seed"""
-        program = framework.Program()
-        program.random_seed = 123
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param1",
-                initializer=paddle.nn.initializer.Uniform(),
-            )
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param2",
-                initializer=paddle.nn.initializer.UniformInitializer(seed=456),
-            )
-        init_op = block.ops[1]
-        self.assertEqual(init_op.attr("seed"), 456)
-        init_op1 = block.ops[0]
-        self.assertEqual(init_op1.attr("seed"), 123)
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            program.random_seed = 123
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param1",
+                    initializer=paddle.nn.initializer.Uniform(),
+                )
+                block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param2",
+                    initializer=paddle.nn.initializer.UniformInitializer(
+                        seed=456
+                    ),
+                )
+            init_op = block.ops[1]
+            self.assertEqual(init_op.attr("seed"), 456)
+            init_op1 = block.ops[0]
+            self.assertEqual(init_op1.attr("seed"), 123)
 
     def test_uniform_initializer(self, dtype="float32"):
         """Test uniform initializer with supplied attributes"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.UniformInitializer(
-                    -4.2, 3.1, 123
-                ),
-            )
-        num_ops = 2 if dtype == "float16" else 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'uniform_random')
-        self.assertAlmostEqual(init_op.attr('min'), -4.2, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), 3.1, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 123)
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.UniformInitializer(
+                        -4.2, 3.1, 123
+                    ),
+                )
+            num_ops = 2 if dtype == "float16" else 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'uniform_random')
+            self.assertAlmostEqual(init_op.attr('min'), -4.2, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('max'), 3.1, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 123)
+            return block
 
     def test_uniform_initializer_two_op(self, dtype="float32"):
         """Test uniform initializer with supplied attributes"""
-        program = framework.Program()
-        block = program.global_block()
-        for i in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.UniformInitializer(
-                    -4.2, float(i), 123
-                ),
-            )
-        num_ops = 2 if dtype == "float16" else 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op0 = block.ops[0]
-        self.assertEqual(init_op0.type, 'uniform_random')
-        self.assertAlmostEqual(init_op0.attr('min'), -4.2, delta=DELTA)
-        self.assertAlmostEqual(init_op0.attr('max'), 0.0, delta=DELTA)
-        self.assertEqual(init_op0.attr('seed'), 123)
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for i in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.UniformInitializer(
+                        -4.2, float(i), 123
+                    ),
+                )
+            num_ops = 2 if dtype == "float16" else 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op0 = block.ops[0]
+            self.assertEqual(init_op0.type, 'uniform_random')
+            self.assertAlmostEqual(init_op0.attr('min'), -4.2, delta=DELTA)
+            self.assertAlmostEqual(init_op0.attr('max'), 0.0, delta=DELTA)
+            self.assertEqual(init_op0.attr('seed'), 123)
+            return block
 
     def test_uniform_initializer_fp16(self):
         """Test uniform initializer with float16"""
@@ -385,68 +393,71 @@ class TestUniformInitializerPir(unittest.TestCase):
 class TestNormalInitializer(unittest.TestCase):
     def test_normal_initializer_default_value(self):
         """Test the normal initializer with default value"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.Normal(),
-            )
-        self.assertEqual(len(block.ops), 1)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'gaussian_random')
-        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('std'), 1.0, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.Normal(),
+                )
+            self.assertEqual(len(block.ops), 1)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'gaussian_random')
+            self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('std'), 1.0, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_initializer(self, dtype="float32"):
         """Test normal initializer with supplied attributes"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.NormalInitializer(
-                    2.3, 1.9, 123
-                ),
-            )
-        num_ops = 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'gaussian_random')
-        self.assertAlmostEqual(init_op.attr('mean'), 2.3, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 123)
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.NormalInitializer(
+                        2.3, 1.9, 123
+                    ),
+                )
+            num_ops = 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'gaussian_random')
+            self.assertAlmostEqual(init_op.attr('mean'), 2.3, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 123)
+            return block
 
     def test_normal_initializer_complex(self, dtype="complex64"):
         """Test normal initializer with complex dtype"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.NormalInitializer(
-                    2.2 + 2.2j, 1.9, 123
-                ),
-            )
-        num_ops = 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'gaussian_random')
-        self.assertAlmostEqual(init_op.attr('mean'), 2.2, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 123)
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.NormalInitializer(
+                        2.2 + 2.2j, 1.9, 123
+                    ),
+                )
+            num_ops = 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'gaussian_random')
+            self.assertAlmostEqual(init_op.attr('mean'), 2.2, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 123)
+            return block
 
     def test_normal_initializer_fp16(self):
         """Test normal initializer with float16"""
@@ -470,128 +481,137 @@ class TestXavierInitializer(unittest.TestCase):
         """Test Xavier initializer with uniform distribution on
         for matrix multiply.
         """
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.XavierUniform(),
-            )
-        self.assertEqual(len(block.ops), 1)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'uniform_random')
-        limit = np.sqrt(6.0 / (param.shape[0] + param.shape[1]))
-        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.XavierUniform(),
+                )
+            self.assertEqual(len(block.ops), 1)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'uniform_random')
+            limit = np.sqrt(6.0 / (param.shape[0] + param.shape[1]))
+            self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
 
     def test_uniform_xavier_initializer_conv(self):
         """Test Xavier initializer with uniform distribution on
         for convolutions.
         """
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.XavierUniform(),
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10, 15, 20],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.XavierUniform(),
+                )
+            self.assertEqual(len(block.ops), 1)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'uniform_random')
+            receptive_field_size = float(15 * 20)
+            limit = np.sqrt(
+                6.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size)
             )
-        self.assertEqual(len(block.ops), 1)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'uniform_random')
-        receptive_field_size = float(15 * 20)
-        limit = np.sqrt(
-            6.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size)
-        )
-        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+            self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_xavier_initializer(self):
         """Test Xavier initializer with normal distribution on
         for matrix multiply.
         """
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.XavierNormal(),
-            )
-        self.assertEqual(len(block.ops), 1)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'gaussian_random')
-        std = np.sqrt(2.0 / (param.shape[0] + param.shape[1]))
-        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.XavierNormal(),
+                )
+            self.assertEqual(len(block.ops), 1)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'gaussian_random')
+            std = np.sqrt(2.0 / (param.shape[0] + param.shape[1]))
+            self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_xavier_initializer_conv(self):
         """Test Xavier initializer with normal distribution on
         for convolutions.
         """
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.XavierNormal(),
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10, 15, 20],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.XavierNormal(),
+                )
+            self.assertEqual(len(block.ops), 1)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'gaussian_random')
+            receptive_field_size = float(15 * 20)
+            std = np.sqrt(
+                2.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size)
             )
-        self.assertEqual(len(block.ops), 1)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'gaussian_random')
-        receptive_field_size = float(15 * 20)
-        std = np.sqrt(
-            2.0 / ((param.shape[0] + param.shape[1]) * receptive_field_size)
-        )
-        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+            self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
 
     def test_xavier_initializer_supplied_arguments(
         self, dtype="float32", uniform=True
     ):
         """Test the Xavier initializer with supplied arguments"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.XavierInitializer(
-                    uniform=uniform, fan_in=12, fan_out=23, seed=134, gain=0.2
-                ),
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.XavierInitializer(
+                        uniform=uniform,
+                        fan_in=12,
+                        fan_out=23,
+                        seed=134,
+                        gain=0.2,
+                    ),
+                )
+            num_ops = (
+                2
+                if (dtype == "float16" or (dtype == "uint16" and not uniform))
+                else 1
             )
-        num_ops = (
-            2
-            if (dtype == "float16" or (dtype == "uint16" and not uniform))
-            else 1
-        )
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        if uniform:
-            self.assertEqual(init_op.type, 'uniform_random')
-            limit = 0.2 * np.sqrt(6.0 / (12 + 23))
-            self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
-            self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        else:
-            self.assertEqual(init_op.type, 'gaussian_random')
-        self.assertEqual(init_op.attr('seed'), 134)
-        return block
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            if uniform:
+                self.assertEqual(init_op.type, 'uniform_random')
+                limit = 0.2 * np.sqrt(6.0 / (12 + 23))
+                self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+                self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+            else:
+                self.assertEqual(init_op.type, 'gaussian_random')
+            self.assertEqual(init_op.attr('seed'), 134)
+            return block
 
     def test_xavier_initializer_fp16(self):
         """Test the Xavier initializer with float16"""
@@ -853,115 +873,120 @@ class TestMSRAInitializer(unittest.TestCase):
         """Test MSRA initializer with uniform distribution on
         for matrix multiply.
         """
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.KaimingUniform(),
-            )
-        self.assertEqual(len(block.ops), 1)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'uniform_random')
-        limit = np.sqrt(6.0 / param.shape[0])
-        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.KaimingUniform(),
+                )
+            self.assertEqual(len(block.ops), 1)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'uniform_random')
+            limit = np.sqrt(6.0 / param.shape[0])
+            self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
 
     def test_uniform_msra_initializer_conv(self):
         """Test MSRA initializer with uniform distribution on
         for convolutions.
         """
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.KaimingUniform(),
-            )
-        self.assertEqual(len(block.ops), 1)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'uniform_random')
-        receptive_field_size = float(15 * 20)
-        limit = np.sqrt(6.0 / (param.shape[1] * receptive_field_size))
-        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10, 15, 20],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.KaimingUniform(),
+                )
+            self.assertEqual(len(block.ops), 1)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'uniform_random')
+            receptive_field_size = float(15 * 20)
+            limit = np.sqrt(6.0 / (param.shape[1] * receptive_field_size))
+            self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_msra_initializer(self):
         """Test MSRA initializer with normal distribution on
         for matrix multiply.
         """
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.KaimingNormal(),
-            )
-        self.assertEqual(len(block.ops), 1)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'gaussian_random')
-        std = np.sqrt(2.0 / param.shape[0])
-        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.KaimingNormal(),
+                )
+            self.assertEqual(len(block.ops), 1)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'gaussian_random')
+            std = np.sqrt(2.0 / param.shape[0])
+            self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
 
     def test_normal_msra_initializer_conv(self):
         """Test MSRA initializer with normal distribution on
         for convolutions.
         """
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.KaimingNormal(),
-            )
-        self.assertEqual(len(block.ops), 1)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'gaussian_random')
-        receptive_field_size = float(15 * 20)
-        std = np.sqrt(2.0 / (param.shape[1] * receptive_field_size))
-        self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 0)
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                param = block.create_parameter(
+                    dtype="float32",
+                    shape=[5, 10, 15, 20],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.KaimingNormal(),
+                )
+            self.assertEqual(len(block.ops), 1)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'gaussian_random')
+            receptive_field_size = float(15 * 20)
+            std = np.sqrt(2.0 / (param.shape[1] * receptive_field_size))
+            self.assertAlmostEqual(init_op.attr('mean'), 0.0, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('std'), std, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 0)
 
     def test_msra_initializer_supplied_arguments(self, dtype="float32"):
         """Test the MSRA initializer with supplied arguments"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.MSRAInitializer(
-                    fan_in=12, seed=134
-                ),
-            )
-        num_ops = 2 if dtype == "float16" else 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'uniform_random')
-        limit = np.sqrt(6.0 / 12)
-        self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
-        self.assertEqual(init_op.attr('seed'), 134)
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.MSRAInitializer(
+                        fan_in=12, seed=134
+                    ),
+                )
+            num_ops = 2 if dtype == "float16" else 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'uniform_random')
+            limit = np.sqrt(6.0 / 12)
+            self.assertAlmostEqual(init_op.attr('min'), -limit, delta=DELTA)
+            self.assertAlmostEqual(init_op.attr('max'), limit, delta=DELTA)
+            self.assertEqual(init_op.attr('seed'), 134)
+            return block
 
     def test_msra_initializer_fp16(self):
         """Test the MSRA initializer with float16"""
@@ -1205,21 +1230,22 @@ class TestMSRAInitializerPir(unittest.TestCase):
 class TestBilinearInitializer(unittest.TestCase):
     def test_bilinear_initializer(self, dtype="float32"):
         """Test the bilinear initializer with supplied arguments"""
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[8, 1, 3, 3],
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.Bilinear(),
-            )
-        num_ops = 2 if dtype in ["float16", "uint16", "float64"] else 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'assign_value')
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[8, 1, 3, 3],
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.Bilinear(),
+                )
+            num_ops = 2 if dtype in ["float16", "uint16", "float64"] else 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'assign_value')
+            return block
 
     def test_bilinear_initializer_fp64(self):
         self.test_bilinear_initializer(dtype='float64')
@@ -1373,24 +1399,25 @@ class TestNumpyArrayInitializer(unittest.TestCase):
         """Test the numpy array initializer with supplied arguments"""
         import numpy
 
-        program = framework.Program()
-        block = program.global_block()
-        np_array = numpy.random.random(10000).astype(dtype)
-        for _ in range(2):
-            block.create_parameter(
-                dtype=np_array.dtype,
-                shape=np_array.shape,
-                lod_level=0,
-                name="param",
-                initializer=paddle.nn.initializer.Assign(np_array),
-            )
-        num_ops = 2 if dtype in ["float16", "uint16"] else 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'assign_value')
-        values = framework.extract_plain_list(init_op.attr('values'))
-        assert values == np_array.ravel().tolist()
-        return block
+        with paddle.pir_utils.OldIrGuard():
+            program = framework.Program()
+            block = program.global_block()
+            np_array = numpy.random.random(10000).astype(dtype)
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=np_array.dtype,
+                    shape=np_array.shape,
+                    lod_level=0,
+                    name="param",
+                    initializer=paddle.nn.initializer.Assign(np_array),
+                )
+            num_ops = 2 if dtype in ["float16", "uint16"] else 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'assign_value')
+            values = framework.extract_plain_list(init_op.attr('values'))
+            assert values == np_array.ravel().tolist()
+            return block
 
     def test_numpy_array_initializer_fp16(self):
         """Test the numpy array initializer with float16"""
@@ -1633,7 +1660,7 @@ class TestConsistencyOfDynamicAndStaticGraph(unittest.TestCase):
             )
             res = exe.run(
                 paddle.static.default_startup_program(),
-                fetch_list=['linear_weight2', 'linear_bias2'],
+                fetch_list=[linear.weight, linear.bias],
             )
             return res[0], res[1]
 
@@ -1672,7 +1699,7 @@ class TestConsistencyOfDynamicAndStaticGraph(unittest.TestCase):
                 )
                 res = exe.run(
                     paddle.static.default_startup_program(),
-                    fetch_list=['w'],
+                    fetch_list=w,
                 )
             return res[0]
 
@@ -1727,7 +1754,7 @@ class TestConsistencyOfDynamicAndStaticGraph(unittest.TestCase):
                 )
                 res = exe.run(
                     paddle.static.default_startup_program(),
-                    fetch_list=['ww'],
+                    fetch_list=w,
                 )
             return res[0]
 
@@ -1799,14 +1826,15 @@ class TestOrthogonalInitializer1(unittest.TestCase):
             )
 
             block = start_prog.global_block()
-            self.assertEqual(len(block.ops), self.num_ops)
-            self.assertEqual(block.ops[0].type, 'gaussian_random')
-            self.assertEqual(block.ops[1].type, 'qr')
-            self.assertEqual(block.ops[2].type, 'diag_v2')
-            self.assertEqual(block.ops[3].type, 'sign')
-            self.assertEqual(block.ops[4].type, 'elementwise_mul')
-            self.assertEqual(block.ops[-3].type, 'reshape2')
-            self.assertEqual(block.ops[-2].type, 'scale')
+            if not paddle.framework.use_pir_api():
+                self.assertEqual(len(block.ops), self.num_ops)
+                self.assertEqual(block.ops[0].type, 'gaussian_random')
+                self.assertEqual(block.ops[1].type, 'qr')
+                self.assertEqual(block.ops[2].type, 'diag_v2')
+                self.assertEqual(block.ops[3].type, 'sign')
+                self.assertEqual(block.ops[4].type, 'elementwise_mul')
+                self.assertEqual(block.ops[-3].type, 'reshape2')
+                self.assertEqual(block.ops[-2].type, 'scale')
 
             exe = paddle.static.Executor()
             res_static = exe.run(start_prog, fetch_list=[linear.weight])[0]
@@ -2046,13 +2074,14 @@ class TestDiracInitializer1(unittest.TestCase):
 
             output = conv(inp)
             block = start_prog.global_block()
-            self.assertEqual(len(block.ops), self.num_ops)
-            self.assertEqual(block.ops[0].type, 'fill_constant')
-            self.assertEqual(block.ops[1].type, 'reshape2')
-            self.assertEqual(block.ops[2].type, 'assign_value')
-            self.assertEqual(block.ops[3].type, 'assign_value')
-            self.assertEqual(block.ops[4].type, 'scatter')
-            self.assertEqual(block.ops[5].type, 'reshape2')
+            if not paddle.framework.use_pir_api():
+                self.assertEqual(len(block.ops), self.num_ops)
+                self.assertEqual(block.ops[0].type, 'fill_constant')
+                self.assertEqual(block.ops[1].type, 'reshape2')
+                self.assertEqual(block.ops[2].type, 'assign_value')
+                self.assertEqual(block.ops[3].type, 'assign_value')
+                self.assertEqual(block.ops[4].type, 'scatter')
+                self.assertEqual(block.ops[5].type, 'reshape2')
 
             exe = paddle.static.Executor()
             exe.run(start_prog)

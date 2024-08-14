@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/phi/backends/c_comm_lib.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#include "paddle/phi/core/distributed/collective/process_group_nccl.h"
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
-#include "paddle/fluid/distributed/collective/process_group_custom.h"
+#include "paddle/phi/core/distributed/collective/process_group_custom.h"
 #endif
 
 namespace phi {
