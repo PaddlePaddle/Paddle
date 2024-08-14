@@ -1305,45 +1305,21 @@ bool MulticlassNms3OpInferSymbolicShape(
         true,
         common::errors::InvalidArgument("The last dimension of Input(BBoxes) "
                                         "must be 4 or 8 or 16 or 24 or 32"));
-    PADDLE_ENFORCE_EQ(
-        box_dims[1],
-        score_dims[2],
-        common::errors::InvalidArgument(
-            "The 2nd dimension of Input(BBoxes) must be equal to "
-            "last dimension of Input(Scores), which represents the "
-            "predicted bboxes."
-            "But received box_dims[1](%s) != socre_dims[2](%s)",
-            box_dims[1],
-            score_dims[2]));
+    infer_context->AddEqualCstr(box_dims[1], score_dims[2]);
   } else {
-    PADDLE_ENFORCE_EQ(box_dims[2],
-                      4,
-                      common::errors::InvalidArgument(
-                          "The last dimension of Input(BBoxes) must be 4. But "
-                          "received dimension = %d",
-                          box_dims[2]));
-    PADDLE_ENFORCE_EQ(
-        box_dims[1],
-        score_dims[1],
-        common::errors::InvalidArgument(
-            "The 2nd dimension of Input"
-            "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
-            "But received box dimension = %d, score dimension = %d",
-            box_dims[1],
-            score_dims[1]));
+    infer_context->AddEqualCstr(box_dims[2], symbol::DimExpr(4));
+    infer_context->AddEqualCstr(box_dims[1], score_dims[1]);
   }
 
-  const auto &next_symbol_out = infer_context->GetNextSymName();
-  const auto &next_symbol_index = infer_context->GetNextSymName();
+  const auto &next_symbol_out_and_index = infer_context->GetNextSymName();
   const auto &next_symbol_nms_rois_num = infer_context->GetNextSymName();
-  infer_context->AddEqualCstr(next_symbol_out, next_symbol_index);
 
   std::vector<symbol::DimExpr> out_shape;
-  out_shape.emplace_back(next_symbol_out);
+  out_shape.emplace_back(next_symbol_out_and_index);
   out_shape.emplace_back(box_dims[2] + 2);
 
   std::vector<symbol::DimExpr> index_shape;
-  index_shape.emplace_back(next_symbol_index);
+  index_shape.emplace_back(next_symbol_out_and_index);
   index_shape.emplace_back(1);
 
   std::vector<symbol::DimExpr> nms_rois_num_shape;
@@ -1423,8 +1399,7 @@ bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
 }
 
 // bool NceOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context)
-//                              {
+//                              pir::InferSymbolicShapeContext *infer_context){
 //   // pass
 //   return true;
 // }
