@@ -571,13 +571,11 @@ Tensor relu6_decomp(const Tensor& x) {
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
-                                          const IntArray& axis) {
+Tensor squeeze_decomp(const Tensor& x, const IntArray& axis) {
   auto axis_ = process_dims(x, axis.GetData());
   auto out_shape = get_squeeze_dims(x, axis_);
   Tensor out = reshape<T>(x, out_shape);
-  Tensor xshape;
-  return std::make_tuple(out, xshape);
+  return out;
 }
 
 template <typename T>
@@ -1460,7 +1458,7 @@ Tensor embedding_decomp(const Tensor& x,
     if (x.dims().size() <= 1) {
       res = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {
-        res = std::get<0>(squeeze_decomp<T>(res, {0}));
+        res = squeeze_decomp<T>(res, {0});
       }
     } else {
       std::vector<int64_t> tar_shape{-1};
