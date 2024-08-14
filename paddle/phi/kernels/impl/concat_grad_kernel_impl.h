@@ -36,7 +36,8 @@ void ConcatGradKernel(const Context& dev_ctx,
     }
   }
   PADDLE_ENFORCE_NOT_NULL(
-      x[0], phi::errors::NotFound("The first input tensor is not initalized."));
+      x[0],
+      common::errors::NotFound("The first input tensor is not initalized."));
 
   auto axis = axis_scalar.to<int>();
   axis = funcs::ComputeAxis(static_cast<int64_t>(axis),

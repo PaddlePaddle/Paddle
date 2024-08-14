@@ -18,37 +18,37 @@ limitations under the License. */
 namespace phi {
 
 int64_t ExtendedTensor::numel() const {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ExtendedTensor does not support `numel` method."));
 }
 
 const DDim& ExtendedTensor::dims() const {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ExtendedTensor does not support `dims` method."));
 }
 
 const Place& ExtendedTensor::place() const {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ExtendedTensor does not support `place` method."));
 }
 
 DataType ExtendedTensor::dtype() const {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ExtendedTensor does not support `dtype` method."));
 }
 
 DataLayout ExtendedTensor::layout() const {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ExtendedTensor does not support `layout` method."));
 }
 
 bool ExtendedTensor::valid() const {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ExtendedTensor does not support `valid` method."));
 }
 
 bool ExtendedTensor::initialized() const {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ExtendedTensor does not support `initialized` method."));
 }
 
@@ -56,7 +56,7 @@ void* ExtendedTensor::AllocateFrom(Allocator* allocator,
                                    DataType dtype,
                                    size_t requested_size,
                                    bool fake_alloc) {
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ExtendedTensor does not support `AllocateFrom` method."));
 }
 

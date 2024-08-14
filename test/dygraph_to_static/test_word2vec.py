@@ -99,9 +99,11 @@ def convert_corpus_to_id(corpus, word2id_dict):
     new_corpus = []
     for line in corpus:
         new_line = [
-            word2id_dict[word]
-            if word in word2id_dict
-            else word2id_dict['[oov]']
+            (
+                word2id_dict[word]
+                if word in word2id_dict
+                else word2id_dict['[oov]']
+            )
             for word in line
         ]
         new_corpus.append(new_line)

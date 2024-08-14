@@ -14,6 +14,7 @@
 
 #pragma once
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 #include "paddle/pir/include/core/program.h"
@@ -38,6 +39,11 @@ std::optional<std::string> GetValueInputName(pir::Value value);
 std::vector<std::string> GetValueOutputNames(pir::Value value);
 pir::Value GetOutputValueByName(const pir::Program &program,
                                 const std::string &name);
+
+inline bool HasOnlyOneValueName(pir::Value value) {
+  std::vector<std::string> names = GetValueAllNames(value);
+  return std::set<std::string>(names.begin(), names.end()).size() <= 1;
+}
 
 }  // namespace name_analysis
 }  // namespace utils

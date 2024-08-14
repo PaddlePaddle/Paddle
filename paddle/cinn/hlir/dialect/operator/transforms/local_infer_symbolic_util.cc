@@ -18,7 +18,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include "build/paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 #include "paddle/pir/include/pass/pass.h"
 

@@ -33,20 +33,20 @@ void BmmKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     3,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
                         "but received X's shape: [%s]",
                         x_dims));
   PADDLE_ENFORCE_EQ(y_dims.size(),
                     3,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
                         "but received Y's shape: [%s].",
                         y_dims));
   PADDLE_ENFORCE_EQ(
       x_dims[0],
       y_dims[0],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(X) and Input(Y) must have the same batch size in BmmOp, "
           "but received X's batch size: [%s],"
           "Y's batch size [%s]",
@@ -55,7 +55,7 @@ void BmmKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x_dims[2],
       y_dims[1],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
           "but receive X's width: [%s],"
           "Y's height: [%s].",

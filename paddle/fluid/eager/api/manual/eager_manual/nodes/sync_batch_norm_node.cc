@@ -46,7 +46,7 @@ SyncBatchNormGradNode::operator()(
   //    accumulation when the output(s) of corresponding forward OP are shared
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
-  paddle::platform::RecordEvent node_execution_inner(
+  phi::RecordEvent node_execution_inner(
       "Local_SyncBatchNormGradNode",
       paddle::platform::TracerEventType::OperatorInner,
       1);
@@ -196,7 +196,7 @@ SyncBatchNormGradNode::operator()(
 
   // Create Grad Node
   if (trace_backward) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "The Op sync_batch_norm_grad doesn't have any grad"
         "op. If you don't intend calculating higher order"
         "derivatives, please set `create_graph`to False."));
@@ -278,7 +278,7 @@ SyncBatchNormGradNode::operator()(
   //    accumulation when the output(s) of corresponding forward OP are shared
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
-  paddle::platform::RecordEvent node_execution_inner(
+  phi::RecordEvent node_execution_inner(
       "Local_SyncBatchNormGradNode",
       paddle::platform::TracerEventType::OperatorInner,
       1);
@@ -428,7 +428,7 @@ SyncBatchNormGradNode::operator()(
 
   // Create Grad Node
   if (trace_backward) {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "The Op sync_batch_norm_grad doesn't have any grad"
         "op. If you don't intend calculating higher order"
         "derivatives, please set `create_graph`to False."));

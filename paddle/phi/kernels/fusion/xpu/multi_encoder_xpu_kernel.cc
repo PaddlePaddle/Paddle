@@ -83,7 +83,7 @@ void MultiEncoderXPUKernel(
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "x.dims().size() MUST be 2 or 3, but get [%d].", x.dims().size()));
   }
   DDim out_dims;

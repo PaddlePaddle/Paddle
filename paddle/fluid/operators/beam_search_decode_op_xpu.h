@@ -94,8 +94,8 @@ const int CopyTensorByType(const phi::DenseTensor& srcTensor,
 }
 
 struct BeamSearchDecodeXPUFunctor {
-  BeamSearchDecodeXPUFunctor(const LoDTensorArray& step_ids,
-                             const LoDTensorArray& step_scores,
+  BeamSearchDecodeXPUFunctor(const phi::TensorArray& step_ids,
+                             const phi::TensorArray& step_scores,
                              phi::DenseTensor* id_tensor,
                              phi::DenseTensor* score_tensor,
                              size_t beam_size,
@@ -161,8 +161,8 @@ struct BeamSearchDecodeXPUFunctor {
   // TODO(Superjomn) Here might result serious performance issue in the
   // concurrency
   // scenarios.
-  LoDTensorArray step_ids_ = LoDTensorArray();
-  LoDTensorArray step_scores_ = LoDTensorArray();
+  phi::TensorArray step_ids_ = phi::TensorArray();
+  phi::TensorArray step_scores_ = phi::TensorArray();
   phi::DenseTensor* id_tensor_;
   phi::DenseTensor* score_tensor_;
 };

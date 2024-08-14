@@ -28,9 +28,9 @@ void AsStridedKernel(const Context& dev_ctx,
                      int64_t offset,
                      DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
   auto meta = out->meta();
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));

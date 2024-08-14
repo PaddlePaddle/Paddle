@@ -78,7 +78,8 @@ class Conv1DTransposeTestCase(unittest.TestCase):
         self.weight_shape = weight_shape = (
             self.in_channels,
             self.out_channels // self.groups,
-        ) + tuple(filter_size)
+            *filter_size,
+        )
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )

@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -125,11 +125,10 @@ class FetchOp : public framework::OperatorBase {
       auto &src_item = fetch_var->Get<phi::SparseCooTensor>();
       fetch_list->at(col) = src_item;
     } else {
-      auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
-      framework::LoDTensorArray tmp(src_item.size());
+      auto &src_item = fetch_var->Get<phi::TensorArray>();
+      phi::TensorArray tmp(src_item.size());
       fetch_list->at(col) = tmp;
-      auto &dst_item =
-          PADDLE_GET(framework::LoDTensorArray, fetch_list->at(col));
+      auto &dst_item = PADDLE_GET(phi::TensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
         DataCopy(src_item[i], fetch_var_name, &dst_item[i]);
       }

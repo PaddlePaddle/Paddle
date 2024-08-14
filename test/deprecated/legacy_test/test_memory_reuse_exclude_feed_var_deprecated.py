@@ -29,7 +29,7 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
 
     def main_impl(self, place):
         image = paddle.static.data(
-            name='image', shape=[-1] + self.image_shape, dtype='float32'
+            name='image', shape=[-1, *self.image_shape], dtype='float32'
         )
         relu_image = F.relu(image)
         loss = paddle.mean(relu_image)

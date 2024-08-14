@@ -37,7 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #ifdef PADDLE_WITH_HETERPS
-#include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 
@@ -383,8 +383,10 @@ class FleetWrapper {
   void Revert();
 
   std::string GetDistDesc() const {
-    CHECK(is_initialized_ == true)
-        << "fleetwrapper should be initialized first!!!";
+    PADDLE_ENFORCE_EQ(is_initialized_,
+                      true,
+                      common::errors::PermissionDenied(
+                          "FleetWrapper should be initialized first!!!"));
     return dist_desc_;
   }
 

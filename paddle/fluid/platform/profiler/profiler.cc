@@ -22,7 +22,7 @@
 #include <hip/hip_runtime.h>
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"

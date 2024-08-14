@@ -54,9 +54,9 @@ from .distribute_transpiler import (
     slice_variable,
 )
 
-RPC_OP_ROLE_ATTR_NAME = (
-    op_role_attr_name
-) = core.op_proto_and_checker_maker.kOpRoleAttrName()
+RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = (
+    core.op_proto_and_checker_maker.kOpRoleAttrName()
+)
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 

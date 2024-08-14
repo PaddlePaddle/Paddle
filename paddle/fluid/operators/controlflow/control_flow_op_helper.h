@@ -105,17 +105,16 @@ static void AssignZeroToParentScope(
                                 scope,
                                 input_var->Get<phi::DenseTensor>(),
                                 outside_var->GetMutable<phi::DenseTensor>());
-    } else if (input_var->IsType<framework::LoDTensorArray>()) {
-      PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
+    } else if (input_var->IsType<phi::TensorArray>()) {
+      PADDLE_ENFORCE_EQ(outside_var->IsType<phi::TensorArray>(),
                         true,
                         common::errors::InvalidArgument(
-                            "Type of outside_var %s is NOT LoDTensorArray, "
+                            "Type of outside_var %s is NOT phi::TensorArray, "
                             "which doesn't match input_var %s.",
                             outside_grad_name,
                             input_name));
-      const auto &input_tensors = input_var->Get<framework::LoDTensorArray>();
-      auto *outside_tensors =
-          outside_var->GetMutable<framework::LoDTensorArray>();
+      const auto &input_tensors = input_var->Get<phi::TensorArray>();
+      auto *outside_tensors = outside_var->GetMutable<phi::TensorArray>();
       if (outside_tensors->empty()) {
         outside_tensors->resize(input_tensors.size());
       }

@@ -628,9 +628,9 @@ void RunWhileBlockPreStaticBuild(const framework::Scope& scope,
         auto* t = var->GetMutable<phi::DenseTensor>();
         framework::LoD empty_lod;
         t->set_lod(empty_lod);
-      } else if (var->IsType<framework::LoDTensorArray>()) {
+      } else if (var->IsType<phi::TensorArray>()) {
         // Clear elements of all tensor arrays.
-        auto* t = var->GetMutable<framework::LoDTensorArray>();
+        auto* t = var->GetMutable<phi::TensorArray>();
         t->clear();
       }
     }

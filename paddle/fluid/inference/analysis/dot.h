@@ -67,7 +67,10 @@ class Dot {
 
     std::string repr() const {
       std::stringstream ss;
-      CHECK(!name.empty());
+      PADDLE_ENFORCE_EQ(
+          !name.empty(),
+          true,
+          common::errors::InvalidArgument("Sorry,but name is empty"));
       ss << id_;
       if (attrs.empty()) {
         ss << "[label=" << '"' << name << '"' << "]";
@@ -99,8 +102,14 @@ class Dot {
 
     std::string repr() const {
       std::stringstream ss;
-      CHECK(!source.empty());
-      CHECK(!target.empty());
+      PADDLE_ENFORCE_EQ(
+          !source.empty(),
+          true,
+          common::errors::InvalidArgument("Sorry,but source is empty"));
+      PADDLE_ENFORCE_EQ(
+          !target.empty(),
+          true,
+          common::errors::InvalidArgument("Sorry,but target is empty"));
       ss << source << "->" << target;
       for (size_t i = 0; i < attrs.size(); i++) {
         if (i == 0) {
@@ -121,7 +130,10 @@ class Dot {
                const std::vector<Attr>& attrs,
                std::string label = "",
                bool use_local_id = false) {
-    CHECK(!nodes_.count(id)) << "duplicate Node '" << id << "'";
+    PADDLE_ENFORCE_EQ(
+        !nodes_.count(id),
+        true,
+        common::errors::InvalidArgument("Sorry,but duplicate Node"));
     if (label.empty()) label = id;
     if (use_local_id) {
       nodes_.emplace(id, Node{label, attrs, local_node_counter_++});
@@ -133,8 +145,14 @@ class Dot {
   void AddEdge(const std::string& source,
                const std::string& target,
                const std::vector<Attr>& attrs) {
-    CHECK(!source.empty());
-    CHECK(!target.empty());
+    PADDLE_ENFORCE_EQ(
+        !source.empty(),
+        true,
+        common::errors::InvalidArgument("Sorry,but source is empty"));
+    PADDLE_ENFORCE_EQ(
+        !target.empty(),
+        true,
+        common::errors::InvalidArgument("Sorry,but target is empty"));
     auto sid = nodes_.at(source).id();
     auto tid = nodes_.at(target).id();
     edges_.emplace_back(sid, tid, attrs);

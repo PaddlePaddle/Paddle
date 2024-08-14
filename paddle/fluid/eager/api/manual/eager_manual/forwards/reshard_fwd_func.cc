@@ -25,7 +25,7 @@ paddle::Tensor reshard_ad_function(
   VLOG(3) << "Running AD API: "
           << "reshard dygraph";
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "reshard dygraph", paddle::platform::TracerEventType::Communication, 1);
 
   // Get Input AutoGradMeta
@@ -40,7 +40,7 @@ paddle::Tensor reshard_ad_function(
 
   // Set grad_node before API Call
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "reshard node_creation",
         paddle::platform::TracerEventType::Communication,
         1);
@@ -80,7 +80,7 @@ paddle::Tensor reshard_ad_function(
 
   return out;
 #else
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "Reshard is not supported in this version of Paddle. Try to recompile it "
       "with WITH_DISTRIBUTE=ON and reinstall this package."));
   return paddle::Tensor();

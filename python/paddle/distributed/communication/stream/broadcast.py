@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from paddle import _C_ops, framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
@@ -21,6 +25,11 @@ from paddle.distributed.communication.group import (
 )
 from paddle.distributed.communication.reduce import _to_inplace_op
 from paddle.framework import in_pir_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import task
+    from paddle.distributed.communication.group import Group
 
 
 def _broadcast_in_dygraph(
@@ -78,7 +87,13 @@ def _broadcast_in_static_mode(
     )
 
 
-def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
+def broadcast(
+    tensor: Tensor,
+    src: int,
+    group: Group | None = None,
+    sync_op: bool = True,
+    use_calc_stream: bool = False,
+) -> task | None:
     """
 
     Broadcast a tensor to all devices.
@@ -86,7 +101,7 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
     Args:
         tensor (Tensor): The tensor to broadcast. Support float16, float32, float64, int32, int64, int8, uint8 or bool as its data type.
         src (int, optional): Rank of the source device.
-        group (Group, optional): Communicate in which group. If none is given, use the global group as default.
+        group (Group|None, optional): Communicate in which group. If none is given, use the global group as default.
         sync_op (bool, optional): Indicate whether the communication is sync or not. If none is given, use true as default.
         use_calc_stream (bool, optional): Indicate whether the communication is done on calculation stream. If none is given, use false as default. This
             option is designed for high performance demand, be careful to turn it on except you are clearly know its meaning.
@@ -111,7 +126,7 @@ def broadcast(tensor, src, group=None, sync_op=True, use_calc_stream=False):
             >>> else:
             ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
             >>> task = dist.stream.broadcast(data, src=1, sync_op=False)
-            >>> task.wait()
+            >>> task.wait()  # type: ignore[union-attr]
             >>> out = data.numpy()
             >>> print(out)
             >>> # [[1, 2, 3], [1, 2, 3]] (2 GPUs)

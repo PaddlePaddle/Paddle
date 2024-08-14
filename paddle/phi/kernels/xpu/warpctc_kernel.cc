@@ -32,13 +32,13 @@ void WarpctcKernel(const Context& dev_ctx,
                    DenseTensor* warpctcgrad) {
   bool has_logits_length = logits_length.is_initialized();
   if (!has_logits_length) {
-    PADDLE_THROW(
-        phi::errors::External("XPU only support logits_length is_initialized"));
+    PADDLE_THROW(common::errors::External(
+        "XPU only support logits_length is_initialized"));
   }
   bool has_labels_length = labels_length.is_initialized();
   if (!has_labels_length) {
-    PADDLE_THROW(
-        phi::errors::External("XPU only support labels_length is_initialized"));
+    PADDLE_THROW(common::errors::External(
+        "XPU only support labels_length is_initialized"));
   }
 
   int max_sequence_length = logits.dims()[0];
@@ -48,50 +48,51 @@ void WarpctcKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_GT(max_sequence_length,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The first dimension of Input(Logits) should be "
                         "greater than zero "
                         "but received %d. ",
                         max_sequence_length));
   PADDLE_ENFORCE_GT(num_sequences,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The second dimension of Input(Logits) should be "
                         "greater than zero "
                         "but received %d. ",
                         num_sequences));
   PADDLE_ENFORCE_GT(sequence_width,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The third dimension of Input(Logits) should be "
                         "greater than zero "
                         "but received %d. ",
                         sequence_width));
-  PADDLE_ENFORCE_GE(blank,
-                    0,
-                    phi::errors::InvalidArgument("Input(blank) should be "
-                                                 "equal or greater than zero "
-                                                 "but received %d. ",
-                                                 blank));
+  PADDLE_ENFORCE_GE(
+      blank,
+      0,
+      common::errors::InvalidArgument("Input(blank) should be "
+                                      "equal or greater than zero "
+                                      "but received %d. ",
+                                      blank));
   PADDLE_ENFORCE_LT(blank,
                     sequence_width,
-                    phi::errors::InvalidArgument("Input(blank) should be "
-                                                 "less than %d "
-                                                 "but received %d. ",
-                                                 sequence_width,
-                                                 blank));
+                    common::errors::InvalidArgument("Input(blank) should be "
+                                                    "less than %d "
+                                                    "but received %d. ",
+                                                    sequence_width,
+                                                    blank));
 
   auto logits_length_dtype = logits_length.get_ptr()->dtype();
   auto labels_length_dtype = labels_length.get_ptr()->dtype();
-  PADDLE_ENFORCE_EQ(
-      logits_length_dtype == labels_length_dtype,
-      true,
-      phi::errors::InvalidArgument("The data type of Input(logits_length) and "
-                                   "Input(labels_length) should be equal. "));
+  PADDLE_ENFORCE_EQ(logits_length_dtype == labels_length_dtype,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The data type of Input(logits_length) and "
+                        "Input(labels_length) should be equal. "));
   PADDLE_ENFORCE_EQ(logits_length_dtype == DataType::INT32 ||
                         logits_length_dtype == DataType::INT64,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The data type of Input(logits_length) should be "
                         "either %s or %s, "
                         "but received %s. ",
@@ -101,7 +102,7 @@ void WarpctcKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(labels_length_dtype == DataType::INT32 ||
                         labels_length_dtype == DataType::INT64,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The data type of Input(labels_length) should be "
                         "either %s or %s, "
                         "but received %s. ",
@@ -130,7 +131,7 @@ void WarpctcKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(
       sm_workspace + lm_workspace,
       256 * 1024,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input size should be equal or less than %d for xpu warpctc kernel, "
           "but size %d is received. ",
           256 * 1024,

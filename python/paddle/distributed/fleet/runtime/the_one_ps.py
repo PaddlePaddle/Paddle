@@ -746,9 +746,9 @@ class TheOnePSRuntime(RuntimeBase):
 
         def sync_strategy_envs():
             kwargs = {}
-            kwargs[
-                "pserver_endpoints"
-            ] = self.role_maker._get_pserver_endpoints()
+            kwargs["pserver_endpoints"] = (
+                self.role_maker._get_pserver_endpoints()
+            )
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
