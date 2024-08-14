@@ -27,8 +27,9 @@ register_reshard_funcs()
 
 partition_skip_op_list = [
     "builtin.combine",
+    "builtin.split",
     "pd_op.pylayer",
-    "cf.yield" "builtin.split",
+    "cf.yield",
     "cf.tuple_push",
     "cf.tuple_pop",
     "cf.stack_create",

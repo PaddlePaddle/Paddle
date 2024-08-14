@@ -19,6 +19,7 @@ from .reshard_funcs.base_reshard_func import is_replicated
 dist_skip_op_list = [
     "builtin.combine",
     "builtin.split",
+    "cf.yield",
     "cf.tuple_push",
     "cf.tuple_pop",
     "cf.stack_create",
