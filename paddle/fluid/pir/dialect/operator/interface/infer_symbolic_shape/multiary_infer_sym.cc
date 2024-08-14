@@ -632,7 +632,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
   int target_rank = 0;
 
   // 1. Find Output rank = max(Inputs rank)
-  for (const auto &input_shape : input_shapes) {
+  for (const auto input_shape : input_shapes) {
     target_rank = std::max(target_rank, static_cast<int>(input_shape.size()));
   }
 
