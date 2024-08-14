@@ -26,5 +26,5 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 list(APPEND DEVICE_SRCS cuda_graph_with_memory_pool.cc)
-list(APPEND DEVICE_SRCS device_context.cc)
+list(APPEND DEVICE_SRCS device_context.cc gen_comm_id_helper.cc)
 collect_srcs(core_srcs SRCS ${DEVICE_SRCS})

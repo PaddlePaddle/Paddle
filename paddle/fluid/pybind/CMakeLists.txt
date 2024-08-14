@@ -669,6 +669,10 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS pybind_util)
   endif()
 
+  if(TENSORRT_FOUND)
+    list(APPEND PYBIND_DEPS pir_tensorrt_plugin)
+  endif()
+
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,
   # add a prefix `lib` by default, but on Windows, cc_library(paddle SHARED ..)
   # will not add prefix, so it generate paddle.lib and paddle.pyd,

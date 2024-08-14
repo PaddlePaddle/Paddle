@@ -72,6 +72,7 @@ class FusedEcMoe(Layer):
             >>> print(y.shape)
             [10, 128, 1024]
     """
+
     bmm_weight0: Tensor
     bmm_bias0: Tensor
     bmm_weight1: Tensor

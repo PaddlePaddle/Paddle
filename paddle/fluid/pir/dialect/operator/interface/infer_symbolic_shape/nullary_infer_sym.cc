@@ -237,13 +237,18 @@ bool FullOpInferSymbolicShape(pir::Operation *op,
   }();
 
   const auto shape_data = [&]() -> symbol::TensorShapeOrDataDimExprs {
+    const auto &value_scalar = attributes.at("value")
+                                   .dyn_cast<paddle::dialect::ScalarAttribute>()
+                                   .data();
     // NOTE(Aurelius84): to<int64_t> is a risky operation when Scalar's dtype is
     // not int32/int64. However, we found Full's Value could be like '3.0' but
     // used as int.
-    const int64_t value = attributes.at("value")
-                              .dyn_cast<paddle::dialect::ScalarAttribute>()
-                              .data()
-                              .to<int64_t>();
+    const int64_t value = value_scalar.to<int64_t>();
+    // skip computing data when value is not equal a integer
+    if (value_scalar.to<float>() - value > 1e-6) {
+      return symbol::TensorShapeOrDataDimExprs(shape);
+    }
+
     const size_t shape_size = shape.size();
     // NOTE(Aurelius84): When shape.size()==1, a new std::vector<int64_t> with
     // length = shape[0] will be constructed, but not all cases are used for
@@ -329,6 +334,18 @@ bool GaussianOpInferSymbolicShape(
             operand_shape_or_data.data().value()});
     return true;
   }
+}
+
+bool RandpermOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  int64_t n = op->attribute<pir::Int64Attribute>("n").data();
+  std::vector<symbol::DimExpr> out_shape = {n};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  return true;
 }
 
 bool RandintOpInferSymbolicShape(

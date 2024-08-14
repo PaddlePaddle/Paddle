@@ -19,7 +19,6 @@ import typing
 from typing import (
     TYPE_CHECKING,
     Any,
-    Sequence,
     overload,
 )
 
@@ -33,6 +32,8 @@ from paddle.distribution import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.distribution import Distribution, TransformedDistribution
 

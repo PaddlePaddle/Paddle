@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import copy
 import logging
@@ -19,6 +21,7 @@ import os
 import re
 import warnings
 from collections.abc import Sequence
+from typing import TYPE_CHECKING, overload
 
 import paddle.base
 
@@ -26,6 +29,15 @@ from . import core, framework, log_helper, unique_name
 from .data_feeder import check_type
 from .framework import program_guard
 from .proto import framework_pb2
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from paddle import Tensor
+    from paddle.base.framework import Block
+    from paddle.distributed.auto_parallel.static.dist_context import (
+        DistributedContext,
+    )
 
 __all__ = []
 
@@ -1951,6 +1963,36 @@ def _get_no_grad_set_value(no_grad_set):
     return no_grad_set_value
 
 
+@overload
+@framework.static_only
+def append_backward(
+    loss: Tensor,
+    parameter_list: Sequence[Tensor | str] | None = ...,
+    no_grad_set: set[Tensor | str] | None = ...,
+    callbacks: (
+        Sequence[Callable[[Block, dict[str, Tensor | core.OpDesc]], None]]
+        | None
+    ) = ...,
+    checkpoints: None = ...,
+    distop_context: DistributedContext = ...,
+) -> list[tuple[Tensor, Tensor]]: ...
+
+
+@overload
+@framework.static_only
+def append_backward(
+    loss: Tensor,
+    parameter_list: Sequence[Tensor | str] | None = ...,
+    no_grad_set: set[Tensor | str] | None = ...,
+    callbacks: (
+        Sequence[Callable[[Block, dict[str, Tensor | core.OpDesc]], None]]
+        | None
+    ) = ...,
+    checkpoints: list[Tensor] = ...,
+    distop_context: DistributedContext = ...,
+) -> tuple[list[tuple[Tensor, Tensor]], list[str]]: ...
+
+
 @framework.static_only
 def append_backward(
     loss,
@@ -2693,7 +2735,12 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
 
 @framework.static_only
-def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
+def gradients(
+    targets: Tensor | Sequence[Tensor],
+    inputs: Tensor | Sequence[Tensor],
+    target_gradients: Tensor | Sequence[Tensor] | None = None,
+    no_grad_set: set[Tensor | str] | None = None,
+) -> list[Tensor]:
     """
 
     Backpropagate the gradients of targets to inputs.
@@ -2701,10 +2748,10 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Args:
         targets (Tensor|list[Tensor]|tuple[Tensor]): The target Tensors.
         inputs (Tensor|list[Tensor]|tuple[Tensor]): The input Tensors.
-        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensor
+        target_gradients (Tensor|list[Tensor]|tuple[Tensor]|None, optional): The gradient Tensor
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set (set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
+        no_grad_set (set[Tensor|str]|None, optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
             should be ignored. All Tensors with ``stop_gradient=True`` from all blocks will
             be automatically added into this set. If this parameter is not None, the Tensors or Tensor.names
             in this set will be added to the default set. Default: None.

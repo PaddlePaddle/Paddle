@@ -28,6 +28,20 @@ Json ProgramWriter::GetProgramJson(const pir::Program* program) {
   return program_json;
 }
 
+Json ProgramWriter::GetTypeJson(const pir::Type& type) {
+  auto type_json = WriteType(type);
+  VLOG(6) << "Finish type to json.";
+  return type_json;
+}
+
+Json ProgramWriter::GetAttributesMapJson(const AttributeMap& attr_map) {
+  Json attrs_json = Json::array();
+  for (auto attr : attr_map) {
+    attrs_json.emplace_back(WriteAttribute(attr.first, attr.second));
+  }
+  return attrs_json;
+}
+
 Json ProgramWriter::WriteProgram(const pir::Program* program) {
   Json program_json;
   program_json[REGIONS] = Json::array();
