@@ -457,11 +457,11 @@ class Resize(BaseTransform[_InputT, _RetT]):
 
             >>> fake_img = Image.fromarray((np.random.rand(256, 300, 3) * 255.).astype(np.uint8))
             >>> transform = Resize(size=224)
-            >>> converted_img = transform(fake_img)
+            >>> converted_img = transform(fake_img) # type: ignore[call-overload]
             >>> print(converted_img.size)
             (262, 224)
             >>> transform = Resize(size=(200,150))
-            >>> converted_img = transform(fake_img)
+            >>> converted_img = transform(fake_img) # type: ignore[call-overload]
             >>> print(converted_img.size)
             (150, 200)
     """
@@ -1039,10 +1039,10 @@ class BrightnessTransform(BaseTransform[_InputT, _RetT]):
 
             >>> transform = BrightnessTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> print(fake_img.load()[1,1])
+            >>> print(fake_img.load()[1,1]) # type: ignore[index]
             (60, 169, 34)
             >>> # doctest: +SKIP('random sample in Brightness function')
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img) # type: ignore[call-overload]
             >>> print(fake_img.load()[1,1])
             (68, 192, 38)
 

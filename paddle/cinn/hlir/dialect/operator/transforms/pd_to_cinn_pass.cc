@@ -78,16 +78,13 @@ void ReplaceWithCinnReshapeOp(OpT op,
                               const std::vector<int> &out_shape) {
   PADDLE_ENFORCE_EQ(
       op->num_results(),
-      2U,
+      CUDA_C_16F,
       ::common::errors::PreconditionNotMet(
-          "The size of source op outputs must be 2, but received %d.",
+          "The size of source op outputs must be 1, but received %d.",
           op->num_results()));
   auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
       op->operand_source(0), out_shape);
-  auto generate_xshape =
-      rewriter.Build<cinn::dialect::GenerateXShapeOp>(op->operand_source(0));
   rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
-  rewriter.ReplaceAllUsesWith(op.result(1), generate_xshape.result(0));
 }
 
 }  // namespace
@@ -268,15 +265,7 @@ class ReshapeOpPattern
             out_shape_attr[i].dyn_cast<::pir::Int64Attribute>().data());
       }
     }
-    PADDLE_ENFORCE_EQ(
-        op->num_results(),
-        1U,
-        ::common::errors::PreconditionNotMet(
-            "The size of source op outputs must be 1, but received %d.",
-            op->num_results()));
-    auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
-        op->operand_source(0), vec_out_shape);
-    rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+    ReplaceWithCinnReshapeOp(op, rewriter, vec_out_shape);
     rewriter.EraseOp(op);
   }
 };
@@ -915,7 +904,6 @@ class SqueezeOpPattern
                   in_shape[i]));
         }
       }
-
       ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
       rewriter.EraseOp(op);
 
@@ -956,10 +944,7 @@ class UnsqueezeOpPattern
           output_shape.push_back(1);
         }
       }
-
-      auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
-          op->operand_source(0), output_shape);
-      rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+      ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
       rewriter.EraseOp(op);
 
       return true;
@@ -1049,9 +1034,7 @@ class FlattenOpPattern
 
     auto reshape_op = rewriter.Build<paddle::dialect::ReshapeOp>(
         op->operand_source(0), new_shape);
-
     reshape_op.result(0).set_type(op.result(0).type());
-
     rewriter.ReplaceAllUsesWith(op.result(0), reshape_op.result(0));
 
     rewriter.EraseOp(op);

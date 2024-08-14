@@ -435,6 +435,27 @@
     func : softmax_grad
   composite : softmax_grad(out, out_grad, axis, x_grad)
 
+- backward_op : squeeze_double_grad
+  forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
+  args : (Tensor grad_x_grad, IntArray axis)
+  output : Tensor(grad_out_grad), Tensor(xshape)
+  invoke: squeeze(grad_x_grad, axis)
+  intermediate : xshape
+
+- backward_op : squeeze_grad
+  forward : squeeze(Tensor x, IntArray axis) -> Tensor(out), Tensor(xshape)
+  args : (Tensor xshape, Tensor out_grad, IntArray axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : KernelWithXShapeInferMeta
+    param: [xshape, out_grad]
+    spmd_rule : SqueezeGradInferSpmd
+  kernel :
+    func : squeeze_grad
+    data_type : out_grad
+  inplace : (out_grad -> x_grad)
+  backward: squeeze_double_grad
+
 - backward_op : strided_slice_grad
   forward : strided_slice (Tensor x, int[] axes, IntArray starts={}, IntArray ends={}, IntArray strides={}, int[] infer_flags={}, int[] decrease_axis={}) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides, int[] infer_flags, int[] decrease_axis)

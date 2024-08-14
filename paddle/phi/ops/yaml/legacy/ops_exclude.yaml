@@ -82,6 +82,7 @@
 - slice
 - split
 - split_with_num
+- squeeze
 - strided_slice
 - sum
 - swish

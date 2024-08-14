@@ -2484,11 +2484,15 @@ class Layer:
 
         NOTE(dev): This is a very low level API and only for inner developer.
         """
-        startup_program = Program()
-        for param in self.parameters():
-            param._create_init_op(startup_program.global_block())
-
-        return startup_program
+        startup_program = paddle.base.Program()
+        main_program = paddle.base.Program()
+        with paddle.base.program_guard(main_program, startup_program):
+            for param in self.parameters():
+                param._create_init_op(startup_program.global_block())
+        if paddle.framework.use_pir_api():
+            return main_program
+        else:
+            return startup_program
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

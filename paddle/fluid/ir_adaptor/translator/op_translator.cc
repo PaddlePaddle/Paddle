@@ -3625,7 +3625,6 @@ static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
   }
 
   param_map->PushValue(input_xshape_name, xshape_value);
-
   PADDLE_ENFORCE_EQ(param_map->Has(input_outgrad_name),
                     true,
                     common::errors::InvalidArgument(
@@ -3822,6 +3821,5 @@ OpTranslator::OpTranslator() {
   special_handlers["unsqueeze2_grad"] =
       WithXShapeAndAxisGradOpTranscriber<dialect::UnsqueezeGradOp>();
 }
-
 }  // namespace translator
 }  // namespace paddle

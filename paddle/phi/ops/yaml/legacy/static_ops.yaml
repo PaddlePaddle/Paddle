@@ -826,6 +826,21 @@
     data_type: param
   optional: master_param, master_param_out
 
+- op : squeeze
+  args : (Tensor x, IntArray axis={})
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : SqueezeWithXShapeInferMeta
+    spmd_rule : SqueezeInferSpmd
+  kernel :
+    func : squeeze_with_xshape
+    data_type : x
+  inplace : (x -> out)
+  view: (x -> out)
+  intermediate : xshape
+  backward : squeeze_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : strided_slice
   args : (Tensor x, int[] axes, IntArray starts={}, IntArray ends={}, IntArray strides={}, int[] infer_flags={}, int[] decrease_axis={})
   output : Tensor
