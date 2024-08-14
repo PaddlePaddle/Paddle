@@ -659,7 +659,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
         target_dim_size = dim_size;
       }
     }
-    target_dims[target_rank - index - 1] = static_cast<int>(target_dim_size);
+    target_dims[target_rank - index - 1] = target_dim_size;
   }
   // 3. Set Output Dim
   for (size_t i = 0; i < op->num_results(); ++i) {
