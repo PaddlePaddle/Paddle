@@ -563,6 +563,26 @@ void SubgraphDetector::SetCanApplyFusionMap() {
   }
 }
 
+void MergeSubGraphs(Operation* op,
+                    Operation* producer,
+                    UnionFindSet& union_find,            // NOT NOLINT
+                    LoopDetectionMapping& loop_detector  // NOT NOLINT
+) {
+  if (union_find.GetSetFromOp(op) == union_find.GetSetFromOp(producer)) {
+    return;
+  }
+  if (!loop_detector.CanFuse(union_find.GetSetFromOp(producer),
+                             union_find.GetSetFromOp(op))) {
+    return;
+  }
+  // try fuse producer to sub-graph
+  auto op_graph_ptr = union_find.GetSetFromOp(op);
+  auto producer_graph_ptr = union_find.GetSetFromOp(producer);
+  union_find.Union(op, producer);
+  loop_detector.MergeNodes(
+      op_graph_ptr, producer_graph_ptr, union_find.GetSetFromOp(op));
+}
+
 void SubgraphDetector::DoOpFusion() {
   // do fusion
   VLOG(4) << "DoOpFusion";
@@ -576,25 +596,21 @@ void SubgraphDetector::DoOpFusion() {
   for (auto* op : sort_ops_) {
     auto producers = GetProducerOpsReverseSort(op, op2id_);
     for (auto* producer : producers) {
-      if (op_classifier_(*producer) != op_classifier_(*op) ||
-          op_classifier_(*op) == false) {
+      if (!op_classifier_(*op)) {
         continue;
       }
-      if (union_find.GetSetFromOp(op) == union_find.GetSetFromOp(producer)) {
+      if (!op_classifier_(*producer)) {
+        for (auto* consumer : GetConsumerOpsSimple(producer)) {
+          if (op_classifier_(*consumer)) {
+            MergeSubGraphs(op, consumer, union_find, loop_detector);
+          }
+        }
         continue;
       }
+
       VLOG(4) << "Start Judge: " << op->id() << " vs " << producer->id();
 
-      if (!loop_detector.CanFuse(union_find.GetSetFromOp(producer),
-                                 union_find.GetSetFromOp(op))) {
-        continue;
-      }
-      // try fuse producer to sub-graph
-      auto op_graph_ptr = union_find.GetSetFromOp(op);
-      auto producer_graph_ptr = union_find.GetSetFromOp(producer);
-      union_find.Union(op, producer);
-      loop_detector.MergeNodes(
-          op_graph_ptr, producer_graph_ptr, union_find.GetSetFromOp(op));
+      MergeSubGraphs(producer, op, union_find, loop_detector);
     }
   }
   for (const auto& op : sort_ops_) {
