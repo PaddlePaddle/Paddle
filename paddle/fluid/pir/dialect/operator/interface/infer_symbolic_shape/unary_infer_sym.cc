@@ -2652,11 +2652,42 @@ bool Unsqueeze_OpInferSymbolicShape(
 //   return true;
 // }
 
-// bool UnstackOpInferSymbolicShape(pir::Operation *op,
-//                                  pir::InferSymbolicShapeContext
-//                                  *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UnstackOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  int rank = x_shape.size();
+
+  int axis = op->attribute<pir::Int64Attribute>("axis").data();
+  int num = op->attribute<pir::Int64Attribute>("num").data();
+
+  PADDLE_ENFORCE_GE(axis,
+                    -rank,
+                    common::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be inside "
+                        "[-rank, rank), where rank = %d",
+                        rank));
+  PADDLE_ENFORCE_LT(axis,
+                    rank,
+                    common::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be inside "
+                        "[-rank, rank), where rank = %d",
+                        rank));
+  if (axis < 0) axis += rank;
+
+  symbol::TensorListShapeOrDataDimExprs out_list_shape_or_data;
+
+  std::vector<symbol::DimExpr> out_shape = x_shape;
+  out_shape.erase(out_shape.begin() + axis);
+
+  symbol::TensorShapeOrDataDimExprs out_shape_or_data =
+      symbol::TensorShapeOrDataDimExprs(out_shape);
+  for (int i = 0; i < num; i++) {
+    out_list_shape_or_data.push_back(out_shape_or_data);
+  }
+  infer_context->SetShapeOrDataForValue(op->result(0), out_list_shape_or_data);
+  return true;
+}
 
 }  // namespace paddle::dialect
