@@ -3287,6 +3287,7 @@
     func : multinomial
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multiplex
   args : (Tensor[] inputs, Tensor index)
@@ -3330,6 +3331,7 @@
   kernel :
     func : nanmedian
   backward : nanmedian_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : nearest_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
