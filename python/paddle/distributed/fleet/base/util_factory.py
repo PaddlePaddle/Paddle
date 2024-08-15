@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
 """Fleet Utils."""
 """distributed operations"""
 """basic collective operations in python"""
@@ -20,6 +22,7 @@ import os
 import re
 import subprocess
 from collections import OrderedDict
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from google.protobuf import text_format
@@ -32,6 +35,15 @@ from paddle.static import Program
 
 from ..utils.fs import FS
 from .graphviz import GraphPreviewGenerator
+
+if TYPE_CHECKING:
+
+    from collections.abc import MutableSet
+
+    from paddle.base.framework import Block
+    from paddle.distributed.auto_parallel import Strategy
+    from paddle.distributed.fleet.base.role_maker import PaddleCloudRoleMaker
+
 
 __all__ = []
 
@@ -47,23 +59,28 @@ class UtilFactory:
 
 
 class UtilBase:
-    def __init__(self):
-        self.role_maker = None
-        self.dist_strategy = None
+    def __init__(self) -> None:
+        self.role_maker: None | PaddleCloudRoleMaker = None
+        self.dist_strategy: None | Strategy = None
 
-    def _set_strategy(self, dist_strategy):
+    def _set_strategy(self, dist_strategy: None | Strategy) -> None:
         self.dist_strategy = dist_strategy
 
-    def _set_role_maker(self, role_maker):
+    def _set_role_maker(self, role_maker: None | PaddleCloudRoleMaker) -> None:
         self.role_maker = role_maker
 
-    def _set_file_system(self, fs_client):
+    def _set_file_system(self, fs_client: FS) -> None:
         assert isinstance(
             fs_client, FS
         ), "fs_client must be the instance of paddle.distributed.fleet.utils.FS"
         self.fs_client = fs_client
 
-    def all_reduce(self, input, mode="sum", comm_world="worker"):
+    def all_reduce(
+        self,
+        input: list | tuple | np.array,
+        mode: str = "sum",
+        comm_world: str = "worker",
+    ) -> np.array | None:
         """
         All reduce `input` between specified collection. This is a distributed API.
 
@@ -113,7 +130,7 @@ class UtilBase:
             input = list(input)
         return self.role_maker._all_reduce(input, mode, comm_world)
 
-    def barrier(self, comm_world="worker"):
+    def barrier(self, comm_world: str = "worker") -> None:
         """
         Barrier between specified collection.
 
@@ -154,7 +171,9 @@ class UtilBase:
         """
         self.role_maker._barrier(comm_world)
 
-    def all_gather(self, input, comm_world="worker"):
+    def all_gather(
+        self, input: float, comm_world: str = "worker"
+    ) -> list[float]:
         """
         All gather `input` between specified collection.
 
@@ -202,13 +221,13 @@ class UtilBase:
 
         return self.role_maker._all_gather(input, comm_world)
 
-    def _broadcast(self):
+    def _broadcast(self) -> None:
         pass
 
-    def _scatter(self):
+    def _scatter(self) -> None:
         pass
 
-    def get_heter_file_shard(self, files):
+    def get_heter_file_shard(self, files: list[str]) -> list[list[str]]:
         if not isinstance(files, list):
             raise TypeError("files should be a list of file need to be read.")
         trainers = self.role_maker._worker_num()
@@ -228,7 +247,7 @@ class UtilBase:
 
         return trainer_files[trainer_id]
 
-    def get_file_shard(self, files):
+    def get_file_shard(self, files: list[str]) -> list[list[str]]:
         """
         Split files before distributed training, and return filelist assigned to the current trainer.
 
@@ -287,7 +306,7 @@ class UtilBase:
 
         return trainer_files[trainer_id]
 
-    def print_on_rank(self, message, rank_id):
+    def print_on_rank(self, message: str, rank_id: int) -> None:
         """
         Worker of rank `rank_id` print some message.
 
@@ -319,7 +338,12 @@ class UtilBase:
             return
         print(message)
 
-    def _save_program(self, program, model_filename='__model__', is_text=False):
+    def _save_program(
+        self,
+        program: Program,
+        model_filename: str = '__model__',
+        is_text: bool = False,
+    ) -> None:
         if is_text:
             with open(model_filename, "w") as f:
                 f.write(str(program))
@@ -327,14 +351,14 @@ class UtilBase:
             with open(model_filename, "wb") as f:
                 f.write(program.desc.serialize_to_string())
 
-    def _load_program(self, path, is_text):
-        def load_program_binary(path):
+    def _load_program(self, path: str, is_text: bool) -> Program:
+        def load_program_binary(path: str) -> Program:
             """load program from binary string file"""
             with open(path, "rb") as f:
                 program_desc_str = f.read()
             return Program.parse_from_string(program_desc_str)
 
-        def load_program_text(path):
+        def load_program_text(path: str) -> Program:
             """load program from human-readable text file"""
             with open(path, "r") as f:
                 program_desc_text = f.read()
@@ -348,7 +372,9 @@ class UtilBase:
         else:
             return load_program_binary(path)
 
-    def _program_type_trans(self, prog_dir, prog_fn, is_text):
+    def _program_type_trans(
+        self, prog_dir: str, prog_fn: str, is_text: bool
+    ) -> str:
         prog = self._load_program(os.path.join(prog_dir, prog_fn), is_text)
         prog_out_fn = prog_fn + ".bin" if is_text else prog_fn + ".pbtxt"
         self._save_program(
@@ -356,7 +382,9 @@ class UtilBase:
         )
         return prog_out_fn
 
-    def _visualize_graphviz(self, program, output_dir, output_filename):
+    def _visualize_graphviz(
+        self, program: Program, output_dir: str, output_filename: str
+    ) -> None:
         block = program.global_block()
         dot_path = os.path.join(output_dir, output_filename + '.dot')
         pdf_path = os.path.join(output_dir, output_filename + '.pdf')
@@ -370,7 +398,7 @@ class UtilBase:
         )
         p.wait()
 
-    def _proto_check(self, config):
+    def _proto_check(self, config: Any) -> bool:
         train_prog = self._load_program(
             config.train_prog_path, config.is_text_train_program
         )
@@ -418,9 +446,19 @@ class UtilBase:
                 is_match = False
         return is_match
 
-    def _params_check(self, config):
-        def feed_gen(batch_size, feeded_vars_dims, feeded_vars_filelist):
-            def reader(batch_size, fn, dim):
+    def _params_check(
+        self, config: Any
+    ) -> list | list[np.array[Any]] | Literal[False]:
+        def feed_gen(
+            batch_size: int,
+            feeded_vars_dims: list[int],
+            feeded_vars_filelist: list[str],
+        ) -> list[list[np.array[list[float]]]]:
+            def reader(
+                batch_size: int,
+                fn: str,
+                dim: list[float] | tuple[float] | float,
+            ) -> list[np.array[list[float]]]:
                 data = []
                 if isinstance(dim, (list, tuple)):
                     shape = list(dim)
@@ -466,7 +504,9 @@ class UtilBase:
             f"persistable vars in dump program: {[v.name for v in saved_params]}"
         )
 
-        def check_not_expected_ops(prog, not_expected_op_types):
+        def check_not_expected_ops(
+            prog: Program, not_expected_op_types: list
+        ) -> MutableSet:
             op_types_set = set()
             for op in prog.global_block().ops:
                 if (
@@ -673,7 +713,9 @@ class UtilBase:
             return results
 
 
-def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
+def draw_block_graphviz(
+    block: Block, highlights: list[str] | None = None, path: str = "./temp.dot"
+) -> None:
     '''
     Generate a debug graph for block.
     Args:
@@ -684,7 +726,7 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
     protostr = block.desc.serialize_to_string()
     desc = framework_pb2.BlockDesc.FromString(bytes(protostr))
 
-    def need_highlight(name):
+    def need_highlight(name: str) -> bool:
         if highlights is None:
             return False
         for pattern in highlights:
