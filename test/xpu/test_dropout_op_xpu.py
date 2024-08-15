@@ -218,9 +218,15 @@ class XPUTestDropoutOp(XPUOpTestWrapper):
                     )
                     out.backward()
 
+                    # The reason for increasing the diff here is that under the bf16 format with the 0x8000 rounding scheme,
+                    # the out.grad is generated as all 1.0 by default, and input.grad = out.grad * mask = mask,
+                    # where the values in the mask are either 1.0 or 0.0. In the bf16 format, when calculating 1.0 * 1.0,
+                    # the result becomes slightly larger than 1.0, specifically 1.0078277587890625, due to the 0x8000 rounding
+                    # when converting to fp32. After truncation, the optput is represented as 1.0078125  under the bf16 format.
                     np.testing.assert_allclose(
                         input.gradient(),
                         self.cal_grad_downscale_in_infer(mask.numpy()),
+                        rtol=0.01,
                     )
 
         def test_backward_upscale_train(self):
