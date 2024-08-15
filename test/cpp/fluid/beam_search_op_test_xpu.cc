@@ -154,8 +154,7 @@ void TestBeamSearch() {
   delete context;
 }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_XPU)
 template <>
 void TestBeamSearch<phi::XPUContext, phi::XPUPlace>() {
   phi::DenseTensor ids;
@@ -240,7 +239,6 @@ void TestBeamSearch<phi::XPUContext, phi::XPUPlace>() {
 
 TEST(BeamSearch, CPU) { TestBeamSearch<phi::CPUContext, phi::CPUPlace>(); }
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_XPU)
+#if defined(PADDLE_WITH_XPU)
 TEST(BeamSearch, XPU) { TestBeamSearch<phi::XPUContext, phi::XPUPlace>(); }
 #endif
