@@ -22,6 +22,7 @@ from numpy import fft
 from numpy.lib.stride_tricks import as_strided
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 paddle.set_default_dtype('float64')
 
@@ -694,6 +695,7 @@ class TestFrame(unittest.TestCase):
         ('test_3d_input2', rand_x(3, np.float64, shape=[4, 2, 150]), 50, 15, -1),
     ])  # fmt: skip
 class TestFrameStatic(unittest.TestCase):
+    @test_with_pir_api
     def test_frame_static(self):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()
@@ -776,6 +778,7 @@ class TestOverlapAdd(unittest.TestCase):
         ('test_4d_input2', rand_x(4, np.float64, shape=[3, 5, 12, 8]), 5, -1),
     ])  # fmt: skip
 class TestOverlapAddStatic(unittest.TestCase):
+    @test_with_pir_api
     def test_overlap_add_static(self):
         paddle.enable_static()
         mp, sp = paddle.static.Program(), paddle.static.Program()

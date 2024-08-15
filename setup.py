@@ -1023,9 +1023,9 @@ def get_paddle_extra_install_requirements():
             output = subprocess.check_output(['nvcc', '--version']).decode(
                 'utf-8'
             )
-            version_line = [
+            version_line = next(
                 line for line in output.split('\n') if 'release' in line
-            ][0]
+            )
             version = version_line.split(' ')[-1].split(',')[0]
             cuda_major_version = version.split('.')[0]
         except Exception as e:
@@ -1398,15 +1398,18 @@ def get_package_data_and_package_dir():
         ext_modules = []
 
     # type hints
-    package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
-    package_data['paddle.framework'] = package_data.get(
-        'paddle.framework', []
-    ) + ['*.pyi']
-    package_data['paddle.base'] = package_data.get('paddle.base', []) + [
-        '*.pyi'
+    package_data['paddle'] = [*package_data.get('paddle', []), 'py.typed']
+    package_data['paddle.framework'] = [
+        *package_data.get('paddle.framework', []),
+        '*.pyi',
     ]
-    package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
-        'tensor.pyi'
+    package_data['paddle.base'] = [
+        *package_data.get('paddle.base', []),
+        '*.pyi',
+    ]
+    package_data['paddle.tensor'] = [
+        *package_data.get('paddle.tensor', []),
+        'tensor.pyi',
     ]
 
     return package_data, package_dir, ext_modules

@@ -658,8 +658,9 @@ class ImperativeQuantizeOutputs:
 
         def _gather_input_scale():
             target_ops = []
-            skip_ops = utils.fake_quantize_dequantize_op_types + [
-                "moving_average_abs_max_scale"
+            skip_ops = [
+                *utils.fake_quantize_dequantize_op_types,
+                "moving_average_abs_max_scale",
             ]
             for block in program.blocks:
                 for op in block.ops:

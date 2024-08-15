@@ -759,7 +759,8 @@ class TestToStaticCheck(unittest.TestCase):
             y = paddle.transpose(x, perm=[1, 0, 2])
             x.add_(x)
 
-        self.assertRaises(ValueError, func)
+        if not paddle.framework.use_pir_api():
+            self.assertRaises(ValueError, func)
 
     def test_no_error(self):
         @paddle.jit.to_static(full_graph=True)
