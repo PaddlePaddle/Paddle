@@ -862,6 +862,7 @@ bool MatrixNmsOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &box_dims = bboxes_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &score_dims = scores_shape_or_data.shape();
   const size_t score_size = score_dims.size();
+  int keep_top_k = op->attribute<pir::Int64Attribute>("keep_top_k").data();
 
   PADDLE_ENFORCE_EQ(
       score_size,
@@ -878,7 +879,8 @@ bool MatrixNmsOpInferSymbolicShape(
   infer_context->AddEqualCstr(box_dims[2], symbol::DimExpr(4));
   infer_context->AddEqualCstr(box_dims[1], score_dims[2]);
 
-  std::vector<symbol::DimExpr> out_dims = {box_dims[1], box_dims[2] + 2};
+  std::vector<symbol::DimExpr> out_dims = {box_dims[0] * keep_top_k,
+                                           box_dims[2] + 2};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
