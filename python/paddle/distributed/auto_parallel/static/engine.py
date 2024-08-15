@@ -62,7 +62,6 @@ from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
-    complete_chunk_id,
     complete_op_role,
     pipeline_pass,
     remove_other_rank_input_output_pass,
@@ -693,12 +692,6 @@ class Engine:
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
 
-        if (
-            self._strategy.pipeline.enable
-            and self._strategy.pipeline.schedule_mode == "VPP"
-        ):
-            complete_chunk_id(dist_program, self._strategy.pipeline)
-
         # Step 1.2: pir backward
         last_forward_op = dist_program.global_block().ops[-1]
         if mode == "train" and self._loss and self._optimizer:
@@ -823,7 +816,8 @@ class Engine:
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
-        apply_partition_pass(dist_program)
+
+        apply_partition_pass(dist_program, self._strategy.pipeline)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
@@ -890,6 +884,7 @@ class Engine:
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
+        print("here", dist_program)
         dense_program = dist_program.clone()
         paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_program)
         remove_unuseful_comm_op_pass(dense_program)

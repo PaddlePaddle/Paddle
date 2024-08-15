@@ -50,6 +50,7 @@ class SameStatusReshardFunction(ReshardFunction):
         for src, dst in zip(src_mesh.process_ids, dst_mesh.process_ids):
             if src == cur_global_rank:
                 dst_local_rank = all_process_ids.index(dst)
+                chunk_id = src_value.get_defining_op().dist_attr.chunk_id
                 paddle._C_ops.send_v2(
                     src_value,
                     comm_group.id,
@@ -63,12 +64,37 @@ class SameStatusReshardFunction(ReshardFunction):
                 assert new_op.name() == "pd_op.send_v2"
                 new_op.dist_attr = (
                     paddle.base.libpaddle.pir.create_op_dist_attribute(
-                        src_mesh, [src_dist_attr], []
+                        src_mesh, [src_dist_attr], [], chunk_id
                     )
                 )
                 break
 
             elif dst == cur_global_rank:
+                # infer the chunk_id of the recv op
+                use_src_value_ops = src_value.all_used_ops()
+                while (
+                    len(use_src_value_ops) == 1
+                    and use_src_value_ops[0].name() == "dist_op.reshard"
+                ):
+                    use_src_value_ops = (
+                        use_src_value_ops[0].result(0).all_used_ops()
+                    )
+                chunk_id = -1
+                for op in use_src_value_ops:
+                    if op.dist_attr.chunk_id != -1:
+                        chunk_id = op.dist_attr.chunk_id
+                        break
+                if chunk_id == -1:
+                    print("warning chunk_id is -1")
+                    print(
+                        "src op:",
+                        src_value.get_defining_op().name(),
+                        src_value.get_defining_op().op_role,
+                        src_value.get_defining_op().dist_attr.chunk_id,
+                    )
+                    for op in use_src_value_ops:
+                        print(op.name(), op.op_role, op.dist_attr.chunk_id)
+
                 src_local_rank = all_process_ids.index(src)
                 assert (
                     -1 not in dst_type.shape
@@ -84,7 +110,10 @@ class SameStatusReshardFunction(ReshardFunction):
                 new_op = recv_value.get_defining_op()
                 new_op.dist_attr = (
                     paddle.base.libpaddle.pir.create_op_dist_attribute(
-                        dst_mesh, [], [dst_dist_attr]
+                        dst_mesh,
+                        [],
+                        [dst_dist_attr],
+                        src_value.get_defining_op().dist_attr.chunk_id,
                     )
                 )
                 recv_value.set_type(dst_type)

@@ -1047,6 +1047,7 @@ class Completer:
         self._complete_with_global_mesh(serial_main_program, tensor_names, ops)
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
+        print(serial_main_program)
         self._complete_chunk_id(serial_main_program)
         # Do the validation check and amend some completion
         self._dist_context.amend_dist_attr_for_program()

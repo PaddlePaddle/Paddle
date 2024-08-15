@@ -1033,6 +1033,18 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
         if bwd_op.result(0).use_empty():
             remove_op(block, bwd_op, state)
     state.turn_map()
+
+    # set struct name for grad ops
+    for op in block.ops:
+        if op in state.opgrad_to_op:
+            forward_op = state.opgrad_to_op[op][0]
+            struct_name = (
+                forward_op.attrs()["struct_name"]
+                if forward_op.has_attr("struct_name")
+                else "/"
+            )
+            op.set_str_attr("struct_name", struct_name)
+
     input_grad_map = state.value_to_valuegrad
 
     return input_grad_map

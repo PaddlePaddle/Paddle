@@ -59,6 +59,9 @@ void BindOperationDistAttribute(py::module *m) {
                              [](OperationDistAttribute &self) {
                                return self.process_mesh_attr().process_mesh();
                              })
+      .def_property_readonly(
+          "chunk_id",
+          [](OperationDistAttribute &self) { return self.chunk_id(); })
       .def("num_operands", &OperationDistAttribute::num_operands)
       .def("operands", &OperationDistAttribute::operands)
       .def("operand", &OperationDistAttribute::operand)
@@ -122,14 +125,21 @@ TensorDistAttribute CreateTensorDistAttribute(
 OperationDistAttribute CreateOperationDistAttribute(
     const phi::distributed::ProcessMesh &mesh,
     const std::vector<pir::Attribute> &operands,
-    const std::vector<pir::Attribute> &results) {
+    const std::vector<pir::Attribute> &results,
+    const int64_t &chunk_id) {
   return OperationDistAttribute::get(
-      pir::IrContext::Instance(), mesh, operands, results);
+      pir::IrContext::Instance(), mesh, operands, results, chunk_id);
 }
 
 void BindDistUtils(pybind11::module *m) {
   m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
   m->def("create_op_dist_attribute", CreateOperationDistAttribute);
+  m->def("create_op_dist_attribute",
+         &CreateOperationDistAttribute,
+         py::arg("mesh"),
+         py::arg("operands"),
+         py::arg("results"),
+         py::arg("chunk_id") = -1);
   m->def("get_sub_meshes", phi::distributed::GetSubMeshes);
   m->def("cvt_to_dist_type", &dialect::CvtToPirDistType);
 }

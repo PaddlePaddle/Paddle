@@ -113,6 +113,7 @@ void DistDialect::PrintAttribute(pir::Attribute attr, std::ostream &os) const {
       os << ",result(" + std::to_string(i) + "):{" << op_dist_attr.result(i)
          << "}";
     }
+    os << ",chunk_id:" << op_dist_attr.chunk_id();
     os << "}";
   } else {
     os << "error_attribute_type";
