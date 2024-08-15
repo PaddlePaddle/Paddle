@@ -250,6 +250,7 @@
   kernel :
     func : apply_per_channel_scale
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
