@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle import _C_ops
@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 
+@overload
 def fused_layer_norm(
     x: Tensor,
     norm_weight: Tensor,
