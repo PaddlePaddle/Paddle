@@ -277,7 +277,7 @@ class CodeGen:
         for name in op_names:
             if name.endswith(('_grad', '_grad_')):
                 return False
-        if output_name in op_info.input_optional_list:
+        if output_name in op_info.output_optional_list:
             return True
         inplace_map = op_info.inplace_map
         input_optional_list = op_info.input_optional_list
