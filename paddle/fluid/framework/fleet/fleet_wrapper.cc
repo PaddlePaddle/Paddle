@@ -176,7 +176,7 @@ void FleetWrapper::HeterPullSparseVars(
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The tensor for variable '%s' is null. "
             "Ensure that the tensor is properly initialized before use.",
             name.c_str()));
@@ -263,7 +263,7 @@ void FleetWrapper::HeterPushSparseVars(
 
   PADDLE_ENFORCE_GE(grad_dim,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The gradient dimension (grad_dim) must be greater "
                         "than or equal to 0, but got %d.",
                         grad_dim));
@@ -319,7 +319,7 @@ void FleetWrapper::HeterPushSparseVars(
       sparse_push_keys.push_back(ids[id_idx]);
       PADDLE_ENFORCE_LT(fea_idx,
                         push_values.size(),
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The feature index (fea_idx) must be less than the "
                             "size of push_values. "
                             "Received fea_idx: %d, push_values size: %zu.",
@@ -333,7 +333,7 @@ void FleetWrapper::HeterPushSparseVars(
       } else {
         PADDLE_ENFORCE_LT(fea_idx,
                           fea_labels.size(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The feature index (fea_idx) must be less than "
                               "the size of fea_labels. "
                               "Received fea_idx: %d, fea_labels size: %zu.",
@@ -379,7 +379,7 @@ void FleetWrapper::HeterPushSparseVars(
   PADDLE_ENFORCE_EQ(
       fea_idx + no_grad_fea_num,
       fea_keys.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The sum of fea_idx and no_grad_fea_num must be equal to the size of "
           "fea_keys. "
           "Received fea_idx: %d, no_grad_fea_num: %d, fea_keys size: %zu.",
@@ -390,7 +390,7 @@ void FleetWrapper::HeterPushSparseVars(
   PADDLE_ENFORCE_EQ(
       fea_idx,
       sparse_push_keys.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The fea_idx must be equal to the size of sparse_push_keys. "
           "Received fea_idx: %d, sparse_push_keys size: %zu.",
           fea_idx,
@@ -491,7 +491,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The tensor for variable '%s' is null. Please ensure the tensor is "
             "properly initialized before use.",
             name.c_str()));
@@ -561,7 +561,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The tensor for variable '%s' is null. Please ensure the tensor is "
             "properly initialized before use.",
             name.c_str()));
@@ -612,7 +612,7 @@ void FleetWrapper::PullSparseVarsSync(
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The tensor for variable '%s' is null. Please ensure the tensor is "
             "properly initialized before use.",
             name.c_str()));
@@ -704,7 +704,7 @@ void FleetWrapper::PullSparseToTensorSync(
         PADDLE_ENFORCE_LT(
             output_index,
             outputs->size(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The output index must be less than the size of outputs. "
                 "Received output_index: %d, outputs size: %zu.",
                 output_index,
@@ -714,7 +714,7 @@ void FleetWrapper::PullSparseToTensorSync(
         output_len = 0;
         PADDLE_ENFORCE_EQ(output->numel() % fea_dim,
                           0,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The number of elements in the output must be "
                               "divisible by fea_dim. "
                               "Received output numel: %d, fea_dim: %d.",
@@ -722,7 +722,7 @@ void FleetWrapper::PullSparseToTensorSync(
                               fea_dim));  // NOLINT
         PADDLE_ENFORCE_NOT_NULL(
             output_data,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The output data pointer is null."));  // NOLINT
       }
 
@@ -846,7 +846,7 @@ void FleetWrapper::PushDenseParamSync(
     Variable* var = scope.FindVar(t);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Variable 'var' with identifier [%s] not found. Please ensure the "
             "variable is correctly initialized.",
             t.c_str()));
@@ -863,7 +863,7 @@ void FleetWrapper::PushDenseParamSync(
   PADDLE_ENFORCE_EQ(
       status,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Pushing dense parameter failed. Received status: %d. Please check "
           "the status and ensure the operation is successful.",
           status));
@@ -1065,14 +1065,14 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     show_index = 1;
     click_index = 2;
   }
-  PADDLE_ENFORCE_GE(
-      grad_dim,
-      0,
-      phi::errors::InvalidArgument("The gradient dimension (grad_dim) must be "
-                                   "greater than or equal to 0. "
-                                   "Received grad_dim: %d. Please ensure that "
-                                   "the gradient dimension is valid.",
-                                   grad_dim));
+  PADDLE_ENFORCE_GE(grad_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The gradient dimension (grad_dim) must be "
+                        "greater than or equal to 0. "
+                        "Received grad_dim: %d. Please ensure that "
+                        "the gradient dimension is valid.",
+                        grad_dim));
 
   sparse_push_keys->clear();
   sparse_push_keys->reserve(fea_keys.size() + 1);
@@ -1138,7 +1138,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       PADDLE_ENFORCE_LT(
           fea_idx,
           (*push_values).size(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Feature index (fea_idx) must be less than the size of "
               "push_values. "
               "Received fea_idx: %d, push_values size: %zu. Please ensure the "
@@ -1154,7 +1154,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         PADDLE_ENFORCE_LT(
             fea_idx,
             fea_labels.size(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "Feature index (fea_idx) must be less than the size of "
                 "fea_labels. "
                 "Received fea_idx: %d, fea_labels size: %zu. Please ensure the "
@@ -1201,7 +1201,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   PADDLE_ENFORCE_EQ(
       fea_idx + no_grad_fea_num,
       fea_keys.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The sum of feature index (fea_idx) and no_grad_fea_num must be "
           "equal to the size of fea_keys. "
           "Received fea_idx: %d, no_grad_fea_num: %d, fea_keys size: %zu.",
@@ -1211,7 +1211,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 
   PADDLE_ENFORCE_EQ(fea_idx,
                     sparse_push_keys->size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The feature index (fea_idx) must be equal to the size "
                         "of sparse_push_keys. "
                         "Received fea_idx: %d, sparse_push_keys size: %zu.",
@@ -1270,14 +1270,14 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     slot_offset = 0;
     grad_dim = fea_dim;
   }
-  PADDLE_ENFORCE_GE(
-      grad_dim,
-      0,
-      phi::errors::InvalidArgument("The gradient dimension (grad_dim) must be "
-                                   "greater than or equal to 0. "
-                                   "Received grad_dim: %d. Please ensure that "
-                                   "the gradient dimension is valid.",
-                                   grad_dim));
+  PADDLE_ENFORCE_GE(grad_dim,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The gradient dimension (grad_dim) must be "
+                        "greater than or equal to 0. "
+                        "Received grad_dim: %d. Please ensure that "
+                        "the gradient dimension is valid.",
+                        grad_dim));
 
   int batch_size = -1;
   for (auto* input : *inputs) {
@@ -1288,7 +1288,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     } else {
       PADDLE_ENFORCE_EQ(batch_size,
                         cur_batch_size,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The batch size (batch_size) must be equal to the "
                             "current batch size (cur_batch_size). "
                             "Received batch_size: %d, cur_batch_size: %d. "
@@ -1300,7 +1300,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   }
   PADDLE_ENFORCE_GT(batch_size,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The batch size (batch_size) must be greater than 0. "
                         "Received batch_size: %d. Please ensure that the batch "
                         "size is valid.",
@@ -1329,14 +1329,14 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   if (click_name != "") {
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::InvalidArgument("The variable (var) is null when "
-                                     "click_name is not an empty string."));
+        common::errors::InvalidArgument("The variable (var) is null when "
+                                        "click_name is not an empty string."));
 
     phi::DenseTensor* label_tensor = var->GetMutable<phi::DenseTensor>();
-    PADDLE_ENFORCE_NOT_NULL(
-        label_tensor,
-        phi::errors::InvalidArgument("The label tensor is null when attempting "
-                                     "to get mutable DenseTensor from var."));
+    PADDLE_ENFORCE_NOT_NULL(label_tensor,
+                            common::errors::InvalidArgument(
+                                "The label tensor is null when attempting "
+                                "to get mutable DenseTensor from var."));
 
     int64_t* label_ptr = label_tensor->data<int64_t>();
 
@@ -1396,7 +1396,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   PADDLE_ENFORCE_EQ(
       output_len,
       g.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The output length (output_len) must be equal to the size of g. "
           "Received output_len: %d, g.size(): %d.",
           output_len,
@@ -1406,7 +1406,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     PADDLE_ENFORCE_EQ(
         input_idx,
         global_idx,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input index (input_idx) must be equal to the global index "
             "(global_idx) when click_name is not an empty string. "
             "Received input_idx: %d, global_idx: %d.",
@@ -1490,7 +1490,8 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope,
     Variable* var = scope.FindVar(t);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound("Variable (var) is null. var[%s] not found.", t));
+        common::errors::NotFound("Variable (var) is null. var[%s] not found.",
+                                 t));
 
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
     float* data = tensor->data<float>();
@@ -1807,8 +1808,8 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
       Variable* var = scope->FindVar(name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          phi::errors::NotFound("Variable (var) is null. var[%s] not found.",
-                                name));
+          common::errors::NotFound("Variable (var) is null. var[%s] not found.",
+                                   name));
 
       VLOG(0) << "prepare shrink dense batch_sum";
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
@@ -1821,8 +1822,8 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
       Variable* var_size = scope->FindVar(size_name);
       PADDLE_ENFORCE_NOT_NULL(
           var_size,
-          phi::errors::NotFound("Variable size is null. var[%s] not found.",
-                                size_name));
+          common::errors::NotFound("Variable size is null. var[%s] not found.",
+                                   size_name));
 
       VLOG(3) << "shrink dense batch_sum: " << name << ", " << size_name;
       float* g_size = var_size->GetMutable<phi::DenseTensor>()->data<float>();
@@ -1836,8 +1837,8 @@ void FleetWrapper::ShrinkDenseTable(int table_id,
       Variable* var = scope->FindVar(name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          phi::errors::NotFound("Variable (var) is null. var[%s] not found.",
-                                name));
+          common::errors::NotFound("Variable (var) is null. var[%s] not found.",
+                                   name));
 
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       float* g = tensor->data<float>();

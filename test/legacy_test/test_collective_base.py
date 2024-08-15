@@ -263,7 +263,6 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1",
-            "FLAGS_dynamic_static_unified_comm": "1",
             "DTYPE": "float32",
         }
         required_envs.update(need_envs)

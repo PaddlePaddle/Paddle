@@ -29,7 +29,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "paddle/fluid/platform/resource_pool.h"
+#include "paddle/phi/core/platform/resource_pool.h"
 
 namespace paddle {
 namespace platform {

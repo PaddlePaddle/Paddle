@@ -13,10 +13,8 @@
 // limitations under the License.
 
 #include "paddle/cinn/runtime/hip/hip_backend_api.h"
-#include <glog/logging.h>
-#include <hip/hip_runtime.h>
+
 #include "paddle/cinn/runtime/hip/hip_util.h"
-#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
@@ -28,12 +26,12 @@ HIPBackendAPI* HIPBackendAPI::Global() {
 }
 
 void HIPBackendAPI::set_device(int device_id) {
-  HIP_CALL(hipSetDevice(device_id));
+  HIP_CHECK(hipSetDevice(device_id));
 }
 
 int HIPBackendAPI::get_device() {
   int device_id = 0;
-  HIP_CALL(hipGetDevice(&device_id));
+  HIP_CHECK(hipGetDevice(&device_id));
   return device_id;
 }
 
@@ -43,78 +41,78 @@ int HIPBackendAPI::get_device_property(DeviceProperty device_property,
   int rv = -1;
   switch (device_property) {
     case DeviceProperty::MaxBlockDimX: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv,
           hipDeviceAttribute_t::hipDeviceAttributeMaxBlockDimX,
           dev_index));
       break;
     }
     case DeviceProperty::MaxBlockDimY: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv,
           hipDeviceAttribute_t::hipDeviceAttributeMaxBlockDimY,
           dev_index));
       break;
     }
     case DeviceProperty::MaxBlockDimZ: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv,
           hipDeviceAttribute_t::hipDeviceAttributeMaxBlockDimZ,
           dev_index));
       break;
     }
     case DeviceProperty::MaxGridDimX: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv, hipDeviceAttribute_t::hipDeviceAttributeMaxGridDimX, dev_index));
       break;
     }
     case DeviceProperty::MaxGridDimY: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv, hipDeviceAttribute_t::hipDeviceAttributeMaxGridDimY, dev_index));
       break;
     }
     case DeviceProperty::MaxGridDimZ: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv, hipDeviceAttribute_t::hipDeviceAttributeMaxGridDimZ, dev_index));
       break;
     }
     case DeviceProperty::MaxSharedMemoryPerBlock: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv,
           hipDeviceAttribute_t::hipDeviceAttributeMaxSharedMemoryPerBlock,
           dev_index));
       break;
     }
     case DeviceProperty::MaxThreadsPerBlock: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv,
           hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerBlock,
           dev_index));
       break;
     }
     case DeviceProperty::MaxThreadsPerSM: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv,
           hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerMultiProcessor,
           dev_index));
       break;
     }
     case DeviceProperty::MultiProcessorCount: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv,
           hipDeviceAttribute_t::hipDeviceAttributeMultiprocessorCount,
           dev_index));
       break;
     }
     case DeviceProperty::MaxBlocksPerSM: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv,
           hipDeviceAttribute_t::hipDeviceAttributeMaxThreadsPerMultiProcessor,
           dev_index));
       break;
     }
     case DeviceProperty::WarpSize: {
-      HIP_CALL(hipDeviceGetAttribute(
+      HIP_CHECK(hipDeviceGetAttribute(
           &rv, hipDeviceAttribute_t::hipDeviceAttributeWarpSize, dev_index));
       break;
     }
@@ -127,14 +125,14 @@ int HIPBackendAPI::get_device_property(DeviceProperty device_property,
 
 void* HIPBackendAPI::malloc(size_t numBytes) {
   void* dev_mem = nullptr;
-  HIP_CALL(hipMalloc(&dev_mem, numBytes));
+  HIP_CHECK(hipMalloc(&dev_mem, numBytes));
   return dev_mem;
 }
 
-void HIPBackendAPI::free(void* data) { HIP_CALL(hipFree(data)); }
+void HIPBackendAPI::free(void* data) { HIP_CHECK(hipFree(data)); }
 
 void HIPBackendAPI::memset(void* data, int value, size_t numBytes) {
-  HIP_CALL(hipMemset(data, value, numBytes));
+  HIP_CHECK(hipMemset(data, value, numBytes));
 }
 
 void HIPBackendAPI::memcpy(void* dest,
@@ -156,13 +154,34 @@ void HIPBackendAPI::memcpy(void* dest,
       copy_kind = hipMemcpyDeviceToDevice;
       break;
   }
-  HIP_CALL(hipMemcpy(dest, src, numBytes, copy_kind));
+  HIP_CHECK(hipMemcpy(dest, src, numBytes, copy_kind));
 }
 
-void HIPBackendAPI::device_sync() { HIP_CALL(hipDeviceSynchronize()); }
+void HIPBackendAPI::device_sync() { HIP_CHECK(hipDeviceSynchronize()); }
 
 void HIPBackendAPI::stream_sync(void* stream) {
-  HIP_CALL(hipStreamSynchronize(static_cast<hipStream_t>(stream)));
+  HIP_CHECK(hipStreamSynchronize(static_cast<hipStream_t>(stream)));
+}
+
+std::array<int, 3> HIPBackendAPI::get_max_grid_dims(
+    std::optional<int> device_id) {
+  std::array<int, 3> kMaxGridDims;
+  kMaxGridDims[0] = get_device_property(DeviceProperty::MaxGridDimX, device_id);
+  kMaxGridDims[1] = get_device_property(DeviceProperty::MaxGridDimY, device_id);
+  kMaxGridDims[2] = get_device_property(DeviceProperty::MaxGridDimZ, device_id);
+  return kMaxGridDims;
+}
+
+std::array<int, 3> HIPBackendAPI::get_max_block_dims(
+    std::optional<int> device_id) {
+  std::array<int, 3> kMaxBlockDims;
+  kMaxBlockDims[0] =
+      get_device_property(DeviceProperty::MaxBlockDimX, device_id);
+  kMaxBlockDims[1] =
+      get_device_property(DeviceProperty::MaxBlockDimY, device_id);
+  kMaxBlockDims[2] =
+      get_device_property(DeviceProperty::MaxBlockDimZ, device_id);
+  return kMaxBlockDims;
 }
 
 }  // namespace hip

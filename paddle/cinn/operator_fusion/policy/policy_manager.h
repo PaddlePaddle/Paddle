@@ -37,7 +37,8 @@ class PolicyManager {
     auto key = POLICY::Kind;
     PADDLE_ENFORCE_NE(policies.find(key),
                       policies.end(),
-                      phi::errors::NotFound("Policy %d Not Found", key));
+                      ::common::errors::NotFound(
+                          "Can not find Policy %d, please set it.", key));
     return std::static_pointer_cast<POLICY>(policies.at(key));
   }
 

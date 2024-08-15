@@ -69,8 +69,8 @@ void SetValueName(pir::Value value, const std::string name) {
     define_op->set_attribute(
         "name", pir::StrAttribute::get(pir::IrContext::Instance(), name));
   } else if (auto block_arg = value.dyn_cast<pir::BlockArgument>()) {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("Can Not set name for BlockArgument! "));
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Can Not set name for BlockArgument! "));
   } else if (value.first_use()) {
     auto nextOp = value.first_use().owner();
     if (nextOp->isa<::pir::ShadowOutputOp>()) {
@@ -78,12 +78,12 @@ void SetValueName(pir::Value value, const std::string name) {
           "output_name",
           pir::StrAttribute::get(pir::IrContext::Instance(), name));
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Currently, we can only set name of Value which is "
           "shadowoutput "));
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently, we can only set name of Value that "
         "is persistable"));
   }
@@ -256,7 +256,7 @@ std::string GetValueFirstName(pir::Value value) {
   auto name = TryGetValueFirstName(value);
 
   PADDLE_ENFORCE(name.has_value(),
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "Currently, we can only get name of Value from "
                      "DataOp/ParameterOp/BlockArgument/ConstantTensorOp/"
                      "SetParameterOp and ShadowOutputOp."));

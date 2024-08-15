@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 namespace paddle::distributed {
 

@@ -139,37 +139,37 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
     PADDLE_ENFORCE_NE(
         args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input argument of %s compute is empty! Please check.",
             op_name));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(
         pack_args.size(),
         2U,
-        phi::errors::InvalidArgument("2 input tensors for compute\n"));
+        ::common::errors::InvalidArgument("2 input tensors for compute\n"));
     Expr x = pack_args[0];
     Expr index = pack_args[1];
     PADDLE_ENFORCE_NOT_NULL(x.as_tensor(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "Required x must be a tensor. Please check."));
     PADDLE_ENFORCE_NOT_NULL(
         index.as_tensor(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Required index must be a tensor. Please check."));
     PADDLE_ENFORCE_NE(
         output_shapes.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The output shape of gather_nd is empty! Please check."));
     auto tensor_x = x.as_tensor_ref();
     auto tensor_index = index.as_tensor_ref();
     VLOG(3) << "x shape: " << utils::Join(tensor_x->shape, ", ")
             << ", index shape: " << utils::Join(tensor_index->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    PADDLE_ENFORCE_EQ(
-        pack_args.size(),
-        3U,
-        phi::errors::InvalidArgument("The size of pack_args should be 3\n"));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      3U,
+                      ::common::errors::InvalidArgument(
+                          "The size of pack_args should be 3\n"));
     std::string tensor_name = pack_args[2].operator std::string();
     ir::Tensor out = GatherNd(tensor_x, tensor_index, tensor_name);
     std::vector<CINNValue> res;
@@ -177,7 +177,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNd(
     PADDLE_ENFORCE_NE(
         out_type.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The output type of gather_nd is empty! Please check."));
     *ret = CINNValuePack{res};
   });
@@ -248,37 +248,37 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
     PADDLE_ENFORCE_NE(
         args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input argument of %s compute is empty! Please check.",
             op_name));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(
         pack_args.size(),
         2U,
-        phi::errors::InvalidArgument("2 input tensors for compute\n"));
+        ::common::errors::InvalidArgument("2 input tensors for compute\n"));
     Expr x = pack_args[0];
     Expr index = pack_args[1];
     PADDLE_ENFORCE_NOT_NULL(x.as_tensor(),
-                            phi::errors::InvalidArgument(
+                            ::common::errors::InvalidArgument(
                                 "Required x must be a tensor. Please check."));
     PADDLE_ENFORCE_NOT_NULL(
         index.as_tensor(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Required index must be a tensor. Please check."));
     PADDLE_ENFORCE_NE(
         output_shapes.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The output shape of gather_nd is empty! Please check."));
     auto tensor_x = x.as_tensor_ref();
     auto tensor_index = index.as_tensor_ref();
     VLOG(3) << "x shape: " << utils::Join(tensor_x->shape, ", ")
             << ", index shape: " << utils::Join(tensor_index->shape, ", ")
             << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
-    PADDLE_ENFORCE_EQ(
-        pack_args.size(),
-        3U,
-        phi::errors::InvalidArgument("The size of pack_args should be 3\n"));
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      3U,
+                      ::common::errors::InvalidArgument(
+                          "The size of pack_args should be 3\n"));
     std::string tensor_name = pack_args[2].operator std::string();
     ir::Tensor out = GatherNdSymbolic(tensor_x, tensor_index, tensor_name);
     std::vector<CINNValue> res;
@@ -286,7 +286,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForGatherNdSymbolic(
     PADDLE_ENFORCE_NE(
         out_type.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The output type of gather_nd is empty! Please check."));
     *ret = CINNValuePack{res};
   });

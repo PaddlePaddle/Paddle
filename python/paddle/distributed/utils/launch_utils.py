@@ -466,14 +466,14 @@ def start_local_trainers(
 
         logger.debug(f"trainer proc env:{current_env}")
 
-        cmd = [sys.executable, "-u", training_script] + training_script_args
+        cmd = [sys.executable, "-u", training_script, *training_script_args]
 
         logger.info(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = None
         if log_dir is not None:
             os.makedirs(log_dir, exist_ok=True)
-            fn = open("%s/workerlog.%d" % (log_dir, t.rank), "a")
+            fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)

@@ -65,13 +65,17 @@ class SequenceMaskTestBase(OpTest):
 
     def calc_ground_truth_mask(self):
         maxlen = np.max(self.x) if self.maxlen < 0 else self.maxlen
-        shape = self.x.shape + (maxlen,)
+        shape = (*self.x.shape, maxlen)
         index_broadcast = np.broadcast_to(
             np.reshape(range(maxlen), newshape=[1] * self.x.ndim + [-1]),
             shape=shape,
         )
         x_broadcast = np.broadcast_to(
-            np.reshape(self.x, newshape=self.x.shape + (-1,)), shape=shape
+            np.reshape(
+                self.x,
+                newshape=(*self.x.shape, -1),
+            ),
+            shape=shape,
         )
         return (index_broadcast < x_broadcast).astype(self.mask_dtype)
 
@@ -135,13 +139,17 @@ class SequenceMaskTestBase_tensor_attr(OpTest):
 
     def calc_ground_truth_mask(self):
         maxlen = np.max(self.x) if self.maxlen < 0 else self.maxlen
-        shape = self.x.shape + (maxlen,)
+        shape = (*self.x.shape, maxlen)
         index_broadcast = np.broadcast_to(
             np.reshape(range(maxlen), newshape=[1] * self.x.ndim + [-1]),
             shape=shape,
         )
         x_broadcast = np.broadcast_to(
-            np.reshape(self.x, newshape=self.x.shape + (-1,)), shape=shape
+            np.reshape(
+                self.x,
+                newshape=(*self.x.shape, -1),
+            ),
+            shape=shape,
         )
         return (index_broadcast < x_broadcast).astype(self.mask_dtype)
 

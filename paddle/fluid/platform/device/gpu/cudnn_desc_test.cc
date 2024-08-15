@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace platform {

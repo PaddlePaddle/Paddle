@@ -33,11 +33,11 @@
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 
 #define NCCL_ID_VARNAME "NCCLID"
 

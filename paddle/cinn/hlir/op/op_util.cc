@@ -32,12 +32,12 @@ CINNSchedule GetElementwiseScheduleFunc(
     CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is "
                             "empty! Please check.\n";
     cinn::common::CINNValuePack arg_pack = args[0];
-    PADDLE_ENFORCE_GT(
-        arg_pack.size(),
-        0U,
-        phi::errors::InvalidArgument("arg_pack.size() must contain at least "
-                                     "one element. Current size: %d",
-                                     arg_pack.size()));
+    PADDLE_ENFORCE_GT(arg_pack.size(),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "arg_pack.size() must contain at least "
+                          "one element. Current size: %d",
+                          arg_pack.size()));
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
       if (arg_pack[i].is_expr()) {
@@ -108,7 +108,7 @@ std::string GetExternFuncNameArchPrefixImpl(common::NVGPUArch,
 
 std::string GetExternFuncNameArchPrefixImpl(common::HygonDCUArchHIP,
                                             const std::string& func_name) {
-  return "hygonDcuHip_";
+  return "hip_";
 }
 
 std::string GetExternFuncNameArchPrefix(common::Arch arch,

@@ -38,7 +38,7 @@ class InferMetaContext {
   explicit InferMetaContext(MetaConfig config) : config_(config) {}
 
   void SetMetaConfig(MetaConfig config);
-  const MetaConfig& GetMetaConfig() const;
+  TEST_API const MetaConfig& GetMetaConfig() const;
 
   void EmplaceBackInput(MetaTensor input);
   TEST_API void EmplaceBackOutput(MetaTensor output);
