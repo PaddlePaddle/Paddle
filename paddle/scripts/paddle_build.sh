@@ -1530,6 +1530,12 @@ function card_test() {
         parallel_job=$parallel_level_base
     fi
 
+    if (( $cardnumber == $CUDA_DEVICE_COUNT )); then
+        if (( $cardnumber > 1 )); then
+            parallel_job=1
+        fi
+    fi
+
     if [[ "$testcases" == "" ]]; then
         return 0
     fi
