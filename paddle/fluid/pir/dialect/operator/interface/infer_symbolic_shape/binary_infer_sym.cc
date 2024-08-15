@@ -855,11 +855,11 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
 
 bool MatrixNmsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &boxes_shape_or_data =
+  const auto &bboxes_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &scores_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> &box_dims = boxes_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &box_dims = bboxes_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &score_dims = scores_shape_or_data.shape();
   const size_t score_size = score_dims.size();
 
@@ -875,21 +875,8 @@ bool MatrixNmsOpInferSymbolicShape(
       common::errors::InvalidArgument("The rank of Input(BBoxes) must be 3."
                                       "But received rank = %d.",
                                       box_dims.size()));
-  PADDLE_ENFORCE_EQ(box_dims[2],
-                    symbol::DimExpr(4),
-                    common::errors::InvalidArgument(
-                        "The last dimension of Input (BBoxes) must be 4, "
-                        "represents the layout of coordinate "
-                        "[xmin, ymin, xmax, ymax]."));
-  PADDLE_ENFORCE_EQ(box_dims[1],
-                    score_dims[2],
-                    common::errors::InvalidArgument(
-                        "The 2nd dimension of Input(BBoxes) must be equal to "
-                        "last dimension of Input(Scores), which represents the "
-                        "predicted bboxes."
-                        "But received box_dims[1](%s) != score_dims[2](%s)",
-                        box_dims[1],
-                        score_dims[2]));
+  infer_context->AddEqualCstr(box_dims[2], symbol::DimExpr(4));
+  infer_context->AddEqualCstr(box_dims[1], score_dims[2]);
 
   std::vector<symbol::DimExpr> out_dims = {box_dims[1], box_dims[2] + 2};
   infer_context->SetShapeOrDataForValue(
@@ -901,6 +888,16 @@ bool MatrixNmsOpInferSymbolicShape(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(index_dims)});
+
+  if (op->num_results() > 2) {
+    symbol::DimExpr out_unknown = infer_context->GetNextSymName();
+
+    std::vector<symbol::DimExpr> roisnum_out = {symbol::DimExpr({out_unknown})};
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(roisnum_out)});
+  }
 
   return true;
 }
