@@ -1515,15 +1515,7 @@ bool NceOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const std::vector<symbol::DimExpr> &label_shape = label_shape_or_data.shape();
 
-  const auto &x = x_shape[0];
-  const auto &l = label_shape[0];
-  if (x.isa<int64_t>() && l.isa<int64_t>()) {
-    int64_t x_0 = static_cast<int64_t>(x.Get<std::int64_t>());
-    int64_t l_0 = static_cast<int64_t>(l.Get<std::int64_t>());
-    if (x_0 > 0 && l_0 > 0) {
-      infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
-    }
-  }
+  infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
 
   symbol::DimExpr num_true_classes =
       (label_shape.size() == 2 ? label_shape[1] : 1);
@@ -1556,12 +1548,7 @@ bool NceOpInferSymbolicShape(pir::Operation *op,
       op->attribute<pir::Int64Attribute>("num_neg_samples").data();
   if (!is_test) {
     std::vector<symbol::DimExpr> sample_out_shape = {x_shape[0]};
-    if (num_true_classes.isa<int64_t>()) {
-      int64_t num_true =
-          static_cast<int64_t>(num_true_classes.Get<std::int64_t>());
-      sample_out_shape.push_back(
-          (num_true == -1) ? -1 : (num_neg_samples + num_true));
-    }
+    sample_out_shape.push_back(num_true_classes + num_neg_samples);
     infer_context->SetShapeOrDataForValue(
         op->result(1),
         symbol::ShapeOrDataDimExprs{
