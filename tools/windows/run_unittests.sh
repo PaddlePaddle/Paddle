@@ -767,6 +767,13 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     echo "ipipe_log_param_-1_TestCases_Total_Time: $exclusive_ut_Time_s s"
 
     noparallel_ut_startTime_s=`date +%s`
+
+    no_parallel_case_file=$PADDLE_ROOT/tools/no_parallel_case_file
+    if [ ! -e "$no_parallel_case_file" ] || [ ! -r "$no_parallel_case_file" ] || [ ! -s "$no_parallel_case_file" ]; then
+        echo "Error: $no_parallel_case_file is not readable or empty."
+        exit 8;
+    fi
+
     while read line
     do
         run_unittest_gpu "$line" 8
