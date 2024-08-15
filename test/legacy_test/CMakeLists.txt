@@ -1102,6 +1102,7 @@ set(STATIC_BUILD_TESTS
     test_random_routing_op
     test_searchsorted_op
     test_sparse_momentum_op
+    test_sparse_norm_op
     test_sgd_op_bf16
     test_softmax_mask_fuse_upper_triangle_op
     test_sparse_pooling_op
