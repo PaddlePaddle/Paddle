@@ -1312,7 +1312,9 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
   const auto &attributes = op->attributes();
   std::vector<int64_t> axis;
   if (attributes.find("axis") != attributes.end()) {
-    axis = details::GetVectorAttr<int64_t>(op, "axis");
+    axis = op->attribute<paddle::dialect::IntArrayAttribute>("axis")
+               .data()
+               .GetData();
   }
 
   bool reduce_all = axis.size() == 0 ? true : false;
