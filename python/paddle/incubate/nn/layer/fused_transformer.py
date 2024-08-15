@@ -1409,9 +1409,9 @@ class FusedMultiTransformer(Layer):
             )
             qkv_weight = self.create_parameter(
                 shape=(
-                    qkv_head_shape + [self.head_dim, embed_dim]
+                    [*qkv_head_shape, self.head_dim, embed_dim]
                     if trans_qkvw
-                    else [embed_dim] + qkv_head_shape + [self.head_dim]
+                    else [embed_dim, *qkv_head_shape, self.head_dim]
                 ),
                 attr=qkv_weight_attr,
                 dtype=self._dtype,
@@ -1420,7 +1420,7 @@ class FusedMultiTransformer(Layer):
             qkv_bias = None
             if qkv_bias_attr:
                 qkv_bias = self.create_parameter(
-                    shape=qkv_head_shape + [self.head_dim],
+                    shape=[*qkv_head_shape, self.head_dim],
                     attr=qkv_bias_attr,
                     dtype=self._dtype,
                     is_bias=True,

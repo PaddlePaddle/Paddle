@@ -3110,23 +3110,23 @@
     func : squared_l2_norm_grad
 
 - backward_op : squeeze_double_grad
-  forward : squeeze_grad(Tensor xshape, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
+  forward : squeeze_grad(Tensor x, Tensor grad_out, IntArray axis) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray axis)
-  output : Tensor(grad_out_grad), Tensor(xshape)
+  output : Tensor(grad_out_grad)
   invoke: squeeze(grad_x_grad, axis)
-  intermediate : xshape
 
 - backward_op : squeeze_grad
-  forward : squeeze(Tensor x, IntArray axis) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad, IntArray axis)
+  forward : squeeze(Tensor x, IntArray axis) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
   infer_meta :
-    func : KernelWithXShapeInferMeta
-    param: [xshape, out_grad]
+    func : GradSameWithXInferMeta
+    param: [x, out_grad]
     spmd_rule : SqueezeGradInferSpmd
   kernel :
     func : squeeze_grad
     data_type : out_grad
+  no_need_buffer : x
   inplace : (out_grad -> x_grad)
   backward: squeeze_double_grad
 

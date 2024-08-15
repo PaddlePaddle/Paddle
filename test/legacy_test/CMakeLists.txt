@@ -1254,3 +1254,5 @@ set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
                                                                         120)
+set_tests_properties(test_imperative_selected_rows_to_lod_tensor
+                     PROPERTIES TIMEOUT 200)

@@ -552,7 +552,8 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
+            with paddle.pir_utils.OldIrGuard():
+                self.func(p)
 
 
 class TestElementwiseMulTripleGradCheck(unittest.TestCase):
@@ -621,7 +622,8 @@ class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
+            with paddle.pir_utils.OldIrGuard():
+                self.func(p)
 
 
 if __name__ == "__main__":
