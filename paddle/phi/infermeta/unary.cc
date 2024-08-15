@@ -4091,22 +4091,15 @@ void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dims(common::make_ddim({}));
 }
 
-bool ShuffleChannelOpInferSymbolicShape(
-    pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
-  const auto& x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto& x_dims = x_shape_or_data.shape();
-
+void ShuffleChannelInferMeta(const MetaTensor& x, int group, MetaTensor* out) {
+  auto input_dims = x.dims();
   PADDLE_ENFORCE_EQ(
-      x_dims.size(),
+      input_dims.size(),
       4,
       common::errors::InvalidArgument("The layout of input is NCHW."));
 
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs(symbol::TensorShapeOrDataDimExprs(x_dims)));
-
-  return true;
+  out->set_dtype(x.dtype());
+  out->set_dims(input_dims);
 }
 
 // This logic is copied from

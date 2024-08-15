@@ -2058,15 +2058,18 @@ bool SetValueWithTensor_OpInferSymbolicShape(
 
 bool ShuffleChannelOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+  const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_dims = x_shape_or_data.shape();
 
   PADDLE_ENFORCE_EQ(
-      x_shape_or_data.shape().size(),
+      x_dims.size(),
       4,
       common::errors::InvalidArgument("The layout of input is NCHW."));
 
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data.shape());
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs(symbol::TensorShapeOrDataDimExprs(x_dims)));
 
   return true;
 }
