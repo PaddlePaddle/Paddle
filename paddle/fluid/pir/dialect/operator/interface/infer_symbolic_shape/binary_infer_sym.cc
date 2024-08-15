@@ -862,9 +862,10 @@ bool MatrixNmsOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &box_dims = bboxes_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &score_dims = scores_shape_or_data.shape();
   const size_t score_size = score_dims.size();
-  VLOG(3) << "11111111111" int keep_top_k =
-      op->attribute<pir::Int64Attribute>("keep_top_k").data();
-  VLOG(3) << "22222222222" auto keep_top_k_dim = symbol::DimExpr(keep_top_k);
+  VLOG(3) << "11111111111";
+  int keep_top_k = op->attribute<pir::Int64Attribute>("keep_top_k").data();
+  VLOG(3) << "22222222222";
+  auto keep_top_k_dim = symbol::DimExpr(keep_top_k);
 
   PADDLE_ENFORCE_EQ(
       score_size,
@@ -880,23 +881,26 @@ bool MatrixNmsOpInferSymbolicShape(
                                       box_dims.size()));
   infer_context->AddEqualCstr(box_dims[2], symbol::DimExpr(4));
   infer_context->AddEqualCstr(box_dims[1], score_dims[2]);
-  VLOG(3) << "33333333333" std::vector<symbol::DimExpr> out_dims = {
-      box_dims[0] * keep_top_k_dim, box_dims[2] + 2};
-  VLOG(3) << "44444444444" infer_context->SetShapeOrDataForValue(
+  VLOG(3) << "33333333333";
+  std::vector<symbol::DimExpr> out_dims = {box_dims[0] * keep_top_k_dim,
+                                           box_dims[2] + 2};
+  VLOG(3) << "44444444444";
+  infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
-  VLOG(3) << "55555555555" std::vector<symbol::DimExpr> index_dims = {
-      box_dims[1], symbol::DimExpr(1)};
-  VLOG(3) << "66666666666" infer_context->SetShapeOrDataForValue(
+  VLOG(3) << "55555555555";
+  std::vector<symbol::DimExpr> index_dims = {box_dims[1], symbol::DimExpr(1)};
+  VLOG(3) << "66666666666";
+  infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(index_dims)});
-  VLOG(3) << "77777777777"
+  VLOG(3) << "77777777777";
 
-      std::vector<symbol::DimExpr>
-          roisnum_out = {};
+  std::vector<symbol::DimExpr> roisnum_out = {};
   roisnum_out.push_back(infer_context->GetNextSymName());
-  VLOG(3) << "88888888888" infer_context->SetShapeOrDataForValue(
+  VLOG(3) << "88888888888";
+  infer_context->SetShapeOrDataForValue(
       op->result(2),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(roisnum_out)});
