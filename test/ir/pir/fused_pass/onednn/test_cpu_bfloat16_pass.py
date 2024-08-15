@@ -221,7 +221,7 @@ class TestLayerNormBf16Pass(PassTest):
         self.check_pass_correct(atol=5e-3, rtol=5e-3)
 
 
-class TestMultiplyOpAddBf16Pass(PassTest):
+class TestMultiplyAddOpAddBf16Pass(PassTest):
     def is_program_valid(self, program=None):
         return True
 
