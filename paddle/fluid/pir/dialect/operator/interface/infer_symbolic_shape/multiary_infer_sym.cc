@@ -1169,7 +1169,7 @@ bool GenerateProposalsV2OpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
   std::vector<symbol::DimExpr> score_shape = score_shape_or_data.shape();
-  std::vector<symbol::DimExpr> rpn_rois_num_shape = {score_shape[0]};
+  auto rpn_rois_num_shape = std::vector<symbol::DimExpr>{score_shape[0]};
 
   infer_context->SetShapeOrDataForValue(
       op->result(2),
