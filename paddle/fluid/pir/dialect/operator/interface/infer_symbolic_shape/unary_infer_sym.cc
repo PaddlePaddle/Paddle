@@ -1360,6 +1360,7 @@ bool MultinomialOpInferSymbolicShape(
 
 bool NanmedianOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  VLOG(3) << "NanmedianOpInferSymbolicShape";
   std::vector<int64_t> axis_list =
       op->attribute<paddle::dialect::IntArrayAttribute>("axes")
           .data()
