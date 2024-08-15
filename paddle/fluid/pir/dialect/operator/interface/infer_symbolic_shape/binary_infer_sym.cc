@@ -881,25 +881,19 @@ bool MatrixNmsOpInferSymbolicShape(
                                       box_dims.size()));
   infer_context->AddEqualCstr(box_dims[2], symbol::DimExpr(4));
   infer_context->AddEqualCstr(box_dims[1], score_dims[2]);
-  VLOG(3) << "33333333333";
-  std::vector<symbol::DimExpr> out_dims = {box_dims[0] * keep_top_k_dim,
-                                           box_dims[2] + 2};
-  VLOG(3) << "44444444444";
+  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
+  std::vector<symbol::DimExpr> out_dims = {out_unknown, box_dims[2] + 2};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
-  VLOG(3) << "55555555555";
   std::vector<symbol::DimExpr> index_dims = {box_dims[1], symbol::DimExpr(1)};
-  VLOG(3) << "66666666666";
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(index_dims)});
-  VLOG(3) << "77777777777";
 
   std::vector<symbol::DimExpr> roisnum_out = {};
   roisnum_out.push_back(infer_context->GetNextSymName());
-  VLOG(3) << "88888888888";
   infer_context->SetShapeOrDataForValue(
       op->result(2),
       symbol::ShapeOrDataDimExprs{
