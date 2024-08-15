@@ -132,16 +132,23 @@ static StmtPattern MergePatternImpl(const TrivialPattern& first,
 
 // RR & RT
 
-static int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
-                                    ReduceTreePattern& downstream) {  // NOLINT
-  if (IsDirectUpstream(upstream.GetRootPattern().GetReduceOp(),
-                       downstream.GetRootPattern().GetReduceOp())) {
+static int InsertUpstreamIntoTree(const ReduceTreePattern& upstream,
+                                  ReduceTreePattern& downstream) {  // NOLINT
+  auto is_direct_upstream = [&](const ReducePattern& upstream,
+                                const ReducePattern& downstream) -> bool {
+    auto upstream_result = upstream.GetReduceOp()->result(0);
+    auto user_ops = FindUserOp(downstream.ops(), upstream_result);
+    return !user_ops.empty();
+  };
+
+  if (is_direct_upstream(upstream.GetRootPattern(),
+                         downstream.GetRootPattern())) {
     downstream.InsertChild(upstream);
     return 1;
   }
   int insert_num = 0;
   for (auto& child : downstream.childs()) {
-    insert_num += InsertDownstreamIntoTree(upstream, child);
+    insert_num += InsertUpstreamIntoTree(upstream, child);
   }
   return insert_num;
 }
@@ -153,7 +160,7 @@ static StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
       downstream.GetRootPattern(),
       std::make_shared<FusionTracker>(upstream.tracker_,
                                       downstream.tracker_));  // copy first.
-  int insert_num = InsertDownstreamIntoTree(upstream, result);
+  int insert_num = InsertUpstreamIntoTree(upstream, result);
   PADDLE_ENFORCE_EQ(insert_num,
                     1,
                     phi::errors::PreconditionNotMet(

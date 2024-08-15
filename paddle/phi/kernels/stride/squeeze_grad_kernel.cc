@@ -23,7 +23,7 @@ namespace phi {
 
 template <typename Context>
 void SqueezeGradStridedKernel(const Context& dev_ctx,
-                              const DenseTensor& xshape,
+                              const DenseTensor& x,
                               const DenseTensor& dout,
                               const IntArray& axes UNUSED,
                               DenseTensor* dx) {
@@ -32,8 +32,7 @@ void SqueezeGradStridedKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
-  const auto& xshape_dims = xshape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  const auto& x_dims = dx->dims();
   ReshapeStridedKernel<Context>(
       dev_ctx, dout, IntArray(common::vectorize<int64_t>(x_dims)), dx);
 }
