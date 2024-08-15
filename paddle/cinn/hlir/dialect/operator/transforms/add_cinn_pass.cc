@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 
+#include <chrono>
 #include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -243,6 +244,7 @@ int64_t GetOpCount(const ::pir::Operation* op) {
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
+  const uint32_t origin_num_ops = program->num_ops();
   PirToPyCodeConverter(program)
       .file_name("original_programs.py")
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
@@ -268,7 +270,19 @@ void ApplyCinnPass(::pir::Program* program,
               << pir::CustomPrintHelper(*program, shape_analysis.PrintHook())
               << std::endl;
   }
+
+  auto start = std::chrono::high_resolution_clock::now();
   ApplyCinnLowerPass(program, CreatePassManager);
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+  LOG(INFO) << "Time of lowering and compiling program: ***** [ "
+            << duration.count() << " ] ***** seconds.";
+
+  const uint32_t new_num_ops = program->num_ops();
+  LOG(INFO) << "Number of ops in the original program is: " << origin_num_ops
+            << ", after lowering it becomes: " << new_num_ops
+            << ". (compression ratio: " << new_num_ops << "/" << origin_num_ops
+            << " = " << static_cast<float>(new_num_ops) / origin_num_ops << ")";
 }
 
 }  // namespace cinn::dialect::ir
