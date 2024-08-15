@@ -1105,6 +1105,29 @@ bool IndexAdd_OpInferSymbolicShape(
   return IndexAddOpInferSymbolicShape(op, infer_context);
 }
 
+bool IndexPutOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+
+  PADDLE_ENFORCE_LT(
+      x_dims.size(),
+      7,
+      common::errors::InvalidArgument(
+          "The rank of input should be less than 7, but received %d.",
+          x_dims.size()));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  return true;
+}
+
+bool IndexPut_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return IndexPutOpInferSymbolicShape(op, infer_context);
+}
+
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {
