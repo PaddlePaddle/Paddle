@@ -27,7 +27,7 @@ BATCH_SIZE = 4
 BATCH_NUM = 4
 SEQ_LEN = 2
 IMAGE_SIZE = 16
-CLASS_NUM = 8
+CLASS_NUM = 16
 
 
 def create_numpy_like_random(name):
@@ -161,10 +161,10 @@ class TestStaticReshard(unittest.TestCase):
                 varnames.append(varname)
 
         # check
-        assert block.var(varnames[0]).shape == (4, 8)
-        assert block.var(varnames[1]).shape == (2, 8)
-        assert block.var(varnames[2]).shape == (2, 8)
-        assert block.var(varnames[3]).shape == (4, 8)
+        assert block.var(varnames[0]).shape == (4, 16)
+        assert block.var(varnames[1]).shape == (2, 16)
+        assert block.var(varnames[2]).shape == (2, 16)
+        assert block.var(varnames[3]).shape == (4, 16)
 
     def run_test_case(self):
         self.test_reshard_dims_mapping()

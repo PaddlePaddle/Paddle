@@ -27,7 +27,7 @@ BATCH_SIZE = 4
 BATCH_NUM = 4
 SEQ_LEN = 2
 IMAGE_SIZE = 16
-CLASS_NUM = 8
+CLASS_NUM = 16
 
 
 def create_numpy_like_random(name):
