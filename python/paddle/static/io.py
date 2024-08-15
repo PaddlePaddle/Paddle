@@ -20,7 +20,7 @@ import os
 import pickle
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, TypedDict, Unpack, overload
+from typing import TYPE_CHECKING, Any, TypedDict, overload
 
 import numpy as np
 
@@ -75,7 +75,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     import numpy.typing as npt
-    from typing_extensions import NotRequired
+    from typing_extensions import NotRequired, Unpack
 
     from paddle import Tensor
 
@@ -1049,8 +1049,7 @@ def save_vars(
     vars: list[Tensor] | None = ...,
     predicate: Callable[[Tensor], bool] | None = ...,
     filename: None = ...,
-) -> bytes:
-    ...
+) -> bytes: ...
 
 
 @overload
@@ -1062,8 +1061,7 @@ def save_vars(
     vars: list[Tensor] | None = ...,
     predicate: Callable[[Tensor], bool] | None = ...,
     filename: str = ...,
-) -> None:
-    ...
+) -> None: ...
 
 
 @dygraph_not_support
