@@ -561,12 +561,12 @@ def load_state_dict(
         source_state_dict = {}
         for file in local_load_files:
             if offload:
-                state_dict = paddle.load(
+                state_dict_numpy = paddle.load(
                     os.path.join(path, file), return_numpy=True
                 )
                 source_state_dict[file] = {
                     key: paddle.to_tensor(value, place=paddle.CPUPlace())
-                    for key, value in state_dict.items()
+                    for key, value in state_dict_numpy.items()
                 }
             else:
                 source_state_dict[file] = paddle.load(os.path.join(path, file))
