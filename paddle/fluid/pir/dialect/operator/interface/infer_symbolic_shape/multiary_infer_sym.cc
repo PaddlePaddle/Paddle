@@ -156,44 +156,44 @@ bool AddmmOpInferSymbolicShape(pir::Operation *op,
 
   return true;
 }
-bool SparseAttentionOpInferSymbolicShape(pir::Operation *op,
-                                         pir::InferSymbolicShapeContext *infer_context) {
+bool SparseAttentionOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // 获取输入张量的符号形状
-  const symbol::ShapeOrDataDimExprs& q_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &q_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const symbol::ShapeOrDataDimExprs& k_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &k_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const symbol::ShapeOrDataDimExprs& v_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &v_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  const symbol::ShapeOrDataDimExprs& columns_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &columns_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(4));
 
   // 获取符号形状
-  const auto& q_dims = q_shape_or_data.shape();
-  const auto& k_dims = k_shape_or_data.shape();
-  const auto& v_dims = v_shape_or_data.shape();
-  const auto& columns_dims = columns_shape_or_data.shape();
+  const auto &q_dims = q_shape_or_data.shape();
+  const auto &k_dims = k_shape_or_data.shape();
+  const auto &v_dims = v_shape_or_data.shape();
+  const auto &columns_dims = columns_shape_or_data.shape();
 
   // 检查输入张量的维度是否为4
   PADDLE_ENFORCE_EQ(q_dims.size(),
                     4UL,
                     common::errors::InvalidArgument(
                         "Dimension in query' shapes should be 4."));
-  PADDLE_ENFORCE_EQ(k_dims.size(),
-                    4UL,
-                    common::errors::InvalidArgument(
-                        "Dimension in key' shapes should be 4."));
+  PADDLE_ENFORCE_EQ(
+      k_dims.size(),
+      4UL,
+      common::errors::InvalidArgument("Dimension in key' shapes should be 4."));
   PADDLE_ENFORCE_EQ(v_dims.size(),
                     4UL,
                     common::errors::InvalidArgument(
                         "Dimension in value' shapes should be 4."));
 
   // 获取batch_size, num_heads, M, N, sparse_nnz
-  const symbol::DimExpr& batch_size = q_dims[0];
-  const symbol::DimExpr& num_heads = q_dims[1];
-  const symbol::DimExpr& M = q_dims[2];
-  const symbol::DimExpr& N = q_dims[3];
-  const symbol::DimExpr& sparse_nnz = columns_dims[2];
+  const symbol::DimExpr &batch_size = q_dims[0];
+  const symbol::DimExpr &num_heads = q_dims[1];
+  const symbol::DimExpr &M = q_dims[2];
+  const symbol::DimExpr &N = q_dims[3];
+  const symbol::DimExpr &sparse_nnz = columns_dims[2];
 
   // 设置输出张量的符号形状
   infer_context->SetShapeOrDataForValue(
@@ -203,13 +203,13 @@ bool SparseAttentionOpInferSymbolicShape(pir::Operation *op,
 
   infer_context->SetShapeOrDataForValue(
       op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({batch_size, num_heads, sparse_nnz})});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {batch_size, num_heads, sparse_nnz})});
 
   infer_context->SetShapeOrDataForValue(
       op->result(2),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({batch_size, num_heads, sparse_nnz})});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {batch_size, num_heads, sparse_nnz})});
 
   return true;
 }
