@@ -406,6 +406,10 @@ class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
             self.assert_op_count_equal(main_program, {"pd_op.while": 2})
 
 
+@unittest.skipUnless(
+    paddle.is_compiled_with_cinn(),
+    "This case only works when compiled with CINN",
+)
 class TestCSEDenyFullInCinn(unittest.TestCase, AssertOpCountEqualMixin):
     CINN_FLAGS_NAME = "FLAGS_use_cinn"
 
