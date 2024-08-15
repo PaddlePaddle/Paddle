@@ -1309,19 +1309,11 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
 
-  const std::vector<int64_t> axis = [&] {
-    pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
-    std::vector<int64_t> axis_vec;
-    if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
-      axis_vec = details::GetVectorAttr(
-          axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
-    } else {
-      PADDLE_THROW(common::errors::Unimplemented(
-          "MeanOpInferSymbolicShape: 'axis' only support FullIntArrayOp's "
-          "result now."));
-    }
-    return axis_vec;
-  }();
+  const auto &attributes = op->attributes();
+  const std::vector<int64_t> axis;
+  if (attributes.find("axis") != attributes.end()) {
+    axis = details::GetVectorAttr<int64_t>(op, "axis");
+  }
 
   bool reduce_all = axis.size() == 0 ? true : false;
 
