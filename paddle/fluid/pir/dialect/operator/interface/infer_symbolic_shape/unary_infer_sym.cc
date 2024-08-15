@@ -2676,6 +2676,8 @@ bool UnstackOpInferSymbolicShape(
                         rank));
   if (axis < 0) axis += rank;
 
+  infer_context->AddEqualCstr(x_shape[axis], num);
+
   symbol::TensorListShapeOrDataDimExprs out_list_shape_or_data;
 
   std::vector<symbol::DimExpr> out_shape = x_shape;
