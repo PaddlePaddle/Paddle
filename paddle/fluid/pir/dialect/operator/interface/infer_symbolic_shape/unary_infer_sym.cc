@@ -585,7 +585,8 @@ bool DiagOpInferSymbolicShape(pir::Operation *op,
 
   if (x_shape.size() <= 1) {
     symbol::DimExpr size_ =
-        (x_shape.size() == 1UL ? x_shape[0] : symbol::DimExpr(1)) + offset;
+        (x_shape.size() == 1UL ? x_shape[0] : symbol::DimExpr(1)) +
+        symbol::DimExpr(std::abs(offset_data));
     infer_context->SetShapeOrDataForValue(
         op->result(0), symbol::TensorShapeOrDataDimExprs({size_, size_}));
   } else if (x_shape.size() == 2UL) {

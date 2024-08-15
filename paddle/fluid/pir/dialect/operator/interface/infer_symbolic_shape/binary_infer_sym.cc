@@ -365,7 +365,7 @@ bool DotOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   const auto x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto x_shape = x_shape_or_data.shape();
+  auto x_shape = x_shape_or_data.shape();
   const size_t x_rank = x_shape.size();
   PADDLE_ENFORCE_EQ(
       1 == x_rank || 2 == x_rank,
@@ -390,10 +390,9 @@ bool DotOpInferSymbolicShape(pir::Operation *op,
   }
   // Dot OP require both inputs should have the same shape
 
-  auto x_shape_cut =
-      std::vector<symbol::DimExpr>(x_shape.begin(), x_shape.end() - 1);
-  auto output_shape = symbol::ShapeOrDataDimExprs{
-      symbol::TensorShapeOrDataDimExprs(x_shape_cut)};
+  x_shape.erase(x_shape.end() - 1);
+  auto output_shape =
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)};
   infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
   return true;
 }
