@@ -2247,6 +2247,10 @@ class Layer:
                 raise ValueError(
                     "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
+            except TypeError as e:
+                raise ValueError(
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                )
 
         return missing_keys, unexpected_keys
 
