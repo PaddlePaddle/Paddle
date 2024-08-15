@@ -1480,27 +1480,13 @@ bool MulticlassNms3OpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &box_dims = bboxes_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &score_dims = scores_shape_or_data.shape();
   const size_t score_size = score_dims.size();
-
-  PADDLE_ENFORCE_EQ(
-      score_size == 2 || score_size == 3,
-      true,
-      common::errors::InvalidArgument(
-          "The rank of Input(Scores) must be 2 or 3. But received rank = %d",
-          score_size));
-  PADDLE_ENFORCE_EQ(
-      box_dims.size(),
-      3,
-      common::errors::InvalidArgument(
-          "The rank of Input(BBoxes) must be 3. But received rank = %d",
-          box_dims.size()));
-
+  // TODO(Jeff114514):
+  // add constraint for score_size == 2 || score_size == 3
+  // add constraint for box_dims.size() == 3
   if (score_size == 3) {
-    PADDLE_ENFORCE_EQ(
-        box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
-            box_dims[2] == 24 || box_dims[2] == 32,
-        true,
-        common::errors::InvalidArgument("The last dimension of Input(BBoxes) "
-                                        "must be 4 or 8 or 16 or 24 or 32"));
+    // TODO(Jeff114514):
+    // add constraint for box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] ==
+    // 16 || box_dims[2] == 24 || box_dims[2] == 32
     infer_context->AddEqualCstr(box_dims[1], score_dims[2]);
   } else {
     infer_context->AddEqualCstr(box_dims[2], symbol::DimExpr(4));

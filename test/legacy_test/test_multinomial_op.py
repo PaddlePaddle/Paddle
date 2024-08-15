@@ -64,6 +64,7 @@ class TestMultinomialOp(OpTest):
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output, check_pir=True)
+        self.check_output(check_pir=True)
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)
@@ -72,6 +73,7 @@ class TestMultinomialOp(OpTest):
         # normalize the input to get the probability
         prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
         sample_prob = self.sample_output(np.array(outs[0]))
+        print(self.outputs)
         np.testing.assert_allclose(
             sample_prob,
             prob,
