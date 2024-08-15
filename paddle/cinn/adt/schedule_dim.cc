@@ -52,7 +52,11 @@ std::shared_ptr<IndexExprInferContext> InitIndexExprInferContext(
     const List<Iterator>& input_iterators) {
   std::unordered_map<Variable, const Value> init_var2value;
   for (const auto& iterator : *input_iterators) {
-    CHECK(init_var2value.emplace(iterator, iterator).second);
+    PADDLE_ENFORCE_EQ(
+        init_var2value.emplace(iterator, iterator).second,
+        true,
+        ::common::errors::InvalidArgument(
+            "Insertion failed in init_var2value map. The key already exists."));
   }
 
   return std::make_shared<IndexExprInferContext>(init_var2value);

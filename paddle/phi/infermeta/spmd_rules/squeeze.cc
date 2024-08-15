@@ -30,14 +30,6 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-TensorDistAttr CreateSqueezeXshape(const TensorDistAttr& x) {
-  TensorDistAttr out(x);
-  auto dims_mapping = x.dims_mapping();
-  dims_mapping.insert(dims_mapping.begin(), -1);
-  out.set_dims_mapping(dims_mapping);
-  return out;
-}
-
 void MakeSqueezeDimTransWithoutAxis(
     const std::vector<int64_t>& x_shape,
     std::vector<int64_t>* out_shape,
@@ -113,10 +105,10 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
 
   // Step1: Build the transformation from
   // the original shape to the target shape
@@ -168,8 +160,7 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
           << "]\n Out dims_mapping: [" << str_join(dims_mapping_vec[1])
           << "]\n\n";
 
-  return {{x_dist_attr_dst},
-          {out_dist_attr, CreateSqueezeXshape(x_dist_attr_dst)}};
+  return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
@@ -185,10 +176,10 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping.size()));
 
   // Step1: Build the transformation from the output shape
   // to original shape. This function infers the dims mapping
@@ -246,13 +237,12 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
-SpmdInfo SqueezeGradInferSpmd(const DistMetaTensor& xshape,
+SpmdInfo SqueezeGradInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad,
                               const IntArray& axis) {
-  auto shape = phi::vectorize(xshape.dims());
-  shape = std::vector<int64_t>(shape.begin() + 1, shape.end());
+  auto shape = phi::vectorize(x.dims());
   const auto& spmd = ReshapeInferSpmd(out_grad, shape);
-  return {{xshape.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
+  return {{x.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }
 
 }  // namespace distributed

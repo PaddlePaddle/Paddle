@@ -38,7 +38,7 @@ void RoformerRelativePosXPUKernel(const Context& ctx,
   int seqlen = x_dims[2];
   int head_dim = x_dims[3];
   if (seqlen > max_pos_len) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The input sequence length should be less than or equal to the "
         "maximum position length. But received seqlen: %d, max_pos_len: %d",
         seqlen,

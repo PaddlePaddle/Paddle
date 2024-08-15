@@ -237,7 +237,7 @@ struct DivFunctor<T,
     // For int32/int64, need to check whether the divison is zero.
     PADDLE_ENFORCE_NE(b,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
     return a / b;
@@ -254,7 +254,7 @@ struct FloorDivFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     PADDLE_ENFORCE_NE(b,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Integer division by zero encountered "
                           "in (floor) divide. Please check the input value."));
     return static_cast<T>(std::trunc(a / b));

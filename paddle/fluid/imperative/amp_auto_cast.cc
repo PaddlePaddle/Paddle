@@ -58,7 +58,7 @@ OpSupportedInfos(const std::string& place,
   };
   PADDLE_ENFORCE_NE(is_target_place.count(query_place),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The argument `place` should be 'GPU', 'CPU', 'XPU' or "
                         "other Custom Device, but got '%s'.",
                         place));
@@ -180,7 +180,7 @@ AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
       data_type == phi::DataType::FLOAT16 ||
           data_type == phi::DataType::BFLOAT16,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
   if (data_type == phi::DataType::FLOAT16) {  // NOLINT
     return unsupported_fp16_ops_;

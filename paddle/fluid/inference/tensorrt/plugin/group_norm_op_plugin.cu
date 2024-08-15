@@ -785,7 +785,7 @@ int GroupNormPluginDynamic::enqueue(
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
       PADDLE_ENFORCE_EQ(cPerBlock % params_.cPerGroup,
                         0,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "cPerBlock should be multiple of params_.cPerGroup"
                             "now cPerBlock is %d, params_.cPerGroup is %d",
                             cPerBlock,
@@ -793,7 +793,7 @@ int GroupNormPluginDynamic::enqueue(
       PADDLE_ENFORCE_EQ(
           params_.cPerGroup % 2,
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "params_.cPerGroup should be a even number, but received %d",
               params_.cPerGroup));
       params_.eps = eps_;

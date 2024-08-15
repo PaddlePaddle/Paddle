@@ -84,7 +84,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         it,
         map_.end(),
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Operator `%s`'s kernel signature is not registered.", op_type));
     return it->second;
   }
@@ -101,7 +101,7 @@ class DefaultKernelSignatureMap {
     PADDLE_ENFORCE_NE(
         Has(op_type),
         true,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Operator (%s)'s Kernel Signature has been registered.", op_type));
     map_.insert({std::move(op_type), std::move(signature)});
   }
@@ -131,7 +131,7 @@ class OpUtilsMap {
     PADDLE_ENFORCE_EQ(
         phi_kernel_to_fluid_op_.count(base_kernel_name),
         0UL,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Operator (%s)'s kernel name (%s) has been registered.",
             op_type,
             base_kernel_name));
@@ -146,7 +146,7 @@ class OpUtilsMap {
     PADDLE_ENFORCE_EQ(
         arg_mapping_fn_map_.count(op_type),
         0UL,
-        phi::errors::AlreadyExists(
+        common::errors::AlreadyExists(
             "Operator (%s)'s argument mapping function has been registered.",
             op_type));
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});

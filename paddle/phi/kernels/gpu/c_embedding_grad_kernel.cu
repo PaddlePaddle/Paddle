@@ -134,7 +134,7 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
       return;
     }
   }
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "The data type of Input(Ids) must be int32 or int64."));
 }
 

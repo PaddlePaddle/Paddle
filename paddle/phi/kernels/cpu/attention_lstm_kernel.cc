@@ -106,11 +106,11 @@ void AttentionLSTMKernel(
   PADDLE_ENFORCE_EQ(
       x_lod.size(),
       1UL,
-      phi::errors::InvalidArgument("Input(X)'s lod size must be 1."));
+      common::errors::InvalidArgument("Input(X)'s lod size must be 1."));
   PADDLE_ENFORCE_EQ(
       c0->dims()[0],
       N,
-      phi::errors::InvalidArgument("C0 dims should be %d x %d.", N, D));
+      common::errors::InvalidArgument("C0 dims should be %d x %d.", N, D));
   fc_out->Resize({max_seq_len, 1});
 
   std::function<void(const int, const T*, T*)> act_gate, act_cell, act_cand;

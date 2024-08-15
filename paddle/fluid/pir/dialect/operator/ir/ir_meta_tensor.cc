@@ -21,7 +21,7 @@ namespace paddle::dialect {
 static inline void ValidCheck(const IrMetaTensor& meta_tensor) {
   PADDLE_ENFORCE_EQ(meta_tensor.initialized(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The current MetaTensor is not initialized."));
 }
 
@@ -60,7 +60,7 @@ void IrMetaTensor::set_dims(const phi::DDim& dims) {
   } else if (paddle::dialect::IrSparseCsrTensor::classof(tensor_)) {
     static_cast<paddle::dialect::IrSparseCsrTensor*>(tensor_)->SetDims(dims);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The current MetaTensor is not initialized."));
   }
 }
@@ -75,7 +75,7 @@ void IrMetaTensor::set_dtype(phi::DataType dtype) {
   } else if (paddle::dialect::IrSparseCsrTensor::classof(tensor_)) {
     static_cast<paddle::dialect::IrSparseCsrTensor*>(tensor_)->SetDtype(dtype);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The current MetaTensor is not initialized."));
   }
 }
@@ -92,7 +92,7 @@ void IrMetaTensor::set_layout(phi::DataLayout layout) {
     static_cast<paddle::dialect::IrSparseCsrTensor*>(tensor_)->SetLayout(
         layout);
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The current MetaTensor is not initialized."));
   }
 }

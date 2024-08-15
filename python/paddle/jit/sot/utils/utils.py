@@ -272,10 +272,10 @@ class Cache:
         self.hit_num = 0
 
     def key_fn(self, *args, **kwargs):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def value_fn(self, *args, **kwargs):
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 def execute_time(func):

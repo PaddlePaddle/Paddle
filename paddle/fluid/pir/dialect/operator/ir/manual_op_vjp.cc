@@ -36,12 +36,12 @@ std::vector<std::vector<pir::Value>> ExpandOp::Vjp(
     const std::vector<std::vector<bool>>& stop_gradients) {
   PADDLE_ENFORCE_EQ(inputs_.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "expand op's inputs size should be 2, but now is %d.",
                         inputs_.size()));
   PADDLE_ENFORCE_EQ(outputs.size(),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "expand op's outputs size should be 1, but now is %d.",
                         outputs.size()));
 
@@ -84,13 +84,13 @@ std::vector<std::vector<pir::Value>> IncrementOp::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs_.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Increment op's inputs size should be 2, but now is %d.",
           inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Increment op's outputs size should be 1, but now is %d.",
           outputs.size()));
 
@@ -114,13 +114,13 @@ std::vector<std::vector<pir::Value>> Increment_Op::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs_.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Increment_ op's inputs size should be 1, but now is %d.",
           inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Increment_ op's outputs size should be 1, but now is %d.",
           outputs.size()));
 
@@ -145,13 +145,13 @@ std::vector<std::vector<pir::Value>> AssignOut_Op::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs_.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "assign_out_ op's inputs size should be 2, but now is %d.",
           inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "assign_out_ op's outputs size should be 1, but now is %d.",
           outputs.size()));
 
@@ -186,20 +186,20 @@ std::vector<std::vector<pir::Value>> ArrayWrite_Op::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs_.size(),
       3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ArrayWrite_ op's inputs size should be 3, but now is %d.",
           inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ArrayWrite_ op's outputs size should be 1, but now is %d.",
           outputs.size()));
 
   PADDLE_ENFORCE_EQ(
       in_grads.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ArrayWrite_ op's outputs size should be 1, but now is %d.",
           outputs.size()));
 
@@ -225,13 +225,13 @@ std::vector<std::vector<pir::Value>> ArrayReadOp::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs_.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Array_read op's inputs size should be 2, but now is %d.",
           inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Array_read op's outputs size should be 1, but now is %d.",
           outputs.size()));
   // x = array_read(input, i)
@@ -240,7 +240,7 @@ std::vector<std::vector<pir::Value>> ArrayReadOp::Vjp(
   PADDLE_ENFORCE_EQ(
       out_grads.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Array_read op's outputs size should be 1, but now is %d.",
           out_grads.size()));
 
@@ -265,20 +265,20 @@ std::vector<std::vector<pir::Value>> ArrayToTensorOp::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs_.size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Array_read op's inputs size should be 1, but now is %d.",
           inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Array_read op's outputs size should be 2, but now is %d.",
           outputs.size()));
 
   PADDLE_ENFORCE_EQ(
       out_grads.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Array_read op's outputs size should be 2, but now is %d.",
           out_grads.size()));
 

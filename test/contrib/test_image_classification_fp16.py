@@ -234,7 +234,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     paddle.seed(123)
     with base.program_guard(train_program, startup_prog):
         images = paddle.static.data(
-            name='pixel', shape=[-1] + data_shape, dtype='float32'
+            name='pixel', shape=[-1, *data_shape], dtype='float32'
         )
         label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 

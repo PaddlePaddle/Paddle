@@ -73,7 +73,7 @@ void MultiPrecisionAddKernelImpl(const Context& dev_ctx,
         funcs::MultiPrecisionAddFunctor<T, phi::float16>(),
         -1);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Unsupport x dtype:%s, y dtype:%s for add(x, y) operation",
         phi::DataTypeToString(x.type()),
         phi::DataTypeToString(y.type())));

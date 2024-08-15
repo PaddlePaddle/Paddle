@@ -180,20 +180,25 @@ struct MarkVectorizeMutator : public ir::IRMutator<Expr*> {
   // each statement in ISL is bound to a Store node.
   void Visit(const ir::Store* op, Expr* expr) override {
     auto* tensor_n = op->tensor.As<ir::_Tensor_>();
-    CHECK(tensor_n);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_n,
+        ::common::errors::InvalidArgument("Sorry, but op->tensor is null"));
     auto it = vectorizes.find(tensor_n->name);
     if (it != vectorizes.end()) {
       PADDLE_ENFORCE_LT(
           it->second.level,
           forloop_stack.size(),
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "Required it->second.level shall be less than "
               "forloop_stack.size()."
               "But receive it->second.level = %d, forloop_stack.size() = %d ",
               it->second.level,
               forloop_stack.size()));
       forloop_stack[it->second.level]->set_vectorize_info(it->second);
-      CHECK(it->second.valid());
+      PADDLE_ENFORCE_EQ(
+          it->second.valid(),
+          true,
+          ::common::errors::InvalidArgument("it->second.valid() is false"));
     }
   }
 
@@ -222,14 +227,16 @@ struct MarkUnrollMutator : public ir::IRMutator<Expr*> {
   // each statement in ISL is bound to a Store node.
   void Visit(const ir::Store* op, Expr* expr) override {
     auto* tensor_n = op->tensor.As<ir::_Tensor_>();
-    CHECK(tensor_n);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_n,
+        ::common::errors::InvalidArgument("Sorry, but op->tensor is null"));
     auto it = unrolls.find(tensor_n->name);
     if (it != unrolls.end()) {
       for (int level : it->second) {
         VLOG(1) << "Mark " << level << " Unrolled";
         PADDLE_ENFORCE_LT(level,
                           stack.size(),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Required level shall be less than stack.size()."
                               "But receive level = %d, stack.size() = %d ",
                               level,
@@ -264,14 +271,16 @@ struct MarkParallelMutator : public ir::IRMutator<Expr*> {
   // each statement in ISL is bound to a Store node.
   void Visit(const ir::Store* op, Expr* expr) override {
     auto* tensor_n = op->tensor.As<ir::_Tensor_>();
-    CHECK(tensor_n);
+    PADDLE_ENFORCE_NOT_NULL(
+        tensor_n,
+        ::common::errors::InvalidArgument("Sorry, but op->tensor is null"));
     auto it = parallels.find(tensor_n->name);
     if (it != parallels.end()) {
       for (int level : it->second) {
         VLOG(1) << "Mark " << level << " Parallelled";
         PADDLE_ENFORCE_LT(level,
                           stack.size(),
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Required level shall be less than stack.size()."
                               "But receive level = %d, stack.size() = %d ",
                               level,
