@@ -759,7 +759,8 @@ class TestToStaticCheck(unittest.TestCase):
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)
             y = paddle.transpose(x, perm=[1, 0, 2])
-            x.add_(x)
+            z = paddle.ones([3, 2, 4])
+            y.add_(z)
 
         self.assertRaises(ValueError, func)
 
@@ -769,9 +770,10 @@ class TestToStaticCheck(unittest.TestCase):
         def func():
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)
-            xx = paddle.assign(x)
-            y = paddle.transpose(xx, perm=[1, 0, 2])
-            x.add_(x)
+            z = paddle.ones([3, 2, 4])
+            y = paddle.transpose(x, perm=[1, 0, 2])
+            yy = paddle.assign(y)
+            yy.add_(z)
 
         func()
 

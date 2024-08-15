@@ -33,7 +33,7 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
-from paddle.framework import in_dynamic_mode, use_pir_api
+from paddle.framework import check_view_value, in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.pir import Value
 from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
@@ -797,7 +797,22 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
             _, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs, is_train=self._is_train_mode()
             )
-            # 2. synchronize self.training attribute.
+            # 2. check viewed value used by inplace op in pir mode.
+            if use_pir_api():
+                all_vars_list = partial_program_layer.main_program.list_vars()
+                for value in all_vars_list:
+                    if (
+                        value.all_used_ops()
+                        and value.all_used_ops()[-1].name().endswith("_")
+                        and value.all_used_ops()[-1]
+                        .operand_source(0)
+                        .is_same(value)
+                        and check_view_value(value)
+                    ):
+                        raise ValueError(
+                            f'Sorry about what\'s happened. In to_static mode, {value.all_used_ops()[-1].name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call _C_ops.assign op .'
+                        )
+            # 3. synchronize self.training attribute.
             if isinstance(self._class_instance, layers.Layer):
                 partial_program_layer.training = self._class_instance.training
             else:
@@ -808,7 +823,7 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
             )
             partial_program_layer._cuda_graph_pool_id = self._cuda_graph_pool_id
 
-            # 3. return outputs.
+            # 4. return outputs.
             try:
                 return partial_program_layer(args)
             except Exception as e:

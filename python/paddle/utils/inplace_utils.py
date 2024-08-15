@@ -17,7 +17,6 @@ from typing import Callable, TypeVar
 
 from typing_extensions import ParamSpec
 
-import paddle
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import check_view_value, in_dynamic_mode, in_pir_mode
 
@@ -43,13 +42,10 @@ def _inplace_apis_in_dygraph_only_(
 
             if in_to_static_mode():
                 if in_pir_mode():
-                    for arg in args:
-                        if isinstance(
-                            arg, paddle.pir.Value
-                        ) and check_view_value(arg):
-                            raise ValueError(
-                                f'Sorry about what\'s happened. In to_static mode, {func.__name__}\'s output variable {arg.name} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {arg.name} = {arg.name}.assign().'
-                            )
+                    if check_view_value(args[0]):
+                        raise ValueError(
+                            f'Sorry about what\'s happened. In to_static mode, {func.__name__}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call .assign().'
+                        )
                 else:
                     for arg in args:
                         if hasattr(arg, "is_view_var") and arg.is_view_var:
