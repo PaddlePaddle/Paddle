@@ -174,26 +174,6 @@ bool IsProductSmallerOrEqual(const std::vector<DimUsage>& first,
   return shape_analysis.IsEqual(first_product, second_product);
 }
 
-pir::Operation* FindUserOp(const std::vector<pir::Operation*>& candidates,
-                           const pir::Value& value) {
-  std::vector<pir::Operation*> results;
-  for (auto consumer_it = value.use_begin(); consumer_it != value.use_end();
-       ++consumer_it) {
-    pir::Operation* user_op = consumer_it.owner();
-    auto iter = std::find(candidates.begin(), candidates.end(), user_op);
-    if (iter != candidates.end()) {
-      results.emplace_back(*iter);
-    }
-  }
-  PADDLE_ENFORCE_EQ(results.size(),
-                    1,
-                    ::common::errors::InvalidArgument(
-                        "Zero or multiple user operations found in candidates! "
-                        "Expected exactly one, but found %d.",
-                        results.size()));
-  return results.front();
-}
-
 bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
     const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   const auto& upstream_tree =
@@ -201,10 +181,10 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
   const auto& downstream_tree =
       std::get<ReduceTreePattern>(downstream->stmt_pattern());
 
-  VLOG(4) << "upstream->stmt_pattern():"
-          << OpsDebugStr(GetOpsInPattern(upstream_tree));
-  VLOG(4) << "downstream->stmt_pattern()"
-          << OpsDebugStr(GetOpsInPattern(downstream_tree));
+  VLOG(4) << "upstream: \n" << OpsDebugStr(GetOpsInPattern(upstream_tree));
+  VLOG(4) << "upstream->childs_num: " << upstream_tree.childs().size();
+  VLOG(4) << "downstream: \n" << OpsDebugStr(GetOpsInPattern(downstream_tree));
+  VLOG(4) << "downstream->childs_num: " << downstream_tree.childs().size();
 
   const auto& maybe_downstream_op = GetDownstreamFromCandidate(
       upstream_tree.GetRootPattern(), downstream_tree.FlattenReducePattern());
@@ -220,7 +200,7 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
   }
   const pir::Value& reduce_out_value =
       upstream_tree.GetRootPattern().GetReduceOp()->result(0);
-  auto downstream_connect_op =
+  auto downstream_connect_ops =
       FindUserOp(downstream_tree.ops(), reduce_out_value);
   pir::Operation* downstream_reduce_op =
       maybe_downstream_op.value().GetReduceOp();
@@ -229,8 +209,13 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
       SplitReduceDims(axes_info_.GetSignature(downstream_reduce_op),
                       downstream_reduce_op);
 
-  const auto& upstream_output_dims = GetValueUsage(
-      reduce_out_value, GetUsageIdx(reduce_out_value, downstream_connect_op));
+  std::vector<DimUsage> upstream_output_dims;
+  for (const auto& op : downstream_connect_ops) {
+    auto dim_usages =
+        GetValueUsage(reduce_out_value, GetUsageIdx(reduce_out_value, op));
+    upstream_output_dims.insert(
+        upstream_output_dims.end(), dim_usages.begin(), dim_usages.end());
+  }
   const auto& [related, _UNUSED] =
       SplitFirstIfRelatedBySecond(downstream_reduce_dims, upstream_output_dims);
   auto res = (related.size() == 0);

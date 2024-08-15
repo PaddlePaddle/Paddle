@@ -322,7 +322,7 @@ def _mp_allreduce(
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64' 'uint16'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             op_type,
         )
 
@@ -822,7 +822,7 @@ def split(
             >>> import paddle.distributed.fleet as fleet
 
             >>> paddle.enable_static()
-            >>> paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
+            >>> paddle.set_device(f'gpu:{paddle.distributed.ParallelEnv().dev_id}')
             >>> fleet.init(is_collective=True)
             >>> data = paddle.randint(0, 8, shape=[10,4])
             >>> emb_out = paddle.distributed.split(

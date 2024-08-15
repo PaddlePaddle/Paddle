@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+import paddle.static
 from paddle import base
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
@@ -509,14 +510,15 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
         paddle.enable_static()
-        main_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program):
-            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
-            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
+        with paddle.pir_utils.OldIrGuard():
+            main_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program):
+                x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+                y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
-            y_1 = paddle.divide(x, y, name='div_res')
+                y_1 = paddle.divide(x, y, name='div_res')
 
-            self.assertEqual(('div_res' in y_1.name), True)
+                self.assertEqual(('div_res' in y_1.name), True)
 
         paddle.disable_static()
 

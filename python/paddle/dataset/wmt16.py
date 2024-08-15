@@ -133,8 +133,8 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
                 trg_words = line_split[trg_col].split()
                 trg_ids = [trg_dict.get(w, unk_id) for w in trg_words]
 
-                trg_ids_next = trg_ids + [end_id]
-                trg_ids = [start_id] + trg_ids
+                trg_ids_next = [*trg_ids, end_id]
+                trg_ids = [start_id, *trg_ids]
 
                 yield src_ids, trg_ids, trg_ids_next
 

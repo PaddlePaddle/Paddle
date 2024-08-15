@@ -57,16 +57,6 @@ class Parser:
     def run(self, file):
         program = self.load_from(file)
         for op in program.global_block().ops:
-            if op.name() == "pd_op.squeeze":
-                if (
-                    op.result(1).initialized()
-                    and not op.result(1).use_empty()
-                    and op.result(1).first_use().owner().name() == "pd_op.fetch"
-                ):
-                    program.global_block().remove_op(
-                        op.result(1).first_use().owner()
-                    )
-
             if op.name() == "pd_op.unsqueeze":
                 if (
                     op.result(1).initialized()
