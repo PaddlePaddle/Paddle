@@ -1165,6 +1165,17 @@ bool GenerateProposalsV2OpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(rpn_roi_probs_shape)});
 
+  const symbol::ShapeOrDataDimExprs &score_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  std::vector<symbol::DimExpr> score_shape = score_shape_or_data.shape();
+  auto rpn_rois_num_shape = std::vector<symbol::DimExpr>{score_shape[0]};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(rpn_rois_num_shape)});
+
   return true;
 }
 
