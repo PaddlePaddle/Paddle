@@ -900,6 +900,15 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
           }
         }
       }
+      if (config_.mkldnn_bfloat16_enabled()) {
+        for (const auto &mkldnn_pass : kPirMkldnnBf16Passes) {
+          if (std::find(config_.deleted_passes_.begin(),
+                        config_.deleted_passes_.end(),
+                        mkldnn_pass) == config_.deleted_passes_.end()) {
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+          }
+        }
+      }
 #endif
     } else {
       // cpu

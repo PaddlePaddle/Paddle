@@ -386,9 +386,7 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
 class OneDNNPlacementBf16Pass : public pir::PatternRewritePass {
  public:
   OneDNNPlacementBf16Pass()
-      : pir::PatternRewritePass("cpu_bfloat16_placement_pass", 3),
-        use_onednn_bfloat16_(false) {}
-  // TODO: add function get onednn_bf16 flag
+      : pir::PatternRewritePass("cpu_bfloat16_placement_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
@@ -398,12 +396,6 @@ class OneDNNPlacementBf16Pass : public pir::PatternRewritePass {
 
     return ps;
   }
-  bool CanApplyOn(pir::Operation* op) const override {
-    return use_onednn_bfloat16_;
-  }
-
- private:
-  int use_onednn_bfloat16_;
 };
 
 }  // namespace
