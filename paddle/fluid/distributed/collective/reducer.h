@@ -17,7 +17,6 @@
 #include <map>
 #include <vector>
 
-#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -26,6 +25,7 @@
 #include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
