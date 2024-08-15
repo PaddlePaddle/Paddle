@@ -889,15 +889,13 @@ bool MatrixNmsOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(index_dims)});
 
-  if (op->num_results() > 2) {
-    symbol::DimExpr out_unknown = infer_context->GetNextSymName();
+  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
 
-    std::vector<symbol::DimExpr> roisnum_out = {symbol::DimExpr({out_unknown})};
-    infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(roisnum_out)});
-  }
+  std::vector<symbol::DimExpr> roisnum_out = {symbol::DimExpr({out_unknown})};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(roisnum_out)});
 
   return true;
 }
