@@ -24,7 +24,7 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 import paddle.inference as paddle_infer
 
 
-class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
+class TrtConvertExpandAV2Test(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -106,7 +106,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
         self.run_test()
 
 
-class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
+class TrtConvertExpandAsV2Test2(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
