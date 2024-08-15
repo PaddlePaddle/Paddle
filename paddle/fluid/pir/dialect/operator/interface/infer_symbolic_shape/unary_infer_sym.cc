@@ -1371,7 +1371,7 @@ bool NanmedianOpInferSymbolicShape(
 
   ExprVec out_dim;
   bool keep_dim = op->attribute<pir::BoolAttribute>("keep_dim").data();
-  if (!axis_list.empty()) {
+  if (axis_list.empty()) {
     if (keep_dim) {
       for (int64_t i = 0; i < x_rank; i++) {
         out_dim.emplace_back(1);
