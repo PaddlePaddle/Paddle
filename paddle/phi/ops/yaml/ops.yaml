@@ -644,7 +644,6 @@
   kernel :
     func : bmm
   backward : bmm_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : box_clip
   args: (Tensor input, Tensor im_info)
@@ -673,7 +672,6 @@
     func: broadcast_tensors
     data_type : input
   backward: broadcast_tensors_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : c_allgather
   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
