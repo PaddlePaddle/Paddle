@@ -22,8 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/gen_comm_id_helper.h"
 
 namespace paddle {
 namespace framework {

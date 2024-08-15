@@ -94,7 +94,7 @@ class IGroup final {
   const List<Iterator>& loop_iterators() const {
     PADDLE_ENFORCE_EQ(anchor_sd_equation_ctx_.has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The anchor_sd_equation_ctx_ has no value."));
     return anchor_sd_equation_ctx_.value().sd_iterators();
   }
@@ -128,7 +128,7 @@ class IGroup final {
         PADDLE_ENFORCE_EQ(
             index2tensor->emplace(index, tensor).second,
             true,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The index2tensor map has already contained the index."));
         (*tensor2indexes)[tensor].emplace_back(index);
       }
@@ -138,7 +138,7 @@ class IGroup final {
         PADDLE_ENFORCE_EQ(
             index2tensor->emplace(index, tensor).second,
             true,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "The index2tensor map has already contained the index."));
         (*tensor2indexes)[tensor].emplace_back(index);
       }

@@ -36,8 +36,8 @@ struct IrReplaceVarBroadcastMutator : ir::IRMutator<Expr*> {
       : from_(from), to_(to), from_repr_(GetStreamCnt(from)) {
     PADDLE_ENFORCE_EQ(valid_nodetys.count(from->node_type()),
                       true,
-                      phi::errors::InvalidArgument("Not valid node type got %s",
-                                                   from->node_type()));
+                      ::common::errors::InvalidArgument(
+                          "Not valid node type got %s", from->node_type()));
   }
   void operator()(Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -85,7 +85,7 @@ void IrReplaceVarBroadcast(ir::Expr* expr, ir::Expr from, ir::Expr to) {
   PADDLE_ENFORCE_NE(
       expr,
       nullptr,
-      phi::errors::InvalidArgument("Input expr should not be nullptr"));
+      ::common::errors::InvalidArgument("Input expr should not be nullptr"));
   IrReplaceVarBroadcastMutator(from, to)(expr);
 }
 
@@ -93,7 +93,7 @@ void IrReplace(ir::Expr* expr, ir::Expr from, ir::Expr to) {
   PADDLE_ENFORCE_NE(
       expr,
       nullptr,
-      phi::errors::InvalidArgument("Input expr should not be nullptr"));
+      ::common::errors::InvalidArgument("Input expr should not be nullptr"));
   IrReplaceMutator(from, to)(expr);
 }
 

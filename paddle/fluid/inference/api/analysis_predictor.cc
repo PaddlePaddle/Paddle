@@ -26,7 +26,6 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
-#include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/feed_hook.h"
@@ -54,9 +53,6 @@
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
@@ -66,6 +62,10 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
@@ -1735,7 +1735,16 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
 #endif
   VLOG(3) << "predict start";
   // set feed variable
-  framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  framework::Scope *scope{nullptr};
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  if (config_.dist_config().use_dist_model()) {  // NOLINT
+    scope = scope_.get();
+  } else {
+    scope = executor_->GetScope();
+  }
+#else
+  scope = executor_->GetScope();
+#endif
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       common::errors::PreconditionNotMet("The scope should not be nullptr."));
@@ -1783,6 +1792,18 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 #endif
 
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+  if (config_.dist_config().use_dist_model()) {  // NOLINT
+    VLOG(3) << "ZeroCopyRun will use the fleet executor.";
+    fleet_exe_->Run(config_.dist_config().carrier_id());
+  } else if (config_.new_executor_enabled()) {  // NOLINT
+    executor_->RunInterpreterCore();
+  } else {
+    // Run the inference program
+    // if share variables, we need not create variables
+    executor_->Run();
+  }
+#else
   if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore();
   } else {
@@ -1790,6 +1811,7 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     // if share variables, we need not create variables
     executor_->Run();
   }
+#endif
 
   inference::DisplayMemoryInfo(place_, "after run");
 #ifdef PADDLE_WITH_XPU

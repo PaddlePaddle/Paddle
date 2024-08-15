@@ -43,7 +43,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                 elif attrs[0]["data_format"] == "NHWC":
                     return np.random.random([batch, 16, 3]).astype(np.float32)
                 else:
-                    raise AssertionError()
+                    raise AssertionError
             else:
                 if attrs[0]["data_format"] == "NCHW":
                     return np.random.random([batch, 3, 16, 32]).astype(
@@ -72,7 +72,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                     elif attrs[0]["data_format"] == "NHWC":
                         return np.random.random([1, 16, 3]).astype(np.float32)
                     else:
-                        raise AssertionError()
+                        raise AssertionError
                 else:
                     if attrs[0]["data_format"] == "NCHW":
                         return np.random.random([1, 3, 16, 32]).astype(
@@ -83,7 +83,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                             np.float32
                         )
                     else:
-                        raise AssertionError()
+                        raise AssertionError
 
         for batch in [1, 4]:
             for dims in [0, 1, 2, 3, 4]:
@@ -165,7 +165,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         "input_data": [1, 16, 3]
                     }
                 else:
-                    raise AssertionError()
+                    raise AssertionError
             else:
                 if attrs[0]["data_format"] == "NCHW":
                     self.dynamic_shape.min_input_shape = {
@@ -188,7 +188,7 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                         "input_data": [1, 16, 32, 3]
                     }
                 else:
-                    raise AssertionError()
+                    raise AssertionError
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}

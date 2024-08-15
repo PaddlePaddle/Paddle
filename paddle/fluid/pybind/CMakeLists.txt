@@ -15,7 +15,6 @@ set(PYBIND_DEPS
     generate_pass
     pass_builder
     compiled_program
-    profiler
     layer
     tracer
     engine
@@ -33,7 +32,6 @@ set(PYBIND_DEPS
     ps_gpu_wrapper
     custom_operator
     cost_model
-    cuda_graph_with_memory_pool
     fleet_executor
     global_utils
     phi_utils
@@ -168,22 +166,7 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 if(WITH_PYTHON)
-  set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
-  if(WITH_NCCL OR WITH_RCCL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl async_load)
-  endif()
-  if(WITH_XPU_BKCL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl)
-  endif()
-  if(WITH_GLOO)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_gloo)
-  endif()
-  if(WITH_MPI)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_mpi)
-  endif()
-  if(WITH_CUSTOM_DEVICE)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_custom)
-  endif()
+  set(PYBIND_DEPS ${PYBIND_DEPS} eager_reducer)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
     set_source_files_properties(
@@ -191,7 +174,6 @@ if(WITH_PYTHON)
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
-set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
 
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
@@ -669,6 +651,10 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS custom_operator_node)
     list(APPEND PYBIND_DEPS eager_tensor_operants)
     list(APPEND PYBIND_DEPS pybind_util)
+  endif()
+
+  if(TENSORRT_FOUND)
+    list(APPEND PYBIND_DEPS pir_tensorrt_plugin)
   endif()
 
   # On Linux, cc_library(paddle SHARED ..) will generate the libpaddle.so,

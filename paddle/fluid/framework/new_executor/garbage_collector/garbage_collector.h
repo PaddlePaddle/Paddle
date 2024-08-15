@@ -18,9 +18,9 @@
 #include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
-#include "paddle/fluid/platform/device_event.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
+#include "paddle/phi/core/platform/device_event.h"
 
 COMMON_DECLARE_bool(fast_eager_deletion_mode);
 COMMON_DECLARE_bool(new_executor_use_cuda_graph);

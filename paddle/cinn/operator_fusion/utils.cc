@@ -28,8 +28,8 @@ std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
     auto broadcast_op = mut_op->dyn_cast<cinn::dialect::BroadcastOp>();
     return std::make_pair(broadcast_op.x(), broadcast_op.out());
   } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Unsupported broadcast op, %s", op->name()));
+    PADDLE_THROW(::common::errors::Unimplemented("Unsupported broadcast op, %s",
+                                                 op->name()));
   }
   return std::nullopt;
 }

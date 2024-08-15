@@ -64,9 +64,11 @@ class RandomDataset(paddle.io.Dataset):
 def optimizer_setting(model, use_multi_precision, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     optimizer = paddle.optimizer.Momentum(
-        parameters=[{"params": list(model.parameters())}]
-        if opt_group
-        else list(model.parameters()),
+        parameters=(
+            [{"params": list(model.parameters())}]
+            if opt_group
+            else list(model.parameters())
+        ),
         learning_rate=0.001,
         weight_decay=0.00001,
         grad_clip=clip,

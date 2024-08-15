@@ -157,6 +157,7 @@ def save_state_dict(
         path(str): The directory to save state_dict.
         process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         coordinator_rank(int): The rank used to save non distributed values. Rank0 is used by default.
+        async_save(bool): Async save the state_dict, default is False.
 
     Examples:
         .. code-block:: python
