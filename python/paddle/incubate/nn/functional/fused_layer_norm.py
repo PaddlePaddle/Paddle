@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import paddle
@@ -21,6 +22,7 @@ from paddle.framework import LayerHelper, in_dynamic_mode, in_pir_mode
 
 if TYPE_CHECKING:
     from paddle import Tensor
+
 
 def fused_layer_norm(
     x: Tensor,
