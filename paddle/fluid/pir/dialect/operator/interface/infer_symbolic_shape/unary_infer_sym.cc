@@ -1364,25 +1364,32 @@ bool NanmedianOpInferSymbolicShape(
       op->attribute<paddle::dialect::IntArrayAttribute>("axes")
           .data()
           .GetData();
+  VLOG(3) << "axis_list: " << axis_list.size();
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   auto &x_dim = x_shape_or_data.shape();
+  VLOG(3) << "x_dim: " << x_dim.size();
   int64_t x_rank = x_dim.size();
-
+  VLOG(3) << "x_rank: " << x_rank;
   ExprVec out_dim;
   bool keep_dim = op->attribute<pir::BoolAttribute>("keep_dim").data();
+  VLOG(3) << "keep_dim: " << keep_dim;
   if (axis_list.empty()) {
+    VLOG(3) << "axis_list is empty";
     if (keep_dim) {
       for (int64_t i = 0; i < x_rank; i++) {
         out_dim.emplace_back(1);
       }
     }
   } else {
+    VLOG(3) << "axis_list is not empty";
     std::vector<int64_t> formatted_axis;
     for (size_t i = 0; i < axis_list.size(); i++) {
       if (x_rank == 0) {
+        VLOG(3) << "x_rank is 0";
         infer_context->AddGreatThanOneCstr(axis_list[i]);
       } else {
+        VLOG(3) << "x_rank is not 0";
         PADDLE_ENFORCE_LT(axis_list[i],
                           x_rank,
                           common::errors::InvalidArgument(
@@ -1401,6 +1408,7 @@ bool NanmedianOpInferSymbolicShape(
                               axis_list[i]));
       }
       if (axis_list[i] < 0) axis_list[i] += x_rank;
+      VLOG(3) << "axis_list[i]: " << axis_list[i];
       PADDLE_ENFORCE_EQ(
           std::find(formatted_axis.begin(), formatted_axis.end(), axis_list[i]),
           formatted_axis.end(),
@@ -1413,8 +1421,10 @@ bool NanmedianOpInferSymbolicShape(
       if (std::find(formatted_axis.begin(), formatted_axis.end(), i) ==
           formatted_axis.end()) {
         out_dim.emplace_back(x_dim[i]);  // NOLINT
+        VLOG(3) << "out_dim.emplace_back(x_dim[i]): " << x_dim[i];
       } else if (keep_dim) {
         out_dim.emplace_back(1);
+        VLOG(3) << "out_dim.emplace_back(1): " << 1;
       }
     }
   }
@@ -1424,7 +1434,8 @@ bool NanmedianOpInferSymbolicShape(
   if (mode == "avg") {
     median_dim.emplace_back(2);
   }
-
+  VLOG(3) << "out_dim: " << out_dim.size();
+  VLOG(3) << "median_dim: " << median_dim.size();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dim)});
