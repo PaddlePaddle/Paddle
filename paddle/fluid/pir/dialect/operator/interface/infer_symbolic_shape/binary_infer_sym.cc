@@ -853,7 +853,7 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool MatrixNMSOpInferSymbolicShape(
+bool MatrixNmsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &boxes_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
