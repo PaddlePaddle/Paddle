@@ -91,6 +91,9 @@ std::string GenCSVFilePath(const cinn::common::Target target,
     }
   };
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  if (root_path == "") {
+    root_path = "./tile_config/";
+  }
   std::string target_str = target.arch_str() + "_" + target.device_name_str();
   checkexist(root_path);
   checkexist(root_path + target_str);

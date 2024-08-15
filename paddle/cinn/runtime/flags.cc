@@ -56,7 +56,8 @@ PD_DEFINE_string(cinn_kernel_execution_label,
 
 PD_DEFINE_string(cinn_tile_config_filename_label,
                  StringFromEnv("FLAGS_cinn_tile_config_filename_label",
-                               "./tile_file/"),
+                               //  "./tile_file/"),
+                               ""),
                  "Label used to name file of tile config database");
 
 PD_DEFINE_string(
