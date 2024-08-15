@@ -249,24 +249,10 @@ bool BatchFcOpInferSymbolicShape(
       w_dims.size(),
       3,
       common::errors::InvalidArgument("W of BatchFcOp should have 3D."));
-  PADDLE_ENFORCE_EQ(
-      input_dims[0],
-      w_dims[0],
-      common::errors::InvalidArgument(
-          "Input.dim[0] and W.dim[0] of BatchFcOp should be same."));
-  PADDLE_ENFORCE_EQ(
-      input_dims[2],
-      w_dims[1],
-      common::errors::InvalidArgument(
-          "Input.dim[2] and W.dim[1] of BatchFcOp should be same."));
-  PADDLE_ENFORCE_EQ(bias_dims[0],
-                    input_dims[0],
-                    common::errors::InvalidArgument(
-                        "Bias.dim[0] should be same as input.dim[0]."));
-  PADDLE_ENFORCE_EQ(bias_dims[1],
-                    w_dims[2],
-                    common::errors::InvalidArgument(
-                        "Bias.dim[1] should be same as input.dim[2]."));
+  infer_context->AddEqualCstr(input_dims[0], w_dims[0]);
+  infer_context->AddEqualCstr(input_dims[2], w_dims[1]);
+  infer_context->AddEqualCstr(bias_dims[0], input_dims[0]);
+  infer_context->AddEqualCstr(bias_dims[1], w_dims[2]);
 
   std::vector<symbol::DimExpr> out_dims = {
       input_dims[0], input_dims[1], w_dims[2]};
