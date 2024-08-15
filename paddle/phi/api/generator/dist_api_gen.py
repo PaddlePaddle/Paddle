@@ -910,7 +910,7 @@ class DistForwardAPI(ForwardAPI):
                 else:
                     input_args_code = input_args_code + param + ", "
             elif isinstance(param, str):
-                input_args_code = input_args_code + "\"" + param + "\", "
+                input_args_code = f'{input_args_code}"{param}", '
             elif isinstance(param, bool):
                 input_args_code = input_args_code + str(param).lower() + ", "
             else:
@@ -1249,7 +1249,7 @@ class DistForwardAPI(ForwardAPI):
             elif param in attr_names:
                 input_args_code = input_args_code + param + ", "
             elif isinstance(param, str):
-                input_args_code = input_args_code + "\"" + param + "\", "
+                input_args_code = f'{input_args_code}"{param}", '
             elif isinstance(param, bool):
                 input_args_code = input_args_code + str(param).lower() + ", "
             else:
@@ -1557,7 +1557,7 @@ class DistForwardAPI(ForwardAPI):
                 else:
                     input_args_code = input_args_code + param + ", "
             elif isinstance(param, str):
-                input_args_code = input_args_code + "\"" + param + "\", "
+                input_args_code = f'{input_args_code}"{param}", '
             elif isinstance(param, bool):
                 input_args_code = input_args_code + str(param).lower() + ", "
             else:

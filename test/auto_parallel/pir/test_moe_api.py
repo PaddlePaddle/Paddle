@@ -32,10 +32,10 @@ def get_program(mesh, placements, local_mesh_dim):
         y.stop_gradient = False
         dist_x = dist.shard_tensor(x, mesh, placements)
         dist_y = dist.shard_tensor(y, mesh, placements)
-        local_tensors = dist.auto_parallel.api.local_tensor_list_from_dtensor(
+        local_tensors = dist.auto_parallel.api.moe_sub_mesh_tensors(
             dist_x, mesh, local_mesh_dim, placements
         )
-        out = dist.auto_parallel.api.dtensor_from_local_list(
+        out = dist.auto_parallel.api.moe_global_mesh_tensor(
             local_tensors, mesh, placements, local_mesh_dim
         )
         loss = dist_y - out
@@ -75,7 +75,7 @@ class TestMoEApi(unittest.TestCase):
     def test_2Dmesh_4experts(self):
         mesh = dist.ProcessMesh([[0, 1], [2, 3], [4, 5], [6, 7]])
         global_placements = [dist.Shard(0), dist.Shard(2)]
-        local_mesh_dim = 0
+        local_mesh_dim = -2
         dist_program = get_program(mesh, global_placements, local_mesh_dim)
         ops = dist_program.global_block().ops
 
@@ -90,6 +90,26 @@ class TestMoEApi(unittest.TestCase):
             local_meshes,
             local_dims_mapping,
         )
+
+    def test_error(self):
+        mesh = dist.ProcessMesh([[0, 1], [2, 3], [4, 5], [6, 7]])
+        global_placements = [dist.Shard(0), dist.Shard(2)]
+        local_mesh_dim = -3
+        with self.assertRaises(ValueError):
+            dist_program = get_program(mesh, global_placements, local_mesh_dim)
+
+        with self.assertRaises(ValueError):
+            main_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program):
+                x = paddle.static.data(name='x', shape=[64, 36, 24])
+                y = paddle.static.data(name='y', shape=[64, 36, 24])
+                x.stop_gradient = False
+                y.stop_gradient = False
+                dist_x = dist.shard_tensor(x, mesh, global_placements)
+                dist_y = dist.shard_tensor(y, mesh, global_placements)
+                local_tensors = dist.auto_parallel.api.moe_sub_mesh_tensors(
+                    dist_x, None, local_mesh_dim, global_placements
+                )
 
     def check_dist_attr(self, op, meshes, dims_mapping):
         results = op.results()
