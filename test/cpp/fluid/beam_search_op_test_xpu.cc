@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/funcs/math/beam_search.h"
+
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/platform/device_context.h"
-#include "paddle/phi/kernels/funcs/math/beam_search.h"
 
 void PrepareCPUTensors(phi::DenseTensor* ids,
                        phi::DenseTensor* scores,
@@ -152,6 +154,8 @@ void TestBeamSearch() {
   delete context;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
 template <>
 void TestBeamSearch<phi::XPUContext, phi::XPUPlace>() {
   phi::DenseTensor ids;
@@ -164,6 +168,7 @@ void TestBeamSearch<phi::XPUContext, phi::XPUPlace>() {
   context->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                             .GetAllocator(*place, context->stream())
                             .get());
+  context->PartialInitWithAllocator();
   if (phi::is_cpu_place(*place)) {
     PrepareCPUTensors(&ids, &scores, &pre_ids, &pre_scores);
   } else {
@@ -232,5 +237,11 @@ void TestBeamSearch<phi::XPUContext, phi::XPUPlace>() {
   delete place;
   delete context;
 }
+#endif
 
+TEST(BeamSearch, CPU) { TestBeamSearch<phi::CPUContext, phi::CPUPlace>(); }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU)
 TEST(BeamSearch, XPU) { TestBeamSearch<phi::XPUContext, phi::XPUPlace>(); }
+#endif
