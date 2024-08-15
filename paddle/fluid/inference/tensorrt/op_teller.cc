@@ -2857,7 +2857,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "index_put") {
-#if !IS_TRT_VERSION_GE(8200)
+#if IS_TRT_VERSION_LT(8200)
       VLOG(3) << "index_put is not supported when TensorRT < 8.2";
       return false;
 #endif
