@@ -946,8 +946,11 @@ bool DetectionMapOpInferSymbolicShape(
   }
 
   std::vector<symbol::DimExpr> m_ap_shape = {symbol::DimExpr(1)};
+  infer_context->SetShapeOrDataForValue(op->result(0), pos_count_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(1), true_pos_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(2), false_pos_shape_or_data);
   infer_context->SetShapeOrDataForValue(
-      op->result(0),
+      op->result(3),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(m_ap_shape)});
 
