@@ -2659,8 +2659,8 @@ bool UnstackOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
   int rank = x_shape.size();
 
-  int axis = op->attribute<pir::Int64Attribute>("axis").data();
-  int num = op->attribute<pir::Int64Attribute>("num").data();
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  int num = op->attribute<pir::Int32Attribute>("num").data();
 
   PADDLE_ENFORCE_GE(axis,
                     -rank,
