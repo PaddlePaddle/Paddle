@@ -1291,16 +1291,15 @@ bool RoiPoolOpInferSymbolicShape(
   const auto &rois_num_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
   if (!rois_num_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
-    const auto &rois_num_shape = rois_num_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(
-        rois_num_shape.size(),
-        1,
+        const auto &rois_num_shape = rois_num_shape_or_data.shape();
+        rois_num_shape.size() == 1 || rois_num_shape.size() == 0,
+        true,
         phi::errors::InvalidArgument(
             "The number of rois should be a 1-D tensor with shape (num_rois), "
             "but received the number of rois with %d dimension",
             rois_num_shape.size()));
   }
-
   int pooled_height =
       op->attribute<pir::Int32Attribute>("pooled_height").data();
   int pooled_width = op->attribute<pir::Int32Attribute>("pooled_width").data();
