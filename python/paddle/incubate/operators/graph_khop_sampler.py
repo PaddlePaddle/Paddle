@@ -11,11 +11,53 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, overload
 
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+
+@overload
+def graph_khop_sampler(
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    sample_sizes: list[int] | tuple[int, ...],
+    sorted_eids: Tensor | None = ...,
+    return_eids: Literal[True] = ...,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor, Tensor]: ...
+
+
+@overload
+def graph_khop_sampler(
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    sample_sizes: list[int] | tuple[int, ...],
+    sorted_eids: Tensor | None = ...,
+    return_eids: Literal[False] = ...,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]: ...
+
+
+@overload
+def graph_khop_sampler(
+    row: Tensor,
+    colptr: Tensor,
+    input_nodes: Tensor,
+    sample_sizes: list[int] | tuple[int, ...],
+    sorted_eids: Tensor | None = ...,
+    return_eids: bool = ...,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]: ...
 
 
 def graph_khop_sampler(
@@ -51,7 +93,7 @@ def graph_khop_sampler(
         sample_sizes (list|tuple): The number of neighbors and number of layers we want
                                    to sample. The data type should be int, and the shape
                                    should only have one dimension.
-        sorted_eids (Tensor, optional): The sorted edge ids, should not be None when `return_eids`
+        sorted_eids (Tensor|None, optional): The sorted edge ids, should not be None when `return_eids`
                               is True. The shape should be [num_edges, 1], and the data
                               type should be the same with `row`. Default is None.
         return_eids (bool, optional): Whether to return the id of the sample edges. Default is False.
@@ -69,7 +111,7 @@ def graph_khop_sampler(
 
     Examples:
         .. code-block:: python
-
+            >>> # doctest: +SKIP('Number of sample edges dismatch, the sample kernel has error.')
             >>> import paddle
 
             >>> row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]
@@ -80,7 +122,7 @@ def graph_khop_sampler(
             >>> colptr = paddle.to_tensor(colptr, dtype="int64")
             >>> nodes = paddle.to_tensor(nodes, dtype="int64")
 
-            >>> edge_src, edge_dst, sample_index, reindex_nodes = paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)
+            >>> edge_src, edge_dst, sample_index, reindex_nodes = paddle.incubate.graph_khop_sampler(row, colptr, nodes, sample_sizes, False)   # type: ignore[operator]
 
     """
 
