@@ -1169,8 +1169,8 @@ bool GenerateProposalsV2OpInferSymbolicShape(
   std::vector<symbol::DimExpr> score_shape = score_shape_or_data.shape();
   infer_context->SetShapeOrDataForValue(
       op->result(2),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({score_shape[0]})});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {score_shape[0].dyn_cast<int64_t>()})});
   return true;
 }
 
