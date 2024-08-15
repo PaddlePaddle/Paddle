@@ -96,5 +96,6 @@
 - truncated_gaussian_random
 - uniform
 - unpool
+- unsqueeze
 - zeros
 - zeros_like

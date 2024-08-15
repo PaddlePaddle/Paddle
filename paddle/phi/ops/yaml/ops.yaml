@@ -4907,16 +4907,15 @@
 
 - op : unsqueeze
   args : (Tensor x, IntArray axis = {})
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : UnsqueezeWithXShapeInferMeta
+    func : UnsqueezeInferMeta
     spmd_rule : UnsqueezeInferSpmd
   kernel :
     func : unsqueeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
-  intermediate : xshape
   backward : unsqueeze_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 

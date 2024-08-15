@@ -968,6 +968,21 @@
     param : [x, indices, ksize, strides, paddings,output_size, data_format]
   backward: unpool_grad
 
+- op : unsqueeze
+  args : (Tensor x, IntArray axis = {})
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : UnsqueezeWithXShapeInferMeta
+    spmd_rule : UnsqueezeWithXShapeInferSpmd
+  kernel :
+    func : unsqueeze_with_xshape
+    data_type : x
+  inplace : (x -> out)
+  view: (x -> out)
+  intermediate : xshape
+  backward : unsqueeze_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op: multiclass_nms
   args: (Tensor bboxes, Tensor scores, float score_threshold,
     int nms_top_k, int keep_top_k, float nms_threshold = 0.3, float nms_eta = 1.0,
