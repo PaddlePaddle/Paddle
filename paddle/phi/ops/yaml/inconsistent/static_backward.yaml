@@ -171,6 +171,7 @@
   infer_meta :
     func : EmbeddingGradSparseInferMeta
     param : [x,weight]
+    spmd_rule : EmbeddingGradInferSpmd
   kernel :
     func : embedding_grad {dense, dense, dense -> dense}
            embedding_sparse_grad {dense, dense, dense -> selected_rows}
