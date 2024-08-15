@@ -128,14 +128,17 @@ stride_ops = [
 def check_view_value(value: pir.Value) -> bool:
     define_op = value.get_defining_op()
     used_ops = value.all_used_ops()
-    used_ops_not_in_stride = all(x.name() not in stride_ops for x in used_ops)
-    if define_op.name() in stride_ops and used_ops_not_in_stride:
+    indices_in_stride = [
+        index for index, op in enumerate(used_ops) if op.name() in stride_ops
+    ]
+    if define_op.name() in stride_ops and len(indices_in_stride) == 0:
         return False
     if define_op in stride_ops:
         if define_op.result(0).is_same(value):
             return True
-    if not used_ops_not_in_stride:
-        for op in used_ops:
+    if len(indices_in_stride) > 0:
+        ops_in_stride = [used_ops[index] for index in indices_in_stride]
+        for op in ops_in_stride:
             if op.operand_source(0).is_same(value):
                 return True
     return False
