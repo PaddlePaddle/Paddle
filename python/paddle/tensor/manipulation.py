@@ -1945,15 +1945,21 @@ def roll(
         axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
                 For more information, please refer to :ref:`api_guide_Name` .
-    
-    The image below shows a 2D tensor of shape `[[1,2,3],[4,5,6],[7,8,9]]` transformed into a tensor of different
-    shape through a roll operation. When a global roll (without the `axis` parameter) is applied, the tensor is flattened 
-    into a 1D array, cyclically rolled, and then reshaped to its original form. When rolled along rows (`axis=0`), the 
-    tensor is cyclically rolled along its rows; when rolled along columns (`axis=1`), the tensor is cyclically rolled along 
-    its columns. From the above operations, we can observe the positional changes of each element under different roll operations.
-    
+
+    The image below shows a 2D tensor with the shape `[[1,2,3],[4,5,6],[7,8,9]]` being transformed into tensors with
+    different shapes through the roll operation.
+
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/roll.png
-        :alt: Legend
+        :width: 700
+        :align: center
+        :alt: legend of roll API
+
+    - When `axis = None`, the tensor is flattened into a 1D array, then rolled, and finally reshaped back to its original form.
+    - When `axis=0`, the tensor is rolled along the 0th axis.
+    - When `axis=1`, the tensor is rolled along the 1st axis.
+
+    The rolling operation varies depending on the value of the `axis` parameter. The image illustrates how each element changes
+    position under different rolling operations.
 
     Returns:
         Tensor, A Tensor with same data type as `x`.
