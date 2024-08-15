@@ -111,6 +111,16 @@
     func : broadcast
     param: [x, root]
 
+- op : comm_init_all
+  args : (int[] devices={}, int ring_id=0)
+  output :
+  infer_meta :
+    func : CommInitAllInferMeta
+    param : [devices, ring_id]
+  kernel :
+    func : comm_init_all
+    data_type : DataType::FLOAT32
+
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
