@@ -1910,7 +1910,7 @@ bool MultiDotOpInferSymbolicShape(
   auto first_value_shape = input_values[0].shape();
   PADDLE_ENFORCE_LT(
       first_value_shape.size(),
-      static_cast<size_t>(3),
+      3,
       common::errors::InvalidArgument(
           "multi_dot: the first input tensor must be 1D or 2D but got[%d]!",
           static_cast<int>(first_value_shape.size())));
