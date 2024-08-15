@@ -28,16 +28,19 @@ TEST(TensorRT, split_converter) {
 
   AnalysisConfig config;
   int batch_size = 4;
+  int channels = 4;
+  int height = 4;
+  int width = 4;
   config.EnableUseGpu(100, 0);
   config.SetModel(model_dir);
   config.EnableTensorRtEngine(
       1 << 20, batch_size, 1, AnalysisConfig::Precision::kInt8, false, true);
 
+  std::map<std::string, std::vector<int>> input_shape;
+  input_shape["image"] = {batch_size, channels, height, width};
+  config.SetTRTDynamicShapeInfo(input_shape, input_shape, input_shape, false);
   auto predictor = CreatePaddlePredictor(config);
 
-  int channels = 4;
-  int height = 4;
-  int width = 4;
   int input_num = batch_size * channels * height * width;
   float *input = new float[input_num];
   memset(input, 1.0, input_num * sizeof(float));
