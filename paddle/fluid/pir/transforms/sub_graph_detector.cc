@@ -27,9 +27,9 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/utils/string.h"
 #endif
 
-#include "paddle/cinn/utils/string.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builder.h"
@@ -539,7 +539,9 @@ static GraphSet DownstreamSet(UnionFindSet& union_set,  // NOLINT
 }
 
 static void VLOG_LINES(const std::string& str) {
+#ifdef PADDLE_WITH_CINN
   const auto& lines = cinn::utils::Split(str, "\n");
+#endif
   for (const auto& line : lines) {
     VLOG(4) << line;
   }
