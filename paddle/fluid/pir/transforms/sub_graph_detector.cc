@@ -541,10 +541,11 @@ static GraphSet DownstreamSet(UnionFindSet& union_set,  // NOLINT
 static void VLOG_LINES(const std::string& str) {
 #ifdef PADDLE_WITH_CINN
   const auto& lines = cinn::utils::Split(str, "\n");
-#endif
   for (const auto& line : lines) {
     VLOG(4) << line;
   }
+#endif
+  return;
 }
 
 void SubgraphDetector::SetCanApplyFusionMap() {
