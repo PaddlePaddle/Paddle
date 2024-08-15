@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from paddle import Tensor
-    from paddle._typing import NestedStructure
     from paddle.nn import Embedding, Layer, RNNCellBase
 
 
@@ -277,14 +276,14 @@ class BeamSearchDecoder(Decoder):
         expand_times[1] = beam_size
         x = paddle.tile(x, expand_times)  # [batch_size, beam_size, ...]
         x = paddle.transpose(
-            x, list(range(2, len(x.shape))) + [0, 1]
+            x, [*list(range(2, len(x.shape))), 0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
         x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
         x = paddle.transpose(
-            x, [len(x.shape) - 1] + list(range(0, len(x.shape) - 1))
+            x, [len(x.shape) - 1, *list(range(0, len(x.shape) - 1))]
         )  # [batch_size * beam_size, ...]
         return x
 
@@ -302,7 +301,7 @@ class BeamSearchDecoder(Decoder):
                 data type is same as `x`.
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return paddle.reshape(x, shape=[-1, self.beam_size] + list(x.shape[1:]))
+        return paddle.reshape(x, shape=[-1, self.beam_size, *list(x.shape[1:])])
 
     def _merge_batch_beams(self, x):
         r"""
@@ -318,7 +317,7 @@ class BeamSearchDecoder(Decoder):
                 data type is same as `x`.
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return paddle.reshape(x, shape=[-1] + list(x.shape[2:]))
+        return paddle.reshape(x, shape=[-1, *list(x.shape[2:])])
 
     def _expand_to_beam_size(self, x):
         r"""
@@ -804,7 +803,7 @@ def _dynamic_decode_imperative(
     if not output_time_major:
         final_outputs = paddle.utils.map_structure(
             lambda x: paddle.transpose(
-                x, [1, 0] + list(range(2, len(x.shape)))
+                x, [1, 0, *list(range(2, len(x.shape)))]
             ),
             final_outputs,
         )
@@ -881,7 +880,7 @@ def _dynamic_decode_declarative(
         return new_state
 
     def _transpose_batch_time(x):
-        return paddle.transpose(x, [1, 0] + list(range(2, len(x.shape))))
+        return paddle.transpose(x, [1, 0, *list(range(2, len(x.shape)))])
 
     def _create_array_out_of_while(dtype):
         current_block_idx = default_main_program().current_block_idx
@@ -1028,7 +1027,7 @@ def dynamic_decode(
     is_test: bool = ...,
     return_length: Literal[False] = ...,
     **kwargs: Any,
-) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor]]: ...
+) -> tuple[Tensor, BeamSearchDecoder.StateWrapper]: ...
 
 
 @overload
@@ -1041,7 +1040,7 @@ def dynamic_decode(
     is_test: bool = ...,
     return_length: Literal[True] = ...,
     **kwargs: Any,
-) -> tuple[NestedStructure[Tensor], NestedStructure[Tensor], Tensor]: ...
+) -> tuple[Tensor, BeamSearchDecoder.StateWrapper, Tensor]: ...
 
 
 @overload
@@ -1055,8 +1054,8 @@ def dynamic_decode(
     return_length: bool = ...,
     **kwargs: Any,
 ) -> (
-    tuple[NestedStructure[Tensor], NestedStructure[Tensor]]
-    | tuple[NestedStructure[Tensor], NestedStructure[Tensor], Tensor]
+    tuple[Tensor, BeamSearchDecoder.StateWrapper]
+    | tuple[Tensor, BeamSearchDecoder.StateWrapper, Tensor]
 ): ...
 
 

@@ -34,7 +34,7 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   auto op_attributes = op->attributes();
 
   VLOG(6) << "Start Build engine";
-  auto engine_serialized_data = op_attributes.at("engine_serialized_data")
+  auto engine_serialized_path = op_attributes.at("engine_serialized_data")
                                     .dyn_cast<pir::StrAttribute>()
                                     .AsString();
   workspace_size_ =
@@ -155,7 +155,8 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
              "===============";
   trt_engine_ = std::make_unique<paddle::platform::TensorRTEngine>(
       params, paddle::platform::NaiveLogger::Global());
-  trt_engine_->Deserialize(engine_serialized_data);
+  auto engine_data = ReadBinaryFileToString(engine_serialized_path);
+  trt_engine_->Deserialize(engine_data);
 
   VLOG(6) << "Finish build engine for: " << op_name_;
 
@@ -757,6 +758,27 @@ void TensorRTEngineInstruction::RunTrt() {
 void TensorRTEngineInstruction::Run() {
   PrepareDynamicShape();
   RunTrt();
+}
+
+std::string TensorRTEngineInstruction::ReadBinaryFileToString(
+    const std::string &filePath) {
+  std::ifstream inputFile(filePath, std::ios::binary);
+
+  if (!inputFile) {
+    throw std::runtime_error("Failed to open file: " + filePath);
+  }
+
+  inputFile.seekg(0, std::ios::end);
+  std::streamsize fileSize = inputFile.tellg();
+  inputFile.seekg(0, std::ios::beg);
+
+  std::string fileContent(static_cast<size_t>(fileSize), '\0');
+
+  if (!inputFile.read(&fileContent[0], fileSize)) {
+    throw std::runtime_error("Failed to read file: " + filePath);
+  }
+
+  return fileContent;
 }
 
 }  // namespace framework

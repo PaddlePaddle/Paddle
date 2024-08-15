@@ -148,7 +148,8 @@ class _ConvNd(Layer):
             filter_shape = [
                 self._in_channels,
                 out_channels // groups,
-            ] + self._kernel_size
+                *self._kernel_size,
+            ]
         else:
             if in_channels % groups != 0:
                 raise ValueError("in_channels must be divisible by groups.")
@@ -167,7 +168,8 @@ class _ConvNd(Layer):
             filter_shape = [
                 out_channels,
                 in_channels // groups,
-            ] + self._kernel_size
+                *self._kernel_size,
+            ]
 
         def _get_default_param_initializer():
             if transposed:
