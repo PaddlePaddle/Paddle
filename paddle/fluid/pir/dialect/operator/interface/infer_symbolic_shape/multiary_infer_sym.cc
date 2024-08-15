@@ -1426,6 +1426,60 @@ bool RoiAlignOpInferSymbolicShape(
   return true;
 }
 
+bool SpectralNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &weight_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &u_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &v_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+
+  size_t rank_weight = weight_shape.size();
+
+  PADDLE_ENFORCE_GE(rank_weight,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(Weights) should be greater equal "
+                        "than 2, but received Weight rank(%d)",
+                        rank_weight));
+  PADDLE_ENFORCE_LE(rank_weight,
+                    5,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(Weights) should be less equal than "
+                        "5, but received Weight rank(%d)",
+                        rank_weight));
+
+  int dim = op->attribute<pir::Int32Attribute>("dim").data();
+  int power_iters = op->attribute<pir::Int32Attribute>("power_iters").data();
+
+  auto dim_valid = dim == 0 || dim == 1;
+  PADDLE_ENFORCE_EQ(dim_valid,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Attr(dim) can only be 0 or 1, but received %d", dim));
+  PADDLE_ENFORCE_GE(
+      power_iters,
+      0,
+      common::errors::InvalidArgument(
+          "Attr(power_iters) should be greater equal then 0, but received %d",
+          power_iters));
+
+  symbol::DimExpr h = weight_shape[dim];
+  symbol::DimExpr w = 1;
+  for (size_t i = 0; i < rank_weight; i++) {
+    if (i != static_cast<size_t>(dim)) {
+      w = w * weight_shape[i];
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(weight_shape)});
+
+  return true;
+}
 // bool LstmOpInferSymbolicShape(pir::Operation *op,
 //                               pir::InferSymbolicShapeContext
 //                               *infer_context)

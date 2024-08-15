@@ -4376,6 +4376,7 @@
     func : spectral_norm
     data_type : weight
   backward : spectral_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)
