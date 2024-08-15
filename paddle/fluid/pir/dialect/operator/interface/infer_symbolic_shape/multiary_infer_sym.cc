@@ -1290,8 +1290,8 @@ bool RoiPoolOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
   const auto &rois_num_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  const auto &rois_num_shape = rois_num_shape_or_data.shape();
   if (!rois_num_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    const auto &rois_num_shape = rois_num_shape_or_data.shape();
     PADDLE_ENFORCE_EQ(
         rois_num_shape.size(),
         1,
