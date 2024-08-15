@@ -250,6 +250,7 @@
   kernel :
     func : apply_per_channel_scale
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
@@ -314,6 +315,7 @@
     func : as_strided
   backward : as_strided_grad
   no_need_buffer : input
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : asgd_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor d, Tensor y, Tensor n, Tensor master_param, bool multi_precision=false)
@@ -1236,6 +1238,7 @@
     func : decode_jpeg
     param : [x, mode]
     backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : deformable_conv
   args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
@@ -1465,6 +1468,7 @@
   intermediate : mask
   backward : dropout_grad
   traits : pir::SideEffectTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : edit_distance
   args : (Tensor hyps, Tensor refs, Tensor hypslength, Tensor refslength, bool normalized = false)
@@ -1962,6 +1966,7 @@
   kernel:
     func: fold
   backward: fold_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fractional_max_pool2d
   args : (Tensor x, int[] output_size, int[] kernel_size = {0, 0}, float random_u = 0.0, bool return_mask = true)
@@ -2102,6 +2107,7 @@
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_batch_norm_act_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_bn_add_activation
   args : (Tensor x, Tensor z, Tensor scale, Tensor bias, Tensor mean, Tensor variance, float momentum, float epsilon, str act_type)
@@ -2114,6 +2120,7 @@
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
   backward : fused_bn_add_activation_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_multi_transformer
   args : (Tensor x, Tensor[] ln_scales, Tensor[] ln_biases, Tensor[] qkv_weights, Tensor[] qkv_biases, Tensor[] cache_kvs, Tensor[] pre_caches, Tensor rotary_tensor, Tensor beam_offset, Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor[] out_linear_weights, Tensor[] out_linear_biases, Tensor[] ffn_ln_scales, Tensor[] ffn_ln_biases, Tensor[] ffn1_weights, Tensor[] ffn1_biases, Tensor[] ffn2_weights, Tensor[] ffn2_biases, bool pre_layer_norm = true, float epsilon = 1e-5, float residual_alpha = 1.0f, float dropout_rate = .5f, int rotary_emb_dims = 0, bool is_test = false, str dropout_implementation = "downgrade_in_infer", str act_method = "gelu", bool trans_qkvw = true, int ring_id = -1, str norm_type = "layernorm", bool use_neox_rotary_style=true, int gqa_group_size=-1)
@@ -2134,6 +2141,7 @@
     func : fused_softmax_mask
     data_type : x
   backward: fused_softmax_mask_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_softmax_mask_upper_triangle
   args : (Tensor X)
@@ -4435,16 +4443,15 @@
 
 - op : squeeze
   args : (Tensor x, IntArray axis={})
-  output : Tensor(out), Tensor(xshape)
+  output : Tensor(out)
   infer_meta :
-    func : SqueezeWithXShapeInferMeta
+    func : SqueezeInferMeta
     spmd_rule : SqueezeInferSpmd
   kernel :
     func : squeeze
     data_type : x
   inplace : (x -> out)
   view: (x -> out)
-  intermediate : xshape
   backward : squeeze_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
@@ -5088,6 +5095,7 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : zeros
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())

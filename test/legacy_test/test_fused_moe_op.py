@@ -119,6 +119,7 @@ class TestFusedMoEOp(OpTest):
         self.d_feedforward = 3072
         self.top_k = 2
         self.quant_method = "None"
+        self.norm_topk_prob = True
 
     def GetWintData(self):
         if self.quant_method == "None":
@@ -168,6 +169,7 @@ class TestFusedMoEOp(OpTest):
             None if self.quant_method == "None" else self.scale1,
             self.quant_method,
             self.top_k,
+            self.norm_topk_prob,
         )
 
         return fused_out
@@ -182,7 +184,11 @@ class TestFusedMoEOp(OpTest):
         routing_weights, selected_experts = paddle.topk(
             routing_weights, self.top_k, axis=-1
         )
-        routing_weights /= paddle.sum(routing_weights, axis=-1, keepdim=True)
+        # mixtral true, qwen_moe false
+        if self.norm_topk_prob:
+            routing_weights /= paddle.sum(
+                routing_weights, axis=-1, keepdim=True
+            )
         # we cast back to the input dtype
         routing_weights = routing_weights.cast(np.float32)
 
@@ -256,6 +262,20 @@ class TestFusedMoEOpWint8(TestFusedMoEOp):
         self.rtol = 1e-2
         self.atol = 1e-2
         self.quant_method = "weight_only_int8"
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMoEOpNonNorm(TestFusedMoEOp):
+    def config(self):
+        super().config()
+        self.rtol = 1e-2
+        self.atol = 1e-2
+        self.norm_topk_prob = False
 
 
 if __name__ == "__main__":

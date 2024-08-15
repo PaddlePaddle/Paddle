@@ -42,6 +42,7 @@
 - slice_grad
 - split_grad
 - split_with_num_grad
+- squeeze_grad
 - strided_slice_grad
 - sum_double_grad
 - sum_grad
