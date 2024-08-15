@@ -1310,7 +1310,7 @@ bool MeanOpInferSymbolicShape(pir::Operation *op,
   bool keepdim = GetBoolAttr(op, "keepdim");
 
   const auto &attributes = op->attributes();
-  const std::vector<int64_t> axis;
+  std::vector<int64_t> axis;
   if (attributes.find("axis") != attributes.end()) {
     axis = details::GetVectorAttr<int64_t>(op, "axis");
   }
