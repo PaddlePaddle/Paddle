@@ -1175,19 +1175,25 @@ bool FlashAttnOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool FusedBatchNormActOpInferSymbolicShape(pir::Operation *op,
-//                                            pir::InferSymbolicShapeContext
-//                                            *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FusedBatchNormActOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BatchNormOpInferSymbolicShape(op, infer_context);
+}
 
-// bool FusedBnAddActivationOpInferSymbolicShape(pir::Operation *op,
-//                                               pir::InferSymbolicShapeContext
-//                                               *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FusedBatchNormAct_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BatchNormOpInferSymbolicShape(op, infer_context);
+}
+
+bool FusedBnAddActivationOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BatchNormOpInferSymbolicShape(op, infer_context);
+}
+
+bool FusedBnAddActivation_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BatchNormOpInferSymbolicShape(op, infer_context);
+}
 
 // bool FusedMultiTransformerOpInferSymbolicShape(pir::Operation *op,
 //                                                pir::InferSymbolicShapeContext
