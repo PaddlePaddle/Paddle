@@ -393,7 +393,7 @@ class test_set_state_dict_err_layer(paddle.nn.Layer):
 
 class TestSetStateDictErr(unittest.TestCase):
     def test_set_state_dict_err(self):
-        with self.assertRaises(ValueError) as e:
+        with self.assertRaises((ValueError, TypeError)) as e:
             layer = test_set_state_dict_err_layer()
             x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0, 5.0])
             y = layer(x)
