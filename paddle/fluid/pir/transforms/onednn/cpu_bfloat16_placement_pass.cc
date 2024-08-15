@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/onednn/onednn_placement_pass.h"
+#include "paddle/fluid/pir/transforms/onednn/cpu_bfloat16_placement_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
@@ -32,7 +32,6 @@
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/operation.h"
-#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
 namespace {
 class OneDNNBf16PlacementPattern : public pir::RewritePattern {
@@ -106,7 +105,6 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-
     std::string target_op_name = op->name();
 
     auto op_info =
@@ -145,7 +143,6 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
   // find orphaned bfloat16 operator that is between two float32 operators
   // revert mkldnn_data_type attr to float32
   bool Match(pir::Operation* op) const override {  // NOLINT
-
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
         !op->isa<paddle::onednn::dialect::CastOp>() &&
         !op->isa<paddle::onednn::dialect::Cast_Op>() &&
@@ -259,7 +256,6 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-
     std::string target_op_name = op->name();
     auto op_info =
         pir::IrContext::Instance()->GetRegisteredOpInfo(target_op_name);
@@ -293,7 +289,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
                             {} /*generated_names*/) {}
 
   bool Match(pir::Operation* op) const override {  // NOLINT
-
     if (!op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
         !op->isa<paddle::onednn::dialect::CastOp>() &&
         !op->isa<paddle::onednn::dialect::Cast_Op>() &&
@@ -360,7 +355,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-
     std::string target_op_name = op->name();
     auto op_info =
         pir::IrContext::Instance()->GetRegisteredOpInfo(target_op_name);

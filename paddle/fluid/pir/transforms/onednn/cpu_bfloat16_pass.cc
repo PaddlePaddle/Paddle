@@ -21,19 +21,11 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
-#include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
-
-#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/pir/include/core/ir_context.h"
-#include "paddle/pir/include/pass/pass.h"
-#include "paddle/pir/include/pass/pass_registry.h"
-#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
 namespace {
 class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
@@ -1986,7 +1978,6 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
 class CpuBfloat16Pass : public pir::PatternRewritePass {
  public:
   CpuBfloat16Pass() : pir::PatternRewritePass("cpu_bfloat16_pattern_pass", 3) {}
-  // TODO: add function get onednn_bf16 flag
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     const std::vector<std::string> bfloat16_ops_two_one{
@@ -2036,14 +2027,13 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
         paddle::onednn::dialect::FusedMatmulOp::name(),
         paddle::onednn::dialect::ClipOp::name(),
         paddle::onednn::dialect::Clip_Op::name(),
-
     };
     /*
       some special op(more input or putput)
-      paddle::onednn::dialect::FusionGruOp::name(); // 5 input, 5 output
-      paddle::onednn::dialect::LayerNormOp::name(); // 3 input, 3 output
-      // paddle::onednn::dialect::ConcatOp::name(),
-      paddle::onednn::dialect::BilinearInterpOp::name(); //4 input, 1 output
+      paddle::onednn::dialect::FusionGruOp::name(); 5 input, 5 output
+      paddle::onednn::dialect::LayerNormOp::name(); 3 input, 3 output
+      paddle::onednn::dialect::ConcatOp::name();
+      paddle::onednn::dialect::BilinearInterpOp::name(); 4 input, 1 output
     */
 
     // op with two inputs and one output

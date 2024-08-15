@@ -28,10 +28,6 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
-#include "paddle/pir/include/core/builtin_op.h"
-#include "paddle/pir/include/core/ir_context.h"
-#include "paddle/pir/include/core/operation.h"
-#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
 namespace {
 template <class IrType1, class IrType2>
@@ -58,7 +54,6 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
                             {} /*generated_names*/) {}
 
   bool Match(pir::Operation* op) const override {  // NOLINT
-
     if (!op->isa<paddle::onednn::dialect::QuantizeOp>() &&
         !op->isa<paddle::onednn::dialect::BilinearInterpOp>() &&
         !op->isa<paddle::onednn::dialect::CastOp>() &&
@@ -117,7 +112,6 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-
     auto op_info = pir::IrContext::Instance()->GetRegisteredOpInfo(op->name());
     pir::IrContext* ctx = pir::IrContext::Instance();
     if (op_info) {
