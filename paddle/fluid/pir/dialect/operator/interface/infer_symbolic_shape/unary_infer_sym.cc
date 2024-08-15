@@ -1428,7 +1428,7 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
       paddle::dialect::details::GetVectorAttr<int>(op, "kernel_sizes");
 
   std::vector<symbol::DimExpr> kernel_size_;
-  for (int i = 0; i < kernel_size_.size(); ++i) {
+  for (int i = 0; i < kernel_sizes_.size(); ++i) {
     kernel_size_.push_back(kernel_sizes_[i]);
   }
 
