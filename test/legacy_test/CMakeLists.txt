@@ -502,6 +502,7 @@ endif()
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
     test_affine_channel_op
+    test_slice_op
     test_scatter_op
     test_concat_op
     test_elementwise_add_op
@@ -1040,6 +1041,9 @@ set(TEST_CINN_OPS
     test_pad_op
     test_pool2d_op
     test_erf_op
+    test_arg_min_max_op
+    test_slice_op
+    test_softmax_op
     test_cumsum_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
@@ -1066,6 +1070,7 @@ set_tests_properties(
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
+    test_arg_min_max_op
     test_adagrad_op
     test_reduce_op
     test_adamw_op
@@ -1256,3 +1261,4 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
+set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
