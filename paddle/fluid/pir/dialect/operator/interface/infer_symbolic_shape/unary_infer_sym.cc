@@ -592,12 +592,38 @@ bool ChannelShuffleOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool DecodeJpegOpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   // pass
-//   return true;
-// }
+bool DecodeJpegOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  const std::string &mode = op->attribute<pir::StrAttribute>("mode").AsString();
+
+  std::vector<symbol::DimExpr> out_dims;
+
+  if (mode == "unchanged") {
+    out_dims = {infer_context->GetNextSymName(),
+                infer_context->GetNextSymName(),
+                infer_context->GetNextSymName()};
+  } else if (mode == "gray") {
+    out_dims = {symbol::DimExpr(1),
+                infer_context->GetNextSymName(),
+                infer_context->GetNextSymName()};
+  } else if (mode == "rgb") {
+    out_dims = {symbol::DimExpr(3),
+                infer_context->GetNextSymName(),
+                infer_context->GetNextSymName()};
+  } else {
+    PADDLE_THROW(common::errors::Fatal(
+        "The provided mode is not supported for JPEG files on GPU: ", mode));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
+
+  return true;
+}
 
 // bool DiagOpInferSymbolicShape(pir::Operation *op,
 //                               pir::InferSymbolicShapeContext *infer_context)

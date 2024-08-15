@@ -506,12 +506,33 @@ bool FillDiagonalTensor_OpInferSymbolicShape(
   return FillDiagonalTensorOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FusedSoftmaxMaskOpInferSymbolicShape(pir::Operation *op,
-//                                           pir::InferSymbolicShapeContext
-//                                           *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FusedSoftmaxMaskOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  const auto &mask_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> mask_dims = mask_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      common::errors::InvalidArgument("Input x must be in 4D dimension but "
+                                      "received the dimension of X is %d",
+                                      x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      mask_dims.size(),
+      4,
+      common::errors::InvalidArgument("Input mask must be in 4D dimension but "
+                                      "received the dimension of mask is %d",
+                                      mask_dims.size()));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  return true;
+}
 
 // bool GridSampleOpInferSymbolicShape(pir::Operation *op,
 //                                     pir::InferSymbolicShapeContext
