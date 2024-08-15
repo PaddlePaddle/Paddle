@@ -14,7 +14,7 @@
 
 #include <functional>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/garbage_collector.h"

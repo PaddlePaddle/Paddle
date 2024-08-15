@@ -285,15 +285,15 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
     }
   }
 
-  PADDLE_ENFORCE_EQ(
-      attr_names.size(),
-      kernel_context->AttrsSize(),
-      phi::errors::InvalidArgument("The attr_names.size() should be equal to "
-                                   "kernel_context->AttrsSize()."
-                                   "Received attr_names.size() = % d,"
-                                   "kernel_context->AttrsSize() = %d.",
-                                   attr_names.size(),
-                                   kernel_context->AttrsSize()));
+  PADDLE_ENFORCE_EQ(attr_names.size(),
+                    kernel_context->AttrsSize(),
+                    common::errors::InvalidArgument(
+                        "The attr_names.size() should be equal to "
+                        "kernel_context->AttrsSize()."
+                        "Received attr_names.size() = % d,"
+                        "kernel_context->AttrsSize() = %d.",
+                        attr_names.size(),
+                        kernel_context->AttrsSize()));
 }
 
 GenericPlugin::GenericPlugin(
@@ -686,7 +686,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   PADDLE_ENFORCE_EQ(
       phi_kernel_contexts_[data_type]->InputsSize(),
       getNbInputs(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The phi_kernel_contexts_[data_type]->InputsSize() "
           "should be equal to getNbInputs()."
           "Received phi_kernel_contexts_[data_type]->InputsSize() "
@@ -694,7 +694,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
           phi_kernel_contexts_[data_type]->InputsSize()));
   PADDLE_ENFORCE_EQ(phi_kernel_contexts_[data_type]->OutputsSize(),
                     getNbOutputs(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The phi_kernel_contexts_[data_type]->OutputsSize() "
                         "should be equal to getNbOutputs()."));
   (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());

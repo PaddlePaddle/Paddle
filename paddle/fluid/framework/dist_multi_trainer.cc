@@ -112,13 +112,13 @@ void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
                                       const phi::Place &place) {
   auto pool = GetThreadPool(thread_num_);
   std::vector<std::future<void>> wait_futures;
-  PADDLE_ENFORCE_EQ(
-      static_cast<int>(pool.size()),
-      thread_num_,
-      phi::errors::InvalidArgument("static_cast<int>(pool.size()) is invalid, "
-                                   "expected %d but recieved %d.",
-                                   thread_num_,
-                                   static_cast<int>(pool.size())));
+  PADDLE_ENFORCE_EQ(static_cast<int>(pool.size()),
+                    thread_num_,
+                    common::errors::InvalidArgument(
+                        "static_cast<int>(pool.size()) is invalid, "
+                        "expected %d but recieved %d.",
+                        thread_num_,
+                        static_cast<int>(pool.size())));
   for (int i = 0; i < thread_num_; ++i) {
     wait_futures.emplace_back(pool[i]->Run([this, i, &main_program, &place]() {
       workers_[i]->SetPlace(place);
@@ -161,13 +161,13 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
 void DistMultiTrainer::Run() {
   auto pool = GetThreadPool(thread_num_);
   std::vector<std::future<void>> wait_futures;
-  PADDLE_ENFORCE_EQ(
-      static_cast<int>(pool.size()),
-      thread_num_,
-      phi::errors::InvalidArgument("static_cast<int>(pool.size()) is invalid, "
-                                   "expected %d but recieved %d.",
-                                   thread_num_,
-                                   static_cast<int>(pool.size())));
+  PADDLE_ENFORCE_EQ(static_cast<int>(pool.size()),
+                    thread_num_,
+                    common::errors::InvalidArgument(
+                        "static_cast<int>(pool.size()) is invalid, "
+                        "expected %d but recieved %d.",
+                        thread_num_,
+                        static_cast<int>(pool.size())));
   for (int i = 0; i < thread_num_; ++i) {
     if (!debug_) {  // NOLINT
       wait_futures.emplace_back(

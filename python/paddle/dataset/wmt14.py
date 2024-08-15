@@ -93,7 +93,7 @@ def reader_creator(tar_file, file_name, dict_size):
                     src_words = src_seq.split()
                     src_ids = [
                         src_dict.get(w, UNK_IDX)
-                        for w in [START] + src_words + [END]
+                        for w in [START, *src_words, END]
                     ]
 
                     trg_seq = line_split[1]  # one target sequence
@@ -103,8 +103,8 @@ def reader_creator(tar_file, file_name, dict_size):
                     # remove sequence whose length > 80 in training mode
                     if len(src_ids) > 80 or len(trg_ids) > 80:
                         continue
-                    trg_ids_next = trg_ids + [trg_dict[END]]
-                    trg_ids = [trg_dict[START]] + trg_ids
+                    trg_ids_next = [*trg_ids, trg_dict[END]]
+                    trg_ids = [trg_dict[START], *trg_ids]
 
                     yield src_ids, trg_ids, trg_ids_next
 

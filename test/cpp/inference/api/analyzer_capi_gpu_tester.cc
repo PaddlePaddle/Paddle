@@ -33,11 +33,12 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_DisableGpu(config);
   PD_SetCpuMathLibraryNumThreads(config, 10);
   int num_thread = PD_CpuMathLibraryNumThreads(config);
-  PADDLE_ENFORCE_EQ(10,
-                    num_thread,
-                    phi::errors::InvalidArgument("The num of thread should be"
-                                                 "equal to 10, but got %d.",
-                                                 num_thread));
+  PADDLE_ENFORCE_EQ(
+      10,
+      num_thread,
+      common::errors::InvalidArgument("The num of thread should be"
+                                      "equal to 10, but got %d.",
+                                      num_thread));
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
   PD_SetModel(config, model_dir.c_str(), nullptr);
@@ -48,25 +49,25 @@ TEST(PD_AnalysisConfig, use_gpu) {
   bool use_gpu = PD_UseGpu(config);
   PADDLE_ENFORCE_EQ(use_gpu,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "GPU is not enabled. "
                         "The configuration indicates that GPU should be used, "
                         "but it is currently disabled. "
                         "Please check your configuration settings and ensure "
                         "that GPU is properly enabled."));
   int device = PD_GpuDeviceId(config);
-  PADDLE_ENFORCE_EQ(
-      device,
-      0,
-      phi::errors::InvalidArgument("The device ID is incorrect. "
-                                   "Expected device ID is 0, but received %d. "
-                                   "Please check your device configuration and "
-                                   "ensure the correct device ID is used.",
-                                   device));
+  PADDLE_ENFORCE_EQ(device,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The device ID is incorrect. "
+                        "Expected device ID is 0, but received %d. "
+                        "Please check your device configuration and "
+                        "ensure the correct device ID is used.",
+                        device));
   int init_size = PD_MemoryPoolInitSizeMb(config);
   PADDLE_ENFORCE_EQ(init_size,
                     100,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The initial size of the memory pool is incorrect. "
                         "Expected size is 100 MB, but received %d MB. "
                         "Please check your configuration settings and ensure "
@@ -78,7 +79,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   bool cudnn = PD_CudnnEnabled(config);
   PADDLE_ENFORCE_EQ(cudnn,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "cuDNN is not enabled. "
                         "The configuration indicates that cuDNN should be "
                         "enabled, but it is currently disabled. "
@@ -88,7 +89,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   bool ir_optim = PD_IrOptim(config);
   PADDLE_ENFORCE_EQ(ir_optim,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "IR optimization is not enabled. "
                         "The configuration indicates that IR optimization "
                         "should be enabled, but it is currently disabled. "
@@ -99,7 +100,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   bool trt_enable = PD_TensorrtEngineEnabled(config);
   PADDLE_ENFORCE_EQ(trt_enable,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TensorRT engine is not enabled. "
                         "The configuration indicates that TensorRT engine "
                         "should be enabled, but it is currently disabled. "
@@ -109,7 +110,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
   PADDLE_ENFORCE_EQ(memory_optim_enable,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Memory optimization is not enabled. "
                         "The configuration indicates that memory optimization "
                         "should be enabled, but it is currently disabled. "
@@ -119,7 +120,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   bool profiler_enable = PD_ProfileEnabled(config);
   PADDLE_ENFORCE_EQ(profiler_enable,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Profiler is not enabled. "
                         "The configuration indicates that the profiler should "
                         "be enabled, but it is currently disabled. "
@@ -130,7 +131,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PADDLE_ENFORCE_EQ(
       is_valid,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Configuration is not valid. "
           "The configuration should be valid, but it is currently invalid. "
           "Please check your configuration settings and ensure they are "
@@ -146,7 +147,7 @@ TEST(PD_AnalysisConfig, trt_int8) {
   bool trt_enable = PD_TensorrtEngineEnabled(config);
   PADDLE_ENFORCE_EQ(trt_enable,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TensorRT engine is not enabled. "
                         "The configuration indicates that TensorRT engine "
                         "should be enabled, but it is currently disabled. "
@@ -164,7 +165,7 @@ TEST(PD_AnalysisConfig, trt_fp16) {
   bool trt_enable = PD_TensorrtEngineEnabled(config);
   PADDLE_ENFORCE_EQ(trt_enable,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "TensorRT engine is not enabled. "
                         "The configuration indicates that TensorRT engine "
                         "should be enabled, but it is currently disabled. "

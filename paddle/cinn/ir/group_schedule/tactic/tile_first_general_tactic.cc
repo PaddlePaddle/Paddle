@@ -46,14 +46,25 @@ bool IsWarpReduce(const ScheduleConfig& config) {
 }
 
 bool UseContinuousDataTile(const ScheduleConfig& config) {
+  if (config.base_info->reduce_axis.empty()) {
+    return true;
+  }
+  int64_t min_stride = INT_MAX;
+  int64_t min_reduce_stride = INT_MAX;
   int64_t last_axis = 0;
   int64_t last_reduce_axis = 0;
-  for (auto axis : config.base_info->loop_transform_map) {
-    last_axis = std::max(axis, last_axis);
+  for (size_t i = 0; i < config.base_info->loop_strides.size(); i++) {
+    if (config.base_info->loop_strides[i] < min_stride &&
+        config.base_info->loop_strides[i] != 0) {
+      min_stride = config.base_info->loop_strides[i];
+      last_axis = i;
+    }
   }
-  for (auto axis : config.base_info->reduce_axis) {
-    last_reduce_axis =
-        std::max(config.base_info->loop_transform_map[axis], last_reduce_axis);
+  for (int64_t axis : config.base_info->reduce_axis) {
+    if (config.base_info->loop_strides[axis] < min_reduce_stride) {
+      min_reduce_stride = config.base_info->loop_strides[axis];
+      last_reduce_axis = axis;
+    }
   }
   return last_axis == last_reduce_axis;
 }
@@ -113,11 +124,12 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
   vec_spatial_axis_last_.clear();
 
   if (!context_->config.base_info->reduce_axis.empty()) {
-    int64_t first_reduce_axis = context_->config.base_info->data_rank - 1;
+    int64_t first_reduce_axis = context_->config.base_info->reduce_axis.front();
     for (auto axis : context_->config.base_info->reduce_axis) {
-      first_reduce_axis =
-          std::min(context_->config.base_info->loop_transform_map[axis],
-                   first_reduce_axis);
+      if (context->config.base_info->loop_strides[axis] >
+          context->config.base_info->loop_strides[first_reduce_axis]) {
+        first_reduce_axis = axis;
+      }
     }
     for (int32_t i = 0; i < reduce_start_idx; ++i) {
       if (i < first_reduce_axis) {
@@ -281,8 +293,8 @@ void TileFirstGeneralTactic::ApplyContinuousDataTile(
 
 void TileFirstGeneralTactic::AlignToReduceInput(ir::IRSchedule* sch,
                                                 const std::string& block_id) {
-  auto& loop_transform_map = context_->config.base_info->loop_transform_map;
-  if (loop_transform_map.empty()) {
+  const auto& loop_strides = context_->config.base_info->loop_strides;
+  if (loop_strides.empty()) {
     return;
   }
 
@@ -298,7 +310,7 @@ void TileFirstGeneralTactic::AlignToReduceInput(ir::IRSchedule* sch,
 
   std::sort(loop_perm.begin(), loop_perm.end(), [&](int64_t a, int64_t b) {
     if (IsReduce(a) == IsReduce(b)) {
-      return loop_transform_map[a] < loop_transform_map[b];
+      return loop_strides[a] > loop_strides[b];
     }
     return IsReduce(b);
   });
@@ -309,7 +321,7 @@ void TileFirstGeneralTactic::AlignToReduceInput(ir::IRSchedule* sch,
   for (auto i : loop_perm) {
     if (IsReduce(i)) {
       rd_loops.push_back(loops[i]);
-    } else if (loop_transform_map[i] != -1) {
+    } else if (loop_strides[i] != 0) {
       sp_loops.push_back(loops[i]);
     }
   }

@@ -56,7 +56,8 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
                              const std::vector<Type> &output_types,
                              pir::OpInfo op_info,
                              size_t num_regions,
-                             const std::vector<Block *> &successors) {
+                             const std::vector<Block *> &successors,
+                             bool verify) {
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -128,7 +129,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
     }
   }
   // 0. Verify
-  if (op_info) {
+  if (verify && op_info) {
     try {
       op_info.VerifySig(op);
     } catch (const common::enforce::EnforceNotMet &e) {
@@ -159,8 +160,13 @@ Operation *Operation::Clone(IrMapping &ir_mapping, CloneOptions options) const {
       successors.push_back(ir_mapping.Lookup(successor(i)));
     }
   }
-  auto *new_op = Create(
-      inputs, attributes_, output_types, info_, num_regions_, successors);
+  auto *new_op = Create(inputs,
+                        attributes_,
+                        output_types,
+                        info_,
+                        num_regions_,
+                        successors,
+                        false);
   ir_mapping.Add(this, new_op);
 
   // record outputs mapping info

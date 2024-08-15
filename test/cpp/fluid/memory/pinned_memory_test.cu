@@ -15,12 +15,12 @@ limitations under the License. */
 
 #include <unordered_map>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/allocation/memory_block.h"
 #include "paddle/phi/core/memory/memcpy.h"
 #include "paddle/phi/core/memory/memory.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 // This unit test is an example comparing the performance between using pinned
 // memory and not. In general, using pinned memory will be faster.

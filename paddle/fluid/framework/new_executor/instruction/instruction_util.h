@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/profiler/event.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
