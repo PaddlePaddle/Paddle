@@ -70,8 +70,9 @@ void RemoveDir(const cinn::common::Target target,
     }
   };
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  const std::string kTestFileDir = "./tile_file_test/";
   if (root_path == "") {
-    root_path = "./tile_config/";
+    root_path = kTestFileDir;
   }
   std::string target_str = target.arch_str() + "_" + target.device_name_str();
   std::string file_name = "/" + filename + ".json";

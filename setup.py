@@ -1055,50 +1055,16 @@ def get_package_data_and_package_dir():
     package_data['paddle.base'] += [
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
-
-    # libs_path = paddle_binary_dir + '/python/paddle/libs'
-    # cinn_bf16_file = (
-    #         env_dict.get("CINN_INCLUDE_DIR")
-    #         + '/paddle/cinn/runtime/cuda/bfloat16.h'
-    #     )
-    # if os.path.exists(cinn_bf16_file):
-    #         shutil.copy(cinn_bf16_file, libs_path)
-    #         package_data['paddle.libs'] += ['bfloat16.h']
-
+    # copy tile_config to paddle.base
     configs_path = paddle_binary_dir + '/python/paddle/base/tile_config'
-    # cinn_tile_config_path = (
-    #         env_dict.get("PADDLE_SOURCE_DIR")
-    #         + '/paddle/cinn/ir/group_schedule/config/tile_config/NVGPU_Tesla_V100_SXM2_32GB/S_R_EREBE/'
-    #     )
     if os.path.exists(configs_path):
         shutil.rmtree(configs_path)
-
     cinn_tile_config_path = (
         env_dict.get("PADDLE_SOURCE_DIR")
         + '/paddle/cinn/ir/group_schedule/config/tile_config'
     )
     shutil.copytree(cinn_tile_config_path, configs_path)
-    # shutil.copy(cinn_tile_config_path + 'Sstatic_Rstatic.json', configs_path)
-    # shutil.copy(cinn_tile_config_path + 'Sstatic_Rdynamic.json', configs_path)
-    # shutil.copy(cinn_tile_config_path + 'Sdynamic_Rstatic.json', configs_path)
-    # shutil.copy(cinn_tile_config_path + 'Sdynamic_Rdynamic.json', configs_path)
-    # package_data['paddle.base'] += ['Sstatic_Rstatic.json']
-    # package_data['paddle.base'] += ['Sstatic_Rdynamic.json']
-    # package_data['paddle.base'] += ['Sdynamic_Rstatic.json']
-    # package_data['paddle.base'] += ['Sdynamic_Rdynamic.json']
 
-    # package_data['paddle.base'] += [
-    #     paddle_binary_dir + '/paddle/cinn/ir/group_schedule/config/tile_config/NVGPU_Tesla_V100_SXM2_32GB/S_R_EREBE/Sstatic_Rstatic.json'
-    # ]
-    # package_data['paddle.base'] += [
-    #     paddle_binary_dir + '/paddle/cinn/ir/group_schedule/config/tile_config/NVGPU_Tesla_V100_SXM2_32GB/S_R_EREBE/Sstatic_Rdynamic.json'
-    # ]
-    # package_data['paddle.base'] += [
-    #     paddle_binary_dir + '/paddle/cinn/ir/group_schedule/config/tile_config/NVGPU_Tesla_V100_SXM2_32GB/S_R_EREBE/Sdynamic_Rstatic.json'
-    # ]
-    # package_data['paddle.base'] += [
-    #     paddle_binary_dir + '/paddle/cinn/ir/group_schedule/config/tile_config/NVGPU_Tesla_V100_SXM2_32GB/S_R_EREBE/Sdynamic_Rdynamic.json'
-    # ]
     if 'develop' in sys.argv:
         package_dir = {'': 'python'}
     else:

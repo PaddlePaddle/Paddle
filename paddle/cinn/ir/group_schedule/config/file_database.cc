@@ -112,20 +112,16 @@ std::string IterSpaceTypeToDir(const common::Target target,
     config_file_addr = "";
   else
     config_file_addr = envValue;
-  LOG(INFO) << "config_file_addr " << config_file_addr;
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
   if (root_path == "") {
     root_path = config_file_addr + "/tile_config/";
   }
   std::string target_str = target.arch_str() + "_" + target.device_name_str();
   checkexist(root_path);
-  LOG(INFO) << "ROOT PATH IS " << root_path;
   checkexist(root_path + target_str);
   checkexist(root_path + target_str + "/" + dirname);
   VLOG(3) << "Dump_path is "
           << root_path + target_str + "/" + dirname + filename + ".json";
-  LOG(WARNING) << root_path + target_str + "/" + dirname + filename + ".json"
-               << " IS OPENED IN FILE_DATABASE! ";
 
   return root_path + target_str + "/" + dirname + filename + ".json";
 }
