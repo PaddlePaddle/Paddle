@@ -592,7 +592,6 @@ void MergeSubGraphs(Operation* op,
 void SubgraphDetector::DoOpFusion() {
   // do fusion
   VLOG(4) << "DoOpFusion";
-  double duration = 0.0;
   UnionFindSet union_find;
   union_find.op_classifier_ = op_classifier_;
   VLOG(4) << "Do Op Fusion with sorted_ops: " << sort_ops_.size();
