@@ -17,7 +17,7 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_fleet_with_asp_dynamic MODULES
                     test_fleet_with_asp_dynamic ENVS ${dist_ENVS})
     py_test_modules(test_fleet_with_asp_static MODULES
-                    test_fleet_with_asp_static ENVS ${dist_ENVS})
+                    test_fleet_with_asp_static ENVS ${dist_without_pir_ENVS})
   endif()
 endif()
 
