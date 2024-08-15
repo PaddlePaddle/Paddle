@@ -25,7 +25,6 @@ from paddle.distributed.utils.nccl_utils import check_nccl_version_for_p2p
 from ..utils.log_util import logger
 
 if TYPE_CHECKING:
-    from paddle.base.core import task
     from paddle.distributed.collective import Group
 
 __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
@@ -98,24 +97,24 @@ class CommunicateTopology:
     def get_hybrid_group_names(self) -> list[str]:
         return self._parallel_names
 
-    def get_dim(self, axis_name: str) -> list[str]:
+    def get_dim(self, axis_name: str) -> int:
         return self._dims[self._parallel_names.index(axis_name)]
 
     def world_size(self) -> int:
         return self._world_size
 
-    def get_rank(self, **args: Any) -> dict[list[str], int]:
+    def get_rank(self, **args: Any) -> int:
         assert len(args) == len(self._dims)
         key = self.coordinate(**args)
         assert key in self._coord2rank.keys()
         return self._coord2rank[key]
 
-    def get_coord(self, rank: str) -> int | list[str] | None:
+    def get_coord(self, rank: int) -> Any:
         assert rank < self._world_size
         assert rank in self._rank2coord.keys()
         return self._rank2coord[rank]
 
-    def get_axis_list(self, axis_name: str, index: str) -> list[int]:
+    def get_axis_list(self, axis_name: str, index: int) -> list[int]:
         axis = self._parallel_names.index(axis_name)
         ranks = [
             self._coord2rank[coord]
@@ -129,7 +128,7 @@ class CommunicateTopology:
         assert axis_name in self._parallel_names
         return self._dims[self._parallel_names.index(axis_name)]
 
-    def get_fused_ranks(self, fused_axis: str) -> list[int]:
+    def get_fused_ranks(self, fused_axis: list[int]) -> list[list[int]]:
         non_fused_axis = list(set(self._parallel_names).difference(fused_axis))
         non_fused_ranges = []
         for axis_name in non_fused_axis:
@@ -156,7 +155,7 @@ class CommunicateTopology:
 
         return rank_list
 
-    def get_comm_list(self, axis_name: str) -> list[list[int | list[str]]]:
+    def get_comm_list(self, axis_name: str) -> list[list[int]]:
         assert axis_name in self._parallel_names
         other_axis_names = [
             name for name in self._parallel_names if name != axis_name
@@ -181,16 +180,14 @@ class CommunicateTopology:
 
         return all_result
 
-    def get_rank_from_stage(
-        self, global_rank: int | list[str] | None, **kwargs: Any
-    ) -> task:
+    def get_rank_from_stage(self, global_rank: int, **kwargs: Any) -> int:
         coord = self.get_coord(global_rank)
         tf = coord._replace(**kwargs)._asdict()
         return self.get_rank(**tf)
 
 
 class HybridCommunicateGroup:
-    def __init__(self, topology: dict[int]) -> None:
+    def __init__(self, topology: CommunicateTopology) -> None:
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
         self._topo = topology
@@ -348,7 +345,7 @@ class HybridCommunicateGroup:
 
     def _set_comm_group(
         self, parallel_method: str = "data"
-    ) -> None | tuple[list[int], Group]:
+    ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
         parallel_groups = self._topo.get_comm_list(parallel_method)
@@ -377,7 +374,7 @@ class HybridCommunicateGroup:
 
     def _set_check_group(
         self, parallel_method: str = "data"
-    ) -> tuple[list[int], Group] | None:
+    ) -> tuple[list[int], Group]:
         parallel_group = []
         parallel_comm_group = None
         parallel_size = self._topo.get_dim(parallel_method)
@@ -393,11 +390,11 @@ class HybridCommunicateGroup:
 
         return parallel_group, parallel_comm_group
 
-    def _get_p2p_next_rank(self) -> int | None:
+    def _get_p2p_next_rank(self) -> int:
         assert hasattr(self, 'next_rank'), "next_rank has not been inited"
         return self.next_rank
 
-    def _get_p2p_prev_rank(self) -> int | None:
+    def _get_p2p_prev_rank(self) -> int:
         assert hasattr(self, 'prev_rank'), "prev_rank has not been inited"
         return self.prev_rank
 
@@ -452,7 +449,7 @@ class HybridCommunicateGroup:
         assert self.recv_next_group is not None
         assert self.recv_prev_group is not None
 
-    def topology(self) -> dict[int]:
+    def topology(self) -> CommunicateTopology:
         return self._topo
 
     def get_global_rank(self) -> int:
@@ -468,7 +465,7 @@ class HybridCommunicateGroup:
     def get_data_parallel_world_size(self) -> int:
         return self._dp_degree
 
-    def get_data_parallel_group(self) -> list[int]:
+    def get_data_parallel_group(self) -> Group:
         return self._dp_comm_group
 
     def get_data_parallel_group_src_rank(self) -> int:
@@ -549,9 +546,7 @@ class HybridCommunicateGroup:
         return self._sharding_comm_group.ranks[0]
 
     # check parallel group
-    def get_check_parallel_group(
-        self, sharding: bool = False
-    ) -> list[int] | Group:
+    def get_check_parallel_group(self, sharding: bool = False) -> Group:
         if sharding:
             return self.sharding_check_comm_group
         else:
@@ -563,17 +558,17 @@ class HybridCommunicateGroup:
         )
 
     # fuse comm group message
-    def get_dp_sep_parallel_group(self) -> list[int]:
+    def get_dp_sep_parallel_group(self) -> Group:
         self._check_sep_exist()
         return self._dp_sep_comm_group
 
-    def get_pp_mp_parallel_group(self) -> list[int]:
+    def get_pp_mp_parallel_group(self) -> Group:
         self._check_sep_exist()
         return self._pp_mp_comm_group
 
     def create_fuse_group(
-        self, fused_strategy_list: list[int]
-    ) -> list[int] | int:
+        self, fused_strategy_list: list[str]
+    ) -> tuple[list[list[int]], list[Group]] | tuple[list[int], Group]:
         assert (
             len(fused_strategy_list) > 0
         ), "the length of fused_strategy_list must be greater than 0."
