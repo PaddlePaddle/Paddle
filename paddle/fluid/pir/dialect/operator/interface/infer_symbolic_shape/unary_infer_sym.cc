@@ -1360,10 +1360,9 @@ bool MultinomialOpInferSymbolicShape(
 
 bool NanmedianOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  auto axes_gen_op = op->operand_source(1).defining_op();
-  std::vector<int64_t> axis_list = details::GetVectorAttr(
-      axes_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
-
+  auto &axis_list = op->attribute<paddle::dialect::IntArrayAttribute>("axes")
+                        .data()
+                        .GetData();
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   auto &x_dim = x_shape_or_data.shape();
