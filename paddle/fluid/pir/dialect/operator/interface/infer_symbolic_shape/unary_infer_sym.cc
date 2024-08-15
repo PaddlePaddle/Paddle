@@ -1438,10 +1438,11 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
       op->attribute<pir::BoolAttribute>("global_pooling").data();
 
   int rank_x = x_shape.size();
+  int rank = kernel_size_.size();
 
   if (global_pooling) {
     kernel_size_.resize(rank_x - 2);
-    for (int i = 0; i < kernel_size_.size(); ++i) {
+    for (int i = 0; i < rank; ++i) {
       paddings_[i] = 0;
       kernel_size_[i] = x_shape[i + 2];
     }
@@ -1460,7 +1461,6 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
   if (adaptive) {
     out_shape.insert(out_shape.end(), kernel_size_.begin(), kernel_size_.end());
   } else {
-    int rank = kernel_size_.size();
     for (int i = 0; i < rank; ++i) {
       PADDLE_ENFORCE_NE(
           strides[i],
