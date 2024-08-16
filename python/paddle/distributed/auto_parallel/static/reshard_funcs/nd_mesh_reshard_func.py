@@ -23,6 +23,7 @@ from .base_reshard_func import (
 )
 from .p_to_r_reshard_func import PToRReshardFunction
 from .p_to_s_reshard_func import PToSReshardFunction
+from .r_to_p_reshard_func import RToPReshardFunction
 from .r_to_s_reshard_func import RToSReshardFunction
 from .s_to_r_reshard_func import SToRReshardFunction
 from .same_status_reshard_func import SameStatusReshardFunction
@@ -238,9 +239,39 @@ class NdMeshReshardFunction(ReshardFunction):
             for partial_dim, partial_type in out_partial_status.items():
                 if partial_dim in in_partial_status:
                     continue
-                raise NotImplementedError(
-                    "RToPReshardFunction is not implemented"
+
+                sub_mesh = get_1D_sub_process_mesh(process_mesh, partial_dim)
+
+                in_one_dim_dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        sub_mesh,
+                        [-1] * tensor_ndim,
+                        {},
+                    )
                 )
+                out_one_dim_dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        sub_mesh,
+                        [-1] * tensor_ndim,
+                        {partial_dim: partial_type},
+                    )
+                )
+
+                tmp_dst_dist_attr = copy_dist_attr_with_new_member(
+                    dst_dist_attr,
+                    new_partial_status=src_dist_attr.partial_status,
+                )
+                tmp_dst_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    src_value.type(), tmp_dst_dist_attr
+                )
+
+                src_value = RToPReshardFunction().reshard(
+                    in_one_dim_dist_attr,
+                    out_one_dim_dist_attr,
+                    src_value,
+                    tmp_dst_type,
+                )
+                src_dist_attr = tmp_dst_dist_attr
 
         # Step3.2 convert replicated to shard
         for i in range(first_diff_axis, -1, -1):

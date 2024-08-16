@@ -25,6 +25,7 @@ from ...base.framework import (
     in_pir_mode,
 )
 from .initializer import Initializer
+from .lazy_init import lazy_init_helper
 
 __all__ = []
 
@@ -235,9 +236,16 @@ class TruncatedNormalInitializer(Initializer):
             The initialization op
         """
         block = self._check_block(block)
-        assert isinstance(
-            var, (framework.Variable, paddle.pir.core.ParameterMeta)
-        )
+        if lazy_init_helper().state:
+            expected = (
+                framework.Variable,
+                paddle.pir.core.ParameterMeta,
+                core.eager.Tensor,
+            )
+        else:
+            expected = (framework.Variable, paddle.pir.core.ParameterMeta)
+
+        assert isinstance(var, expected)
         assert isinstance(block, (framework.Block, pir.Block))
 
         if self._seed == 0:
