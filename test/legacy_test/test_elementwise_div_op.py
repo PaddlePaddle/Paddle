@@ -464,7 +464,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                         **check_kwargs,
                         check_pir=True,
                         check_prim=True,
-                        check_prim_pir=True
+                        check_prim_pir=True,
                     )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
