@@ -1058,39 +1058,33 @@ bool IndexSelect_OpInferSymbolicShape(
 
 bool IndexAddOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  auto x_shape = infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  auto index_shape =
+  auto x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  auto index_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  auto add_value_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2));
-
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &index_shape = index_shape_or_data.shape();
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
-  int ndims_x = x_shape.shape().size();
+  int ndims_x = x_shape.size();
 
   // Real axis calculation
   int real_axis = axis >= 0 ? axis : axis + ndims_x;
 
   // Check dimensions
   PADDLE_ENFORCE_EQ(
-      index_shape.shape().size(),
+      index_shape.size(),
       1,
       common::errors::InvalidArgument("Index tensor must be 1-dimensional."));
 
-  PADDLE_ENFORCE_NE(index_shape.shape()[0].dyn_cast<int64_t>(),
-                    0,
-                    common::errors::InvalidArgument(
-                        "The length of Input(Index) can't be 0."));
-
   PADDLE_ENFORCE_EQ(
-      x_shape.shape().size(),
-      add_value_shape.shape().size(),
+      x_shape.size(),
+      add_value_shape.size(),
       common::errors::InvalidArgument(
           "Input and addition value must have the same dimension."));
 
   for (int i = 0; i < ndims_x; i++) {
     if (i != real_axis) {
-      infer_context->AddEqualCstr(x_shape.shape()[i],
-                                  add_value_shape.shape()[i]);
+      infer_context->AddEqualCstr(x_shape[i], add_value_shape[i]);
     }
   }
 
@@ -1109,16 +1103,16 @@ bool IndexPutOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
   PADDLE_ENFORCE_LT(
-      x_dims.size(),
+      x_shape.size(),
       7,
       common::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.",
-          x_dims.size()));
+          x_shape.size()));
 
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
 
   return true;
 }
