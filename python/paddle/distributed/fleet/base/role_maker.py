@@ -602,7 +602,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def _all_reduce(
         self, input: Any, mode: str = "sum", comm_world: str = "worker"
-    ) -> np.ndarray[Any]:
+    ) -> npt.NDArray[Any]:
         return self._gloo.all_reduce(input, mode, comm_world)
 
     def _heter_device(self) -> str:
