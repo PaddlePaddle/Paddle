@@ -2671,7 +2671,7 @@ bool UniformInplaceOpInferSymbolicShape(
 
 bool UniformInplace_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return UniformRandomInplaceOpInferSymbolicShape(op, infer_context);
+  return UniformInplaceOpInferSymbolicShape(op, infer_context);
 }
 
 // bool UniformRandomBatchSizeLikeOpInferSymbolicShape(
