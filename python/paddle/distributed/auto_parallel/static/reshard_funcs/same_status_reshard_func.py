@@ -71,6 +71,7 @@ class SameStatusReshardFunction(ReshardFunction):
 
             elif dst == cur_global_rank:
                 # infer the chunk_id of the recv op
+                chunk_id = -1
                 use_src_value_ops = src_value.all_used_ops()
                 while (
                     len(use_src_value_ops) == 1
@@ -79,26 +80,32 @@ class SameStatusReshardFunction(ReshardFunction):
                     use_src_value_ops = (
                         use_src_value_ops[0].result(0).all_used_ops()
                     )
-                chunk_id = -1
                 for op in use_src_value_ops:
                     if op.dist_attr.chunk_id != -1:
                         chunk_id = op.dist_attr.chunk_id
                         break
-                if chunk_id == -1:
-                    print("warning chunk_id is -1")
-                    print(
-                        "src op:",
-                        src_value.get_defining_op().name(),
-                        src_value.get_defining_op().op_role,
-                        src_value.get_defining_op().dist_attr.chunk_id,
-                    )
-                    for op in use_src_value_ops:
-                        print(op.name(), op.op_role, op.dist_attr.chunk_id)
 
                 src_local_rank = all_process_ids.index(src)
                 assert (
                     -1 not in dst_type.shape
                 ), "dynamic shape is not supported by pir-auto parallel yet."
+
+                print(
+                    "dst_type local shape:",
+                    dst_type._local_shape,
+                    "src op:",
+                    src_value.get_defining_op().name(),
+                    src_value.get_defining_op().dist_attr.chunk_id,
+                    chunk_id,
+                    "op_role:",
+                    src_value.get_defining_op().op_role,
+                )
+                print("src attr:", src_dist_attr)
+                print("dst attr:", dst_dist_attr)
+                if src_value.has_name:
+                    print("src value name:", src_value.name)
+                # print(src_value.get_defining_op().get_parent_block().program)
+
                 recv_value = paddle._C_ops.recv_v2(
                     dst_type._local_shape,
                     dst_type.dtype,
@@ -113,7 +120,7 @@ class SameStatusReshardFunction(ReshardFunction):
                         dst_mesh,
                         [],
                         [dst_dist_attr],
-                        src_value.get_defining_op().dist_attr.chunk_id,
+                        chunk_id,
                     )
                 )
                 recv_value.set_type(dst_type)

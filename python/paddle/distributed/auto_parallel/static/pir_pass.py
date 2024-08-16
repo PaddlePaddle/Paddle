@@ -486,6 +486,7 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     pass_attr["pp_stage"] = get_pp_stage_by_pp_degree(
         pipeline_strategy.pp_degree
     )
+    pass_attr["vpp_degree"] = pipeline_strategy.vpp_degree
 
     if pass_name == "1F1B":
         # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
@@ -534,23 +535,37 @@ def _get_seg_struct_names(ops, seg_method):
             break
 
     struct_names = collections.OrderedDict()
+    seg_op_mesh = collections.OrderedDict()
+
+    reshard_ops = []
     for i in range(fwd_start_op_index, fwd_end_op_index + 1):
         struct_name = _extract_seg_method(ops[i], seg_method)
         if struct_name:
             struct_names[struct_name] = 1
+            if struct_name in seg_op_mesh:
+                assert (
+                    seg_op_mesh[struct_name] == ops[i].dist_attr.process_mesh
+                ), "The segment's ops should have same process_mesh."
+
+            seg_op_mesh[struct_name] = ops[i].dist_attr.process_mesh
         else:
             if ops[i].name() != "dist_op.reshard":
                 raise ValueError(
                     f"The op {ops[i].name()} should only be created by reshard"
                 )
-            # reshard op belong to the next segment
-            for j in range(i + 1, fwd_end_op_index + 1):
-                struct_name = _extract_seg_method(ops[j], seg_method)
-                if struct_name and struct_name not in struct_names:
-                    ops[i].set_str_attr(
-                        "struct_name", ops[j].attrs()["struct_name"]
-                    )
-                    break
+            reshard_ops.append(ops[i])
+            # # reshard op belong to the next segment
+            # for j in range(i + 1, fwd_end_op_index + 1):
+            #     struct_name = _extract_seg_method(ops[j], seg_method)
+            #     if struct_name and struct_name not in struct_names:
+            #         ops[i].set_str_attr(
+            #             "struct_name", ops[j].attrs()["struct_name"]
+            #         )
+            #         break
+
+    for op in reshard_ops:
+        op.result(0).replace_all_uses_with(op.operand_source(0))
+        op.erase()
 
     return list(struct_names.keys())
 
@@ -569,6 +584,7 @@ def _analyze_use_custom_mesh(ops, seg_method, pp_degree):
             if seg_pp_stages[-1] > pp_stage:
                 non_use_custom_mesh = False
                 break
+            seg_pp_stages.append(pp_stage)
 
     if not non_use_custom_mesh:
         _logger.info("Cannot Use Auto VPP")
@@ -578,15 +594,11 @@ def _analyze_use_custom_mesh(ops, seg_method, pp_degree):
     return non_use_custom_mesh
 
 
-def _set_process_mesh_and_chunk_id(
-    op, process_mesh, chunk_id, non_use_custom_mesh=True
-):
+def _set_process_mesh_and_chunk_id(op, process_mesh, chunk_id, set_mesh):
     def set_process_mesh(vars, attrs):
         for idx, (var, attr) in enumerate(zip(vars, attrs)):
             var_dist_attr = var.dist_attr()
             operand_attr = attr.as_tensor_dist_attr()
-            if var_dist_attr is None:
-                print("have none var dist attr", op.name())
 
             if var_dist_attr and var_dist_attr.process_mesh == op_mesh:
                 tensor_dist_attr = (
@@ -615,12 +627,17 @@ def _set_process_mesh_and_chunk_id(
     op_input_vars = op.operands_source()
     op_output_vars = op.results()
 
-    if non_use_custom_mesh:
+    if set_mesh:
+        if op_mesh != process_mesh:
+            print(
+                f"111 set {op.name()} from {op_mesh} to {process_mesh}, {_extract_seg_method(op, 'MyLinear')}"
+            )
         set_process_mesh(op_input_vars, op_input_attrs)
         set_process_mesh(op_output_vars, op_output_attrs)
+        op_mesh = process_mesh
 
     op.dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
-        process_mesh,
+        op_mesh,
         op_input_attrs,
         op_output_attrs,
         chunk_id,
@@ -647,16 +664,18 @@ def complete_chunk_id(dist_program, pipeline_strategy):
     if vpp_degree < 2:
         return
 
+    seg_struct_names = _get_seg_struct_names(
+        dist_program.global_block().ops, seg_method
+    )
     ops = dist_program.global_block().ops
-    seg_struct_names = _get_seg_struct_names(ops, seg_method)
 
     assert (
         len(seg_struct_names) % num_chunks == 0
     ), f"The number of layers[{seg_method}] ({len(seg_struct_names)}) should be divided by part number ({num_chunks})."
 
     # Step2: analysis whether the pp_stage is non-decreasing among segments
-    # 1. if non_decreasing is True, the ops' process_mesh will be changed by vpp strategy
-    # 2. if non_decreasing is False, the ops's process_mesh will not be changed.
+    # 1. if non_use_custom_mesh is True, the ops' process_mesh will be changed by vpp strategy
+    # 2. if non_use_custom_mesh is False, the ops's process_mesh will not be changed.
     non_use_custom_mesh = _analyze_use_custom_mesh(ops, seg_method, pp_degree)
 
     # Step3: Get op index boundary, pp_stage, chunk_id, struct_names of each segment
@@ -710,11 +729,14 @@ def complete_chunk_id(dist_program, pipeline_strategy):
         )
 
         for idx in range(start_idx, end_idx):
+            is_seg_op = (
+                _extract_seg_method(fwd_ops[idx], seg_method) is not None
+            )
             _set_process_mesh_and_chunk_id(
                 fwd_ops[idx],
                 process_mesh,
                 chunk_id,
-                non_use_custom_mesh,
+                non_use_custom_mesh & is_seg_op,
             )
 
     for bwd_seg_id in range(len(bwd_seg_parts) - 1):
@@ -725,9 +747,23 @@ def complete_chunk_id(dist_program, pipeline_strategy):
         process_mesh = sub_process_meshes[pp_stage]
 
         for idx in range(start_idx, end_idx):
+            is_seg_op = (
+                _extract_seg_method(bwd_ops[idx], seg_method) is not None
+            )
             _set_process_mesh_and_chunk_id(
                 bwd_ops[idx],
                 process_mesh,
                 chunk_id,
-                non_use_custom_mesh,
+                non_use_custom_mesh & is_seg_op,
             )
+
+
+def check_chunk_id(dist_program):
+    all_ops = dist_program.global_block().ops
+
+    for op in all_ops:
+        if op.op_role in [int(OpRole.Forward), int(OpRole.Backward)]:
+            if op.dist_attr.chunk_id == -1:
+                raise ValueError(
+                    f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
+                )

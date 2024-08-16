@@ -160,10 +160,12 @@ def apply_pass(schedule_mode, acc_step, enable_send_recv_overlap=False):
     pipeline.enable = True
     pipeline.schedule_mode = schedule_mode
     pipeline.accumulate_steps = acc_step
-    pipeline.vpp_degree = 2
     pipeline.pp_degree = 2
-    pipeline.vpp_seg_method = "MyLinear"
     pipeline.enable_send_recv_overlap = enable_send_recv_overlap
+
+    if schedule_mode == 'VPP':
+        pipeline.vpp_degree = 2
+        pipeline.vpp_seg_method = "MyLinear"
 
     return strategy
 
@@ -242,10 +244,19 @@ class TestVPPPass(unittest.TestCase):
 
     def test_pp_pass(self):
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
-        # pp2-vpp-manual
+        # pp2-vpp-auto
         loss_vpp = self.run_pipeline(
             schedule_mode="VPP", acc_step=4, manual=False
         )
+        # loss_vpp_manual = self.run_pipeline(
+        #     schedule_mode="VPP", acc_step=4, manual=True
+        # )
+        # self.check_result(loss_vpp_manual, loss_vpp)
+
+        # loss_fthenb = self.run_pipeline(
+        #     schedule_mode="FThenB", acc_step=4, manual=False
+        # )
+        # self.check_result(loss_fthenb, loss_vpp)
 
         # out_manual = engine.fit(
         #     self.dataset, batch_size=self.batch_size, log_freq=1
@@ -375,6 +386,9 @@ class TestVPPPass(unittest.TestCase):
         #         np.mean(out_manual.history["loss"][0]),
         #         np.mean(out_auto_overlap.history["loss"][0]),
         # )
+
+    def check_result(self, loss1, loss2):
+        return np.array_equal(loss1, loss2)
 
 
 if __name__ == "__main__":

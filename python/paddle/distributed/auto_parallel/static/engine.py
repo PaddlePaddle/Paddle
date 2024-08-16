@@ -66,6 +66,7 @@ from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
+    check_chunk_id,
     complete_op_role,
     pipeline_pass,
     remove_other_rank_input_output_pass,
@@ -820,7 +821,7 @@ class Engine:
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
-
+        print(dist_program)
         apply_partition_pass(dist_program, self._strategy.pipeline)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
@@ -832,6 +833,7 @@ class Engine:
         if gradient_sync_after_accumulate:
             global_params_grads = params_grads
 
+        print(dist_program)
         apply_reshard_pass(dist_program, params_grads)
         # print('after reshard', dist_program, flush=1)
 
@@ -887,9 +889,14 @@ class Engine:
                 [dist_program], [startup_program]
             )
 
+        if (
+            self._strategy.pipeline.enable
+            and self._strategy.pipeline.schedule_mode == "VPP"
+        ):
+            check_chunk_id(dist_program)
+
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
-        print("here", dist_program)
         dense_program = dist_program.clone()
         paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_program)
         remove_unuseful_comm_op_pass(dense_program)
@@ -2108,7 +2115,12 @@ class Engine:
                 # not the program to be executed. The ``plan`` object is already
                 # constructed, and the programs to be executed are  stored in the
                 # ``plan`` object.
-                program_for_executor = self._job_plan.ir_program("forward")
+                loss_job_type = "forward"
+                if self._strategy.pipeline.schedule_mode == "VPP":
+                    vpp_degree = self._strategy.pipeline.vpp_degree
+                    loss_job_type = f"forward{vpp_degree - 1}"
+
+                program_for_executor = self._job_plan.ir_program(loss_job_type)
 
             loss_value = program_for_executor.get_output_value_by_name(
                 self._loss_names[0]
