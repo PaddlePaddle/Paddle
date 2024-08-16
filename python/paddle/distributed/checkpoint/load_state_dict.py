@@ -19,6 +19,9 @@ import os
 from dataclasses import dataclass
 
 import paddle
+from paddle.base.framework import (
+    _current_expected_place,
+)
 from paddle.distributed.communication.group import is_initialized
 from paddle.distributed.fleet.utils.log_util import logger
 
@@ -141,9 +144,7 @@ def get_rank_to_files(
     return rank_to_files, missing_keys
 
 
-def get_local_load_files_for_multiple_node(
-    rank_to_files, rank_to_local_data_files
-):
+def get_rank_to_read_files(rank_to_files, rank_to_local_data_files):
     cross_node_file_names = []
     rank_to_need_files = copy.deepcopy(rank_to_files)
     for rank, need_files in rank_to_need_files.items():
@@ -163,7 +164,7 @@ def get_local_load_files_for_multiple_node(
     for rank in not_read_file_ranks:
         rank_to_need_files.pop(rank)
 
-    rank_load_files = get_local_load_files(rank_to_need_files)
+    rank_load_files = _get_rank_to_read_files(rank_to_need_files)
 
     for rank in not_read_file_ranks:
         rank_load_files[rank] = []
@@ -192,7 +193,8 @@ def get_local_load_files_for_multiple_node(
         for rank in file_to_ranks[file]:
             sub_rank_load_files[rank] = rank_load_files[rank]
         min_rank = min(
-            sub_rank_load_files, key=lambda rank: len(sub_rank_load_files[rank])
+            sub_rank_load_files,
+            key=lambda rank: (len(sub_rank_load_files[rank]), rank),
         )
         rank_load_files[min_rank].append(file)
 
@@ -204,7 +206,7 @@ def get_local_load_files_for_multiple_node(
         return []
 
 
-def get_local_load_files(rank_to_files):
+def _get_rank_to_read_files(rank_to_files):
     """
     Load files in a load-balanced manner.
 
@@ -554,7 +556,7 @@ def load_state_dict(
         for d in global_local_data_files:
             rank_to_local_data_files.update(d)
 
-        local_load_files = get_local_load_files_for_multiple_node(
+        local_load_files = get_rank_to_read_files(
             rank_to_files, rank_to_local_data_files
         )
 
@@ -633,7 +635,9 @@ def _load_state_dict(
                 ]
 
                 if offload:
-                    storage_local_tensor = storage_local_tensor.cuda()
+                    storage_local_tensor = paddle.to_tensor(
+                        storage_local_tensor, place=_current_expected_place()
+                    )
 
                 storage_offsets = item.storage_offset
                 storage_lengths = item.lengths
