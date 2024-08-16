@@ -4354,6 +4354,7 @@
   kernel :
     func : squared_l2_norm
   backward : squared_l2_norm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : squeeze
   args : (Tensor x, IntArray axis={})
@@ -4545,6 +4546,7 @@
     func : temporal_shift
     data_type : x
   backward : temporal_shift_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tensor_unfold
   args : (Tensor input, int64_t axis, int64_t size, int64_t step)

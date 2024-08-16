@@ -399,6 +399,50 @@ bool FullBatchSizeLikeOpInferSymbolicShape(pir::Operation *op,
   return BatchSizeLikeOpInferSymbolicShape(op, infer_context);
 }
 
+bool SquaredL2NormOpInferSymbolicShape(pir::Operation *op,
+                                        pir::InferSymbolicShapeContext *infer_context) {
+  auto dtype = infer_context->GetDataTypeForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs({symbol::DimExpr(1)}));
+  infer_context->SetDataTypeForValue(op->result(0), dtype);
+  return true;
+}
+
+bool TemporalShiftOpInferSymbolicShape(pir::Operation *op,
+                                       pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data = infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_dims = x_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Input(X) rank should be 4 in shape of [N*T, C, H, W], but received X rank(%d)",
+                        x_dims.size()));
+
+  int seg_num = op->attribute<pir::Int32Attribute>("seg_num").data();
+  float shift_ratio = op->attribute<pir::Float32Attribute>("shift_ratio").data();
+
+  PADDLE_ENFORCE_GT(seg_num,
+                    0,
+                    common::errors::InvalidArgument(
+                        "Attr(seg_num) should be greater than 0, but received %d", seg_num));
+  PADDLE_ENFORCE_GT(shift_ratio,
+                    0.0f,
+                    common::errors::InvalidArgument(
+                        "Attr(shift_ratio) should be greater than 0, but received %f", shift_ratio));
+  PADDLE_ENFORCE_LT(shift_ratio,
+                    0.5f,
+                    common::errors::InvalidArgument(
+                        "Attr(shift_ratio) should be less than 0.5, but received %f", shift_ratio));
+
+  if (op->config().is_runtime) {
+    infer_context->AddEqualCstr(x_dims[0] % seg_num, 0);
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  return true;
+}
+
 bool BipartiteMatchOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &dist_mat_shape_or_data =
