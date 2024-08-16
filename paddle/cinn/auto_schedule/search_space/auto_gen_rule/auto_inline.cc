@@ -229,11 +229,10 @@ RuleApplyType AutoInline::AnalyseApplyType(
     SearchState state, const std::string& block_name) const {
   Expr block_expr = state->ir_schedule.GetBlock(block_name);
   auto* block_realize = block_expr.As<ir::ScheduleBlockRealize>();
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       block_realize,
-      true,
-      phi::errors::InvalidArgument("stmt is not a ScheduleBlockRealize: %s",
-                                   block_expr.c_str()));
+      phi::errors::InvalidArgument(
+          "stmt is not a ScheduleBlockRealize: %s", block_expr));
 
   AnalyzeScheduleBlockReadWriteBuffer(
       block_realize->schedule_block.As<ir::ScheduleBlock>());
