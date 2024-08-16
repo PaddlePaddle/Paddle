@@ -231,7 +231,7 @@ bool AffineGridOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   const int64_t output_shape_size =
-      static_cast<int64_t>(output_shape_or_data.data().value().size());
+      static_cast<int64_t>(output_shape_or_data.shape().size());
 
   std::vector<symbol::DimExpr> output_dims;
   output_dims.push_back(input_dims[0]);  // N
