@@ -579,12 +579,10 @@ Tensor squeeze_decomp(const Tensor& x, const IntArray& axis) {
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor> unsqueeze_decomp(const Tensor& x,
-                                            const IntArray& axis) {
+Tensor unsqueeze_decomp(const Tensor& x, const IntArray& axis) {
   auto out_shape = get_expand_dims(x, axis.GetData());
   Tensor out = reshape<T>(x, out_shape);
-  Tensor xshape;
-  return std::make_tuple(out, xshape);
+  return out;
 }
 
 template <typename T>

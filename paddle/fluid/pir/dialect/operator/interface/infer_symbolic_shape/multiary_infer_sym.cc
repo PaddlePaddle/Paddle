@@ -901,6 +901,27 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+// bool CudnnLstmOpInferSymbolicShape(pir::Operation *op,
+//                                    pir::InferSymbolicShapeContext
+//                                    *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool DeformableConvOpInferSymbolicShape(pir::Operation *op,
+//                                        pir::InferSymbolicShapeContext
+//                                        *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool DetectionMapOpInferSymbolicShape(pir::Operation *op,
+//                                       pir::InferSymbolicShapeContext
+//                                       *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool FakeQuantizeRangeAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -1126,6 +1147,27 @@ bool FlashAttnOpInferSymbolicShape(
   return true;
 }
 
+// bool FusedFeedforwardOpInferSymbolicShape(pir::Operation *op,
+//                                           pir::InferSymbolicShapeContext
+//                                           *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool FusedAttentionOpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool FlashAttnQkvpackedOpInferSymbolicShape(pir::Operation *op,
+//                                             pir::InferSymbolicShapeContext
+//                                             *infer_context) {
+//   // pass
+//   return true;
+// }
+
 // bool FlashAttnUnpaddedOpInferSymbolicShape(pir::Operation *op,
 //                                            pir::InferSymbolicShapeContext
 //                                            *infer_context) {
@@ -1153,9 +1195,37 @@ bool FusedBnAddActivation_OpInferSymbolicShape(
   return BatchNormOpInferSymbolicShape(op, infer_context);
 }
 
+// bool FusedMultiTransformerOpInferSymbolicShape(pir::Operation *op,
+//                                                pir::InferSymbolicShapeContext
+//                                                *infer_context) {
+//   // pass
+//   return true;
+// }
+
 // bool GenerateProposalsOpInferSymbolicShape(pir::Operation *op,
 //                                            pir::InferSymbolicShapeContext
 //                                            *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool GraphKhopSamplerOpInferSymbolicShape(pir::Operation *op,
+//                                           pir::InferSymbolicShapeContext
+//                                           *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool GraphReindexOpInferSymbolicShape(pir::Operation *op,
+//                                           pir::InferSymbolicShapeContext
+//                                           *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool GraphSampleNeighborsOpInferSymbolicShape(pir::Operation *op,
+//                                               pir::InferSymbolicShapeContext
+//                                               *infer_context) {
 //   // pass
 //   return true;
 // }
@@ -1344,6 +1414,13 @@ bool NearestInterpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
+
+// bool MaskedMultiheadAttention_OpInferSymbolicShape(pir::Operation *op,
+//                                                    pir::InferSymbolicShapeContext
+//                                                    *infer_context) {
+//   // pass
+//   return true;
+// }
 
 bool MemoryEfficientAttentionOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -1551,6 +1628,33 @@ bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
 //   return true;
 // }
 
+// bool PyramidHashOpInferSymbolicShape(pir::Operation *op,
+//                                      pir::InferSymbolicShapeContext
+//                                      *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool QuantizeLinearOpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool QuantizeLinear_OpInferSymbolicShape(pir::Operation *op,
+//                                         pir::InferSymbolicShapeContext
+//                                         *infer_context) {
+//   return QuantizeLinearOpInferSymbolicShape(op, infer_context);
+// }
+
+// bool RankAttentionOpInferSymbolicShape(pir::Operation *op,
+//                                        pir::InferSymbolicShapeContext
+//                                        *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool RmsNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
@@ -1592,9 +1696,36 @@ bool RmsNormOpInferSymbolicShape(
   return true;
 }
 
+// bool RnnOpInferSymbolicShape(pir::Operation *op,
+//                              pir::InferSymbolicShapeContext *infer_context) {
+//   // pass
+//   return true;
+// }
+
 // bool RoiPoolOpInferSymbolicShape(pir::Operation *op,
 //                                  pir::InferSymbolicShapeContext
 //                                  *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool SequenceConvOpInferSymbolicShape(pir::Operation *op,
+//                                       pir::InferSymbolicShapeContext
+//                                       *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool SparseAttentionOpInferSymbolicShape(pir::Operation *op,
+//                                          pir::InferSymbolicShapeContext
+//                                          *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool SpectralNormOpInferSymbolicShape(pir::Operation *op,
+//                                       pir::InferSymbolicShapeContext
+//                                       *infer_context) {
 //   // pass
 //   return true;
 // }
@@ -1728,6 +1859,13 @@ bool SigmoidCrossEntropyWithLogits_OpInferSymbolicShape(
 //   return SyncBatchNormOpInferSymbolicShape(op, infer_context);
 // }
 
+// bool TdmSamplerOpInferSymbolicShape(pir::Operation *op,
+//                                     pir::InferSymbolicShapeContext
+//                                     *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool TrilinearInterpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
@@ -1761,6 +1899,40 @@ bool HsigmoidLossOpInferSymbolicShape(
 
   return true;
 }
+
+// bool ViterbiDecodeOpInferSymbolicShape(pir::Operation *op,
+//                                        pir::InferSymbolicShapeContext
+//                                        *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool WarpctcOpInferSymbolicShape(pir::Operation *op,
+//                                  pir::InferSymbolicShapeContext
+//                                  *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool WarprnntOpInferSymbolicShape(pir::Operation *op,
+//                                   pir::InferSymbolicShapeContext
+//                                   *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool WeightOnlyLinearOpInferSymbolicShape(pir::Operation *op,
+//                                   pir::InferSymbolicShapeContext
+//                                   *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool WeightedSampleNeighborsOpInferSymbolicShape(
+//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+//   // pass
+//   return true;
+// }
 
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
