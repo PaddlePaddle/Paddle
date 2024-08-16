@@ -1007,10 +1007,7 @@ bool SequenceMaskOpInferSymbolicShape(
     const auto &maxlen_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
     if (maxlen_shape_or_data.data().has_value()) {
-      int maxlen = static_cast<int>(
-          maxlen_shape_or_data.data().value()[0].Get<int64_t>());
-      y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
-                                  : infer_context->GetNextSymName());
+      y_dims.push_back(maxlen_shape_or_data.data().value()[0]);
     } else {
       y_dims.push_back(infer_context->GetNextSymName());
     }
