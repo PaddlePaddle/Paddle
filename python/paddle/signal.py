@@ -17,7 +17,11 @@ from typing import TYPE_CHECKING, Literal
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
 from .base.data_feeder import check_variable_and_dtype
 from .base.layer_helper import LayerHelper
@@ -137,6 +141,8 @@ def frame(
                 f'but got ({frame_length}) > ({x.shape[axis]}).'
             )
         return _C_ops.frame(x, frame_length, hop_length, axis)
+    elif in_pir_mode():
+        return _C_ops.frame(x, frame_length, hop_length, axis)
     else:
         op_type = 'frame'
         check_variable_and_dtype(
@@ -242,7 +248,7 @@ def overlap_add(
 
     op_type = 'overlap_add'
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.overlap_add(x, hop_length, axis)
     else:
         check_variable_and_dtype(
