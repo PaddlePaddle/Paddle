@@ -862,10 +862,7 @@ bool MatrixNmsOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &box_dims = bboxes_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &score_dims = scores_shape_or_data.shape();
   const size_t score_size = score_dims.size();
-  VLOG(3) << "11111111111";
-  int keep_top_k = op->attribute<pir::Int64Attribute>("keep_top_k").data();
-  VLOG(3) << "22222222222";
-  auto keep_top_k_dim = symbol::DimExpr(keep_top_k);
+  std::vector<symbol::DimExpr> out_dims;
 
   PADDLE_ENFORCE_EQ(
       score_size,
@@ -881,8 +878,14 @@ bool MatrixNmsOpInferSymbolicShape(
                                       box_dims.size()));
   infer_context->AddEqualCstr(box_dims[2], symbol::DimExpr(4));
   infer_context->AddEqualCstr(box_dims[1], score_dims[2]);
-  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
-  std::vector<symbol::DimExpr> out_dims = {out_unknown, box_dims[2] + 2};
+  if (op->HasAttribute("keep_top_k")) {
+    int keep_top_k = op->attribute<pir::Int64Attribute>("keep_top_k").data();
+    auto keep_top_k_dim = symbol::DimExpr(keep_top_k);
+    out_dims = {keep_top_k_dim * box_dims[0], box_dims[2] + 2};
+  } else {
+    symbol::DimExpr out_unknown = infer_context->GetNextSymName();
+    std::vector<symbol::DimExpr> out_dims = {out_unknown, box_dims[2] + 2};
+  }
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
@@ -891,7 +894,6 @@ bool MatrixNmsOpInferSymbolicShape(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(index_dims)});
-
   std::vector<symbol::DimExpr> roisnum_out = {};
   roisnum_out.push_back(infer_context->GetNextSymName());
   infer_context->SetShapeOrDataForValue(
