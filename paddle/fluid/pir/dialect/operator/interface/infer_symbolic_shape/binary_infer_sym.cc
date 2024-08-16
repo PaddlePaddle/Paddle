@@ -1293,29 +1293,20 @@ bool TdmChildOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> &input_dims = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &input_shape = x_shape_or_data.shape();
   int child_nums = op->attribute<pir::Int32Attribute>("child_nums").data();
 
-  bool iou_aware = op->attribute<pir::BoolAttribute>("iou_aware").data();
-  if (iou_aware) {
-    infer_context->AddEqualCstr(x_shape[1],
-                                symbol::DimExpr(anchor_num * (6 + class_num)));
-  } else {
-    infer_context->AddEqualCstr(x_shape[1],
-                                symbol::DimExpr(anchor_num * (5 + class_num)));
-  }
-
-  std::vector<symbol::DimExpr> output_dims = input_dims;
-  output_dims.push_back(symbol::DimExpr(child_nums));
+  std::vector<symbol::DimExpr> output_shape = input_shape;
+  output_shape.push_back(symbol::DimExpr(child_nums));
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(output_dims)});
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(output_dims)});
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
 
   return true;
 }
@@ -1383,6 +1374,15 @@ bool YoloBoxOpInferSymbolicShape(
 
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
   int anchor_num = static_cast<int>(anchors.size() / 2);
+
+  bool iou_aware = op->attribute<pir::BoolAttribute>("iou_aware").data();
+  if (iou_aware) {
+    infer_context->AddEqualCstr(x_shape[1],
+                                symbol::DimExpr(anchor_num * (6 + class_num)));
+  } else {
+    infer_context->AddEqualCstr(x_shape[1],
+                                symbol::DimExpr(anchor_num * (5 + class_num)));
+  }
 
   symbol::DimExpr box_num = symbol::DimExpr(0);
   box_num = x_shape[2] * x_shape[3] * symbol::DimExpr(anchor_num);
