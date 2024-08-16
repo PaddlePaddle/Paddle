@@ -132,6 +132,7 @@ class MoeHelper {
                   const DenseTensor *ffn2_bias,
                   const DenseTensor *moe_token_type_ids,
                   const int moe_topk,
+                  const bool norm_topk_prob,
                   const std::string moe_type,
                   DenseTensor *output) {
     auto *input_activations = X->data<T>();
@@ -413,6 +414,7 @@ class MoeHelper {
           hidden_size,
           k,
           static_cast<int>(1),
+          norm_topk_prob,
           ctx.stream());
     } else {
       finalize_moe_routing_kernelLauncher(
@@ -427,6 +429,7 @@ class MoeHelper {
           inter_size,
           k,
           static_cast<int>(0),
+          norm_topk_prob,
           ctx.stream());
     }
     VLOG(4) << " Finished EXPERT \n";

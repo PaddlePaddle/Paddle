@@ -270,12 +270,12 @@ def run_adaround(
                 )
                 orig_out_tensor = static.data(
                     name='orig_out_tensor',
-                    shape=(-1,) + fp32_fetch_list.shape,
+                    shape=(-1, *fp32_fetch_list.shape),
                     dtype='float32',
                 )
                 adaround_out_tensor = static.data(
                     name='adaround_out_tensor',
-                    shape=(-1,) + fp32_fetch_list.shape,
+                    shape=(-1, *fp32_fetch_list.shape),
                     dtype='float32',
                 )
                 beta_tensor = static.data(

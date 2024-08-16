@@ -336,6 +336,18 @@ bool GaussianOpInferSymbolicShape(
   }
 }
 
+bool RandpermOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  int64_t n = op->attribute<pir::Int64Attribute>("n").data();
+  std::vector<symbol::DimExpr> out_shape = {n};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  return true;
+}
+
 bool RandintOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &shape_gen_op = op->operand_source(0).defining_op();
@@ -365,6 +377,13 @@ bool RandintOpInferSymbolicShape(
 // bool ReadFileOpInferSymbolicShape(pir::Operation *op,
 //                                   pir::InferSymbolicShapeContext
 //                                   *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool RecvV2OpInferSymbolicShape(pir::Operation *op,
+//                                 pir::InferSymbolicShapeContext
+//                                 *infer_context) {
 //   // pass
 //   return true;
 // }
@@ -431,6 +450,13 @@ bool TriuIndicesOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
+
+// bool TruncatedGaussianRandomOpInferSymbolicShape(
+//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool UniformOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return GaussianOpInferSymbolicShape(op, infer_context);

@@ -176,7 +176,7 @@ class ASGD(Optimizer):
                 p_new,
                 p.dtype,
                 0,
-                [self._n] + list(p.shape),
+                [self._n, *list(p.shape)],
             )
 
             self._add_accumulator(

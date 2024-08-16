@@ -84,7 +84,7 @@ def flatten_state_dict(state_dict):
         if isinstance(value, dict):
             for k, v in value.items():
                 assert isinstance(k, str), f"The key should be str, but is {k}"
-                _flatten(key + (k,), v)
+                _flatten((*key, k), v)
         elif isinstance(value, paddle.Tensor):
             flatten_key_str = ".".join(key)
             flatten_state_dict[flatten_key_str] = value
