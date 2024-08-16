@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cub/cub.cuh>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/fused/fused_attention_utils.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_attention_utils.h"
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"

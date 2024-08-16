@@ -26,6 +26,7 @@ from ..pir import Value
 from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
 from . import core
 from .framework import (
+    EagerParamBase,
     Variable,
     _cpu_num,
     _cuda_ids,
@@ -165,9 +166,13 @@ def check_variable_and_dtype(
     input, input_name, expected_dtype, op_name, extra_message=''
 ):
     if in_pir_mode():
-        check_type(
-            input, input_name, (Value, ParameterMeta), op_name, extra_message
-        )
+        from ..nn.initializer.lazy_init import lazy_init_helper
+
+        if lazy_init_helper().state:
+            expected = (Value, ParameterMeta, EagerParamBase)
+        else:
+            expected = (Value, ParameterMeta)
+        check_type(input, input_name, expected, op_name, extra_message)
     else:
         check_type(input, input_name, (Variable, Value), op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
@@ -187,6 +192,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     # NOTE: `in_to_static_mode` is used to determined whether this op is called under
     # @to_static in transformation from dygraph to static layer. We add Tensor in
     # expected_type to skip checking because Tensor may be created and used in unusual way.
+    from ..nn.initializer.lazy_init import lazy_init_helper
     from .dygraph.base import in_to_static_mode
 
     # Need a better design to be fix this.
@@ -194,7 +200,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         if not isinstance(expected_type, tuple):
             expected_type = (expected_type,)
         expected_type += (core.eager.Tensor,)
-    elif isinstance(input, core.eager.Tensor):
+    elif isinstance(input, core.eager.Tensor) and not lazy_init_helper().state:
         raise TypeError(
             "Please use `with base.dygraph.guard()` as context or `base.enable_dygraph()` to switch to imperative mode firstly. "
             f"Because received '{input_name}' in {op_name} is a imperative Variable."

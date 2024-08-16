@@ -31,6 +31,16 @@ def program_scope_guard():
             yield main_program
 
 
+@contextmanager
+def flag_guard(flag_name, flag_value):
+    old_value = paddle.get_flags(flag_name)[flag_name]
+    paddle.set_flags({flag_name: flag_value})
+    try:
+        yield
+    finally:
+        paddle.set_flags({flag_name: old_value})
+
+
 def walk_block(block, fn):
     for op in block.ops:
         fn(op)
@@ -394,6 +404,38 @@ class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
             self.assert_op_count_equal(main_program, {"pd_op.while": 2})
             paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.while": 2})
+
+
+@unittest.skipUnless(
+    paddle.is_compiled_with_cinn(),
+    "This case only works when compiled with CINN",
+)
+class TestCSEDenyFullInCinn(unittest.TestCase, AssertOpCountEqualMixin):
+    CINN_FLAGS_NAME = "FLAGS_use_cinn"
+
+    def test_replace_full_without_cinn(self):
+        with flag_guard(
+            self.CINN_FLAGS_NAME, False
+        ), program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.full([2], 1.0, dtype="float32")
+            x2 = paddle.full([2], 1.0, dtype="float32")
+
+            self.assert_op_count_equal(main_program, {"pd_op.full": 2})
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.full": 1})
+
+    def test_replace_full_with_cinn(self):
+        with flag_guard(
+            self.CINN_FLAGS_NAME, True
+        ), program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.full([2], 1.0, dtype="float32")
+            x2 = paddle.full([2], 1.0, dtype="float32")
+
+            self.assert_op_count_equal(main_program, {"pd_op.full": 2})
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.full": 2})
 
 
 if __name__ == "__main__":
