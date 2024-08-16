@@ -228,7 +228,7 @@ bool AffineGridOpInferSymbolicShape(
   std::vector<symbol::DimExpr> input_dims = input_shape_or_data.shape();
 
   const auto &attributes = op->attributes();
-  const int output_shape_size;
+  int output_shape_size;
   if (attributes.find("output_shape") != attributes.end()) {
     output_shape_size =
         op->attribute<paddle::dialect::IntArrayAttribute>("output_shape")
