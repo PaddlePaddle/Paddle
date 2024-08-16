@@ -29,7 +29,7 @@ struct SpmdInferHelperTypeEnd {};
 #define PD_INFER_SPMD_CHECK_INPUTS_SIZE_GT(inputs, size_bound)                 \
   PADDLE_ENFORCE_GT(inputs.size(),                                             \
                     size_bound,                                                \
-                    phi::errors::PreconditionNotMet(                           \
+                    common::errors::PreconditionNotMet(                        \
                         "The size of %s must be greater than %d, but got %d.", \
                         #inputs,                                               \
                         size_bound,                                            \
@@ -38,7 +38,7 @@ struct SpmdInferHelperTypeEnd {};
 #define PD_INFER_SPMD_CHECK_INPUTS_SIZE_EQ(inputs, size_bound)             \
   PADDLE_ENFORCE_EQ(inputs.size(),                                         \
                     size_bound,                                            \
-                    phi::errors::PreconditionNotMet(                       \
+                    common::errors::PreconditionNotMet(                    \
                         "The size of %s must be equal to %d, but got %d.", \
                         #inputs,                                           \
                         size_bound,                                        \

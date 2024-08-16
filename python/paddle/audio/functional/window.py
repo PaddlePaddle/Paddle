@@ -13,11 +13,16 @@
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 import paddle
-from paddle import Tensor
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+    from ..features.layers import _WindowLiteral
 
 
 class WindowFunctionRegister:
@@ -334,7 +339,7 @@ def _cosine(M: int, sym: bool = True, dtype: str = 'float64') -> Tensor:
 
 
 def get_window(
-    window: str | tuple[str, float],
+    window: _WindowLiteral | tuple[_WindowLiteral, float],
     win_length: int,
     fftbins: bool = True,
     dtype: str = 'float64',
@@ -384,6 +389,6 @@ def get_window(
     except KeyError as e:
         raise ValueError("Unknown window type.") from e
 
-    params = (win_length,) + args
+    params = (win_length, *args)
     kwargs = {'sym': sym}
     return winfunc(*params, dtype=dtype, **kwargs)

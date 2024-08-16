@@ -197,9 +197,9 @@ class TestDistMPTraining(unittest.TestCase):
             "mp_degree": 1,
             "pp_degree": 1,
         }
-        self.strategy.hybrid_configs[
-            "sharding_configs"
-        ].split_param = g_shard_split_param
+        self.strategy.hybrid_configs["sharding_configs"].split_param = (
+            g_shard_split_param
+        )
 
         fleet.init(is_collective=True, strategy=self.strategy)
         self.data = [
@@ -381,9 +381,9 @@ class TestShardingV2AllGather(unittest.TestCase):
             "mp_degree": 1,
             "pp_degree": 1,
         }
-        self.strategy.hybrid_configs[
-            "sharding_configs"
-        ].split_param = g_shard_split_param
+        self.strategy.hybrid_configs["sharding_configs"].split_param = (
+            g_shard_split_param
+        )
         fleet.init(is_collective=True, strategy=self.strategy)
         self.data = [
             np.random.randint(

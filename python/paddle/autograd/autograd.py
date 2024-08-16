@@ -14,9 +14,13 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING, overload
 
 import paddle
 from paddle.base import framework
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 
 def as_tensors(xs):
@@ -64,7 +68,12 @@ class Jacobian:
 
     """
 
-    def __init__(self, ys, xs, is_batched=False):
+    def __init__(
+        self,
+        ys: Tensor,
+        xs: Tensor,
+        is_batched: bool = False,
+    ) -> None:
         if not is_batched:
             if not 0 <= len(xs.shape) <= 1:
                 raise ValueError(
@@ -91,7 +100,7 @@ class Jacobian:
             self._jacobian = _JacobianBatchFirst(ys, xs)
 
     @property
-    def shape(self):
+    def shape(self) -> list[int]:
         """The shape of flattened Jacobian matrix."""
         return self._jacobian.shape
 
@@ -448,11 +457,43 @@ def _multi_index(indexes, shape):
     return tuple(positive_indexes)
 
 
+@overload
 def jacobian(
-    ys: paddle.Tensor | tuple[paddle.Tensor, ...],
-    xs: paddle.Tensor | tuple[paddle.Tensor, ...],
-    batch_axis: int | None = None,
-) -> tuple[tuple[Jacobian, ...], ...] | tuple[Jacobian, ...] | Jacobian:
+    ys: Tensor,
+    xs: Tensor,
+    batch_axis: int | None = ...,
+) -> Jacobian: ...
+
+
+@overload
+def jacobian(
+    ys: Sequence[Tensor],
+    xs: Sequence[Tensor],
+    batch_axis: int | None = ...,
+) -> tuple[tuple[Jacobian, ...], ...]: ...
+
+
+@overload
+def jacobian(
+    ys: Tensor,
+    xs: Sequence[Tensor],
+    batch_axis: int | None = ...,
+) -> tuple[Jacobian, ...]: ...
+
+
+@overload
+def jacobian(
+    ys: Sequence[Tensor],
+    xs: Tensor,
+    batch_axis: int | None = ...,
+) -> tuple[Jacobian, ...]: ...
+
+
+def jacobian(
+    ys,
+    xs,
+    batch_axis=None,
+):
     r"""
     Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.
@@ -542,11 +583,27 @@ def jacobian(
     return _jacobian
 
 
+@overload
 def hessian(
-    ys: paddle.Tensor,
-    xs: paddle.Tensor | tuple[paddle.Tensor, ...],
-    batch_axis: int | None = None,
-) -> tuple[tuple[Hessian, ...], ...] | Hessian:
+    ys: Tensor,
+    xs: Tensor,
+    batch_axis: int | None = ...,
+) -> Hessian: ...
+
+
+@overload
+def hessian(
+    ys: Tensor,
+    xs: Sequence[Tensor],
+    batch_axis: int | None = ...,
+) -> tuple[tuple[Hessian, ...], ...]: ...
+
+
+def hessian(
+    ys,
+    xs,
+    batch_axis=None,
+):
     r"""
     Computes the Jacobian of the dependent variable ``ys`` versus the independent
     variable ``xs``.

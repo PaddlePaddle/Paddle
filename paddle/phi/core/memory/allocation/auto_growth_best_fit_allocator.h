@@ -37,6 +37,8 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
   bool IsAllocThreadSafe() const override { return true; }
 
+  void DumpInfo() const;
+
  protected:
   phi::Allocation *AllocateImpl(size_t size) override;
 

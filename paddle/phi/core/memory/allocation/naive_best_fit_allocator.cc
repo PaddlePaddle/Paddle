@@ -18,17 +18,17 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/buddy_allocator.h"
 #include "paddle/phi/core/memory/allocation/system_allocator.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler.h"
 #include "paddle/phi/core/utils/visit_place.h"
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 #include "paddle/common/flags.h"
 PHI_DEFINE_EXPORTED_bool(

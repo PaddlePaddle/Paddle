@@ -19,7 +19,6 @@ import typing
 from typing import (
     TYPE_CHECKING,
     Any,
-    Sequence,
     overload,
 )
 
@@ -33,6 +32,8 @@ from paddle.distribution import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.distribution import Distribution, TransformedDistribution
 
@@ -142,16 +143,13 @@ class Transform:
         return Type.is_injective(cls._type)
 
     @overload
-    def __call__(self, input: Tensor) -> Tensor:
-        ...
+    def __call__(self, input: Tensor) -> Tensor: ...
 
     @overload
-    def __call__(self, input: Distribution) -> TransformedDistribution:
-        ...
+    def __call__(self, input: Distribution) -> TransformedDistribution: ...
 
     @overload
-    def __call__(self, input: Transform) -> ChainTransform:
-        ...
+    def __call__(self, input: Transform) -> ChainTransform: ...
 
     def __call__(self, input) -> Any:
         """Make this instance as a callable object. The return value is

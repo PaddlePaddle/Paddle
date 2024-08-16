@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/port.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
 

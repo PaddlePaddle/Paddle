@@ -122,8 +122,8 @@ void SGDDenseParamSparseGradKernel(
                       : nullptr;
 
   PADDLE_ENFORCE_EQ(
-      &param,
-      param_out,
+      param.IsSharedBufferWith(*param_out),
+      true,
       common::errors::InvalidArgument(
           "The input tensor Param of SgdOp should be equal with ParamOut "
           "if variable's type is SelectedRows."));

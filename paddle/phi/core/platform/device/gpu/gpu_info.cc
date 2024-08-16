@@ -22,7 +22,6 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/monitor.h"
@@ -30,6 +29,7 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/memory/memory.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_HIP

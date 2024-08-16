@@ -26,26 +26,6 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-void LogInputDistAttr(const std::string& name,
-                      const std::vector<int64_t>& shape,
-                      const TensorDistAttr& src_dist_attr,
-                      const TensorDistAttr& dst_dist_attr) {
-  VLOG(4) << name << " shape: [" << str_join(shape) << "] "
-          << "src_dims_mapping: [" << str_join(src_dist_attr.dims_mapping())
-          << "] "
-          << "dst_dims_mapping: [" << str_join(dst_dist_attr.dims_mapping())
-          << "] "
-          << "src_partial: " << src_dist_attr.partial_status_string()
-          << " dst_partial: " << dst_dist_attr.partial_status_string();
-}
-
-void LogOutputDistAttr(const std::string& name,
-                       const TensorDistAttr& dst_dist_attr) {
-  VLOG(4) << name << " dims mapping: ["
-          << str_join(dst_dist_attr.dims_mapping()) << "] "
-          << "partial: " << dst_dist_attr.partial_status_string();
-}
-
 SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,

@@ -144,7 +144,7 @@ bool ComputeInliner::BodyPatternAllowInline() {
   }
   PADDLE_ENFORCE_NOT_NULL(
       inlined_store_.As<Store>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param inlined store should be Store node! Please check."));
   auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
@@ -175,7 +175,7 @@ void ComputeInliner::Visit(const ir::Load* expr, Expr* op) {
 Expr ComputeInliner::ReplaceInlinedTensor(Expr* load) {
   PADDLE_ENFORCE_NOT_NULL(
       load->As<ir::Load>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param load should be ir::Load node! Please check."));
   SetIndexSubstitution(load->As<ir::Load>()->indices);
   Expr value_copy = ir::ir_utils::IRCopy(inlined_store_.As<Store>()->value);
@@ -208,15 +208,15 @@ bool ReverseComputeInliner::BodyPatternAllowInline() {
   }
   PADDLE_ENFORCE_NOT_NULL(
       inlined_store_.As<Store>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param inlined store should be Store node! Please check."));
   PADDLE_ENFORCE_NOT_NULL(
       inlined_load_.As<Load>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param inlined load should be Load node! Please check."));
   PADDLE_ENFORCE_NOT_NULL(
       target_store_.As<Store>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param target store should be Store node! Please check."));
   auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
@@ -249,7 +249,7 @@ void ReverseComputeInliner::Visit(const ir::Store* expr, Expr* op) {
 Expr ReverseComputeInliner::ReplaceInlinedTensor(Expr* load) {
   PADDLE_ENFORCE_NOT_NULL(
       load->As<ir::Load>(),
-      phi::errors::NotFound(
+      ::common::errors::NotFound(
           "Param load should be ir::Load node! Please check."));
   SetIndexSubstitution(load->As<ir::Load>()->indices);
   Expr value_copy = ir::ir_utils::IRCopy(inlined_store_.As<Store>()->value);

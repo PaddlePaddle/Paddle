@@ -87,7 +87,7 @@ class TestNanInf(TestNanInfBase):
                 expected_value,
                 f"The number of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
-        print("")
+        print()
 
     def run_check_nan_inf(self, cmd, expected_op_count=None):
         returncode, out, err = self.run_command(cmd)
@@ -206,7 +206,7 @@ class TestNanInfCheckResult(TestNanInfBase):
             out = paddle.log(x)
             sys.stdout.flush()
             if add_assert:
-                raise AssertionError()
+                raise AssertionError
         except Exception as e:
             # Cannot catch the log in CUDA kernel.
             err_str_list = (

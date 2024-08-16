@@ -19,6 +19,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace common {
@@ -199,10 +200,23 @@ std::optional<bool> SymbolicExprAnalyzer::ProveLT(const ir::Expr& lhs,
 // and rhs must be a var
 std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
     const ir::Expr& lhs, const ir::Expr& rhs) const {
-  CHECK(rhs.is_var()) << "Rhs in ProveDivisible must be a var temporarily!\n";
-  CHECK(lhs.defined());
-  CHECK(rhs.defined());
-  CHECK(cinn::common::IsPureMath(lhs));
+  PADDLE_ENFORCE_EQ(rhs.is_var(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Rhs in ProveDivisible must be a var temporarily!\n"));
+  PADDLE_ENFORCE_EQ(
+      lhs.defined(),
+      true,
+      phi::errors::InvalidArgument("Lhs in ProveDivisible must be defined."));
+  PADDLE_ENFORCE_EQ(
+      rhs.defined(),
+      true,
+      phi::errors::InvalidArgument("Rhs in ProveDivisible must be defined."));
+  PADDLE_ENFORCE_EQ(
+      cinn::common::IsPureMath(lhs),
+      true,
+      phi::errors::InvalidArgument(
+          "Lhs in ProveDivisible must be a pure math expression."));
 
   ir::Expr lhs_copy = ir::ir_utils::IRCopy(lhs);
   if (cinn::common::is_zero(lhs_copy)) return true;
@@ -245,7 +259,10 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
     case cinn::ir::IrNodeTy::Sum:
       res = true;
       ops = lhs.As<ir::Sum>()->operands();
-      CHECK(!ops.empty());
+      PADDLE_ENFORCE_NE(ops.empty(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "Operands in Sum node should not be empty."));
       std::for_each(ops.begin(), ops.end(), [&](const ir::Expr& expr) {
         res = OptionalAnd(res, this->ProveDivisible(expr, rhs));
       });
@@ -254,7 +271,10 @@ std::optional<bool> SymbolicExprAnalyzer::ProveDivisible(
     case cinn::ir::IrNodeTy::Product:
       res = false;
       ops = lhs.As<ir::Product>()->operands();
-      CHECK(!ops.empty());
+      PADDLE_ENFORCE_NE(ops.empty(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "Operands in Sum node should not be empty."));
       std::for_each(ops.begin(), ops.end(), [&](const ir::Expr& expr) {
         res = OptionalOr(res, this->ProveDivisible(expr, rhs));
         if (res.has_value() && res.value()) return;

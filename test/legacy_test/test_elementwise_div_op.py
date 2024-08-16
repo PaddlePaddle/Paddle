@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+import paddle.static
 from paddle import base
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
@@ -481,7 +482,7 @@ def create_test_fp16_class(parent, max_relative_error=2e-3):
                         **check_kwargs,
                         check_pir=True,
                         check_prim=True,
-                        check_prim_pir=True
+                        check_prim_pir=True,
                     )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")

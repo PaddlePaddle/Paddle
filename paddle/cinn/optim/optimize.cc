@@ -48,7 +48,7 @@ Expr Optimize(Expr e,
   PADDLE_ENFORCE_EQ(
       e.defined(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Expected expression 'e' to be defined, but it is undefined."));
 
   auto copied = ir::ir_utils::IRCopy(e);
