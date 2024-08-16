@@ -708,8 +708,6 @@ void AddCstrForArgs(const pir::Value &origin_input,
   block_arg_shape_or_data.Match(
       [&](const symbol::TensorShapeOrDataDimExprs &impl) {
         const auto &block_arg_shape = impl.shape();
-        const auto &origin_input_shape =
-            infer_context->GetShapeOrDataForValue(origin_input).shape();
         const auto &yield_value_shape =
             infer_context->GetShapeOrDataForValue(yield_value).shape();
         PADDLE_ENFORCE_EQ(block_arg_shape.size(),
@@ -724,14 +722,16 @@ void AddCstrForArgs(const pir::Value &origin_input,
                               yield_value_shape.size()));
         const auto &original_input_shape =
             infer_context->GetShapeOrDataForValue(origin_input).shape();
+        if (original_input_shape.size() != block_arg_shape.size()) {
+          return;
+        }
         // GTOne
-        if (origin_input_shape.size() == block_arg_shape.size()) {
-          for (size_t j = 0; j < origin_input_shape.size(); ++j) {
-            if (infer_context->IsGreatThanOne(origin_input_shape[j])) {
-              infer_context->AddGreatThanOneCstr(block_arg_shape[j]);
-            }
+        for (size_t j = 0; j < original_input_shape.size(); ++j) {
+          if (infer_context->IsGreatThanOne(original_input_shape[j])) {
+            infer_context->AddGreatThanOneCstr(block_arg_shape[j]);
           }
         }
+
         // Equal
         for (size_t j = 0; j < block_arg_shape.size(); ++j) {
           if (block_arg_shape[j].isa<int64_t>()) {
