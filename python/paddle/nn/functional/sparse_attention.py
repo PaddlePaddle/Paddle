@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import paddle
-from paddle import _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 
 
@@ -137,12 +137,8 @@ def sparse_attention(
                [1.60885942, 2.60885954],
                [1.99830270, 2.99830270]]]])
     """
-    if in_dynamic_mode():
-        (
-            result_attention,
-            result_sdd,
-            result_softmax,
-        ) = _legacy_C_ops.sparse_attention(
+    if paddle.framework.in_dynamic_or_pir_mode():
+        res = _C_ops.sparse_attention(
             query,
             key,
             value,
@@ -151,7 +147,7 @@ def sparse_attention(
             key_padding_mask,
             attn_mask,
         )
-        return result_attention
+        return res
 
     helper = LayerHelper('sparse_attention', **locals())
     dtype = helper.input_dtype(input_param_name='Q')
