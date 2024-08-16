@@ -58,7 +58,12 @@ class HorizontalFusePattern : public pir::RewritePattern {
   }
 
  private:
-  bool IsValidOp(pir::Operation* curr_op) const {
+  bool IsValidOp(pir::Operation* curr_op, const pir::Value& x) const {
+    // x must be the first operand of fc/gemm_epilogue/matmul
+    if (!(curr_op->num_operands() > 0 && curr_op->operand_source(0) == x)) {
+      return false;
+    }
+
     if (curr_op->isa<paddle::dialect::GemmEpilogueOp>() ||
         curr_op->isa<paddle::dialect::FcOp>()) {
       return true;
@@ -77,6 +82,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
       }
       return true;
     }
+
     return false;
   }
 
@@ -108,8 +114,8 @@ class HorizontalFusePattern : public pir::RewritePattern {
     pir::AttributeMap op_example_attrs;
     for (auto it = x.use_begin(); it != x.use_end(); ++it) {
       pir::Operation* curr_op = it.owner();
-      if (!IsValidOp(curr_op)) {
-        continue;
+      if (!IsValidOp(curr_op, x)) {
+        return 0;
       }
       if (op_example == nullptr) {
         op_example = curr_op;
@@ -163,7 +169,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
 
     for (auto it = x.use_begin(); it != x.use_end(); ++it) {
       pir::Operation* curr_op = it.owner();
-      if (!IsValidOp(curr_op)) {
+      if (!IsValidOp(curr_op, x)) {
         continue;
       }
       fused_matmul_ops.push_back(curr_op);

@@ -152,8 +152,7 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
           << "]\n Out dims_mapping: [" << str_join(dims_mapping_vec[1])
           << "]\n\n";
 
-  return {{x_dist_attr_dst},
-          {out_dist_attr, CreateUnsqueezeXshape(x_dist_attr_dst)}};
+  return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
 SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
@@ -225,13 +224,27 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
           << "dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
   VLOG(4) << "X dims_mapping: [" << str_join(dims_mapping_vec[1]) << "]\n\n";
 
-  return {{x_dist_attr},
-          {out_dist_attr_dst, CreateUnsqueezeXshape(x_dist_attr)}};
+  return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
-SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& xshape,
+SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& out_grad,
                                 const IntArray& axis) {
+  auto shape = phi::vectorize(x.dims());
+  const auto& spmd = ReshapeInferSpmd(out_grad, shape);
+  return {{x.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
+}
+
+SpmdInfo UnsqueezeWithXShapeInferSpmd(const DistMetaTensor& x,
+                                      const std::vector<int64_t>& axis) {
+  const auto& spmd = UnsqueezeInferSpmd(x, axis);
+  const auto& x_dist_attr = PADDLE_GET_CONST(TensorDistAttr, spmd.first[0]);
+  return {{x_dist_attr}, {spmd.second[0], CreateUnsqueezeXshape(x_dist_attr)}};
+}
+
+SpmdInfo UnsqueezeWithXShapeGradInferSpmd(const DistMetaTensor& xshape,
+                                          const DistMetaTensor& out_grad,
+                                          const IntArray& axis) {
   auto shape = phi::vectorize(xshape.dims());
   shape = std::vector<int64_t>(shape.begin() + 1, shape.end());
   const auto& spmd = ReshapeInferSpmd(out_grad, shape);
