@@ -77,7 +77,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         device="gpu",
         pretrain_sync_models=True,
         dp_group=None,
-        **kw
+        **kw,
     ):
         super().__init__(learning_rate=optim._learning_rate, parameters=params)
         assert (

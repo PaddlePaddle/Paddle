@@ -3818,6 +3818,8 @@ OpTranslator::OpTranslator() {
       WithXShapeGradOpTranscriber<dialect::FlattenGradOp>();
   special_handlers["squeeze2_grad"] =
       WithXShapeAndAxisGradOpTranscriber<dialect::SqueezeGradOp>();
+  special_handlers["unsqueeze2_grad"] =
+      WithXShapeAndAxisGradOpTranscriber<dialect::UnsqueezeGradOp>();
 }
 }  // namespace translator
 }  // namespace paddle

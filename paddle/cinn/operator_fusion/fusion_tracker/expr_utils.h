@@ -60,6 +60,7 @@ struct ApplyTransform {
   ir::Expr expr_;
 };
 
+std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops);
 std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs);
 std::vector<FusibleOp> DoPadding(const FusibleOp& fusion_op,
                                  const std::vector<int>& padding_pos);
