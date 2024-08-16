@@ -580,7 +580,7 @@ void DispatchWithDtype(
           max_seq_len,
           pre_cache_length,
           dim_head);
-#ifdef PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION
+
       phi::fusion::MultiHeadAttentionVariableForwardKernel<T, phi::GPUContext>(
           dev_ctx,
           q_trans,
@@ -593,28 +593,7 @@ void DispatchWithDtype(
           /*causual*/ false,
           pre_cache_length,
           &qktv_out);
-#elif defined(PADDLE_WITH_HIP)
-      const bool is_precache_infer = true;
-      phi::FlashAttnKernel<T>(
-          dev_ctx,
-          q_trans,
-          k_trans,
-          v_trans,
-          paddle::none /*fixed_seed_offset*/,
-          paddle::none /*mask*/,
-          0.0,
-          is_precache_infer ? true : causual /*precache_infer_casual*/,
-          false,
-          is_precache_infer /*is_test*/,
-          "" /*rng_name*/,
-          &qktv_out,
-          &softmax_out,
-          &softmax_lse,
-          &seed_offset);
-#else
-      PADDLE_THROW(common::errors::Unimplemented(
-          "Not supports MultiHeadAttentionVariableForwardKernel."));
-#endif
+
       InvokeTransposeRemovePadding<T>(dev_ctx,
                                       qktv_out.data<T>(),
                                       sequence_lengths_data,
