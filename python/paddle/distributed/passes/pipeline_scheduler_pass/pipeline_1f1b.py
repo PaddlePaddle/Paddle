@@ -22,6 +22,7 @@ from ..pass_base import register_pass
 from ..pass_utils import (
     AutoParallelStreamType,
     _add_event_dependency,
+    _pir_program_for_fthenb_and_1f1b,
     _program_for_fthenb_and_1f1b,
     split_program,
 )
@@ -335,6 +336,24 @@ class Pipeline1F1BPass(PipelinePassBase):
         logger.debug(f"jobs_in_stable_phase = {self.jobs_in_stable_phase}")
 
         return types, sub_programs
+
+    def _partial_pir_programs(self, program):
+        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        assert (
+            not enable_send_recv_overlap
+        ), "PIR does not support 1F1B with enable_send_recv_overlap yet."
+
+        types = [FORWARD, BACKWARD, OPT]
+        sub_program_list = _pir_program_for_fthenb_and_1f1b(
+            program, enable_send_recv_overlap
+        )
+
+        for i in range(len(types)):
+            logger.debug(
+                f"type = {types[i]}, sub_programs = {sub_program_list[i]}\n"
+            )
+        logger.debug(f"jobs_in_stable_phase = {self.jobs_in_stable_phase}")
+        return types, sub_program_list
 
     def _split_program_for_overlapping(self, job_type, program, split_points):
         assert job_type in [

@@ -906,7 +906,7 @@ class CodeGen:
             )
 
             kernel_name = (
-                list(dispatch_kernel.keys())[0]
+                next(iter(dispatch_kernel.keys()))
                 if dispatch_kernel and len(dispatch_kernel.keys()) == 1
                 else op_name
             )

@@ -295,8 +295,8 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
             table.add_row(
                 [
                     m.full_name(),
-                    list(m.input_shape.numpy()),
-                    list(m.output_shape.numpy()),
+                    m.input_shape.numpy().tolist(),
+                    m.output_shape.numpy().tolist(),
                     int(m.total_params),
                     int(m.total_ops),
                 ]

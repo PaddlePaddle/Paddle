@@ -54,9 +54,9 @@ TEST(Status, pd_exception) {
                         "Status should not be different from itself."));
   PADDLE_ENFORCE_EQ(
       status.code(),
-      phi::ErrorCode::INVALID_ARGUMENT + 1,
-      phi::errors::InvalidArgument(
-          "Required status.code() should be equal to INVALID_ARGUMENT + 1."));
+      common::ErrorCode::INVALID_ARGUMENT + 1,
+      common::errors::InvalidArgument(
+          "Required status.code() should be equal to INVALID_ARGUMENT + 1. "));
   LOG(INFO) << status.error_message();
 }
 

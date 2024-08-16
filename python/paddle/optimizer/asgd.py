@@ -14,10 +14,10 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.tensor.creation import to_tensor
 
 from ..base import framework
@@ -26,6 +26,8 @@ from ..base.framework import in_dygraph_mode, in_pir_mode
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
     from paddle.regularizer import WeightDecayRegularizer
@@ -140,7 +142,8 @@ class ASGD(Optimizer):
         self._n_tensor = None
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 

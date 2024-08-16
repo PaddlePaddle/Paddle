@@ -518,9 +518,9 @@ void LocalTensorsFromDistOp::VerifySig() {
     PADDLE_ENFORCE_EQ(
         op_dist_attr.num_results(),
         num_results(),
-        phi::errors::PreconditionNotMet("The op_dist_attr output size of "
-                                        "local_tensors_from_dist op must be "
-                                        "equal to op output size."));
+        common::errors::PreconditionNotMet("The op_dist_attr output size of "
+                                           "local_tensors_from_dist op must be "
+                                           "equal to op output size."));
   }
   VLOG(4) << "End Verifying for: local_tensors_from_dtensor op.";
 }
@@ -637,14 +637,14 @@ void DistTensorFromLocalsOp::VerifySig() {
     PADDLE_ENFORCE_EQ(
         op_dist_attr.num_operands(),
         num_operands(),
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The op_dist_attr input size of dtensor_from_local_tensors "
             "op must be equal to op input size."));
 
     PADDLE_ENFORCE_EQ(
         op_dist_attr.num_results(),
         num_results(),
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The op_dist_attr output size of dtensor_from_local_tensors op "
             "must be equal to op output size."));
   }

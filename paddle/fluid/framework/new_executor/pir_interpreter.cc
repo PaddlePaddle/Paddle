@@ -24,12 +24,12 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/os_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
@@ -40,8 +40,8 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 
 #ifdef PADDLE_WITH_CINN
 #include "paddle/fluid/framework/new_executor/instruction/cinn_jit_instruction.h"

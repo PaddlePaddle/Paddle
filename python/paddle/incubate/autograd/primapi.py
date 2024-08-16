@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import typing
-from typing import TYPE_CHECKING, Sequence, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import paddle
 from paddle.base import backward, core, framework
@@ -24,6 +24,8 @@ from paddle.base.core import prim_config
 from paddle.incubate.autograd import primx, utils
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.base.framework import Block
 

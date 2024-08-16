@@ -200,6 +200,8 @@ def monkey_patch_tensor():
                 ...     linear.weight.set_value(custom_weight)  # change existing weight
                 ...     out = linear(t)  # call with different weight
         """
+        if id(self) == id(value):
+            return
         assert isinstance(
             value, (np.ndarray, paddle.Tensor, dict, str)
         ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
@@ -664,18 +666,17 @@ def monkey_patch_tensor():
         device: PlaceLike,
         dtype: DTypeLike | None = ...,
         blocking: bool | None = ...,
-    ) -> Tensor:
-        ...
+    ) -> Tensor: ...
 
     @overload
     def to(
         self: Tensor, dtype: DTypeLike, blocking: bool | None = ...
-    ) -> Tensor:
-        ...
+    ) -> Tensor: ...
 
     @overload
-    def to(self: Tensor, other: Tensor, blocking: bool | None = ...) -> Tensor:
-        ...
+    def to(
+        self: Tensor, other: Tensor, blocking: bool | None = ...
+    ) -> Tensor: ...
 
     @framework.dygraph_only
     def to(self: Tensor, *args, **kwargs):
@@ -762,7 +763,7 @@ def monkey_patch_tensor():
         if len(invalid_keys) != 0:
             raise TypeError(
                 "to() got an unexpected keyword argument "
-                + list(invalid_keys)[0]
+                + next(iter(invalid_keys))
             )
         if size_args > 0:
             if isinstance(args[0], paddle.Tensor):

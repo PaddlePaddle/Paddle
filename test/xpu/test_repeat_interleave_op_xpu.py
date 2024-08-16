@@ -35,7 +35,7 @@ def ref_repeat_interleave(x_np, index_np, axis):
         index_np = np.full([index_size], index_np, dtype=np.int32)
 
     outer_loop = np.prod(x_shape[:axis])
-    x_reshape = [outer_loop] + list(x_shape[axis:])
+    x_reshape = [outer_loop, *x_shape[axis:]]
     x_np_reshape = np.reshape(x_np, tuple(x_reshape))
     out_list = []
     for i in range(outer_loop):

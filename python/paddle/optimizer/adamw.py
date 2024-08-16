@@ -16,7 +16,7 @@ from __future__ import annotations
 import warnings
 from collections import defaultdict
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import pir
@@ -37,6 +37,8 @@ from .lr import LRScheduler
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
     from .adam import _AdamParameterConfig

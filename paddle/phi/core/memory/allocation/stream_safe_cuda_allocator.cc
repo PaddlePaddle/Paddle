@@ -195,9 +195,9 @@ void StreamSafeCUDAAllocator::SetDefaultStream(gpuStream_t stream) {
 }
 
 phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
-  platform::RecordEvent record("StreamSafeCUDAAllocator::Allocate",
-                               platform::TracerEventType::UserDefined,
-                               9 /*level*/);
+  phi::RecordEvent record("StreamSafeCUDAAllocator::Allocate",
+                          platform::TracerEventType::UserDefined,
+                          9 /*level*/);
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
@@ -227,9 +227,9 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
 }
 
 void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
-  platform::RecordEvent record("StreamSafeCUDAAllocator::Free",
-                               platform::TracerEventType::UserDefined,
-                               9 /*level*/);
+  phi::RecordEvent record("StreamSafeCUDAAllocator::Free",
+                          platform::TracerEventType::UserDefined,
+                          9 /*level*/);
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       static_cast<StreamSafeCUDAAllocation*>(allocation);
 
