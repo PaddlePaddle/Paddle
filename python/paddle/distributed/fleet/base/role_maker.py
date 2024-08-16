@@ -22,6 +22,7 @@ from multiprocessing import Manager, Process
 from typing import Any, ClassVar, Literal
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle.base import core
