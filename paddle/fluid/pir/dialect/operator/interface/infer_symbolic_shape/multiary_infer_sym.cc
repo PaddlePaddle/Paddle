@@ -985,7 +985,6 @@ bool DetectionMapOpInferSymbolicShape(
 
   return true;
 }
-=======
 // bool CudnnLstmOpInferSymbolicShape(pir::Operation *op,
 //                                    pir::InferSymbolicShapeContext
 //                                    *infer_context) {
