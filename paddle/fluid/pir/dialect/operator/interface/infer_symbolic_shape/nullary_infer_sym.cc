@@ -204,31 +204,53 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
 
 bool EyeOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
-  const auto &num_rows_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  symbol::DimExpr num_rows;
-  symbol::DimExpr num_columns;
   std::vector<symbol::DimExpr> out_shape;
-  if (num_rows_shape_or_data.data().has_value()) {
-    num_rows = num_rows_shape_or_data.data().value()[0];
-    if (op->operand_source(1)) {
-      const auto &num_columns_shape_or_data =
-          infer_context->GetShapeOrDataForValue(op->operand_source(1));
-      if (num_columns_shape_or_data.data().has_value()) {
-        num_columns = num_columns_shape_or_data.data().value()[0];
-        out_shape = {num_rows, num_columns};
-      } else {
-        num_columns = num_rows;
-        out_shape = {num_rows, num_columns};
-      }
+  symbol::DimExpr num_columns_dim;
+  symbol::DimExpr num_rows_dim;
+
+  if (op->operand_source(0)) {
+    // num_rows is operand
+    const auto &num_rows_shape_or_data =
+        infer_context->GetGetShapeOrDataForValue(op->operand_source(0));
+    if (num_rows_shape_or_data.data().has_value()) {
+      num_rows_dim = num_rows_shape_or_data.data().value()[0];
     } else {
-      out_shape = {num_rows, num_rows};
+      num_rows_dim = infer_context->GetNextDimExpr();
     }
+  } else if (op->HasAttribute("num_rows")) {
+    // num_rows is attribute
+    int num_rows_int = op->attribute<pir::Int64Attribute>("num_rows").data();
+    num_rows_dim = symbol::DimExpr(num_rows_int);
   } else {
     PADDLE_THROW(::common::errors::InvalidArgument("Find num_rows Failed"));
   }
+
+  if (op->operand_source(1)) {
+    // num_columns is operand
+    const auto &num_columns_shape_or_data =
+        infer_context->GetGetShapeOrDataForValue(op->operand_source(1));
+    if (num_columns_shape_or_data.data().has_value()) {
+      symbol::DimExpr num_columns_dim =
+          num_columns_shape_or_data.data().value()[0];
+    } else {
+      symbol::DimExpr num_columns_dim = infer_context->GetNextDimExpr();
+    }
+  } else if (op->HasAttribute("num_columns")) {
+    // num_columns is attribute
+    int num_columns_int =
+        op->attribute<pir::Int64Attribute>("num_columns").data();
+    if (num_columns == -1) {
+      num_columns_dim = num_rows_dim;
+    } else {
+      num_columns_dim = symbol::DimExpr(num_columns_int);
+    }
+  } else {
+    PADDLE_THROW(::common::errors::InvalidArgument("Find num_columns Failed"));
+  }
+
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
+      op->result(0),
+      symbol::TensorShapeOrDataDimExprs({num_rows_dim, num_columns_dim}));
 
   return true;
 }
