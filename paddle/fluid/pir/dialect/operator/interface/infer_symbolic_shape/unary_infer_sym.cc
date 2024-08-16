@@ -361,6 +361,44 @@ bool Assign_OpInferSymbolicShape(
   return AssignOpInferSymbolicShape(op, infer_context);
 }
 
+bool BatchSizeLikeOpInferSymbolicShape(pir::Operation *op,
+                                       pir::InferSymbolicShapeContext *infer_context) {
+
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_dims = x_shape.shape();
+
+  std::vector<int> shape = paddle::dialect::details::GetVectorAttr<int>(op, "shape");
+  int x_batch_size_dim = op->attribute<pir::Int32Attribute>("x_batch_size_dim").data();
+  int out_batch_size_dim = op->attribute<pir::Int32Attribute>("out_batch_size_dim").data();
+
+  PADDLE_ENFORCE_GT(
+      shape.size(),
+      0,
+      common::errors::InvalidArgument("Shape size must be larger than 0, but received: %d.", shape.size()));
+
+  std::vector<symbol::DimExpr> shape_exprs(shape.size());
+  std::transform(shape.begin(), shape.end(), shape_exprs.begin(), [](int dim) {
+    return symbol::DimExpr(dim);
+  });
+
+  PADDLE_ENFORCE_GE(x_batch_size_dim, 0, common::errors::InvalidArgument("Input dimension index must be larger than or equal to 0."));
+  PADDLE_ENFORCE_GE(out_batch_size_dim, 0, common::errors::InvalidArgument("Output dimension index must be larger than or equal to 0."));
+
+  size_t output_dim_size = shape.size();
+  PADDLE_ENFORCE_GT(output_dim_size, out_batch_size_dim, common::errors::InvalidArgument("Output dimension size must be larger than output dimension index."));
+  shape_exprs[out_batch_size_dim] = x_dims[x_batch_size_dim];
+
+  infer_context->SetShapeOrDataForValue(op->result(0), symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(shape_exprs)});
+
+  return true;
+}
+
+bool FullBatchSizeLikeOpInferSymbolicShape(pir::Operation *op,
+                                           pir::InferSymbolicShapeContext *infer_context) {
+  return BatchSizeLikeOpInferSymbolicShape(op, infer_context);
+}
+
 bool BipartiteMatchOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &dist_mat_shape_or_data =
