@@ -57,6 +57,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
 
     const auto &comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
+
     if (FLAGS_dynamic_static_unified_comm) {
       // Use New Communication Library
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
