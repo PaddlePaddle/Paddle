@@ -103,18 +103,20 @@ def check_view_api_used_by_inplace(program: paddle.pir.Program) -> None:
     # check viewed value used by inplace op in pir mode.
     all_vars_list = program.list_vars()
     for value in all_vars_list:
-        if (
-            value.all_used_ops()
-            and value.all_used_ops()[-1].name().endswith("_")
-            and value.all_used_ops()[-1].operand_source(0).is_same(value)
-            and check_view_value(value)
-        ):
-            op_callstack = value.all_used_ops()[-1].callstack
-            index = op_callstack.index("    outputs = static_func(*inputs)")
-            result = '\n'.join(op_callstack[index + 1 :])
-            raise ValueError(
-                f'Sorry about what\'s happened. In to_static mode, {value.all_used_ops()[-1].name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call paddle.assign() before inplace input.\n{result}'
-            )
+        if len(value.all_used_ops()) == 0:
+            return
+        for op in value.all_used_ops():
+            if (
+                op.name().endswith("_")
+                and op.operand_source(0).is_same(value)
+                and check_view_value(value)
+            ):
+                op_callstack = value.all_used_ops()[-1].callstack
+                index = op_callstack.index("    outputs = static_func(*inputs)")
+                op_callstack_result = '\n'.join(op_callstack[index + 1 :])
+                raise ValueError(
+                    f'In transformed code:\n\n{op_callstack_result}\n\nSorry about what\'s happened. In to_static mode, {value.all_used_ops()[-1].name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call paddle.assign() before inplace input.'
+                )
 
 
 class FunctionCache:
