@@ -1322,7 +1322,7 @@ bool MultinomialOpInferSymbolicShape(
     dims = x_shape_or_data.shape();
     return dims;
   }();
-  const auto &num_samples =
+  const auto &int_num_samples =
       op->attribute<paddle::dialect::IntArrayAttribute>("num_samples").data();
   size_t x_rank = x_dims.size();
   PADDLE_ENFORCE_GT(x_rank,
@@ -1342,11 +1342,8 @@ bool MultinomialOpInferSymbolicShape(
     out_dims[i] = x_dims[i];
   }
 
-  ExprVec num_samples_data =
-      details::GetOrCreateExprVecFromData(num_samples, infer_context);
-
-  if (!num_samples_data.empty()) {
-    out_dims[x_rank - 1] = num_samples_data[0];
+  if (!int_num_samples.FromTensor()) {
+    out_dims[x_rank - 1] = int_num_samples;
   } else {
     out_dims[x_rank - 1] = symbol::DimExpr(infer_context->GetNextSymName());
   }
