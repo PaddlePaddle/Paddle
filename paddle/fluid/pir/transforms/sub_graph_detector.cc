@@ -23,8 +23,12 @@
 #include <string>
 #include <unordered_map>
 
+#ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#endif
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builder.h"
@@ -34,7 +38,6 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -609,7 +612,9 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
 void ReplaceWithGroupOp(pir::Block* block,
                         const GroupOpsVec& group_ops) {  // NOLINT
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+#ifdef PADDLE_WITH_CINN
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+#endif
 #ifdef PADDLE_WITH_DNNL
   ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
 #endif
@@ -622,7 +627,9 @@ void ReplaceWithGroupOp(pir::Block* block,
   builder.set_insertion_point(insert_point);
   VLOG(6) << "Insert GroupOp after " << insert_point->name();
 
-  // step 2: Replace the old op with GroupOp.
+// step 2: Replace the old op with GroupOp.
+#ifdef PADDLE_WITH_CINN
+
   auto new_group_op = [&]() -> cinn::dialect::GroupOp {
     std::vector<pir::Type> output_types;
     for (auto& value : outputs) output_types.emplace_back(value.type());
@@ -633,6 +640,18 @@ void ReplaceWithGroupOp(pir::Block* block,
     }
     return group_op;
   }();
+#else
+  auto new_group_op = [&]() -> pir::GroupOp {
+    std::vector<pir::Type> output_types;
+    for (auto& value : outputs) output_types.emplace_back(value.type());
+
+    auto group_op = builder.Build<pir::GroupOp>(output_types);
+    for (auto op : group_ops) {
+      op->MoveTo(group_op.block(), group_op.block()->end());
+    }
+    return group_op;
+  }();
+#endif
 
   // step 3: Replace outputs of inner ops
   const std::vector<pir::Value> group_outs = new_group_op->results();

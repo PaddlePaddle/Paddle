@@ -131,6 +131,7 @@ void MapExternCall(Expr *e, Target target) {
               "expression type."));
       OptimizeConstantPow(node);
       DealWithIntrinsics(target.arch, node, expr);
+      ir::IRMutator<>::Visit(op, expr);
     }
 
     // Replace pow(x, 0.5) to sqrt(x) and pow(x, -0.5) to rsqrt(x), which

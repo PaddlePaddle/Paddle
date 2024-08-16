@@ -18,24 +18,29 @@
 #
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
+from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING
 
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 
 def variable_length_memory_efficient_attention(
-    query,
-    key,
-    value,
-    seq_lens,
-    kv_seq_lens,
-    mask=None,
-    scale=None,
-    causal=False,
-    pre_cache_length=0,
-):
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    seq_lens: Tensor,
+    kv_seq_lens: Tensor,
+    mask: Tensor | None = None,
+    scale: float | None = None,
+    causal: bool = False,
+    pre_cache_length: int = 0,
+) -> Tensor:
     """
     Cutlass Memory Efficient Variable Attention.
     This method requires SM_ARCH in sm70, sm75, sm80.
@@ -46,12 +51,12 @@ def variable_length_memory_efficient_attention(
         value (Tensor): The Value Tensor. Its shape is [batchsize, num_head, seq_len, head_size].
         seq_lens (Tensor): The sequence lengths of the sequences in the batch, used to index query. Its shape is [batchsize, 1].
         kv_seq_lens (Tensor): The sequence lengths of the sequences in the batch, used to index key and value. Its shape is [batchsize, 1].
-        mask (Tensor): The Mask Tensor. Its shape is [batchsize, 1, query_seq_len, key_seq_len].
-        scale (Float): The attention matrix's scale. Default is sqrt(1.0 / head_size).
+        mask (Tensor|None, optional): The Mask Tensor. Its shape is [batchsize, 1, query_seq_len, key_seq_len].
+        scale (Float|None, optional): The attention matrix's scale. Default is sqrt(1.0 / head_size).
         causal (Bool): Whether causal masking is used or not. Default is False.
         pre_cache_length (Int): The length of the pre-cache. Default is 0.
     Returns:
-        Tensor: the output Tensor.
+        Tensor, the output Tensor.
 
     Examples:
         .. code-block:: python

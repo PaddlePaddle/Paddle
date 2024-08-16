@@ -74,7 +74,7 @@ class TestBase(IPUOpTest):
                 num_channels=conv1.shape[index],
                 weight_attr=scale,
                 bias_attr=bias,
-                **self.attrs
+                **self.attrs,
             )(conv1)
             loss = paddle.mean(out)
             adam = paddle.optimizer.Adam(learning_rate=1e-2)
