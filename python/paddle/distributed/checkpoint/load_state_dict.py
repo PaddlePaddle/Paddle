@@ -467,7 +467,7 @@ def load_state_dict(
     path,
     process_group=None,
     coordinator_rank=0,
-    offload=True,
+    offload=False,
 ) -> None:
     """
     Load the state_dict inplace from a checkpoint path.
