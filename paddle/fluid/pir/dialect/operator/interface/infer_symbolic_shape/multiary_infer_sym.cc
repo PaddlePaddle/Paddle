@@ -1304,8 +1304,6 @@ bool RoiPoolOpInferSymbolicShape(
   int pooled_height =
       op->attribute<pir::Int32Attribute>("pooled_height").data();
   int pooled_width = op->attribute<pir::Int32Attribute>("pooled_width").data();
-  int output_channels =
-      op->attribute<pir::Int32Attribute>("output_channels").data();
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       4,
