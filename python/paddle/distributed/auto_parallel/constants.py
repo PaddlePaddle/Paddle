@@ -206,6 +206,8 @@ set_field_default_config(PIPELINE, "generation_batch_size", 1)
 set_field_default_config(PIPELINE, "enable_send_recv_overlap", False)
 set_field_default_config(PIPELINE, "job_schedule_profiler_start", -1)
 set_field_default_config(PIPELINE, "job_schedule_profiler_stop", -1)
+set_field_default_config(PIPELINE, "program_runtimes", [61, 72, 71, 34, 3])
+set_field_default_config(PIPELINE, "memory_limit_times", -1)
 set_field_default_config(PIPELINE, "split_backward", False)
 
 if TYPE_CHECKING:
