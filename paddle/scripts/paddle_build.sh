@@ -2429,7 +2429,7 @@ set +x
         fi
 
 
-
+        cd ..
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
