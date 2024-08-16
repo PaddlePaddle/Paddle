@@ -322,7 +322,7 @@ def _mp_allreduce(
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64' 'uint16'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             op_type,
         )
 

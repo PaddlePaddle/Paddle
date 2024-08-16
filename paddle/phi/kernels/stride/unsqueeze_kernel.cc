@@ -26,10 +26,10 @@ COMMON_DECLARE_bool(use_stride_kernel);
 namespace phi {
 
 template <typename Context>
-void UnsqueezeInferStridedKernel(const Context& dev_ctx,
-                                 const DenseTensor& input,
-                                 const IntArray& axes_arr,
-                                 DenseTensor* out) {
+void UnsqueezeStridedKernel(const Context& dev_ctx,
+                            const DenseTensor& input,
+                            const IntArray& axes_arr,
+                            DenseTensor* out) {
   if (!FLAGS_use_stride_kernel) {
     PADDLE_THROW(common::errors::Fatal(
         "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -84,20 +84,19 @@ void UnsqueezeInferStridedKernel(const Context& dev_ctx,
 }
 
 template <typename Context>
-void UnsqueezeStridedKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const IntArray& axes,
-                            DenseTensor* out,
-                            DenseTensor* xshape) {
-  UnsqueezeInferStridedKernel<Context>(dev_ctx, x, axes, out);
+void UnsqueezeWithXShapeStridedKernel(const Context& dev_ctx,
+                                      const DenseTensor& x,
+                                      const IntArray& axes,
+                                      DenseTensor* out,
+                                      DenseTensor* xshape) {
+  UnsqueezeStridedKernel<Context>(dev_ctx, x, axes, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(unsqueeze_infer,
-                                         STRIDED,
-                                         phi::UnsqueezeInferStridedKernel) {}
-
 PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(unsqueeze,
                                          STRIDED,
                                          phi::UnsqueezeStridedKernel) {}
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(
+    unsqueeze_with_xshape, STRIDED, phi::UnsqueezeWithXShapeStridedKernel) {}

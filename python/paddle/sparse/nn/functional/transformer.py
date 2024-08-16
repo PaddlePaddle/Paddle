@@ -19,13 +19,12 @@ from typing import TYPE_CHECKING
 __all__ = []
 
 from paddle import _C_ops
-from paddle.base.framework import dygraph_only
+from paddle.base.framework import in_dynamic_or_pir_mode
 
 if TYPE_CHECKING:
     from paddle import Tensor
 
 
-@dygraph_only
 def attention(
     query: Tensor,
     key: Tensor,
@@ -98,6 +97,9 @@ def attention(
             >>> output = paddle.sparse.nn.functional.attention(query, key, value, sp_mask, kp_mask, attn_mask)
             >>> output.backward()
     """
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "Currently, Sparse API only support dynamic mode or pir mode."
     return _C_ops.sparse_fused_attention(
         query, key, value, sparse_mask, key_padding_mask, attn_mask
     )
