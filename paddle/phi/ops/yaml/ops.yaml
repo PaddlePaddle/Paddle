@@ -466,6 +466,7 @@
     func : batch_fc
     data_type: input
   backward: batch_fc_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bce_loss
   args : (Tensor input, Tensor label)
@@ -3147,6 +3148,7 @@
   kernel :
     func : max_pool2d_with_index
   backward : max_pool2d_with_index_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : max_pool3d_with_index
   args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false)
@@ -3156,6 +3158,7 @@
   kernel :
     func : max_pool3d_with_index
   backward : max_pool3d_with_index_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : maxout
   args : (Tensor x, int groups, int axis = 1)
@@ -3313,6 +3316,7 @@
     func : multiclass_nms3
     data_type : scores
   optional : rois_num, nms_rois_num
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multinomial
   args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
@@ -5186,6 +5190,7 @@
     func: MoeInferMeta
   kernel:
     func: moe
+  interfaces: paddle::dialect::InferSymbolicShapeInterface
 
 - op: number_count
   args: (Tensor numbers, int upper_range)
