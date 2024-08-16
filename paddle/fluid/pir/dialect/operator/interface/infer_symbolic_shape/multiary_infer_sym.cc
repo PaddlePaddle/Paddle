@@ -1917,7 +1917,10 @@ bool ViterbiDecodeOpInferSymbolicShape(
   infer_context->AddEqualCstr(input_shape[0], length_shape[0]);
   infer_context->AddEqualCstr(input_shape[2], transition_shape[0]);
 
-  infer_context->SetShapeOrDataForValue(op->result(0), length_shape);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(length_shape)});
 
   symbol::DimExpr batch_size = input_shape[0];
 
