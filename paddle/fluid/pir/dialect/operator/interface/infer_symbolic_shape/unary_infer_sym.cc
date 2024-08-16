@@ -1775,13 +1775,13 @@ bool OverlapAddOpInferSymbolicShape(
   int start_axis = 0;
   int end_axis = 0;
   if (axis == 0) {
-    n_frames = static_cast<int>(x_dims[0]);
-    frame_length = static_cast<int>(x_dims[1]);
+    n_frames = x_dims[0].evaluate().value_or(-1);
+    frame_length = x_dims[1].evaluate().value_or(-1);
     start_axis = 2;
     end_axis = x_rank - 1;
   } else {
-    n_frames = static_cast<int>(x_dims[x_rank - 1]);
-    frame_length = static_cast<int>(x_dims[x_rank - 2]);
+    n_frames = x_dims[x_rank - 1].evaluate().value_or(-1);
+    frame_length = x_dims[x_rank - 2].evaluate().value_or(-1);
     start_axis = 0;
     end_axis = x_rank - 3;
   }
