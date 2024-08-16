@@ -1190,7 +1190,7 @@ bool FlashAttnOpInferSymbolicShape(
 //   return true;
 // }
 
-bool FlashAttnQkvpackedOpInferSymbolicShape(
+bool FlashAttnQKVPackedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto qkv_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
@@ -1224,6 +1224,16 @@ bool FlashAttnQkvpackedOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
   return true;
+}
+
+bool FlashAttnVarlenQKVPackedOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FlashAttnQKVPackedOpInferSymbolicShape(op, infer_context);
+}
+
+bool FlashAttnWithSparseMaskOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return FlashAttnOpInferSymbolicShape(op, infer_context);
 }
 
 // bool FlashAttnUnpaddedOpInferSymbolicShape(pir::Operation *op,
