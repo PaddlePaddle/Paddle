@@ -4513,7 +4513,7 @@
     func : UnchangedInferMeta
   kernel :
     func : standard_gamma
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stanh
   args : (Tensor x, float scale_a=0.67f, float scale_b=1.7159f)
