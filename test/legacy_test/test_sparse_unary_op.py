@@ -36,7 +36,7 @@ class TestSparseUnary(unittest.TestCase):
         format,
         device='cpu',
         dtype='float32',
-        *args
+        *args,
     ):
         if dtype == 'complex64':
             origin_x_real = paddle.rand([8, 16, 32], 'float32')

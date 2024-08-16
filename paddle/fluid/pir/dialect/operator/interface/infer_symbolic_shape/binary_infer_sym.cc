@@ -91,6 +91,37 @@ bool AllcloseOpInferSymbolicShape(
   return true;
 }
 
+bool ApplyPerChannelScaleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &scales_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> scales_shape = scales_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      x_shape.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The rank of Input(x) must be 2, but received %d.", x_shape.size()));
+
+  PADDLE_ENFORCE_EQ(scales_shape.size(),
+                    1UL,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(scales) must be 1, but received %d.",
+                        scales_shape.size()));
+
+  infer_context->AddEqualCstr(x_shape[1], scales_shape[0]);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  return true;
+}
+
 bool BoxClipOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
@@ -320,10 +351,24 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+// bool Conv2dTransposeOpInferSymbolicShape(pir::Operation *op,
+//                                          pir::InferSymbolicShapeContext
+//                                          *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool Conv3dOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   return Conv2dOpInferSymbolicShape(op, infer_context);
 }
+
+// bool ConvTransposeOpInferSymbolicShape(pir::Operation *op,
+//                                        pir::InferSymbolicShapeContext
+//                                        *infer_context) {
+//   // pass
+//   return true;
+// }
 
 bool CrossOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
@@ -361,11 +406,41 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+// bool CorrelationOpInferSymbolicShape(pir::Operation *op,
+//                                      pir::InferSymbolicShapeContext
+//                                      *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool DepthwiseConvOpInferSymbolicShape(pir::Operation *op,
+//                                        pir::InferSymbolicShapeContext
+//                                        *infer_context) {
+//   // pass
+//   return true;
+// }
+
 // bool DotOpInferSymbolicShape(pir::Operation *op,
 //                              pir::InferSymbolicShapeContext *infer_context) {
 //   // pass
 //   return true;
 // }
+
+bool DropoutOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  if (op->result(1)) {
+    symbol::TensorShapeOrDataDimExprs mask_shape(x_shape_or_data.shape());
+    infer_context->SetShapeOrDataForValue(
+        op->result(1), symbol::ShapeOrDataDimExprs{mask_shape});
+  }
+
+  return true;
+}
 
 bool EmbeddingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -459,12 +534,33 @@ bool FillDiagonalTensor_OpInferSymbolicShape(
   return FillDiagonalTensorOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FusedSoftmaxMaskOpInferSymbolicShape(pir::Operation *op,
-//                                           pir::InferSymbolicShapeContext
-//                                           *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FusedSoftmaxMaskOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> x_dims = x_shape_or_data.shape();
+
+  const auto &mask_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> mask_dims = mask_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      common::errors::InvalidArgument("Input x must be in 4D dimension but "
+                                      "received the dimension of X is %d",
+                                      x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      mask_dims.size(),
+      4,
+      common::errors::InvalidArgument("Input mask must be in 4D dimension but "
+                                      "received the dimension of mask is %d",
+                                      mask_dims.size()));
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  return true;
+}
 
 // bool GridSampleOpInferSymbolicShape(pir::Operation *op,
 //                                     pir::InferSymbolicShapeContext
@@ -630,6 +726,13 @@ bool HistogramOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
+
+// bool GatherTreeOpInferSymbolicShape(pir::Operation *op,
+//                                     pir::InferSymbolicShapeContext
+//                                     *infer_context) {
+//   // pass
+//   return true;
+// }
 
 bool HuberLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -965,6 +1068,13 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+// bool MatrixNmsOpInferSymbolicShape(pir::Operation *op,
+//                                    pir::InferSymbolicShapeContext
+//                                    *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool MarginCrossEntropyOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &logits_shape_or_data =
@@ -987,7 +1097,7 @@ bool MarginCrossEntropyOpInferSymbolicShape(
   const auto &one = symbol::DimExpr{1};
 
   if (labels_dims.size() > 1) {
-    infer_context->AddEqualCstr(labels_dims[axis - 1], one);
+    infer_context->AddEqualCstr(labels_dims[axis], one);
   }
 
   infer_context->SetShapeOrDataForValue(
@@ -1004,6 +1114,13 @@ bool MarginCrossEntropyOpInferSymbolicShape(
 
   return true;
 }
+
+// bool MatmulWithFlattenOpInferSymbolicShape(pir::Operation *op,
+//                                            pir::InferSymbolicShapeContext
+//                                            *infer_context) {
+//   // pass
+//   return true;
+// }
 
 bool MvOpInferSymbolicShape(pir::Operation *op,
                             pir::InferSymbolicShapeContext *infer_context) {
@@ -1032,6 +1149,13 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+// bool PriorBoxOpInferSymbolicShape(pir::Operation *op,
+//                                   pir::InferSymbolicShapeContext
+//                                   *infer_context) {
+//   // pass
+//   return true;
+// }
+
 // bool PullBoxSparseOpInferSymbolicShape(pir::Operation *op,
 //                                        pir::InferSymbolicShapeContext
 //                                        *infer_context) {
@@ -1049,6 +1173,12 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
 // bool PullSparseV2OpInferSymbolicShape(pir::Operation *op,
 //                                       pir::InferSymbolicShapeContext
 //                                       *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool RepeatInterleaveWithTensorIndexOpInferSymbolicShape(
+//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
 //   // pass
 //   return true;
 // }
@@ -1111,6 +1241,25 @@ bool SegmentPoolOpInferSymbolicShape(
 //   return true;
 // }
 
+// bool ShuffleBatchOpInferSymbolicShape(pir::Operation *op,
+//                                       pir::InferSymbolicShapeContext
+//                                       *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool SolveOpInferSymbolicShape(
+//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool StftOpInferSymbolicShape(
+//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool SwigluOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -1160,13 +1309,13 @@ bool IndexSelectStridedOpInferSymbolicShape(
   std::vector<symbol::DimExpr> output_dims(input_dims.begin(),
                                            input_dims.end());
   output_dims.erase(output_dims.begin() + dim);
+  // No need to add any constraints here as we are simply removing a dimension.
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(output_dims)});
 
-  // No need to add any constraints here as we are simply removing a dimension.
   return true;
 }
 
@@ -1252,7 +1401,36 @@ bool TopPSamplingOpInferSymbolicShape(
   return true;
 }
 
-// bool TdmChildOpInferSymbolicShape(pir::Operation *op,
+bool TdmChildOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &input_dims = x_shape_or_data.shape();
+  int child_nums = op->attribute<pir::Int32Attribute>("child_nums").data();
+
+  std::vector<symbol::DimExpr> output_dims = input_dims;
+  output_dims.push_back(symbol::DimExpr(child_nums));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+
+  return true;
+}
+
+// bool TriangularSolveOpInferSymbolicShape(pir::Operation *op,
+//                                          pir::InferSymbolicShapeContext
+//                                          *infer_context) {
+//   // pass
+//   return true;
+// }
+
+// bool Unpool3dOpInferSymbolicShape(pir::Operation *op,
 //                                   pir::InferSymbolicShapeContext
 //                                   *infer_context) {
 //   // pass
@@ -1266,19 +1444,43 @@ bool TopPSamplingOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool YoloBoxOpInferSymbolicShape(pir::Operation *op,
-//                                  pir::InferSymbolicShapeContext
-//                                  *infer_context) {
+// bool WeightDequantizeOpInferSymbolicShape(pir::Operation *op,
+//                                           pir::InferSymbolicShapeContext
+//                                           *infer_context) {
 //   // pass
 //   return true;
 // }
 
-// bool YoloBoxHeadOpInferSymbolicShape(pir::Operation *op,
-//                                      pir::InferSymbolicShapeContext
-//                                      *infer_context) {
-//   // pass
-//   return true;
-// }
+bool YoloBoxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto anchors =
+      paddle::dialect::details::GetVectorAttr<int>(op, "anchors");
+  int class_num = op->attribute<pir::Int32Attribute>("class_num").data();
+
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  int anchor_num = static_cast<int>(anchors.size() / 2);
+
+  symbol::DimExpr box_num = symbol::DimExpr(0);
+  box_num = x_shape[2] * x_shape[3] * symbol::DimExpr(anchor_num);
+
+  std::vector<symbol::DimExpr> boxes_shape = {
+      x_shape[0], box_num, symbol::DimExpr(4)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(boxes_shape)});
+
+  std::vector<symbol::DimExpr> scores_shape = {
+      x_shape[0], box_num, symbol::DimExpr(class_num)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scores_shape)});
+
+  return true;
+}
 
 }  // namespace paddle::dialect
 
