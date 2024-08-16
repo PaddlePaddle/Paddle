@@ -1919,14 +1919,6 @@ bool ViterbiDecodeOpInferSymbolicShape(
 
   infer_context->SetShapeOrDataForValue(op->result(0), length_shape);
 
-  symbol::DimExpr batch_size = input_shape[0];
-
-  std::vector<symbol::DimExpr> path_shape = {batch_size, input_shape[1]};
-  infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(path_shape)});
-
   return true;
 }
 
