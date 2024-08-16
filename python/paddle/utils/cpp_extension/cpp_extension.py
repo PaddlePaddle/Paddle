@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 import os
 import copy
@@ -66,6 +66,8 @@ from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 from ...base import core
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from types import ModuleType
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
