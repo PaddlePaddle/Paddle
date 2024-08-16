@@ -462,10 +462,11 @@ bool ClassCenterSampleOpInferSymbolicShape(
 
   symbol::DimExpr out_unknown =
       infer_context->GetNextSymName();  // unknown until runtime
+  const std::vector<symbol::DimExpr> out_dims = {out_unknown};
 
   // 设置输出张量 sampled_local_class_center 的符号形状
   symbol::ShapeOrDataDimExprs sampled_local_class_center_dims{
-      symbol::TensorShapeOrDataDimExprs(out_unknown)};
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
   infer_context->SetShapeOrDataForValue(op->result(1),
                                         sampled_local_class_center_dims);
 
