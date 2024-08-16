@@ -14,12 +14,12 @@ limitations under the License. */
 
 #include "paddle/common/errors.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/fused/fused_attention_utils.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_attention_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 #include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 
