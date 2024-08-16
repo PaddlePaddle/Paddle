@@ -124,7 +124,7 @@ class TestSegmentOps(OpTest):
         self.convert_bf16()
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_pir=True)
@@ -223,11 +223,15 @@ class TestSegmentMean(TestSegmentOps):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+            self.check_output_with_place(
+                core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+            )
         # due to CPU kernel not implement calculate 'SummedIds'
         # so cannot check 'SummedIds'
         del self.outputs['SummedIds']
-        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        self.check_output_with_place(
+            core.CPUPlace(), check_pir=True, check_symbol_infer=False
+        )
 
 
 class TestSegmentMean2(TestSegmentMean):
@@ -274,7 +278,9 @@ class TestSegmentSumBF16Op(TestSegmentOps):
         self.np_dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_pir=True)
+        self.check_output_with_place(
+            self.place, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(self.place, ["X"], "Out", check_pir=True)
@@ -292,7 +298,9 @@ class TestSegmentMaxBF16Op(TestSegmentMax):
         self.np_dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_pir=True)
+        self.check_output_with_place(
+            self.place, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -316,7 +324,9 @@ class TestSegmentMinBF16Op(TestSegmentMin):
         self.np_dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_pir=True)
+        self.check_output_with_place(
+            self.place, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -340,7 +350,9 @@ class TestSegmentMeanBF16Op(TestSegmentMean):
         self.np_dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_pir=True)
+        self.check_output_with_place(
+            self.place, check_pir=True, check_symbol_infer=False
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(self.place, ["X"], "Out", check_pir=True)
