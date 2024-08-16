@@ -46,6 +46,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
       pir::Operation* op,
       pir::PatternRewriter& rewriter) const override {  // NOLINT
     bool match_flag = false;
+    return false;
     for (size_t i = 0; i < op->num_results(); i++) {
       if (GetOpCntUseX(op->result(i)) > 1) {
         match_flag = true;
