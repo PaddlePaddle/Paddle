@@ -20,9 +20,9 @@ namespace cinn {
 namespace optim {
 
 /**
- * Reduce compute merge and substitue buffer with local var.
+ * Merge reduce compute and substitue buffer with local var.
  */
-void ReduceComputeMerge(Expr* e);
+void MergeReduceCompute(Expr* e);
 
 }  // namespace optim
 }  // namespace cinn

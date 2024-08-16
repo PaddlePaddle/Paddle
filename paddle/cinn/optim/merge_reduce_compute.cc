@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/optim/reduce_init_merge.h"
+#include "paddle/cinn/optim/merge_reduce_compute.h"
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -809,7 +809,7 @@ void SubstituteGlobalTensor(ir::Expr* e) {
 
 }  // namespace
 
-void ReduceComputeMerge(Expr* e) {
+void MergeReduceCompute(Expr* e) {
   VLOG(4) << "Before ReduceInitMerge: \n" << *e;
 
   MergeReduceInitScheduleBlock(e);
