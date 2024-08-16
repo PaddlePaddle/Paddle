@@ -523,40 +523,50 @@ void DispatchWithDtype(
                              max_seq_len,
                              dim_head);
       VLOG(3) << "qkv split end";
-      // VLOGMatrix(unpadding_q.data<T>(),
-      //            unpadding_q.numel(),
-      //            "unpadding_q",
-      //            unpadding_q.numel());
-      // VLOGMatrix(unpadding_k.data<T>(),
-      //            unpadding_k.numel(),
-      //            "unpadding_k",
-      //            unpadding_k.numel());
-      // VLOGMatrix(unpadding_v.data<T>(),
-      //            unpadding_v.numel(),
-      //            "unpadding_v",
-      //            unpadding_v.numel());
       // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
       // q,k,v,out all in 3-D [token_num, q_num_head, dim_head].
       auto fmha_shape = fmha_buf.dims();
       fmha_buf.Resize({token_num, q_num_head, dim_head});
-      phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
+      // phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
+      //                                 unpadding_q,
+      //                                 unpadding_k,
+      //                                 unpadding_v,
+      //                                 cu_seqlens_q,
+      //                                 cu_seqlens_k,
+      //                                 paddle::none /*fixed_seed_offset*/,
+      //                                 causual ? paddle::none : mask,
+      //                                 max_enc_len_this_time_data,
+      //                                 max_enc_len_this_time_data,
+      //                                 1.0f / sqrt(static_cast<float>(dim_head)),
+      //                                 0.0,
+      //                                 causual,
+      //                                 false,
+      //                                 true /* is_test*/,
+      //                                 "" /*rng_name*/,
+      //                                 &fmha_buf,
+      //                                 &softmax_out,
+      //                                 &softmax_lse,
+      //                                 &seed_offset);
+      phi::fusion::cutlass_internal::MemoryEfficientAttentionForwardKernel<T>(dev_ctx,
                                       unpadding_q,
                                       unpadding_k,
                                       unpadding_v,
+                                      paddle::none,
                                       cu_seqlens_q,
                                       cu_seqlens_k,
-                                      paddle::none /*fixed_seed_offset*/,
+                                      // paddle::none /*fixed_seed_offset*/,
                                       causual ? paddle::none : mask,
+                                      seq_lens_encoder,
                                       max_enc_len_this_time_data,
                                       max_enc_len_this_time_data,
-                                      1.0f / sqrt(static_cast<float>(dim_head)),
-                                      0.0,
                                       causual,
-                                      false,
+                                      0.0,
+                                      1.0f / sqrt(static_cast<float>(dim_head)),
+                                      // causual,
                                       true /* is_test*/,
-                                      "" /*rng_name*/,
+                                      // "" /*rng_name*/,
                                       &fmha_buf,
-                                      &softmax_out,
+                                      // &softmax_out,
                                       &softmax_lse,
                                       &seed_offset);
       // Reshape fmha_buf back (to 2-D), to not affect following codes.
@@ -580,7 +590,7 @@ void DispatchWithDtype(
           max_seq_len,
           pre_cache_length,
           dim_head);
-
+#ifdef PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION
       phi::fusion::MultiHeadAttentionVariableForwardKernel<T, phi::GPUContext>(
           dev_ctx,
           q_trans,
@@ -593,7 +603,28 @@ void DispatchWithDtype(
           /*causual*/ false,
           pre_cache_length,
           &qktv_out);
-
+#elif defined(PADDLE_WITH_HIP)
+      const bool is_precache_infer = true;
+      phi::FlashAttnKernel<T>(
+          dev_ctx,
+          q_trans,
+          k_trans,
+          v_trans,
+          paddle::none /*fixed_seed_offset*/,
+          paddle::none /*mask*/,
+          0.0,
+          is_precache_infer ? true : causual /*precache_infer_casual*/,
+          false,
+          is_precache_infer /*is_test*/,
+          "" /*rng_name*/,
+          &qktv_out,
+          &softmax_out,
+          &softmax_lse,
+          &seed_offset);
+#else
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Not supports MultiHeadAttentionVariableForwardKernel."));
+#endif
       InvokeTransposeRemovePadding<T>(dev_ctx,
                                       qktv_out.data<T>(),
                                       sequence_lengths_data,
@@ -725,13 +756,8 @@ void DispatchWithDtype(
   if (out_scale > 0) {
     int m = fmha_out->dims()[0];
     int n = fmha_out->dims()[1];
-#ifdef PADDLE_WITH_HIP
-    dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
-    dim3 block(64, 8);
-#else
     dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
     dim3 block(32, 32);
-#endif
     if (out_shift && out_smooth) {
       QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
           fmha_buf.data<T>(),
