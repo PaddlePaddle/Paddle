@@ -1176,6 +1176,7 @@ void FusedMoeInferMeta(const MetaTensor& X,
                        const MetaTensor& ffn2_bias,
                        const std::string& quant_method,
                        const int moe_topk,
+                       const bool norm_topk_prob,
                        MetaTensor* out);
 
 void FusedMultiHeadAttentionInferMeta(const MetaTensor& query,

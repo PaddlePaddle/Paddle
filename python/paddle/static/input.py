@@ -40,7 +40,13 @@ from ..base.variable_index import _setitem_static
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike, ShapeLike, Size1
+    from paddle._typing import (
+        DTypeLike,
+        ShapeLike,
+        Size1,
+        TensorIndex,
+        TensorLike,
+    )
 
 __all__ = []
 
@@ -419,7 +425,11 @@ class InputSpec:
         return not self == other
 
 
-def setitem(x, index, value):
+def setitem(
+    x: Tensor,
+    index: TensorIndex,
+    value: TensorLike,
+) -> Tensor:
     """
     x(Tensor): input Tensor.
     index(Scalar|Tuple|List|Tensor): Where should be set value.
