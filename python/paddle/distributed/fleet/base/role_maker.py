@@ -19,7 +19,7 @@ import re
 import time
 import warnings
 from multiprocessing import Manager, Process
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 import numpy as np
 
@@ -30,9 +30,6 @@ from paddle.distributed.fleet.base.private_helper_function import (
 )
 
 from ...backup_env import getenv_or_backup
-
-if TYPE_CHECKING:
-    from paddle.base.core import task
 
 __all__ = []
 
@@ -600,12 +597,12 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
     def _all_gather(
         self, input: Any, comm_world: str = "worker"
-    ) -> np.NDArray[Any]:
+    ) -> list[float]:
         return self._gloo.all_gather(input, comm_world)
 
     def _all_reduce(
         self, input: Any, mode: str = "sum", comm_world: str = "worker"
-    ) -> task:
+    ) -> np.ndarray[Any]:
         return self._gloo.all_reduce(input, mode, comm_world)
 
     def _heter_device(self) -> str:
