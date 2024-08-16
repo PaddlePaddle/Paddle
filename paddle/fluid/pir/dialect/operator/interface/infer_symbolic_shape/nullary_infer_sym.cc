@@ -381,6 +381,13 @@ bool RandintOpInferSymbolicShape(
 //   return true;
 // }
 
+// bool RecvV2OpInferSymbolicShape(pir::Operation *op,
+//                                 pir::InferSymbolicShapeContext
+//                                 *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool TrilIndicesOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &attributes = op->attributes();
@@ -443,6 +450,13 @@ bool TriuIndicesOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
+
+// bool TruncatedGaussianRandomOpInferSymbolicShape(
+//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+//   // pass
+//   return true;
+// }
+
 bool UniformOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return GaussianOpInferSymbolicShape(op, infer_context);
