@@ -1689,7 +1689,7 @@ bool MultinomialOpInferSymbolicShape(
   }
 
   if (!int_num_samples.FromTensor()) {
-    out_dims[x_rank - 1] = symbol::DimExpr(int_num_samples.Get<int64_t>());
+    out_dims[x_rank - 1] = symbol::DimExpr(int_num_samples.to<int64_t>());
   } else {
     out_dims[x_rank - 1] = symbol::DimExpr(infer_context->GetNextSymName());
   }
