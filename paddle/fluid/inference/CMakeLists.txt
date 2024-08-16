@@ -35,6 +35,10 @@ set(utils_modules pretty_log string_helper utf8proc)
 
 add_subdirectory(api)
 
+if(NOT WIN32 AND NOT APPLE)
+  link_libraries(stdc++fs)
+endif()
+
 # Create static inference library if needed
 # All static libs in inference/api
 set(STATIC_INFERENCE_API

@@ -239,10 +239,6 @@ else()
            ${PADDLE_LIB_THIRD_PARTY_PATH}yaml-cpp/lib/yaml-cpp.lib)
 endif()
 
-if(NOT WIN32 AND NOT APPLE)
-  set(DEPS ${DEPS} stdc++fs)
-endif()
-
 if(WITH_GPU)
   if(NOT WIN32)
     if(USE_TENSORRT)
