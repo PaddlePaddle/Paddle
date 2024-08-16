@@ -1062,8 +1062,12 @@ bool IndexAddOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   auto index_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  auto add_value_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
   const std::vector<symbol::DimExpr> &index_shape = index_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &add_value_shape =
+      add_value_shape_or_data.shape();
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
   int ndims_x = x_shape.size();
 
