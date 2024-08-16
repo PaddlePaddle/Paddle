@@ -1129,6 +1129,7 @@ void EmbeddingGradSparseInferMeta(const MetaTensor& x,
       out->set_dtype(x.dtype());
     } else {
       out->share_dims(weight);
+      out->set_dtype(weight.dtype());
     }
   }
 }

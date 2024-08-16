@@ -99,6 +99,9 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
 def append_add_n(
     op, value, state, backward_ops, bwd_value_to_block_argument_map
 ):
+    _MAX_ADD_NUM_ = paddle.framework._global_flags()[
+        'FLAGS_max_inplace_grad_add'
+    ]
     with paddle.amp.auto_cast(enable=False):
         # value is input of more than one fwd_op,
         # so more than one bwd_op create input_grad,
@@ -114,6 +117,21 @@ def append_add_n(
             for tmp in state.value_to_valuegrad[value]:
                 state.value_to_sumvaluegrad[value].append(tmp)
             state.value_to_valuegrad[value] = []
+        elif len(add_n_list) <= _MAX_ADD_NUM_:
+            grad_value = add_n_list[0]
+            index = 1
+            grad_op_list = []
+            while index < len(add_n_list):
+                grad_value += add_n_list[index]
+                grad_op_list.append(grad_value.get_defining_op())
+                index += 1
+            update_bwdop_structure(
+                backward_ops, state.op_to_opgrad[op], grad_op_list
+            )
+            for tmp in state.value_to_valuegrad[value]:
+                state.value_to_sumvaluegrad[value].append(tmp)
+            state.value_to_valuegrad[value] = [[grad_value]]
+
         else:
             if value.is_dense_tensor_array_type():
                 add_n_value = paddle._C_ops.add_n_array(add_n_list)
