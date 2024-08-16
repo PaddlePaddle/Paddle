@@ -1572,19 +1572,67 @@ bool RoiAlignOpInferSymbolicShape(
 //   return MergedMomentumOpInferSymbolicShape(op, infer_context);
 // }
 
-// bool MoeOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context)
-//                              {
-//   // pass
-//   return true;
-// }
+bool MoeOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  return true;
+}
 
-// bool MulticlassNMS3OpInferSymbolicShape(pir::Operation *op,
-//                                         pir::InferSymbolicShapeContext
-//                                         *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MulticlassNms3OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &bboxes_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &scores_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const std::vector<symbol::DimExpr> &box_dims = bboxes_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &score_dims = scores_shape_or_data.shape();
+  const size_t score_size = score_dims.size();
+  // TODO(Jeff114514):
+  // add constraint for score_size == 2 || score_size == 3
+  // add constraint for box_dims.size() == 3
+  if (score_size == 3) {
+    // TODO(Jeff114514):
+    // add constraint for box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] ==
+    // 16 || box_dims[2] == 24 || box_dims[2] == 32
+    infer_context->AddEqualCstr(box_dims[1], score_dims[2]);
+  } else {
+    infer_context->AddEqualCstr(box_dims[2], symbol::DimExpr(4));
+    infer_context->AddEqualCstr(box_dims[1], score_dims[1]);
+  }
+
+  const auto &next_symbol_out_and_index = infer_context->GetNextSymName();
+
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.emplace_back(next_symbol_out_and_index);
+  out_shape.emplace_back(box_dims[2] + 2);
+
+  std::vector<symbol::DimExpr> index_shape;
+  index_shape.emplace_back(next_symbol_out_and_index);
+  index_shape.emplace_back(1);
+
+  std::vector<symbol::DimExpr> nms_rois_num_shape;
+  nms_rois_num_shape.emplace_back(infer_context->GetNextSymName());
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(index_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(nms_rois_num_shape)});
+
+  return true;
+}
 
 bool MeshgridOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -1644,8 +1692,7 @@ bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
 }
 
 // bool NceOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context)
-//                              {
+//                              pir::InferSymbolicShapeContext *infer_context){
 //   // pass
 //   return true;
 // }
