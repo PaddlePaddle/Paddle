@@ -341,7 +341,7 @@ class FC(paddle.nn.Layer):
                 reduce(
                     lambda a, b: a * b, input_shape[self._num_flatten_dims :], 1
                 ),
-                *([self._size]),
+                self._size,
             ]
             self.__w.append(
                 self.add_parameter(
