@@ -1199,11 +1199,15 @@ bool FlashAttnQKVPackedOpInferSymbolicShape(
 
   if (qkv_dims.size() == 4) {
     // qkv [total_*, nheads/nheads_k+2, nheads_k, headdim]
-    out_dims = {qkv_dims[0], qkv_dims[1] - 2 * qkv_dims[2], qkv_dims[3]};
+    out_dims.emplace_back(qkv_dims[0]);
+    out_dims.emplace_back(qkv_dims[1] - 2 * qkv_dims[2]);
+    out_dims.emplace_back(qkv_dims[3]);
   } else if (qkv_dims.size() == 5) {
     // qkv [batchsize, seqlen, nheads/nheads_k+2, nheads_k, headdim]
-    out_dims = {
-        qkv_dims[0], qkv_dims[1], (qkv_dims[2] - 2) * qkv_dims[3], qkv_dims[4]};
+    out_dims.emplace_back(qkv_dims[0]);
+    out_dims.emplace_back(qkv_dims[1]);
+    out_dims.emplace_back((qkv_dims[2] - 2) * qkv_dims[3]);
+    out_dims.emplace_back(qkv_dims[4]);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "qkv dims must be 4(unpadded) or 5(padded batch)"));
