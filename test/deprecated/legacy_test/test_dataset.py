@@ -80,61 +80,68 @@ class TestDataset(unittest.TestCase):
         """
         Testcase for InMemoryDataset from create to run.
         """
-
-        temp_dir = tempfile.TemporaryDirectory()
-        dump_a_path = os.path.join(temp_dir.name, 'test_run_with_dump_a.txt')
-        dump_b_path = os.path.join(temp_dir.name, 'test_run_with_dump_b.txt')
-
-        with open(dump_a_path, "w") as f:
-            data = "1 a 1 a 1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 b 1 b 1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 c 1 c 1 3 2 3 5 4 7 7 7 7 1 3\n"
-            f.write(data)
-        with open(dump_b_path, "w") as f:
-            data = "1 d 1 d 1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 e 1 e 1 5 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 f 1 f 1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 g 1 g 1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
-
-        slots = ["slot1", "slot2", "slot3", "slot4"]
-        slots_vars = []
-        for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            dump_a_path = os.path.join(
+                temp_dir.name, 'test_run_with_dump_a.txt'
             )
-            slots_vars.append(var)
+            dump_b_path = os.path.join(
+                temp_dir.name, 'test_run_with_dump_b.txt'
+            )
 
-        dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
-        )
-        dataset.update_settings(pipe_command="cat1")
-        dataset._init_distributed_settings(
-            parse_ins_id=True,
-            parse_content=True,
-            fea_eval=True,
-            candidate_size=10000,
-        )
-        dataset.set_filelist([dump_a_path, dump_b_path])
-        dataset.load_into_memory()
-        dataset.local_shuffle()
+            with open(dump_a_path, "w") as f:
+                data = "1 a 1 a 1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 b 1 b 1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 c 1 c 1 3 2 3 5 4 7 7 7 7 1 3\n"
+                f.write(data)
+            with open(dump_b_path, "w") as f:
+                data = "1 d 1 d 1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 e 1 e 1 5 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 f 1 f 1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 g 1 g 1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
 
-        paddle.enable_static()
+            slots = ["slot1", "slot2", "slot3", "slot4"]
+            slots_vars = []
+            for slot in slots:
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                )
+                slots_vars.append(var)
 
-        exe = paddle.static.Executor(paddle.CPUPlace())
-        startup_program = paddle.static.Program()
-        main_program = paddle.static.Program()
-        exe.run(startup_program)
-        for i in range(2):
-            try:
-                exe.train_from_dataset(main_program, dataset)
-            except ImportError as e:
-                pass
-            except Exception as e:
-                self.assertTrue(False)
+            dataset = paddle.distributed.InMemoryDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                use_var=slots_vars,
+            )
+            dataset.update_settings(pipe_command="cat1")
+            dataset._init_distributed_settings(
+                parse_ins_id=True,
+                parse_content=True,
+                fea_eval=True,
+                candidate_size=10000,
+            )
+            dataset.set_filelist([dump_a_path, dump_b_path])
+            dataset.load_into_memory()
+            dataset.local_shuffle()
 
-        temp_dir.cleanup()
+            paddle.enable_static()
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            startup_program = paddle.static.Program()
+            main_program = paddle.static.Program()
+            exe.run(startup_program)
+            for i in range(2):
+                try:
+                    exe.train_from_dataset(main_program, dataset)
+                except ImportError as e:
+                    pass
+                except Exception as e:
+                    self.assertTrue(False)
+
+            temp_dir.cleanup()
 
     def test_dataset_config(self):
         """Testcase for dataset configuration."""
@@ -169,127 +176,134 @@ class TestDataset(unittest.TestCase):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        temp_dir = tempfile.TemporaryDirectory()
-        filename1 = os.path.join(
-            temp_dir.name, "afs:test_in_memory_dataset_run_a.txt"
-        )
-        filename2 = os.path.join(
-            temp_dir.name, "afs:test_in_memory_dataset_run_b.txt"
-        )
-
-        with open(filename1, "w") as f:
-            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
-            f.write(data)
-        with open(filename2, "w") as f:
-            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
-
-        slots = ["slot1", "slot2", "slot3", "slot4"]
-        slots_vars = []
-        for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            filename1 = os.path.join(
+                temp_dir.name, "afs:test_in_memory_dataset_run_a.txt"
             )
-            slots_vars.append(var)
-
-        dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(
-            batch_size=32,
-            thread_num=2,
-            pipe_command="cat",
-            download_cmd="cat",
-            use_var=slots_vars,
-        )
-        dataset.set_filelist([filename1, filename2])
-        dataset.load_into_memory()
-        paddle.enable_static()
-
-        exe = paddle.static.Executor(paddle.CPUPlace())
-        startup_program = paddle.static.Program()
-        main_program = paddle.static.Program()
-        exe = base.Executor(base.CPUPlace())
-        exe.run(startup_program)
-        if self.use_data_loader:
-            data_loader = base.io.DataLoader.from_dataset(
-                dataset, base.cpu_places(), self.drop_last
+            filename2 = os.path.join(
+                temp_dir.name, "afs:test_in_memory_dataset_run_b.txt"
             )
-            for i in range(self.epoch_num):
-                for data in data_loader():
-                    exe.run(main_program, feed=data)
-        else:
-            for i in range(self.epoch_num):
-                try:
-                    exe.train_from_dataset(main_program, dataset)
-                except Exception as e:
-                    self.assertTrue(False)
 
-        temp_dir.cleanup()
+            with open(filename1, "w") as f:
+                data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+                f.write(data)
+            with open(filename2, "w") as f:
+                data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
+
+            slots = ["slot1", "slot2", "slot3", "slot4"]
+            slots_vars = []
+            for slot in slots:
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                )
+                slots_vars.append(var)
+
+            dataset = paddle.distributed.InMemoryDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                download_cmd="cat",
+                use_var=slots_vars,
+            )
+            dataset.set_filelist([filename1, filename2])
+            dataset.load_into_memory()
+            paddle.enable_static()
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            startup_program = paddle.static.Program()
+            main_program = paddle.static.Program()
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
+            if self.use_data_loader:
+                data_loader = base.io.DataLoader.from_dataset(
+                    dataset, base.cpu_places(), self.drop_last
+                )
+                for i in range(self.epoch_num):
+                    for data in data_loader():
+                        exe.run(main_program, feed=data)
+            else:
+                for i in range(self.epoch_num):
+                    try:
+                        exe.train_from_dataset(main_program, dataset)
+                    except Exception as e:
+                        self.assertTrue(False)
+
+            temp_dir.cleanup()
 
     def test_in_memory_dataset_run(self):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        temp_dir = tempfile.TemporaryDirectory()
-        filename1 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_run_a.txt"
-        )
-        filename2 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_run_b.txt"
-        )
-
-        with open(filename1, "w") as f:
-            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
-            f.write(data)
-        with open(filename2, "w") as f:
-            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
-
-        slots = ["slot1", "slot2", "slot3", "slot4"]
-        slots_vars = []
-        for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            filename1 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_run_a.txt"
             )
-            slots_vars.append(var)
-
-        dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
-        )
-        dataset._init_distributed_settings(fea_eval=True, candidate_size=1)
-        dataset.set_filelist([filename1, filename2])
-        dataset.load_into_memory()
-        dataset.slots_shuffle(["slot1"])
-        dataset.local_shuffle()
-        dataset._set_generate_unique_feasigns(True, 15)
-        dataset._generate_local_tables_unlock(0, 11, 1, 25, 15)
-        exe = base.Executor(base.CPUPlace())
-        exe.run(base.default_startup_program())
-        if self.use_data_loader:
-            data_loader = base.io.DataLoader.from_dataset(
-                dataset, base.cpu_places(), self.drop_last
+            filename2 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_run_b.txt"
             )
-            for i in range(self.epoch_num):
-                for data in data_loader():
-                    exe.run(base.default_main_program(), feed=data)
-        else:
-            for i in range(self.epoch_num):
-                try:
-                    exe.train_from_dataset(base.default_main_program(), dataset)
-                except Exception as e:
-                    self.assertTrue(False)
 
-        temp_dir.cleanup()
+            with open(filename1, "w") as f:
+                data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+                f.write(data)
+            with open(filename2, "w") as f:
+                data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
+
+            slots = ["slot1", "slot2", "slot3", "slot4"]
+            slots_vars = []
+            for slot in slots:
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                )
+                slots_vars.append(var)
+
+            dataset = paddle.distributed.InMemoryDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                use_var=slots_vars,
+            )
+            dataset._init_distributed_settings(fea_eval=True, candidate_size=1)
+            dataset.set_filelist([filename1, filename2])
+            dataset.load_into_memory()
+            dataset.slots_shuffle(["slot1"])
+            dataset.local_shuffle()
+            dataset._set_generate_unique_feasigns(True, 15)
+            dataset._generate_local_tables_unlock(0, 11, 1, 25, 15)
+            exe = base.Executor(base.CPUPlace())
+            exe.run(base.default_startup_program())
+            if self.use_data_loader:
+                data_loader = base.io.DataLoader.from_dataset(
+                    dataset, base.cpu_places(), self.drop_last
+                )
+                for i in range(self.epoch_num):
+                    for data in data_loader():
+                        exe.run(base.default_main_program(), feed=data)
+            else:
+                for i in range(self.epoch_num):
+                    try:
+                        exe.train_from_dataset(
+                            base.default_main_program(), dataset
+                        )
+                    except Exception as e:
+                        self.assertTrue(False)
+
+            temp_dir.cleanup()
 
     def test_in_memory_dataset_gpugraph_mode(self):
         """
@@ -317,156 +331,164 @@ class TestDataset(unittest.TestCase):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        temp_dir = tempfile.TemporaryDirectory()
-        filename1 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_masterpatch_a.txt"
-        )
-        filename2 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_masterpatch_b.txt"
-        )
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            filename1 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_masterpatch_a.txt"
+            )
+            filename2 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_masterpatch_b.txt"
+            )
 
-        with open(filename1, "w") as f:
-            data = "1 id1 1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 id1 1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 id2 1 1 1 1 1 0 1 0\n"
-            data += "1 id3 1 0 1 0 1 1 1 1\n"
-            data += "1 id3 1 1 1 1 1 0 1 0\n"
-            data += "1 id4 1 0 1 0 1 1 1 1\n"
-            data += "1 id4 1 0 1 0 1 1 1 1\n"
-            data += "1 id5 1 1 1 1 1 0 1 0\n"
-            data += "1 id5 1 1 1 1 1 0 1 0\n"
-            f.write(data)
-        with open(filename2, "w") as f:
-            data = "1 id6 1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 id6 1 1 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 id6 1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 id6 1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
+            with open(filename1, "w") as f:
+                data = "1 id1 1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 id1 1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 id2 1 1 1 1 1 0 1 0\n"
+                data += "1 id3 1 0 1 0 1 1 1 1\n"
+                data += "1 id3 1 1 1 1 1 0 1 0\n"
+                data += "1 id4 1 0 1 0 1 1 1 1\n"
+                data += "1 id4 1 0 1 0 1 1 1 1\n"
+                data += "1 id5 1 1 1 1 1 0 1 0\n"
+                data += "1 id5 1 1 1 1 1 0 1 0\n"
+                f.write(data)
+            with open(filename2, "w") as f:
+                data = "1 id6 1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 id6 1 1 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 id6 1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 id6 1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
 
-        slots = ["slot1", "slot2", "slot3", "slot4"]
-        slots_vars = []
-        train_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(train_program, startup_program):
-            for slot in slots[:2]:
-                var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
-                )
-                slots_vars.append(var)
-            for slot in slots[2:]:
-                var = paddle.static.data(
-                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
-                )
-                slots_vars.append(var)
+            slots = ["slot1", "slot2", "slot3", "slot4"]
+            slots_vars = []
+            train_program = base.Program()
+            startup_program = base.Program()
+            with base.program_guard(train_program, startup_program):
+                for slot in slots[:2]:
+                    var = paddle.static.data(
+                        name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                    )
+                    slots_vars.append(var)
+                for slot in slots[2:]:
+                    var = paddle.static.data(
+                        name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                    )
+                    slots_vars.append(var)
 
-        dataset = paddle.distributed.InMemoryDataset()
+            dataset = paddle.distributed.InMemoryDataset()
 
-        dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
-        )
-        dataset._init_distributed_settings(parse_ins_id=True)
-        dataset.set_filelist(
-            [
-                "test_in_memory_dataset_masterpatch_a.txt",
-                "test_in_memory_dataset_masterpatch_b.txt",
-            ]
-        )
-        dataset.load_into_memory()
-        dataset.local_shuffle()
+            dataset.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                use_var=slots_vars,
+            )
+            dataset._init_distributed_settings(parse_ins_id=True)
+            dataset.set_filelist(
+                [
+                    "test_in_memory_dataset_masterpatch_a.txt",
+                    "test_in_memory_dataset_masterpatch_b.txt",
+                ]
+            )
+            dataset.load_into_memory()
+            dataset.local_shuffle()
 
-        exe = base.Executor(base.CPUPlace())
-        exe.run(startup_program)
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
 
-        for i in range(2):
-            try:
-                exe.train_from_dataset(train_program, dataset)
-            except ImportError as e:
-                pass
-            except Exception as e:
-                self.assertTrue(False)
+            for i in range(2):
+                try:
+                    exe.train_from_dataset(train_program, dataset)
+                except ImportError as e:
+                    pass
+                except Exception as e:
+                    self.assertTrue(False)
 
-        # dataset._set_merge_by_lineid(2)
-        dataset.update_settings(merge_size=2)
-        dataset.dataset.merge_by_lineid()
-        temp_dir.cleanup()
+            # dataset._set_merge_by_lineid(2)
+            dataset.update_settings(merge_size=2)
+            dataset.dataset.merge_by_lineid()
+            temp_dir.cleanup()
 
     def test_in_memory_dataset_masterpatch1(self):
         """
         Testcase for InMemoryDataset from create to run.
         """
-        temp_dir = tempfile.TemporaryDirectory()
-        filename1 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_masterpatch1_a.txt"
-        )
-        filename2 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_masterpatch1_b.txt"
-        )
-
-        with open(filename1, "w") as f:
-            data = "1 id1 1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 id1 1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 id2 1 1 1 1 1 0 1 0\n"
-            data += "1 id3 1 0 1 0 1 1 1 1\n"
-            data += "1 id3 1 1 1 1 1 0 1 0\n"
-            data += "1 id4 1 0 1 0 1 1 1 1\n"
-            data += "1 id4 1 0 1 0 1 1 1 1\n"
-            data += "1 id5 1 1 1 1 1 0 1 0\n"
-            data += "1 id5 1 1 1 1 1 0 1 0\n"
-            f.write(data)
-        with open(filename2, "w") as f:
-            data = "1 id6 1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 id6 1 1 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 id6 1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 id6 1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
-
-        slots_vars = []
-        train_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(train_program, startup_program):
-            var1 = paddle.static.data(
-                name="slot1", shape=[-1, 1], dtype="int64", lod_level=0
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            filename1 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_masterpatch1_a.txt"
             )
-            var2 = paddle.static.data(
-                name="slot2", shape=[-1, 1], dtype="int64", lod_level=0
+            filename2 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_masterpatch1_b.txt"
             )
-            var3 = paddle.static.data(
-                name="slot3", shape=[-1, 1], dtype="float32", lod_level=0
+
+            with open(filename1, "w") as f:
+                data = "1 id1 1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 id1 1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 id2 1 1 1 1 1 0 1 0\n"
+                data += "1 id3 1 0 1 0 1 1 1 1\n"
+                data += "1 id3 1 1 1 1 1 0 1 0\n"
+                data += "1 id4 1 0 1 0 1 1 1 1\n"
+                data += "1 id4 1 0 1 0 1 1 1 1\n"
+                data += "1 id5 1 1 1 1 1 0 1 0\n"
+                data += "1 id5 1 1 1 1 1 0 1 0\n"
+                f.write(data)
+            with open(filename2, "w") as f:
+                data = "1 id6 1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 id6 1 1 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 id6 1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 id6 1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
+
+            slots_vars = []
+            train_program = base.Program()
+            startup_program = base.Program()
+            with base.program_guard(train_program, startup_program):
+                var1 = paddle.static.data(
+                    name="slot1", shape=[-1, 1], dtype="int64", lod_level=0
+                )
+                var2 = paddle.static.data(
+                    name="slot2", shape=[-1, 1], dtype="int64", lod_level=0
+                )
+                var3 = paddle.static.data(
+                    name="slot3", shape=[-1, 1], dtype="float32", lod_level=0
+                )
+                var4 = paddle.static.data(
+                    name="slot4", shape=[-1, 1], dtype="float32", lod_level=0
+                )
+                slots_vars = [var1, var2, var3, var4]
+
+            dataset = paddle.distributed.InMemoryDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                use_var=slots_vars,
             )
-            var4 = paddle.static.data(
-                name="slot4", shape=[-1, 1], dtype="float32", lod_level=0
+            dataset._init_distributed_settings(parse_ins_id=True)
+            dataset.set_filelist(
+                [
+                    "test_in_memory_dataset_masterpatch1_a.txt",
+                    "test_in_memory_dataset_masterpatch1_b.txt",
+                ]
             )
-            slots_vars = [var1, var2, var3, var4]
+            dataset.load_into_memory()
+            dataset.local_shuffle()
 
-        dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
-        )
-        dataset._init_distributed_settings(parse_ins_id=True)
-        dataset.set_filelist(
-            [
-                "test_in_memory_dataset_masterpatch1_a.txt",
-                "test_in_memory_dataset_masterpatch1_b.txt",
-            ]
-        )
-        dataset.load_into_memory()
-        dataset.local_shuffle()
+            exe = base.Executor(base.CPUPlace())
+            exe.run(startup_program)
 
-        exe = base.Executor(base.CPUPlace())
-        exe.run(startup_program)
+            for i in range(2):
+                try:
+                    exe.train_from_dataset(train_program, dataset)
+                except ImportError as e:
+                    pass
+                except Exception as e:
+                    self.assertTrue(False)
 
-        for i in range(2):
-            try:
-                exe.train_from_dataset(train_program, dataset)
-            except ImportError as e:
-                pass
-            except Exception as e:
-                self.assertTrue(False)
+            dataset._set_merge_by_lineid(2)
+            dataset.dataset.merge_by_lineid()
 
-        dataset._set_merge_by_lineid(2)
-        dataset.dataset.merge_by_lineid()
-
-        temp_dir.cleanup()
+            temp_dir.cleanup()
 
     def test_in_memory_dataset_run_2(self):
         """
@@ -474,183 +496,202 @@ class TestDataset(unittest.TestCase):
         Use CUDAPlace
         Use float type id
         """
-        temp_dir = tempfile.TemporaryDirectory()
-        filename1 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_run_a.txt"
-        )
-        filename2 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_run_b.txt"
-        )
-
-        with open(filename1, "w") as f:
-            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
-            f.write(data)
-        with open(filename2, "w") as f:
-            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
-
-        slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
-        slots_vars = []
-        for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            filename1 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_run_a.txt"
             )
-            slots_vars.append(var)
+            filename2 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_run_b.txt"
+            )
 
-        dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
-        )
-        dataset.set_filelist([filename1, filename2])
-        dataset.load_into_memory()
-        dataset.local_shuffle()
+            with open(filename1, "w") as f:
+                data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+                f.write(data)
+            with open(filename2, "w") as f:
+                data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
 
-        exe = base.Executor(
-            base.CPUPlace()
-            if not core.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
-        )
-        exe.run(base.default_startup_program())
-
-        for i in range(2):
-            try:
-                exe.train_from_dataset(base.default_main_program(), dataset)
-                # exe.train_from_dataset(
-                #     base.default_main_program(), dataset, thread=1
-                # )
-                exe.train_from_dataset(
-                    base.default_main_program(), dataset, thread=2
+            slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
+            slots_vars = []
+            for slot in slots:
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
                 )
-                # exe.train_from_dataset(
-                #     base.default_main_program(), dataset, thread=2
-                # )
-                # exe.train_from_dataset(
-                #     base.default_main_program(), dataset, thread=3
-                # )
-                # exe.train_from_dataset(
-                #     base.default_main_program(), dataset, thread=4
-                # )
-            except ImportError as e:
-                pass
-            except Exception as e:
-                self.assertTrue(False)
+                slots_vars.append(var)
 
-        if self.use_data_loader:
-            data_loader = base.io.DataLoader.from_dataset(
-                dataset, base.cpu_places(), self.drop_last
+            dataset = paddle.distributed.InMemoryDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                use_var=slots_vars,
             )
-            for i in range(self.epoch_num):
-                for data in data_loader():
-                    exe.run(base.default_main_program(), feed=data)
-        else:
-            for i in range(self.epoch_num):
+            dataset.set_filelist([filename1, filename2])
+            dataset.load_into_memory()
+            dataset.local_shuffle()
+
+            exe = base.Executor(
+                base.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
+            exe.run(base.default_startup_program())
+
+            for i in range(2):
                 try:
                     exe.train_from_dataset(base.default_main_program(), dataset)
+                    # exe.train_from_dataset(
+                    #     base.default_main_program(), dataset, thread=1
+                    # )
+                    exe.train_from_dataset(
+                        base.default_main_program(), dataset, thread=2
+                    )
+                    # exe.train_from_dataset(
+                    #     base.default_main_program(), dataset, thread=2
+                    # )
+                    # exe.train_from_dataset(
+                    #     base.default_main_program(), dataset, thread=3
+                    # )
+                    # exe.train_from_dataset(
+                    #     base.default_main_program(), dataset, thread=4
+                    # )
+                except ImportError as e:
+                    pass
                 except Exception as e:
                     self.assertTrue(False)
 
-        dataset._set_merge_by_lineid(2)
-        dataset._set_parse_ins_id(False)
-        dataset._set_fleet_send_sleep_seconds(2)
-        dataset.preload_into_memory()
-        dataset.wait_preload_done()
-        dataset.preload_into_memory(1)
-        dataset.wait_preload_done()
-        dataset.dataset.merge_by_lineid()
-        dataset._set_merge_by_lineid(30)
-        dataset._set_parse_ins_id(False)
-        dataset.load_into_memory()
-        dataset.dataset.merge_by_lineid()
-        dataset.update_settings(
-            batch_size=1,
-            thread_num=2,
-            input_type=1,
-            pipe_command="cat",
-            use_var=[],
-            fs_name="",
-            fs_ugi="",
-            download_cmd="cat",
-            merge_size=-1,
-            parse_ins_id=False,
-            parse_content=False,
-            fleet_send_batch_size=2,
-            fleet_send_sleep_seconds=2,
-            fea_eval=True,
-        )
-        fleet_ptr = base.core.Fleet()
-        fleet_ptr.set_client2client_config(1, 1, 1)
-        fleet_ptr.get_cache_threshold(0)
+            if self.use_data_loader:
+                data_loader = base.io.DataLoader.from_dataset(
+                    dataset, base.cpu_places(), self.drop_last
+                )
+                for i in range(self.epoch_num):
+                    for data in data_loader():
+                        exe.run(base.default_main_program(), feed=data)
+            else:
+                for i in range(self.epoch_num):
+                    try:
+                        exe.train_from_dataset(
+                            base.default_main_program(), dataset
+                        )
+                    except Exception as e:
+                        self.assertTrue(False)
 
-        temp_dir.cleanup()
+            dataset._set_merge_by_lineid(2)
+            dataset._set_parse_ins_id(False)
+            dataset._set_fleet_send_sleep_seconds(2)
+            dataset.preload_into_memory()
+            dataset.wait_preload_done()
+            dataset.preload_into_memory(1)
+            dataset.wait_preload_done()
+            dataset.dataset.merge_by_lineid()
+            dataset._set_merge_by_lineid(30)
+            dataset._set_parse_ins_id(False)
+            dataset.load_into_memory()
+            dataset.dataset.merge_by_lineid()
+            dataset.update_settings(
+                batch_size=1,
+                thread_num=2,
+                input_type=1,
+                pipe_command="cat",
+                use_var=[],
+                fs_name="",
+                fs_ugi="",
+                download_cmd="cat",
+                merge_size=-1,
+                parse_ins_id=False,
+                parse_content=False,
+                fleet_send_batch_size=2,
+                fleet_send_sleep_seconds=2,
+                fea_eval=True,
+            )
+            fleet_ptr = base.core.Fleet()
+            fleet_ptr.set_client2client_config(1, 1, 1)
+            fleet_ptr.get_cache_threshold(0)
+
+            temp_dir.cleanup()
 
     def test_queue_dataset_run(self):
         """
         Testcase for QueueDataset from create to run.
         """
-        temp_dir = tempfile.TemporaryDirectory()
-        filename1 = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
-        filename2 = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
-
-        with open(filename1, "w") as f:
-            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
-            f.write(data)
-        with open(filename2, "w") as f:
-            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
-
-        slots = ["slot1", "slot2", "slot3", "slot4"]
-        slots_vars = []
-        for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            filename1 = os.path.join(
+                temp_dir.name, "test_queue_dataset_run_a.txt"
             )
-            slots_vars.append(var)
-
-        dataset = paddle.distributed.QueueDataset()
-        dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
-        )
-        dataset.set_filelist([filename1, filename2])
-
-        exe = base.Executor(base.CPUPlace())
-        exe.run(base.default_startup_program())
-        if self.use_data_loader:
-            data_loader = base.io.DataLoader.from_dataset(
-                dataset, base.cpu_places(), self.drop_last
+            filename2 = os.path.join(
+                temp_dir.name, "test_queue_dataset_run_b.txt"
             )
-            for i in range(self.epoch_num):
-                for data in data_loader():
-                    exe.run(base.default_main_program(), feed=data)
-        else:
-            for i in range(self.epoch_num):
-                try:
-                    exe.train_from_dataset(base.default_main_program(), dataset)
-                except Exception as e:
-                    self.assertTrue(False)
 
-        dataset2 = paddle.distributed.QueueDataset()
-        dataset2.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
-        )
-        dataset.set_filelist([])
-        # try:
-        #    exe.train_from_dataset(base.default_main_program(), dataset2)
-        # except ImportError as e:
-        #    print("warning: we skip trainer_desc_pb2 import problem in windows")
-        # except Exception as e:
-        #    self.assertTrue(False)
+            with open(filename1, "w") as f:
+                data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+                f.write(data)
+            with open(filename2, "w") as f:
+                data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
 
-        temp_dir.cleanup()
+            slots = ["slot1", "slot2", "slot3", "slot4"]
+            slots_vars = []
+            for slot in slots:
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                )
+                slots_vars.append(var)
+
+            dataset = paddle.distributed.QueueDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                use_var=slots_vars,
+            )
+            dataset.set_filelist([filename1, filename2])
+
+            exe = base.Executor(base.CPUPlace())
+            exe.run(base.default_startup_program())
+            if self.use_data_loader:
+                data_loader = base.io.DataLoader.from_dataset(
+                    dataset, base.cpu_places(), self.drop_last
+                )
+                for i in range(self.epoch_num):
+                    for data in data_loader():
+                        exe.run(base.default_main_program(), feed=data)
+            else:
+                for i in range(self.epoch_num):
+                    try:
+                        exe.train_from_dataset(
+                            base.default_main_program(), dataset
+                        )
+                    except Exception as e:
+                        self.assertTrue(False)
+
+            dataset2 = paddle.distributed.QueueDataset()
+            dataset2.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                use_var=slots_vars,
+            )
+            dataset.set_filelist([])
+            # try:
+            #    exe.train_from_dataset(base.default_main_program(), dataset2)
+            # except ImportError as e:
+            #    print("warning: we skip trainer_desc_pb2 import problem in windows")
+            # except Exception as e:
+            #    self.assertTrue(False)
+
+            temp_dir.cleanup()
 
     def test_queue_dataset_run_2(self):
         """
@@ -658,57 +699,67 @@ class TestDataset(unittest.TestCase):
         Use CUDAPlace
         Use float type id
         """
-        temp_dir = tempfile.TemporaryDirectory()
-        filename1 = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
-        filename2 = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
-
-        with open(filename1, "w") as f:
-            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
-            f.write(data)
-        with open(filename2, "w") as f:
-            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
-
-        slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
-        slots_vars = []
-        for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            filename1 = os.path.join(
+                temp_dir.name, "test_queue_dataset_run_a.txt"
             )
-            slots_vars.append(var)
-
-        dataset = paddle.distributed.QueueDataset()
-        dataset.init(
-            batch_size=32, thread_num=2, pipe_command="cat", use_var=slots_vars
-        )
-        dataset.set_filelist([filename1, filename2])
-
-        exe = base.Executor(
-            base.CPUPlace()
-            if not core.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
-        )
-        exe.run(base.default_startup_program())
-        if self.use_data_loader:
-            data_loader = base.io.DataLoader.from_dataset(
-                dataset, base.cpu_places(), self.drop_last
+            filename2 = os.path.join(
+                temp_dir.name, "test_queue_dataset_run_b.txt"
             )
-            for i in range(self.epoch_num):
-                for data in data_loader():
-                    exe.run(base.default_main_program(), feed=data)
-        else:
-            for i in range(self.epoch_num):
-                try:
-                    exe.train_from_dataset(base.default_main_program(), dataset)
-                except Exception as e:
-                    self.assertTrue(False)
 
-        temp_dir.cleanup()
+            with open(filename1, "w") as f:
+                data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+                f.write(data)
+            with open(filename2, "w") as f:
+                data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
+
+            slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
+            slots_vars = []
+            for slot in slots:
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="float32", lod_level=1
+                )
+                slots_vars.append(var)
+
+            dataset = paddle.distributed.QueueDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                use_var=slots_vars,
+            )
+            dataset.set_filelist([filename1, filename2])
+
+            exe = base.Executor(
+                base.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
+            exe.run(base.default_startup_program())
+            if self.use_data_loader:
+                data_loader = base.io.DataLoader.from_dataset(
+                    dataset, base.cpu_places(), self.drop_last
+                )
+                for i in range(self.epoch_num):
+                    for data in data_loader():
+                        exe.run(base.default_main_program(), feed=data)
+            else:
+                for i in range(self.epoch_num):
+                    try:
+                        exe.train_from_dataset(
+                            base.default_main_program(), dataset
+                        )
+                    except Exception as e:
+                        self.assertTrue(False)
+
+            temp_dir.cleanup()
 
     def test_queue_dataset_run_3(self):
         """
@@ -716,185 +767,197 @@ class TestDataset(unittest.TestCase):
         Use CUDAPlace
         Use float type id
         """
-        temp_dir = tempfile.TemporaryDirectory()
-        filename1 = os.path.join(temp_dir.name, "test_queue_dataset_run_a.txt")
-        filename2 = os.path.join(temp_dir.name, "test_queue_dataset_run_b.txt")
-
-        with open(filename1, "w") as f:
-            data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
-            data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
-            data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
-            data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
-            f.write(data)
-        with open(filename2, "w") as f:
-            data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
-            data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
-            data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
-            data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
-            f.write(data)
-
-        slots = ["slot1", "slot2", "slot3", "slot4"]
-        slots_vars = []
-        for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[None, 1], dtype="int64", lod_level=1
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            filename1 = os.path.join(
+                temp_dir.name, "test_queue_dataset_run_a.txt"
             )
-            slots_vars.append(var)
-
-        dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(
-            batch_size=1,
-            thread_num=2,
-            input_type=1,
-            pipe_command="cat",
-            use_var=slots_vars,
-        )
-        dataset.set_filelist([filename1, filename2])
-        dataset.load_into_memory()
-
-        exe = base.Executor(
-            base.CPUPlace()
-            if not core.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
-        )
-        exe.run(base.default_startup_program())
-        if self.use_data_loader:
-            data_loader = base.io.DataLoader.from_dataset(
-                dataset, base.cpu_places(), self.drop_last
+            filename2 = os.path.join(
+                temp_dir.name, "test_queue_dataset_run_b.txt"
             )
-            for i in range(self.epoch_num):
-                for data in data_loader():
-                    exe.run(base.default_main_program(), feed=data)
-        else:
-            for i in range(self.epoch_num):
-                try:
-                    exe.train_from_dataset(base.default_main_program(), dataset)
-                except Exception as e:
-                    self.assertTrue(False)
 
-        temp_dir.cleanup()
+            with open(filename1, "w") as f:
+                data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
+                data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
+                data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
+                data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+                f.write(data)
+            with open(filename2, "w") as f:
+                data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
+                data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
+                data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
+                data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
+                f.write(data)
+
+            slots = ["slot1", "slot2", "slot3", "slot4"]
+            slots_vars = []
+            for slot in slots:
+                var = paddle.static.data(
+                    name=slot, shape=[None, 1], dtype="int64", lod_level=1
+                )
+                slots_vars.append(var)
+
+            dataset = paddle.distributed.InMemoryDataset()
+            dataset.init(
+                batch_size=1,
+                thread_num=2,
+                input_type=1,
+                pipe_command="cat",
+                use_var=slots_vars,
+            )
+            dataset.set_filelist([filename1, filename2])
+            dataset.load_into_memory()
+
+            exe = base.Executor(
+                base.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
+            exe.run(base.default_startup_program())
+            if self.use_data_loader:
+                data_loader = base.io.DataLoader.from_dataset(
+                    dataset, base.cpu_places(), self.drop_last
+                )
+                for i in range(self.epoch_num):
+                    for data in data_loader():
+                        exe.run(base.default_main_program(), feed=data)
+            else:
+                for i in range(self.epoch_num):
+                    try:
+                        exe.train_from_dataset(
+                            base.default_main_program(), dataset
+                        )
+                    except Exception as e:
+                        self.assertTrue(False)
+
+            temp_dir.cleanup()
 
     def test_run_with_inmemory_dataset_train_debug_mode(self):
         """
         Testcase for InMemoryDataset from create to run.
         """
-
-        temp_dir = tempfile.TemporaryDirectory()
-        dump_a_path = os.path.join(temp_dir.name, 'test_run_with_dump_a.txt')
-        dump_b_path = os.path.join(temp_dir.name, 'test_run_with_dump_b.txt')
-
-        with open(dump_a_path, "w") as f:
-            data = "1 a 1 a 1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 b 1 b 1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 c 1 c 1 3 2 3 5 4 7 7 7 7 1 3\n"
-            f.write(data)
-        with open(dump_b_path, "w") as f:
-            data = "1 d 1 d 1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 e 1 e 1 5 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 f 1 f 1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 g 1 g 1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
-
-        slots = ["slot1", "slot2", "slot3", "slot4"]
-        slots_vars = []
-        for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            dump_a_path = os.path.join(
+                temp_dir.name, 'test_run_with_dump_a.txt'
             )
-            slots_vars.append(var)
+            dump_b_path = os.path.join(
+                temp_dir.name, 'test_run_with_dump_b.txt'
+            )
 
-        dataset = paddle.distributed.InMemoryDataset()
-        dataset.init(
-            batch_size=32,
-            thread_num=2,
-            pipe_command="cat",
-            data_feed_type="SlotRecordInMemoryDataFeed",
-            use_var=slots_vars,
-        )
-        dataset._init_distributed_settings(
-            parse_ins_id=True,
-            parse_content=True,
-            fea_eval=True,
-            candidate_size=10000,
-        )
-        dataset.set_filelist([dump_a_path, dump_b_path])
-        dataset.load_into_memory()
+            with open(dump_a_path, "w") as f:
+                data = "1 a 1 a 1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 b 1 b 1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 c 1 c 1 3 2 3 5 4 7 7 7 7 1 3\n"
+                f.write(data)
+            with open(dump_b_path, "w") as f:
+                data = "1 d 1 d 1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 e 1 e 1 5 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 f 1 f 1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 g 1 g 1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
 
-        paddle.enable_static()
+            slots = ["slot1", "slot2", "slot3", "slot4"]
+            slots_vars = []
+            for slot in slots:
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                )
+                slots_vars.append(var)
 
-        exe = paddle.static.Executor(paddle.CPUPlace())
-        startup_program = paddle.static.Program()
-        main_program = paddle.static.Program()
-        exe.run(startup_program)
-        for i in range(2):
-            try:
-                exe.train_from_dataset(main_program, dataset, debug=True)
-            except ImportError as e:
-                pass
-            except Exception as e:
-                self.assertTrue(False)
+            dataset = paddle.distributed.InMemoryDataset()
+            dataset.init(
+                batch_size=32,
+                thread_num=2,
+                pipe_command="cat",
+                data_feed_type="SlotRecordInMemoryDataFeed",
+                use_var=slots_vars,
+            )
+            dataset._init_distributed_settings(
+                parse_ins_id=True,
+                parse_content=True,
+                fea_eval=True,
+                candidate_size=10000,
+            )
+            dataset.set_filelist([dump_a_path, dump_b_path])
+            dataset.load_into_memory()
 
-        temp_dir.cleanup()
+            paddle.enable_static()
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            startup_program = paddle.static.Program()
+            main_program = paddle.static.Program()
+            exe.run(startup_program)
+            for i in range(2):
+                try:
+                    exe.train_from_dataset(main_program, dataset, debug=True)
+                except ImportError as e:
+                    pass
+                except Exception as e:
+                    self.assertTrue(False)
+
+            temp_dir.cleanup()
 
     def test_cuda_in_memory_dataset_run(self):
         """
         Testcase for cuda inmemory dataset hogwild_worker train to run(barrier).
         """
-        temp_dir = tempfile.TemporaryDirectory()
-        filename1 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_run_a.txt"
-        )
-        filename2 = os.path.join(
-            temp_dir.name, "test_in_memory_dataset_run_b.txt"
-        )
-
-        with open(filename1, "w") as f:
-            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
-            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
-            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
-            f.write(data)
-        with open(filename2, "w") as f:
-            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
-            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
-            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
-            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data)
-
-        slots = ["slot1", "slot2", "slot3", "slot4"]
-        slots_vars = []
-        for slot in slots:
-            var = paddle.static.data(
-                name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+        with paddle.pir_utils.OldIrGuard():
+            temp_dir = tempfile.TemporaryDirectory()
+            filename1 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_run_a.txt"
             )
-            slots_vars.append(var)
+            filename2 = os.path.join(
+                temp_dir.name, "test_in_memory_dataset_run_b.txt"
+            )
 
-        dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
-        dataset.set_feed_type("SlotRecordInMemoryDataFeed")
-        dataset.set_batch_size(1)
-        dataset.set_pipe_command("cat")
-        dataset.set_use_var(slots_vars)
-        dataset.set_filelist([filename1, filename2])
+            with open(filename1, "w") as f:
+                data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+                data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+                data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+                f.write(data)
+            with open(filename2, "w") as f:
+                data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+                data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+                data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+                data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+                f.write(data)
 
-        dataset.set_pass_id(2)
-        pass_id = dataset.get_pass_id()
+            slots = ["slot1", "slot2", "slot3", "slot4"]
+            slots_vars = []
+            for slot in slots:
+                var = paddle.static.data(
+                    name=slot, shape=[-1, 1], dtype="int64", lod_level=1
+                )
+                slots_vars.append(var)
 
-        dataset.set_thread(2)
-        dataset.load_into_memory()
+            dataset = base.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_feed_type("SlotRecordInMemoryDataFeed")
+            dataset.set_batch_size(1)
+            dataset.set_pipe_command("cat")
+            dataset.set_use_var(slots_vars)
+            dataset.set_filelist([filename1, filename2])
 
-        dataset.get_memory_data_size()
+            dataset.set_pass_id(2)
+            pass_id = dataset.get_pass_id()
 
-        exe = base.Executor(
-            base.CPUPlace()
-            if not core.is_compiled_with_cuda()
-            else base.CUDAPlace(0)
-        )
-        exe.run(base.default_startup_program())
-        for i in range(self.epoch_num):
-            try:
-                exe.train_from_dataset(base.default_main_program(), dataset)
-            except Exception as e:
-                self.assertTrue(False)
-        temp_dir.cleanup()
+            dataset.set_thread(2)
+            dataset.load_into_memory()
+
+            dataset.get_memory_data_size()
+
+            exe = base.Executor(
+                base.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
+            exe.run(base.default_startup_program())
+            for i in range(self.epoch_num):
+                try:
+                    exe.train_from_dataset(base.default_main_program(), dataset)
+                except Exception as e:
+                    self.assertTrue(False)
+            temp_dir.cleanup()
 
 
 class TestDatasetWithDataLoader(TestDataset):
@@ -1255,4 +1318,5 @@ class TestDataset2(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

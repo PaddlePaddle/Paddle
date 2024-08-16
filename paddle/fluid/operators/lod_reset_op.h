@@ -29,7 +29,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #endif
 
 namespace paddle {

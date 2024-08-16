@@ -16,7 +16,7 @@
 #include "paddle/phi/core/enforce.h"
 namespace pir {
 
-std::pair<std::string, std::string> getContentSplitByDot(
+std::pair<std::string, std::string> GetContentSplitByDot(
     const std::string& str) {
   size_t pos = str.find('.');
   if (pos == std::string::npos) {
@@ -25,8 +25,10 @@ std::pair<std::string, std::string> getContentSplitByDot(
   return {str.substr(0, pos), str.substr(pos + 1)};
 }
 
+std::vector<std::string> GetOpDistAttr() { return {"op_dist_attr", "op_role"}; }
+
 void GetCompressOpName(std::string* op_name) {
-  std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
+  std::pair<std::string, std::string> name = GetContentSplitByDot(*op_name);
   *op_name = pir::DialectIdMap::Instance()->GetCompressDialectId(name.first) +
              "." + name.second;
   return;
@@ -34,7 +36,7 @@ void GetCompressOpName(std::string* op_name) {
 #define DECOMPRESS_DIALECT_ID(name) \
   pir::DialectIdMap::Instance()->GetDecompressDialectId(name)
 void GetDecompressOpName(std::string* op_name) {
-  std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
+  std::pair<std::string, std::string> name = GetContentSplitByDot(*op_name);
   *op_name = DECOMPRESS_DIALECT_ID(name.first) + "." + name.second;
   return;
 }
@@ -48,6 +50,7 @@ DialectIdMap::DialectIdMap() {
   insert(paddle::dialect::OperatorDialect::name(), "1");
   insert(pir::ControlFlowDialect::name(), "2");
   insert(paddle::dialect::CustomOpDialect::name(), "3");
+  insert(paddle::dialect::DistDialect::name(), "4");
 }
 void DialectIdMap::insert(const std::string& key, const std::string& value) {
   CompressDialect[key] = value;

@@ -34,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/ops_signature/signatures.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/int_array.h"
@@ -42,14 +41,15 @@ limitations under the License. */
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_DNNL
@@ -58,7 +58,7 @@ class DenseTensor;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 #endif
 
 COMMON_DECLARE_bool(benchmark);

@@ -22,7 +22,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/dynload/tensorrt.h"
 #include "paddle/phi/common/data_type.h"
@@ -234,33 +233,7 @@ static inline nvinfer1::DataType PhiType2NvType(phi::DataType type) {
   return nv_type;
 }
 
-using FluidDT = paddle::framework::proto::VarType_Type;
 using TRT_DT = nvinfer1::DataType;
-static TRT_DT FluidDataType2TRT(FluidDT type) {
-  switch (type) {
-    case FluidDT::VarType_Type_FP32:
-    case FluidDT::VarType_Type_FP64:
-      return TRT_DT::kFLOAT;
-    case FluidDT::VarType_Type_INT32:
-    case FluidDT::VarType_Type_INT64:
-      return TRT_DT::kINT32;
-    case FluidDT::VarType_Type_FP16:
-      return TRT_DT::kHALF;
-#if IS_TRT_VERSION_GE(8400)
-    case FluidDT::VarType_Type_BOOL:
-      return TRT_DT::kBOOL;
-
-#endif
-    default:
-      PADDLE_THROW(common::errors::InvalidArgument(
-          "unsupported datatype in TRT op converter, type: %s. "
-          "Boolean type is supported as TRT input/output "
-          "using TensorRT v8.4+.",
-          VarType_Type_Name(type)));
-  }
-  return TRT_DT::kINT32;
-}
-
 // The T can be int32 or int64 type.
 template <typename T>
 static nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,

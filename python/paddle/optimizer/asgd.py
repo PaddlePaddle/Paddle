@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops, pir
@@ -26,6 +26,8 @@ from ..base.framework import in_dygraph_mode, in_pir_mode
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
     from paddle.regularizer import WeightDecayRegularizer
@@ -174,7 +176,7 @@ class ASGD(Optimizer):
                 p_new,
                 p.dtype,
                 0,
-                [self._n] + list(p.shape),
+                [self._n, *list(p.shape)],
             )
 
             self._add_accumulator(

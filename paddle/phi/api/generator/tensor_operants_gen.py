@@ -531,7 +531,7 @@ class OperantsAPI(ForwardAPI):
         # remove first Tensor argument
         func_args = self.inputs['names'][1:] + self.attrs['names']
         if len(func_args) > 0:
-            func_args_code = ", ".join([""] + func_args)
+            func_args_code = ", ".join(["", *func_args])
         else:
             func_args_code = ""
         # func decalaration
