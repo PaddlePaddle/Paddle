@@ -15,12 +15,14 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/flash_attn_kernel.h"
+#include "paddle/phi/kernels/fusion/cutlass/memory_efficient_attention.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/fusion/cutlass/variable_length_memory_efficient_attention.h"
 #include "paddle/phi/kernels/fusion/gpu/block_attn.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 #if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define CUDA_BFLOAT16_AVALIABLE
@@ -407,14 +409,32 @@ void DispatchWithDtype(
   phi::DenseTensor softmax_out, softmax_lse, seed_offset;
   phi::DenseTensor q_trans, k_trans, v_trans, qktv_out;
   if (max_enc_len_this_time_data > 0) {
+    // printf("max_enc_len_this_time_data\n");
     if (!use_pre_cache) {
-      unpadding_q.Resize({{token_num, q_num_head, dim_head}});
-      unpadding_k.Resize({{token_num, kv_num_head, dim_head}});
-      unpadding_v.Resize({{token_num, kv_num_head, dim_head}});
+      // unpadding_q.Resize({{token_num, q_num_head, dim_head}});
+      // unpadding_k.Resize({{token_num, kv_num_head, dim_head}});
+      // unpadding_v.Resize({{token_num, kv_num_head, dim_head}});
 
-      dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
-      dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
-      dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
+      // dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
+      // dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
+      // dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
+      q_trans.Resize({{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
+      k_trans.Resize({{bsz,
+                       kv_num_head,
+                       max_enc_len_this_time_data,
+                       dim_head}});
+      v_trans.Resize({{bsz,
+                       kv_num_head,
+                       max_enc_len_this_time_data,
+                       dim_head}});
+      qktv_out.Resize(
+          {{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
+
+      dev_ctx.template Alloc<T>(&q_trans, q_trans.numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&k_trans, k_trans.numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&v_trans, v_trans.numel() * sizeof(T));
+      dev_ctx.template Alloc<T>(&qktv_out, qktv_out.numel() * sizeof(T));
+
     } else {
       q_trans.Resize({{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
       k_trans.Resize({{bsz,
@@ -469,6 +489,7 @@ void DispatchWithDtype(
   }
 
   if (max_enc_len_this_time_data > 0) {
+    // printf("max_enc_len_this_time_data\n");
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
     // VLOGMatrix(
     //     qkv_buf.data<T>(), qkv_buf.numel(), "qkv_buf before",
@@ -509,24 +530,41 @@ void DispatchWithDtype(
     VLOG(3) << "rope end";
     VLOG(3) << "causual: " << causual;
     if (!use_pre_cache) {
-      qkv_transpose_split<T>(dev_ctx,
-                             unpadding_q.data<T>(),
-                             unpadding_k.data<T>(),
-                             unpadding_v.data<T>(),
-                             qkv_buf.data<T>(),
-                             padding_offsets.data<int>(),
-                             sequence_lengths_data,
-                             token_num,
-                             bsz,
-                             q_num_head,
-                             kv_num_head,
-                             max_seq_len,
-                             dim_head);
+      VLOG(3) << "!use_pre_cache";
+      qkv_transpose_split<T>(
+          dev_ctx,
+          q_trans.data<T>(),
+          k_trans.data<T>(),
+          v_trans.data<T>(),
+          qkv_buf.data<T>(),
+          pre_key_cache ? pre_key_cache.get().data<T>() : nullptr,
+          pre_value_cache ? pre_value_cache.get().data<T>() : nullptr,
+          padding_offsets.data<int>(),
+          sequence_lengths_data,
+          token_num,
+          bsz,
+          q_num_head,
+          max_enc_len_this_time_data,
+          max_seq_len,
+          pre_cache_length,
+          dim_head);
       VLOG(3) << "qkv split end";
+      // VLOGMatrix(unpadding_q.data<T>(),
+      //            unpadding_q.numel(),
+      //            "unpadding_q",
+      //            unpadding_q.numel());
+      // VLOGMatrix(unpadding_k.data<T>(),
+      //            unpadding_k.numel(),
+      //            "unpadding_k",
+      //            unpadding_k.numel());
+      // VLOGMatrix(unpadding_v.data<T>(),
+      //            unpadding_v.numel(),
+      //            "unpadding_v",
+      //            unpadding_v.numel());
       // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
       // q,k,v,out all in 3-D [token_num, q_num_head, dim_head].
-      auto fmha_shape = fmha_buf.dims();
-      fmha_buf.Resize({token_num, q_num_head, dim_head});
+      // auto fmha_shape = fmha_buf.dims();
+      // fmha_buf.Resize({token_num, q_num_head, dim_head});
       // phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
       //                                 unpadding_q,
       //                                 unpadding_k,
@@ -547,31 +585,58 @@ void DispatchWithDtype(
       //                                 &softmax_out,
       //                                 &softmax_lse,
       //                                 &seed_offset);
-      phi::fusion::cutlass_internal::MemoryEfficientAttentionForwardKernel<T>(dev_ctx,
-                                      unpadding_q,
-                                      unpadding_k,
-                                      unpadding_v,
-                                      paddle::none,
-                                      cu_seqlens_q,
-                                      cu_seqlens_k,
-                                      // paddle::none /*fixed_seed_offset*/,
-                                      causual ? paddle::none : mask,
-                                      seq_lens_encoder,
-                                      max_enc_len_this_time_data,
-                                      max_enc_len_this_time_data,
-                                      causual,
-                                      0.0,
-                                      1.0f / sqrt(static_cast<float>(dim_head)),
-                                      // causual,
-                                      true /* is_test*/,
-                                      // "" /*rng_name*/,
-                                      &fmha_buf,
-                                      // &softmax_out,
-                                      &softmax_lse,
-                                      &seed_offset);
+      // VLOGMatrix(fmha_buf.data<T>(),
+      //            10,
+      //            "fmha_bufx",
+      //            fmha_buf.numel());
+      // printf("-----------------------------------------------");
+      // printf("tkey %llu %llu %llu\n", k_trans.dims()[0], k_trans.dims()[1], k_trans.dims()[2]);
+      // printf("index %llu\n",
+      //       *reinterpret_cast<int64_t*>(val_buffer + i * sizeof(uint64_t)));
+      // int ac_size = *reinterpret_cast<int*>(val_buffer + i * sizeof(int) +
+      //                                       len * sizeof(int64_t));
+      // printf("sampled %d neigbhors\n", ac_size);
+      // unpadding_q = Transpose<T, phi::GPUContext>(dev_ctx, unpadding_q, {0, 2, 1});
+      // unpadding_k = Transpose<T, phi::GPUContext>(dev_ctx, unpadding_k, {0, 2, 1});
+      // unpadding_v = Transpose<T, phi::GPUContext>(dev_ctx, unpadding_v, {0, 2, 1});
+
+      // printf("qey %llu %llu %llu %llu\n", unpadding_k.dims().size(), unpadding_q.dims()[0], unpadding_q.dims()[1], unpadding_q.dims()[2]);
+      // printf("key %llu %llu %llu %llu\n", unpadding_k.dims().size(), unpadding_k.dims()[0], unpadding_k.dims()[1], unpadding_k.dims()[2]);
+      // printf("vey %llu %llu %llu %llu\n", unpadding_k.dims().size(), unpadding_v.dims()[0], unpadding_v.dims()[1], unpadding_v.dims()[2]);
+      phi::fusion::MultiHeadAttentionVariableForwardKernel<T, phi::GPUContext>(
+          dev_ctx,
+          q_trans,
+          k_trans,
+          v_trans,
+          seq_lens_encoder,
+          seq_lens_encoder,
+          mask,
+          1.0f / sqrt(static_cast<float>(dim_head)),
+          causual,
+          0,
+          &qktv_out);
+      
+      // fmha_buf = Transpose<T, phi::GPUContext>(dev_ctx, fmha_buf, {0, 2, 1});
+      // printf("fey %llu %llu %llu %llu\n", fmha_buf.dims().size(), fmha_buf.dims()[0], fmha_buf.dims()[1], fmha_buf.dims()[2]);
+      // VLOGMatrix(fmha_buf.data<T>(),
+      //            fmha_buf.numel(),
+      //            "fmha_buf",
+      //            fmha_buf.numel());
+
       // Reshape fmha_buf back (to 2-D), to not affect following codes.
-      fmha_buf.Resize(fmha_shape);
+      InvokeTransposeRemovePadding<T>(dev_ctx,
+                                      qktv_out.data<T>(),
+                                      sequence_lengths_data,
+                                      fmha_buf.data<T>(),
+                                      bsz,
+                                      q_num_head,
+                                      max_enc_len_this_time_data,
+                                      max_seq_len,
+                                      dim_head,
+                                      token_num,
+                                      padding_offsets.data<int>());
     } else {
+    VLOG(3) << "use_pre_cache";
       // NOTE: not support gqa
       qkv_transpose_split<T>(
           dev_ctx,
@@ -590,6 +655,7 @@ void DispatchWithDtype(
           max_seq_len,
           pre_cache_length,
           dim_head);
+      // printf("(*********************************************************)");
 #ifdef PADDLE_WITH_MEMORY_EFFICIENT_ATTENTION
       phi::fusion::MultiHeadAttentionVariableForwardKernel<T, phi::GPUContext>(
           dev_ctx,
@@ -622,7 +688,7 @@ void DispatchWithDtype(
           &softmax_lse,
           &seed_offset);
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Not supports MultiHeadAttentionVariableForwardKernel."));
 #endif
       InvokeTransposeRemovePadding<T>(dev_ctx,
@@ -687,6 +753,7 @@ void DispatchWithDtype(
   VLOG(3) << "encoder done";
   VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time_data;
   if (max_dec_len_this_time_data > 0) {
+    printf("max_dec_len_this_time_data\n");
     GetDecoderTensor<T>(dev_ctx,
                         qkv_buf,
                         nullptr,
@@ -756,8 +823,13 @@ void DispatchWithDtype(
   if (out_scale > 0) {
     int m = fmha_out->dims()[0];
     int n = fmha_out->dims()[1];
+#ifdef PADDLE_WITH_HIP
+    dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
+    dim3 block(64, 8);
+#else
     dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
     dim3 block(32, 32);
+#endif
     if (out_shift && out_smooth) {
       QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
           fmha_buf.data<T>(),
