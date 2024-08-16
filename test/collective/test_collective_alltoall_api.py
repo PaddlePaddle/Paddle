@@ -25,9 +25,6 @@ class TestCollectiveAllToAllAPI(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_alltoall_nccl(self):
-        self.check_with_place("collective_alltoall_api.py", "alltoall", "nccl")
-
     def test_alltoall_nccl_with_comm_context(self):
         dtypes_to_test = [
             "float32",
