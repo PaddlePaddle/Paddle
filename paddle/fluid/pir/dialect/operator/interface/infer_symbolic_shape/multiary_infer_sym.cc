@@ -1992,7 +1992,7 @@ bool MultiplexOpInferSymbolicShape(
                                       "than one candidate input tensors."));
 
   size_t num_inputs = inputs_shape_or_data_list.size();
-  symbol::DimExpr in_shape = inputs_shape_or_data_list[0].shape();
+  std::vector<symbol::DimExpr> in_shape = inputs_shape_or_data_list[0].shape();
   PADDLE_ENFORCE_GE(
       in_shape.size(),
       2,
@@ -2000,7 +2000,7 @@ bool MultiplexOpInferSymbolicShape(
           "The rank of candidate tensors must be not less than 2."));
 
   for (size_t i = 1; i < num_inputs; ++i) {
-    symbol::DimExpr shape = inputs_shape_or_data_list[i].shape();
+    std::vector<symbol::DimExpr> shape = inputs_shape_or_data_list[i].shape();
 
     PADDLE_ENFORCE_EQ(in_shape.size(),
                       shape.size(),
