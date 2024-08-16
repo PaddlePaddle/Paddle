@@ -181,7 +181,6 @@ std::vector<ir::Var> GetOutputIters(const FusibleOp& op) {
     }
   };
   VLOG(4) << "GetOutputIters";
-  VLOG(4) << "Before AppendBound:" << _GetRootExpr(op);
   return AppendBound(std::visit(Visitor(), op), _GetRootExpr(op));
 }
 

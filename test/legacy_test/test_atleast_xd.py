@@ -227,7 +227,7 @@ class BaseTest(unittest.TestCase):
                             else input
                         )
                         for input in inputs
-                    ]
+                    ],
                 )
 
                 if len(inputs) == 1:
@@ -259,7 +259,7 @@ class BaseTest(unittest.TestCase):
                             else input
                         )
                         for input in inputs
-                    ]
+                    ],
                 )
 
                 for n, p in zip(out_ref, out):

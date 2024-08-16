@@ -212,8 +212,9 @@ def fc(
             if num_flatten_dims == -1:
                 num_flatten_dims = len(input_shape) - 1
             param_shape = [
-                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
-            ] + [size]
+                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1),
+                size,
+            ]
             w = helper.create_parameter(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
@@ -1027,7 +1028,7 @@ def conv2d(
 
     padding = _update_padding(padding, data_format)
 
-    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
+    filter_shape = [num_filters, int(num_filter_channels), *filter_size]
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
@@ -1322,7 +1323,7 @@ def conv3d(
     padding = _update_padding(padding, data_format)
 
     input_shape = input.shape
-    filter_shape = [num_filters, num_filter_channels] + filter_size
+    filter_shape = [num_filters, num_filter_channels, *filter_size]
 
     def _get_default_param_initializer():
         filter_elem_num = (
@@ -1718,7 +1719,7 @@ def conv2d_transpose(
             f"but received the groups of input is {groups}"
         )
 
-    filter_shape = [input_channel, num_filters // groups] + filter_size
+    filter_shape = [input_channel, num_filters // groups, *filter_size]
 
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr
@@ -2076,7 +2077,7 @@ def conv3d_transpose(
             f"Received: Attr(num_filters) is {num_filters}, the groups is {groups}"
         )
 
-    filter_shape = [input_channel, num_filters // groups] + filter_size
+    filter_shape = [input_channel, num_filters // groups, *filter_size]
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr
     )
@@ -2292,7 +2293,7 @@ def deformable_conv(
     dilation = paddle.utils.convert_to_list(dilation, 2, 'dilation')
 
     input_shape = input.shape
-    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
+    filter_shape = [num_filters, int(num_filter_channels), *filter_size]
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
