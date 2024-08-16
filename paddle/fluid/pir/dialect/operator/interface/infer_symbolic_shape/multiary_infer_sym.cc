@@ -1475,7 +1475,7 @@ bool SpectralNormOpInferSymbolicShape(
   if (u_shape[0].Get<std::int64_t>() > 0 && h.Get<std::int64_t>() > 0) {
     infer_context->AddEqualCstr(u_shape[0], h);
   }
-  if (v_shape[0].Get<std::int64_t>() > 0 && w > symbol::DimExpr(0)) {
+  if (v_shape[0].Get<std::int64_t>() > 0 && w.Get<std::int64_t>() > 0) {
     infer_context->AddEqualCstr(v_shape[0], w);
   }
 
