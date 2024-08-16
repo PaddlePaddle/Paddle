@@ -412,6 +412,57 @@ bool AsStridedOpInferSymbolicShape(
   return true;
 }
 
+bool BatchSizeLikeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_dims = x_shape.shape();
+
+  std::vector<int> shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "shape");
+  int x_batch_size_dim =
+      op->attribute<pir::Int32Attribute>("x_batch_size_dim").data();
+  int out_batch_size_dim =
+      op->attribute<pir::Int32Attribute>("out_batch_size_dim").data();
+
+  PADDLE_ENFORCE_GT(
+      shape.size(),
+      0,
+      common::errors::InvalidArgument(
+          "Shape size must be larger than 0, but received: %d.", shape.size()));
+
+  std::vector<symbol::DimExpr> shape_exprs(shape.size());
+  std::transform(shape.begin(), shape.end(), shape_exprs.begin(), [](int dim) {
+    return symbol::DimExpr(dim);
+  });
+
+  PADDLE_ENFORCE_GE(
+      x_batch_size_dim,
+      0,
+      common::errors::InvalidArgument(
+          "Input dimension index must be larger than or equal to 0."));
+  PADDLE_ENFORCE_GE(
+      out_batch_size_dim,
+      0,
+      common::errors::InvalidArgument(
+          "Output dimension index must be larger than or equal to 0."));
+
+  size_t output_dim_size = shape.size();
+  PADDLE_ENFORCE_GT(
+      output_dim_size,
+      out_batch_size_dim,
+      common::errors::InvalidArgument(
+          "Output dimension size must be larger than output dimension index."));
+  shape_exprs[out_batch_size_dim] = x_dims[x_batch_size_dim];
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(shape_exprs)});
+
+  return true;
+}
+
 bool BipartiteMatchOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &dist_mat_shape_or_data =
@@ -845,6 +896,11 @@ bool EighOpInferSymbolicShape(pir::Operation *op,
 bool EigvalshOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return EighOpInferSymbolicShape(op, infer_context);
+}
+
+bool FullBatchSizeLikeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return BatchSizeLikeOpInferSymbolicShape(op, infer_context);
 }
 
 bool FractionalMaxPoolOpInferSymbolicShape(
@@ -2483,6 +2539,59 @@ bool SetValueWithTensor_OpInferSymbolicShape(
 //   // pass
 //   return true;
 // }
+
+bool SquaredL2NormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  auto dtype = infer_context->GetDataTypeForValue(op->operand_source(0));
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs({symbol::DimExpr(1)}));
+  infer_context->SetDataTypeForValue(op->result(0), dtype);
+  return true;
+}
+
+bool TemporalShiftOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_dims = x_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      common::errors::InvalidArgument("Input(X) rank should be 4 in shape of "
+                                      "[N*T, C, H, W], but received X rank(%d)",
+                                      x_dims.size()));
+
+  int seg_num = op->attribute<pir::Int32Attribute>("seg_num").data();
+  float shift_ratio =
+      op->attribute<pir::Float32Attribute>("shift_ratio").data();
+
+  PADDLE_ENFORCE_GT(
+      seg_num,
+      0,
+      common::errors::InvalidArgument(
+          "Attr(seg_num) should be greater than 0, but received %d", seg_num));
+  PADDLE_ENFORCE_GT(
+      shift_ratio,
+      0.0f,
+      common::errors::InvalidArgument(
+          "Attr(shift_ratio) should be greater than 0, but received %f",
+          shift_ratio));
+  PADDLE_ENFORCE_LT(
+      shift_ratio,
+      0.5f,
+      common::errors::InvalidArgument(
+          "Attr(shift_ratio) should be less than 0.5, but received %f",
+          shift_ratio));
+
+  if (op->config().is_runtime) {
+    infer_context->AddEqualCstr(x_dims[0] % seg_num, 0);
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+
+  return true;
+}
 
 bool TileOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
