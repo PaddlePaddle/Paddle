@@ -113,7 +113,7 @@ def check_view_api_used_by_inplace(program: paddle.pir.Program) -> None:
             index = op_callstack.index("    outputs = static_func(*inputs)")
             result = '\n'.join(op_callstack[index + 1 :])
             raise ValueError(
-                f'Sorry about what\'s happened. In to_static mode, {value.all_used_ops()[-1].name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call paddle.assign().\n{result}'
+                f'Sorry about what\'s happened. In to_static mode, {value.all_used_ops()[-1].name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call paddle.assign() before inplace input.\n{result}'
             )
 
 

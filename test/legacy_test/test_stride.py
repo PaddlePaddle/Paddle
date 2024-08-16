@@ -770,7 +770,7 @@ class TestToStaticCheck(unittest.TestCase):
         def func():
             x = paddle.ones((4, 3)) * 2
             y = paddle.ones((3,))
-            xx = x.transpose_([1, 0])
+            xx = paddle.transpose(x, [1, 0])
             paddle.tensor.manipulation.fill_diagonal_tensor_(xx, y)
 
         self.assertRaises(ValueError, func)
