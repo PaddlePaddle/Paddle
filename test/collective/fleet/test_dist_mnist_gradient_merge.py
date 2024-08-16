@@ -45,7 +45,6 @@ class TestDistMnistGradMergeNoFuse(TestDistBase):
         self._use_reduce = False
         self._nccl2_mode = True
         self._fuse_all_reduce = False
-        self._nccl2_reduce_layer = True
 
     def test_dist_train(self):
         if base.core.is_compiled_with_cuda():
@@ -63,7 +62,6 @@ class TestDistMnistGradMergeRawOptimizerBase(TestDistBase):
         self._nccl2_mode = True
         self._use_fleet_api = True
         self._use_fleet_api_20 = True
-        self._nccl2_reduce_layer = True
 
     def enable_avg(self):
         return False
