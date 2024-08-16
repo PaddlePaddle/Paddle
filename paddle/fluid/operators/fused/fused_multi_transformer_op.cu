@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/fused/fused_attention_utils.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
@@ -22,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/fmha_ref.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_attention_utils.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_multi_transformer_helper.cu.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 namespace paddle {
