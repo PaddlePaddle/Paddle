@@ -880,6 +880,17 @@
   backward : subtract_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : sync_comm_stream
+  args : (Tensor[] x, int ring_id=0)
+  output : Tensor[](out){x.size()}
+  infer_meta :
+    func : UnchangedVectorInferMeta
+    param : [x]
+  kernel :
+    func : sync_comm_stream
+    param: [x]
+  inplace : (x -> out)
+
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
   output : Tensor(out)
