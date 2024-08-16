@@ -476,6 +476,16 @@ def _batched_p2p_ops(
 def _p2p_ops_tuple_or_tensor(tensors, p2p_func, pp_rank, pp_group):
     if not isinstance(tensors, tuple):
         tensors = (tensors,)
+
+    need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
+    if need_check:
+        if p2p_func == paddle.distributed.isend:
+            for t in tensors:
+                if not paddle.isfinite(t).all().item():
+                    raise ValueError(
+                        f"Tensor contains inf or nan values at rank {paddle.distributed.get_rank()}"
+                    )
+
     reqs = []
     for tensor in tensors:
         reqs.append(p2p_func(tensor, pp_rank, pp_group))
