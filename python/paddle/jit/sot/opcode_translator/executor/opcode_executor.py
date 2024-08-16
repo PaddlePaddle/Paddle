@@ -520,13 +520,13 @@ class OpcodeExecutorBase:
             file = inspect.getfile(code)
             if file.startswith("<") and file.endswith(">"):
                 message_lines.append(
-                    f"{indent}  File \"{file}\", line {current_line}"
+                    f'{indent}  File "{file}", line {current_line}'
                 )
                 continue
             lines, start = inspect.getsourcelines(code)
             real_name = code.co_name
             message_lines.append(
-                f"{indent}  File \"{code.co_filename}\", line {current_line}, in {real_name}"
+                f'{indent}  File "{code.co_filename}", line {current_line}, in {real_name}'
             )
             if current_line != -1:
                 message_lines.append(
