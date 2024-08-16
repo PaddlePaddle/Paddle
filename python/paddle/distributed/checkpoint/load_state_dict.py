@@ -17,15 +17,13 @@ from __future__ import annotations
 import copy
 import os
 from dataclasses import dataclass
-from typing import Dict, Tuple
-from typing import TYPE_CHECKING
 
 import paddle
-from paddle.distributed.communication.group import is_initialized
-from paddle.distributed.fleet.utils.log_util import logger
 from paddle.base.framework import (
     _current_expected_place,
 )
+from paddle.distributed.communication.group import is_initialized
+from paddle.distributed.fleet.utils.log_util import logger
 
 from .metadata import LocalTensorIndex, LocalTensorMetadata
 from .utils import (
@@ -33,10 +31,6 @@ from .utils import (
     flatten_state_dict,
 )
 
-
-if TYPE_CHECKING:
-    from paddle import Tensor
-    from paddle.distributed.collective import Group
 
 @dataclass(frozen=True)
 class ReadItem:
@@ -49,6 +43,7 @@ class ReadItem:
 
 
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
+
 
 def get_checkpoint_files(path, use_cache=True):
     global PATH_TO_CHECKPOINT_FILES
@@ -142,14 +137,14 @@ def get_rank_to_files(
     for rank, need_files in enumerate(all_necessary_files):
         seen = set()
         unique_need_files = [
-            f for f in need_files if not (f in seen or seen.add(x))
+            f for f in need_files if not (f in seen or seen.add(f))
         ]
         rank_to_files[rank] = unique_need_files
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
     return rank_to_files, missing_keys
 
 
-def get_rank_to_read_files(rank_to_files,rank_to_local_data_files):
+def get_rank_to_read_files(rank_to_files, rank_to_local_data_files):
     cross_node_file_names = []
     rank_to_need_files = copy.deepcopy(rank_to_files)
     for rank, need_files in rank_to_need_files.items():
@@ -162,13 +157,12 @@ def get_rank_to_read_files(rank_to_files,rank_to_local_data_files):
             need_files.remove(file)
         cross_node_file_names += file_need_to_remove
 
-    
     not_read_file_ranks = []
     for rank, files in rank_to_need_files.items():
         if len(files) == 0:
             not_read_file_ranks.append(rank)
     for rank in not_read_file_ranks:
-        rank_to_need_files.pop(rank)    
+        rank_to_need_files.pop(rank)
 
     rank_load_files = _get_rank_to_read_files(rank_to_need_files)
 
@@ -176,33 +170,34 @@ def get_rank_to_read_files(rank_to_files,rank_to_local_data_files):
         rank_load_files[rank] = []
 
     cur_load_files = []
-    for rank,load_file in rank_load_files.items():
+    for rank, load_file in rank_load_files.items():
         cur_load_files += load_file
-    
+
     unload_files = []
     for file in cross_node_file_names:
         if file not in cur_load_files:
             unload_files.append(file)
 
-    file_to_ranks = {} 
+    file_to_ranks = {}
     for rank, files in rank_to_local_data_files.items():
         for file in files:
             if file not in file_to_ranks:
                 file_to_ranks[file] = [rank]
             else:
                 file_to_ranks[file].append(rank)
-    
+
     seen = set()
-    unload_files = [
-            x for x in unload_files if not (x in seen or seen.add(x))
-        ]
+    unload_files = [x for x in unload_files if not (x in seen or seen.add(x))]
     for file in unload_files:
         sub_rank_load_files = {}
         for rank in file_to_ranks[file]:
             sub_rank_load_files[rank] = rank_load_files[rank]
-        min_rank = min(sub_rank_load_files, key=lambda rank: (len(sub_rank_load_files[rank]),rank))
+        min_rank = min(
+            sub_rank_load_files,
+            key=lambda rank: (len(sub_rank_load_files[rank]), rank),
+        )
         rank_load_files[min_rank].append(file)
-        
+
     cur_rank = paddle.distributed.get_rank()
     if cur_rank in rank_load_files:
         return rank_load_files[cur_rank]
@@ -305,6 +300,8 @@ def _get_rank_to_read_files(rank_to_files):
             f"update rank_to_read_files:{rank_to_read_files}, rank_to_not_read_files:{rank_to_not_read_files}, ranks:{ranks}, rank_file:{rank_file}"
         )
     return rank_to_read_files
+
+
 def get_load_infos(metadata_list, local_load_files, process_group, use_dist):
     load_info = {}
     for metadata in metadata_list:
@@ -638,7 +635,9 @@ def _load_state_dict(
                 ]
 
                 if offload:
-                    storage_local_tensor = paddle.to_tensor(storage_local_tensor,place = _current_expected_place())
+                    storage_local_tensor = paddle.to_tensor(
+                        storage_local_tensor, place=_current_expected_place()
+                    )
 
                 storage_offsets = item.storage_offset
                 storage_lengths = item.lengths
