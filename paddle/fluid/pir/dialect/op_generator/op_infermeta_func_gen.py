@@ -961,6 +961,10 @@ def gen_infermeta_func_str(args, op_info):
             )
         inuse_infer_meta_args.append(f"{op_info.output_name_list[idx]}")
 
+    if op_info.inplace_map is not None:
+        for input in op_info.inplace_map.keys():
+            inuse_infer_meta_args.append(f"{op_info.inplace_map[input]}")
+
     spmd_params = []
     if args.with_distributed:
         if op_info.spmd_rule_func is not None:

@@ -444,7 +444,12 @@ def multiplex(
              [3., 4.]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.multiplex(inputs, index)
+    elif in_pir_mode():
+        check_variable_and_dtype(
+            index, "index", ['int32', 'int64'], 'multiplex'
+        )
         return _C_ops.multiplex(inputs, index)
     else:
         helper = LayerHelper('multiplex', **locals())
@@ -7808,7 +7813,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
     if isinstance(y, (float, int)):
         y = paddle.to_tensor(y, dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
+    if out_shape != list(x.shape):
         warnings.warn(
             f"The shape of broadcast output {out_shape} is different from the input tensor x with shape: {x.shape}, please make sure you are using copysign api correctly."
         )
