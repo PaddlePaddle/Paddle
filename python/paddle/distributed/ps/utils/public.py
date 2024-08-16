@@ -1354,7 +1354,7 @@ def insert_communicate_op(
         outputs={"Out": []},
         attrs={
             "mode": "forward" if is_forward else "backward",
-            "send_var_name": entrance_var + ["microbatch_id"],
+            "send_var_name": [*entrance_var, "microbatch_id"],
             "recv_var_name": [],
             "message_name": comm_info["block_input_var_name"],
             "next_endpoints": next_heter_worker_endpoints,
