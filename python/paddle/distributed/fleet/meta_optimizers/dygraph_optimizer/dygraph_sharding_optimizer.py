@@ -80,22 +80,15 @@ class DygraphShardingOptimizer:
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
 
         strategy = fleet.fleet._user_defined_strategy
-        self.tensor_fusion = strategy.hybrid_configs[
-            'sharding_configs'
-        ].tensor_fusion
+        sharding_configs = strategy.hybrid_configs['sharding_configs']
 
-        self.accumulate_steps = strategy.hybrid_configs[
-            'sharding_configs'
-        ].accumulate_steps
-        self.comm_overlap = strategy.hybrid_configs[
-            'sharding_configs'
-        ].comm_overlap
-        self.fuse_optimizer = strategy.hybrid_configs[
-            'sharding_configs'
-        ].fuse_optimizer
-        self.use_reduce_avg = strategy.hybrid_configs[
-            'sharding_configs'
-        ].use_reduce_avg
+        self.tensor_fusion = sharding_configs.tensor_fusion
+        self.accumulate_steps = sharding_configs.accumulate_steps
+        self.comm_overlap = sharding_configs.comm_overlap
+        self.comm_buffer_size_MB = sharding_configs.comm_buffer_size_MB
+        self.fuse_optimizer = sharding_configs.fuse_optimizer
+        self.use_reduce_avg = sharding_configs.use_reduce_avg
+
         if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
             self.use_reduce_avg = False
             warnings.warn(
@@ -235,6 +228,7 @@ class DygraphShardingOptimizer:
                 scale_after_comm=False,
                 apply_decay_param_fun=self.origin_decay_param_fun,
                 use_reduce_avg=self.use_reduce_avg,
+                group_size=self.comm_buffer_size_MB * 1024 * 1024,
             )
             if self.comm_overlap:
                 self._comm_buffers += all_buffer
@@ -629,9 +623,13 @@ class DygraphShardingOptimizerV2:
         acc_steps = sharding_config.accumulate_steps
         self.comm_overlap = sharding_config.comm_overlap
 
+        comm_buffer_size_MB = sharding_config.comm_buffer_size_MB
+
         # Setting pipeline parallelism overlap
         self.pp_overlap = pp_config.sharding_comm_overlap
-        self.pp_release_grads = pp_config.release_gradients
+        self.sd_release_grads = (
+            pp_config.release_gradients or sharding_config.release_gradients
+        )
 
         # Check nccl reduce_avg setting
         self.use_reduce_avg = sharding_config.use_reduce_avg
@@ -641,7 +639,7 @@ class DygraphShardingOptimizerV2:
                 "nccl reduce_avg requires paddle compiled with cuda and nccl>=2.10.0, please check compilation setups."
             )
 
-        self._build_comm_buffers(acc_steps)
+        self._build_comm_buffers(acc_steps, comm_buffer_size_MB * 1024 * 1024)
         # NOTE(shenliang03): Sort the comm_buffers by dst rank,
         # it will improve the performance in reduce communicate. Default
         # g_shard_sort_reduce_root is True.
@@ -731,7 +729,7 @@ class DygraphShardingOptimizerV2:
                 comm_group,
                 acc_steps,
                 act=HOOK_ACTION.REDUCE_SCATTER,
-                release_grads=self.pp_release_grads,
+                release_grads=self.sd_release_grads,
                 use_reduce_avg=self.use_reduce_avg,
             )
             self._comm_buffer_list.append(buffer)
@@ -740,7 +738,7 @@ class DygraphShardingOptimizerV2:
         """
         should clear grad for all parameters in model
         """
-        if not self.pp_release_grads:
+        if not self.sd_release_grads:
             assert set_to_zero, "should not erase grad buffer"
 
         def clear_grad_func(p):
@@ -764,7 +762,7 @@ class DygraphShardingOptimizerV2:
         for p in self._parameter_list:
             clear_grad_func(p)
 
-        if self.pp_release_grads and not self.pp_overlap:
+        if self.sd_release_grads and not self.pp_overlap:
             for comm_buffer in self._comm_buffer_list:
                 comm_buffer._clear_grad_storage()
 
@@ -790,7 +788,7 @@ class DygraphShardingOptimizerV2:
 
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
-                if self.pp_release_grads and comm_buffer.grad_storage is None:
+                if self.sd_release_grads and comm_buffer.grad_storage is None:
                     for param in comm_buffer.params:
                         comm_buffer._copy_grad_to_buffer(param)
 
@@ -886,7 +884,7 @@ class DygraphShardingOptimizerV2:
             for param in comm_buffer.params:
                 assert param.name in self._slice_params
                 slice_param = self._slice_params[param.name]
-                if self.pp_release_grads and hasattr(slice_param, "main_grad"):
+                if self.sd_release_grads and hasattr(slice_param, "main_grad"):
                     assert not slice_param.main_grad._is_initialized()
                     del slice_param.main_grad
                 comm_buffer.assign_slice_grad(param, slice_param)

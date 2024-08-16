@@ -87,16 +87,16 @@ static PyObject *static_api_reshard(PyObject *self,
   }
 }
 
-static PyObject *static_api_local_tensors_from_dist(PyObject *self,
-                                                    PyObject *args,
-                                                    PyObject *kwargs) {
+static PyObject *static_api_moe_sub_mesh_tensors(PyObject *self,
+                                                 PyObject *args,
+                                                 PyObject *kwargs) {
   try {
-    VLOG(6) << "Add local_tensors_from_dist op into program";
+    VLOG(6) << "Add moe_sub_mesh_tensors op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
     // input dist tensor
     PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
-    auto input = CastPyArg2Value(input_obj, "local_tensors_from_dist", 0);
+    auto input = CastPyArg2Value(input_obj, "moe_sub_mesh_tensors", 0);
 
     // local process_mesh list
     PyObject *local_mesh_list_obj = PyTuple_GET_ITEM(args, 1);
@@ -123,15 +123,15 @@ static PyObject *static_api_local_tensors_from_dist(PyObject *self,
 
     // Call ir static api
     auto static_api_out =
-        paddle::dialect::local_tensors_from_dist(input,
-                                                 local_mesh_list,
-                                                 std::get<0>(local_res),
-                                                 std::get<1>(local_res),
-                                                 global_mesh,
-                                                 std::get<0>(global_res),
-                                                 std::get<1>(global_res));
+        paddle::dialect::moe_sub_mesh_tensors(input,
+                                              local_mesh_list,
+                                              std::get<0>(local_res),
+                                              std::get<1>(local_res),
+                                              global_mesh,
+                                              std::get<0>(global_res),
+                                              std::get<1>(global_res));
 
-    VLOG(6) << "End of adding local_tensors_from_dist op into program";
+    VLOG(6) << "End of adding moe_sub_mesh_tensors op into program";
     return ToPyObject(static_api_out);
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
@@ -139,17 +139,17 @@ static PyObject *static_api_local_tensors_from_dist(PyObject *self,
   }
 }
 
-static PyObject *static_api_dtensor_from_local_list(PyObject *self,
-                                                    PyObject *args,
-                                                    PyObject *kwargs) {
+static PyObject *static_api_moe_global_mesh_tensor(PyObject *self,
+                                                   PyObject *args,
+                                                   PyObject *kwargs) {
   try {
-    VLOG(6) << "Add dtensor_from_local_list op into program";
+    VLOG(6) << "Add moe_global_mesh_tensor op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
     // input local tensor list
     PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
     auto input =
-        CastPyArg2VectorOfValue(input_obj, "dtensor_from_local_list", 0);
+        CastPyArg2VectorOfValue(input_obj, "moe_global_mesh_tensor", 0);
 
     // local process_mesh list
     PyObject *local_mesh_list_obj = PyTuple_GET_ITEM(args, 1);
@@ -180,15 +180,16 @@ static PyObject *static_api_dtensor_from_local_list(PyObject *self,
 
     // Call ir static api
     auto static_api_out =
-        paddle::dialect::dist_tensor_from_locals(input,
-                                                 local_mesh_list,
-                                                 std::get<0>(local_res),
-                                                 std::get<1>(local_res),
-                                                 global_mesh,
-                                                 std::get<0>(global_res),
-                                                 std::get<1>(global_res),
-                                                 global_shape);
+        paddle::dialect::moe_global_mesh_tensor(input,
+                                                local_mesh_list,
+                                                std::get<0>(local_res),
+                                                std::get<1>(local_res),
+                                                global_mesh,
+                                                std::get<0>(global_res),
+                                                std::get<1>(global_res),
+                                                global_shape);
 
+    VLOG(6) << "End of adding moe_global_mesh_tensor op into program";
     return ToPyObject(static_api_out);
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
@@ -205,14 +206,14 @@ static PyMethodDef DistOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_reshard,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for reshard."},
-    {"local_tensors_from_dist",
-     (PyCFunction)(void (*)(void))static_api_local_tensors_from_dist,
+    {"moe_sub_mesh_tensors",
+     (PyCFunction)(void (*)(void))static_api_moe_sub_mesh_tensors,
      METH_VARARGS | METH_KEYWORDS,
-     "C++ interface function for local_tensors_from_dist."},
-    {"dtensor_from_local_list",
-     (PyCFunction)(void (*)(void))static_api_dtensor_from_local_list,
+     "C++ interface function for moe_sub_mesh_tensors."},
+    {"moe_global_mesh_tensor",
+     (PyCFunction)(void (*)(void))static_api_moe_global_mesh_tensor,
      METH_VARARGS | METH_KEYWORDS,
-     "C++ interface function for dtensor_from_local_list."},
+     "C++ interface function for moe_global_mesh_tensor."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind
