@@ -37,7 +37,7 @@ TEST(TensorRT, split_converter) {
       1 << 20, batch_size, 1, AnalysisConfig::Precision::kInt8, false, true);
 
   std::map<std::string, std::vector<int>> input_shape;
-  input_shape["image"] = {batch_size, channels, height, width};
+  input_shape["x"] = {batch_size, channels, height, width};
   config.SetTRTDynamicShapeInfo(input_shape, input_shape, input_shape, false);
   auto predictor = CreatePaddlePredictor(config);
 
