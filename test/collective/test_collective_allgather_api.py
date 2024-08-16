@@ -61,6 +61,7 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 "allgather",
                 "nccl",
                 dtype=dtype,
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_allgather_gloo(self):
