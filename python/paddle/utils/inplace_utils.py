@@ -17,6 +17,7 @@ from typing import Callable, TypeVar
 
 from typing_extensions import ParamSpec
 
+import paddle  # noqa: F401
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import check_view_value, in_dynamic_mode, in_pir_mode
 
