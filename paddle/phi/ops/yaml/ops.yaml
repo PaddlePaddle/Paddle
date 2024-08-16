@@ -4237,7 +4237,7 @@
     func : ShardIndexInferMeta
   kernel :
     func : shard_index
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : share_data
   args: (Tensor x)

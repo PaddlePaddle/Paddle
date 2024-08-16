@@ -2109,6 +2109,25 @@ bool ShapeOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool ShardIndexOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &in_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &in_shape = in_shape_or_data.shape();
+  PADDLE_ENFORCE_GE(
+      in_shape.size(),
+      2,
+      common::errors::InvalidArgument("Rank of Input(X) should be at least 2, "
+                                      "but the value given is %d.",
+                                      in_shape.size()));
+  infer_context->AddEqualCstr(in_shape[in_shape.size() - 1],
+                              symbol::DimExpr{1});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(in_shape)});
+  return true;
+}
+
 bool RreluOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   float lower = op->attribute<pir::FloatAttribute>("lower").data();
