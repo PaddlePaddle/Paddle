@@ -17,6 +17,7 @@ from functools import reduce
 import paddle
 
 
+
 class EmbeddingLayer:
     """
     Embedding Layer class
