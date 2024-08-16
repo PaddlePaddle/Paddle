@@ -11,18 +11,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import warnings
-from typing import Callable, TypeVar
+from typing import TYPE_CHECKING, Callable, TypeVar
 
 from typing_extensions import ParamSpec
 
 import paddle  # noqa: F401
+from paddle.base.framework import stride_ops
 from paddle.base.wrapped_decorator import wrap_decorator
-from paddle.framework import check_view_value, in_dynamic_mode, in_pir_mode
+from paddle.framework import in_dynamic_mode, in_pir_mode
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
+
+if TYPE_CHECKING:
+    from paddle.pir import Value
+
+
+def check_view_value(value: Value) -> bool:
+    # check if the value is a view tensor
+    if value.get_defining_op().name() in stride_ops:
+        return True
+    all_used_ops = value.all_used_ops()
+    if len(all_used_ops) == 0:
+        return False
+    for op in all_used_ops:
+        if op.name() in stride_ops and op.operand_source(0).is_same(value):
+            return True
+    return False
 
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `_C_ops`

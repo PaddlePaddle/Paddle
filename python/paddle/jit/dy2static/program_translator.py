@@ -33,7 +33,7 @@ from paddle.base.dygraph.base import (
     param_guard,
     switch_to_static_graph,
 )
-from paddle.framework import check_view_value, in_dynamic_mode, use_pir_api
+from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.pir import Value
 from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
@@ -100,22 +100,40 @@ def synchronized(func):
 
 
 def check_view_api_used_by_inplace(program: paddle.pir.Program) -> None:
-    # check viewed value used by inplace op in pir mode.
+    """
+    check viewed value used by inplace op in pir mode.
+
+    Two scenarios will raise ValueError:
+        # one
+        a = transpose(b)
+        a.add_(c)
+        # two
+        a = transpose(b)
+        b.add_(c)
+    """
     all_vars_list = program.list_vars()
     for value in all_vars_list:
         if len(value.all_used_ops()) == 0:
             return
-        for op in value.all_used_ops():
+        uesd_by_stride_ops = []
+        for op in value.all_used_ops()[::-1]:
+            if op.name() in framework.stride_ops and op.operand_source(
+                0
+            ).is_same(value):
+                uesd_by_stride_ops.append(op)
             if (
                 op.name().endswith("_")
                 and op.operand_source(0).is_same(value)
-                and check_view_value(value)
+                and (
+                    value.get_defining_op().name() in framework.stride_ops
+                    or len(uesd_by_stride_ops) > 0
+                )
             ):
-                op_callstack = value.all_used_ops()[-1].callstack
+                op_callstack = op.callstack
                 index = op_callstack.index("    outputs = static_func(*inputs)")
                 op_callstack_result = '\n'.join(op_callstack[index + 1 :])
                 raise ValueError(
-                    f'In transformed code:\n\n{op_callstack_result}\n\nSorry about what\'s happened. In to_static mode, {value.all_used_ops()[-1].name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call paddle.assign() before inplace input.'
+                    f'In transformed code:\n\n{op_callstack_result}\n\nSorry about what\'s happened. In to_static mode, {op.name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call paddle.assign() before inplace input.'
                 )
 
 

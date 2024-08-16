@@ -125,10 +125,6 @@ stride_ops = [
 ]
 
 
-def check_view_value(value: pir.Value) -> bool:
-    return value.get_defining_op().name() in stride_ops
-
-
 def _global_flags():
     return _global_flags_
 
