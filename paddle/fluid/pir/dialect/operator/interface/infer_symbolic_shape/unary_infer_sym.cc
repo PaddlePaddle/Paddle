@@ -1669,7 +1669,7 @@ bool MultinomialOpInferSymbolicShape(
     return dims;
   }();
   const auto &int_num_samples =
-      op->attribute<paddle::dialect::IntArrayAttribute>("num_samples").data();
+      op->attribute<paddle::dialect::ScalarAttribute>("num_samples").data();
   size_t x_rank = x_dims.size();
   PADDLE_ENFORCE_GT(x_rank,
                     0,
@@ -1689,7 +1689,7 @@ bool MultinomialOpInferSymbolicShape(
   }
 
   if (!int_num_samples.FromTensor()) {
-    out_dims[x_rank - 1] = symbol::DimExpr(int_num_samples);
+    out_dims[x_rank - 1] = symbol::DimExpr(int_num_samples.Get<int64_t>());
   } else {
     out_dims[x_rank - 1] = symbol::DimExpr(infer_context->GetNextSymName());
   }
@@ -1715,7 +1715,7 @@ bool NanmedianOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   auto &x_dim = x_shape_or_data.shape();
   int64_t x_rank = x_dim.size();
-  = ExprVec out_dim;
+  ExprVec out_dim;
   bool keep_dim = false;
   if (attributes.find("keep_dim") != attributes.end()) {
     keep_dim = op->attribute<pir::BoolAttribute>("keep_dim").data();
@@ -1761,7 +1761,7 @@ bool NanmedianOpInferSymbolicShape(
     for (int64_t i = 0; i < x_rank; i++) {
       if (std::find(formatted_axis.begin(), formatted_axis.end(), i) ==
           formatted_axis.end()) {
-        out_dim.emplace_back(x_dim[i]);  // NOLINT
+        out_dim.emplace_back(x_dim[i]);
       } else if (keep_dim) {
         out_dim.emplace_back(1);
       }
@@ -1771,9 +1771,7 @@ bool NanmedianOpInferSymbolicShape(
   auto median_dim = out_dim;
   std::string mode;
   if (attributes.find("mode") != attributes.end()) {
-    mode = attributes.at("mode")
-               .dyn_cast<paddle::dialect::StrAttribute>()
-               .AsString();
+    mode = attributes.at("mode").dyn_cast<pir::StrAttribute>().AsString();
   }
   if (mode == "avg") {
     median_dim.emplace_back(2);
