@@ -25,6 +25,7 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
+import numpy.typing as npt
 from google.protobuf import text_format
 
 import paddle
@@ -38,10 +39,12 @@ from .graphviz import GraphPreviewGenerator
 
 if TYPE_CHECKING:
 
-    from collections.abc import MutableSet
-
+    from paddle import Tensor
+    from paddle._typing import NestedNumbericSequence
     from paddle.base.framework import Block
-    from paddle.distributed.auto_parallel import Strategy
+    from paddle.distributed.fleet.base.distributed_strategy import (
+        DistributedStrategy,
+    )
     from paddle.distributed.fleet.base.role_maker import PaddleCloudRoleMaker
 
 
@@ -60,10 +63,10 @@ class UtilFactory:
 
 class UtilBase:
     def __init__(self) -> None:
-        self.role_maker: None | PaddleCloudRoleMaker = None
-        self.dist_strategy: None | Strategy = None
+        self.role_maker: PaddleCloudRoleMaker | None = None
+        self.dist_strategy: DistributedStrategy | None = None
 
-    def _set_strategy(self, dist_strategy: None | Strategy) -> None:
+    def _set_strategy(self, dist_strategy: None | DistributedStrategy) -> None:
         self.dist_strategy = dist_strategy
 
     def _set_role_maker(self, role_maker: None | PaddleCloudRoleMaker) -> None:
@@ -77,10 +80,10 @@ class UtilBase:
 
     def all_reduce(
         self,
-        input: list | tuple | np.array,
-        mode: str = "sum",
-        comm_world: str = "worker",
-    ) -> np.array | None:
+        input: NestedNumbericSequence | np.NDArray[Any],
+        mode: Literal["sum", "min", "max"] = "sum",
+        comm_world: Literal["worker", "server", "all"] = "worker",
+    ) -> npt.NDArray[Any] | None:
         """
         All reduce `input` between specified collection. This is a distributed API.
 
@@ -130,7 +133,9 @@ class UtilBase:
             input = list(input)
         return self.role_maker._all_reduce(input, mode, comm_world)
 
-    def barrier(self, comm_world: str = "worker") -> None:
+    def barrier(
+        self, comm_world: Literal["worker", "server", "all"] = "worker"
+    ) -> None:
         """
         Barrier between specified collection.
 
@@ -172,7 +177,9 @@ class UtilBase:
         self.role_maker._barrier(comm_world)
 
     def all_gather(
-        self, input: float, comm_world: str = "worker"
+        self,
+        input: float,
+        comm_world: Literal["worker", "server", "all"] = "worker",
     ) -> list[float]:
         """
         All gather `input` between specified collection.
@@ -227,7 +234,7 @@ class UtilBase:
     def _scatter(self) -> None:
         pass
 
-    def get_heter_file_shard(self, files: list[str]) -> list[list[str]]:
+    def get_heter_file_shard(self, files: list[str]) -> list[str]:
         if not isinstance(files, list):
             raise TypeError("files should be a list of file need to be read.")
         trainers = self.role_maker._worker_num()
@@ -247,7 +254,7 @@ class UtilBase:
 
         return trainer_files[trainer_id]
 
-    def get_file_shard(self, files: list[str]) -> list[list[str]]:
+    def get_file_shard(self, files: list[str]) -> list[str]:
         """
         Split files before distributed training, and return filelist assigned to the current trainer.
 
@@ -352,13 +359,13 @@ class UtilBase:
                 f.write(program.desc.serialize_to_string())
 
     def _load_program(self, path: str, is_text: bool) -> Program:
-        def load_program_binary(path: str) -> Program:
+        def load_program_binary(path):
             """load program from binary string file"""
             with open(path, "rb") as f:
                 program_desc_str = f.read()
             return Program.parse_from_string(program_desc_str)
 
-        def load_program_text(path: str) -> Program:
+        def load_program_text(path):
             """load program from human-readable text file"""
             with open(path, "r") as f:
                 program_desc_text = f.read()
@@ -448,17 +455,9 @@ class UtilBase:
 
     def _params_check(
         self, config: Any
-    ) -> list | list[np.array[Any]] | Literal[False]:
-        def feed_gen(
-            batch_size: int,
-            feeded_vars_dims: list[int],
-            feeded_vars_filelist: list[str],
-        ) -> list[list[np.array[list[float]]]]:
-            def reader(
-                batch_size: int,
-                fn: str,
-                dim: list[float] | tuple[float] | float,
-            ) -> list[np.array[list[float]]]:
+    ) -> list[Tensor] | list[npt.NDArray[Any]] | Literal[False]:
+        def feed_gen(batch_size, feeded_vars_dims, feeded_vars_filelist):
+            def reader(batch_size, fn, dim):
                 data = []
                 if isinstance(dim, (list, tuple)):
                     shape = list(dim)
@@ -504,9 +503,7 @@ class UtilBase:
             f"persistable vars in dump program: {[v.name for v in saved_params]}"
         )
 
-        def check_not_expected_ops(
-            prog: Program, not_expected_op_types: list
-        ) -> MutableSet:
+        def check_not_expected_ops(prog, not_expected_op_types):
             op_types_set = set()
             for op in prog.global_block().ops:
                 if (

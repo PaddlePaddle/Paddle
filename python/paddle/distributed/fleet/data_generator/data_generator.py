@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import sys
 
@@ -230,7 +231,9 @@ class DataGenerator:
 # add more generalized DataGenerator that can adapt user-defined slot
 # for example, [(name, float_list), (name, str_list), (name, int_list)]
 class MultiSlotStringDataGenerator(DataGenerator):
-    def _gen_str(self, line: str) -> str:
+    def _gen_str(
+        self, line: tuple[tuple[str, list[str]]] | list[tuple[str, list[str]]]
+    ) -> str:
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,
@@ -275,7 +278,9 @@ class MultiSlotStringDataGenerator(DataGenerator):
 
 
 class MultiSlotDataGenerator(DataGenerator):
-    def _gen_str(self, line: str) -> str:
+    def _gen_str(
+        self, line: tuple[tuple[str, list[int]]] | list[tuple[str, list[int]]]
+    ) -> str:
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,
