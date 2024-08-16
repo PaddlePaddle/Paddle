@@ -1258,13 +1258,13 @@ bool GumbelSoftmaxOpInferSymbolicShape(
 
   if (rank > 0) {
     PADDLE_ENFORCE_EQ(
-        axis >= -static_cast<int>(rank) || axis < static_cast<int>(rank),
+        axis >= -static_cast<int>(rank) && axis < static_cast<int>(rank),
         true,
         common::errors::InvalidArgument(
             "Attr(axis) value should be in range [-R, R-1], "
             "R is the rank of Input(X)."));
   } else if (rank == 0) {
-    PADDLE_ENFORCE_EQ(axis >= -1 || axis <= 0,
+    PADDLE_ENFORCE_EQ(axis >= -1 && axis <= 0,
                       true,
                       common::errors::InvalidArgument(
                           "Attr(axis) value should be in range [-1, "
