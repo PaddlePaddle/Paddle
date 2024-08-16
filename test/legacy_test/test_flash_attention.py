@@ -76,6 +76,12 @@ def attention_naive_with_mask(q, k, v, attn_bias):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
+is_sm80 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
+
 is_sm8x = (
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] == 8
@@ -431,7 +437,9 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
 class TestFlashAttentionAPITest5(TestFlashAttentionAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 256)
+        self.shape = (
+            (8, 1024, 16, 256) if (is_sm80 or is_sm90) else (8, 1024, 16, 192)
+        )
         self.dtype = 'float16'
         self.dropout = 0.0
         self.causal = False
