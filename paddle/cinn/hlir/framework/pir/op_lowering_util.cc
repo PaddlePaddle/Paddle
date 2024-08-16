@@ -475,18 +475,16 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
   int tail = 0;
   bool bound = true;
   auto shape = pe::GetFirstStepReduceShape(inshape, axes, bound, tail);
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_LT(
       bound,
       true,
-      phi::errors::InvalidArgument(
-          "The 'bound' must not be null. inshape: %s",
-          std::accumulate(inshape.begin(),
-                          inshape.end(),
-                          std::string(""),
-                          [](const std::string& left, const int right) {
-                            return left + std::to_string(right) + " ";
-                          })
-              .c_str()));
+      "Bound check failed. Shape: ",
+      std::accumulate(inshape.begin(),
+                      inshape.end(),
+                      std::string(""),
+                      [](const std::string& left, const int right) {
+                        return left + std::to_string(right) + " ";
+                      }));
 
   VLOG(4) << "LoopAssignReduceWithoutLast: The input shape=["
           << cinn::utils::Join(inshape, ", ") << "], first step reduce shape=["
