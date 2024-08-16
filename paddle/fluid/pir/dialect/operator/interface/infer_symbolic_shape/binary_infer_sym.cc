@@ -1058,11 +1058,11 @@ bool IndexSelect_OpInferSymbolicShape(
 
 bool IndexAddOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const &auto x_shape_or_data =
+  const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const &auto index_shape_or_data =
+  const auto &index_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const &auto add_value_shape_or_data =
+  const auto &add_value_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
   std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
   std::vector<symbol::DimExpr> index_shape = index_shape_or_data.shape();
@@ -1107,7 +1107,7 @@ bool IndexAdd_OpInferSymbolicShape(
 
 bool IndexPutOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+  const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
 
