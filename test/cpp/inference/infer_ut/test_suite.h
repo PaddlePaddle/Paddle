@@ -27,7 +27,6 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
-#include "paddle/common/enforce.h"
 #include "paddle/include/paddle_inference_api.h"
 
 namespace paddle {
@@ -224,10 +223,7 @@ double SingleThreadProfile(paddle_infer::Predictor *predictor,
   timer.start();
   // inference
   for (size_t i = 0; i < repeat_times; ++i) {
-    PADDLE_ENFORCE_EQ(predictor->Run(),
-                      true,
-                      phi::errors::PreconditionNotMet(
-                          "predictor->Run() should return true."));
+    CHECK(predictor->Run());
     auto output_names = predictor->GetOutputNames();
     for (auto &output_name : output_names) {
       auto output_tensor = predictor->GetOutputHandle(output_name);
