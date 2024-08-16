@@ -227,11 +227,22 @@ bool AffineGridOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   std::vector<symbol::DimExpr> input_dims = input_shape_or_data.shape();
 
-  const auto &output_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &attributes = op->attributes();
+  const int output_shape_size;
+  if (attributes.find("output_shape") != attributes.end()) {
+    output_shape_size =
+        op->attribute<paddle::dialect::IntArrayAttribute>("output_shape")
+            .shape()
+            .size();
+  } else if (op->operand_source(1)) {
+    const auto &output_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-  const int64_t output_shape_size =
-      static_cast<int64_t>(output_shape_or_data.shape().size());
+    output_shape_size = output_shape_or_data.shape().size();
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The input arguments must have the shape of output, please check!"));
+  }
 
   std::vector<symbol::DimExpr> output_dims;
   output_dims.push_back(input_dims[0]);  // N
