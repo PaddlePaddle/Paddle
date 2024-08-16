@@ -235,9 +235,9 @@ bool BmmOpInferSymbolicShape(pir::Operation *op,
   auto cal_shape_fn = [](const symbol::DimExpr &x,
                          const symbol::DimExpr &y,
                          const std::string &error_str) -> symbol::DimExpr {
-    if (x == -1) {
+    if (!x.Has<std::int64_t>()) {
       return y;
-    } else if (y == -1) {
+    } else if (!y.Has<std::int64_t>()) {
       return x;
     }
     PADDLE_ENFORCE_EQ(x, y, common::errors::InvalidArgument(error_str, x, y));
