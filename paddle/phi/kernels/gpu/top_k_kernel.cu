@@ -294,7 +294,7 @@ void TopkKernel(const Context& dev_ctx,
       }
     }
 
-    const int kMaxHeight = 2048;
+    const int kMaxHeight = 2147483647;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
     auto config =
         phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);

@@ -196,21 +196,56 @@ __device__ __forceinline__ void AddTo(Pair<T> topk[],
   for (int k = beam_size - 2; k >= 0; k--) {
     if (largest) {
       if (topk[k] < p) {
-        topk[k + 1] = topk[k];
+        topk[k + 1].v = topk[k].v;
+        topk[k + 1].id = topk[k].id;
       } else {
-        topk[k + 1] = p;
+        topk[k + 1].v = p.v;
+        topk[k + 1].id = p.id;
         return;
       }
     } else {
       if (topk[k] > p) {
-        topk[k + 1] = topk[k];
+        topk[k + 1].v = topk[k].v;
+        topk[k + 1].id = topk[k].id;
       } else {
-        topk[k + 1] = p;
+        topk[k + 1].v = p.v;
+        topk[k + 1].id = p.id;
         return;
       }
     }
   }
-  topk[0] = p;
+  topk[0].v = p.v;
+  topk[0].id = p.id;
+}
+
+template <typename T>
+__device__ __forceinline__ void AddTo(Pair<T> topk[],
+                                      const Pair<T>& p,
+                                      int beam_size,
+                                      const bool& largest, const int offset) {
+  for (int k = beam_size - 2; k >= 0; k--) {
+    if (largest) {
+      if (topk[k + offset] < p) {
+        topk[k + 1 + offset].v = topk[k + offset].v;
+        topk[k + 1 + offset].id = topk[k + offset].id;
+      } else {
+        topk[k + 1 + offset].v = p.v;
+        topk[k + 1 + offset].id = p.id;
+        return;
+      }
+    } else {
+      if (topk[k + offset] > p) {
+        topk[k + 1 + offset].v = topk[k + offset].v;
+        topk[k + 1 + offset].id = topk[k + offset].id;
+      } else {
+        topk[k + 1 + offset].v = p.v;
+        topk[k + 1 + offset].id = p.id;
+        return;
+      }
+    }
+  }
+  topk[0 + offset].v = p.v;
+  topk[0 + offset].id = p.id;
 }
 
 template <typename T, int BlockSize>
@@ -243,20 +278,20 @@ __device__ __forceinline__ void GetTopK(Pair<T> topk[],
                                         int dim,
                                         const Pair<T>& max,
                                         int beam_size,
-                                        const bool& largest) {
+                                        const bool& largest, const int offset) {
   while (idx < dim) {
     if (largest) {
-      if (topk[beam_size - 1] < src[idx]) {
+      if (topk[beam_size - 1 + offset] < src[idx]) {
         Pair<T> tmp(src[idx], idx);
         if (tmp < max) {
-          AddTo<T>(topk, tmp, beam_size, largest);
+          AddTo<T>(topk, tmp, beam_size, largest,offset);
         }
       }
     } else {
-      if (topk[beam_size - 1] > src[idx]) {
+      if (topk[beam_size - 1 + offset] > src[idx]) {
         Pair<T> tmp(src[idx], idx);
         if (tmp > max) {
-          AddTo<T>(topk, tmp, beam_size, largest);
+          AddTo<T>(topk, tmp, beam_size, largest,offset);
         }
       }
     }
@@ -283,7 +318,8 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[],
     } else {
       for (int k = 0; k < MaxLength; k++) {
         if (k < MaxLength - (*beam)) {
-          topk[k] = topk[k + *beam];
+          topk[k].v = topk[k + *beam].v;
+          topk[k].id = topk[k + *beam].id;
         } else {
           if (largest) {
             topk[k].set(-static_cast<T>(INFINITY), -1);
@@ -293,8 +329,9 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[],
         }
       }
       if (!(*is_empty)) {
+        const int offset =  MaxLength - *beam;
         GetTopK<T, BlockSize>(
-            topk + MaxLength - *beam, src, tid, dim, *max, length, largest);
+            topk, src, tid, dim, *max, length, largest, offset);
       }
     }
 
@@ -309,7 +346,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
                                               const bool& largest) {
   if (largest) {
 #pragma unroll
-    for (int offset = 16; offset > 0; offset >>= 1) {
+    for (int offset = WARP_SIZE/2; offset > 0; offset >>= 1) {
       T tmp_val =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
       int tmp_id =
@@ -321,7 +358,7 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
     }
   } else {
 #pragma unroll
-    for (int offset = 16; offset > 0; offset >>= 1) {
+    for (int offset = WARP_SIZE/2; offset > 0; offset >>= 1) {
       T tmp_val =
           phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
       int tmp_id =
@@ -355,40 +392,43 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
       shared_max[wid] = input_now;
     }
     __syncthreads();
-    if (largest) {
-      input_now = (tid < BlockSize / 32)
-                      ? shared_max[lane]
-                      : Pair<T>(-static_cast<T>(INFINITY), -1);
-    } else {
-      input_now = (tid < BlockSize / 32)
-                      ? shared_max[lane]
-                      : Pair<T>(static_cast<T>(INFINITY), -1);
+    if(BlockSize > WARP_SIZE)
+    {
+      if (largest) {
+        input_now = (tid < BlockSize / WARP_SIZE)
+                        ? shared_max[lane]
+                        : Pair<T>(-static_cast<T>(INFINITY), -1);
+      } else {
+        input_now = (tid < BlockSize / WARP_SIZE)
+                        ? shared_max[lane]
+                        : Pair<T>(static_cast<T>(INFINITY), -1);
+      }
+      if (wid == 0) {
+        input_now = WarpReduce(input_now, largest);
+        if (lane == 0) shared_max[0] = input_now;
+      }
+      __syncthreads();
     }
-    if (wid == 0) {
-      input_now = WarpReduce(input_now, largest);
-      if (lane == 0) shared_max[0] = input_now;
-    }
-    __syncthreads();
-
     if (tid == 0) {
       **topVal = input_now.v;
       **topIds = input_now.id;
       (*topVal)++;
       (*topIds)++;
     }
+    if (--(*k) == 0) break;
     int tid_max = shared_max[0].id % BlockSize;
     if (tid == tid_max) {
       (*beam)++;
       if (*beam < MaxLength) {
-        topk[0] = topk[*beam];
+        topk[0].v = topk[*beam].v;
+        topk[0].id = topk[*beam].id;
       }
     }
-    if (--(*k) == 0) break;
 
     unsigned long long mask = 0ull;
     CREATE_SHFL_MASK(mask, true);
-    if (tid_max / 32 == wid) {
-      if (phi::backends::gpu::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
+    if (tid_max / WARP_SIZE == wid) {
+      if (phi::backends::gpu::CudaShuffleSync(mask, *beam, tid_max % WARP_SIZE, WARP_SIZE) ==
           MaxLength)
         break;
     }
@@ -416,12 +456,12 @@ __global__ void KeMatrixTopK(T* output,
                              int num,
                              bool largest = true) {
   const int tid = threadIdx.x;
-  const int wid = tid / 32;
-  const int lane = tid % 32;
+  const int wid = tid / WARP_SIZE;
+  const int lane = tid % WARP_SIZE;
   const int bid = blockIdx.x;
   for (int i = bid; i < num; i += grid_dim) {
     int top_num = k;
-    __shared__ Pair<T> shared_max[BlockSize / 32];
+    __shared__ Pair<T> shared_max[BlockSize / WARP_SIZE];
     T* out = output + i * output_stride;
     int64_t* inds = indices + i * k;
     Pair<T> topk[MaxLength];
