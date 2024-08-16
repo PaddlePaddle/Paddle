@@ -794,7 +794,7 @@ class CodeGen:
                 op_info, op_name
             )
 
-            x_cast = f"cast_({x}, promotion_type);"
+            x_cast = f"pir::PromoteCastInplace(\"{x}\", {x}, promotion_type);"
 
             type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
                 op_name=op_name,

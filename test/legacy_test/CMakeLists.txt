@@ -1039,7 +1039,8 @@ set(TEST_CINN_OPS
     test_pad_op
     test_pool2d_op
     test_erf_op
-    test_cumsum_op)
+    test_cumsum_op
+    test_where_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)

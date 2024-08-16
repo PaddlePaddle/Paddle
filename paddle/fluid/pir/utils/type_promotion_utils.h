@@ -13,21 +13,27 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/fluid/eager/api/utils/global_utils.h"
-#include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/common/type_promotion.h"
 
 namespace pir {
 
 inline pir::Value PromoteCast(const std::string& input_name,
                               const pir::Value& input,
-                              const phi::DataType& dst_dtype,
-                              bool trace_backward = true) {
-  if (paddle::imperative::GetDataType(input) != dst_dtype) {
-    return paddle::imperative::Cast(input, dst_dtype, trace_backward);
+                              const phi::DataType& dst_dtype) {
+  if (paddle::dialect::GetValueDataType(input) != dst_dtype) {
+    return paddle::dialect::cast(input, dst_dtype);
   } else {
     return input;
+  }
+}
+
+inline void PromoteCastInplace(const std::string& input_name,
+                               const pir::Value& input,
+                               const phi::DataType& dst_dtype) {
+  if (paddle::dialect::GetValueDataType(input) != dst_dtype) {
+    paddle::dialect::cast_(input, dst_dtype);
   }
 }
 
@@ -50,7 +56,8 @@ std::vector<int64_t> GetValueShape(const pir::Value& value) {
         value.type().dyn_cast<paddle::dialect::SparseCsrTensorType>().dims());
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
-        "Currently, we can only get shape for dense_tensor or selected_rows."));
+        "Currently, we can only get shape for dense_tensor, selected_rows, "
+        "sparse_coo_tensor, sparse_csr_tensor and dist_dense_tensor."));
   }
 }
 
