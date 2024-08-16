@@ -228,12 +228,41 @@ bool AucOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool BatchFcOpInferSymbolicShape(pir::Operation *op,
-//                                  pir::InferSymbolicShapeContext
-//                                  *infer_context) {
-//   // pass
-//   return true;
-// }
+bool BatchFcOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &w_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+
+  const std::vector<symbol::DimExpr> &input_dims = input_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &w_dims = w_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &bias_dims = bias_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      3,
+      common::errors::InvalidArgument("Input of BatchFcOp should have 3D."));
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      3,
+      common::errors::InvalidArgument("W of BatchFcOp should have 3D."));
+  infer_context->AddEqualCstr(input_dims[0], w_dims[0]);
+  infer_context->AddEqualCstr(input_dims[2], w_dims[1]);
+  infer_context->AddEqualCstr(bias_dims[0], input_dims[0]);
+  infer_context->AddEqualCstr(bias_dims[1], w_dims[2]);
+
+  std::vector<symbol::DimExpr> out_dims = {
+      input_dims[0], input_dims[1], w_dims[2]};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 
 bool BatchNormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
