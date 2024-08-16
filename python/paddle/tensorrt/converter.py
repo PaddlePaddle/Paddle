@@ -64,7 +64,7 @@ class PaddleToTensorRTConverter:
         self.trt_output_value_map = {}
 
     def find_graph_inputs_outputs(self, group_op):
-        operations = list(group_op.blocks())[0].ops
+        operations = next(iter(group_op.blocks())).ops
         all_values = {}
         output_values = {}
 
@@ -98,7 +98,7 @@ class PaddleToTensorRTConverter:
 
     def convert_subgraph_to_trt(self, program, group_op):
         _logger.info(f"start process {group_op}")
-        operations = list(group_op.blocks())[0].ops
+        operations = next(iter(group_op.blocks())).ops
         input_values, output_values = self.find_graph_inputs_outputs(group_op)
         builder = trt.Builder(trt.Logger(trt.Logger.VERBOSE))
         network = builder.create_network(

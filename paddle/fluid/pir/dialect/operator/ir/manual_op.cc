@@ -3773,7 +3773,8 @@ bool IncrementOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(x());
-  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      out(), symbol::TensorShapeOrDataDimExprs{operand_shape_or_data.shape()});
   return true;
 }
 
@@ -3978,7 +3979,8 @@ bool Increment_Op::InferSymbolicShape(
     pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(x());
-  infer_context->SetShapeOrDataForValue(out(), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      out(), symbol::TensorShapeOrDataDimExprs{operand_shape_or_data.shape()});
   return true;
 }
 
