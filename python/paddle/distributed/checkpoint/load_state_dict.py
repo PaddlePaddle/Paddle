@@ -142,7 +142,7 @@ def get_rank_to_files(
     for rank, need_files in enumerate(all_necessary_files):
         seen = set()
         unique_need_files = [
-            x for x in need_files if not (x in seen or seen.add(x))
+            f for f in need_files if not (f in seen or seen.add(x))
         ]
         rank_to_files[rank] = unique_need_files
     logger.debug(f"mapping rank_to_files:{rank_to_files}")
