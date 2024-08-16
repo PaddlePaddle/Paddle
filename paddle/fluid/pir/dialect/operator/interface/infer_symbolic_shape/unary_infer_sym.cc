@@ -2641,20 +2641,20 @@ bool UniformInplaceOpInferSymbolicShape(
   PADDLE_ENFORCE_LT(
       min,
       max,
-      errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The uniform_random's min must less then max. But received min = "
           "%f great than or equal max = %f.",
           min,
           max));
   PADDLE_ENFORCE_GE(diag_num,
                     0,
-                    errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The uniform_random's diag_num must greater than or "
                         "equal 0. But received diag_num (%d) < 0.",
                         diag_num));
   PADDLE_ENFORCE_GE(diag_step,
                     0,
-                    errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The uniform_random's diag_step must greater than or "
                         "equal 0. But received diag_step (%d) < 0.",
                         diag_step));
