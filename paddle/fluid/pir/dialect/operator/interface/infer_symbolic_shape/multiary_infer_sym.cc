@@ -1200,13 +1200,13 @@ bool FlashAttnQKVPackedOpInferSymbolicShape(
   if (qkv_dims.size() == 4) {
     // qkv [total_*, nheads/nheads_k+2, nheads_k, headdim]
     out_dims.emplace_back(qkv_dims[0]);
-    out_dims.emplace_back(qkv_dims[1] - 2 * qkv_dims[2]);
+    out_dims.emplace_back(qkv_dims[1] - symbol::DimExpr(2) * qkv_dims[2]);
     out_dims.emplace_back(qkv_dims[3]);
   } else if (qkv_dims.size() == 5) {
     // qkv [batchsize, seqlen, nheads/nheads_k+2, nheads_k, headdim]
     out_dims.emplace_back(qkv_dims[0]);
     out_dims.emplace_back(qkv_dims[1]);
-    out_dims.emplace_back((qkv_dims[2] - 2) * qkv_dims[3]);
+    out_dims.emplace_back((qkv_dims[2] - symbol::DimExpr(2)) * qkv_dims[3]);
     out_dims.emplace_back(qkv_dims[4]);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
