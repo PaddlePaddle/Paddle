@@ -82,6 +82,7 @@
 - slice
 - split
 - split_with_num
+- squeeze
 - strided_slice
 - sum
 - swish
@@ -95,5 +96,6 @@
 - truncated_gaussian_random
 - uniform
 - unpool
+- unsqueeze
 - zeros
 - zeros_like

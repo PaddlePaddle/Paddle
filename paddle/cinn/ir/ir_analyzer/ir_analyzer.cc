@@ -36,6 +36,7 @@
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/common/enforce.h"
+#include "paddle/fluid/platform/enforce.h"
 namespace cinn {
 namespace ir {
 namespace analyzer {
@@ -65,9 +66,15 @@ std::vector<Expr> GetLoops(const std::vector<Expr>& exprs,
 
 std::vector<Expr> GetLoops(const std::vector<Expr>& exprs, const Expr& block) {
   std::vector<Expr> result;
-  CHECK(block.As<ir::ScheduleBlockRealize>());
-  CHECK(block.As<ir::ScheduleBlockRealize>()
-            ->schedule_block.As<ir::ScheduleBlock>());
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ir::ScheduleBlockRealize>(),
+      phi::errors::InvalidArgument(
+          "The block must be convertible to ir::ScheduleBlockRealize."));
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ir::ScheduleBlockRealize>()
+          ->schedule_block.As<ir::ScheduleBlock>(),
+      phi::errors::InvalidArgument(
+          "Cannot cast block to ir::ScheduleBlockRealize."));
   std::string block_name = block.As<ir::ScheduleBlockRealize>()
                                ->schedule_block.As<ir::ScheduleBlock>()
                                ->name;
@@ -102,12 +109,20 @@ std::vector<Expr> GetAllBlocks(const std::vector<Expr>& exprs) {
   for (auto& it_expr : exprs) {
     VLOG(3) << "it_expr is : " << it_expr;
   }
-  CHECK(!result.empty()) << "Didn't find blocks in expr.";
+  PADDLE_ENFORCE_EQ(
+      result.empty(),
+      false,
+      phi::errors::InvalidArgument("Didn't find blocks in expr."));
   return result;
 }
 
 std::vector<Expr> GetChildBlocks(const Expr& expr) {
-  CHECK(expr.As<ir::ScheduleBlockRealize>() || expr.As<ir::For>());
+  if (!expr.As<ir::ScheduleBlockRealize>()) {
+    PADDLE_ENFORCE_NOT_NULL(expr.As<ir::For>(),
+                            phi::errors::InvalidArgument(
+                                "The expression must be convertible to either "
+                                "ir::ScheduleBlockRealize or ir::For."));
+  }
   FindBlocksVisitor visitor;
   std::vector<Expr> result = visitor(&expr);
   return result;
@@ -143,12 +158,19 @@ Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr) {
         },
         true);
     if (!find_expr.empty()) {
-      CHECK(it_expr.As<ir::Block>());
+      PADDLE_ENFORCE_NOT_NULL(
+          it_expr.As<ir::Block>(),
+          phi::errors::InvalidArgument(
+              "The expression cannot be cast to ir::Block."));
       PADDLE_ENFORCE_EQ(it_expr.As<ir::Block>()->stmts.size(),
                         1U,
                         ::common::errors::InvalidArgument(
                             "The root block should only have one stmt!"));
-      CHECK(it_expr.As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>());
+      PADDLE_ENFORCE_NOT_NULL(
+          it_expr.As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>(),
+          phi::errors::InvalidArgument(
+              "The first statement in the block must be convertible to "
+              "ir::ScheduleBlockRealize."));
       return it_expr.As<ir::Block>()->stmts[0];
     }
   }
@@ -160,14 +182,25 @@ Expr GetRootBlock(const std::vector<Expr>& exprs, const Expr& expr) {
 DeviceAPI GetDeviceAPI(const std::vector<Expr>& exprs) {
   auto find_for_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
       exprs.front(), [&](const Expr* x) { return x->As<ir::For>(); }, true);
-  CHECK(!find_for_nodes.empty());
+  PADDLE_ENFORCE_EQ(
+      find_for_nodes.empty(),
+      false,
+      phi::errors::InvalidArgument(
+          "The find_for_nodes container is empty. It must not be empty."));
   return (*find_for_nodes.begin()).As<ir::For>()->device_api;
 }
 
 Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
-  CHECK(block.As<ir::ScheduleBlockRealize>());
-  CHECK(block.As<ir::ScheduleBlockRealize>()
-            ->schedule_block.As<ir::ScheduleBlock>());
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ir::ScheduleBlockRealize>(),
+      phi::errors::InvalidArgument(
+          "The block is not convertible to ir::ScheduleBlockRealize. It must "
+          "be convertible to ir::ScheduleBlockRealize."));
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ir::ScheduleBlockRealize>()
+          ->schedule_block.As<ir::ScheduleBlock>(),
+      phi::errors::InvalidArgument(
+          "The schedule_block must be convertible to ir::ScheduleBlock."));
   std::string block_name = block.As<ir::ScheduleBlockRealize>()
                                ->schedule_block.As<ir::ScheduleBlock>()
                                ->name;
@@ -180,7 +213,10 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
     }
   }
 
-  CHECK(visitor.target_) << ", block name : " << block_name << "\n" << exprs;
+  PADDLE_ENFORCE_NOT_NULL(visitor.target_,
+                          phi::errors::InvalidArgument(
+                              "The visitor target is nullptr. It must not be "
+                              "nullptr."));
   if (visitor.target_->As<ir::Block>()) {
     for (auto& stmt : visitor.target_->As<ir::Block>()->stmts) {
       if (stmt.As<ir::ScheduleBlockRealize>()) {
@@ -230,7 +266,9 @@ Expr AddUnitLoop(const std::vector<Expr>& exprs, const Expr& block) {
 }
 
 Expr GetStoreOfSBlock(const Expr& block) {
-  CHECK(block.As<ScheduleBlockRealize>());
+  PADDLE_ENFORCE_NOT_NULL(block.As<ScheduleBlockRealize>(),
+                          phi::errors::InvalidArgument(
+                              "Failed to cast block to ScheduleBlockRealize."));
   std::set<Expr> find_store = ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<Store>(); }, true);
   PADDLE_ENFORCE_EQ(find_store.size(),
@@ -241,15 +279,25 @@ Expr GetStoreOfSBlock(const Expr& block) {
 }
 
 Tensor GetStoreTensorOfSBlock(const Expr& block) {
-  CHECK(block.As<ScheduleBlockRealize>());
+  PADDLE_ENFORCE_NOT_NULL(block.As<ScheduleBlockRealize>(),
+                          phi::errors::InvalidArgument(
+                              "Failed to cast block to ScheduleBlockRealize."));
   Expr find_store = GetStoreOfSBlock(block);
-  CHECK(find_store.As<Store>()->tensor.as_tensor());
+  PADDLE_ENFORCE_NOT_NULL(
+      find_store.As<Store>()->tensor.as_tensor(),
+      phi::errors::InvalidArgument(
+          "The tensor must be convertible to Tensor type."));
   return find_store.As<Store>()->tensor.as_tensor_ref();
 }
 
 std::vector<Expr> GetConsumerSBlocks(const Expr& block, const Expr& root) {
-  CHECK(block.As<ScheduleBlockRealize>());
-  CHECK(root.As<ScheduleBlockRealize>());
+  PADDLE_ENFORCE_NOT_NULL(block.As<ScheduleBlockRealize>(),
+                          phi::errors::InvalidArgument(
+                              "Failed to cast block to ScheduleBlockRealize."));
+  PADDLE_ENFORCE_NOT_NULL(
+      root.As<ScheduleBlockRealize>(),
+      phi::errors::InvalidArgument(
+          "Failed to cast 'root' to ScheduleBlockRealize."));
   std::vector<Expr> consumers;
   std::string store_tensor_name = GetStoreTensorOfSBlock(block)->name;
   if (IsReduceInitTensorName(store_tensor_name)) {
@@ -273,8 +321,12 @@ std::vector<Expr> GetConsumerSBlocks(const Expr& block, const Expr& root) {
         return x->As<ScheduleBlockRealize>() && *x != block && *x != root;
       });
   for (auto& find_block : find_blocks) {
-    CHECK(find_block.As<ScheduleBlockRealize>()
-              ->schedule_block.As<ScheduleBlock>());
+    PADDLE_ENFORCE_NOT_NULL(
+        find_block.As<ScheduleBlockRealize>()
+            ->schedule_block.As<ScheduleBlock>(),
+        phi::errors::InvalidArgument(
+            "The schedule_block within ScheduleBlockRealize must be "
+            "convertible to ScheduleBlock type."));
     auto block_body = find_block.As<ScheduleBlockRealize>()
                           ->schedule_block.As<ScheduleBlock>()
                           ->body;
@@ -299,8 +351,13 @@ std::vector<Expr> GetConsumerSBlocks(const Expr& block, const Expr& root) {
 
 std::vector<std::pair<Expr, Expr>> GetConsumerLoadsAndSBlocks(
     const Expr& block, const Expr& root) {
-  CHECK(block.As<ScheduleBlockRealize>());
-  CHECK(root.As<ScheduleBlockRealize>());
+  PADDLE_ENFORCE_NOT_NULL(block.As<ScheduleBlockRealize>(),
+                          phi::errors::InvalidArgument(
+                              "Failed to cast block to ScheduleBlockRealize."));
+  PADDLE_ENFORCE_NOT_NULL(
+      root.As<ScheduleBlockRealize>(),
+      ::common::errors::InvalidArgument(
+          "Failed to cast 'root' to ScheduleBlockRealize."));
 
   Expr store = GetStoreOfSBlock(block);
   std::vector<Expr> consumer_blocks = GetConsumerSBlocks(block, root);
@@ -387,7 +444,11 @@ ir::Expr ReplaceVarWithExpr(const ir::Expr& source,
 
 std::vector<ir::Expr> GetIterValuesOfAccess(ir::Expr load_or_store,
                                             ir::Expr block) {
-  CHECK(load_or_store.As<ir::Load>() || load_or_store.As<ir::Store>());
+  if (!load_or_store.As<ir::Load>())
+    PADDLE_ENFORCE_NOT_NULL(
+        load_or_store.As<ir::Store>(),
+        ::common::errors::InvalidArgument(
+            "Failed to cast 'load_or_store' to ir::Store type."));
   std::vector<ir::Expr> indices = load_or_store.As<ir::Load>()
                                       ? load_or_store.As<ir::Load>()->indices
                                       : load_or_store.As<ir::Store>()->indices;
