@@ -30,6 +30,7 @@ def fused_moe(
     ffn2_scale=None,
     quant_method="None",
     moe_topk=2,
+    norm_topk_prob=True,
 ):
     """
     Applies fused moe kernel.
@@ -45,7 +46,8 @@ def fused_moe(
         ffn1_scale (Tensor, optional): the input scale Tensor Provided to weight for dequantization. Its shape is [num_experts, d_feed_forward*2].
         ffn2_scale (Tensor, optional): the input scale Tensor Provided to weight for dequantization. Its shape is [num_experts, d_model].
         quant_method (string): Currently not supported.
-        moe_topk: Select the top k experts for each token.
+        moe_topk (int): Select the top k experts for each token.
+        norm_topk_prob (bool): Whether to normalize the topk probabilities.
 
     Returns:
         Tensor: the output Tensor.
@@ -66,7 +68,7 @@ def fused_moe(
             >>> ffn2_weight = paddle.randn([8, 2048, 1024])
             >>> ffn2_bias = paddle.randn([8, 1, 1024])
             >>> moe_topk = 2
-            >>> out = fused_moe(x, gate_weight, ffn1_weight, ffn1_bias, ffn2_weight, ffn2_bias, None, None,"None", moe_topk)
+            >>> out = fused_moe(x, gate_weight, ffn1_weight, ffn1_bias, ffn2_weight, ffn2_bias, None, None,"None", moe_topk, True)
             >>> print(out.shape)
             [10, 128, 1024]
 
@@ -83,6 +85,7 @@ def fused_moe(
             ffn2_bias,
             quant_method,
             moe_topk,
+            norm_topk_prob,
         )
         return final_out
     else:
@@ -104,6 +107,7 @@ def fused_moe(
             attrs={
                 'quant_method': quant_method,
                 'moe_topk': moe_topk,
+                'norm_topk_prob': norm_topk_prob,
             },
         )
         return final_out

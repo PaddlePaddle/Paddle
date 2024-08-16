@@ -120,3 +120,7 @@ class TestNNFunctionalSigmoidAPI(unittest.TestCase):
         for place in places:
             self.check_static_api(place)
             self.check_dynamic_api()
+
+
+if __name__ == '__main__':
+    unittest.main()

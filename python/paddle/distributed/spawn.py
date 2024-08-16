@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import multiprocessing
 import os
 import signal
 import sys
 import warnings
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 # deprecated module import
 # (TODO: GhostScreaming) It will be removed later.
@@ -39,6 +42,18 @@ from paddle.distributed.utils.launch_utils import (
     get_host_name_ip,
 )
 from paddle.framework import set_flags
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from typing_extensions import NotRequired, Unpack
+
+    class _SpawnOptions(TypedDict):
+        start_method: NotRequired[Literal['spawn', 'fork', 'forkserver']]
+        gpus: NotRequired[str | None]
+        xpus: NotRequired[str | None]
+        ips: NotRequired[str]
+
 
 __all__ = []
 
@@ -445,7 +460,14 @@ class MultiprocessContext:
         raise Exception(msg)
 
 
-def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
+def spawn(
+    func: Callable[..., None],
+    args: Iterable[Any] = (),
+    nprocs: int = -1,
+    join: bool = True,
+    daemon: bool = False,
+    **options: Unpack[_SpawnOptions],
+) -> MultiprocessContext:
     """
     Start multiple processes with ``spawn`` method for parallel training.
 
