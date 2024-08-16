@@ -1011,8 +1011,9 @@ bool SequenceMaskOpInferSymbolicShape(
           maxlen_shape_or_data.data().value()[0].Get<int64_t>());
       y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
                                   : infer_context->GetNextSymName());
+    } else {
+      y_dims.push_back(infer_context->GetNextSymName());
     }
-
   } else {
     PADDLE_THROW(::common::errors::InvalidArgument(
         "Find maxlen or max_len_tensor Failed"));
