@@ -1497,6 +1497,11 @@ bool MaxoutOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool MinOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  return MaxOpInferSymbolicShape(op, infer_context);
+}
+
 bool MaxPoolWithIndexOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -1644,11 +1649,6 @@ bool MaxPool3dWithIndexOpInferSymbolicShape(
           strides.size()));
 
   return MaxPoolWithIndexOpInferSymbolicShape(op, infer_context);
-}
-  
-bool MinOpInferSymbolicShape(pir::Operation *op,
-                             pir::InferSymbolicShapeContext *infer_context) {
-  return MaxOpInferSymbolicShape(op, infer_context);
 }
 
 bool MeanOpInferSymbolicShape(pir::Operation *op,
