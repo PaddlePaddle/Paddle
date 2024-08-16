@@ -206,20 +206,29 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   const auto &num_rows_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  int num_rows =
-      static_cast<int>(num_rows_shape_or_data.data().value()[0].Get<int64_t>());
-  int num_columns;
-  if (op->operand_source(1)) {
-    const auto &num_columns_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    num_columns = static_cast<int>(
-        num_columns_shape_or_data.data().value()[0].Get<int64_t>());
+  symbol::DimExpr num_rows;
+  symbol::DimExpr num_columns;
+  std::vector<symbol::DimExpr> out_shape;
+  if (num_rows_shape_or_data.data().has_value()) {
+    num_rows = num_rows_shape_or_data.data().value()[0];
+    if (op->operand_source(1)) {
+      const auto &num_columns_shape_or_data =
+          infer_context->GetShapeOrDataForValue(op->operand_source(1));
+      if (num_columns_shape_or_data.data().has_value()) {
+        num_columns = num_columns_shape_or_data.data().value()[0];
+        out_shape = {num_rows, num_columns};
+      } else {
+        num_columns = num_rows;
+        out_shape = {num_rows, num_columns};
+      }
+    } else {
+      out_shape = {num_rows, num_rows};
+    }
   } else {
-    num_columns = num_rows;
+    PADDLE_THROW(::common::errors::InvalidArgument("Find num_rows Failed"));
   }
-  std::vector<symbol::DimExpr> out_dims = {num_rows, num_columns};
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dims));
+      op->result(0), symbol::TensorShapeOrDataDimExprs(out_shape));
 
   return true;
 }
