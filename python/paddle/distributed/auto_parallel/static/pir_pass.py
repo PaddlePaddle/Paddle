@@ -367,7 +367,7 @@ comm_ops = [
     "pd_op.c_allreduce_sum",
     "pd_op.all_gather",
     "pd_op.c_allreduce_max",
-    "pd_op.c_reducescatter",
+    "pd_op.reduce_scatter",
 ]
 
 

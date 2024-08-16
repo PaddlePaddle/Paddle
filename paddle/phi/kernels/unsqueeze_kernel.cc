@@ -21,10 +21,10 @@
 
 namespace phi {
 template <typename T, typename Context>
-void UnsqueezeInferKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const IntArray& axes,
-                          DenseTensor* out) {
+void UnsqueezeKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const IntArray& axes,
+                     DenseTensor* out) {
   auto x_dims = x.dims();
   auto out_dims = out->dims();
   if (axes.FromTensor() && out->dims()[0] == -1) {
@@ -40,30 +40,14 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void UnsqueezeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const IntArray& axes,
-                     DenseTensor* out,
-                     DenseTensor* xshape UNUSED) {
-  UnsqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
+void UnsqueezeWithXShapeKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               const IntArray& axes,
+                               DenseTensor* out,
+                               DenseTensor* xshape UNUSED) {
+  UnsqueezeKernel<T, Context>(dev_ctx, x, axes, out);
 }
 }  // namespace phi
-
-PD_REGISTER_KERNEL(unsqueeze_infer,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::UnsqueezeInferKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16,
-                   bool,
-                   int,
-                   int16_t,
-                   uint8_t,
-                   int8_t,
-                   int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(unsqueeze,
                    CPU,
@@ -80,11 +64,27 @@ PD_REGISTER_KERNEL(unsqueeze,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(unsqueeze_with_xshape,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::UnsqueezeWithXShapeKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   bool,
+                   int,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(unsqueeze_infer,
+PD_REGISTER_KERNEL(unsqueeze,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UnsqueezeInferKernel,
+                   phi::UnsqueezeKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -98,10 +98,10 @@ PD_REGISTER_KERNEL(unsqueeze_infer,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
-PD_REGISTER_KERNEL(unsqueeze,
+PD_REGISTER_KERNEL(unsqueeze_with_xshape,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UnsqueezeKernel,
+                   phi::UnsqueezeWithXShapeKernel,
                    bool,
                    float,
                    double,
@@ -117,10 +117,10 @@ PD_REGISTER_KERNEL(unsqueeze,
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PD_REGISTER_KERNEL(unsqueeze_infer,
+PD_REGISTER_KERNEL(unsqueeze,
                    XPU,
                    ALL_LAYOUT,
-                   phi::UnsqueezeInferKernel,
+                   phi::UnsqueezeKernel,
                    float,
                    double,
                    phi::dtype::float16,
@@ -131,10 +131,10 @@ PD_REGISTER_KERNEL(unsqueeze_infer,
                    int8_t,
                    int64_t) {}
 
-PD_REGISTER_KERNEL(unsqueeze,
+PD_REGISTER_KERNEL(unsqueeze_with_xshape,
                    XPU,
                    ALL_LAYOUT,
-                   phi::UnsqueezeKernel,
+                   phi::UnsqueezeWithXShapeKernel,
                    float,
                    double,
                    phi::dtype::float16,
