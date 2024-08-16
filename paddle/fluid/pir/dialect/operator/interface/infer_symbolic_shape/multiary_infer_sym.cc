@@ -1190,7 +1190,7 @@ bool FlashAttnOpInferSymbolicShape(
 //   return true;
 // }
 
-bool FlashAttnQKVPackedOpInferSymbolicShape(
+bool FlashAttnQkvpackedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto qkv_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
