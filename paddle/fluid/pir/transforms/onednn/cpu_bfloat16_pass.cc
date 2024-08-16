@@ -859,7 +859,18 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
     } else if (bfloat16_ops_ == "onednn_op.clip" ||
                bfloat16_ops_ == "onednn_op.clip_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    } else if (bfloat16_ops_ == "onednn_op.conv2d_transpose") {
+      op_attrs.emplace("is_test", pat.Attr("is_test"));
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("data_format", pat.Attr("data_format"));
+      op_attrs.emplace("dilations", pat.Attr("dilations"));
+      op_attrs.emplace("groups", pat.Attr("groups"));
+      op_attrs.emplace("padding_algorithm", pat.Attr("padding_algorithm"));
+      op_attrs.emplace("output_padding", pat.Attr("output_padding"));
+      op_attrs.emplace("paddings", pat.Attr("paddings"));
+      op_attrs.emplace("strides", pat.Attr("strides"));
     }
+
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
     op({&pat.Tensor("quantize_0"),
         &pat.Tensor("quantize_1"),
@@ -1019,6 +1030,16 @@ class CpuBfloat16DequantPatternThree_one : public paddle::drr::DrrPatternBase {
     } else if (bfloat16_ops_ == "onednn_op.clip" ||
                bfloat16_ops_ == "onednn_op.clip_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    } else if (bfloat16_ops_ == "onednn_op.conv2d_transpose") {
+      op_attrs.emplace("is_test", pat.Attr("is_test"));
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("data_format", pat.Attr("data_format"));
+      op_attrs.emplace("dilations", pat.Attr("dilations"));
+      op_attrs.emplace("groups", pat.Attr("groups"));
+      op_attrs.emplace("padding_algorithm", pat.Attr("padding_algorithm"));
+      op_attrs.emplace("output_padding", pat.Attr("output_padding"));
+      op_attrs.emplace("paddings", pat.Attr("paddings"));
+      op_attrs.emplace("strides", pat.Attr("strides"));
     }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
@@ -1752,6 +1773,21 @@ class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("scale_out", pat.Attr("scale_out"));
       op_attrs.emplace("scale_in_eltwise", pat.Attr("scale_in_eltwise"));
       op_attrs.emplace("scale_weights", pat.Attr("scale_weights"));
+    } else if (bfloat16_ops_ == "onednn_op.conv2d_transpose_bias") {
+      op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
+      op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
+      op_attrs.emplace("fuse_relu", pat.Attr("fuse_relu"));
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
+      op_attrs.emplace("is_test", pat.Attr("is_test"));
+      op_attrs.emplace("data_format", pat.Attr("data_format"));
+      op_attrs.emplace("dilations", pat.Attr("dilations"));
+      op_attrs.emplace("groups", pat.Attr("groups"));
+      op_attrs.emplace("padding_algorithm", pat.Attr("padding_algorithm"));
+      op_attrs.emplace("output_padding", pat.Attr("output_padding"));
+      op_attrs.emplace("paddings", pat.Attr("paddings"));
+      op_attrs.emplace("strides", pat.Attr("strides"));
     }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
@@ -1905,6 +1941,21 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("scale_out", pat.Attr("scale_out"));
       op_attrs.emplace("scale_in_eltwise", pat.Attr("scale_in_eltwise"));
       op_attrs.emplace("scale_weights", pat.Attr("scale_weights"));
+    } else if (bfloat16_ops_ == "onednn_op.conv2d_transpose_bias") {
+      op_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
+      op_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
+      op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
+      op_attrs.emplace("fuse_relu", pat.Attr("fuse_relu"));
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
+      op_attrs.emplace("is_test", pat.Attr("is_test"));
+      op_attrs.emplace("data_format", pat.Attr("data_format"));
+      op_attrs.emplace("dilations", pat.Attr("dilations"));
+      op_attrs.emplace("groups", pat.Attr("groups"));
+      op_attrs.emplace("padding_algorithm", pat.Attr("padding_algorithm"));
+      op_attrs.emplace("output_padding", pat.Attr("output_padding"));
+      op_attrs.emplace("paddings", pat.Attr("paddings"));
+      op_attrs.emplace("strides", pat.Attr("strides"));
     }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
@@ -1977,11 +2028,13 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
 
 class CpuBfloat16Pass : public pir::PatternRewritePass {
  public:
-  CpuBfloat16Pass() : pir::PatternRewritePass("cpu_bfloat16_pattern_pass", 3) {}
+  CpuBfloat16Pass() : pir::PatternRewritePass("cpu_bfloat16_pass", 3) {}
+
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
+
+    // op with two inputs and one output
     const std::vector<std::string> bfloat16_ops_two_one{
-        // op with two inputs and one output
         paddle::onednn::dialect::ConcatOp::name(),
         paddle::onednn::dialect::Conv2dOp::name(),
         paddle::onednn::dialect::MatmulOp::name(),
@@ -1998,8 +2051,8 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
         paddle::onednn::dialect::Multiply_Op::name(),
     };
 
+    // op with one inputs and one output
     const std::vector<std::string> bfloat16_ops_one_one{
-        // op with one inputs and one output
         paddle::onednn::dialect::GeluOp::name(),
         paddle::onednn::dialect::SoftmaxOp::name(),
         paddle::onednn::dialect::Softmax_Op::name(),
@@ -2013,28 +2066,27 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
         paddle::onednn::dialect::Sigmoid_Op::name(),
     };
 
+    // op with two inputs and two output
     const std::vector<std::string> bfloat16_ops_two_two{
-        // op with two inputs and two output
         paddle::onednn::dialect::SqueezeOp::name(),
         paddle::onednn::dialect::Squeeze_Op::name(),
     };
 
+    // op with three inputs and one outputs
     const std::vector<std::string> bfloat16_ops_three_one{
-        // op with three inputs and one output
         paddle::onednn::dialect::FcOp::name(),
         paddle::onednn::dialect::SliceOp::name(),
         paddle::onednn::dialect::SplitOp::name(),
         paddle::onednn::dialect::FusedMatmulOp::name(),
         paddle::onednn::dialect::ClipOp::name(),
         paddle::onednn::dialect::Clip_Op::name(),
+        paddle::onednn::dialect::Conv2dTransposeOp::name(),
     };
-    /*
-      some special op(more input or putput)
-      paddle::onednn::dialect::FusionGruOp::name(); 5 input, 5 output
-      paddle::onednn::dialect::LayerNormOp::name(); 3 input, 3 output
-      paddle::onednn::dialect::ConcatOp::name();
-      paddle::onednn::dialect::BilinearInterpOp::name(); 4 input, 1 output
-    */
+
+    const std::vector<std::string> bfloat16_ops_four_one{
+        paddle::onednn::dialect::BilinearInterpOp::name(),
+        paddle::onednn::dialect::Conv2dTransposeBiasOp::name(),
+        paddle::onednn::dialect::FusedConv2dOp::name()};
 
     // op with two inputs and one output
     int benefit_idx = 1;
@@ -2063,6 +2115,7 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
           context, op, benefit_idx));
       benefit_idx++;
     }
+
     benefit_idx = 1;
     for (auto op : bfloat16_ops_one_one) {
       ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternOne_one>(
@@ -2093,7 +2146,7 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
           context, op, benefit_idx, 0));
       benefit_idx++;
     }
-    benefit_idx = 1;
+
     for (auto op : bfloat16_ops_two_two) {
       ps.Add(paddle::drr::Create<CpuBfloat16DequantPattern2_2>(
           context, op, benefit_idx, 1));
@@ -2102,23 +2155,14 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
 
     // op with three inputs and one output
     benefit_idx = 1;
-    for (auto op : bfloat16_ops_three_one) {
-      ps.Add(paddle::drr::Create<CpuBfloat16PatternThree_one>(
-          context, op, benefit_idx, 0));
-      benefit_idx++;
+    for (int i = 0; i < 3; i++) {
+      for (auto op : bfloat16_ops_three_one) {
+        ps.Add(paddle::drr::Create<CpuBfloat16PatternThree_one>(
+            context, op, benefit_idx, i));
+        benefit_idx++;
+      }
     }
-    benefit_idx = 1;
-    for (auto op : bfloat16_ops_three_one) {
-      ps.Add(paddle::drr::Create<CpuBfloat16PatternThree_one>(
-          context, op, benefit_idx, 1));
-      benefit_idx++;
-    }
-    benefit_idx = 1;
-    for (auto op : bfloat16_ops_three_one) {
-      ps.Add(paddle::drr::Create<CpuBfloat16PatternThree_one>(
-          context, op, benefit_idx, 2));
-      benefit_idx++;
-    }
+
     benefit_idx = 1;
     for (auto op : bfloat16_ops_three_one) {
       ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternThree_one>(
@@ -2155,26 +2199,23 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
           context, paddle::onednn::dialect::LayerNormOp::name(), i + 1, i));
     }
 
-    // BilinearInterpOp: 4 input, 1 output
+    benefit_idx = 1;
     for (int i = 0; i < 4; i++) {
-      ps.Add(paddle::drr::Create<CpuBfloat16PatternFour_one>(
-          context,
-          paddle::onednn::dialect::BilinearInterpOp::name(),
-          i + 1 /*benefit*/,
-          i));
+      for (auto op : bfloat16_ops_four_one) {
+        ps.Add(paddle::drr::Create<CpuBfloat16PatternFour_one>(
+            context, op, benefit_idx, i));
+        benefit_idx++;
+      }
     }
+
     ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternFour_one>(
         context, paddle::onednn::dialect::BilinearInterpOp::name(), 1));
 
-    for (int i = 0; i < 4; i++) {
-      ps.Add(paddle::drr::Create<CpuBfloat16PatternFour_one>(
-          context,
-          paddle::onednn::dialect::FusedConv2dOp::name(),
-          i + 1 /*benefit*/,
-          i));
-    }
     ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternFour_one>(
-        context, paddle::onednn::dialect::FusedConv2dOp::name(), 1));
+        context, paddle::onednn::dialect::Conv2dTransposeBiasOp::name(), 2));
+
+    ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternFour_one>(
+        context, paddle::onednn::dialect::FusedConv2dOp::name(), 3));
 
     return ps;
   }

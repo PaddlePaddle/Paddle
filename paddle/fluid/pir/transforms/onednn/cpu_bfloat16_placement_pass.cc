@@ -51,6 +51,7 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
+        !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
         !op->isa<paddle::onednn::dialect::AddOp>() &&
         !op->isa<paddle::onednn::dialect::Add_Op>() &&
         !op->isa<paddle::onednn::dialect::MultiplyOp>() &&
@@ -151,6 +152,7 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
+        !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
         !op->isa<paddle::onednn::dialect::AddOp>() &&
         !op->isa<paddle::onednn::dialect::Add_Op>() &&
         !op->isa<paddle::onednn::dialect::MultiplyOp>() &&
@@ -250,8 +252,7 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
       }
     }
 
-    if (!prev_fp32 || !next_fp32) return false;
-    return true;
+    return prev_fp32 && next_fp32;
   }
 
   void Rewrite(pir::Operation* op,
@@ -297,6 +298,7 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
+        !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
         !op->isa<paddle::onednn::dialect::AddOp>() &&
         !op->isa<paddle::onednn::dialect::Add_Op>() &&
         !op->isa<paddle::onednn::dialect::MultiplyOp>() &&

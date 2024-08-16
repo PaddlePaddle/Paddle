@@ -63,6 +63,7 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
+        !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
         !op->isa<paddle::onednn::dialect::AddOp>() &&
         !op->isa<paddle::onednn::dialect::Add_Op>() &&
         !op->isa<paddle::onednn::dialect::MultiplyOp>() &&
