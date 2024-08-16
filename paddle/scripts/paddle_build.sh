@@ -2412,24 +2412,30 @@ set +x
             tar -xf ./dataset/cls_flowers_examples.tar -C ./dataset/
 
             #train Reset50
+            echo "Starting to train ResNet50 model..."
             python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
                 -o Global.mode=train \
                 -o Global.dataset_dir=./dataset/cls_flowers_examples \
                 -o Global.output=resnet50_output \
                 -o Global.device="xpu:${CUDA_VISIBLE_DEVICES}"
+            echo "Training Resnet50 completed!"
 
             #inference Reset50
             IFS=',' read -ra DEVICES <<< "$CUDA_VISIBLE_DEVICES"
             echo ${DEVICES[0]}
+
+            echo "Starting to predict ResNet50 model..."
             python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
                 -o Global.mode=predict \
                 -o Predict.model_dir="./resnet50_output/best_model" \
                 -o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
                 -o Global.device="xpu:${DEVICES[0]}"
+            echo "Predicting Resnet50 completed!"
         fi
 
 
         cd ..
+        echo "Starting running xpu tests"
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
