@@ -1190,12 +1190,37 @@ bool FlashAttnOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool FlashAttnQkvpackedOpInferSymbolicShape(pir::Operation *op,
-//                                             pir::InferSymbolicShapeContext
-//                                             *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FlashAttnQKVPackedOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto qkv_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto qkv_dims = qkv_shape_or_data.shape();
+  ExprVec out_dims;
+
+  if (qkv_dims.size() == 4) {
+    // qkv [total_*, nheads/nheads_k+2, nheads_k, headdim]
+    out_dims = {qkv_dims[0], qkv_dims[1] - 2 * qkv_dims[2], qkv_dims[3]};
+  } else if (qkv_dims.size() == 5) {
+    // qkv [batchsize, seqlen, nheads/nheads_k+2, nheads_k, headdim]
+    out_dims = {
+        qkv_dims[0], qkv_dims[1], (qkv_dims[2] - 2) * qkv_dims[3], qkv_dims[4]};
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "qkv dims must be 4(unpadded) or 5(padded batch)"));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 
 // bool FlashAttnUnpaddedOpInferSymbolicShape(pir::Operation *op,
 //                                            pir::InferSymbolicShapeContext
