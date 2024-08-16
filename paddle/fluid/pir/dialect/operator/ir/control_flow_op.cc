@@ -488,23 +488,30 @@ void WhileOp::VerifySig() {
       pir::DenseTensorType output_tensor_type =
           output_type.dyn_cast<pir::DenseTensorType>();
 
-      const common::DDim &output_dims = output_tensor_type.dims();
-      common::DDim new_input_dims = input_tensor_type.dims();
-      for (int i = 0; i < new_input_dims.size(); i++) {
-        if (output_dims[i] == -1) {
-          new_input_dims[i] = -1;
+      auto GetCheckType = [&](const pir::DenseTensorType &type) {
+        const auto &input_dims = input_tensor_type.dims();
+        const auto &output_dims = output_tensor_type.dims();
+        auto result_dims = type.dims();
+        for (int i = 0; i < result_dims.size(); i++) {
+          if (input_dims[i] == -1 || output_dims[i] == -1) {
+            result_dims[i] = -1;
+          }
         }
-      }
-      pir::DenseTensorType new_input_tensor_type =
-          pir::DenseTensorType::get(pir::IrContext::Instance(),
-                                    input_tensor_type.dtype(),
-                                    new_input_dims,
-                                    input_tensor_type.data_layout(),
-                                    input_tensor_type.lod(),
-                                    input_tensor_type.offset());
+        return pir::DenseTensorType::get(pir::IrContext::Instance(),
+                                         type.dtype(),
+                                         result_dims,
+                                         type.data_layout(),
+                                         type.lod(),
+                                         type.offset());
+      };
+      pir::DenseTensorType check_input_tensor_type =
+          GetCheckType(input_tensor_type);
+      pir::DenseTensorType check_output_tensor_type =
+          GetCheckType(output_tensor_type);
+
       PADDLE_ENFORCE_EQ(
-          new_input_tensor_type,
-          output_tensor_type,
+          check_input_tensor_type,
+          check_output_tensor_type,
           common::errors::PreconditionNotMet(
               "The (%d) result and operand type is not equal.", index));
     } else {
@@ -701,8 +708,6 @@ void AddCstrForArgs(const pir::Value &origin_input,
   block_arg_shape_or_data.Match(
       [&](const symbol::TensorShapeOrDataDimExprs &impl) {
         const auto &block_arg_shape = impl.shape();
-        const auto &origin_input_shape =
-            infer_context->GetShapeOrDataForValue(origin_input).shape();
         const auto &yield_value_shape =
             infer_context->GetShapeOrDataForValue(yield_value).shape();
         PADDLE_ENFORCE_EQ(block_arg_shape.size(),
@@ -717,14 +722,16 @@ void AddCstrForArgs(const pir::Value &origin_input,
                               yield_value_shape.size()));
         const auto &original_input_shape =
             infer_context->GetShapeOrDataForValue(origin_input).shape();
+        if (original_input_shape.size() != block_arg_shape.size()) {
+          return;
+        }
         // GTOne
-        if (origin_input_shape.size() == block_arg_shape.size()) {
-          for (size_t j = 0; j < origin_input_shape.size(); ++j) {
-            if (infer_context->IsGreatThanOne(origin_input_shape[j])) {
-              infer_context->AddGreatThanOneCstr(block_arg_shape[j]);
-            }
+        for (size_t j = 0; j < original_input_shape.size(); ++j) {
+          if (infer_context->IsGreatThanOne(original_input_shape[j])) {
+            infer_context->AddGreatThanOneCstr(block_arg_shape[j]);
           }
         }
+
         // Equal
         for (size_t j = 0; j < block_arg_shape.size(); ++j) {
           if (block_arg_shape[j].isa<int64_t>()) {

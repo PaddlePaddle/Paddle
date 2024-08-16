@@ -250,7 +250,7 @@ class ProgramConfig:
     '''A config builder for generating a Program.
     input_type : (np.dtype, default=None), the inputs will be casted to input_type before
                 fed into TRT engine. If set to None, no casting will be performed.
-    no_cast_list : (List[str], default=None), specify the tensors that will skip the casting
+    no_cast_list : (list[str], default=None), specify the tensors that will skip the casting
     '''
 
     def __init__(

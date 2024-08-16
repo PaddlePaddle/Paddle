@@ -88,6 +88,7 @@ struct ReduceTreePattern {
                              const FusionTrackerPtr& tracker)
       : childs_(childs), root_(root), tracker_(tracker) {
     id_ = UniqueId();
+    cur_id_ = id_;
   }
   const ReducePattern& GetRootPattern() const { return root_; }
   std::vector<pir::Operation*> ops() const {
@@ -118,44 +119,48 @@ struct ReduceTreePattern {
   std::string id() const { return id_; }
   std::string id_;
 
+  mutable std::string cur_id_;
+  std::string cur_id() const { return cur_id_; }
+  std::string new_tmp_id() const {
+    if (cur_id_ == id_) {
+      cur_id_ = id_ + "_tmp_0";
+    } else {
+      int ith = std::stoi(cur_id_.substr(cur_id_.size() - 1));
+      cur_id_ = id_ + "_tmp_" + std::to_string(ith + 1);
+    }
+    return cur_id_;
+  }
+
   FusionTrackerPtr tracker_;
 
   void update_tracker() const {
-    int counter = 0;
-    std::function<std::string()> gen_name = [&counter]() {
-      return "tmp_" + std::to_string(counter++);
-    };
-    const std::string& root_name = id();
+    const std::string& root_name = GetRootPattern().id();
     std::vector<std::string> names;
-    UpdateTrackerImpl(root_name,
-                      *this,
-                      std::vector<size_t>(),
-                      gen_name,
-                      this->tracker_,
-                      &names);
-    tracker_->append(std::make_shared<CombineInstr>(names, root_name));
+    UpdateTrackerImpl(
+        root_name, *this, std::vector<size_t>(), this->tracker_, &names);
+    tracker_->append(std::make_shared<CombineInstr>(names, cur_id()));
   }
 
   void UpdateTrackerImpl(const std::string root_name,
                          const ReduceTreePattern& root,
                          const std::vector<size_t>& fake_reduce_iter_idx,
-                         const std::function<std::string()>& unique_tmp_name_fn,
                          FusionTrackerPtr tracker,
                          std::vector<std::string>* names) const {
-    // Apply a bunch of tracker to get a output_name of ReduceTreePattern.
+    // Apply a brunch of tracker to get a output_name of ReduceTreePattern.
     // names and trackers collect all the needed fusion nodes.
-    for (const auto& child : childs_) {
-      const std::string& tmp_name = unique_tmp_name_fn();
-      tracker->append(std::make_shared<TmpTransformInstr>(
-          tmp_name, root_name, tmp_name, root_name, fake_reduce_iter_idx));
-      UpdateTrackerImpl(tmp_name,
-                        child,
-                        fake_reduce_iter_idx,
-                        unique_tmp_name_fn,
-                        tracker,
-                        names);
+    for (const auto& child : root.childs()) {
+      auto origin_child_id = child.cur_id();
+      auto new_child_id = child.new_tmp_id();
+      tracker->append(
+          std::make_shared<TmpTransformInstr>(origin_child_id,
+                                              root_name,
+                                              new_child_id,
+                                              root.cur_id(),
+                                              fake_reduce_iter_idx));
+      UpdateTrackerImpl(
+          new_child_id, child, fake_reduce_iter_idx, tracker, names);
     }
-    names->push_back(root_name);
+    names->push_back(root.cur_id());
   }
 
  private:
@@ -190,29 +195,21 @@ struct ReduceTreePlusTrivialPattern {
   FusionTrackerPtr tracker_;
 
   void update_tracker() const {
-    int counter = 0;
-    std::function<std::string()> gen_name = [&counter]() {
-      return "tmp_" + std::to_string(counter++);
-    };
     const std::string& root_name = id();
-    const std::string& tmp_name_for_tree = gen_name();
+    const std::string& origin_tree_id = tree.cur_id();
+    const std::string& new_tree_id = tree.new_tmp_id();
     std::vector<std::string> names;
-    tracker_->append(
-        std::make_shared<TmpTransformInstr>(tree.GetRootPattern().id(),
-                                            sink_trivial.id(),
-                                            tmp_name_for_tree,
-                                            root_name,
-                                            fake_reduce_iter_idx));
-    tree.UpdateTrackerImpl(tmp_name_for_tree,
-                           tree,
-                           fake_reduce_iter_idx,
-                           gen_name,
-                           this->tracker_,
-                           &names);
+    tracker_->append(std::make_shared<TmpTransformInstr>(origin_tree_id,
+                                                         sink_trivial.id(),
+                                                         new_tree_id,
+                                                         root_name,
+                                                         fake_reduce_iter_idx));
+    tree.UpdateTrackerImpl(
+        new_tree_id, tree, fake_reduce_iter_idx, this->tracker_, &names);
     names.push_back(root_name);
     // optimize the loop range of R + T for speed up.
     tracker_->append(std::make_shared<TrivialLoopAlignInstr>(
-        tmp_name_for_tree, root_name, root_name, fake_reduce_iter_idx));
+        new_tree_id, root_name, root_name, fake_reduce_iter_idx));
     // collect all the Expr and represent the root_name.
     tracker_->append(std::make_shared<CombineInstr>(names, root_name));
   }
