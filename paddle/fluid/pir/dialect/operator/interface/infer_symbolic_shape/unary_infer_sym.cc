@@ -1734,12 +1734,92 @@ bool NumelOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool OverlapAddOpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   // pass
-//   return true;
-// }
+bool OverlapAddOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  const int x_rank = x_dims.size();
+
+  int hop_length = op->attribute<pir::Int32Attribute>("hop_length").data();
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      common::errors::InvalidArgument(
+          "Input(X) of OverlapAddOp should be a tensor which contains "
+          "at least 2 dimensions, but got rank %s.",
+          x_rank));
+
+  PADDLE_ENFORCE_GT(
+      hop_length,
+      0,
+      common::errors::InvalidArgument(
+          "Attribute(hop_length) of OverlapAddOp should be greater "
+          "than 0, but got %s.",
+          hop_length));
+
+  PADDLE_ENFORCE_EQ(
+      (axis == 0 || axis == -1),
+      true,
+      common::errors::InvalidArgument(
+          "Attribute(axis) of OverlapAddOp should be 0 or -1, but got %s.",
+          axis));
+
+  std::vector<symbol::DimExpr> output_shape;
+  int n_frames = 0;
+  int frame_length = 0;
+  int seq_length = 0;
+
+  int start_axis = 0;
+  int end_axis = 0;
+  if (axis == 0) {
+    n_frames = static_cast<int>(x_dims[0]);
+    frame_length = static_cast<int>(x_dims[1]);
+    start_axis = 2;
+    end_axis = x_rank - 1;
+  } else {
+    n_frames = static_cast<int>(x_dims[x_rank - 1]);
+    frame_length = static_cast<int>(x_dims[x_rank - 2]);
+    start_axis = 0;
+    end_axis = x_rank - 3;
+  }
+
+  PADDLE_ENFORCE_LE(
+      hop_length,
+      frame_length,
+      common::errors::InvalidArgument(
+          "Attribute(hop_length) of OverlapAddOp should be less or equal "
+          "to frame_length, but got hop_length(%s) > frame_length(%s).",
+          hop_length,
+          frame_length));
+
+  if (n_frames == -1) {
+    seq_length = -1;
+  } else {
+    seq_length = (n_frames - 1) * hop_length + frame_length;
+  }
+
+  for (int i = start_axis; i <= end_axis; i++) {
+    output_shape.push_back(x_dims[i]);
+  }
+
+  if (axis == 0) {
+    // (seq_length, ...)
+    output_shape.insert(output_shape.begin(), symbol::DimExpr(seq_length));
+  } else {
+    // (..., seq_length)
+    output_shape.push_back(symbol::DimExpr(seq_length));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
 
 // bool PixelShuffleOpInferSymbolicShape(pir::Operation *op,
 //                                       pir::InferSymbolicShapeContext
