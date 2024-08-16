@@ -4429,7 +4429,6 @@
   backward : spectral_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)
   output : Tensor[]{sections.size()}
