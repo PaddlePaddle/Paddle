@@ -3148,6 +3148,7 @@
   kernel :
     func : max_pool2d_with_index
   backward : max_pool2d_with_index_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : max_pool3d_with_index
   args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false, bool ceil_mode = false)
@@ -3157,6 +3158,7 @@
   kernel :
     func : max_pool3d_with_index
   backward : max_pool3d_with_index_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : maxout
   args : (Tensor x, int groups, int axis = 1)
