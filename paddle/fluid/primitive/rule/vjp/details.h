@@ -1270,7 +1270,7 @@ void maximum_grad(const Tensor& x,
   if (x_grad) {
     auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
     auto dx_res = out_grad * x_tmp;
-    if (has_dynamic_shape(x.shape())) {
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dx_reduce_res = reduce_as<T>(dx_res, x);
       set_output<T>(dx_reduce_res, x_grad);
     } else {
@@ -1289,7 +1289,7 @@ void maximum_grad(const Tensor& x,
   if (y_grad) {
     auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
     auto dy_res = out_grad * y_tmp;
-    if (has_dynamic_shape(y.shape())) {
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dy_reduce_res = reduce_as<T>(dy_res, y);
       set_output<T>(dy_reduce_res, y_grad);
     } else {
@@ -2106,7 +2106,7 @@ void minimum_grad(const Tensor& x,
   if (x_grad) {
     auto x_tmp = cast<T>(less_than<T>(x, y), out_grad.dtype());
     auto dx_res = out_grad * x_tmp;
-    if (has_dynamic_shape(x.shape())) {
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dx_reduce_res = reduce_as<T>(dx_res, x);
       set_output<T>(dx_reduce_res, x_grad);
     } else {
@@ -2125,7 +2125,7 @@ void minimum_grad(const Tensor& x,
   if (y_grad) {
     auto y_tmp = cast<T>(greater_equal<T>(x, y), out_grad.dtype());
     auto dy_res = out_grad * y_tmp;
-    if (has_dynamic_shape(y.shape())) {
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dy_reduce_res = reduce_as<T>(dy_res, y);
       set_output<T>(dy_reduce_res, y_grad);
     } else {
