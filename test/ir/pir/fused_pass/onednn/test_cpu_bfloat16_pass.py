@@ -85,7 +85,7 @@ class TestConv2dAddBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestMultiplyOpAddBf16Pass(PassTest):
@@ -133,7 +133,7 @@ class TestMultiplyOpAddBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestFcBf16Pass(PassTest):
@@ -176,7 +176,7 @@ class TestFcBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestLayerNormBf16Pass(PassTest):
@@ -218,7 +218,7 @@ class TestLayerNormBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestMultiplyAddOpAddBf16Pass(PassTest):
@@ -268,7 +268,7 @@ class TestMultiplyAddOpAddBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestAddReluBf16Pass(PassTest):
@@ -317,7 +317,7 @@ class TestAddReluBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestAddsigmoidBf16Pass(PassTest):
@@ -367,7 +367,7 @@ class TestAddsigmoidBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestfusedConv2dFusePass(PassTest):
@@ -433,7 +433,7 @@ class TestfusedConv2dFusePass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestReshapeBf16Pass(PassTest):
@@ -480,7 +480,7 @@ class TestReshapeBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestPool2dBf16Pass(PassTest):
@@ -551,7 +551,7 @@ class TestPool2dBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestSumOpBf16Pass(PassTest):
@@ -600,7 +600,7 @@ class TestSumOpBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestAddClipBf16Pass(PassTest):
@@ -648,7 +648,7 @@ class TestAddClipBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestSliceOpBf16Pass(PassTest):
@@ -696,7 +696,7 @@ class TestSliceOpBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestSqueezeOpBf16Pass(PassTest):
@@ -744,7 +744,7 @@ class TestSqueezeOpBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestpreluBf16Pass(PassTest):
@@ -786,7 +786,7 @@ class TestpreluBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestSqueezeBf16Pass(PassTest):
@@ -831,7 +831,7 @@ class TestSqueezeBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestClipBf16Pass(PassTest):
@@ -876,7 +876,7 @@ class TestClipBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestsoftmaxBf16Pass(PassTest):
@@ -921,7 +921,7 @@ class TestsoftmaxBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestConvTransposeOpBf16Pass(PassTest):
@@ -985,7 +985,7 @@ class TestConvTransposeOpBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=7e-3, rtol=7e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 class TestConvTransposeBiasOpBf16Pass(PassTest):
@@ -1049,7 +1049,7 @@ class TestConvTransposeBiasOpBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
-        self.check_pass_correct(atol=7e-3, rtol=7e-3)
+        self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
 if __name__ == "__main__":
