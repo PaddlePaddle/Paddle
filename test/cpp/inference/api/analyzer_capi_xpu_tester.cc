@@ -19,9 +19,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "test/cpp/inference/api/tester_helper.h"
-#include "paddle/common/enforce.h"
 
 namespace paddle {
 namespace inference {
@@ -47,10 +47,12 @@ TEST(PD_AnalysisConfig, use_xpu) {
   PADDLE_ENFORCE_EQ(ir_optim, true, phi::errors::PreconditionNotMet("NO"));
   PD_EnableMemoryOptim(config);
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
-  PADDLE_ENFORCE_EQ(memory_optim_enable, true, phi::errors::PreconditionNotMet("NO"));
+  PADDLE_ENFORCE_EQ(
+      memory_optim_enable, true, phi::errors::PreconditionNotMet("NO"));
   PD_EnableProfile(config);
   bool profiler_enable = PD_ProfileEnabled(config);
-  PADDLE_ENFORCE_EQ(profiler_enable, true, phi::errors::PreconditionNotMet("NO"));
+  PADDLE_ENFORCE_EQ(
+      profiler_enable, true, phi::errors::PreconditionNotMet("NO"));
   PD_SetInValid(config);
   bool is_valid = PD_IsValid(config);
   PADDLE_ENFORCE_EQ(is_valid, false, phi::errors::PreconditionNotMet("NO"));
