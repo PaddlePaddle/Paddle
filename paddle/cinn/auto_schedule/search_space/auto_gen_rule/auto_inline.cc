@@ -231,8 +231,8 @@ RuleApplyType AutoInline::AnalyseApplyType(
   auto* block_realize = block_expr.As<ir::ScheduleBlockRealize>();
   PADDLE_ENFORCE_NOT_NULL(
       block_realize,
-      phi::errors::InvalidArgument(
-          "stmt is not a ScheduleBlockRealize: %s", block_expr));
+      phi::errors::InvalidArgument("stmt is not a ScheduleBlockRealize: %s",
+                                   block_expr));
 
   AnalyzeScheduleBlockReadWriteBuffer(
       block_realize->schedule_block.As<ir::ScheduleBlock>());
@@ -256,8 +256,8 @@ void AutoInline::Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr) {
   auto* block_realize = block_expr.As<ir::ScheduleBlockRealize>();
   PADDLE_ENFORCE_NOT_NULL(
       block_realize,
-      phi::errors::InvalidArgument(
-          "stmt is not a ScheduleBlockRealize: %s", block_expr));
+      phi::errors::InvalidArgument("stmt is not a ScheduleBlockRealize: %s",
+                                   block_expr));
 
   AnalyzeScheduleBlockReadWriteBuffer(
       block_realize->schedule_block.As<ir::ScheduleBlock>());
