@@ -1279,60 +1279,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
   return strategy;
 }
 
-std::shared_ptr<framework::OpStrategy> StrategyForGenerateXShapeSymbolic(
-    const framework::NodeAttr &attrs,
-    const std::vector<ir::Tensor> &inputs,
-    const std::vector<Type> &out_type,
-    const std::vector<std::vector<ir::Dim>> &output_shapes,
-    const Target &target) {
-  PADDLE_ENFORCE_EQ(inputs.size(),
-                    1U,
-                    ::common::errors::InvalidArgument(
-                        "Require number of input tensors for generate_shape "
-                        "compute must be 1, but now get %d.",
-                        inputs.size()));
-  const auto out_shape = [&]() -> decltype(auto) {
-    std::vector<Expr> out_shape = inputs[0]->shape;
-    out_shape.insert(out_shape.begin(), Expr{0});
-    return out_shape;
-  }();
-
-  framework::CINNCompute generate_xshape_compute([=](lang::Args args,
-                                                     lang::RetValue *ret) {
-    PADDLE_ENFORCE(!args.empty(),
-                   ::common::errors::InvalidArgument(
-                       "Invalid argument. The input arguments of "
-                       "generate_xshape compute is empty! Please check."));
-    CINNValuePack pack_args = args[0];
-    PADDLE_ENFORCE_EQ(pack_args.size(),
-                      2U,
-                      ::common::errors::InvalidArgument(
-                          "Require number of input tensors for generate_shape "
-                          "compute must be 2, but now get %d.",
-                          pack_args.size()));
-    Expr input_x = pack_args[0];
-    PADDLE_ENFORCE_NOT_NULL(input_x.as_tensor(),
-                            ::common::errors::InvalidArgument(
-                                "Require input[0] must be a tensor."));
-    ir::Tensor input_tensor = input_x.as_tensor_ref();
-    auto shape_exprs = ToCinnExprs(out_shape);
-    const std::string tensor_name = pack_args[1].operator std::string();
-    ir::Tensor out = lang::Compute(
-        shape_exprs,
-        [=](const std::vector<Expr> &indices) {
-          return ir::Cast::Make(input_tensor->type(), 0.);
-        },
-        tensor_name);
-    std::vector<CINNValue> res;
-    *ret = CINNValuePack{res};
-  });
-
-  auto strategy = std::make_shared<framework::OpStrategy>();
-  strategy->AddImpl(
-      generate_xshape_compute, lang::PackedFunc(), "strategy.store.x86", 1);
-  return strategy;
-}
-
 std::shared_ptr<framework::OpStrategy> StrategyForArange(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
@@ -1904,19 +1850,6 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
           "CINNStrategySymbolic",
           cinn::hlir::op::StrategyForGenerateShapeSymbolic)
-      .set_attr<cinn::hlir::framework::OpPatternKind>(
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
-      .set_support_level(4);
-
-  CINN_REGISTER_OP(generate_xshape)
-      .describe(
-          "This operator is used to generate xshape for some ops, such as "
-          "Reshape/Squeeze.")
-      .set_num_inputs(1)
-      .set_num_outputs(1)
-      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
-          "CINNStrategySymbolic",
-          cinn::hlir::op::StrategyForGenerateXShapeSymbolic)
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);
