@@ -1299,8 +1299,6 @@ bool RoiPoolOpInferSymbolicShape(
             "The number of rois should be a 1-D tensor with shape (num_rois), "
             "but received the number of rois with %d dimension",
             rois_num_shape.size()));
-  } else {
-    const std::vector<symbol::DimExpr> &rois_num_shape = {symbol::DimExpr(-1)};
   }
 
   int pooled_height =
@@ -1325,13 +1323,10 @@ bool RoiPoolOpInferSymbolicShape(
   const auto &four = symbol::DimExpr(4);
   infer_context->AddEqualCstr(rois_shape[1], four);
 
-  infer_context->AddEqualCstr(x_shape[1],
-                              output_channels * pooled_height * pooled_width);
-
   auto out_dims = x_shape;
 
-  out_dims[0] = rois_num_shape[0];
-  out_dims[1] = symbol::DimExpr(output_channels);
+  out_dims[0] = rois_shape[0];
+  out_dims[1] = x_shape[1];
   out_dims[2] = symbol::DimExpr(pooled_height);
   out_dims[3] = symbol::DimExpr(pooled_width);
 
