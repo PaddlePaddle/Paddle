@@ -51,13 +51,12 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     auto place = dev_ctx.GetPlace();
     void *recvbuff =
         dev_ctx.template Alloc<T>(&tensor, tensor.numel() * sizeof(T));
-    gpuStream_t stream = dev_ctx.stream();
+    gpuStream_t stream = nullptr;
     paddle::platform::NCCLComm *comm = nullptr;
     phi::distributed::NCCLCommContext *comm_ctx = nullptr;
 
     const auto &comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-
     if (FLAGS_dynamic_static_unified_comm) {
       // Use New Communication Library
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
@@ -77,10 +76,12 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
+      stream = comm_ctx->GetStream();
       VLOG(3) << "new comm_context_manager has ring_id" << ring_id;
     } else {
       comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
 
+      stream = dev_ctx.stream();
       VLOG(3) << "old NCCLCommContext has ring_id " << ring_id;
     }
     if (comm_ctx) {
