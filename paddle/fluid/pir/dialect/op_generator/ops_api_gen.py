@@ -214,6 +214,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'shadow_feed_tensors',
     'sparse_momentum',
     'sync_comm_stream',
+    'sync_comm_stream_',
     'tdm_sampler',
     'soft_relu',
     'match_matrix_tensor',
