@@ -156,58 +156,6 @@ bool AddmmOpInferSymbolicShape(pir::Operation *op,
 
   return true;
 }
-bool SparseAttentionOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &q_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const symbol::ShapeOrDataDimExprs &k_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const symbol::ShapeOrDataDimExprs &v_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  const symbol::ShapeOrDataDimExprs &columns_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(4));
-
-  const auto &q_dims = q_shape_or_data.shape();
-  const auto &k_dims = k_shape_or_data.shape();
-  const auto &v_dims = v_shape_or_data.shape();
-  const auto &columns_dims = columns_shape_or_data.shape();
-
-  PADDLE_ENFORCE_EQ(q_dims.size(),
-                    4UL,
-                    common::errors::InvalidArgument(
-                        "Dimension in query' shapes should be 4."));
-  PADDLE_ENFORCE_EQ(
-      k_dims.size(),
-      4UL,
-      common::errors::InvalidArgument("Dimension in key' shapes should be 4."));
-  PADDLE_ENFORCE_EQ(v_dims.size(),
-                    4UL,
-                    common::errors::InvalidArgument(
-                        "Dimension in value' shapes should be 4."));
-
-  const symbol::DimExpr &batch_size = q_dims[0];
-  const symbol::DimExpr &num_heads = q_dims[1];
-  const symbol::DimExpr &M = q_dims[2];
-  const symbol::DimExpr &N = q_dims[3];
-  const symbol::DimExpr &sparse_nnz = columns_dims[2];
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({batch_size, num_heads, M, N})});
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
-          {batch_size, num_heads, sparse_nnz})});
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(2),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
-          {batch_size, num_heads, sparse_nnz})});
-
-  return true;
-}
 
 bool Addmm_OpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
@@ -1844,12 +1792,121 @@ bool RmsNormOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool SparseAttentionOpInferSymbolicShape(pir::Operation *op,
-//                                          pir::InferSymbolicShapeContext
-//                                          *infer_context) {
-//   // pass
-//   return true;
-// }
+bool SparseAttentionOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // Retrieve the symbolic shapes of the input tensors
+  const symbol::ShapeOrDataDimExprs &q_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &k_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const symbol::ShapeOrDataDimExprs &v_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const symbol::ShapeOrDataDimExprs &columns_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+  const symbol::ShapeOrDataDimExprs &offset_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+
+  // Optional tensors: key_padding_mask and attn_mask
+  const symbol::ShapeOrDataDimExprs &key_padding_mask_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(5));
+  const symbol::ShapeOrDataDimExprs &attn_mask_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(6));
+
+  // Extract the shape dimensions of the inputs
+  const auto &q_dims = q_shape_or_data.shape();
+  const auto &k_dims = k_shape_or_data.shape();
+  const auto &v_dims = v_shape_or_data.shape();
+  const auto &columns_dims = columns_shape_or_data.shape();
+  const auto &offset_dims = offset_shape_or_data.shape();
+  const auto &key_padding_mask_dims = key_padding_mask_shape_or_data.shape();
+  const auto &attn_mask_dims = attn_mask_shape_or_data.shape();
+
+  // Check that the input tensors q, k, and v have 4 dimensions
+  PADDLE_ENFORCE_EQ(q_dims.size(),
+                    4UL,
+                    common::errors::InvalidArgument(
+                        "Dimension in query's shapes should be 4."));
+  PADDLE_ENFORCE_EQ(k_dims.size(),
+                    4UL,
+                    common::errors::InvalidArgument(
+                        "Dimension in key's shapes should be 4."));
+  PADDLE_ENFORCE_EQ(v_dims.size(),
+                    4UL,
+                    common::errors::InvalidArgument(
+                        "Dimension in value's shapes should be 4."));
+
+  // Ensure that batch_size and num_heads are consistent across q, k, and v
+  infer_context->AddEqualCstr(q_dims[0], k_dims[0]);
+  infer_context->AddEqualCstr(q_dims[0], v_dims[0]);
+  infer_context->AddEqualCstr(q_dims[1], k_dims[1]);
+  infer_context->AddEqualCstr(q_dims[1], v_dims[1]);
+
+  // Check that k and v have consistent sequence lengths (third dimension)
+  infer_context->AddEqualCstr(k_dims[2], v_dims[2]);
+
+  // Ensure that columns tensor has consistent batch_size and num_heads with q
+  infer_context->AddEqualCstr(columns_dims[0], q_dims[0]);
+  infer_context->AddEqualCstr(columns_dims[1], q_dims[1]);
+
+  // Ensure that offset tensor has the correct shape: [batch_size, num_heads]
+  PADDLE_ENFORCE_EQ(offset_dims.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "Dimension in offset's shapes should be 2."));
+  infer_context->AddEqualCstr(offset_dims[0], q_dims[0]);
+  infer_context->AddEqualCstr(offset_dims[1], q_dims[1]);
+
+  // Optional: Ensure that key_padding_mask matches k's batch_size, num_heads,
+  // seq_len
+  if (key_padding_mask_dims.size() > 0) {
+    PADDLE_ENFORCE_EQ(
+        key_padding_mask_dims.size(),
+        3UL,
+        common::errors::InvalidArgument(
+            "Dimension in key_padding_mask's shapes should be 3."));
+    infer_context->AddEqualCstr(key_padding_mask_dims[0], k_dims[0]);
+    infer_context->AddEqualCstr(key_padding_mask_dims[1], k_dims[1]);
+    infer_context->AddEqualCstr(key_padding_mask_dims[2], k_dims[2]);
+  }
+
+  // Optional: Ensure that attn_mask matches q and k shapes: [batch_size,
+  // num_heads, seq_len, seq_len]
+  if (attn_mask_dims.size() > 0) {
+    PADDLE_ENFORCE_EQ(attn_mask_dims.size(),
+                      4UL,
+                      common::errors::InvalidArgument(
+                          "Dimension in attn_mask's shapes should be 4."));
+    infer_context->AddEqualCstr(attn_mask_dims[0], q_dims[0]);
+    infer_context->AddEqualCstr(attn_mask_dims[1], q_dims[1]);
+    infer_context->AddEqualCstr(attn_mask_dims[2], q_dims[2]);
+    infer_context->AddEqualCstr(attn_mask_dims[3], k_dims[2]);
+  }
+
+  // Get batch_size, num_heads, M, N, and sparse_nnz from the input shapes
+  const symbol::DimExpr &batch_size = q_dims[0];
+  const symbol::DimExpr &num_heads = q_dims[1];
+  const symbol::DimExpr &M = q_dims[2];
+  const symbol::DimExpr &N = q_dims[3];
+  const symbol::DimExpr &sparse_nnz = columns_dims[2];
+
+  // Set the symbolic shape for the output tensors
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({batch_size, num_heads, M, N})});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {batch_size, num_heads, sparse_nnz})});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {batch_size, num_heads, sparse_nnz})});
+
+  return true;
+}
 
 // bool SpectralNormOpInferSymbolicShape(pir::Operation *op,
 //                                       pir::InferSymbolicShapeContext
