@@ -1374,6 +1374,36 @@ def concat(
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     elif in_pir_mode():
+        check_type(input, 'input', (list, tuple, paddle.pir.Value), 'concat')
+        if not isinstance(input, paddle.pir.Value):
+            for id, x in enumerate(input):
+                check_variable_and_dtype(
+                    x,
+                    'input[' + str(id) + ']',
+                    [
+                        'bool',
+                        'float16',
+                        'bfloat16',
+                        'float32',
+                        'float64',
+                        'int16',
+                        'int32',
+                        'int64',
+                        'int8',
+                        'unit8',
+                        'uint16',
+                        'complex64',
+                        'complex128',
+                    ],
+                    'concat',
+                )
+                if x.dtype != input[0].dtype:
+                    raise TypeError(
+                        "All the Tensors in the input must have the same data type."
+                    )
+        else:
+            input = [input]
+
         if isinstance(input, paddle.pir.Value):
             assert input.is_dense_tensor_array_type(), (
                 "If the element of concat op is Value, "
