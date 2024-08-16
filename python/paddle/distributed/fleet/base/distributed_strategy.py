@@ -28,6 +28,8 @@ from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.distributed.fleet.utils.log_util import logger
 
 if TYPE_CHECKING:
+    from paddle.distributed.auto_parallel.static import graph as Graph
+    from paddle.hapi.static_flops import Table
     from paddle.static import BuildStrategy
 
 __all__ = []
@@ -675,13 +677,17 @@ class DistributedStrategy:
         ]
         table_param = self.strategy.downpour_table_param
 
-        def add_graph_config(graph, strategy):
+        def add_graph_config(
+            graph: Graph, strategy: DistributedStrategy
+        ) -> None:
             graph.feature_learning_rate = strategy.get(
                 'feature_learning_rate', 0.05
             )
             graph.nodeid_slot = strategy.get('nodeid_slot', 9008)
 
-        def sparse_optimizer_config(sgd, strategy, prefix):
+        def sparse_optimizer_config(
+            sgd: Table, strategy: DistributedStrategy, prefix: str
+        ) -> None:
             optimizer_name = strategy.get(
                 prefix + "sparse_optimizer", "adagrad"
             )
@@ -792,7 +798,9 @@ class DistributedStrategy:
                 )
                 sgd.adam.weight_bounds.extend(bounds)
 
-        def set_sparse_table_config(table_data, config):
+        def set_sparse_table_config(
+            table_data: Table, config: dict[float]
+        ) -> None:
             for key in config:
                 if key not in support_sparse_key_list:
                     raise ValueError(f"strategy key '{key}' not support")
