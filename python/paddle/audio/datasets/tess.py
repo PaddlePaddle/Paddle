@@ -13,13 +13,16 @@
 # limitations under the License.
 from __future__ import annotations
 
-import collections
 import os
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils import download
 
 from .dataset import AudioClassificationDataset
+
+if TYPE_CHECKING:
+    from .esc50 import _FeatTypeLiteral, _ModeLiteral
 
 __all__ = []
 
@@ -71,12 +74,12 @@ class TESS(AudioClassificationDataset):
             ...     # [feature_dim, num_frames] , label_id
     """
 
-    archive = {
+    archive: dict[str, str] = {
         'url': 'https://bj.bcebos.com/paddleaudio/datasets/TESS_Toronto_emotional_speech_set.zip',
         'md5': '1465311b24d1de704c4c63e4ccc470c7',
     }
 
-    label_list = [
+    label_list: list[str] = [
         'angry',
         'disgust',
         'fear',
@@ -85,20 +88,23 @@ class TESS(AudioClassificationDataset):
         'ps',  # pleasant surprise
         'sad',
     ]
-    meta_info = collections.namedtuple(
-        'META_INFO', ('speaker', 'word', 'emotion')
-    )
-    audio_path = 'TESS_Toronto_emotional_speech_set'
+
+    audio_path: str = 'TESS_Toronto_emotional_speech_set'
+
+    class meta_info(NamedTuple):
+        speaker: str
+        word: str
+        emotion: str
 
     def __init__(
         self,
-        mode: str = 'train',
+        mode: _ModeLiteral = 'train',
         n_folds: int = 5,
         split: int = 1,
-        feat_type: str = 'raw',
-        archive=None,
-        **kwargs,
-    ):
+        feat_type: _FeatTypeLiteral = 'raw',
+        archive: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> None:
         assert isinstance(n_folds, int) and (
             n_folds >= 1
         ), f'the n_folds should be integer and n_folds >= 1, but got {n_folds}'
@@ -112,7 +118,7 @@ class TESS(AudioClassificationDataset):
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 
-    def _get_meta_info(self, files) -> list[collections.namedtuple]:
+    def _get_meta_info(self, files) -> list[meta_info]:
         ret = []
         for file in files:
             basename_without_extend = os.path.basename(file)[:-4]
