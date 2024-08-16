@@ -4680,7 +4680,7 @@
   kernel:
     func : tdm_sampler
     data_type : x
-  optional : labels：
+  optional : labels
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : temporal_shift
