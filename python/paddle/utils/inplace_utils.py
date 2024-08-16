@@ -44,13 +44,13 @@ def _inplace_apis_in_dygraph_only_(
                 if in_pir_mode():
                     if check_view_value(args[0]):
                         raise ValueError(
-                            f'Sorry about what\'s happened. In to_static mode, {func.__name__}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call .assign().'
+                            f'Sorry about what\'s happened. In to_static mode, {func.__name__}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call paddle.assign().'
                         )
                 else:
                     for arg in args:
                         if hasattr(arg, "is_view_var") and arg.is_view_var:
                             raise ValueError(
-                                f'Sorry about what\'s happened. In to_static mode, {func.__name__}\'s output variable {arg.name} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {arg.name} = {arg.name}.assign().'
+                                f'Sorry about what\'s happened. In to_static mode, {func.__name__}\'s output variable {arg.name} is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call {arg.name} = paddle.assign({arg.name}).'
                             )
 
             origin_func = f"{func.__module__}.{origin_api_name}"

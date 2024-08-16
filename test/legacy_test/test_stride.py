@@ -765,6 +765,17 @@ class TestToStaticCheck(unittest.TestCase):
         self.assertRaises(ValueError, func)
 
     @test_with_dygraph_pir
+    def test_error_with_program(self):
+        @paddle.jit.to_static(full_graph=True)
+        def func():
+            x = paddle.ones((4, 3)) * 2
+            y = paddle.ones((3,))
+            xx = x.transpose_([1, 0])
+            paddle.tensor.manipulation.fill_diagonal_tensor_(xx, y)
+
+        self.assertRaises(ValueError, func)
+
+    @test_with_dygraph_pir
     def test_no_error(self):
         @paddle.jit.to_static(full_graph=True)
         def func():
