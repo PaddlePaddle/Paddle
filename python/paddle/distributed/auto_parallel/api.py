@@ -2186,16 +2186,12 @@ class DistModel:
         return self._engine.get_serial_startup_program(mode)
 
     def _make_feeds(self, data_list):
-        # TODO (2024-Q2): formula make feed
-        if self._in_pir_mode:
-            self._feed_name_list[self._mode] = ['input0', 'label0']
-
         if (
             self._mode not in self._feed_name_list
             or self._feed_name_list[self._mode] == []
         ):
-            feed_list = self._engine.get_feed_list()
-            self._feed_name_list[self._mode] = [var.name for var in feed_list]
+            self._feed_name_list[self._mode] = self._engine.get_feed_name_list()
+
         feed_name_list = self._feed_name_list[self._mode]
         if len(feed_name_list) != len(data_list):
             raise ValueError(
