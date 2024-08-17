@@ -544,7 +544,7 @@ def train(args):
 
     with base.dygraph.guard(place):
         max_images_num = args.max_images_num
-        data_shape = [-1] + args.image_shape
+        data_shape = [-1, *args.image_shape]
 
         random.seed(SEED)
         np.random.seed(SEED)
