@@ -30,15 +30,48 @@ def fused_layer_norm(
     norm_weight: Tensor,
     norm_bias: Tensor,
     epsilon: float,
-    residual_alpha: float = 1.0,
-    begin_norm_axis: int = 1,
-    bias: Tensor | None = None,
-    residual: Tensor | None = None,
-    quant_scale: float = -1,
-    quant_round_type: float = 0,
-    quant_max_bound: float = 0,
-    quant_min_bound: float = 0,
-) -> Tensor:
+    residual_alpha: float = ...,
+    begin_norm_axis: int = ...,
+    bias: Tensor | None = ...,
+    residual: Tensor | None = ...,
+    quant_scale: float = ...,
+    quant_round_type: float = ...,
+    quant_max_bound: float = ...,
+    quant_min_bound: float = ...,
+) -> Tensor: ...
+
+
+@overload
+def fused_layer_norm(
+    x: Tensor,
+    norm_weight: Tensor,
+    norm_bias: Tensor,
+    epsilon: float,
+    residual_alpha: float = ...,
+    begin_norm_axis: int = ...,
+    bias: Tensor | None = ...,
+    residual: Tensor | None = ...,
+    quant_scale: float = ...,
+    quant_round_type: float = ...,
+    quant_max_bound: float = ...,
+    quant_min_bound: float = ...,
+) -> tuple[Tensor, Tensor]: ...
+
+
+def fused_layer_norm(
+    x,
+    norm_weight,
+    norm_bias,
+    epsilon,
+    residual_alpha=1.0,
+    begin_norm_axis=1,
+    bias=None,
+    residual=None,
+    quant_scale=-1,
+    quant_round_type=0,
+    quant_max_bound=0,
+    quant_min_bound=0,
+):
     r"""
     Apply Fused LayerNorm kernel. Also support LayerNorm(bias + residual_alpha * residual + x) fused pattern.
 
