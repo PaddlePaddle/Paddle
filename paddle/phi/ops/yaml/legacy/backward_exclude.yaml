@@ -54,3 +54,4 @@
 - tril_grad
 - triu_grad
 - unpool_grad
+- unsqueeze_grad

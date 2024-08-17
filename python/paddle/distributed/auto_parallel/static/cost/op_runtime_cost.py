@@ -115,8 +115,8 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
         var_shape = var.shape
         var_dtype = var.dtype
         assert str(var_dtype) in supported_var_dtypes, (
-            "Found unsupported variable dtype: \"{}\", current supported "
-            "dtype(s) is/are: [{}]. ".format(
+            'Found unsupported variable dtype: "{}", current supported '
+            'dtype(s) is/are: [{}]. '.format(
                 str(var_dtype), ", ".join(supported_var_dtypes)
             )
         )
