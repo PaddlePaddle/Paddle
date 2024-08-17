@@ -67,6 +67,7 @@ from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
     check_chunk_id,
+    complete_chunk_id,
     complete_op_role,
     pipeline_pass,
     remove_other_rank_input_output_pass,
@@ -697,6 +698,14 @@ class Engine:
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
 
+        if (
+            self._strategy.pipeline.enable
+            and self._strategy.pipeline.schedule_mode == "VPP"
+        ):
+            complete_chunk_id(dist_program, self._strategy.pipeline)
+            # add reshard op between pipeline chunks
+            apply_partition_pass(dist_program)
+
         # Step 1.2: pir backward
         last_forward_op = dist_program.global_block().ops[-1]
         if mode == "train" and self._loss and self._optimizer:
@@ -824,8 +833,7 @@ class Engine:
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
-        print(dist_program)
-        apply_partition_pass(dist_program, self._strategy.pipeline)
+        apply_partition_pass(dist_program)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
@@ -836,7 +844,6 @@ class Engine:
         if gradient_sync_after_accumulate:
             global_params_grads = params_grads
 
-        print(dist_program)
         apply_reshard_pass(dist_program, params_grads)
         # print('after reshard', dist_program, flush=1)
 
@@ -844,7 +851,6 @@ class Engine:
         # print(
         #     'after remove_other_rank_input_output_pass', dist_program, flush=1
         # )
-
         remove_other_rank_op_pass(dist_program, params_grads)
 
         # print('after remove_other_rank_op_pass', dist_program, flush=1)
@@ -892,6 +898,7 @@ class Engine:
                 [dist_program], [startup_program]
             )
 
+        print(dist_program)
         if (
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"

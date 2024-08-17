@@ -95,10 +95,7 @@ def reshard_combine_value(program, op, operand, attr):
     return combine_value
 
 
-def apply_partition_pass(program, pipeline_strategy=None):
-    if pipeline_strategy.enable and pipeline_strategy.schedule_mode == "VPP":
-        complete_chunk_id(program, pipeline_strategy)
-
+def apply_partition_pass(program):
     for op in program.global_block().ops:
         if op.name() in partition_skip_op_list:
             continue
@@ -299,14 +296,22 @@ def apply_reshard_pass(dist_program, params_grads=[]):
             params_grads[idx] = (param, sharded_grad[grad.id])
 
 
-def _remove_other_rank_params_grads(dist_params_grads):
+def _remove_other_rank_params_grads(dist_program, dist_params_grads):
+    cur_rank_param = []
     cur_rank = paddle.distributed.get_rank()
+
+    for op in dist_program.global_block().ops:
+        if op.name() == 'builtin.parameter':
+            if cur_rank in op.dist_attr.process_mesh.process_ids:
+                cur_rank_param.append(op.attrs()['parameter_name'])
+
     need_remove_idx = []
-    for idx, (_, grad) in enumerate(dist_params_grads):
+    for idx, (param, grad) in enumerate(dist_params_grads):
         if grad is None:
             continue
-        if cur_rank not in grad.dist_attr().process_mesh.process_ids:
+        if param.name not in cur_rank_param:
             need_remove_idx.append(idx)
+
     for idx in need_remove_idx[::-1]:
         dist_params_grads.pop(idx)
 
@@ -315,7 +320,7 @@ def _remove_other_rank_params_grads(dist_params_grads):
 def remove_other_rank_op_pass(dist_program, dist_params_grads):
     cur_rank = paddle.distributed.get_rank()
 
-    _remove_other_rank_params_grads(dist_params_grads)
+    _remove_other_rank_params_grads(dist_program, dist_params_grads)
     for op in dist_program.global_block().ops[::-1]:
         if op.name() in partition_skip_op_list:
             can_delete = True
@@ -528,16 +533,13 @@ def _get_seg_struct_names(ops, seg_method):
     total_op_num = len(ops)
     fwd_end_op_index = total_op_num - 1
     for i in reversed(range(total_op_num)):
-        if ops[i].op_role == int(OpRole.Forward) and _extract_seg_method(
-            ops[i], seg_method
-        ):
+        if _extract_seg_method(ops[i], seg_method):
             fwd_end_op_index = i
             break
 
     struct_names = collections.OrderedDict()
     seg_op_mesh = collections.OrderedDict()
 
-    reshard_ops = []
     for i in range(fwd_start_op_index, fwd_end_op_index + 1):
         struct_name = _extract_seg_method(ops[i], seg_method)
         if struct_name:
@@ -551,17 +553,13 @@ def _get_seg_struct_names(ops, seg_method):
         else:
             if ops[i].name() != "dist_op.reshard":
                 raise ValueError(
-                    f"The op {ops[i].name()} should only be created by reshard"
+                    f"The op {ops[i].name()} without seg_method in its struct_name should only be reshard"
                 )
-            reshard_ops.append(ops[i])
-            # # reshard op belong to the next segment
-            # for j in range(i + 1, fwd_end_op_index + 1):
-            #     struct_name = _extract_seg_method(ops[j], seg_method)
-            #     if struct_name and struct_name not in struct_names:
-            #         ops[i].set_str_attr(
-            #             "struct_name", ops[j].attrs()["struct_name"]
-            #         )
-            #         break
+
+    reshard_ops = []
+    for op in ops:
+        if op.name() == "dist_op.reshard":
+            reshard_ops.append(op)
 
     for op in reshard_ops:
         op.result(0).replace_all_uses_with(op.operand_source(0))
@@ -575,9 +573,6 @@ def _analyze_use_custom_mesh(ops, seg_method, pp_degree):
     seg_pp_stages = [-1]
 
     for op in ops:
-        if op.op_role != int(OpRole.Forward):
-            break
-
         if _extract_seg_method(op, seg_method) and "pd_op" in op.name():
             op_mesh = op.dist_attr.process_mesh
             pp_stage = get_pp_stage_by_process_mesh(op_mesh, pp_degree)
@@ -598,7 +593,7 @@ def _set_process_mesh_and_chunk_id(op, process_mesh, chunk_id, set_mesh):
     def set_process_mesh(vars, attrs):
         for idx, (var, attr) in enumerate(zip(vars, attrs)):
             var_dist_attr = var.dist_attr()
-            operand_attr = attr.as_tensor_dist_attr()
+            tensor_attr = attr.as_tensor_dist_attr()
 
             if var_dist_attr and var_dist_attr.process_mesh == op_mesh:
                 tensor_dist_attr = (
@@ -608,15 +603,42 @@ def _set_process_mesh_and_chunk_id(op, process_mesh, chunk_id, set_mesh):
                         var_dist_attr.partial_status,
                     )
                 )
-
                 var.update_dist_attr(tensor_dist_attr)
 
-            if operand_attr.process_mesh == op_mesh:
+                var_origin_op = var.get_defining_op()
+                if var_origin_op.name() in ["pd_op.data", "builtin.parameter"]:
+                    var_origin_op_input_attr = (
+                        var_origin_op.dist_attr.operands()
+                    )
+                    var_origin_op_output_attr = (
+                        var_origin_op.dist_attr.results()
+                    )
+                    var_origin_op_output_attr[0] = var_origin_op_output_attr[
+                        0
+                    ].as_tensor_dist_attr()
+                    var_origin_op_output_attr[0] = (
+                        paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                            process_mesh,
+                            var_origin_op_output_attr[0].dims_mapping,
+                            var_origin_op_output_attr[0].partial_status,
+                        )
+                    )
+
+                    var_origin_op.dist_attr = (
+                        paddle.base.libpaddle.pir.create_op_dist_attribute(
+                            process_mesh,
+                            var_origin_op_input_attr,
+                            var_origin_op_output_attr,
+                            0,
+                        )
+                    )
+
+            if tensor_attr.process_mesh == op_mesh:
                 attrs[idx] = (
                     paddle.base.libpaddle.pir.create_tensor_dist_attribute(
                         process_mesh,
-                        operand_attr.dims_mapping,
-                        operand_attr.partial_status,
+                        tensor_attr.dims_mapping,
+                        tensor_attr.partial_status,
                     )
                 )
 
@@ -628,10 +650,6 @@ def _set_process_mesh_and_chunk_id(op, process_mesh, chunk_id, set_mesh):
     op_output_vars = op.results()
 
     if set_mesh:
-        if op_mesh != process_mesh:
-            print(
-                f"111 set {op.name()} from {op_mesh} to {process_mesh}, {_extract_seg_method(op, 'MyLinear')}"
-            )
         set_process_mesh(op_input_vars, op_input_attrs)
         set_process_mesh(op_output_vars, op_output_attrs)
         op_mesh = process_mesh
@@ -679,79 +697,39 @@ def complete_chunk_id(dist_program, pipeline_strategy):
     non_use_custom_mesh = _analyze_use_custom_mesh(ops, seg_method, pp_degree)
 
     # Step3: Get op index boundary, pp_stage, chunk_id, struct_names of each segment
-    fwd_seg_pp_stages = [i % pp_degree for i in range(num_chunks)]
-    fwd_seg_chunk_ids = [i // pp_degree for i in range(num_chunks)]
-    fwd_seg_parts = [0]
-    fwd_ops = [op for op in ops if op.op_role == int(OpRole.Forward)]
+    seg_pp_stages = [i % pp_degree for i in range(num_chunks)]
+    seg_chunk_ids = [i // pp_degree for i in range(num_chunks)]
+    seg_parts = [0]
 
-    for idx, fwd_op in enumerate(fwd_ops):
-        if len(fwd_seg_parts) == len(seg_struct_names):
+    for idx, op in enumerate(ops):
+        if len(seg_parts) == len(seg_struct_names):
             break
-        struct_name = _extract_seg_method(fwd_op, seg_method)
-        if struct_name == seg_struct_names[len(fwd_seg_parts)]:
-            fwd_seg_parts.append(idx)
-    fwd_seg_parts.append(len(fwd_ops))
-
-    backward_seg_pp_stages = [
-        i % pp_degree for i in reversed(range(num_chunks))
-    ]
-    backward_seg_chunk_ids = [
-        i // pp_degree for i in reversed(range(num_chunks))
-    ]
-    bwd_seg_parts = [0]
-    bwd_ops = [op for op in ops if op.op_role == int(OpRole.Backward)]
-
-    for idx, bwd_op in enumerate(bwd_ops):
-        if len(bwd_seg_parts) == len(seg_struct_names):
-            break
-        struct_name = _extract_seg_method(bwd_op, seg_method)
-        if (
-            struct_name
-            == seg_struct_names[len(seg_struct_names) - len(bwd_seg_parts)]
-        ):
-            bwd_seg_parts.append(idx)
-    bwd_seg_parts.append(len(bwd_ops))
+        struct_name = _extract_seg_method(op, seg_method)
+        if struct_name == seg_struct_names[len(seg_parts)]:
+            seg_parts.append(idx)
+    seg_parts.append(len(ops))
 
     # Step4: Set the process_mesh of each op
-    for fwd_seg_id in range(len(fwd_seg_parts) - 1):
-        start_idx = fwd_seg_parts[fwd_seg_id]
-        end_idx = fwd_seg_parts[fwd_seg_id + 1]
-        pp_stage = fwd_seg_pp_stages[fwd_seg_id]
-        chunk_id = fwd_seg_chunk_ids[fwd_seg_id]
-        struct_name = seg_struct_names[fwd_seg_id]
+    for seg_id in range(len(seg_parts) - 1):
+        start_idx = seg_parts[seg_id]
+        end_idx = seg_parts[seg_id + 1]
+        pp_stage = seg_pp_stages[seg_id]
+        chunk_id = seg_chunk_ids[seg_id]
+        struct_name = seg_struct_names[seg_id]
         process_mesh = sub_process_meshes[pp_stage]
 
         _logger.info(
-            f"stage=[{pp_stage}], chunk_id=[{chunk_id}], layer_name=[{struct_name}]"
+            f"forward: stage=[{pp_stage}], chunk_id=[{chunk_id}], layer_name=[{struct_name}]"
         )
         _logger.info(
-            f"start op: [{fwd_ops[start_idx].name()}], end op: [{fwd_ops[end_idx - 1].name()}]"
+            f"start op: [{ops[start_idx].name()}], end op: [{ops[end_idx - 1].name()}]"
         )
 
         for idx in range(start_idx, end_idx):
-            is_seg_op = (
-                _extract_seg_method(fwd_ops[idx], seg_method) is not None
-            )
+            op = ops[idx]
+            is_seg_op = _extract_seg_method(op, seg_method) is not None
             _set_process_mesh_and_chunk_id(
-                fwd_ops[idx],
-                process_mesh,
-                chunk_id,
-                non_use_custom_mesh & is_seg_op,
-            )
-
-    for bwd_seg_id in range(len(bwd_seg_parts) - 1):
-        start_idx = bwd_seg_parts[bwd_seg_id]
-        end_idx = bwd_seg_parts[bwd_seg_id + 1]
-        pp_stage = backward_seg_pp_stages[bwd_seg_id]
-        chunk_id = backward_seg_chunk_ids[bwd_seg_id]
-        process_mesh = sub_process_meshes[pp_stage]
-
-        for idx in range(start_idx, end_idx):
-            is_seg_op = (
-                _extract_seg_method(bwd_ops[idx], seg_method) is not None
-            )
-            _set_process_mesh_and_chunk_id(
-                bwd_ops[idx],
+                ops[idx],
                 process_mesh,
                 chunk_id,
                 non_use_custom_mesh & is_seg_op,
@@ -764,6 +742,16 @@ def check_chunk_id(dist_program):
     for op in all_ops:
         if op.op_role in [int(OpRole.Forward), int(OpRole.Backward)]:
             if op.dist_attr.chunk_id == -1:
-                raise ValueError(
-                    f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
-                )
+                if op.name() in ["pd_op.data", "builtin.parameter"]:
+                    op.dist_attr = (
+                        paddle.base.libpaddle.pir.create_op_dist_attribute(
+                            op.dist_attr.process_mesh,
+                            op.dist_attr.operands(),
+                            op.dist_attr.results(),
+                            0,
+                        )
+                    )
+                else:
+                    raise ValueError(
+                        f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
+                    )

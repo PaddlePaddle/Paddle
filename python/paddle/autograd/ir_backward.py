@@ -1040,6 +1040,20 @@ def calc_gradient_helper(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
     )
 
+    # set struct name for grad ops
+    for op in block.ops:
+        if op in state.op_to_opgrad:
+            op_chunk_id = op.dist_attr.chunk_id
+            for bwd_op in state.op_to_opgrad[op]:
+                bwd_op.dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        bwd_op.dist_attr.process_mesh,
+                        bwd_op.dist_attr.operands(),
+                        bwd_op.dist_attr.results(),
+                        op_chunk_id,
+                    )
+                )
+
     remove_ops = []
     if not is_inplace_net(backward_ops) and inputs:
         _, remove_ops = prune_ops(
@@ -1062,17 +1076,6 @@ def calc_gradient_helper(
         if bwd_op.result(0).use_empty():
             remove_op(block, bwd_op, state)
     state.turn_map()
-
-    # set struct name for grad ops
-    for op in block.ops:
-        if op in state.opgrad_to_op:
-            forward_op = state.opgrad_to_op[op][0]
-            struct_name = (
-                forward_op.attrs()["struct_name"]
-                if forward_op.has_attr("struct_name")
-                else "/"
-            )
-            op.set_str_attr("struct_name", struct_name)
 
     input_grad_map = state.value_to_valuegrad
 

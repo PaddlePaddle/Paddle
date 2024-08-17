@@ -248,6 +248,7 @@ class TestVPPPass(unittest.TestCase):
         loss_vpp = self.run_pipeline(
             schedule_mode="VPP", acc_step=4, manual=False
         )
+
         # loss_vpp_manual = self.run_pipeline(
         #     schedule_mode="VPP", acc_step=4, manual=True
         # )
