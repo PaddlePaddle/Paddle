@@ -19,7 +19,7 @@ import paddle
 from paddle.base import framework, unique_name
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import Variable
-from paddle.base.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper, LayerHelperBase
 from paddle.framework import in_pir_mode
 from paddle.optimizer import Optimizer
 from paddle.pir.core import create_parameter
@@ -119,6 +119,12 @@ class LookAhead(Optimizer):
             >>> train(layer, loader, loss_fn, lookahead)
 
     """
+
+    inner_optimizer: Optimizer
+    alpha: float
+    k: int
+    type: str
+    helper: LayerHelperBase | None
 
     _slow_str = "slow"
 
