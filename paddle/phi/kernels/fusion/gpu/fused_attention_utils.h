@@ -37,21 +37,15 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
   void *recvbuff =
       dev_ctx.template Alloc<T>(&tensor, tensor.numel() * sizeof(T));
 
-  gpuStream_t stream = nullptr;
+  gpuStream_t stream = dev_ctx.stream();
   paddle::platform::NCCLComm *comm = nullptr;
   phi::distributed::NCCLCommContext *comm_ctx = nullptr;
   comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
       dev_ctx.GetCommContext());
   if (comm_ctx) {
-    stream = comm_ctx->GetStream();
-  } else {
-    comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
-
-    stream = dev_ctx.stream();
-  }
-  if (comm_ctx) {
     comm_ctx->AllReduce(&tensor, tensor, ncclSum, stream);
   } else {
+    comm = paddle::platform::NCCLCommContext::Instance().Get(ring_id, place);
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
         sendbuff, recvbuff, numel, dtype, ncclSum, comm->comm(), stream));
   }
