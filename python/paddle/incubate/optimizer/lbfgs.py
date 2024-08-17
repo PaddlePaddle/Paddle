@@ -39,6 +39,8 @@ if TYPE_CHECKING:
         learning_rate: NotRequired[float | Tensor | LRScheduler | None]
 
     _T = TypeVar('_T', covariant=True)
+    _KT = TypeVar("_KT")
+    _VT = TypeVar("_VT")
 
 
 @deprecated(since="2.5.0", update_to="paddle.optimizer.LBFGS", level=1)
@@ -140,8 +142,8 @@ class LBFGS(Optimizer):
     tolerance_grad: float
     tolerance_change: float
     history_size: int
-    line_search_fn: str
-    state: defaultdict
+    line_search_fn: str | None
+    state: dict[_KT, _VT]
 
     def __init__(
         self,
