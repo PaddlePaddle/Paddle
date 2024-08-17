@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, TypeVar
 
 import paddle
 from paddle.optimizer import Optimizer
@@ -24,9 +24,21 @@ from paddle.utils import deprecated
 from .line_search_dygraph import _strong_wolfe
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from typing_extensions import NotRequired, TypedDict
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
+    from paddle.optimizer.lr import LRScheduler
     from paddle.regularizer import WeightDecayRegularizer
+
+    class _ParameterConfig(TypedDict):
+        params: Sequence[Tensor]
+        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
+        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
+
+    _T = TypeVar('_T', covariant=True)
 
 
 @deprecated(since="2.5.0", update_to="paddle.optimizer.LBFGS", level=1)
@@ -122,6 +134,15 @@ class LBFGS(Optimizer):
 
     """
 
+    learning_rate: float
+    max_iter: int
+    max_eval: int
+    tolerance_grad: float
+    tolerance_change: float
+    history_size: int
+    line_search_fn: str
+    state: defaultdict
+
     def __init__(
         self,
         learning_rate: float = 1.0,
@@ -131,7 +152,7 @@ class LBFGS(Optimizer):
         tolerance_change: float = 1e-9,
         history_size: int = 100,
         line_search_fn: str | None = None,
-        parameters: list[Tensor] | tuple[Tensor] | None = None,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
@@ -232,7 +253,7 @@ class LBFGS(Optimizer):
         self._set_param(x)
         return loss, flat_grad
 
-    def step(self, closure: Callable) -> Tensor:
+    def step(self, closure: Callable[[], _T]) -> _T:
         """
         Performs a single optimization step.
 
