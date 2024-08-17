@@ -19,7 +19,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base import framework
 from paddle.base.dygraph import base as imperative_base
-from paddle.base.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper, LayerHelperBase
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import (
     in_dynamic_mode,
@@ -29,9 +29,21 @@ from paddle.framework import (
 from paddle.optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
+    from typing_extensions import NotRequired, TypedDict
+
     from paddle import Tensor
-    from paddle.base.framework import Operator, Program
+    from paddle.base.framework import Program
+    from paddle.optimizer.lr import LRScheduler
+    from paddle.regularizer import WeightDecayRegularizer
     from paddle.static import Executor
+
+    class _ParameterConfig(TypedDict):
+        params: Sequence[Tensor]
+        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
+        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
+
 
 __all__ = []
 
@@ -177,10 +189,18 @@ class ModelAverage(Optimizer):
 
     """
 
+    helper: LayerHelperBase | None
+    average_window: float
+    min_average_window: int
+    max_average_window: int
+    type: str
+    apply_program: Program
+    restore_program: Program
+
     def __init__(
         self,
         average_window_rate: float,
-        parameters: list[Tensor] | None = None,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
         min_average_window: int = 10000,
         max_average_window: int = 10000,
         name: str | None = None,
@@ -307,9 +327,9 @@ class ModelAverage(Optimizer):
         self,
         loss: Tensor,
         startup_program: Program | None = None,
-        parameters: list[Tensor] | list[str] | None = None,
+        parameters: list[Tensor] | None = None,
         no_grad_set: set[Tensor] | set[str] | None = None,
-    ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
+    ) -> None:
         """
         Add operations to minimize ``loss`` by updating ``parameters``.
 
@@ -409,7 +429,7 @@ class ModelAverage(Optimizer):
     @imperative_base.no_grad
     def apply(
         self, executor: Executor | None = None, need_restore: bool = True
-    ):
+    ) -> Generator[None, None, None]:
         """
         Apply the average of the cumulative ``Parameter`` to the parameters of the current model.
 
