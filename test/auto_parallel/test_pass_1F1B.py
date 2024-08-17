@@ -33,7 +33,7 @@ class Test1F1BPass(unittest.TestCase):
         cmd = [
             sys.executable,
             "-u",
-            coverage_args,
+            *coverage_args,
             "-m",
             "paddle.distributed.launch",
             "--devices",
