@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -348,11 +347,6 @@ class TestFusedAttentionOp(OpTest):
         np.testing.assert_allclose(
             x_grad_ref, x_grad.numpy(), rtol=self.rtol, atol=self.atol
         )
-
-
-class TestFusedAttentionOpWithNewComm(TestFusedAttentionOp):
-    def with_new_comm(self):
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
 
 class TestFusedAttentionOpBiasIsNone(TestFusedAttentionOp):
