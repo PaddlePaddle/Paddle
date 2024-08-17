@@ -221,8 +221,9 @@ if(WITH_ROCM)
     "fusion/gpu/fused_attention_grad_kernel.cu"
     "fusion/gpu/fused_bn_add_activation_grad_kernel.cu"
     "fusion/gpu/fused_bn_add_activation_kernel.cu"
-    "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu"
-    "fusion/gpu/fused_feedforward_kernel.cu")
+    "fusion/gpu/fused_feedforward_kernel.cu"
+    "fusion/gpu/fused_feedforward_grad_kernel.cu"
+    "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu")
   list(
     REMOVE_ITEM
     kernel_gpu
