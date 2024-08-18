@@ -1130,7 +1130,7 @@ void squeeze_grad(const Tensor& x,
 }
 
 template <typename T>
-void unsqueeze_grad(const Tensor& xshape,
+void unsqueeze_grad(const Tensor& x,
                     const Tensor& out_grad,
                     const IntArray& axis,
                     Tensor* x_grad) {
@@ -1146,7 +1146,7 @@ void unsqueeze_grad(const Tensor& xshape,
     // for axis = [0, 3, 3], it outputs [0, 3, 3+1], because unsqueeze support
     // duplicated axis.
     std::vector<int64_t> output_axis;
-    const int64_t x_rank = xshape.dims().size() - 1;
+    const int64_t x_rank = x.dims().size();
     const std::vector<int64_t> axis_data = axis.GetData();
     for (size_t i = 0; i < axis_data.size(); ++i) {
       int64_t value = axis_data[i];
@@ -1270,7 +1270,7 @@ void maximum_grad(const Tensor& x,
   if (x_grad) {
     auto x_tmp = cast<T>(greater_than<T>(x, y), out_grad.dtype());
     auto dx_res = out_grad * x_tmp;
-    if (has_dynamic_shape(x.shape())) {
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dx_reduce_res = reduce_as<T>(dx_res, x);
       set_output<T>(dx_reduce_res, x_grad);
     } else {
@@ -1289,7 +1289,7 @@ void maximum_grad(const Tensor& x,
   if (y_grad) {
     auto y_tmp = cast<T>(less_equal<T>(x, y), out_grad.dtype());
     auto dy_res = out_grad * y_tmp;
-    if (has_dynamic_shape(y.shape())) {
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dy_reduce_res = reduce_as<T>(dy_res, y);
       set_output<T>(dy_reduce_res, y_grad);
     } else {
@@ -2106,7 +2106,7 @@ void minimum_grad(const Tensor& x,
   if (x_grad) {
     auto x_tmp = cast<T>(less_than<T>(x, y), out_grad.dtype());
     auto dx_res = out_grad * x_tmp;
-    if (has_dynamic_shape(x.shape())) {
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dx_reduce_res = reduce_as<T>(dx_res, x);
       set_output<T>(dx_reduce_res, x_grad);
     } else {
@@ -2125,7 +2125,7 @@ void minimum_grad(const Tensor& x,
   if (y_grad) {
     auto y_tmp = cast<T>(greater_equal<T>(x, y), out_grad.dtype());
     auto dy_res = out_grad * y_tmp;
-    if (has_dynamic_shape(y.shape())) {
+    if (has_dynamic_shape(y.shape()) || has_dynamic_shape(out_grad.shape())) {
       auto dy_reduce_res = reduce_as<T>(dy_res, y);
       set_output<T>(dy_reduce_res, y_grad);
     } else {
