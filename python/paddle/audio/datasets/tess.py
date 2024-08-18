@@ -53,6 +53,7 @@ class TESS(AudioClassificationDataset):
 
         .. code-block:: python
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import paddle
 
             >>> mode = 'dev'

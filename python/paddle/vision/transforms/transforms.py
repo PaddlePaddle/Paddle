@@ -783,7 +783,7 @@ class RandomHorizontalFlip(BaseTransform[_InputT, _RetT]):
                      [0, 0, 1],
                      [1, 1, 1]]])
             >>> transform = paddle.vision.transforms.RandomHorizontalFlip(prob=1)
-            >>> result = transform(fake_img)  # type: ignore[call-overload]
+            >>> result = transform(fake_img)
             >>> print(result)
             Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[[1, 0, 0],
@@ -846,7 +846,7 @@ class RandomVerticalFlip(BaseTransform[_InputT, _RetT]):
                      [0, 0, 1],
                      [1, 1, 1]]])
             >>> transform = paddle.vision.transforms.RandomVerticalFlip(prob=1)
-            >>> result = transform(fake_img)  # type: ignore[call-overload]
+            >>> result = transform(fake_img)
             >>> print(result)
             Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[[1, 1, 1],
@@ -1358,7 +1358,7 @@ class RandomCrop(BaseTransform[_InputT, _RetT]):
             >>> print(fake_img.shape)
             [3, 324, 300]
 
-            >>> crop_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> crop_img = transform(fake_img)
             >>> print(crop_img.shape)
             [3, 224, 224]
     """
@@ -1604,7 +1604,7 @@ class RandomAffine(BaseTransform[_InputT, _RetT]):
 
             >>> transform = RandomAffine([-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10])
             >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.shape)
             [3, 256, 300]
     """
@@ -1882,7 +1882,7 @@ class RandomPerspective(BaseTransform[_InputT, _RetT]):
 
             >>> transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
             >>> fake_img = paddle.randn((3, 200, 150)).astype(paddle.float32)
-            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
+            >>> fake_img = transform(fake_img)
             >>> print(fake_img.shape)
             [3, 200, 150]
     """
@@ -2070,7 +2070,7 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
 
             >>> fake_img = paddle.randn((1, 5, 5)).astype(paddle.float32)
             >>> transform = paddle.vision.transforms.RandomErasing()
-            >>> result = transform(fake_img)  # type: ignore[call-overload]
+            >>> result = transform(fake_img)
             >>> # doctest: +SKIP('random sample')
             >>> print(result)
             Tensor(shape=[1, 5, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,

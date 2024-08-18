@@ -64,6 +64,7 @@ class ESC50(AudioClassificationDataset):
 
         .. code-block:: python
 
+            >>> # doctest: +TIMEOUT(60)
             >>> import paddle
 
             >>> mode = 'dev'
