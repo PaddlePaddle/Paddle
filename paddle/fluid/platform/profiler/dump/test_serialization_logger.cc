@@ -32,8 +32,8 @@ using paddle::platform::NodeTrees;
 using paddle::platform::OperatorSupplementEvent;
 using paddle::platform::RuntimeTraceEvent;
 using paddle::platform::SerializationLogger;
-using paddle::platform::TracerEventType;
 using paddle::platform::TracerMemEventType;
+using phi::TracerEventType;
 
 TEST(SerializationLoggerTest, dump_case0) {
   std::list<HostTraceEvent> host_events;
