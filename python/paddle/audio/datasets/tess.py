@@ -56,7 +56,7 @@ class TESS(AudioClassificationDataset):
             >>> import paddle
 
             >>> mode = 'dev'
-            >>> tess_dataset = paddle.audio.datasets.TESS(mode=mode,
+            >>> tess_dataset = paddle.audio.datasets.TESS(mode=mode,  # type: ignore[arg-type]
             ...                                         feat_type='raw')
             >>> for idx in range(5):
             ...     audio, label = tess_dataset[idx]
@@ -64,7 +64,7 @@ class TESS(AudioClassificationDataset):
             ...     print(audio.shape, label)
             ...     # [audio_data_length] , label_id
 
-            >>> tess_dataset = paddle.audio.datasets.TESS(mode=mode,
+            >>> tess_dataset = paddle.audio.datasets.TESS(mode=mode,  # type: ignore[arg-type]
             ...                                         feat_type='mfcc',
             ...                                         n_mfcc=40)
             >>> for idx in range(5):

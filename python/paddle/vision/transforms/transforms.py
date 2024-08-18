@@ -387,7 +387,7 @@ class ToTensor(BaseTransform[_InputT, "Tensor"]):
             >>> img_arr = ((paddle.rand((4, 5, 3)) * 255.).astype('uint8')).numpy()
             >>> fake_img = Image.fromarray(img_arr)
             >>> transform = T.ToTensor()
-            >>> tensor = transform(fake_img)
+            >>> tensor = transform(fake_img)  # type: ignore[call-overload]
             >>> print(tensor.shape)
             [3, 4, 5]
             >>> print(tensor.dtype)
@@ -530,7 +530,7 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
 
             >>> transform = RandomResizedCrop(224)
             >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.size)
             (224, 224)
 
@@ -736,7 +736,7 @@ class CenterCrop(BaseTransform[_InputT, _RetT]):
 
             >>> transform = CenterCrop(224)
             >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.size)
             (224, 224)
 
@@ -783,7 +783,7 @@ class RandomHorizontalFlip(BaseTransform[_InputT, _RetT]):
                      [0, 0, 1],
                      [1, 1, 1]]])
             >>> transform = paddle.vision.transforms.RandomHorizontalFlip(prob=1)
-            >>> result = transform(fake_img)
+            >>> result = transform(fake_img)  # type: ignore[call-overload]
             >>> print(result)
             Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[[1, 0, 0],
@@ -846,7 +846,7 @@ class RandomVerticalFlip(BaseTransform[_InputT, _RetT]):
                      [0, 0, 1],
                      [1, 1, 1]]])
             >>> transform = paddle.vision.transforms.RandomVerticalFlip(prob=1)
-            >>> result = transform(fake_img)
+            >>> result = transform(fake_img)  # type: ignore[call-overload]
             >>> print(result)
             Tensor(shape=[1, 3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                    [[[1, 1, 1],
@@ -985,7 +985,7 @@ class Transpose(BaseTransform[_InputT, _RetT]):
 
             >>> transform = Transpose()
             >>> fake_img = Image.fromarray((np.random.rand(300, 320, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.shape)
             (3, 300, 320)
 
@@ -1089,7 +1089,7 @@ class ContrastTransform(BaseTransform[_InputT, _RetT]):
 
             >>> transform = ContrastTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.size)
             (224, 224)
 
@@ -1138,7 +1138,7 @@ class SaturationTransform(BaseTransform[_InputT, _RetT]):
 
             >>> transform = SaturationTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.size)
             (224, 224)
     """
@@ -1184,7 +1184,7 @@ class HueTransform(BaseTransform[_InputT, _RetT]):
 
             >>> transform = HueTransform(0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.size)
             (224, 224)
 
@@ -1239,7 +1239,7 @@ class ColorJitter(BaseTransform[_InputT, _RetT]):
 
             >>> transform = ColorJitter(0.4, 0.4, 0.4, 0.4)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.size)
             (224, 224)
 
@@ -1358,7 +1358,7 @@ class RandomCrop(BaseTransform[_InputT, _RetT]):
             >>> print(fake_img.shape)
             [3, 324, 300]
 
-            >>> crop_img = transform(fake_img)
+            >>> crop_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(crop_img.shape)
             [3, 224, 224]
     """
@@ -1480,7 +1480,7 @@ class Pad(BaseTransform[_InputT, _RetT]):
 
             >>> transform = Pad(2)
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.size)
             (228, 228)
     """
@@ -1604,7 +1604,7 @@ class RandomAffine(BaseTransform[_InputT, _RetT]):
 
             >>> transform = RandomAffine([-90, 90], translate=[0.2, 0.2], scale=[0.5, 0.5], shear=[-10, 10])
             >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.shape)
             [3, 256, 300]
     """
@@ -1778,7 +1778,7 @@ class RandomRotation(BaseTransform[_InputT, _RetT]):
 
             >>> transform = RandomRotation(90)
             >>> fake_img = Image.fromarray((np.random.rand(200, 150, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.size)
             (150, 200)
     """
@@ -1882,7 +1882,7 @@ class RandomPerspective(BaseTransform[_InputT, _RetT]):
 
             >>> transform = RandomPerspective(prob=1.0, distortion_scale=0.9)
             >>> fake_img = paddle.randn((3, 200, 150)).astype(paddle.float32)
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(fake_img.shape)
             [3, 200, 150]
     """
@@ -2012,7 +2012,7 @@ class Grayscale(BaseTransform[_InputT, _RetT]):
 
             >>> transform = Grayscale()
             >>> fake_img = Image.fromarray((np.random.rand(224, 224, 3) * 255.).astype(np.uint8))
-            >>> fake_img = transform(fake_img)
+            >>> fake_img = transform(fake_img)  # type: ignore[call-overload]
             >>> print(np.array(fake_img).shape)
             (224, 224)
     """
@@ -2070,7 +2070,7 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
 
             >>> fake_img = paddle.randn((1, 5, 5)).astype(paddle.float32)
             >>> transform = paddle.vision.transforms.RandomErasing()
-            >>> result = transform(fake_img)
+            >>> result = transform(fake_img)  # type: ignore[call-overload]
             >>> # doctest: +SKIP('random sample')
             >>> print(result)
             Tensor(shape=[1, 5, 5], dtype=float32, place=Place(gpu:0), stop_gradient=True,
