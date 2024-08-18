@@ -25,7 +25,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
-      "add_n dygraph", paddle::platform::TracerEventType::Operator, 1);
+      "add_n dygraph", phi::TracerEventType::Operator, 1);
 
   // AMP Logic
   if (egr::Controller::Instance().GetAMPLevel() !=
@@ -77,9 +77,7 @@ paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x) {
   // Node Creation
   if (require_any_grad) {
     phi::RecordEvent node_creation_record_event(
-        "add_n node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
+        "add_n node_creation", phi::TracerEventType::OperatorInner, 1);
 
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
