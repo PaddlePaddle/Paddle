@@ -90,6 +90,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pipeline_scheduler_zb MODULES test_pipeline_scheduler_zb)
   set_tests_properties(test_pipeline_scheduler_zb
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pipeline_scheduler_zb_vpp MODULES
+                  test_pipeline_scheduler_zb_vpp)
+  set_tests_properties(test_pipeline_scheduler_zb_vpp
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_auto_tuner_compare MODULES test_auto_tuner_compare)
   set_tests_properties(test_auto_tuner_compare
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)

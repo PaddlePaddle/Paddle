@@ -3027,7 +3027,7 @@ class Resharder:
     def get_cost(self, op, tensor, cluster):
         # NOTE: The program should be the serial_program which is not been parted
         global _g_special_ops
-        not_supported_op_type = _g_special_ops + ["while"]
+        not_supported_op_type = [*_g_special_ops, 'while']
         reshard_op_cost = None
         if op.type in not_supported_op_type:
             return reshard_op_cost

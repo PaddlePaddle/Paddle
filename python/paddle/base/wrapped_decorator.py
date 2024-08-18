@@ -34,7 +34,7 @@ def wrap_decorator(
     def __impl__(
         func: Callable[_InputT, _RetT1],
         *args: _InputT.args,
-        **kwargs: _InputT.kwargs
+        **kwargs: _InputT.kwargs,
     ) -> _RetT2:
         wrapped_func = decorator_func(func)
         return wrapped_func(*args, **kwargs)

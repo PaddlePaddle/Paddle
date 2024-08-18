@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from typing import TYPE_CHECKING
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
@@ -51,6 +52,11 @@ from paddle.base.libpaddle.pir import (
     build_pipe_for_block,
     get_used_external_value,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle.pir import Value
 
 """
     grad: for template test, will combine in paddle.grad .
@@ -93,6 +99,9 @@ def append_full_like(float_value, copy_value, value, state, backward_ops):
 def append_add_n(
     op, value, state, backward_ops, bwd_value_to_block_argument_map
 ):
+    _MAX_ADD_NUM_ = paddle.framework._global_flags()[
+        'FLAGS_max_inplace_grad_add'
+    ]
     with paddle.amp.auto_cast(enable=False):
         # value is input of more than one fwd_op,
         # so more than one bwd_op create input_grad,
@@ -108,6 +117,21 @@ def append_add_n(
             for tmp in state.value_to_valuegrad[value]:
                 state.value_to_sumvaluegrad[value].append(tmp)
             state.value_to_valuegrad[value] = []
+        elif len(add_n_list) <= _MAX_ADD_NUM_:
+            grad_value = add_n_list[0]
+            index = 1
+            grad_op_list = []
+            while index < len(add_n_list):
+                grad_value += add_n_list[index]
+                grad_op_list.append(grad_value.get_defining_op())
+                index += 1
+            update_bwdop_structure(
+                backward_ops, state.op_to_opgrad[op], grad_op_list
+            )
+            for tmp in state.value_to_valuegrad[value]:
+                state.value_to_sumvaluegrad[value].append(tmp)
+            state.value_to_valuegrad[value] = [[grad_value]]
+
         else:
             if value.is_dense_tensor_array_type():
                 add_n_value = paddle._C_ops.add_n_array(add_n_list)
@@ -956,7 +980,12 @@ def create_backward_prune_set(
     return outputs_set, inputs_set, no_gradvar_set
 
 
-def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
+def calc_gradient_helper(
+    outputs: Value | Sequence[Value],
+    inputs: Value | Sequence[Value],
+    grad_outputs: Value | Sequence[Value | None] | None = None,
+    no_grad_set: set[Value] | None = None,
+) -> ValueDict:
     block = outputs[0].get_defining_op().get_parent_block()
     state = State(block)
     if all_stop_gradient_true(block):
@@ -1038,7 +1067,12 @@ def calc_gradient_helper(outputs, inputs, grad_outputs, no_grad_set):
     return input_grad_map
 
 
-def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
+def calc_gradient(
+    outputs: Value | Sequence[Value],
+    inputs: Value | Sequence[Value],
+    grad_outputs: Value | Sequence[Value | None] | None = None,
+    no_grad_set: set[Value] | None = None,
+) -> list[Value | None]:
     """
     calculate gradient of input
 
@@ -1084,15 +1118,15 @@ def calc_gradient(outputs, inputs, grad_outputs, no_grad_set):
 
 
 def grad(
-    outputs,
-    inputs,
-    grad_outputs=None,
-    retain_graph=None,
-    create_graph=False,
-    only_inputs=True,
-    allow_unused=False,
-    no_grad_vars=None,
-):
+    outputs: Value | Sequence[Value],
+    inputs: Value | Sequence[Value],
+    grad_outputs: Value | Sequence[Value | None] | None = None,
+    retain_graph: bool | None = None,
+    create_graph: bool | None = False,
+    only_inputs: bool | None = True,
+    allow_unused: bool | None = False,
+    no_grad_vars: Value | Sequence[Value] | set[Value] | None = None,
+) -> list[Value | None]:
     '''
     .. note::
         **This API is ONLY available in imperative mode.**
