@@ -2927,13 +2927,11 @@ All parameter, weight, gradient are variables in Paddle.
       }))
       .def("end", [](phi::RecordEvent *event) { event->End(); });
 
-  py::enum_<paddle::platform::TracerMemEventType>(m, "TracerMemEventType")
-      .value("Allocate", paddle::platform::TracerMemEventType::Allocate)
-      .value("Free", paddle::platform::TracerMemEventType::Free)
-      .value("ReservedAllocate",
-             paddle::platform::TracerMemEventType::ReservedAllocate)
-      .value("ReservedFree",
-             paddle::platform::TracerMemEventType::ReservedFree);
+  py::enum_<phi::TracerMemEventType>(m, "TracerMemEventType")
+      .value("Allocate", phi::TracerMemEventType::Allocate)
+      .value("Free", phi::TracerMemEventType::Free)
+      .value("ReservedAllocate", phi::TracerMemEventType::ReservedAllocate)
+      .value("ReservedFree", phi::TracerMemEventType::ReservedFree);
 
   py::enum_<phi::TracerEventType>(m, "TracerEventType")
       .value("Operator", phi::TracerEventType::Operator)
