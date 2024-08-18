@@ -46,7 +46,7 @@ AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
 phi::Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(
     size_t unaligned_size) {
   phi::RecordEvent record("AutoGrowthBestFitAllocatorV2::Allocate",
-                          platform::TracerEventType::UserDefined,
+                          phi::TracerEventType::UserDefined,
                           9 /*level*/);
 
   size_t size = AlignedSize(unaligned_size + extra_padding_size_, alignment_);
