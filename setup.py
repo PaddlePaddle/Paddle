@@ -1011,10 +1011,8 @@ def get_tensorrt_version():
 
 
 def get_paddle_extra_install_requirements():
-    paddle_install_requirements = {
-        'cuda': [],
-        'tensorrt': [],
-    }
+    paddle_cuda_requires = []
+    paddle_tensorrt_requires = []
     # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
     if env_dict.get("WITH_PIP_CUDA_LIBRARIES") == "ON":
         if platform.system() == 'Linux':
@@ -1082,7 +1080,6 @@ def get_paddle_extra_install_requirements():
         paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[
             cuda_major_version
         ].split("|")
-        paddle_install_requirements['cuda'] = paddle_cuda_requires
 
     if env_dict.get("WITH_PIP_TENSORRT") == "ON":
         if platform.system() == 'Linux' or platform.system() == 'Windows':
@@ -1119,14 +1116,12 @@ def get_paddle_extra_install_requirements():
                     break
 
             if matched_package:
-                paddle_install_requirements['tensorrt'].append(matched_package)
+                paddle_tensorrt_requires = [matched_package]
             else:
                 print(
                     f"No exact match found for TensorRT Version: {version_str}. Please check the predefined versions."
                 )
-    else:
-        return []
-    return paddle_install_requirements
+    return paddle_cuda_requires, paddle_tensorrt_requires
 
 
 def get_package_data_and_package_dir():
@@ -1664,9 +1659,9 @@ def get_setup_parameters():
             'AMD64',
         )
     ):
-        paddle_install_requirements = get_paddle_extra_install_requirements()
-        paddle_cuda_requires = paddle_install_requirements['cuda']
-        paddle_tensorrt_requires = paddle_install_requirements['tensorrt']
+        paddle_cuda_requires, paddle_tensorrt_requires = (
+            get_paddle_extra_install_requirements()
+        )
         setup_requires += paddle_cuda_requires
         setup_requires += paddle_tensorrt_requires
 
