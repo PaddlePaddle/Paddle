@@ -74,7 +74,7 @@ def create_data_holder(batch_size, vocab_size=1000, sequence_len=512):
     return [tokens, position_ids, attention_mask], [labels, loss_mask]
 
 
-def generate_model(strategy, dropout_prob=0.0):
+def generate_model(strategy, dropout_prob=0.0, num_hidden_layers=2):
     modeling.init_global()
     ranks = list(range(paddle.distributed.get_world_size()))
     modeling._global_process_mesh = auto.ProcessMesh(
@@ -98,7 +98,7 @@ def generate_model(strategy, dropout_prob=0.0):
     gpt = GPTModel(
         vocab_size=1000,
         hidden_size=64,
-        num_hidden_layers=2,
+        num_hidden_layers=num_hidden_layers,
         num_attention_heads=8,
         intermediate_size=256,
         hidden_act="gelu",

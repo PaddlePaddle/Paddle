@@ -264,8 +264,8 @@ class WMT16(Dataset):
                 trg_words = line_split[trg_col].split()
                 trg_ids = [self.trg_dict.get(w, unk_id) for w in trg_words]
 
-                trg_ids_next = trg_ids + [end_id]
-                trg_ids = [start_id] + trg_ids
+                trg_ids_next = [*trg_ids, end_id]
+                trg_ids = [start_id, *trg_ids]
 
                 self.src_ids.append(src_ids)
                 self.trg_ids.append(trg_ids)

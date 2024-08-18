@@ -35,7 +35,7 @@ SpmdInfo NumelInferSpmd(const DistMetaTensor& x) {
                         "dims_mapping size [%d] are not matched.",
                         x_ndim,
                         x_dims_mapping.size()));
-  TensorDistAttr out_dist_attr;
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping({});
   std::vector<int64_t> partial_on_dims;
   const auto& dim_mapping = x_dims_mapping;
