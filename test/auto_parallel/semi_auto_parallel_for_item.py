@@ -42,18 +42,19 @@ class TestItemApiForSemiAutoParallel(SemiAutoParallelTestBase):
             np.testing.assert_equal(c.item(0, 0), a[0][0].item())
             np.testing.assert_equal(c.item(3, 5), a[3][5].item())
         else:  # in device 0
-            self.assertEqual(c.item(3, 5), None)
+            np.testing.assert_equal(c.item(3, 5), None)
 
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
         elif self._backend == "gpu":
             paddle.set_device("gpu:" + str(dist.get_rank()))
+            # only gpu can run pipeline
+            self.test_item_api_with_pp()
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
         self.test_item_api()
-        self.test_item_api_with_pp()
 
 
 if __name__ == '__main__':
