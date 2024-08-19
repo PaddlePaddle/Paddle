@@ -261,10 +261,10 @@ bool BincountOpInferSymbolicShape(
 
   symbol::DimExpr out_unknown =
       infer_context->GetNextSymName();  // unknown until runtime
-
-  // Set the output shape, which is of unknown size (-1)
-  std::vector<symbol::DimExpr> out_dims = {out_unknown};
-  infer_context->SetShapeOrDataForValue(op->result(0), out_dims);
+  const std::vector<symbol::DimExpr> out_dims = {out_unknown};
+  symbol::ShapeOrDataDimExprs output_dims{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  infer_context->SetShapeOrDataForValue(op->result(0), output_dims);
 
   return true;
 }
