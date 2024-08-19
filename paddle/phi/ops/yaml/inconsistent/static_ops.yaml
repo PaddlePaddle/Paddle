@@ -205,6 +205,7 @@
     data_type : x
   optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
@@ -686,7 +687,7 @@
     data_type : x
   optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : recv_v2
   args : (int[] out_shape = {}, DataType dtype = DataType::FLOAT32, int peer = 0, int ring_id = 0, bool use_calc_stream = false, bool dynamic_shape = false)
