@@ -1040,6 +1040,20 @@ def get_paddle_extra_install_requirements():
         return []
 
 
+def get_cinnconfig_jsons():
+    from pathlib import Path
+
+    src_cinnconfig_path = (
+        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinnconfig'
+    )
+    p = Path(src_cinnconfig_path)
+    json_list = list(p.glob('**/*.json'))
+    json_path_list = []
+    for json in json_list:
+        json_path_list += [str(json)]
+    return json_path_list
+
+
 def get_package_data_and_package_dir():
     if os.name != 'nt':
         package_data = {
@@ -1055,15 +1069,18 @@ def get_package_data_and_package_dir():
     package_data['paddle.base'] += [
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
-    # copy tile_config to paddle.base
-    configs_path = paddle_binary_dir + '/python/paddle/base/tile_config'
-    if os.path.exists(configs_path):
-        shutil.rmtree(configs_path)
-    cinn_tile_config_path = (
-        env_dict.get("PADDLE_SOURCE_DIR")
-        + '/paddle/cinn/ir/group_schedule/config/tile_config'
+
+    whl_cinnconfig_path = paddle_binary_dir + '/python/paddle/cinnconfig'
+    src_cinnconfig_path = (
+        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinnconfig'
     )
-    shutil.copytree(cinn_tile_config_path, configs_path)
+    package_data['paddle.cinnconfig'] = []
+    if os.path.exists(whl_cinnconfig_path):
+        shutil.rmtree(whl_cinnconfig_path)
+    shutil.copytree(src_cinnconfig_path, whl_cinnconfig_path)
+    json_path_list = get_cinnconfig_jsons()
+    for json in json_path_list:
+        package_data['paddle.cinnconfig'] += [json]
 
     if 'develop' in sys.argv:
         package_dir = {'': 'python'}
@@ -1683,6 +1700,7 @@ def get_setup_parameters():
         'paddle.base.incubate.checkpoint',
         'paddle.amp',
         'paddle.cost_model',
+        'paddle.cinnconfig',
         'paddle.hapi',
         'paddle.vision',
         'paddle.vision.models',
