@@ -1518,7 +1518,116 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
 
   return true;
 }
+bool RoiPoolOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &rois_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &rois_num_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  if (!rois_num_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    const auto &rois_num_shape = rois_num_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
+        rois_num_shape.size(),
+        1,
+        phi::errors::InvalidArgument(
+            "The number of rois should be a 1-D tensor with shape (num_rois), "
+            "but received the number of rois with %d dimension",
+            rois_num_shape.size()));
+  }
 
+  int pooled_height =
+      op->attribute<pir::Int32Attribute>("pooled_height").data();
+  int pooled_width = op->attribute<pir::Int32Attribute>("pooled_width").data();
+  PADDLE_ENFORCE_EQ(
+      x_shape.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "The input data should be a four-dimensional tensor with [N,C,H,W], "
+          "but received input data with %d dimension",
+          x_shape.size()));
+  PADDLE_ENFORCE_EQ(rois_shape.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "rois should be a 2-D LoDTensor with shape (num_rois, "
+                        "4) given as [[x1, y1, x2, y2], ...], but received "
+                        "rois is %d-dimensional LoDTensor",
+                        rois_shape.size()));
+  const auto &four = symbol::DimExpr(4);
+  infer_context->AddEqualCstr(rois_shape[1], four);
+
+  auto out_dims = x_shape;
+
+  out_dims[0] = rois_shape[0];
+  out_dims[1] = x_shape[1];
+  out_dims[2] = symbol::DimExpr(pooled_height);
+  out_dims[3] = symbol::DimExpr(pooled_width);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
+
+bool QuantizeLinearOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &scale_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &in_accum_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
+  const auto &in_state_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4)).shape();
+
+  int quant_axis = op->attribute<pir::Int32Attribute>("quant_axis").data();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(x_shape));
+
+  if (op->result(1)) {
+    if (quant_axis < 0) {
+      infer_context->SetShapeOrDataForValue(
+          op->result(1), symbol::TensorShapeOrDataDimExprs(scale_shape));
+    } else {
+      infer_context->SetShapeOrDataForValue(
+          op->result(1),
+          symbol::TensorShapeOrDataDimExprs(
+              std::vector<symbol::DimExpr>{x_shape[quant_axis]}));
+    }
+  }
+
+  if (op->result(2)) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(2), symbol::TensorShapeOrDataDimExprs(in_accum_shape));
+  }
+
+  if (op->result(3)) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(3), symbol::TensorShapeOrDataDimExprs(in_state_shape));
+  }
+
+  return true;
+}
+
+bool QuantizeLinear_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return QuantizeLinearOpInferSymbolicShape(op, infer_context);
+}
+
+bool DequantizeLinearOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return QuantizeLinearOpInferSymbolicShape(op, infer_context);
+}
+
+bool DequantizeLinear_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return QuantizeLinearOpInferSymbolicShape(op, infer_context);
+}
 bool RoiAlignOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x = op->operand_source(0);
