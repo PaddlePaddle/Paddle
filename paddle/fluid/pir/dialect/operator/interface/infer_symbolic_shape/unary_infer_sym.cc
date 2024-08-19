@@ -232,7 +232,6 @@ bool AffineGridOpInferSymbolicShape(
   if (attributes.find("output_shape") != attributes.end()) {
     output_shape_size =
         op->attribute<paddle::dialect::IntArrayAttribute>("output_shape")
-            .shape()
             .size();
   } else if (op->operand_source(1)) {
     const auto &output_shape_or_data =
