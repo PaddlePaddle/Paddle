@@ -310,7 +310,6 @@ def set_pir_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
                 # if a value is renamed by shadow_output,
                 # it will be used by other sub_programs
                 type_to_var_names[job_type].add(op.attrs()["output_name"])
-                print(op.attrs()["output_name"])
         if job_type == "backward":
             assert (
                 len(type_to_var_names[job_type]) == 0

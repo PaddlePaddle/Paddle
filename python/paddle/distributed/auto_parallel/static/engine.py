@@ -898,7 +898,6 @@ class Engine:
                 [dist_program], [startup_program]
             )
 
-        print(dist_program)
         if (
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"

@@ -90,22 +90,6 @@ class SameStatusReshardFunction(ReshardFunction):
                     -1 not in dst_type.shape
                 ), "dynamic shape is not supported by pir-auto parallel yet."
 
-                print(
-                    "dst_type local shape:",
-                    dst_type._local_shape,
-                    "src op:",
-                    src_value.get_defining_op().name(),
-                    src_value.get_defining_op().dist_attr.chunk_id,
-                    chunk_id,
-                    "op_role:",
-                    src_value.get_defining_op().op_role,
-                )
-                print("src attr:", src_dist_attr)
-                print("dst attr:", dst_dist_attr)
-                if src_value.has_name:
-                    print("src value name:", src_value.name)
-                # print(src_value.get_defining_op().get_parent_block().program)
-
                 recv_value = paddle._C_ops.recv_v2(
                     dst_type._local_shape,
                     dst_type.dtype,
