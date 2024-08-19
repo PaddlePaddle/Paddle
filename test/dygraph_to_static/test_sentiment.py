@@ -78,7 +78,7 @@ class DynamicGRU(paddle.nn.Layer):
             res.append(hidden_)
 
         if self.is_reverse:
-            res = res[::-1]
+            res.reverse()
         res = paddle.concat(res, axis=1)
         return res
 

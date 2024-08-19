@@ -169,11 +169,11 @@ void RmsNormGradKernel(const Context& dev_ctx,
                        DenseTensor* grad_x,
                        DenseTensor* grad_norm_weight) {
   if (bias || residual || norm_bias) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "bias or residual or norm_bias is not supported yet"));
   }
   if (quant_scale > 0.0f) {
-    PADDLE_THROW(phi::errors::Unimplemented("quant is not supported yet"));
+    PADDLE_THROW(common::errors::Unimplemented("quant is not supported yet"));
   }
   cuda_rms_norm_gradient<T, Context>(dev_ctx,
                                      x,

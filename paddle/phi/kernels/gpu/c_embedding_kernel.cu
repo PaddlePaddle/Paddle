@@ -107,7 +107,7 @@ void CEmbeddingKernel(const Context& ctx,
                                                limit,
                                                vocab_size);
   } else {
-    PADDLE_THROW(phi::errors::Unavailable(
+    PADDLE_THROW(common::errors::Unavailable(
         "GPU c_embedding ids only support int32 or int64."));
   }
 }

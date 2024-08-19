@@ -99,9 +99,11 @@ def copy_parameters(block_, params):
             shape=param.shape,
             dtype=param.dtype,
             type=param.type,
-            lod_level=param.lod_level
-            if param.type == core.VarDesc.VarType.LOD_TENSOR
-            else None,
+            lod_level=(
+                param.lod_level
+                if param.type == core.VarDesc.VarType.LOD_TENSOR
+                else None
+            ),
             stop_gradient=param.stop_gradient,
             trainable=param.trainable,
             optimize_attr=param.optimize_attr,

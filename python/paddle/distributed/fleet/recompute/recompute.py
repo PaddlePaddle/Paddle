@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import contextlib
 import copy
 import inspect
 import weakref
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import paddle
 from paddle import framework
@@ -27,6 +30,18 @@ from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
 from paddle.framework import core, in_dynamic_mode
 
 from ..utils.log_util import logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from typing_extensions import NotRequired
+
+    from paddle.nn import Sequential
+
+    class _Ctx(TypedDict):
+        segments: int = 1
+        preserve_rng_state: NotRequired[bool]
+
 
 __all__ = []
 
@@ -365,14 +380,8 @@ def _recompute_without_reentrant(
                             inner_x.placements,
                         )
                     else:
-                        if isinstance(inner_x.dtype, paddle.base.core.DataType):
-                            inner_x_dtype = paddle.pir.core.datatype_to_vartype[
-                                inner_x.dtype
-                            ]
-                        else:
-                            inner_x_dtype = inner_x.dtype
                         tmp_tensor = core.eager.Tensor(
-                            inner_x_dtype,
+                            inner_x.dtype,
                             inner_x.shape,
                             inner_x.name + "cpy",
                             core.VarDesc.VarType.LOD_TENSOR,
@@ -590,7 +599,12 @@ def recompute(function, *args, **kwargs):
         return _recompute_without_reentrant(function, preserve, *args, **kwargs)
 
 
-def recompute_sequential(ctx, functions, *args, **kwargs):
+def recompute_sequential(
+    ctx: _Ctx,
+    functions: Sequential | Sequence[Callable[..., Any]],
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
     """
     recompute intermediate activations to save the memory for 'Sequential' models. use 'ctx' to transmit some context params, it is similar to 'recompute_hybrid' API.
 

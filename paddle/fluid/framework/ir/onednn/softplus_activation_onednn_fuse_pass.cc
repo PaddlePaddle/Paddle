@@ -36,7 +36,7 @@ void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
 void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     Graph *graph, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("softplus_activation", graph);
 
   GraphPatternDetector gpd;

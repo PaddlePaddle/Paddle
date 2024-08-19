@@ -20,10 +20,10 @@
 #include <string>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/memory.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 
 COMMON_DECLARE_bool(gpugraph_load_node_list_into_hbm);
 namespace paddle {
@@ -505,7 +505,7 @@ struct GpuPsCommGraphFea {
     PADDLE_ENFORCE_LE(
         slot_num,
         255,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of slot_num should not be greater than 255 "
             ", but the slot_num is %d ",
             slot_num));
@@ -583,7 +583,7 @@ struct GpuPsCommGraphFloatFea {
     PADDLE_ENFORCE_LE(
         slot_num,
         255,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of slot_num should not be greater than 255 "
             ", but the slot_num is %d ",
             slot_num));

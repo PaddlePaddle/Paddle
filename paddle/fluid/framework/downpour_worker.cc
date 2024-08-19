@@ -586,11 +586,11 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains NAN.", var_name));
     }
 
@@ -922,11 +922,11 @@ void DownpourWorker::TrainFiles() {
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor),
                         false,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains Inf.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor),
                         false,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "phi::DenseTensor %s contains NAN.", var_name));
     }
 

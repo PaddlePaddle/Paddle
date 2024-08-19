@@ -60,7 +60,7 @@ class InstanceNormPlugin : public PluginTensorRT {
       : eps_(eps), scale_(scale), bias_(bias) {
     PADDLE_ENFORCE_EQ(scale.size(),
                       bias.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The instanceNorm's scale and bias should be the "
                           "same size. Got scale size = %d, but bias size = %d",
                           scale.size(),
@@ -170,7 +170,7 @@ class InstanceNormPluginDynamic : public DynamicPluginTensorRT {
       : eps_(eps), scale_(scale), bias_(bias) {
     PADDLE_ENFORCE_EQ(scale.size(),
                       bias.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The instanceNorm's scale and bias should be the "
                           "same size. Got scale size = %d, but bias size = %d",
                           scale.size(),

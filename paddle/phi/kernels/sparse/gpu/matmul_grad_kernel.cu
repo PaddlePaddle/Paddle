@@ -76,15 +76,15 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
   }
 #else
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
       "CUDA 11.3"));
 #elif defined(PADDLE_WITH_HIP)
   PADDLE_THROW(
-      phi::errors::Unimplemented("backward of 'sparse.matmul' use "
-                                 "rocsparse_sddmm with transpose, which is "
-                                 "supported from "
-                                 "ROCM 4.3.0"));
+      common::errors::Unimplemented("backward of 'sparse.matmul' use "
+                                    "rocsparse_sddmm with transpose, which is "
+                                    "supported from "
+                                    "ROCM 4.3.0"));
 #endif
 #endif
 }
@@ -127,15 +127,15 @@ void MatmulCsrDenseGradKernel(const Context& dev_ctx,
   }
 #else
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "backward of 'sparse.matmul' use cusparseSDDMM, which is supported from "
       "CUDA 11.3"));
 #elif defined(PADDLE_WITH_HIP)
   PADDLE_THROW(
-      phi::errors::Unimplemented("backward of 'sparse.matmul' use "
-                                 "rocsparse_sddmm with transpose, which is "
-                                 "supported from "
-                                 "ROCM 4.3.0"));
+      common::errors::Unimplemented("backward of 'sparse.matmul' use "
+                                    "rocsparse_sddmm with transpose, which is "
+                                    "supported from "
+                                    "ROCM 4.3.0"));
 #endif
 #endif
 }
@@ -182,7 +182,7 @@ void MatmulCsrCsrGradKernel(const Context& dev_ctx,
   }
 #else
 #ifdef PADDLE_WITH_CUDA
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "backward of 'sparse.matmul' use cusparseSpGEMM, which is supported from "
       "CUDA 11.0"));
 #endif

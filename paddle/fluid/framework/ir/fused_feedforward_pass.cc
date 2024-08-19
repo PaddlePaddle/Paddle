@@ -65,7 +65,7 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardFwd(
     bool use_dropout_2,
     Cache *dropout_nodes_map) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("fused_feed_forward_fwd_pattern");
   GraphPatternDetector gpd;
   auto *x = gpd.mutable_pattern()
@@ -405,7 +405,7 @@ ir::Graph *FusedFeedForwardPass::FusedFeedForwardBwd(
     bool use_dropout_2,
     Cache *dropout_nodes_map) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   const std::string scope_name("fused_feed_forward_bwd_pattern");
 
   // 1. residual_add_grad -> dropout2_grad -> linear2_grad -> dropout1_grad ->

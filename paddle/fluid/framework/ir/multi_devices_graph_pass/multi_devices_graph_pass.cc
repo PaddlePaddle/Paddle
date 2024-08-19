@@ -110,7 +110,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   PADDLE_ENFORCE_EQ(
       places_.size(),
       local_scopes_.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Places size and LocalScopes not equal "
           "Places size(%d), LocalScopes size(%d) "
           "If use multi devices, Places size must equas to LocalScopes size.",

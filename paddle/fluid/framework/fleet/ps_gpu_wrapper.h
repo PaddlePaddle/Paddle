@@ -44,8 +44,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/heter_util.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/dynload/nccl.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
@@ -299,7 +299,8 @@ class PSGPUWrapper {
         VLOG(0) << "init single node gpu server";
       }
 #else
-      PADDLE_THROW(phi::errors::Unavailable("heter ps need compile with GLOO"));
+      PADDLE_THROW(
+          common::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
 #ifdef PADDLE_WITH_CUDA
       if (multi_node_) {
@@ -321,7 +322,7 @@ class PSGPUWrapper {
         PADDLE_ENFORCE_EQ(
             gloo->IsInitialized(),
             true,
-            phi::errors::PreconditionNotMet(
+            common::errors::PreconditionNotMet(
                 "You must initialize the gloo environment first to use it."));
         gloo::BroadcastOptions opts(gloo->GetContext());
         opts.setOutput(&inter_ncclids_[0], dev_size);
@@ -340,7 +341,7 @@ class PSGPUWrapper {
         node_size_ = gloo->Size();
 #else
         PADDLE_THROW(
-            phi::errors::Unavailable("heter ps need compile with GLOO"));
+            common::errors::Unavailable("heter ps need compile with GLOO"));
 #endif
       }
 #endif

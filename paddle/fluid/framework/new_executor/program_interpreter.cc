@@ -20,19 +20,19 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/os_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -217,7 +217,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
       if (platform::IsCUDAGraphCapturing()) {
         PADDLE_ENFORCE_EQ(fetch_list.empty(),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Cannot fetch data when using CUDA Graph."));
       }
 #endif
@@ -296,7 +296,7 @@ FetchList ProgramInterpreter::Run(
       if (platform::IsCUDAGraphCapturing()) {
         PADDLE_ENFORCE_EQ(fetch_list.empty(),
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Cannot fetch data when using CUDA Graph."));
       }
 #endif
@@ -316,7 +316,7 @@ void ProgramInterpreter::SetSkipGcVars(
   PADDLE_ENFORCE_EQ(
       execution_config_.skip_gc_vars.empty(),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "execution_config_.skip_gc_vars can only be initialized once, now "
           "execution_config_.skip_gc_vars is "
           "not empty, do not call SetSkipGcVars method repeatedly."));
@@ -328,7 +328,7 @@ void ProgramInterpreter::SetJitInputVars(
   PADDLE_ENFORCE_EQ(
       execution_config_.jit_input_vars.empty(),
       true,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "execution_config_.jit_input_vars can only be initialized once, now "
           "execution_config_.jit_input_vars is "
           "not empty, do not call SetJitInputVars method repeatedly."));
@@ -560,17 +560,17 @@ void ProgramInterpreter::PrepareForCUDAGraphCapture() {
   PADDLE_ENFORCE_EQ(
       platform::IsCUDAGraphCapturing(),
       false,
-      phi::errors::PermissionDenied("CUDA Graph is not allowed to capture "
-                                    "before prepare."));
+      common::errors::PermissionDenied("CUDA Graph is not allowed to capture "
+                                       "before prepare."));
   PADDLE_ENFORCE_EQ(phi::is_gpu_place(place_),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "CUDA Graph is only supported on NVIDIA GPU device."));
   // If set true, will call `cudaStreamSynchronize(nccl_stream)`after allreduce.
   // which may cause error in cuda graph. This behavior is consistent with PE.
   PADDLE_ENFORCE_EQ(FLAGS_sync_nccl_allreduce,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "FLAGS_sync_nccl_allreduce must be False to support "
                         "CUDA Graph capturing."));
 
@@ -595,7 +595,7 @@ void ProgramInterpreter::PrepareForCUDAGraphCapture() {
     }
   }
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "CUDA Graph is only supported on NVIDIA GPU device."));
 #endif
 }
@@ -607,19 +607,19 @@ void ProgramInterpreter::CheckCUDAGraphBeforeRun(
     PADDLE_ENFORCE_EQ(
         feed_names.empty(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Feeding data is not permitted when capturing CUDA Graph."));
     PADDLE_ENFORCE_EQ(
         FLAGS_new_executor_use_cuda_graph,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "You must turn on FLAGS_new_executor_use_cuda_graph to True "
             "to enable CUDA Graph capturing."));
     PADDLE_ENFORCE_EQ(
         place_,
         platform::CUDAGraphCapturingPlace(),
-        phi::errors::InvalidArgument("The place to capture CUDAGraph is "
-                                     "not the same as the place to run."));
+        common::errors::InvalidArgument("The place to capture CUDAGraph is "
+                                        "not the same as the place to run."));
   }
 #endif
 }
@@ -676,14 +676,14 @@ void ProgramInterpreter::BuildOperatorDependences() {
   }
 }
 
-// At the end of each step, the holder of phi::DenseTensor in LoDTensorArray is
-// null. Clear these Tensors and leave LoDTensorArray empty, otherwise an
+// At the end of each step, the holder of phi::DenseTensor in phi::TensorArray
+// is null. Clear these Tensors and leave phi::TensorArray empty, otherwise an
 // exception will occur in the next step
 void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
   auto vars = local_scope_->LocalVars();
   for (auto var : vars) {
-    if (var->IsType<LoDTensorArray>()) {
-      auto* lod_tensor_arr = var->GetMutable<LoDTensorArray>();
+    if (var->IsType<phi::TensorArray>()) {
+      auto* lod_tensor_arr = var->GetMutable<phi::TensorArray>();
       lod_tensor_arr->clear();
     }
   }
@@ -715,12 +715,12 @@ void ProgramInterpreter::Convert(
       auto& op_type = op->Type();
       if (op_type == interpreter::kMemcpyD2H ||
           op_type == interpreter::kMemcpyH2D) {
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "Cuda memory copy d2h/h2d is not allowed while using cuda graph."));
       }
       PADDLE_ENFORCE_EQ(typeid(*dev_ctx_) == typeid(phi::GPUContext),
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Device context of op %s must be [%s] while using "
                             "cuda graph, but got [%s].",
                             op_type,
@@ -822,7 +822,7 @@ void ProgramInterpreter::Convert(
       paddle::framework::Variable* var = inner_scope->FindVar(
           var_scope_.GetNameById(static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
-          var->IsType<LoDTensorArray>() ||
+          var->IsType<phi::TensorArray>() ||
           var->IsType<phi::SparseCooTensor>() ||
           var->IsType<phi::SparseCsrTensor>()) {
         last_live_ops_[var_id].insert(op_idx);
@@ -958,11 +958,11 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
   {
     // If it is OperatorBase, InferShape do nothing.
     if (op_with_kernel != nullptr) {
-      platform::RecordEvent infershape_event(
+      phi::RecordEvent infershape_event(
           "infer_shape",
           platform::TracerEventType::OperatorInner,
           1,
-          platform::EventRole::kInnerOp);
+          phi::EventRole::kInnerOp);
 
       // see OperatorWithKernel::RunImpl in operator.cc for why
       if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
@@ -1002,11 +1002,10 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
     // sub-graphs also run on the same machine concurrently, which cannot be
     // guaranteed in most of the time.
   } else {
-    platform::RecordEvent compute_event(
-        "compute",
-        platform::TracerEventType::OperatorInner,
-        1,
-        platform::EventRole::kInnerOp);
+    phi::RecordEvent compute_event("compute",
+                                   platform::TracerEventType::OperatorInner,
+                                   1,
+                                   phi::EventRole::kInnerOp);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (is_in_op_profiling_mode_) {
@@ -1056,7 +1055,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
           << op->DebugStringEx(local_scope);  // NOLINT
 
   if (!instr_node.InplaceBackMap().empty()) {
-    platform::RecordEvent inplaceback_event(
+    phi::RecordEvent inplaceback_event(
         "InplaceVarsBack", platform::TracerEventType::UserDefined, 10);
     auto& m = instr_node.InplaceBackMap();
     // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
@@ -1169,10 +1168,10 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
                   : (instr_node.KernelType() == OpFuncType::kGpuSync
                          ? "kGpuSync"
                          : "kGpuAsync"))
-          << " runs on " << platform::GetCurrentThreadName();
+          << " runs on " << phi::GetCurrentThreadName();
 
   auto* op = instr_node.OpBase();
-  platform::RecordEvent instruction_event(
+  phi::RecordEvent instruction_event(
       op->Type(), platform::TracerEventType::Operator, 1);
 
   SetDeviceId(instr_node.DeviceContext().GetPlace());
@@ -1214,7 +1213,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     exception_holder_.Catch(std::current_exception());
   } catch (std::exception& ex) {
     LOG(WARNING) << op->Type() << " raises an exception "
-                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+                 << common::demangle(typeid(ex).name()) << ", " << ex.what();
     exception_holder_.Catch(std::current_exception());
   } catch (...) {
     LOG(WARNING) << op->Type() << " raises an unknown exception";
@@ -1326,7 +1325,7 @@ void ProgramInterpreter::ExecuteInstructionList(
     PADDLE_ENFORCE_EQ(
         main_thread_blocker_.Clear(),
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "main_thread_blocker_.Clear() return -1, clear failed"));
     VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
@@ -1335,7 +1334,7 @@ void ProgramInterpreter::ExecuteInstructionList(
 
 void ProgramInterpreter::RunNextInstructions(
     const Instruction& instr, SchedulingQueue* reserved_next_ops) {
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
 
   auto IsReady = [this](size_t next_id) {
@@ -1395,10 +1394,10 @@ void ProgramInterpreter::RunInstructionAsync(size_t instr_id) {
 
 void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
   auto TensorRecordStream = [](phi::DenseTensor& tensor,
@@ -1466,8 +1465,8 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       TensorRecordStream(
           *(var->GetMutable<phi::SelectedRows>()->mutable_value()),
           instr.stream_);
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto* tensor_arr = var->GetMutable<phi::TensorArray>();
       for (auto& tensor : *tensor_arr) {
         TensorRecordStream(tensor, instr.stream_);
       }
@@ -1491,7 +1490,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
     } else if (var->IsType<std::vector<Scope*>>()) {
       // do nothing
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "The variable(%s) is not supported in eager deletion.",
           framework::ToTypeName(var->Type())));
     }
@@ -1500,7 +1499,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
 }
 
 void ProgramInterpreter::CheckGC(const Instruction& instr) {
-  platform::RecordEvent record(
+  phi::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (instr.need_record_stream_for_gc_) {
@@ -1528,7 +1527,7 @@ void ProgramInterpreter::Prepare(
     bool switch_stream) {
   PADDLE_ENFORCE_EQ(feed_names.size(),
                     feed_tensors.size(),
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Required feed_names.size() == feed_tensors.size(), "
                         "but received %d != %d",
                         feed_names.size(),
@@ -1539,8 +1538,8 @@ void ProgramInterpreter::Prepare(
       auto* feed_var = local_scope_->FindVar(feed_names[i]);
       PADDLE_ENFORCE_NOT_NULL(
           feed_var,
-          phi::errors::NotFound("Variable %s should not be nullptr.",
-                                feed_names[i]));
+          common::errors::NotFound("Variable %s should not be nullptr.",
+                                   feed_names[i]));
 
       auto feed_tensor = feed_var->GetMutable<phi::DenseTensor>();
       feed_tensor->ShareDataWith(feed_tensors[i]);
@@ -1649,7 +1648,7 @@ void ProgramInterpreter::TraceInstructionList(
     PADDLE_ENFORCE_EQ(
         main_thread_blocker_.Clear(),
         0,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "main_thread_blocker_.Clear() return -1, clear failed"));
     VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
@@ -1662,7 +1661,7 @@ void ProgramInterpreter::RecordMemcpyD2H(const Instruction& instr_node) {
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* default_dev_ctx = pool.Get(place_);
     for (auto& event : instr_node.EventsToWait()) {
-      platform::RecordEvent record(
+      phi::RecordEvent record(
           "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
       VLOG(3) << "Record event on default stream in jit_input_var at op: "
               << instr_node.OpBase()->Type();
@@ -1727,7 +1726,7 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
   PADDLE_ENFORCE_EQ(
       trace_order.size(),
       dependency_count_->size(),
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "trace_order size should be equal to dependency_count_."));
 
   trace_execute_order_ = trace_order;
@@ -1748,7 +1747,7 @@ void ProgramInterpreter::AnalyseExecuteOrderForTrace() {
 }
 
 Variable* ProgramInterpreter::DebugVar(const std::string& name) const {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "DebugVar is not implemented in ProgramInterpreter."));
 }
 }  // namespace framework

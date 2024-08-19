@@ -60,7 +60,7 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
     PADDLE_ENFORCE_GE(
         rank,
         4,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of dimensions of attn_mask is expected to be greater "
             "or equal to 4, but received %d. The shape of attn_mask is {%s}",
             rank,
@@ -89,14 +89,14 @@ static std::vector<int64_t> GetAttnSparseMaskDims(
     auto rank = origin_dims.size();
     PADDLE_ENFORCE_EQ(dtype,
                       DataType::INT32,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "dtype of attn_mask_start_row_indices must be "
                           "int32, but recieved %d",
                           dtype));
     PADDLE_ENFORCE_GE(
         rank,
         3,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of dimenstions of attn_mask_start_row_indices is "
             "expected to be greater or "
             "equal to 3, but recieved %d. The shape of "
@@ -105,7 +105,7 @@ static std::vector<int64_t> GetAttnSparseMaskDims(
             origin_dims));
     PADDLE_ENFORCE_EQ(origin_dims[rank - 1],
                       max_seqlen_q,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The sparse_mask_dims[%d] of "
                           "attn_mask_start_row_indices is expected to be "
                           "equal to %d, but recieved %d.",
@@ -114,7 +114,7 @@ static std::vector<int64_t> GetAttnSparseMaskDims(
                           origin_dims[2]));
     PADDLE_ENFORCE_GE(attn_mask_start_row,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "attn_mask_start_row should be greater or equal than "
                           "0 when using attn_mask_start_row_indices, "
                           "but recieved %d.",
@@ -193,13 +193,13 @@ struct FlashAttnParamsBase {
     if (attn_mask_tensor) {
       PADDLE_ENFORCE_NE(causal,
                         true,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "When attn_mask is set, causal can not be true."));
 
       PADDLE_ENFORCE_EQ(
           attn_mask->dtype(),
           q_dtype,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "attn_mask is expected to have the same data type with q."));
 
       mask_dims = GetAttnMaskDims(attn_mask_tensor);
@@ -210,7 +210,7 @@ struct FlashAttnParamsBase {
 
     PADDLE_ENFORCE_NE(attn_mask_tensor && attn_mask_start_row_indices,
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "attn_mask and attn_mask_start_row_indices cannot be "
                           "set at same time."));
   }
@@ -289,7 +289,7 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
       PADDLE_ENFORCE_EQ(
           dropout > 0.0f,
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "return_softmax is only supported when dropout > 0.0"));
 
       softmax->Resize(
@@ -355,16 +355,16 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
 static void CheckFlashAttnStatus(const bool status) {
   PADDLE_ENFORCE_EQ(status,
                     true,
-                    phi::errors::External(
+                    common::errors::External(
                         "Error in Flash-Attention, detail information is: %s",
                         phi::dynload::flash_attn_error()));
 }
 #endif
 
 static void RaiseNotSupportedError() {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("FlashAttention is unsupported, please check "
-                                 "the GPU compability and CUDA Version."));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "FlashAttention is unsupported, please check "
+      "the GPU compability and CUDA Version."));
 }
 
 }  // namespace phi

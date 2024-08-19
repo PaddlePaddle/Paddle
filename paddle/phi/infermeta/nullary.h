@@ -50,7 +50,8 @@ void CreateArrayInferMeta(DataType dtype, MetaTensor* out);
 
 TEST_API void CreateInferMeta(const IntArray& shape,
                               DataType dtype,
-                              MetaTensor* out);
+                              MetaTensor* out,
+                              MetaConfig config = MetaConfig());
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
                          DataType dtype,
@@ -84,7 +85,6 @@ void PartialRecvInferMeta(int ring_id,
                           int peer,
                           DataType dtype,
                           const std::vector<int>& out_shape,
-                          bool use_calc_stream,
                           int num,
                           int id,
                           MetaTensor* out);

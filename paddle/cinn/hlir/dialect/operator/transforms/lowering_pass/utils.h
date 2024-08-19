@@ -22,10 +22,6 @@ using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 std::vector<pir::Value> GetBlockOutsideInput(
     const std::vector<pir::Operation*>& op_list);
 
-std::unordered_map<OpLoweringGroupPtr,
-                   std::unordered_map<std::string, pir::Attribute>>
-CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list);
-
 std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
     const OpLoweringGroupPtr& group);
 

@@ -35,7 +35,7 @@ class FlattenOpConverter : public OpConverter {
         PADDLE_ENFORCE_GT(
             dim_i,
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "flatten input dim should be > 0, but got %d.", dim_i));
         dim_prod *= dim_i;
       }

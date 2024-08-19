@@ -110,16 +110,15 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
-            conv_out = paddle.static.nn.conv2d_transpose(
-                input=data,
-                num_filters=self.conv_num_filters,
-                filter_size=self.conv_filter_size,
+            conv_out = paddle.nn.Conv2DTranspose(
+                in_channels=6,
+                out_channels=self.conv_num_filters,
+                kernel_size=self.conv_filter_size,
                 groups=self.conv_groups,
                 padding=self.conv_padding,
                 bias_attr=False,
-                use_cudnn=self.use_cudnn,
-                act=None,
-            )
+                data_format='NCHW',
+            )(data)
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }

@@ -39,22 +39,22 @@ bool PrelnGroupnormActPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of prelnGroupnormAct plugin shoule not be nullptr."));
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
     if (with_fp16_) {
       return ((in.type == nvinfer1::DataType::kHALF) &&
               (in.format == nvinfer1::PluginFormat::kHWC8));
     } else {
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "PrelnGroupnormAct TRT Plugin is fp16 only so far"));
 
       return (in.type == nvinfer1::DataType::kFLOAT) &&
@@ -218,7 +218,7 @@ void prelnGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
   // Make sure the values are as we expect.
   PADDLE_ENFORCE_EQ(params.c % params.cPerBlock,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The groupNormNDHWCSum of prelnGroupnormAct Plugin got "
                         "wrong parameters"
                         "params.c %% params.cPerBlock should be 0, but get %d.",
@@ -226,7 +226,7 @@ void prelnGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
   PADDLE_ENFORCE_EQ(
       params.dhw % params.dhwPerBlock,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The groupNormNDHWCSum of prelnGroupnormAct Plugin got wrong "
           "parameters"
           "params.dhw  %% params.dhwPerBlock should be 0, but get %d.",
@@ -235,7 +235,7 @@ void prelnGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
   PADDLE_ENFORCE_EQ(
       params.cPerBlock % params.cPerGroup,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The groupNormNDHWCSum of prelnGroupnormAct Plugin got wrong "
           "parameters"
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
@@ -266,7 +266,7 @@ void prelnGroupNormNDHWCSum(GroupNormNDHWCParams<__half> const &params,
       prelnGroupNormNDHWCSumKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
     default:
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The function groupNormNDHWCSum of prelnGroupnormAct TRT Plugin "
           "encounter error"));
   }
@@ -351,7 +351,7 @@ void prelnGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
   PADDLE_ENFORCE_EQ(
       params.c % params.cPerBlock,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The groupNormNDHWCScale of prelnGroupnormAct Plugin got "
           "wrong parameters"
           "params.c %% params.cPerBlock should be 0, but get %d.",
@@ -360,7 +360,7 @@ void prelnGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
   PADDLE_ENFORCE_EQ(
       params.cPerBlock % params.cPerGroup,
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The groupNormNDHWCScale of prelnGroupnormAct Plugin got wrong "
           "parameters"
           "params.cPerBlock %% params.cPerGroup should be 0, but get %d.",
@@ -391,7 +391,7 @@ void prelnGroupNormNDHWCScale(GroupNormNDHWCParams<__half> const &params,
       prelnGroupNormNDHWCScaleKernel<4><<<grid, 4, 0, stream>>>(params);
       break;
     default:
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "The function groupNormNDHWCSum of prelnGroupnormAct TRT Plugin "
           "encounter error"));
   }
@@ -407,7 +407,7 @@ int PrelnGroupnormActPluginDynamic::enqueue(
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. prelnGroupnormAct-->fp32";
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The prelnGroupnormAct TRT Plugin's only support fp16 input"));
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. prelnGroupnormAct-->fp16";
@@ -481,7 +481,7 @@ int PrelnGroupnormActPluginDynamic::enqueue(
 
   } else {
     // input not fp16
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "The PrelnGroupnormAct TRT Plugin's only support fp16 input"));
   }
   return cudaGetLastError() != cudaSuccess;

@@ -12,13 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
-from typing import Union
+from typing import TYPE_CHECKING, Any, SupportsIndex, Union
 
 import numpy as np
 
 import paddle
 from paddle.framework import core
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+    from types import TracebackType
+
+    import numpy.typing as npt
+
+    from paddle._typing import NestedNumbericSequence
+
+    _NumpyShapeLike = Union[SupportsIndex, Sequence[SupportsIndex]]
+
 
 # Use to store the previous and current process mesh
 _g_previous_process_mesh = None
@@ -91,7 +104,16 @@ class ProcessMesh(core.ProcessMesh):
 
     """
 
-    def __init__(self, mesh=None, dim_names=None, shape=None, process_ids=None):
+    shape: list[int]
+    process_ids: list[int]
+
+    def __init__(
+        self,
+        mesh: npt.NDArray[Any] | NestedNumbericSequence | None = None,
+        dim_names: list[str] | None = None,
+        shape: _NumpyShapeLike | None = None,
+        process_ids: Iterable[Any] | None = None,
+    ) -> None:
         # Use shape and process_ids just for compatibility
         # Users should not use these directly
         if mesh is None:
@@ -158,21 +180,21 @@ class ProcessMesh(core.ProcessMesh):
         )
 
     @property
-    def mesh(self):
+    def mesh(self) -> npt.NDArray[Any]:
         """
         Get the underlying mesh of ProcessMesh.
         """
         return self._mesh
 
     @property
-    def dim_names(self):
+    def dim_names(self) -> list[str]:
         """
         Get the underlying dimension names of ProcessMesh.
         """
         return self._dim_names
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> int:
         """
         Get the unique id of ProcessMesh.
         NOTE
@@ -181,7 +203,9 @@ class ProcessMesh(core.ProcessMesh):
         """
         return self._unique_id
 
-    def __getitem__(self, index):
+    def __getitem__(
+        self, index: slice | tuple[slice, ...] | SupportsIndex
+    ) -> ProcessMesh:
         if isinstance(index, tuple):
             new_dim_names = []
             for i, item in enumerate(index):
@@ -206,7 +230,7 @@ class ProcessMesh(core.ProcessMesh):
                 return ProcessMesh([new_mesh])
 
     def get_rank_by_dim_and_process_id(
-        self, dim: Union[str, int], process_id: int
+        self, dim: str | int, process_id: int
     ) -> int:
         # do some check
         if process_id not in self._process_ids:
@@ -226,7 +250,7 @@ class ProcessMesh(core.ProcessMesh):
         dim_name_index = self._dim_names.index(dim_name)
         return int(np.where(self._mesh == process_id)[dim_name_index])
 
-    def get_dim_size(self, dim: Union[str, int]) -> int:
+    def get_dim_size(self, dim: str | int) -> int:
         if dim is None:
             return 1
 
@@ -239,7 +263,11 @@ class ProcessMesh(core.ProcessMesh):
         assert dim_name in self._dim_names
         return self._shape[self._dim_names.index(dim_name)]
 
-    def get_mesh_with_dim(self, dim_name, index=None):
+    def get_mesh_with_dim(
+        self,
+        dim_name: str,
+        index: slice | tuple[slice, ...] | SupportsIndex | None = None,
+    ) -> ProcessMesh:
         assert (
             dim_name in self._dim_names
         ), f'{dim_name} is not a valid dim name.'
@@ -256,14 +284,19 @@ class ProcessMesh(core.ProcessMesh):
             return ProcessMesh(new_mesh[index], new_dim_names[1:])
         return ProcessMesh(new_mesh, new_dim_names)
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         set_current_process_mesh(self)
         default_prog = paddle.static.default_main_program()
         cur_block = default_prog.current_block()
         self._old_var_names = list(cur_block.vars.keys())
         self._old_op_size = len(cur_block.ops)
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        exc_traceback: TracebackType | None,
+    ) -> None:
         from .static.dist_op import DistributedOperator
         from .static.dist_tensor import DistributedTensor
 
@@ -304,28 +337,28 @@ class ProcessMesh(core.ProcessMesh):
                     dist_op.dist_attr.mark_annotated("process_mesh")
         reset_current_process_mesh()
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: Any) -> ProcessMesh:
         if id(self) in memo:
             return memo[id(self)]
         new_process_mesh = ProcessMesh(np.array(self.mesh), self.dim_names)
         memo[id(self)] = new_process_mesh
         return new_process_mesh
 
-    def __eq__(self, other):
+    def __eq__(self, other: ProcessMesh | core.ProcessMesh) -> bool:
         if not isinstance(other, (ProcessMesh, core.ProcessMesh)):
             return False
         if self.shape != other.shape or self.process_ids != other.process_ids:
             return False
         return True
 
-    def __ne__(self, other):
+    def __ne__(self, other: ProcessMesh | core.ProcessMesh) -> None:
         return not self.__eq__(other)
 
-    def __str__(self):
+    def __str__(self) -> str:
         str = f"shape {self.shape}, process_ids {self.process_ids}, dim_nams {self.dim_names}"
         return str
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return super().__hash__()
 
 

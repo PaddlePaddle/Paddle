@@ -66,7 +66,7 @@ class InplaceAddToOpPass : public MemoryReusePass {
       PADDLE_ENFORCE_EQ(
           out_var_op_iter->second.ops().empty(),
           false,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Var(%s)'s last live op should not empty.", out_var->Name()));
       last_live_op_of_in_var = *(out_var_op_iter->second.ops().begin());
     }
@@ -80,7 +80,7 @@ class InplaceAddToOpPass : public MemoryReusePass {
     PADDLE_ENFORCE_NE(
         in_var_info_iter,
         (*var_infos_)[scope_idx].end(),
-        phi::errors::NotFound("Cannot find variable %s.", in_var->Name()));
+        common::errors::NotFound("Cannot find variable %s.", in_var->Name()));
 
     in_var_info_iter->second->SetRefCnt(2);  // before inplace, it is 1
   }
@@ -115,7 +115,7 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
       const framework::OpDesc *op_desc = op->Node()->Op();
       PADDLE_ENFORCE_NOT_NULL(
           op_desc,
-          phi::errors::NotFound("Op(%s) can not find opdesc.", op->Name()));
+          common::errors::NotFound("Op(%s) can not find opdesc.", op->Name()));
 
       // only grad op should be processed.
       if (op_type != "grad_add") {
@@ -151,14 +151,14 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
 
     PADDLE_ENFORCE_EQ(op->Node()->inputs.size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of inputs of %s should be 2, but got %d",
                           op_type,
                           op->Node()->inputs.size()));
 
     PADDLE_ENFORCE_EQ(op->Node()->outputs.size(),
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The size of outputs of %s should be 1, but got %d",
                           op_type,
                           op->Node()->outputs.size()));
@@ -348,7 +348,7 @@ GetAllVersionVarsMap(const Graph &graph) {
   PADDLE_ENFORCE_EQ(
       sorted_nodes.size(),
       nodes.size(),
-      phi::errors::PermissionDenied("Wrong toplogical sort algorithm."));
+      common::errors::PermissionDenied("Wrong toplogical sort algorithm."));
   std::unordered_map<std::string, std::vector<Node *>> result;
   for (auto *node : sorted_nodes) {
     if (node->IsVar() && !node->IsCtrlVar()) {
@@ -385,7 +385,7 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
       }
       PADDLE_ENFORCE_LT(input_vars.size(),
                         2,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The size of inputs of grad_add should be 2."));
       input_vars.push_back(in);
     }
@@ -411,19 +411,19 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
     // Step 2: find the unique output var
     Node *output_var = nullptr;
     std::string output_var_name = node->Op()->Output("Out")[0];
-    PADDLE_ENFORCE_NE(
-        output_var_name,
-        kEmptyVarName,
-        phi::errors::InvalidArgument("Output of grad_add should be provided."));
+    PADDLE_ENFORCE_NE(output_var_name,
+                      kEmptyVarName,
+                      common::errors::InvalidArgument(
+                          "Output of grad_add should be provided."));
     for (auto *out : node->outputs) {
       if (output_var_name == out->Name()) {
         output_var = out;
         break;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(
-        output_var,
-        phi::errors::InvalidArgument("Output of grad_add should be provided."));
+    PADDLE_ENFORCE_NOT_NULL(output_var,
+                            common::errors::InvalidArgument(
+                                "Output of grad_add should be provided."));
 
     VLOG(10) << "Check inplace chain: " << input_vars[0]->Name() << " -> "
              << input_vars[1]->Name() << " -> " << output_var->Name();
@@ -453,16 +453,16 @@ void InplaceAddToOpPass::ApplyImpl(ProgramDesc *main_program,
     auto iter = all_ver_vars.find(input_vars[0]->Name());
     PADDLE_ENFORCE_EQ(iter != all_ver_vars.end(),
                       true,
-                      phi::errors::InvalidArgument("Variable %s not found.",
-                                                   input_vars[0]->Name()));
+                      common::errors::InvalidArgument("Variable %s not found.",
+                                                      input_vars[0]->Name()));
     if (iter->second[iter->second.size() - 1] != input_vars[0]) continue;
 
     iter = all_ver_vars.find(input_vars[1]->Name());
     if (iter->second.size() != 1) continue;
     PADDLE_ENFORCE_EQ(iter->second[0],
                       input_vars[1],
-                      phi::errors::InvalidArgument("Variable %s not found.",
-                                                   input_vars[1]->Name()));
+                      common::errors::InvalidArgument("Variable %s not found.",
+                                                      input_vars[1]->Name()));
     iter = all_ver_vars.find(output_var->Name());
     if (iter->second[0] != output_var) continue;
 

@@ -210,7 +210,7 @@ def check_initialization_for_mppp(dist_startup_prog, rank_id):
 
 
 def check_allgather(dist_main_program):
-    allgather_out = "c_allgather@RESHARD_0.tmp_0"  # "x@RESHARD_0"
+    allgather_out = "all_gather@RESHARD_0.tmp_0"  # "x@RESHARD_0"
     var_result = False
     op_result = False
     vars = dist_main_program.global_block().vars

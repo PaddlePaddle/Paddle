@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 from functools import wraps
-from typing import Callable, List, Union
+from typing import Callable, Union
 
 import numpy as np
 
@@ -234,8 +236,8 @@ def convert_place(place: PlaceType) -> str:
 
 def get_places(
     func: FuncType = lambda: True, isStr: bool = False
-) -> List[PlaceType]:
-    places: List[PlaceType] = []
+) -> list[PlaceType]:
+    places: list[PlaceType] = []
     if paddle.is_compiled_with_cuda() and func():
         places.append(paddle.CUDAPlace(0))
     if (

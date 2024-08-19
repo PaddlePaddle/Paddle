@@ -14,80 +14,116 @@
 
 import paddle
 from paddle.autograd.backward_utils import ValueDict
+from paddle.distributed.passes.pass_base import PassContext, new_pass
+from paddle.pir import get_current_insertion_point
 
+from ...passes.pass_utils import auto_complete_op_role
 from .process_group import get_process_group
 from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
 from .reshard_funcs.reshard_func_register import register_reshard_funcs
+from .utils import get_pp_stage_by_pp_degree
 
 register_reshard_funcs()
 
-partition_skip_op_list = ["builtin.combine", "builtin.split"]
+partition_skip_op_list = [
+    "builtin.combine",
+    "builtin.split",
+    "pd_op.pylayer",
+    "cf.yield",
+    "cf.tuple_push",
+    "cf.tuple_pop",
+    "cf.stack_create",
+]
 amp_ops = ["pd_op.check_finite_and_unscale_", "pd_op.update_loss_scaling_"]
 
 
-def reshard_single_value(op, operand, attr):
+def reshard_single_value(program, op, operand, attr):
     prev_var = operand.source()
     if prev_var.is_dist() and prev_var.dist_attr() != attr:
         operand_attr = attr.as_tensor_dist_attr()
         paddle.pir.set_insertion_point(op)
-        # fold reshard
-        if prev_var.get_defining_op().name() == 'dist_op.reshard':
-            prev_reshard = prev_var.get_defining_op()
-            prev_var = prev_reshard.operand_source(0)
-            if prev_var.dist_attr() == operand_attr:
-                return prev_var
+        with auto_complete_op_role(
+            program, op.op_role, get_current_insertion_point()
+        ):
+            # fold reshard
+            if prev_var.get_defining_op().name() == 'dist_op.reshard':
+                prev_reshard = prev_var.get_defining_op()
+                prev_var = prev_reshard.operand_source(0)
+                if prev_var.dist_attr() == operand_attr:
+                    return prev_var
+                reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
+                return reshard_var
+            # insert reshard
             reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
             return reshard_var
-        # insert reshard
-        reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
-        return reshard_var
     return prev_var
 
 
-def reshard_combine_value(op, operand, attr):
+def reshard_combine_value(program, op, operand, attr):
     prev_var = operand.source()
+
     assert (
         prev_var.get_defining_op().name() == 'builtin.combine'
     ), "TensorList must be defined by builtin.combine op."
+
     combine_op = prev_var.get_defining_op()
     array_attr = attr.as_array_attr()
+
     assert len(combine_op.operands()) == len(
         array_attr
     ), "The number of combine op operands and the number of dist array_attr are not equal in op"
+
     reshard_vars = []
     for inner_operand, inner_attr in zip(combine_op.operands(), array_attr):
-        reshard_vars.append(reshard_single_value(op, inner_operand, inner_attr))
+        reshard_vars.append(
+            reshard_single_value(program, op, inner_operand, inner_attr)
+        )
+
     paddle.pir.set_insertion_point(op)
-    return paddle._C_ops.builtin_combine(reshard_vars)
+    with auto_complete_op_role(
+        program, op.op_role, get_current_insertion_point()
+    ):
+        combine_value = paddle._C_ops.builtin_combine(reshard_vars)
+    return combine_value
 
 
 def apply_partition_pass(program):
     for op in program.global_block().ops:
         if op.name() in partition_skip_op_list:
             continue
+
         assert len(op.operands()) == len(
             op.dist_attr.operands()
         ), f"The number of operands and the number of op_dist_attr's operands are not equal in op: {op}"
         assert len(op.results()) == len(
             op.dist_attr.results()
         ), f"The number of results and the number of op_dist_attr's results are not equal in op: {op}"
+
         # deal with inplace value
         for out_idx, in_idx in paddle.core.pir.get_op_inplace_info(op).items():
+            ref_op_role = op.op_role
+
             operand = op.operand(in_idx)
             operand_attr = op.dist_attr.operand(in_idx)
             prev_var = operand.source()
             if not prev_var.is_dist() or operand_attr == prev_var.dist_attr():
                 continue
+
             assert (
                 not prev_var.is_combine()
             ), f"The current partition pass not support inplace value of {op} is tensor list."
+
             operand_attr = operand_attr.as_tensor_dist_attr()
+
             # reshard input
             paddle.pir.set_insertion_point(op)
-            reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
-            operand.set_source(reshard_var)
+            with auto_complete_op_role(
+                program, ref_op_role, get_current_insertion_point()
+            ):
+                reshard_var = paddle._C_ops.reshard_v2(prev_var, operand_attr)
+                operand.set_source(reshard_var)
 
             result = op.result(out_idx)
             result_attr = op.dist_attr.result(out_idx).as_tensor_dist_attr()
@@ -100,17 +136,30 @@ def apply_partition_pass(program):
             old_dist_attr = result.dist_attr()
             result.update_dist_attr(result_attr)
 
-            # reshard output to assign out input
-            reshard_var_1 = paddle._C_ops.reshard_v2(
-                result, prev_var.dist_attr()
-            )
-            paddle.assign(reshard_var_1, prev_var)
+            with auto_complete_op_role(
+                program, ref_op_role, get_current_insertion_point()
+            ):
+                # reshard output to assign out input
+                reshard_var_1 = paddle._C_ops.reshard_v2(
+                    result, prev_var.dist_attr()
+                )
+                paddle.assign(reshard_var_1, prev_var)
 
             if old_dist_attr == result.dist_attr():
                 continue
+
+            if ref_op_role is not None:
+                paddle.pir.set_insertion_point_after(op)
+
             reshard_var_2 = reshard_var_1
             if old_dist_attr != reshard_var_1.dist_attr():
-                reshard_var_2 = paddle._C_ops.reshard_v2(result, old_dist_attr)
+                with auto_complete_op_role(
+                    program, ref_op_role, get_current_insertion_point()
+                ):
+                    reshard_var_2 = paddle._C_ops.reshard_v2(
+                        result, old_dist_attr
+                    )
+
             result.replace_all_uses_with(reshard_var_1)
             reshard_var_1.get_defining_op().operand(0).set_source(result)
             reshard_var_2.get_defining_op().operand(0).set_source(result)
@@ -118,9 +167,13 @@ def apply_partition_pass(program):
         for operand, attr in zip(op.operands(), op.dist_attr.operands()):
             prev_var = operand.source()
             if prev_var.is_combine():
-                operand.set_source(reshard_combine_value(op, operand, attr))
+                operand.set_source(
+                    reshard_combine_value(program, op, operand, attr)
+                )
             else:
-                operand.set_source(reshard_single_value(op, operand, attr))
+                operand.set_source(
+                    reshard_single_value(program, op, operand, attr)
+                )
             prev_op = prev_var.get_defining_op()
             if prev_op and prev_op.num_results() == 1 and prev_var.use_empty():
                 prev_op.erase()
@@ -130,10 +183,17 @@ def apply_partition_pass(program):
                 paddle.pir.set_insertion_point_after(op)
                 old_dist_attr = var.dist_attr()
                 var.update_dist_attr(attr.as_tensor_dist_attr())
+
                 # insert reshard
-                reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
-                var.replace_all_uses_with(reshard_var)
-                reshard_var.get_defining_op().operand(0).set_source(var)
+                with auto_complete_op_role(
+                    program, op.op_role, get_current_insertion_point()
+                ):
+                    reshard_var = paddle._C_ops.reshard_v2(var, old_dist_attr)
+                    var.replace_all_uses_with(reshard_var)
+                    reshard_var.get_defining_op().operand(0).set_source(var)
+                    var.get_defining_op().set_bool_attr(
+                        "replace_all_uses_with_reshard_var", True
+                    )
 
 
 def fold_reshard_pass(dist_program):
@@ -164,14 +224,21 @@ def fold_reshard_pass(dist_program):
         op.erase()
 
 
-def apply_reshard_pass(dist_program):
+def apply_reshard_pass(dist_program, params_grads=[]):
     fold_reshard_pass(dist_program)
+
+    # {grad.id: grad}
+    sharded_grad = {}
+    grad_ids = [grad.id for _, grad in params_grads if grad is not None]
+
     for op in dist_program.global_block().ops:
         if op.name() == 'dist_op.reshard':
             var = op.operand_source(0)
+
             op_dist_attr = op.dist_attr
             src_dist_attr = op_dist_attr.operand(0).as_tensor_dist_attr()
             dst_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
+
             assert (
                 not var.initialized() or var.dist_attr() == src_dist_attr
             ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
@@ -180,26 +247,66 @@ def apply_reshard_pass(dist_program):
                 op.result(0).replace_all_uses_with(var)
                 op.erase()
                 continue
+
             reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
             assert (
                 reshard_func is not None
             ), f'There is no reshard function that matches src_dist_attr: {src_dist_attr} and dst_dist_attr: {dst_dist_attr}, {var.get_defining_op()}'
+
             paddle.pir.set_insertion_point(op)
-            out_value = reshard_func.reshard(
-                src_dist_attr,
-                dst_dist_attr,
-                op.operand_source(0),
-                op.result(0).type(),
-            )
+            ref_op_role = op.op_role
+
+            with auto_complete_op_role(
+                dist_program, ref_op_role, get_current_insertion_point()
+            ):
+                out_value = reshard_func.reshard(
+                    src_dist_attr,
+                    dst_dist_attr,
+                    op.operand_source(0),
+                    op.result(0).type(),
+                )
+
             if out_value is not None:
                 op.result(0).replace_all_uses_with(out_value)
+                if var.id in grad_ids:
+                    if var.get_defining_op().has_attr(
+                        "replace_all_uses_with_reshard_var"
+                    ):
+                        sharded_grad[var.id] = out_value
+
             if op.result(0).use_empty():
                 op.erase()
 
+            if out_value is not None and var.use_empty():
+                if var.id in grad_ids:
+                    sharded_grad[var.id] = out_value
+
+    # update params_grads with sharded grad
+    for idx, (param, grad) in enumerate(params_grads):
+        if grad is None:
+            continue
+
+        if grad.id in sharded_grad:
+            params_grads[idx] = (param, sharded_grad[grad.id])
+
+
+def _remove_other_rank_params_grads(dist_params_grads):
+    cur_rank = paddle.distributed.get_rank()
+    need_remove_idx = []
+    for idx, (_, grad) in enumerate(dist_params_grads):
+        if grad is None:
+            continue
+        if cur_rank not in grad.dist_attr().process_mesh.process_ids:
+            need_remove_idx.append(idx)
+    for idx in need_remove_idx[::-1]:
+        dist_params_grads.pop(idx)
+
 
 # pruning op and value not belong to cur rank
-def remove_other_rank_op_pass(dist_program):
+def remove_other_rank_op_pass(dist_program, dist_params_grads):
     cur_rank = paddle.distributed.get_rank()
+
+    _remove_other_rank_params_grads(dist_params_grads)
     for op in dist_program.global_block().ops[::-1]:
         if op.name() in partition_skip_op_list:
             can_delete = True
@@ -264,7 +371,12 @@ def remove_other_rank_input_output_pass(dist_program):
 
 
 # Note: this is the pass in the dense program
-comm_ops = ["pd_op.c_allreduce_sum", "pd_op.c_allgather"]
+comm_ops = [
+    "pd_op.c_allreduce_sum",
+    "pd_op.all_gather",
+    "pd_op.c_allreduce_max",
+    "pd_op.reduce_scatter",
+]
 
 
 def remove_unuseful_comm_op_pass(program):
@@ -310,3 +422,75 @@ def eliminate_transpose_by_reshape(program):
                 transpose_var.replace_all_uses_with(reshape_var)
                 op.erase()
     return program
+
+
+def complete_op_role(main_program, op_role_scope: list):
+    assert (
+        len(op_role_scope) == 3 and len(op_role_scope[0]) == 2
+    ), "op_role_scope should has the shape[3, 2]"
+    forward_op_start = op_role_scope[0][0]
+    forward_op_end = op_role_scope[0][1]
+
+    backward_op_start = op_role_scope[1][0]
+    backward_op_end = op_role_scope[1][1]
+
+    opt_op_start = op_role_scope[2][0]
+    opt_op_end = op_role_scope[2][1]
+
+    global_op_idx = 0
+    for blk in main_program.blocks:
+        for op in blk.ops:
+            if (
+                global_op_idx >= forward_op_start
+                and global_op_idx < forward_op_end
+            ):
+                op.op_role = 0
+            elif (
+                global_op_idx >= backward_op_start
+                and global_op_idx < backward_op_end
+            ):
+                op.op_role = 1
+            elif global_op_idx >= opt_op_start and global_op_idx < opt_op_end:
+                op.op_role = 2
+            else:
+                pass
+            global_op_idx += 1
+
+
+def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
+    """
+    Pipeline schedule pass for auto parallel. Enables the pipeline parallel scheduling
+    strategies like FThenB, 1F1B, VPP, etc.
+    """
+    import os
+
+    pass_name = pipeline_strategy.schedule_mode
+    assert pass_name in [
+        "FThenB",
+        "1F1B",
+    ], f"pipeline scheduler only support FThenB now, but receive {pass_name}"
+
+    pass_attr = {}
+    pass_attr["num_micro_batches"] = pipeline_strategy.accumulate_steps
+    pass_attr["pp_degree"] = pipeline_strategy.pp_degree
+    pass_attr["pp_stage"] = get_pp_stage_by_pp_degree(
+        pipeline_strategy.pp_degree
+    )
+
+    if pass_name == "1F1B":
+        # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
+        # FLAGS_mp_async_allreduce_in_backward to auto parallel Strategy
+        # after these two optimizations are available.
+        pass_attr["enable_backward_forward_overlap"] = int(
+            os.environ.get("FLAGS_1f1b_backward_forward_overlap", 0)
+        )
+
+    pipeline_pass = new_pass("pipeline_scheduler_" + pass_name, pass_attr)
+    pass_context = PassContext()
+    pipeline_pass.apply(
+        dense_main_program,
+        dense_starup_program,
+        pass_context,
+    )
+    plan = pass_context.get_attr("plan")
+    return plan

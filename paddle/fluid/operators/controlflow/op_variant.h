@@ -49,9 +49,10 @@ class OpVariant {
   const AttrType &Attr(const std::string &name) const {
     auto &attrs = Attrs();
     auto it = attrs.find(name);
-    PADDLE_ENFORCE_NE(it,
-                      attrs.end(),
-                      phi::errors::NotFound("Cannot find attribute %s.", name));
+    PADDLE_ENFORCE_NE(
+        it,
+        attrs.end(),
+        common::errors::NotFound("Cannot find attribute %s.", name));
     return PADDLE_GET_CONST(AttrType, it->second);
   }
 

@@ -46,7 +46,7 @@ void ThreadPool::Init() {
     PADDLE_ENFORCE_GT(
         num_threads,
         0,
-        phi::errors::InvalidArgument("The number of threads is 0."));
+        common::errors::InvalidArgument("The number of threads is 0."));
     threadpool_ = std::make_unique<ThreadPool>(num_threads);
   }
 }
@@ -88,7 +88,7 @@ void ThreadPool::TaskLoop() {
 
       if (tasks_.empty()) {
         PADDLE_THROW(
-            phi::errors::Unavailable("Current thread has no task to Run."));
+            common::errors::Unavailable("Current thread has no task to Run."));
       }
 
       // pop a task from the task queue

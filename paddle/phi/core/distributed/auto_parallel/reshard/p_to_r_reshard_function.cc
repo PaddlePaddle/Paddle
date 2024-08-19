@@ -130,7 +130,7 @@ void PToRReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
     PToRReshardFunction p_to_r_func;
     PADDLE_ENFORCE(
         p_to_r_func.IsSuitable(tmp_result, out_dist_attr),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Invoke the p to r reshard function is not valid from %s to %s.",
             tmp_result.dist_attr(),
             out_dist_attr));

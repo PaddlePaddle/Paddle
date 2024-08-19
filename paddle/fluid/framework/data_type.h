@@ -137,7 +137,7 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
 
   _ForEachDataType_(VisitDataTypeCallback);
 #undef VisitDataTypeCallback
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not supported proto::VarType::Type(%d) as data type.",
       static_cast<int>(type)));
 }
@@ -183,7 +183,7 @@ inline void VisitIntDataType(proto::VarType::Type type, Visitor visitor) {
 
   _ForEachIntDataType_(VisitIntDataTypeCallback);
 
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Expected integral data type, but got %s", DataTypeToString(type)));
 
 #undef VisitIntDataTypeCallback
@@ -243,7 +243,7 @@ extern inline proto::VarType::Type ToComplexType(proto::VarType::Type t) {
     case proto::VarType::FP64:
       return proto::VarType::COMPLEX128;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unknown real value data type (%s), now only support float32 and "
           "float64.",
           DataTypeToString(t)));
@@ -257,7 +257,7 @@ extern inline proto::VarType::Type ToRealType(proto::VarType::Type t) {
     case proto::VarType::COMPLEX128:
       return proto::VarType::FP64;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unknown complex value data type (%s), now only support complex64 "
           "and "
           "complex128.",

@@ -27,7 +27,6 @@
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
-#include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
@@ -39,6 +38,7 @@
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/memory/stats.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
@@ -311,9 +311,10 @@ OpFuncType AnalyseOpFuncType(const OpFuncNode& op_func_node,
     return OpFuncType::kCpuSync;
   }
 
-  PADDLE_ENFORCE_EQ(IsSupportedHeterPlace(place),
-                    true,
-                    phi::errors::Fatal("Unsupported current place %s", place));
+  PADDLE_ENFORCE_EQ(
+      IsSupportedHeterPlace(place),
+      true,
+      common::errors::Fatal("Unsupported current place %s", place));
 
   // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
   // computing. They execute serially in device thread and block CUDA kernel
@@ -469,7 +470,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       PADDLE_ENFORCE_EQ(
           is_custom_device_op,
           true,
-          phi::errors::Unimplemented(
+          common::errors::Unimplemented(
               "Unsupported current device %s with Paddle CustomDevice ",
               op_device));
 #else
@@ -492,7 +493,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
               << " by device_guard.";
     } else {
       PADDLE_THROW(
-          phi::errors::Fatal("Unsupported current place %s", op_device));
+          common::errors::Fatal("Unsupported current place %s", op_device));
     }
   }
 }
@@ -977,8 +978,7 @@ void BuildOpFuncList(const phi::Place& place,
       std::rethrow_exception(std::current_exception());
     } catch (std::exception& ex) {
       LOG(WARNING) << op_type << " raises an exception "
-                   << platform::demangle(typeid(ex).name()) << ", "
-                   << ex.what();
+                   << common::demangle(typeid(ex).name()) << ", " << ex.what();
       std::rethrow_exception(std::current_exception());
     } catch (...) {
       LOG(WARNING) << op_type << " raises an unknown exception";
@@ -1089,8 +1089,8 @@ void BuildOpFuncList(const phi::Place& place,
                                      ->mutable_value()
                                      ->MoveMemoryHolder());
           var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-        } else if (var->IsType<LoDTensorArray>()) {
-          auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+        } else if (var->IsType<phi::TensorArray>()) {
+          auto* tensor_arr = var->GetMutable<phi::TensorArray>();
           for (auto& t : *tensor_arr) {
             garbages->emplace_back(t.MoveMemoryHolder());
           }
@@ -1136,8 +1136,8 @@ void BuildOpFuncList(const phi::Place& place,
                                  ->mutable_value()
                                  ->MoveMemoryHolder());
       var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-    } else if (var->IsType<LoDTensorArray>()) {
-      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto* tensor_arr = var->GetMutable<phi::TensorArray>();
       for (auto& t : *tensor_arr) {
         garbages->emplace_back(t.MoveMemoryHolder());
       }
@@ -1267,7 +1267,7 @@ void BuildId2VarName(const std::map<std::string, int>& var_name_2_id,
                      std::unordered_map<int, std::string>* id_2_var_name) {
   PADDLE_ENFORCE_NOT_NULL(
       id_2_var_name,
-      phi::errors::InvalidArgument("id2_var_name can not be null"));
+      common::errors::InvalidArgument("id2_var_name can not be null"));
   for (auto [var_name, id] : var_name_2_id) {
     id_2_var_name->insert({id, var_name});
   }
@@ -1447,14 +1447,14 @@ const std::vector<std::string> GetInstructionCallStack(
     auto attr = iter->second;
     PADDLE_ENFORCE(
         attr.isa<pir::ArrayAttribute>(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "%s: Callstack attributes of %s is not ArrayAttribute type", type));
     pir::ArrayAttribute array_attribute = attr.dyn_cast<pir::ArrayAttribute>();
     std::vector<pir::Attribute> vec_attr = array_attribute.AsVector();
     for (auto value : vec_attr) {
       PADDLE_ENFORCE(
           value.isa<pir::StrAttribute>(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "%s: Callstack attributes of %s is not StrAttribute type", type));
       vec_str.emplace_back(value.dyn_cast<pir::StrAttribute>().AsString());
     }

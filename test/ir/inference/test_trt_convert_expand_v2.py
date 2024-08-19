@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -36,7 +38,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 4:
                 self.input_shape = [1, 1, 4, 6]
                 return np.random.random([1, 1, 4, 6]).astype(np.float32)
@@ -50,13 +52,13 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
                 self.input_shape = [48]
                 return np.random.random([48]).astype(np.float32)
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.array([1, 48]).astype(np.int32)
 
-        def generate_shapeT1_data(attrs: List[Dict[str, Any]]):
+        def generate_shapeT1_data(attrs: list[dict[str, Any]]):
             return np.array([2]).astype(np.int32)
 
-        def generate_shapeT2_data(attrs: List[Dict[str, Any]]):
+        def generate_shapeT2_data(attrs: list[dict[str, Any]]):
             return np.array([24]).astype(np.int32)
 
         for dims in [4, 3, 2, 1]:
@@ -93,7 +95,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -186,7 +188,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 1:
                 self.input_shape = [1]
                 return np.random.random([1]).astype(np.float32)
@@ -236,7 +238,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape():
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"expand_v2_input": [1]}
@@ -275,7 +277,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 4:
                 self.input_shape = [1, 1, 4, 6]
                 return np.random.random([1, 1, 4, 6]).astype(np.float32)
@@ -366,7 +368,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape():
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -404,6 +406,88 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
         yield self.create_inference_config(), (1, 2), 1e-3
+
+    def add_skip_trt_case(self):
+        pass
+
+    def test(self):
+        self.add_skip_trt_case()
+        self.run_test()
+
+
+class TrtConvertExpandV2Test4(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        attrs = [
+            program_config.ops[i].attrs for i in range(len(program_config.ops))
+        ]
+        return True
+
+    def sample_program_configs(self):
+        def generate_input1():
+            return np.random.random([1, 4, 1]).astype(np.float32)
+
+        def generate_input2():
+            return np.random.random([1, 4, 10]).astype(np.float32)
+
+        ops_config = [
+            {
+                "op_type": "expand_as_v2",
+                "op_inputs": {
+                    "X": ["expand_v2_input1"],
+                    "Y": ["expand_v2_input2"],
+                },
+                "op_outputs": {"Out": ["expand_v2_out"]},
+                "op_attrs": {"target_shape": [1, 4, 10]},
+            },
+        ]
+        ops = self.generate_op_config(ops_config)
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={},
+            inputs={
+                "expand_v2_input1": TensorConfig(
+                    data_gen=partial(generate_input1)
+                ),
+                "expand_v2_input2": TensorConfig(
+                    data_gen=partial(generate_input2)
+                ),
+            },
+            outputs=["expand_v2_out"],
+        )
+
+        yield program_config
+
+    def sample_predictor_configs(
+        self, program_config
+    ) -> tuple[paddle_infer.Config, list[int], float]:
+        def generate_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {
+                "expand_v2_input1": [1, 4, 1],
+                "expand_v2_input2": [1, 4, 10],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "expand_v2_input1": [1, 4, 1],
+                "expand_v2_input2": [1, 4, 10],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "expand_v2_input1": [1, 4, 1],
+                "expand_v2_input2": [1, 4, 10],
+            }
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
+
+        clear_dynamic_shape()
+        # for dynamic_shape
+        generate_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
+        yield self.create_inference_config(), (1, 3), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
+        yield self.create_inference_config(), (1, 3), 1e-3
 
     def add_skip_trt_case(self):
         pass

@@ -22,12 +22,12 @@
 #include <thread>
 #include <vector>
 
+#include "paddle/common/errors.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"

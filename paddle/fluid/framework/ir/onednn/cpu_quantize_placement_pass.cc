@@ -64,7 +64,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       PADDLE_ENFORCE_NE(
           supported_op_types.count(op),
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Pass attribute quantize_enabled_op_types contains operator %s "
               "that is not supported by OneDNN quantization.",
               op));

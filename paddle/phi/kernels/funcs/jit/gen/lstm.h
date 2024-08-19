@@ -44,7 +44,7 @@ class LSTMJitCode : public VActFunc {
       } else if (type == KernelType::kVIdentity) {
         return operand_type::IDENTITY;
       } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
+        PADDLE_THROW(common::errors::Unimplemented(
             "Do not support jit::KernelType code: %d.", type));
       }
       return operand_type::IDENTITY;

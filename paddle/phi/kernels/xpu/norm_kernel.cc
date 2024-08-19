@@ -44,12 +44,12 @@ void NormKernel(const Context& ctx,
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      phi::errors::InvalidArgument("axis must be greater than or equal to 0."
-                                   "But received axis: %d.",
-                                   axis));
+      common::errors::InvalidArgument("axis must be greater than or equal to 0."
+                                      "But received axis: %d.",
+                                      axis));
   PADDLE_ENFORCE_LT(axis,
                     x_dims_size,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Attr(axis) value must be less than rank of Input(X)"
                         "But received axis: %d, rank: %d.",
                         axis,

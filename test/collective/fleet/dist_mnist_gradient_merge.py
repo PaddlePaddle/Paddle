@@ -59,6 +59,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         else:
             opt._learning_rate = 0.001
             opt._learning_rate_map = {}
+            paddle.distributed.collective._init_parallel_env("nccl")
             _insert_comm_op(opt, avg_cost)
         # Reader
         train_reader = paddle.batch(

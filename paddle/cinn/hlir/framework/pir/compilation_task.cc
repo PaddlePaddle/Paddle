@@ -55,12 +55,12 @@ std::string GroupCompilationContext::PrintPredicate2Funcs() const {
 void GroupCompilationContext::PrepareModuleBuilder() {
   PADDLE_ENFORCE_EQ(predicates_.size(),
                     lowered_funcs_.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of predicates and lowered_funcs should be "
                         "the same."));
   PADDLE_ENFORCE_EQ(predicates_.size(),
                     priorities_.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of predicates and priorites should be "
                         "the same."));
   for (const ir::Expr& predicate : predicates_) {
@@ -76,7 +76,7 @@ void GroupCompilationContext::PrepareModuleBuilder() {
 
   PADDLE_ENFORCE_EQ(CX86_predicates_.size(),
                     CX86_lowered_funcs_.size(),
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The size of predicates and lowered_funcs should be "
                         "the same."));
   for (const ir::Expr& predicate : CX86_predicates_) {

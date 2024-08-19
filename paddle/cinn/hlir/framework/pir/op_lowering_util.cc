@@ -313,7 +313,7 @@ void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
       }
       PADDLE_ENFORCE_GT(idx,
                         1,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "Error! Can't find suitable split factor!"));
     }
   }
@@ -356,7 +356,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
     }
     lane *= inshape[axes[index]];
     if (index == 0 && lane <= max_num_threads) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "Error! lane is less equal than max_num_threads, Please check!"));
     }
     if (lane >= max_num_threads / 2) {
@@ -394,7 +394,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
       // if can't be divide by(1024, 512), it's shouldn't be fused.
       PADDLE_ENFORCE_GE(idx,
                         max_num_threads / 2,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "Error! Can't find suitable split factor!"));
     } else {
       int axis = axes[index];
@@ -408,7 +408,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
         }
         PADDLE_ENFORCE_GT(idx,
                           (max_num_threads / 2) / tail,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Error! Can't find suitable split factor!"));
       }
     }
@@ -665,11 +665,11 @@ void MergeLoops(ir::Expr root,
   }
   PADDLE_ENFORCE_GT(src.size(),
                     index,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Error! src size is less than index, Please check!"));
   PADDLE_ENFORCE_GT(dst.size(),
                     index,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Error! dst size is less than index, Please check!"));
 
   if (src[0] == dst[0]) {
@@ -769,7 +769,7 @@ void MergeReduceToReduce(
 
             PADDLE_ENFORCE_EQ(n_loops.size(),
                               m_loops.size(),
-                              phi::errors::InvalidArgument(
+                              ::common::errors::InvalidArgument(
                                   "Error! n_loops size is not equal to m_loops "
                                   "size, Please check!"));
             MergeLoops(ir_sch.GetModule().GetExprs().at(0),
@@ -778,8 +778,8 @@ void MergeReduceToReduce(
                        n_loops.size() - 1);
           }
         } else {
-          PADDLE_THROW(
-              phi::errors::InvalidArgument("not support this type fusion!"));
+          PADDLE_THROW(::common::errors::InvalidArgument(
+              "not support this type fusion!"));
         }
       }
     } else {
@@ -853,7 +853,7 @@ void MergeReduceToReduce(
         PADDLE_ENFORCE_EQ(
             n_loops.size(),
             m_loops.size(),
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "Error! n_loops size is not equal to m_loops size, "
                 "Please check!"));
 
@@ -888,7 +888,7 @@ void MergeReduceToReduce(
         ir_sch.SimpleComputeAt(block, loops.back());
       }
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(::common::errors::InvalidArgument(
           "Error! Unkown Reduce Type, Please Check!"));
     }
   }
@@ -1221,7 +1221,8 @@ void LoopAssignReduce(
       // copy loop info form rloops.
       copy_loop_info(nloops, rloops);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument("Error! Unkown Reduce Type!"));
+      PADDLE_THROW(
+          ::common::errors::InvalidArgument("Error! Unkown Reduce Type!"));
     }
   }
 }

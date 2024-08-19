@@ -37,7 +37,7 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
       PADDLE_ENFORCE_EQ(
           infer_idx,
           -1,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "There can't be more than one -1 dimension in target shape."));
       infer_idx = i;
     }
@@ -49,7 +49,7 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
     PADDLE_ENFORCE_EQ(
         product,
         len,
-        phi::errors::InvalidArgument("The total size are not matched."));
+        common::errors::InvalidArgument("The total size are not matched."));
     return std::vector<int64_t>(shape);
   } else {
     std::vector<int64_t> new_shape(shape);
@@ -57,7 +57,7 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
     int64_t infer_size = len / product;
     PADDLE_ENFORCE_EQ(len % infer_size,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The total is not divisible by infer_size."));
     new_shape[infer_idx] = infer_size;
     return new_shape;
@@ -153,10 +153,6 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& shape) {
   // Step0: Verify input args based on reshape logic
   auto x_shape = phi::vectorize(x.dims());
-  // For dynamic mode, deal with extra xshape dim.
-  if (x_shape[0] == 0) {
-    x_shape.erase(x_shape.begin());
-  }
 
   int x_ndim = static_cast<int>(x_shape.size());
   int out_ndim = static_cast<int>(shape.size());
@@ -165,10 +161,10 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   x_ndim,
-                                   x_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor X's rank [%d] and X's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      x_ndim,
+                                      x_dims_mapping.size()));
   VLOG(4) << "ReshapeInferSpmd: X shape: [" << str_join(x_shape) << "]";
   VLOG(4) << "Out shape: [" << str_join(shape) << "]";
 
@@ -243,10 +239,10 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping.size()));
+      common::errors::InvalidArgument("The Tensor Out's rank [%d] and Out's "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping.size()));
   VLOG(4) << "ReshapeInferSpmdReverse: Out shape: [" << str_join(out_shape)
           << "], X shape: [" << str_join(x_shape) << "]";
 
@@ -317,6 +313,8 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
+// FIXME(dev): XShape will be decprecated in the future, so we
+// need unify inferSpmd into ReshapeInferSpmd function.
 SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
                                  const std::vector<int64_t>& shape) {
   auto spmd_info = ReshapeInferSpmd(x, shape);
@@ -328,33 +326,30 @@ SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
   return spmd_info;
 }
 
-SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& out_grad) {
   std::vector<int64_t> out_grad_shape = common::vectorize(out_grad.dims());
-  auto x_shape_dist_tmp = x_shape.dist_attr();
-  auto x_dims_mapping = x_shape_dist_tmp.dims_mapping();
-  x_dims_mapping.erase(x_dims_mapping.begin());
-  x_shape_dist_tmp.set_dims_mapping(x_dims_mapping);
-  auto tmp = ReshapeInferSpmd(DistMetaTensor(x_shape.dims(), x_shape_dist_tmp),
-                              out_grad_shape);
+  auto x_dist_tmp = x.dist_attr();
+  auto tmp =
+      ReshapeInferSpmd(DistMetaTensor(x.dims(), x_dist_tmp), out_grad_shape);
   // check no shard is needed
-  const auto& x_shape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
+  const auto& x_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
   const auto& out_grad_dist_dst =
       PADDLE_GET_CONST(TensorDistAttr, tmp.second[0]);
-  PADDLE_ENFORCE_EQ(x_shape_dist_tmp.dims_mapping(),
-                    x_shape_dist_dst.dims_mapping(),
-                    phi::errors::InvalidArgument(
-                        "x_shape should not be re shared: [%s] => [%s]",
-                        x_shape_dist_tmp.to_string(),
-                        x_shape_dist_dst.to_string()));
-  return {{out_grad_dist_dst}, {x_shape_dist_dst}};
+  PADDLE_ENFORCE_EQ(
+      x_dist_tmp.dims_mapping(),
+      x_dist_dst.dims_mapping(),
+      common::errors::InvalidArgument("x should not be re shared: [%s] => [%s]",
+                                      x_dist_tmp.to_string(),
+                                      x_dist_dst.to_string()));
+  return {{x_dist_tmp, out_grad_dist_dst}, {x_dist_dst}};
 }
 
-SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& out_grad) {
-  auto spmd_info = ReshapeGradInferSpmd(x_shape, out_grad);
-  spmd_info.first.insert(spmd_info.first.begin(), x_shape.dist_attr());
-  return spmd_info;
+  std::vector<int64_t> out_grad_shape = common::vectorize(out_grad.dims());
+  auto tmp = ReshapeInferSpmd(x, out_grad_shape);
+  return {{tmp.first[0], tmp.second[0]}, {tmp.first[0]}};
 }
 
 }  // namespace phi::distributed
