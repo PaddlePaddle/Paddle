@@ -179,11 +179,16 @@ OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE = """
         optional_{name} = paddle::make_optional<std::vector<pir::Value>>(optional_{name}_slice_op.outputs());
     }}"""
 
-SET_NULL_TYPE_TEMPLATE = """
+SET_NULL_TYPE_WITH_INPLACE_TEMPLATE = """
     if (!{input}) {{
         {op_name}_op.result({index}).set_type(pir::Type());
     }}"""
 
+SET_NULL_TYPE_TEMPLATE = """
+    pir::Type {op_name}_op_result_{index}_type = {op_name}_op.result({index}).type();
+    if ({op_name}_op_result_{index}_type.isa<paddle::dialect::DenseTensorType>() && {op_name}_op_result_{index}_type.dyn_cast<paddle::dialect::DenseTensorType>().dims().size() == -1) {{
+        {op_name}_op.result({index}).set_type(pir::Type());
+    }}"""
 
 COMBINE_OP_TEMPLATE = """
     auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
@@ -273,11 +278,13 @@ class CodeGen:
 
     def _is_optional_output(self, op_info, output_name):
         op_names = op_info.op_phi_name
-
         for name in op_names:
             if name.endswith(('_grad', '_grad_')):
                 return False
-        if output_name in op_info.output_optional_list:
+        output_optional_list = op_info.output_optional_list
+        output_name_list = op_info.output_name_list
+        output_index = output_name_list.index(output_name)
+        if op_info.output_optional_list[output_index] == 'true':
             return True
         inplace_map = op_info.inplace_map
         input_optional_list = op_info.input_optional_list
@@ -359,6 +366,7 @@ class CodeGen:
         assert len(name_list) == len(type_list) == len(intermediate_list)
 
         output_num = len(type_list) - intermediate_list.count('true')
+
         if output_num > 1:
             ret = []
             for name, type, intermediate in zip(
@@ -471,16 +479,19 @@ class CodeGen:
     def _gen_set_null_type(self, op_info, op_name):
         name_list = op_info.output_name_list
         inplace_map = op_info.inplace_map
-        if inplace_map is None:
-            return ""
 
         ret = ""
         for i, out_name in enumerate(name_list):
             if self._is_optional_output(op_info, out_name):
-                in_name = inplace_map[out_name]
-                ret += SET_NULL_TYPE_TEMPLATE.format(
-                    input=in_name, op_name=op_name, index=i
-                )
+                if inplace_map is not None and out_name in inplace_map.keys():
+                    in_name = inplace_map[out_name]
+                    ret += SET_NULL_TYPE_WITH_INPLACE_TEMPLATE.format(
+                        input=in_name, op_name=op_name, index=i
+                    )
+                else:
+                    ret += SET_NULL_TYPE_TEMPLATE.format(
+                        op_name=op_name, index=i
+                    )
         return ret
 
     def _gen_in_combine(self, op_info, is_mutable_attr, is_vector_mutable_attr):

@@ -402,14 +402,19 @@ def process_optional_output_info(apis):
             if not api['is_fwd']:
                 output['optional'] = False
             else:
-                if (
-                    api.get("inplace", None)
-                    and output['name'] in api['inplace']
-                    and inputs_dict[api['inplace'][output['name']]]['optional']
-                ):
-                    output['optional'] = True
+                if output['optional']:
+                    continue
                 else:
-                    output['optional'] = False
+                    if (
+                        api.get("inplace", None)
+                        and output['name'] in api['inplace']
+                        and inputs_dict[api['inplace'][output['name']]][
+                            'optional'
+                        ]
+                    ):
+                        output['optional'] = True
+                    else:
+                        output['optional'] = False
 
 
 def update_apis(op_yaml_items, update_yaml_file):
