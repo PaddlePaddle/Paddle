@@ -29,10 +29,11 @@ namespace pir {
 class OpLoweringGroup;
 class BackendResource final {
  public:
-  BackendResource(const Target& target,
-                  const std::string& host_fn_name,
-                  const std::string& infer_fn_name,
-                  const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map)
+  BackendResource(
+      const Target& target,
+      const std::string& host_fn_name,
+      const std::string& infer_fn_name,
+      const std::map<int, CINNKernelInfo::IntArgBindInfo>& int_args_map)
       : host_fn_name_(host_fn_name),
         infer_fn_name_(infer_fn_name),
         int_args_map_(int_args_map) {
@@ -42,7 +43,7 @@ class BackendResource final {
   void* GetHostFuncPtr() const;
   void* GetInferFuncPtr() const;
   void* GetCX86HostFuncPtr() const;
-  const std::map<int, CINNKernelInfo::ArgDimIdx>& GetIntArgsMap() const {
+  const std::map<int, CINNKernelInfo::IntArgBindInfo>& GetIntArgsMap() const {
     return int_args_map_;
   }
   const std::shared_ptr<backends::Compiler>& GetBackendCompiler() const {
@@ -54,7 +55,7 @@ class BackendResource final {
  private:
   std::string host_fn_name_;
   std::string infer_fn_name_;
-  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map_;
+  std::map<int, CINNKernelInfo::IntArgBindInfo> int_args_map_;
 
   std::shared_ptr<backends::Compiler> backend_compiler_{nullptr};
 };

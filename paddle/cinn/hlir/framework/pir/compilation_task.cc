@@ -98,7 +98,7 @@ void UnifyBroadcastGroupFuncArgs(
     std::vector<GroupCompilationContext>* contexts,
     pir::OpLoweringGroupPtr origin_group,
     std::unordered_map<int, ir::Var>* symbolic_shape_var_index) {
-  std::unordered_map<ir::Var, pir::CINNKernelInfo::ArgDimIdx> new_args_map;
+  std::unordered_map<ir::Var, pir::CINNKernelInfo::IntArgBindInfo> new_args_map;
   std::vector<ir::Argument> new_args_vec;
   int total_args_num = 0;
 

@@ -176,11 +176,11 @@ class OpLoweringGroup {
     this->reduce_axis_ = reduce_axis;
   }
 
-  const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map() const {
+  const std::map<int, CINNKernelInfo::IntArgBindInfo>& int_args_map() const {
     return this->int_args_map_;
   }
 
-  std::map<int, CINNKernelInfo::ArgDimIdx>& mut_int_args_map() {
+  std::map<int, CINNKernelInfo::IntArgBindInfo>& mut_int_args_map() {
     return this->int_args_map_;
   }
 
@@ -229,7 +229,7 @@ class OpLoweringGroup {
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;
   std::vector<::pir::Value> output_values_;
-  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map_;
+  std::map<int, CINNKernelInfo::IntArgBindInfo> int_args_map_;
 
   alignment_schedule_info_t alignment_schedule_info_;
   std::vector<int64_t> reduce_axis_;
