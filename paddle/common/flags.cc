@@ -1939,17 +1939,17 @@ PHI_DEFINE_EXPORTED_bool(enable_auto_parallel_align_mode,
 
 /**
  * fused_multi_transformer_op related FLAG
- * Name: mmha_use_flash_decoding
+ * Name: fused_multi_transformer_op_use_mbfmha
  * Since Version: 2.5.0
  * Value Range: bool, default=false
  * Example:
  * Note: Enable flash decoding for mmha kernels in fused_multi_transformer_op.
  */
-PHI_DEFINE_EXPORTED_bool(mmha_use_flash_decoding,
+PHI_DEFINE_EXPORTED_bool(fused_multi_transformer_op_use_mbfmha,
                          false,
                          "Enable flash decoding for mmha kernels in "
                          "fused_multi_transformer_op.");
 
-PHI_DEFINE_EXPORTED_int32(multi_block_attention_min_partition_size,
+PHI_DEFINE_EXPORTED_int64(multi_block_attention_min_partition_size,
                           1024,
                           "The minimum partition size for flash decoding");

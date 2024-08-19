@@ -29,8 +29,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/fusion/gpu/mmha_util.cu.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 
-PD_DECLARE_bool(mmha_use_flash_decoding);
-PD_DECLARE_int32(multi_block_attention_min_partition_size);
+COMMON_DECLARE_bool(fused_multi_transformer_op_use_mbfmha);
+COMMON_DECLARE_int64(multi_block_attention_min_partition_size);
 
 namespace phi {
 namespace fusion {
@@ -796,7 +796,6 @@ __global__ void multi_block_masked_multihead_attention_kernel(
 
   T *out_smem = reinterpret_cast<T *>(smem_);
 
-  // TODO(Wanglongzhi): Check the size of the red_smem.
   __shared__ float red_smem[WARPS_PER_BLOCK * 2];
   using Qk_vec = typename Qk_vec_<T, Dh_MAX>::Type;
   using Qk_vec_RoPE = typename Qk_vec_RoPE_<T, float, Dh_MAX>::Type;
@@ -1516,6 +1515,7 @@ void mbfmha(const phi::GPUContext &dev_ctx,
             const bool neox_rotary_style = false,
             const int gqa_group_size = -1,
             const float rope_theta = 10000.0f) {
+  VLOG(1) << "MBFMHA is used in FusedMT.";
   Masked_multihead_attention_params<T> params;
   cudaStream_t stream = dev_ctx.stream();
 
@@ -1533,7 +1533,6 @@ void mbfmha(const phi::GPUContext &dev_ctx,
 
   params.cache_kv = cache_kv_tensor->data<T>();
   params.neox_rotary_style = neox_rotary_style;
-  // TODO(Wanglongzhi): check the attn_mask
   if (src_mask_tensor) {
     params.attn_mask = src_mask_tensor->data<T>();
     params.mask_length = src_mask_tensor->dims()[3];
@@ -1622,7 +1621,7 @@ void fmha(const phi::GPUContext &dev_ctx,
           const bool add_qkv_bias = true,
           const bool neox_rotary_style = false,
           const int gqa_group_size = -1) {
-  VLOG(1) << "FMHA is using MMHA in generation phase.";
+  VLOG(1) << "FMHA is used in FusedMT.";
   Masked_multihead_attention_params<T> params;
   // params.out = out_tensor->data<T>();
   // params.qkv = qkv_tensor.data<T>();

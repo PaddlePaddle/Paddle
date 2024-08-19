@@ -493,10 +493,8 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       }
 
       if (time_step) {  // generation decoder stage
-        if (FLAGS_mmha_use_flash_decoding) {
+        if (FLAGS_fused_multi_transformer_op_use_mbfmha) {
           int max_seq_len = cache_kv->dims()[3];
-          VLOG(1) << "FLAGS_mmha_use_flash_decoding is true, use mbfmha in "
-                     "fused_multi_transformer_op";
           phi::fusion::mbfmha<T>(dev_ctx,
                                  qkv_out,
                                  *qkv_bias,
