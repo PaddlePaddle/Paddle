@@ -770,7 +770,7 @@ bool CoalesceTensorOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(operand_source)
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  auto dtype = op->operand(1);
+  auto dtype = op->attribute<phi::DataType>("dtype").data();
   const auto &attributes = op->attributes();
   bool use_align =
       attributes.at("use_align").dyn_cast<pir::BoolAttribute>().data();
