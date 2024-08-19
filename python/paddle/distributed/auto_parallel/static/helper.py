@@ -386,6 +386,8 @@ class ProgramHelper:
                 # Release the reduntant params
                 param.get_tensor()._clear()
                 continue
+            if not param._is_initialized():
+                continue
             if param.is_dense():
                 value_name = dy_param_name_to_pir_param_name[param.name]
                 value = value_name_to_value[value_name]
