@@ -1401,16 +1401,15 @@ def concat(
                     raise TypeError(
                         "All the Tensors in the input must have the same data type."
                     )
+        elif (
+            isinstance(input, paddle.pir.Value)
+            and input.is_dense_tensor_array_type()
+        ):
+            out, _ = _C_ops.array_to_tensor(input, axis, False)
+            return out
         else:
             input = [input]
 
-        if isinstance(input, paddle.pir.Value):
-            assert input.is_dense_tensor_array_type(), (
-                "If the element of concat op is Value, "
-                "dtype of the element must be Tensorarray"
-            )
-            out, _ = _C_ops.array_to_tensor(input, axis, False)
-            return out
         if not isinstance(input, paddle.pir.Value):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
