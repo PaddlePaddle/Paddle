@@ -474,7 +474,7 @@ def load_state_dict(
         path(str): The directory to load checkpoint files.
         process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         coordinator_rank(int): The rank used to coordinate the checkpoint. Rank0 is used by default.
-
+        offload(bool): Whether to offload the checkpoint data from GPU to CPU.
     Example:
         .. code-block:: python
 
@@ -573,12 +573,6 @@ def load_state_dict(
             else:
                 source_state_dict[file] = paddle.load(os.path.join(path, file))
 
-        state_dict_in_cpu = []
-        for k, v in flat_state_dict.items():
-            if v.place.is_cpu_place():
-                state_dict_in_cpu.append(k)
-                flat_state_dict[k] = v.cuda()
-
         _load_state_dict(
             flat_state_dict,
             source_state_dict,
@@ -587,13 +581,6 @@ def load_state_dict(
             coordinator_rank,
             offload,
         )
-
-        for k, v in flat_state_dict.items():
-            if k in state_dict_in_cpu:
-                value = state_dict
-                for key in mapping[k]:
-                    value = value[key]
-                paddle.assign(v.cpu(), value)
 
 
 def _load_state_dict(
@@ -606,6 +593,11 @@ def _load_state_dict(
 ) -> None:
     with paddle.base.dygraph.guard():
 
+        state_dict_in_cpu = {}
+        for k, v in target_state_dict.items():
+            if v.place.is_cpu_place():
+                state_dict_in_cpu[k] = v
+                target_state_dict[k] = v.cuda()
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
         local_load_files = list(source_state_dict.keys())
         # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
@@ -716,3 +708,8 @@ def _load_state_dict(
                         tmp_tensor, src=src_rank, group=process_group
                     )
                     paddle.assign(tmp_tensor, cur_chunk_tensor)
+
+        for k, v in target_state_dict.items():
+            if k in state_dict_in_cpu:
+                value = state_dict_in_cpu[k]
+                paddle.assign(v.cpu(), value)
