@@ -765,7 +765,7 @@ bool CrfDecodingOpInferSymbolicShape(
 
 bool CoalesceTensorOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  auto dtype = op->attribute<phi::DataType>("dtype").data();
+  auto dtype = op->attribute<phi::DataType>("dtype");
 
   const auto &attributes = op->attributes();
   bool use_align =
