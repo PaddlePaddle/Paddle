@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
@@ -1097,20 +1096,20 @@ def scaled_dot_product_attention(
 
 
 def flashmask_attention(
-    query,
-    key,
-    value,
-    startend_row_indices=None,
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    startend_row_indices: Tensor | None = None,
     *,
-    dropout=0.0,
-    causal=False,
-    window_size=None,
-    return_softmax_lse=False,
-    return_seed_offset=False,
-    fixed_seed_offset=None,
-    rng_name="",
-    training=True,
-    name=None,
+    dropout: float = 0.0,
+    causal: bool = False,
+    window_size: int | None = None,
+    return_softmax_lse: bool = False,
+    return_seed_offset: bool = False,
+    fixed_seed_offset: Tensor | None = None,
+    rng_name: str = "",
+    training: bool = True,
+    name: str | None = None,
 ):
     r"""
     Implements FlashAttention with a sparse mask representation.
@@ -1418,104 +1417,83 @@ def flashmask_attention(
                 startend_row_indices, min=0, max=sq
             ).repeat_interleave(bsz, 0)
 
-    assert (
-        startend_row_indices is not None
-    ), f"startend_row_indices must be not None, but got {startend_row_indices}"
-    assert (
-        startend_row_indices.dtype == paddle.int32
-    ), f"startend_row_indices.dtype must be paddle.int32, but got {startend_row_indices.dtype}"
-    assert (
-        len(startend_row_indices.shape) == 4
-    ), f"startend_row_indices rank must be 4,but got {startend_row_indices.shape}"
+    if startend_row_indices is None:
+        (
+            out,
+            result_softmax,
+            result_softmax_lse,
+            result_seed_offset,
+        ) = _C_ops.flash_attn(
+            query,
+            key,
+            value,
+            fixed_seed_offset,
+            None,
+            dropout,
+            causal,
+            False,
+            not training,
+            rng_name,
+        )
 
-    assert (
-        startend_row_indices.shape[0] == key.shape[0]
-    ), f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
-
-    assert (
-        startend_row_indices.shape[2] == key.shape[1]
-    ), f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
-    assert startend_row_indices.shape[1] in [
-        1,
-        key.shape[2],
-    ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
-
-    if causal:
-        if startend_row_indices.shape[-1] == 1:
-            has_end = False
-        elif startend_row_indices.shape[-1] == 2:
-            has_end = True
-        else:
-            raise ValueError(
-                f"Invalid shape of startend_row_indices, when causal is True, the last dimension should be either 1 or 2 but got {startend_row_indices.shape[-1]}"
-            )
     else:
-        if startend_row_indices.shape[-1] == 2:
-            has_end = False
-        elif startend_row_indices.shape[-1] == 4:
-            has_end = True
+        assert (
+            startend_row_indices.dtype == paddle.int32
+        ), f"startend_row_indices.dtype must be paddle.int32, but got {startend_row_indices.dtype}"
+        assert (
+            len(startend_row_indices.shape) == 4
+        ), f"startend_row_indices rank must be 4,but got {startend_row_indices.shape}"
+
+        assert (
+            startend_row_indices.shape[0] == key.shape[0]
+        ), f"startend_row_indices.shape[0] must be equal to batch_size, but got {startend_row_indices.shape[0]} and {key.shape[0]}"
+
+        assert (
+            startend_row_indices.shape[2] == key.shape[1]
+        ), f"startend_row_indices.shape[2] must be equal to seqlen_k, but got {startend_row_indices.shape[2]} and {key.shape[2]}"
+        assert startend_row_indices.shape[1] in [
+            1,
+            key.shape[2],
+        ], "startend_row_indices head_num must be equal to 1(broadcast) or hean_num_k."
+
+        if causal:
+            if startend_row_indices.shape[-1] == 1:
+                has_end = False
+            elif startend_row_indices.shape[-1] == 2:
+                has_end = True
+            else:
+                raise ValueError(
+                    f"Invalid shape of startend_row_indices, when causal is True, the last dimension should be either 1 or 2 but got {startend_row_indices.shape[-1]}"
+                )
         else:
-            raise ValueError(
-                f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
-            )
-    if (
-        has_end
-        or not causal
-        or startend_row_indices.shape[1] != 1
-        or startend_row_indices.shape[0] != 1
-        or return_seed_offset
-        or return_softmax_lse
-    ):
-        is_unpad = False
-    else:
-        is_unpad = bool(
-            (paddle.diff(startend_row_indices[0, 0, :, 0]) >= 0).all()
-        )
-    if is_unpad:
-        cu_seqlens = paddle.concat(
-            [
-                paddle.zeros([1], dtype="int32"),
-                paddle.unique(startend_row_indices[0, 0, :, 0]),
-            ]
-        )
-        max_seqlen = paddle.max(paddle.diff(cu_seqlens))
-        scale = 1 / math.sqrt(query.shape[-1])
-        out, _ = flash_attn_unpadded(
-            query.flatten(0, 1),
-            key.flatten(0, 1),
-            value.flatten(0, 1),
-            cu_seqlens,
-            cu_seqlens,
-            max_seqlen,
-            max_seqlen,
-            scale,
-            causal=causal,
-            dropout=dropout,
-        )
-        return out.unsqueeze(0)
+            if startend_row_indices.shape[-1] == 2:
+                has_end = False
+            elif startend_row_indices.shape[-1] == 4:
+                has_end = True
+            else:
+                raise ValueError(
+                    f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
+                )
 
-    return_softmax = False
+        (
+            out,
+            result_softmax,
+            result_softmax_lse,
+            result_seed_offset,
+        ) = _C_ops.flashmask_attention(
+            query,
+            key,
+            value,
+            startend_row_indices,
+            fixed_seed_offset,
+            dropout,
+            causal,
+            False,
+            not training,
+            rng_name,
+        )
 
-    (
-        out,
-        result_softmax,
-        result_softmax_lse,
-        result_seed_offset,
-    ) = _C_ops.flashmask_attention(
-        query,
-        key,
-        value,
-        startend_row_indices,
-        fixed_seed_offset,
-        dropout,
-        causal,
-        return_softmax,
-        not training,
-        rng_name,
-    )
     outputs = [out]
-    if return_softmax:
-        outputs += [result_softmax]
     if return_softmax_lse:
         outputs += [result_softmax_lse]
     if return_seed_offset:
