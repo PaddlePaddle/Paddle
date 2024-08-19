@@ -86,9 +86,12 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
       runtime::SetArchDevice(target_, device_id);
       compilation_results[index] = Compile(&group_compilation_contexts[index]);
     };
-    utils::parallel_run(worker_fn,
-                        utils::SequenceDispatcher(0, task_size),
-                        /*thread_num=*/thread_size);
+    // utils::parallel_run(worker_fn,
+    //                     utils::SequenceDispatcher(0, task_size),
+    //                     /*thread_num=*/thread_size);
+    for (int i = 0; i < task_size; i++) {
+      worker_fn(i);
+    }
   }
   VLOG(5) << "Finished compiling " << task_size << " Cinn Kernel info.";
   ctx_mapper.SetFinalize(true);
