@@ -38,11 +38,11 @@ class TestItemApiForSemiAutoParallel(SemiAutoParallelTestBase):
         a = paddle.rand(shape=[6, 8])
         b = dist.shard_tensor(a, mesh0, [dist.Replicate()])
         c = dist.reshard(b, mesh1, [dist.Replicate()])
-        if c.item(0, 0) is None:  # in device 0
-            self.assertEqual(c.item(3, 5), None)
-        else:  # in device 1
+        if c.item(0, 0):  # in device 1
             np.testing.assert_equal(c.item(0, 0), a[0][0].item())
             np.testing.assert_equal(c.item(3, 5), a[3][5].item())
+        else:  # in device 0
+            self.assertEqual(c.item(3, 5), None)
 
     def run_test_case(self):
         if self._backend == "cpu":
