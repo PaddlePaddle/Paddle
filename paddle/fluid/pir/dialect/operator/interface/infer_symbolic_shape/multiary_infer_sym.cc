@@ -765,52 +765,48 @@ bool CrfDecodingOpInferSymbolicShape(
 
 bool CoalesceTensorOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  auto input_shapes = [&] {
-    std::vector<symbol::ShapeOrDataDimExprs> shapes;
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      shapes.push_back(
-          infer_context->GetShapeOrDataForValue(op->operand_source(i)));
-    }
-    return shapes;
-  }();
+  auto dtype = op->attribute<phi::DataType>("dtype").data();
 
-  DataType dtype =
-      static_cast<DataType>(op->attribute<pir::Int32Attribute>("dtype").data());
-  bool use_align = op->attribute<pir::BoolAttribute>("use_align").data();
-  int align_size = op->attribute<pir::Int32Attribute>("align_size").data();
+  const auto &attributes = op->attributes();
+  bool use_align =
+      attributes.at("use_align").dyn_cast<pir::BoolAttribute>().data();
+  int align_size =
+      attributes.at("align_size").dyn_cast<pir::Int32Attribute>().data();
   int size_of_dtype =
-      op->attribute<pir::Int32Attribute>("size_of_dtype").data();
-  auto concated_shapes =
-      paddle::dialect::details::GetVectorAttr<int64_t>(op, "concated_shapes");
-  auto concated_ranks =
-      paddle::dialect::details::GetVectorAttr<int64_t>(op, "concated_ranks");
+      attributes.at("size_of_dtype").dyn_cast<pir::Int32Attribute>().data();
 
   if (size_of_dtype == -1) {
-    size_of_dtype = static_cast<int>(common::SizeOf(dtype));
+    size_of_dtype = static_cast<int>(phi::SizeOf(dtype));
   }
 
   auto alignment = [](size_t size, size_t align_size) {
     size_t remaining = size % align_size;
-    return remaining == 0 ? size : size + (align_size - remaining);
+    auto aligned_size = remaining == 0 ? size : size + (align_size - remaining);
+    return aligned_size;
   };
 
-  int64_t numel = 0;
-  for (const auto &shape : input_shapes) {
-    const auto &dims = shape.shape();
-    auto size = std::accumulate(
-        dims.begin(), dims.end(), 1, std::multiplies<symbol::DimExpr>());
-    auto len = use_align
-                   ? alignment(size * size_of_dtype, align_size) / size_of_dtype
-                   : size;
-    numel += len;
+  std::vector<symbol::ShapeOrDataDimExprs> input_shapes;
+  for (size_t i = 0; i < op->num_operands(); ++i) {
+    input_shapes.push_back(
+        infer_context->GetShapeOrDataForValue(op->operand_source(i)));
   }
-
-  if (op->result(0)) {
+  if (use_align && align_size > 0) {
+    int64_t numel = 0;
+    for (const auto &item_shape : input_shapes) {
+      const std::vector<symbol::DimExpr> dims = item_shape.shape();
+      auto size = dims.size();
+      auto len = use_align
+                     ? alignment(static_cast<size_t>(size) * size_of_dtype,
+                                 align_size) /
+                           size_of_dtype
+                     : static_cast<size_t>(size);
+      numel += static_cast<int64_t>(len);
+    }
     infer_context->SetShapeOrDataForValue(
         op->result(0),
-        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs{numel}});
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs({numel})});
   }
-
   return true;
 }
 
