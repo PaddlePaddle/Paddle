@@ -1565,8 +1565,7 @@ bool SpectralNormOpInferSymbolicShape(
   int dim = op->attribute<pir::Int32Attribute>("dim").data();
   int power_iters = op->attribute<pir::Int32Attribute>("power_iters").data();
 
-  auto dim_valid = dim == 0 || dim == 1;
-  PADDLE_ENFORCE_EQ(dim_valid,
+  PADDLE_ENFORCE_EQ(dim == 0 || dim == 1,
                     true,
                     common::errors::InvalidArgument(
                         "Attr(dim) can only be 0 or 1, but received %d", dim));
@@ -1577,20 +1576,14 @@ bool SpectralNormOpInferSymbolicShape(
           "Attr(power_iters) should be greater equal then 0, but received %d",
           power_iters));
 
-  symbol::DimExpr h = weight_shape[dim];
-  symbol::DimExpr w = 1;
+  symbol::DimExpr weight = 1;
   for (size_t i = 0; i < rank_weight; i++) {
     if (i != static_cast<size_t>(dim)) {
-      w = w * weight_shape[i];
+      weight = weight * weight_shape[i];
     }
   }
-  if (u_shape[0].Get<std::int64_t>() > 0 && h.Get<std::int64_t>() > 0) {
-    infer_context->AddEqualCstr(u_shape[0], h);
-  }
-  if (v_shape[0].Get<std::int64_t>() > 0 && w.Get<std::int64_t>() > 0) {
-    infer_context->AddEqualCstr(v_shape[0], w);
-  }
-
+  infer_context->AddEqualCstr(u_shape[0], weight_shape[dim]);
+  infer_context->AddEqualCstr(v_shape[0], weight);
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
