@@ -124,7 +124,7 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(NOT WIN32 AND NOT APPLE)
-  link_libraries(stdc++fs)
+  set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} stdc++fs)
 endif()
 
 # Create shared inference library
