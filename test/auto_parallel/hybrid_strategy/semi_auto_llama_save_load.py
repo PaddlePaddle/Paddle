@@ -16,6 +16,7 @@ import hashlib
 import os
 import random
 import tempfile
+import time
 from functools import reduce
 
 import numpy as np
@@ -233,7 +234,7 @@ class TestLlamaAuto:
         # self.check_program_equal(
         #    dist_model._engine._pir_dist_main_progs["train"], loaded_model
         # )
-        # time.sleep(10)
+        time.sleep(10)
 
         loss_after_load = []
         for step, inputs in enumerate(dist_loader()):
