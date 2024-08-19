@@ -543,7 +543,7 @@ class HDFSClient(FS):
         return ret, output.splitlines()
 
     def _run_safe_cmd(self, cmd, redirect_stderr=False, retry_times=5):
-        exe_cmd = [self._base_cmd] + cmd.split()
+        exe_cmd = [self._base_cmd, *cmd.split()]
         ret = 0
         output = ""
         retry_sleep_second = 3

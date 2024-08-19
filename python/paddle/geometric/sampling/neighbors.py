@@ -322,7 +322,9 @@ def weighted_sample_neighbors(
             >>> colptr = paddle.to_tensor(colptr, dtype="int64")
             >>> weight = paddle.to_tensor(weight, dtype="float32")
             >>> nodes = paddle.to_tensor(nodes, dtype="int64")
-            >>> out_neighbors, out_count = paddle.geometric.weighted_sample_neighbors(row, colptr, weight, nodes, sample_size=sample_size)
+            >>> out_neighbors, out_count = paddle.geometric.weighted_sample_neighbors(
+            ...     row, colptr, weight, nodes, sample_size=sample_size, return_eids=False
+            ... )
 
     """
 

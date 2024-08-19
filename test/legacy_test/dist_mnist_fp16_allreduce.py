@@ -17,7 +17,6 @@ from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 
 import paddle
 from paddle import base
-from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers import (
     FP16AllReduceOptimizer as FP16AllReduce,
 )
@@ -57,7 +56,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         opt = FP16AllReduce(opt)
 
         if not single_device:
-            fleet.init()
+            paddle.distributed.collective._init_parallel_env("nccl")
             _insert_comm_op(opt, avg_cost)
         else:
             opt.minimize(avg_cost)
