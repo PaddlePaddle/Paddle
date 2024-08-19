@@ -491,6 +491,21 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
+    test_parallel_dygraph_cp_parallel
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "120"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21242;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_cp_parallel PROPERTIES TIMEOUT
+                                                                    "120")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
     test_dygraph_group_sharded_api_for_eager
     START_BASH
     ../../legacy_test/dist_test.sh

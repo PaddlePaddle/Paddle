@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .context_parallel import ContextParallel  # noqa: F401
 from .parallel_layers import (  # noqa: F401
     ColumnParallelLinear,
     LayerDesc,

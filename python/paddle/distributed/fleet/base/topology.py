@@ -60,13 +60,14 @@ class ParallelMode:
     PIPELINE_PARALLEL = 2
     SHARDING_PARALLEL = 3
     SEGMENT_PARALLEL = 4
+    CONTEXT_PARALLEL = 5
 
 
 class CommunicateTopology:
     def __init__(
         self,
-        hybrid_group_names=["data", "pipe", "sharding", "sep", "model"],
-        dims=[1, 1, 1, 1, 1],
+        hybrid_group_names=["data", "pipe", "sharding", "sep", "cp", "model"],
+        dims=[1, 1, 1, 1, 1, 1],
     ):
         self._parallel_names = hybrid_group_names
         self._dims = dims
@@ -186,16 +187,24 @@ class HybridCommunicateGroup:
         self._pp_degree = self._topo.get_dim('pipe')
         self._sharding_degree = self._topo.get_dim('sharding')
         self._sep_degree = self._topo.get_dim('sep')
+        if "cp" in self._topo.get_hybrid_group_names():
+            self._cp_degree = self._topo.get_dim('cp')
+        else:
+            self._cp_degree = 1
 
         self._data_parallel_id = self._get_data_parallel_id()
         self._model_parallel_id = self._get_model_parallel_id()
         self._sharding_parallel_id = self._get_sharding_parallel_id()
         self._sep_parallel_id = self._get_sep_parallel_id()
+        if "cp" in self._topo.get_hybrid_group_names():
+            self._cp_parallel_id = self._get_cp_parallel_id()
+        else:
+            self._cp_parallel_id = 0
         self.stage_id = self._get_pipe_parallel_id()
 
         assert (
             self._check_valid_topo()
-        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}"
+        ), f"nranks: {self.nranks}, mp_num: {self._mp_degree}, sharding_num: {self._sharding_degree}, pp_num: {self._pp_degree}, dp_num: {self._dp_degree}, sep_num: {self._sep_degree}, cp_num: {self._cp_degree}"
 
         # create comm group for pipe parallel
         self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
@@ -225,6 +234,11 @@ class HybridCommunicateGroup:
             # create comm group for sep parallel
             self._sep_group, self._sep_comm_group = self._set_comm_group("sep")
 
+        self._cp_group = None
+        if self._cp_degree > 1:
+            # create comm group for cp parallel
+            self._cp_group, self._cp_comm_group = self._set_comm_group("cp")
+
         # create global group for check inf_nan / clip global norm
         self._check_group, self._check_comm_group = self._set_check_group(
             "data"
@@ -242,6 +256,14 @@ class HybridCommunicateGroup:
                 self._dp_sep_group,
                 self._dp_sep_comm_group,
             ) = self.create_fuse_group(["data", "sep"])
+            self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
+                ["pipe", "model"]
+            )
+        if self._cp_degree > 1:
+            (
+                self._dp_cp_group,
+                self._dp_cp_comm_group,
+            ) = self.create_fuse_group(["data", "cp"])
             self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
                 ["pipe", "model"]
             )
@@ -265,7 +287,7 @@ class HybridCommunicateGroup:
 
         debug_str = (
             "HybridParallelInfo: rank_id: %d, mp_degree: %d, "
-            "sharding_degree: %d, pp_degree: %d, dp_degree: %d, sep_degree: %d"
+            "sharding_degree: %d, pp_degree: %d, dp_degree: %d, sep_degree: %d, cp_degree: %d"
             % (
                 self.global_rank,
                 self._mp_degree,
@@ -273,25 +295,27 @@ class HybridCommunicateGroup:
                 self._pp_degree,
                 self._dp_degree,
                 self._sep_degree,
+                self._cp_degree,
             )
         )
-        debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep:group: {self._sep_group}, check/clip group: {self._check_group}"
+        debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep:group: {self._sep_group}, cp:group: {self._cp_group}, check/clip group: {self._check_group}"
         logger.info(debug_str)
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
 
     def get_parallel_mode(self):
-        # there are five modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParallel
+        # there are six modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParallel / ContextParallel
         # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
 
-        # pp -> mp -> sep -> sharding -> dp
+        # pp -> mp -> sep/cp -> sharding -> dp
         if (
             self._pp_degree == 1
             and self._mp_degree == 1
             and self._sep_degree == 1
+            and self._cp_degree == 1
             and self._sharding_degree == 1
             and self._dp_degree > 1
         ):
@@ -300,6 +324,7 @@ class HybridCommunicateGroup:
             self._pp_degree == 1
             and self._mp_degree == 1
             and self._sep_degree == 1
+            and self._cp_degree == 1
             and self._sharding_degree > 1
         ):
             # sharding may coexist with dp
@@ -308,9 +333,18 @@ class HybridCommunicateGroup:
             self._pp_degree == 1
             and self._mp_degree == 1
             and self._sep_degree > 1
+            and self._cp_degree == 1
         ):
             # sep may coexist with dp and sharding
             return ParallelMode.SEGMENT_PARALLEL
+        elif (
+            self._pp_degree == 1
+            and self._mp_degree == 1
+            and self._cp_degree > 1
+            and self._sep_degree == 1
+        ):
+            # cp may coexist with dp and sharding
+            return ParallelMode.CONTEXT_PARALLEL
         elif self._pp_degree == 1 and self._mp_degree > 1:
             # tp may coexist with sep、dp and sharding
             # initialize the seed
@@ -326,11 +360,15 @@ class HybridCommunicateGroup:
             * self._pp_degree
             * self._sharding_degree
             * self._sep_degree
+            * self._cp_degree
             == self.nranks
         )
 
     def _check_sep_exist(self):
         assert self._sep_degree > 1, "sep not exist"
+
+    def _check_cp_exist(self):
+        assert self._cp_degree > 1, "cp not exist"
 
     def _set_comm_group(self, parallel_method="data"):
         parallel_group = []
@@ -499,6 +537,23 @@ class HybridCommunicateGroup:
         self._check_sep_exist()
         return self._sep_comm_group.ranks[0]
 
+    def _get_cp_parallel_id(self):
+        return self._topo.get_coord(self.global_rank).cp
+
+    def get_cp_parallel_rank(self):
+        return self._cp_parallel_id
+
+    def get_cp_parallel_world_size(self):
+        return self._cp_degree
+
+    def get_cp_parallel_group(self):
+        self._check_cp_exist()
+        return self._cp_comm_group
+
+    def get_cp_parallel_group_src_rank(self):
+        self._check_cp_exist()
+        return self._cp_comm_group.ranks[0]
+
     def get_pipe_parallel_group(self):
         return self._pp_comm_group
 
@@ -547,8 +602,14 @@ class HybridCommunicateGroup:
         self._check_sep_exist()
         return self._dp_sep_comm_group
 
+    def get_dp_cp_parallel_group(self):
+        self._check_cp_exist()
+        return self._dp_cp_comm_group
+
     def get_pp_mp_parallel_group(self):
-        self._check_sep_exist()
+        assert (
+            self._sep_degree > 1 or self._cp_degree > 1
+        ), "sep and cp both not exist"
         return self._pp_mp_comm_group
 
     def create_fuse_group(self, fused_strategy_list):

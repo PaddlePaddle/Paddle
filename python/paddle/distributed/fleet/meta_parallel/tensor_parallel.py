@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from ..utils.hybrid_parallel_util import (
+    broadcast_cp_parameters,
     broadcast_dp_parameters,
     broadcast_input_data,
     broadcast_mp_parameters,
@@ -36,6 +37,10 @@ class TensorParallel(MetaParallelBase):
         if self._hcg.get_sep_parallel_world_size() > 1:
             logger.info("start broadcast sep parameters")
             broadcast_sep_parameters(self._layers, self._hcg, fuse_params=False)
+
+        if self._hcg.get_cp_parallel_world_size() > 1:
+            logger.info("start broadcast cp parameters")
+            broadcast_cp_parameters(self._layers, self._hcg)
 
         if self._hcg.get_sharding_parallel_world_size() > 1:
             logger.info("start broadcast sharding parameters")

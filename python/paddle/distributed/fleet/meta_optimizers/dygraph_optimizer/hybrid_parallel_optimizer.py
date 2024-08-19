@@ -284,6 +284,7 @@ class HybridParallelOptimizer:
         self._sharding_enable = self._hcg.get_sharding_parallel_world_size() > 1
 
         self._sep_enable = self._hcg.get_sep_parallel_world_size() > 1
+        self._cp_enable = self._hcg.get_cp_parallel_world_size() > 1
 
         if (
             isinstance(self._inner_opt._grad_clip, ClipGradByGlobalNorm)
@@ -489,7 +490,7 @@ class HybridParallelOptimizer:
             dp_parameter_list = self._inner_opt.filter_parameters(
                 parameter_list, self._hcg
             )
-        if self._dp_enable or self._sep_enable:
+        if self._dp_enable or self._sep_enable or self._cp_enable:
             fused_allreduce_gradients(dp_parameter_list, self._hcg)
 
     @no_grad()

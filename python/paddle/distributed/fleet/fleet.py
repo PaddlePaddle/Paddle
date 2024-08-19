@@ -602,6 +602,7 @@ class Fleet:
         self.mp_degree = self.hybrid_configs["mp_degree"]
         self.pp_degree = self.hybrid_configs["pp_degree"]
         self.sep_degree = self.hybrid_configs["sep_degree"]
+        self.cp_degree = self.hybrid_configs["cp_degree"]
         self.sharding_degree = self.hybrid_configs["sharding_degree"]
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
@@ -609,6 +610,10 @@ class Fleet:
         assert (
             self.sep_degree >= 0
         ), "sep_degree should be greater or equal to 0"
+        assert self.cp_degree >= 0, "cp_degree should be greater or equal to 0"
+        assert not (
+            self.sep_degree > 1 and self.cp_degree > 1
+        ), "cp and sep should not be used at the same time"
         assert (
             self.sharding_degree >= 0
         ), "sharding_degree should be greater or equal to 0"
@@ -616,6 +621,7 @@ class Fleet:
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
         self.sep_degree = max(self.sep_degree, 1)
+        self.cp_degree = max(self.cp_degree, 1)
 
         if self.dp_degree < 0:
             nranks = paddle.distributed.get_world_size()
@@ -629,6 +635,7 @@ class Fleet:
             "sharding": ['sharding', self.sharding_degree],
             "mp": ['model', self.mp_degree],
             "sep": ["sep", self.sep_degree],
+            "cp": ["cp", self.cp_degree],
         }
 
         order = self._user_defined_strategy.hybrid_parallel_order
