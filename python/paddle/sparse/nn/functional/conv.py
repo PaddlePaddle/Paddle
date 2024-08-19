@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Literal
 
 __all__ = []
 
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.nn.functional.conv import _update_padding_nd
@@ -321,7 +321,7 @@ def _conv2d_igemm(
     stride = convert_to_list(stride, dims, 'stride')
     dilation = convert_to_list(dilation, dims, 'dilation')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.sparse_conv3d_implicit_gemm(
             x,
             weight,

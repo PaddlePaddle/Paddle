@@ -37,7 +37,6 @@ class DistributedUnSqueeze2(DistributedOperatorImplContainer):
 
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
-        xshape_name = op_desc.output('XShape')[0]
         axes = op_desc.attr('axes')
 
         input_spec = get_dist_tensor_spec(dist_op, x_name)
@@ -54,7 +53,7 @@ class DistributedUnSqueeze2(DistributedOperatorImplContainer):
         changed = update_op_dims_mapping(
             dist_op,
             [x_name],
-            [out_name, xshape_name],
+            [out_name],
             fw_results,
             bw_results,
         )
