@@ -19,10 +19,9 @@ import re
 import time
 import warnings
 from multiprocessing import Manager, Process
-from typing import Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import numpy as np
-import numpy.typing as npt
 
 import paddle
 from paddle.base import core
@@ -31,6 +30,9 @@ from paddle.distributed.fleet.base.private_helper_function import (
 )
 
 from ...backup_env import getenv_or_backup
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 __all__ = []
 
