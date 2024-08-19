@@ -765,8 +765,12 @@ bool CrfDecodingOpInferSymbolicShape(
 
 bool CoalesceTensorOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  auto dtype = op->attribute<phi::DataType>("dtype");
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::TensorListShapeOrDataDimExprs &input_shapes =
+      infer_context->GetShapeOrDataForValue(operand_source)
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
+  auto dtype = op->operand(1);
   const auto &attributes = op->attributes();
   bool use_align =
       attributes.at("use_align").dyn_cast<pir::BoolAttribute>().data();
@@ -785,11 +789,6 @@ bool CoalesceTensorOpInferSymbolicShape(
     return aligned_size;
   };
 
-  std::vector<symbol::ShapeOrDataDimExprs> input_shapes;
-  for (size_t i = 0; i < op->num_operands(); ++i) {
-    input_shapes.push_back(
-        infer_context->GetShapeOrDataForValue(op->operand_source(i)));
-  }
   if (use_align && align_size > 0) {
     int64_t numel = 0;
     for (const auto &item_shape : input_shapes) {
