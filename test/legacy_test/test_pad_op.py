@@ -322,6 +322,7 @@ class TestPadOrder2N(unittest.TestCase):
         self.pad_value = 0.5
 
     def test_order(self):
+        paddle.disable_static()
         self.init_case()
         x_np = np.random.random(self.shape).astype('float32')
         paddings_np = self.paddings.copy()
@@ -364,6 +365,7 @@ class TestPadOrder(unittest.TestCase):
         self.pad_value = 0.5
 
     def test_order(self):
+        paddle.disable_static()
         self.init_case()
         x_np = np.random.random(self.shape).astype('float32')
         paddings_np = self.paddings.copy()
