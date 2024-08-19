@@ -1052,7 +1052,7 @@ struct BatchNormOpTranscriber : public OpTranscriber {
 
 struct CastOpTranscriber : public OpTranscriber {
   pir::AttributeMap TranslateOpAttribute(
-      pir::IrContext*,
+      pir::IrContext* ctx,
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
