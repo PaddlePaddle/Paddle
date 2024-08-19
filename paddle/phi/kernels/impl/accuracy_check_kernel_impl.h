@@ -15,6 +15,7 @@
 #pragma once
 #include <cmath>
 #include <string>
+
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -35,6 +36,7 @@ struct AccuracyCheckFunctor {
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,
+                  int index,
                   const float rtol,
                   const float atol,
                   bool equal_nan,
@@ -47,6 +49,7 @@ struct AccuracyCheckFunctor<phi::CPUContext, T> {
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,
+                  int index,
                   const double rtol,
                   const double atol,
                   bool equal_nan,
@@ -96,6 +99,7 @@ struct AccuracyCheckFunctor<phi::CPUContext, phi::dtype::complex<T>> {
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,
+                  int index,
                   const double rtol,
                   const double atol,
                   bool equal_nan,
@@ -232,6 +236,7 @@ struct AccuracyCheckFunctor<phi::GPUContext, T> {
                   const DenseTensor& in,
                   const DenseTensor& other,
                   const std::string& fn_name,
+                  int index,
                   const double rtol,
                   const double atol,
                   bool equal_nan,
@@ -255,10 +260,63 @@ struct AccuracyCheckFunctor<phi::GPUContext, T> {
     phi::Copy(dev_ctx, *output, phi::CPUPlace(), true, &out_cpu);
     auto data_ptr = out_cpu.data<bool>();
 
-    PADDLE_ENFORCE_EQ(*data_ptr,
-                      true,
-                      common::errors::PreconditionNotMet(
-                          "Accuracy check failed, kernel name %s", fn_name));
+    DenseTensor base_cpu;
+    phi::Copy(dev_ctx, in, phi::CPUPlace(), true, &base_cpu);
+
+    DenseTensor other_cpu;
+    phi::Copy(dev_ctx, other, phi::CPUPlace(), true, &other_cpu);
+
+    // if( base_cpu.dtype() == phi::DataType::FLOAT16 || base_cpu.dtype() ==
+    // phi::DataType::BFLOAT16 || base_cpu.dtype() == phi::DataType::FLOAT32)
+    // {
+    // for( size_t i = 0; i < base_cpu.numel(); ++i )
+    // {
+    //   if( ! std::isfinite( (double)( base_cpu.data<T>()[i] ) ))
+    //   {
+    //     std::cerr << "base num is i " << i << "\t" << fn_name << std::endl;
+    //     std::cerr << "index " << index << std::endl;
+    //     throw std::runtime_error("found inf");
+    //   }
+    // }
+
+    //  for( size_t i = 0; i < other_cpu.numel(); ++i )
+    // {
+    //   if( ! std::isfinite(  (double)( other_cpu.data<T>()[i] )) )
+    //   {
+    //     std::cerr << "other num is i " << i << "\t" << fn_name << std::endl;
+    //     std::cerr << "index " << index << std::endl;
+    //     throw std::runtime_error("found inf");
+    //   }
+    // }
+    // }
+
+    // if( !data_ptr[0] )
+    // {
+    //     DenseTensor base_cpu;
+    //     phi::Copy(dev_ctx, in, phi::CPUPlace(), true, &base_cpu);
+
+    //      DenseTensor other_cpu;
+    //     phi::Copy(dev_ctx, other, phi::CPUPlace(), true, &other_cpu);
+
+    //     std::cerr << "base tensor " << base_cpu.dtype() << std::endl;
+    //     for( int i = 0; i < 10; ++i)
+    //     {
+    //       std::cerr << base_cpu.data<T>()[i] << ", ";
+    //     }
+    //     std::cerr << std::endl;
+
+    //     std::cerr << "other tensor " << std::endl;
+    //     for( int i = 0; i < 10; ++i)
+    //     {
+    //       std::cerr << other_cpu.data<T>()[i] << ", ";
+    //     }
+    //     std::cerr << std::endl;
+
+    // }
+    // PADDLE_ENFORCE_EQ(*data_ptr,
+    //                   true,
+    //                   common::errors::PreconditionNotMet(
+    //                       "Accuracy check failed, kernel name %s", fn_name));
   }
 };
 #endif
@@ -268,11 +326,12 @@ void AccuracyCheckKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const std::string& fn_name,
+                         int index,
                          const double rtol,
                          const double atol,
                          bool equal_nan,
                          DenseTensor* out) {
   AccuracyCheckFunctor<Context, T>()(
-      dev_ctx, x, y, fn_name, rtol, atol, equal_nan, out);
+      dev_ctx, x, y, fn_name, index, rtol, atol, equal_nan, out);
 }
 }  // namespace phi

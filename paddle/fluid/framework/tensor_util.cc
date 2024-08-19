@@ -884,6 +884,9 @@ std::ostream& print_tensor(std::ostream& os, const phi::DenseTensor& tensor) {
   auto inspect = tensor.data<T>();
   auto element_num = tensor.numel();
 
+  if (element_num > 10) {
+    element_num = 10;
+  }
   os << "  - data: [";
   // Note: int8_t && uint8_t is typedef of char, ostream unable to print
   // properly
@@ -915,7 +918,7 @@ std::ostream& print_tensor<phi::dtype::complex<float>>(
   os << "  - data: [";
   if (element_num > 0) {
     os << signed(inspect[0].real) << "+" << signed(inspect[0].imag) << "j";
-    for (int j = 1; j < element_num; ++j) {
+    for (int j = 1; j < 10; ++j) {
       os << " " << signed(inspect[j].real) << "+" << signed(inspect[j].imag)
          << "j";
     }

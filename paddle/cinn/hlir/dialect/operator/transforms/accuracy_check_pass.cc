@@ -116,6 +116,7 @@ class AddAccuracyCheckPattern
             fusion_op.result(i),
             ir_mapping.Lookup(op->operand_source(i)),
             fn_name,
+            i,
             rtol,
             atol,
             equal_nan);
