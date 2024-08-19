@@ -67,6 +67,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.reduce_as",
     "pd_op.max",
     "pd_op.stack",
+    "pd_op.expand",
 ]
 
 
