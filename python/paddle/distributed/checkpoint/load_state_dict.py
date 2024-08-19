@@ -17,6 +17,7 @@ from __future__ import annotations
 import copy
 import os
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base.framework import (
@@ -30,6 +31,10 @@ from .utils import (
     compute_local_shape_and_global_offset,
     flatten_state_dict,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.distributed.collective import Group
 
 
 @dataclass(frozen=True)
@@ -460,10 +465,10 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
 
 
 def load_state_dict(
-    state_dict,
-    path,
-    process_group=None,
-    coordinator_rank=0,
+    state_dict: dict[str, Tensor],
+    path: str,
+    process_group: Group | None = None,
+    coordinator_rank: int = 0,
     offload=False,
 ) -> None:
     """
