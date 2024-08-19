@@ -186,7 +186,7 @@ void Conv3dImplicitGemmKernel(const Context& dev_ctx,
                               SparseCooTensor* out) {
 #ifdef PADDLE_WITH_CUDA
   PD_VISIT_BASE_INTEGRAL_TYPES(
-      x.indices().dtype(), "Conv3dImplicitGemmGPUKernel", ([&] {
+      x.indices().dtype(), "Conv3dImplicitGemmGPUKernel's indices", ([&] {
         // Conv3dImplicitGemmGPUKernel<T, data_t>(dev_ctx,
         Conv3dImplicitGemmGPUKernel<T, int64_t>(dev_ctx,
                                                 x,

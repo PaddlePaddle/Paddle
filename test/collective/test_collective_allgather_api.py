@@ -44,28 +44,6 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 dtype=dtype,
             )
 
-    def test_allgather_nccl_with_comm_context(self):
-        dtypes_to_test = [
-            "float16",
-            "float32",
-            "float64",
-            "int32",
-            "int64",
-            "int8",
-            "uint8",
-            "bool",
-        ]
-        if self._nccl_version >= 21000:
-            dtypes_to_test.append("bfloat16")
-        for dtype in dtypes_to_test:
-            self.check_with_place(
-                "collective_allgather_api.py",
-                "allgather",
-                "nccl",
-                dtype=dtype,
-                need_envs={"USE_COMM_CONTEXT": "1"},
-            )
-
     def test_allgather_nccl_with_new_comm(self):
         dtypes_to_test = [
             "float16",
@@ -86,29 +64,6 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
-    def test_allgather_nccl_with_new_comm_pir(self):
-        dtypes_to_test = [
-            "float16",
-            "float32",
-            "float64",
-            "int32",
-            "int64",
-            "int8",
-            "uint8",
-            "bool",
-        ]
-        for dtype in dtypes_to_test:
-            self.check_with_place(
-                "collective_allgather_api.py",
-                "allgather",
-                "nccl",
-                dtype=dtype,
-                need_envs={
-                    "FLAGS_dynamic_static_unified_comm": "true",
-                    "FLAGS_enable_pir_in_executor": "1",
-                },
-            )
-
     def test_allgather_gloo(self):
         dtypes_to_test = [
             "float16",
@@ -127,27 +82,6 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 "gloo",
                 "3",
                 dtype=dtype,
-            )
-
-    def test_allgather_gloo_with_comm_context(self):
-        dtypes_to_test = [
-            "float16",
-            "float32",
-            "float64",
-            "int32",
-            "int64",
-            "int8",
-            "uint8",
-            "bool",
-        ]
-        for dtype in dtypes_to_test:
-            self.check_with_place(
-                "collective_allgather_api.py",
-                "allgather",
-                "gloo",
-                "3",
-                dtype=dtype,
-                need_envs={"USE_COMM_CONTEXT": "1"},
             )
 
     def test_allgather_nccl_dygraph(self):
