@@ -36,7 +36,7 @@ set(utils_modules pretty_log string_helper utf8proc)
 add_subdirectory(api)
 
 if(NOT WIN32 AND NOT APPLE)
-  link_libraries(stdc++fs)
+  set(DEPS ${DEPS} stdc++fs)
 endif()
 
 # Create static inference library if needed
@@ -121,6 +121,10 @@ if(WITH_ONNXRUNTIME)
   set(SHARED_INFERENCE_SRCS
       ${SHARED_INFERENCE_SRCS}
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
+endif()
+
+if(NOT WIN32 AND NOT APPLE)
+  link_libraries(stdc++fs)
 endif()
 
 # Create shared inference library
