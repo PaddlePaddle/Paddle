@@ -1513,7 +1513,7 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
   std::vector<int> strides =
       paddle::dialect::details::GetVectorAttr<int>(op, "strides");
   std::vector<int> kernel_sizes_ =
-      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_sizes");
+      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_size");
 
   std::vector<symbol::DimExpr> kernel_size_;
   int rank_kernel = kernel_sizes_.size();
