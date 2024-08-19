@@ -193,7 +193,7 @@ void PhiKernelInstruction::Run() {
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   {
     phi::RecordEvent record_event("PhiKernelInstruction::kernel launch",
-                                  platform::TracerEventType::UserDefined,
+                                  platform::TracerEventType::StaticKernelCall,
                                   1);
     (*(phi_kernel_))(&(kernel_context_));
   }

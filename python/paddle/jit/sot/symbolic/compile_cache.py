@@ -103,6 +103,7 @@ class FallbackWrapper:
             ) = self.compiled_fn.get_concrete_program(input_spec)
             self.partial_program.training = self.is_training
         if use_pir_api():
+            print(len(self.partial_program.program.program.global_block().ops))
             return len(self.partial_program.program.program.global_block().ops)
         else:
             if self.partial_program.program.num_blocks > 1:

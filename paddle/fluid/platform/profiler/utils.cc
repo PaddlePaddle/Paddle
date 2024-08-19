@@ -171,7 +171,9 @@ const char* StringTracerEventType(TracerEventType type) {
                                          "Optimization",
                                          "Communication",
                                          "PythonOp",
-                                         "PythonUserDefined"};
+                                         "PythonUserDefined",
+                                         "DygraphKernelCall",
+                                         "StaticKernelCall"};
   return category_name_[static_cast<int>(type)];
 }
 

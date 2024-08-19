@@ -51,6 +51,10 @@ enum class TracerEventType {
   PythonOp = 13,
   // Used to mark python level user-defined
   PythonUserDefined = 14,
+  // Used to mark kernel call in dynamic graph mode
+  DygraphKernelCall = 15,
+  // Used to mark kernel call in static graph mode
+  StaticKernelCall = 16,
   // A flag to denote the number of current types
   NumTypes
 };

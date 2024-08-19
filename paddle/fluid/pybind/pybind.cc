@@ -2951,7 +2951,11 @@ All parameter, weight, gradient are variables in Paddle.
       .value("Communication", paddle::platform::TracerEventType::Communication)
       .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
       .value("PythonUserDefined",
-             paddle::platform::TracerEventType::PythonUserDefined);
+             paddle::platform::TracerEventType::PythonUserDefined)
+      .value("DygraphKernelCall",
+             paddle::platform::TracerEventType::DygraphKernelCall)
+      .value("StaticKernelCall",
+             paddle::platform::TracerEventType::StaticKernelCall);
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
