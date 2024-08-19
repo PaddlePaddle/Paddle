@@ -439,11 +439,11 @@ write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/i
 def find_libnvinfer():
     """Search for libnvinfer.so file in LD_LIBRARY_PATH."""
 
-    tensorrt_root='@TENSORRT_ROOT@'
+    tensorrt_library_path='@TENSORRT_LIBRARY_DIR@'
     trt_infer_rt_path='@TR_INFER_RT@'
 
-    libnvinfer_file =os.path.join(tensorrt_root,"lib",trt_infer_rt_path)
-    print("libnvinfer_file:",libnvinfer_file)
+    libnvinfer_file =os.path.join(tensorrt_library_path,trt_infer_rt_path)
+    print("trt_library",libnvinfer_file)
 
     if os.path.exists(libnvinfer_file):
         return libnvinfer_file
@@ -454,24 +454,23 @@ def find_libnvinfer():
 
 def get_tensorrt_version():
     try:
-        if '@WITH_TENSORRT@' =='ON':
-            libnvinfer_path = find_libnvinfer()
+        libnvinfer_path = find_libnvinfer()
 
-            if not libnvinfer_path:
-                return None
+        if not libnvinfer_path:
+            return None
 
-            trt = ctypes.CDLL(libnvinfer_path)
-            get_version =trt.getInferLibVersion
-            get_version.restype = ctypes.c_int
-            version = get_version()
-            version_str = str(version)
-            major = version_str[:1] if len(version_str) > 1 else version_str
-            minor = version_str[1:2] if len(version_str) > 3 else version_str[1:]
-            patch = version_str[3:] if len(version_str) > 3 else ''
+        trt = ctypes.CDLL(libnvinfer_path)
+        get_version =trt.getInferLibVersion
+        get_version.restype = ctypes.c_int
+        version = get_version()
+        version_str = str(version)
+        major = version_str[:1] if len(version_str) > 1 else version_str
+        minor = version_str[1:2] if len(version_str) > 3 else version_str[1:]
+        patch = version_str[3:] if len(version_str) > 3 else ''
 
-            minor = minor if minor else '0'
-            patch = patch if patch else '0'
-            version_str = f"{major}.{minor}.{patch}"
+        minor = minor if minor else '0'
+        patch = patch if patch else '0'
+        version_str = f"{major}.{minor}.{patch}"
 
         return version_str
 
@@ -546,7 +545,7 @@ def get_paddle_extra_install_requirements():
 
         paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[cuda_major_version].split("|")
 
-    if '@WITH_TENSORRT@' == 'ON':
+    if '@TENSORRT_FOUND@' == 'ON':
         if platform.system() =='Linux' or platform.system() =='Windows':
 
             PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
