@@ -64,6 +64,7 @@ function init() {
     export FLAGS_call_stack_level=2
 }
 
+
 function cmake_base() {
     # Build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
@@ -833,7 +834,6 @@ set -x
         fi
 set +x
         EXIT_CODE=0;
-
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
         get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list
