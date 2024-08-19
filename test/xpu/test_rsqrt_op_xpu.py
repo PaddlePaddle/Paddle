@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -40,7 +41,11 @@ class XPUTestRsqrtOp(XPUOpTestWrapper):
             self.inputs = {}
             self.init_shape()
             self.init_data()
-            self.outputs = {'Out': np.reciprocal(np.sqrt(self.inputs['X']))}
+            if self.dtype == np.uint16:
+                x_float32 = convert_uint16_to_float(self.inputs['X'])
+                self.outputs = {'Out': np.reciprocal(np.sqrt(x_float32))}
+            else:
+                self.outputs = {'Out': np.reciprocal(np.sqrt(self.inputs['X']))}
 
         def set_xpu(self):
             self.__class__.use_xpu = True
@@ -51,8 +56,14 @@ class XPUTestRsqrtOp(XPUOpTestWrapper):
             self.shape = (4, 10, 10)
 
         def init_data(self):
-            x = np.random.random(self.shape).astype("float32")
-            self.inputs['X'] = x
+            if self.dtype == np.uint16:
+                x = np.random.random(self.shape).astype("float32")
+                x = convert_float_to_uint16(x)
+                self.inputs = {'X': x}
+            else:
+                self.inputs = {
+                    'X': np.random.random(self.shape).astype(self.dtype)
+                }
 
         def init_dtype(self):
             self.dtype = self.in_type

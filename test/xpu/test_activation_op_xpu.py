@@ -586,50 +586,62 @@ class XPUTestPowOP(XPUOpTestWrapper):
             self.dtype = self.in_type
 
             self.init_config()
-            out = np.power(self.x, self.factor)
+            if self.dtype == np.uint16:
+                x_float32 = np.random.uniform(
+                    self.range[0], self.range[1], self.shape
+                ).astype('float32')
+                x = convert_float_to_uint16(x_float32)
+                self.inputs = {'X': x}
+                self.outputs = {'Out': np.power(x_float32, self.factor)}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(
+                        self.range[0], self.range[1], self.shape
+                    ).astype(self.dtype)
+                }
+                self.outputs = {'Out': np.power(self.inputs['X'], self.factor)}
 
-            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(self.x)}
             self.attrs = {'factor': self.factor, 'use_xpu': True}
-            self.outputs = {'Out': out}
 
         def init_config(self):
-            self.x = np.random.uniform(-1, 2, [12]).astype(self.dtype)
+            self.range = (-1, 2)
+            self.shape = [12]
             self.factor = 3.0
 
     class XPUTestPow1(XPUTestPowBase):
         def init_config(self):
-            self.x = np.random.uniform(-1, 1, [1024, 8]).astype(self.dtype)
+            self.range = (-1, 1)
+            self.shape = [1024, 8]
             self.factor = 1
 
     class XPUTestPow2(XPUTestPowBase):
         def init_config(self):
-            self.x = np.random.uniform(-1, 1, [1024, 8]).astype(self.dtype)
+            self.range = (-1, 1)
+            self.shape = [1024, 8]
             self.factor = 2
 
     class XPUTestPow3(XPUTestPowBase):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [4, 512, 15, 15]).astype(
-                self.dtype
-            )
+            self.range = (-2, 2)
+            self.shape = [4, 512, 15, 15]
             self.factor = 3
 
     class XPUTestPow4(XPUTestPowBase):
         def init_config(self):
-            self.x = np.random.uniform(-2, 2, [4, 256, 22, 22]).astype(
-                self.dtype
-            )
+            self.range = (-2, 2)
+            self.shape = [4, 256, 22, 22]
             self.factor = 4
 
     class XPUTestPow5(XPUTestPowBase):
         def init_config(self):
-            self.x = np.random.uniform(0, 1, [4, 256, 22, 22]).astype(
-                self.dtype
-            )
+            self.range = (0, 1)
+            self.shape = [4, 256, 22, 22]
             self.factor = 1.2
 
     class XPUTestPow6(XPUTestPowBase):
         def init_config(self):
-            self.x = np.random.uniform(0, 1, [1024, 8]).astype(self.dtype)
+            self.range = (0, 1)
+            self.shape = [1024, 8]
             self.factor = 3.2
 
 
