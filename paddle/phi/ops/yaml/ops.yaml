@@ -3037,6 +3037,7 @@
     data_type : x
   inplace : (x -> out)
   backward : lu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lu_unpack
   args : (Tensor x, Tensor y, bool unpack_ludata = true, bool unpack_pivots = true)
@@ -3047,6 +3048,7 @@
     func : lu_unpack
     data_type : x
   backward : lu_unpack_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : margin_cross_entropy
   args : (Tensor logits, Tensor label, bool return_softmax = false, int ring_id = 0, int rank = 0, int nranks = 1, float margin1 = 1.0f, float margin2 = 0.5f, float margin3 = 0.0f, float scale = 64.0f)
@@ -3179,6 +3181,7 @@
   kernel :
     func : mean
   backward : mean_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mean_all
   args : (Tensor x)
@@ -3470,6 +3473,7 @@
   kernel :
     func : one_hot
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : ones
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
@@ -3673,6 +3677,7 @@
     data_type : x
   optional : boxes_num
   backward : psroi_pool_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : put_along_axis
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true)
@@ -4271,7 +4276,7 @@
   kernel :
     func : shuffle_channel
   backward : shuffle_channel_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sigmoid
   args : (Tensor x)
@@ -4961,7 +4966,7 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unsqueeze
   args : (Tensor x, IntArray axis = {})

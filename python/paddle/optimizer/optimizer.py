@@ -995,6 +995,8 @@ class Optimizer:
                 ),
             )
         else:
+            if self.helper is None:
+                self.helper = LayerHelper(self.__class__.__name__)
             assert isinstance(self.helper, LayerHelper)
             var = self.helper.create_global_variable(
                 name=var_name,

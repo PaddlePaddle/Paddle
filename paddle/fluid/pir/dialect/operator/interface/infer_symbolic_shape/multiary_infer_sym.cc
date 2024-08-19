@@ -1697,12 +1697,65 @@ bool MovingAverageAbsMaxScale_OpInferSymbolicShape(
 //   return true;
 // }
 
-// bool PsroiPoolOpInferSymbolicShape(pir::Operation *op,
-//                                    pir::InferSymbolicShapeContext
-//                                    *infer_context) {
-//   // pass
-//   return true;
-// }
+bool PsroiPoolOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &input_dims = x_shape_or_data.shape();
+  const auto &rois_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &rois_dims = rois_shape_or_data.shape();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("The format of input tensor is NCHW"));
+  PADDLE_ENFORCE_EQ(rois_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                        "given as [(x1, y1, x2, y2), ...]"));
+  infer_context->AddEqualCstr(rois_dims[1], symbol::DimExpr(4));
+  if (op->operand_source(2)) {
+    auto &rois_num_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const std::vector<symbol::DimExpr> &rois_num_dims =
+        rois_num_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
+        rois_num_dims.size(),
+        1,
+        phi::errors::InvalidArgument("The second dimension of RoisNum should "
+                                     "be 1, but received dimension is %d",
+                                     rois_num_dims.size()));
+  }
+  int pooled_height =
+      op->attribute<pir::Int32Attribute>("pooled_height").data();
+  int pooled_width = op->attribute<pir::Int32Attribute>("pooled_width").data();
+  int output_channels =
+      op->attribute<pir::Int32Attribute>("output_channels").data();
+  auto divisor =
+      symbol::DimExpr(output_channels * pooled_height * pooled_width);
+  infer_context->AddEqualCstr(input_dims[1], divisor);
+  PADDLE_ENFORCE_GT(pooled_height,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The pooled output height must be greater than 0"));
+  PADDLE_ENFORCE_GT(pooled_width,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The pooled output width must be greater than 0"));
+  PADDLE_ENFORCE_GT(output_channels,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The pooled output channels must greater than 1"));
+  std::vector<symbol::DimExpr> out_dims = {
+      rois_dims[0], output_channels, pooled_height, pooled_width};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 
 // bool PyramidHashOpInferSymbolicShape(pir::Operation *op,
 //                                      pir::InferSymbolicShapeContext
