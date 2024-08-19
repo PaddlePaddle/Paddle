@@ -1085,7 +1085,105 @@ struct Conv2dOpTranscriber : public OpTranscriber {
   }
 };
 
+using ValueInfo =
+    std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::Value>;
+
+ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
+                                 const std::vector<std::string>& names,
+                                 TranslationContext* param_map,
+                                 const std::string& var_name) {
+  PADDLE_ENFORCE_EQ(
+      names.size(),
+      1UL,
+      common::errors::InvalidArgument(
+          "Expected op[%s]'s input %s has only 1 variable, but got %d",
+          op_desc.Type(),
+          var_name,
+          names.size()));
+  const auto& name = names[0];
+  PADDLE_ENFORCE_GT(
+      param_map->count(name),
+      0UL,
+      common::errors::InvalidArgument(
+          "Expected op[%s]'s input %s has been parsed", op_desc.Type(), name));
+  const auto& defining_info = param_map->at(name);
+
+  pir::Value value = defining_info.value;
+  PADDLE_ENFORCE_NE(
+      value,
+      nullptr,
+      common::errors::PreconditionNotMet(
+          "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
+  const pir::Type& type = value.type();
+  PADDLE_ENFORCE_EQ(type.isa<dialect::DenseTensorType>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Expected op[%s]'s input %s is DenseTensor but got %s",
+                        op_desc.Type(),
+                        name,
+                        type));
+  dialect::DenseTensorType tensor_type =
+      type.dyn_cast<dialect::DenseTensorType>();
+
+  std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
+
+  return std::make_tuple(shape, tensor_type, value);
+}
+
 struct EmbeddingOpTranscriber : public OpTranscriber {
+  void RecordOpResultMapping(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Operation* operation,
+                             const OpOutputMapping& arg_to_idx) override {
+    OpTranscriber::RecordOpResultMapping(
+        ctx, param_map, op_desc, operation, arg_to_idx);
+    if (op_desc.Type() == "lookup_table") {
+      ValueInfo out_info = GetTensorInfoByVarName(
+          op_desc, op_desc.Output("Out"), param_map, "Out");
+      const auto& output_vars = op_desc.Output("Out");
+      const auto& output_name = output_vars[0];
+
+      const dialect::DenseTensorType& out_tensor_type = std::get<1>(out_info);
+      pir::Value& out_value = std::get<2>(out_info);
+
+      ValueInfo ids_info = GetTensorInfoByVarName(
+          op_desc, op_desc.Input("Ids", true), param_map, "Ids");
+      const std::vector<int64_t>& ids_shape = std::get<0>(ids_info);
+
+      ValueInfo w_info = GetTensorInfoByVarName(
+          op_desc, op_desc.Input("W", true), param_map, "W");
+
+      const std::vector<int64_t>& w_shape = std::get<0>(w_info);
+
+      std::vector<int64_t> out_new_shape(
+          ids_shape.begin(), ids_shape.begin() + ids_shape.size() - 1);
+      out_new_shape.insert(out_new_shape.end(), w_shape[1]);
+
+      pir::Builder builder(ctx, operation->GetParent());
+      dialect::ReshapeOp reshape_op_out =
+          builder.Build<dialect::ReshapeOp>(out_value, out_new_shape);
+      pir::Value out_new = reshape_op_out.out();
+      VLOG(6) << "[" << op_desc.Type() << "] out_shape change from "
+              << out_tensor_type.dims() << " to "
+              << common::make_ddim(out_new_shape);
+
+      param_map->PushValue(output_name,
+                           VariableDefiningInfo(out_new, false, -1));
+    }
+  }
+
+  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
+                           const OpDesc& op_desc) override {
+    auto op_info = ctx->GetRegisteredOpInfo("pd_op.embedding");
+    if (!op_info) {
+      IR_THROW("Op %d should have corresponding OpInfo %d",
+               op_desc.Type(),
+               "pd_op.embedding");
+    }
+    return op_info;
+  }
+
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
                                   const OpAttributeInfo& info) override {
@@ -1393,6 +1491,20 @@ struct CrossEntropyWithSoftmaxOpTranscriber : public OpTranscriber {
   }
 };
 
+struct BoxCoderOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "axis") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
+    }
+    if (info.name == "variance") {
+      std::vector<pir::Attribute> variance;
+      (*attribute_map)[info.name] = pir::ArrayAttribute::get(ctx, variance);
+    }
+  }
+};
+
 struct DepthwiseConv2dOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -1656,51 +1768,6 @@ struct TrilAndTriuGradOpTranscriber : public OpTranscriber {
     return op_info;
   }
 };
-
-using ValueInfo =
-    std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::Value>;
-
-ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
-                                 const std::vector<std::string>& names,
-                                 TranslationContext* param_map,
-                                 const std::string& var_name) {
-  PADDLE_ENFORCE_EQ(
-      names.size(),
-      1UL,
-      common::errors::InvalidArgument(
-          "Expected op[%s]'s input %s has only 1 variable, but got %d",
-          op_desc.Type(),
-          var_name,
-          names.size()));
-  const auto& name = names[0];
-  PADDLE_ENFORCE_GT(
-      param_map->count(name),
-      0UL,
-      common::errors::InvalidArgument(
-          "Expected op[%s]'s input %s has been parsed", op_desc.Type(), name));
-  const auto& defining_info = param_map->at(name);
-
-  pir::Value value = defining_info.value;
-  PADDLE_ENFORCE_NE(
-      value,
-      nullptr,
-      common::errors::PreconditionNotMet(
-          "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
-  const pir::Type& type = value.type();
-  PADDLE_ENFORCE_EQ(type.isa<dialect::DenseTensorType>(),
-                    true,
-                    common::errors::InvalidArgument(
-                        "Expected op[%s]'s input %s is DenseTensor but got %s",
-                        op_desc.Type(),
-                        name,
-                        type));
-  dialect::DenseTensorType tensor_type =
-      type.dyn_cast<dialect::DenseTensorType>();
-
-  std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
-
-  return std::make_tuple(shape, tensor_type, value);
-}
 
 struct MulOpTranscriber : public OpTranscriber {
   pir::Operation* operator()(pir::IrContext* ctx,
@@ -3566,6 +3633,37 @@ struct CEmbeddingOpTranscriber : public OpTranscriber {
   }
 };
 
+struct GatherOpTranscriber : public OpTranscriber {
+  pir::Value GetAttributeAsInput(pir::IrContext* ctx,
+                                 pir::Block* block,
+                                 const OpDesc& op_desc,
+                                 const OpInputInfo& input_info) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+
+    auto legacy_attr_name =
+        op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
+
+    if (!op_desc.HasAttr(legacy_attr_name)) {
+      VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+               << " name: " << legacy_attr_name << " not found and fill 0.";
+      pir::Attribute new_attr = pir::Int64Attribute::get(ctx, 0);
+      pir::Operation* defining_op =
+          InsertFullOperationForAttributeInput(ctx, block, new_attr);
+      return defining_op->result(0);
+    } else {
+      paddle::framework::Attribute legacy_attr =
+          op_desc.GetAttr(legacy_attr_name);
+      VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+               << " name: " << legacy_attr_name << " " << legacy_attr.index();
+      pir::Attribute new_attr = attribute_translator(legacy_attr);
+      pir::Operation* defining_op =
+          InsertFullOperationForAttributeInput(ctx, block, new_attr);
+      return defining_op->result(0);
+    }
+  }
+};
+
 struct QuantizeLinearOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -3756,6 +3854,7 @@ OpTranslator::OpTranslator() {
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
+  special_handlers["lookup_table"] = EmbeddingOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["pool2d"] = Pool2dOpTranscriber();
   special_handlers["randint"] = RandIntOpTranscriber();
@@ -3784,6 +3883,8 @@ OpTranslator::OpTranslator() {
   special_handlers["softmax"] = SoftmaxOpTranscriber();
   special_handlers["softmax_with_cross_entropy"] =
       SoftmaxWithCrossEntropyOpTranscriber();
+  special_handlers["gather"] = GatherOpTranscriber();
+  special_handlers["box_coder"] = BoxCoderOpTranscriber();
 
   // To adapt LodTensorArray
   special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();

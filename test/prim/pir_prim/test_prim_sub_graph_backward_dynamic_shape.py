@@ -199,6 +199,10 @@ def max_net6(x):
     return paddle.max(x)
 
 
+def expand_net(x):
+    return paddle.expand(x, [30, 200, 40])
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -2070,6 +2074,54 @@ class TestPrimMaxWithGrad7(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = max_net6
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimExpandWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [200, 40]
+        self.init_x_shape = [None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = expand_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimExpandWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 1, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = expand_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimExpandWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 1]
+        self.init_x_shape = [None, None, 1]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = expand_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimExpandWithGrad4(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 1, 1]
+        self.init_x_shape = [None, None, 1]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = expand_net
         self.enable_cinn = False
         self.tol = 1e-6
 
