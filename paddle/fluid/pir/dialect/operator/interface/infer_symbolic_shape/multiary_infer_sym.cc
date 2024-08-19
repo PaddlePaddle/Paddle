@@ -2058,13 +2058,18 @@ bool WarpctcOpInferSymbolicShape(
     }
   }
 
+  std::vector<symbol::DimExpr> loss_shape = {num_sequences, symbol::DimExpr(1)};
+  std::vector<symbol::DimExpr> warpctcgrad_shape = {
+      max_sequence_length, num_sequences, sequence_width};
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{{num_sequences, symbol::DimExpr(1)}});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(loss_shape)});
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          {max_sequence_length, num_sequences, sequence_width}});
+          symbol::TensorShapeOrDataDimExprs(warpctcgrad_shape)});
 
   return true;
 }
