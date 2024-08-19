@@ -192,6 +192,9 @@ class MypyChecker(TypeChecker):
                 "> python tools/type_checking.py "
                 + " ".join(sorted(failed_apis))
             )
+            logger.error(
+                ">>> For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/type_annotations_specification_cn.html"
+            )
             logger.error("----------------End of the Check--------------------")
 
             log_exit(1)

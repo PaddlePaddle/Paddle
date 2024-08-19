@@ -2351,6 +2351,7 @@
   kernel :
     func : gumbel_softmax
   backward : gumbel_softmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hardshrink
   args : (Tensor x, float threshold = 0.5)
@@ -3994,6 +3995,7 @@
   optional : boxes_num
   intermediate : arg_max
   backward : roi_pool_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : roll
   args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
@@ -4966,7 +4968,7 @@
     func: unpool3d
     data_type: x
   backward: unpool3d_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unsqueeze
   args : (Tensor x, IntArray axis = {})
