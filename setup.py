@@ -457,7 +457,6 @@ commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
-with_pip_tensorrt       ='%(with_pip_tensorrt)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
@@ -714,7 +713,6 @@ def cinn() -> str:
                 'with_pip_cuda_libraries': env_dict.get(
                     "WITH_PIP_CUDA_LIBRARIES"
                 ),
-                'with_pip_tensorrt': env_dict.get("WITH_PIP_TENSORRT"),
             }
         )
 
@@ -985,10 +983,10 @@ def find_libnvinfer():
 
 def get_tensorrt_version():
     try:
-        if env_dict.get("WITH_TENSORRT") == 'ON':
-            libnvinfer_path = find_libnvinfer()
-            if not libnvinfer_path:
-                return None
+
+        libnvinfer_path = find_libnvinfer()
+        if not libnvinfer_path:
+            return None
 
         trt = ctypes.CDLL(libnvinfer_path)
         get_version = trt.getInferLibVersion
@@ -1081,7 +1079,7 @@ def get_paddle_extra_install_requirements():
             cuda_major_version
         ].split("|")
 
-    if env_dict.get("WITH_PIP_TENSORRT") == "ON":
+    if env_dict.get("WITH_TENSORRT") == "ON":
         if platform.system() == 'Linux' or platform.system() == 'Windows':
 
             PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
