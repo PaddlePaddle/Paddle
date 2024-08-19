@@ -300,11 +300,20 @@ void distribution_and_transform(const GPUContext &ctx,
   size_t block_size = 256;
   size_t expect_grid_size = (size + block_size - 1) / block_size;
 
-  int64_t device_id = ctx.GetPlace().GetDeviceId();
-  const auto &prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  const char *env_value = std::getenv("PADDLE_ENABLE_SAME_RAND_A100");
+  int maxThreadsPerMultiProcessor, multiProcessorCount;
+  if (env_value != nullptr && std::string(env_value) == "1") {
+    maxThreadsPerMultiProcessor = 2048;
+    multiProcessorCount = 108;
+  } else {
+    int64_t device_id = ctx.GetPlace().GetDeviceId();
+    const auto &prop = phi::backends::gpu::GetDeviceProperties(device_id);
+    maxThreadsPerMultiProcessor = prop.maxThreadsPerMultiProcessor;
+    multiProcessorCount = prop.multiProcessorCount;
+  }
 
-  size_t max_grid_size = (prop.maxThreadsPerMultiProcessor / block_size) *
-                         prop.multiProcessorCount;
+  size_t max_grid_size =
+      (maxThreadsPerMultiProcessor / block_size) * multiProcessorCount;
   size_t grid_size =
       expect_grid_size > max_grid_size ? max_grid_size : expect_grid_size;
 
