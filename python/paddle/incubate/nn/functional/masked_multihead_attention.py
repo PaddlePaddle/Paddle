@@ -12,8 +12,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, overload
+
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+
+@overload
+def masked_multihead_attention(
+    x: Tensor,
+    cache_kv: Tensor | None = ...,
+    bias: Tensor | None = ...,
+    src_mask: Tensor | None = ...,
+    cum_offsets: Tensor | None = ...,
+    sequence_lengths: Tensor | None = ...,
+    rotary_tensor: Tensor | None = ...,
+    beam_cache_offset: None = ...,
+    qkv_out_scale: Tensor | None = ...,
+    out_shift: Tensor | None = ...,
+    out_smooth: Tensor | None = ...,
+    seq_len: int = ...,
+    rotary_emb_dims: int = ...,
+    use_neox_rotary_style: bool = ...,
+    compute_dtype: str = ...,
+    out_scale: float = ...,
+    quant_round_type: int = ...,
+    quant_max_bound: float = ...,
+    quant_min_bound: float = ...,
+) -> Tensor: ...
+
+
+@overload
+def masked_multihead_attention(
+    x: Tensor,
+    cache_kv: Tensor | None = ...,
+    bias: Tensor | None = ...,
+    src_mask: Tensor | None = ...,
+    cum_offsets: Tensor | None = ...,
+    sequence_lengths: Tensor | None = ...,
+    rotary_tensor: Tensor | None = ...,
+    beam_cache_offset: Tensor = ...,
+    qkv_out_scale: Tensor | None = ...,
+    out_shift: Tensor | None = ...,
+    out_smooth: Tensor | None = ...,
+    seq_len: int = ...,
+    rotary_emb_dims: int = ...,
+    use_neox_rotary_style: bool = ...,
+    compute_dtype: str = ...,
+    out_scale: float = ...,
+    quant_round_type: int = ...,
+    quant_max_bound: float = ...,
+    quant_min_bound: float = ...,
+) -> tuple[Tensor, Tensor]: ...
 
 
 def masked_multihead_attention(
