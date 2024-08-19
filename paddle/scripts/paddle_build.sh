@@ -2408,7 +2408,7 @@ set +x
             paddlex --install PaddleClas
 
             #download paddle dataset
-            wget https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
+            wget -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
             tar -xf ./dataset/cls_flowers_examples.tar -C ./dataset/
 
             #train Reset50
@@ -2431,10 +2431,9 @@ set +x
                 -o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
                 -o Global.device="xpu:${DEVICES[0]}"
             echo "Predicting Resnet50 completed!"
+            cd ..
         fi
 
-
-        cd ..
         echo "Starting running xpu tests"
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
