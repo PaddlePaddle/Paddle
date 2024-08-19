@@ -1383,7 +1383,7 @@ bool Unpool3dOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &indices_shape =
       indices_shape_or_data.shape();
 
-  for (int i = 0; i < x_shape.size(); ++i) {
+  for (size_t i = 0; i < x_shape.size(); ++i) {
     infer_context->AddEqualCstr(x_shape[i], indices_shape[i]);
   }
 
@@ -1392,7 +1392,7 @@ bool Unpool3dOpInferSymbolicShape(
       details::GetVectorAttr<int>(op, "output_size");
 
   std::vector<symbol::DimExpr> output_shape = {x_shape[0], x_shape[1]};
-  for (int i = 0; i < ksize.size(); ++i) {
+  for (size_t i = 0; i < ksize.size(); ++i) {
     output_shape.emplace_back(symbol::DimExpr(output_size[i]));
   }
 

@@ -2049,6 +2049,10 @@ bool WarpctcOpInferSymbolicShape(
     max_sequence_length = logits_shape[0];
     num_sequences = logits_shape[1];
     sequence_width = logits_shape[2];
+  } else {
+    max_sequence_length = infer_context->GetNextSymName();
+    num_sequences = infer_context->GetNextSymName();
+    sequence_width = common::product(logits_shape) / logits_shape[0];
   }
 
   infer_context->SetShapeOrDataForValue(
