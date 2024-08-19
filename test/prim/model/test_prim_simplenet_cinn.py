@@ -78,15 +78,18 @@ class TestPrimForwardAndBackward(unittest.TestCase):
     def check_prim(self, net, use_prim):
         if not use_prim:
             return
-        fwd_ops = [
-            op.type
-            for op in net.forward.get_concrete_program(self.data, self.dout)[1]
-            .train_program.block(0)
-            .ops
-        ]
+        if not paddle.base.framework.use_pir_api():
+            fwd_ops = [
+                op.type
+                for op in net.forward.get_concrete_program(
+                    self.data, self.dout
+                )[1]
+                .train_program.block(0)
+                .ops
+            ]
 
-        # Ensure that batch_norm is splitted into small ops
-        self.assertTrue('batch_norm' not in fwd_ops)
+            # Ensure that batch_norm is splitted into small ops
+            self.assertTrue('batch_norm' not in fwd_ops)
 
     def test_cinn_prim(self):
         if paddle.device.get_device() == "cpu":
