@@ -1542,12 +1542,12 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
       op->attribute<pir::BoolAttribute>("global_pooling").data();
 
   std::vector<symbol::DimExpr> kernel_size_;
-  for (int i = 0; i < kernel_size.size(); ++i) {
+  for (size_t i = 0; i < kernel_size.size(); ++i) {
     kernel_size_.emplace_back(kernel_size[i]);
   }
   if (global_pooling) {
     kernel_size_.resize(x_shape.size() - 2);
-    for (int i = 0; i < kernel_size_.size(); ++i) {
+    for (size_t i = 0; i < kernel_size_.size(); ++i) {
       paddings[i] = 0;
       kernel_size_[i] = x_shape[i + 2];
     }
@@ -1566,7 +1566,7 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
   if (adaptive) {
     out_shape.insert(out_shape.end(), kernel_size_.begin(), kernel_size_.end());
   } else {
-    for (int i = 0; i < kernel_size_.size(); ++i) {
+    for (size_t i = 0; i < kernel_size_.size(); ++i) {
       PADDLE_ENFORCE_NE(
           strides[i],
           0,
