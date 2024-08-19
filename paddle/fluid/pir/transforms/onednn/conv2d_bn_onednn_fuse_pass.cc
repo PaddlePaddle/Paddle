@@ -98,7 +98,6 @@ class Conv2dBnOneDNNFusePattern
 
     conv2d_attributes["force_fp32_output"] = rewriter.bool_attr(false);
     conv2d_attributes["fuse_residual_connection"] = rewriter.bool_attr(false);
-    conv2d_attributes["mkldnn_data_type"] = rewriter.str_attr("float32");
     conv2d_attributes["fuse_activation"] = rewriter.str_attr("");
     conv2d_attributes["fuse_alpha"] = rewriter.float_attr(0.0f);
     conv2d_attributes["fuse_beta"] = rewriter.float_attr(0.0f);
@@ -247,7 +246,6 @@ class Conv2dBiasBnOneDNNFusePattern
 
     conv2d_attributes["force_fp32_output"] = rewriter.bool_attr(false);
     conv2d_attributes["fuse_residual_connection"] = rewriter.bool_attr(false);
-    conv2d_attributes["mkldnn_data_type"] = rewriter.str_attr("float32");
     conv2d_attributes["fuse_activation"] = rewriter.str_attr("");
     conv2d_attributes["fuse_alpha"] = rewriter.float_attr(0.0f);
     conv2d_attributes["fuse_beta"] = rewriter.float_attr(0.0f);

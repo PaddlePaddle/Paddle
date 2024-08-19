@@ -45,6 +45,7 @@ class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
                 {"padding_algorithm", pat.Attr("padding_algorithm")},
                 {"dilations", pat.Attr("dilations")},
                 {"groups", pat.Attr("groups")},
+                {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                 {"data_format", pat.Attr("data_format")}});
 
     depthwise_conv({&pat.Tensor("input"), &pat.Tensor("filter")},
@@ -72,6 +73,7 @@ class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
                    {"padding_algorithm", pat.Attr("padding_algorithm")},
                    {"dilations", pat.Attr("dilations")},
                    {"groups", pat.Attr("groups")},
+                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                    {"data_format", pat.Attr("data_format")},
                }});
 
@@ -83,7 +85,7 @@ class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
 class DepthwiseConvMKLDNNPass : public pir::PatternRewritePass {
  public:
   DepthwiseConvMKLDNNPass()
-      : pir::PatternRewritePass("depthwise_conv_mkldnn_pass", 2) {}
+      : pir::PatternRewritePass("depthwise_conv_onednn_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

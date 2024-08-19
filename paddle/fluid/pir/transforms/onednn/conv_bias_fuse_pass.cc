@@ -50,6 +50,7 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
                 {"padding_algorithm", pat.Attr("padding_algorithm")},
                 {"dilations", pat.Attr("dilations")},
                 {"groups", pat.Attr("groups")},
+                {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                 {"data_format", pat.Attr("data_format")}});
 
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
@@ -122,7 +123,7 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
                    {"dilations", pat.Attr("dilations")},
                    {"groups", pat.Attr("groups")},
                    {"data_format", pat.Attr("data_format")},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
+                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                    {"fuse_activation", res.StrAttr("")},
                    {"fuse_residual_connection", res.BoolAttr(false)},
                    {"force_fp32_output", res.BoolAttr(false)},
@@ -158,6 +159,7 @@ class ConvTransposeBiasFusePattern : public paddle::drr::DrrPatternBase {
                 {"padding_algorithm", pat.Attr("padding_algorithm")},
                 {"dilations", pat.Attr("dilations")},
                 {"groups", pat.Attr("groups")},
+                {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                 {"data_format", pat.Attr("data_format")}});
 
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
@@ -203,7 +205,7 @@ class ConvTransposeBiasFusePattern : public paddle::drr::DrrPatternBase {
                    {"groups", pat.Attr("groups")},
                    {"data_format", pat.Attr("data_format")},
                    {"force_fp32_output", res.BoolAttr(false)},
-                   {"mkldnn_data_type", res.StrAttr("float32")},
+                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                    {"fuse_relu", res.BoolAttr(false)},
                    {"fuse_activation", res.StrAttr("")},
                    {"fuse_alpha", res.Float32Attr(0.0f)},

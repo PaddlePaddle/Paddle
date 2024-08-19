@@ -68,6 +68,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
                       {"padding_algorithm", pat.Attr("padding_algorithm")},
                       {"dilations", pat.Attr("dilations")},
                       {"groups", pat.Attr("groups")},
+                      {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                       {"data_format", pat.Attr("data_format")}})
             : pat.Op(conv_name,
                      {{
@@ -179,7 +180,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
                          {"dilations", pat.Attr("dilations")},
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
-                         {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                          {"fuse_activation", res.StrAttr(new_act_name)},
                          {"fuse_residual_connection", res.BoolAttr(false)},
                          {"force_fp32_output", res.BoolAttr(false)},
@@ -256,6 +257,7 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
                       {"padding_algorithm", pat.Attr("padding_algorithm")},
                       {"dilations", pat.Attr("dilations")},
                       {"groups", pat.Attr("groups")},
+                      {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                       {"data_format", pat.Attr("data_format")}})
             : pat.Op(conv_name,
                      {{
@@ -323,7 +325,7 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
                          {"dilations", pat.Attr("dilations")},
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
-                         {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                          {"fuse_activation", gelu},
                          {"fuse_residual_connection", res.BoolAttr(false)},
                          {"force_fp32_output", res.BoolAttr(false)},
@@ -406,6 +408,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
                       {"padding_algorithm", pat.Attr("padding_algorithm")},
                       {"dilations", pat.Attr("dilations")},
                       {"groups", pat.Attr("groups")},
+                      {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                       {"data_format", pat.Attr("data_format")}})
             : pat.Op(conv_name,
                      {{
@@ -473,7 +476,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
                          {"dilations", pat.Attr("dilations")},
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
-                         {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                          {"fuse_activation", res.StrAttr("clip")},
                          {"fuse_residual_connection", res.BoolAttr(false)},
                          {"force_fp32_output", res.BoolAttr(false)},
