@@ -1814,25 +1814,29 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
 
   const auto &attributes = op->attributes();
   int64_t num_classes;
+  symbol::DimExpr num_classes_expr;
   if (op->operand_source(1)) {
     const auto &num_classes_shape_or_date =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
     if (attributes.find("num_classes") != attributes.end()) {
       num_classes = op->attribute<pir::Int64Attribute>("num_classes").data();
+      num_classes_expr = symbol::DimExpr(num_classes);
     } else if (num_classes_shape_or_date.data().has_value()) {
       num_classes =
           num_classes_shape_or_date.data().value().at(0).Get<int64_t>();
+      num_classes_expr = symbol::DimExpr(num_classes);
     } else {
+      num_classes_expr = infer_context->GetNextSymName();
       PADDLE_ENFORCE_EQ(!num_classes_shape_or_date.data().has_value(),
                         true,
                         common::errors::InvalidArgument(
-                            "The depth should have data! Please check."));
+                            "The num classes should have data! Please check."));
     }
   }
 
   const std::vector<symbol::DimExpr> &out_shape = [&] {
     std::vector<symbol::DimExpr> out_shape = x_shape;
-    out_shape.push_back(symbol::DimExpr(num_classes));
+    out_shape.push_back(num_classes_expr);
     return out_shape;
   }();
 

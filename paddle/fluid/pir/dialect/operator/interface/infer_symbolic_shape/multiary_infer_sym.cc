@@ -2036,12 +2036,31 @@ bool HsigmoidLossOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool WarpctcOpInferSymbolicShape(pir::Operation *op,
-//                                  pir::InferSymbolicShapeContext
-//                                  *infer_context) {
-//   // pass
-//   return true;
-// }
+bool WarpctcOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &logits_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &logits_shape =
+      logits_shape_or_data.shape();
+
+  symbol::DimExpr max_sequence_length, num_sequences, sequence_width;
+
+  if (op->operand_source(2)) {
+    max_sequence_length = logits_shape[0];
+    num_sequences = logits_shape[1];
+    sequence_width = logits_shape[2];
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{{num_sequences, symbol::DimExpr(1)}});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          {max_sequence_length, num_sequences, sequence_width}});
+
+  return true;
+}
 
 // bool WarprnntOpInferSymbolicShape(pir::Operation *op,
 //                                   pir::InferSymbolicShapeContext
