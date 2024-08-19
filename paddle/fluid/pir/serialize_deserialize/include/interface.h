@@ -40,7 +40,7 @@ namespace pir {
  */
 void IR_API WriteModule(const pir::Program& program,
                         const std::string& file_path,
-                        const uint64_t& pir_version,
+                        uint64_t pir_version,
                         bool overwrite,
                         bool readable = false,
                         bool trainable = true);
@@ -63,7 +63,7 @@ void IR_API WriteModule(const pir::Program& program,
  */
 bool IR_API ReadModule(const std::string& file_path,
                        pir::Program* program,
-                       const uint64_t& pir_version);
+                       uint64_t pir_version);
 
 /**
  * @brief Save the given tensor into a single file at the specified file path
