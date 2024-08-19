@@ -2043,7 +2043,8 @@ bool WarpctcOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &logits_shape =
       logits_shape_or_data.shape();
 
-  symbol::DimExpr max_sequence_length, num_sequences, sequence_width;
+  symbol::DimExpr max_sequence_length, num_sequences;
+  symbol::DimExpr sequence_width = symbol::DimExpr(1);
 
   if (op->operand_source(2)) {
     max_sequence_length = logits_shape[0];
@@ -2052,7 +2053,9 @@ bool WarpctcOpInferSymbolicShape(
   } else {
     max_sequence_length = infer_context->GetNextSymName();
     num_sequences = infer_context->GetNextSymName();
-    sequence_width = common::product(logits_shape) / logits_shape[0];
+    for (size_t i = 1; i < logits_shape.size(); ++i) {
+      sequence_width = sequence_width * logits_shape[i];
+    }
   }
 
   infer_context->SetShapeOrDataForValue(
