@@ -77,6 +77,15 @@ def get_tensor(run_time_args, arg_name):
             ), f"the elements in {arg_name} must be paddle.Tensor"
             this_input_tensor_lists.append(ele)
         return this_input_tensor_lists
+    elif isinstance(run_time_args, dict):
+        this_input_tensor_lists = []
+        for key in run_time_args.keys():
+            ele = run_time_args[key]
+            assert isinstance(
+                ele, paddle.Tensor
+            ), f"the elements in {arg_name} must be paddle.Tensor"
+            this_input_tensor_lists.append(ele)
+        return this_input_tensor_lists
     elif is_fixed_type(run_time_args):
         return [run_time_args]
     else:
@@ -99,6 +108,14 @@ def get_d2s_spec(run_time_args, name):
                 InputSpec.from_tensor(ele, name=name + "_" + str(suffix))
             )
             suffix += 1
+        return this_input_spec
+    elif isinstance(run_time_args, dict):
+        this_input_spec = {}
+        suffix = 0
+        for key in run_time_args.keys():
+            ele = run_time_args[key]
+            assert isinstance(ele, paddle.Tensor)
+            this_input_spec[key] = InputSpec.from_tensor(ele, name=name + "_" + key)
         return this_input_spec
     elif is_fixed_type(run_time_args):
         return run_time_args
