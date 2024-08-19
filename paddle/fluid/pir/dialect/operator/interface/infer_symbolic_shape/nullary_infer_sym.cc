@@ -103,7 +103,7 @@ bool AssignValue_OpInferSymbolicShape(
   return AssignValueOpInferSymbolicShape(op, infer_context);
 }
 
-bool CudnnLSTMOpInferSymbolicShape(
+bool CudnnLstmOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
@@ -161,11 +161,6 @@ bool CudnnLSTMOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(init_h_shape)});
   return true;
-}
-
-bool CudnnLstmOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return CudnnLSTMOpInferSymbolicShape(op, infer_context);
 }
 
 bool DataOpInferSymbolicShape(pir::Operation *op,
