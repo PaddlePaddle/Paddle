@@ -181,26 +181,18 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
                     ::common::errors::InvalidArgument(
                         "The size of shape should be less than or "
                         "equal to the size of indices."));
-  Expr res;
+  Expr res = Expr(0);
   ir::TryElevateInt32ToInt64(shape);
   for (int i = 0; i < shape.size(); i++) {
-    PADDLE_ENFORCE_EQ(
-        shape[i].type() == Int(64) || shape[i].type() == Int(32),
-        true,
-        ::common::errors::InvalidArgument(
-            "The shape data type currently supports only int32 or int64, but "
-            "the current data type of shape[{}] is {}",
-            i,
-            shape[i].type()));
-    Expr indice_prod = indices[i];
-    optim::SimplifyCast(&indice_prod);
-    for (int j = i + 1; j < shape.size(); j++) {
-      indice_prod = RampRelatedMul(indice_prod, shape[j]);
-    }
-    if (res.defined()) {
-      res = RampRelatedAdd(res, indice_prod);
-    } else {
-      res = indice_prod;
+    CHECK(shape[i].type() == Int(64) || shape[i].type() == Int(32))
+        << "The shape data type currently supports only int32 or int64, but "
+           "the current data type of shape["
+        << i << "] is " << shape[i].type();
+
+    res = res * shape[i] + indices[i]; 
+
+    if (i > 0) {
+      res = cinn::common::AutoSimplify(res);
     }
   }
   return cinn::common::AutoSimplify(res);
