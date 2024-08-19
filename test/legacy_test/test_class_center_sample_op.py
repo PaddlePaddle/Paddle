@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -89,11 +88,7 @@ class TestClassCenterSampleOp(OpTest):
     def init_fix_seed(self):
         self.fix_seed = True
 
-    def with_new_comm(self):
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
-
     def setUp(self):
-        self.with_new_comm()
         self.initParams()
         self.init_dtype()
         self.init_fix_seed()
@@ -132,11 +127,6 @@ class TestClassCenterSampleOpINT32(TestClassCenterSampleOp):
 class TestClassCenterSampleOpFixSeed(TestClassCenterSampleOp):
     def init_fix_seed(self):
         self.fix_seed = True
-
-
-class TestClassCenterSampleOpWithNewComm(TestClassCenterSampleOp):
-    def with_new_comm(self):
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
 
 class TestClassCenterSampleV2(unittest.TestCase):
