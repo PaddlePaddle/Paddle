@@ -4088,12 +4088,6 @@
   outputs :
     out: Out
 
-- op: c_sync_comm_stream
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
 - op: channel_shuffle
   inputs:
     {x: X}
@@ -4612,6 +4606,12 @@
     out : Out
 
 - op: sync_calc_stream(c_sync_calc_stream)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: sync_comm_stream(c_sync_comm_stream)
   inputs :
     x : X
   outputs :
