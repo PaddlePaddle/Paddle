@@ -239,7 +239,7 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
     // num_columns is attribute
     int num_columns_int =
         op->attribute<pir::Int64Attribute>("num_columns").data();
-    if (num_columns == -1) {
+    if (num_columns_int == -1) {
       num_columns_dim = num_rows_dim;
     } else {
       num_columns_dim = symbol::DimExpr(num_columns_int);
