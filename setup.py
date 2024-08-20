@@ -1506,11 +1506,16 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # operator init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/ir',
+            )
+        )
         + list(  # pass utils init headers
             find_files(
                 'general_functions.h',
                 paddle_source_dir + '/paddle/fluid/pir/utils',
-                recursive=True,
             )
         )
         + list(  # serialize and deserialize interface headers
@@ -1518,22 +1523,12 @@ def get_headers():
                 'interface.h',
                 paddle_source_dir
                 + '/paddle/fluid/pir/serialize_deserialize/include',
-                recursive=True,
-            )
-        )
-        + list(  # serialize and deserialize interface headers
-            find_files(
-                'interface.h',
-                paddle_source_dir
-                + '/paddle/fluid/pir/serialize_deserialize/include',
-                recursive=True,
             )
         )
         + list(  # serialize and deserialize interface headers
             find_files(
                 'dense_tensor.inl',
                 paddle_source_dir + '/paddle/phi/core',
-                recursive=True,
             )
         )
         + list(  # serialize and deserialize interface headers
@@ -1541,14 +1536,12 @@ def get_headers():
                 'op_yaml_info.h',
                 paddle_source_dir
                 + '/paddle/fluid/pir/dialect/operator/interface',
-                recursive=True,
             )
         )
         + list(  # serialize and deserialize interface headers
             find_files(
                 'op_yaml_info_util.h',
                 paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
-                recursive=True,
             )
         )
     )
