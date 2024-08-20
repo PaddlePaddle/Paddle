@@ -141,17 +141,14 @@ strided_op_list = {
     "imag",
     "diagonal",
     "flatten",
-    "flatten_infer",
     "reshape",
     "slice",
-    "squeeze_infer",
     "squeeze",
     "strided_slice",
     "strided_slice_raw",
     "tensor_unfold",
     "transpose",
     "unbind",
-    "unsqueeze_infer",
     "unsqueeze",
     "view_shape",
     "view_dtype",
@@ -164,15 +161,12 @@ strided_op_need_flags_check_list = {
     "real_",
     "imag_",
     "diagonal_",
-    "flatten_infer_",
     "slice_",
-    "squeeze_infer_",
     "strided_slice_",
     "strided_slice_raw_",
     "tensor_unfold_",
     "transpose_",
     "unbind_",
-    "unsqueeze_infer_",
     "view_shape_",
     "view_dtype_",
 }
@@ -605,11 +599,12 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
   }}
 """
 
-TYPE_PROMOTION_LOGIC_TEMPLATE = """   if (phi::NeedTypePromotion({op_func_name}, {x}.dtype(), {y}.dtype())) {{
+TYPE_PROMOTION_LOGIC_TEMPLATE = """
+    if (phi::NeedTypePromotion({op_func_name}, {x}.dtype(), {y}.dtype(), {x}.shape(), {y}.shape())) {{
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
     {op_name}
-    auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(), {y}.dtype());
+    auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(), {y}.dtype(), {x}.shape(), {y}.shape());
 
     {x_cast}
     auto new_{y} = egr::PromoteCast("{y}", {y}, promotion_type);

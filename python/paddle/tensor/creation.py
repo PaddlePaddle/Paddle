@@ -556,7 +556,42 @@ def logspace(
     if not isinstance(base, (Variable, paddle.pir.Value)):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.logspace(
+            tensor_start,
+            tensor_stop,
+            tensor_num,
+            tensor_base,
+            dtype,
+            _current_expected_place(),
+        )
+    elif in_pir_mode():
+        start_dtype = convert_dtype(tensor_start.dtype)
+        stop_dtype = convert_dtype(tensor_stop.dtype)
+        base_dtype = convert_dtype(tensor_base.dtype)
+        out_dtype = convert_dtype(dtype)
+        if (
+            (
+                stop_dtype == "float64"
+                or start_dtype == "float64"
+                or base_dtype == "float64"
+            )
+            and out_dtype in ["float32", "int32"]
+        ) or (
+            (
+                stop_dtype == "int64"
+                or start_dtype == "int64"
+                or base_dtype == "int64"
+            )
+            and out_dtype == "int32"
+        ):
+            raise ValueError(
+                f"The dtype of start/stop/base is {start_dtype}/{stop_dtype}/{base_dtype} but the attr(dtype) of logspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of logspace."
+            )
+        if isinstance(num, paddle.pir.Value):
+            check_dtype(num.dtype, 'num', ['int32'], 'logspace')
+
         return _C_ops.logspace(
             tensor_start,
             tensor_stop,
