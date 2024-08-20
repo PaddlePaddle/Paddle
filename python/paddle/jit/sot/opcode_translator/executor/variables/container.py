@@ -253,6 +253,8 @@ class ListVariable(ContainerVariable):
         return ConstantVariable.wrap_literal(None, self.graph)
 
     def extend(self, data):
+        if isinstance(data, RangeVariable):
+            raise FallbackError("list is not implemented unpack RangeVariable")
         for item in data.proxy.get_all():
             self.append(item)
         self.graph.side_effects.record_proxy_variable(self)

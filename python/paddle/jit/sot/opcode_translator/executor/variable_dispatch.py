@@ -368,7 +368,7 @@ Dispatcher.register(
 )
 Dispatcher.register(
     list.extend,
-    ("ListVariable", "ListVariable | TupleVariable"),
+    ("ListVariable", "ListVariable | TupleVariable | RangeVariable"),
     lambda var, other: var.extend(other),
 )
 Dispatcher.register(
@@ -424,6 +424,11 @@ Dispatcher.register(
 Dispatcher.register(
     operator.add,
     ("ListVariable", "ListVariable"),
+    lambda var, other: var.concat(other),
+)
+Dispatcher.register(
+    operator.add,
+    ("ListVariable", "RangeVariable"),
     lambda var, other: var.concat(other),
 )
 Dispatcher.register(

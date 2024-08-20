@@ -222,6 +222,10 @@ def list_no_arguments():
     return l1[0] + l2[0]
 
 
+def list_unpack_range(x):
+    return [1, *range(0, len(x.shape))]
+
+
 class TestListBasic(TestCaseBase):
     def test_list_basic(self):
         self.assert_results(list_getitem_int, 1, paddle.to_tensor(2))
@@ -321,6 +325,9 @@ class TestListMethods(TestCaseBase):
 
     def test_list_noargs(self):
         self.assert_results(list_no_arguments)
+
+    def test_list_unpack_range(self):
+        self.assert_results(list_unpack_range, paddle.to_tensor([1, 2]))
 
 
 if __name__ == "__main__":
