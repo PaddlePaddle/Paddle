@@ -16,10 +16,20 @@ import paddle
 
 from .reshard_funcs.base_reshard_func import is_replicated
 
+dist_skip_op_list = [
+    "builtin.combine",
+    "builtin.split",
+    "cf.yield",
+    "cf.tuple_push",
+    "cf.tuple_pop",
+    "cf.stack_create",
+    "pd_op.pylayer",
+]
+
 
 def verify_dist_block(block):
     for op in block.ops:
-        if op.name() == "builtin.combine" or op.name() == "builtin.split":
+        if op.name() in dist_skip_op_list:
             continue
         if op.name() == "dist_op.shard_tensor":
             raise RuntimeError("Block still contain shard_tensor_op.")
