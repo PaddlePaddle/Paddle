@@ -232,7 +232,9 @@ class ShardingGradView:
             padding = padding_end - padding_start
             grad_numel = self._slice_grad._numel()
             assert grad_numel >= padding, f"{grad_numel} vs {padding}"
-            padding_grad = self._slice_grad._slice(grad_numel - padding, grad_numel)
+            padding_grad = self._slice_grad._slice(
+                grad_numel - padding, grad_numel
+            )
             return padding_grad
         else:
             return None
