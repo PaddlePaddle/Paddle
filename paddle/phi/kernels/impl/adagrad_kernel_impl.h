@@ -107,8 +107,8 @@ void AdagradSparseKernel(const Context& ctx,
   T epsilon = static_cast<T>(epsilon_t);
 
   auto* param_tensor = &param_t;
-  PADDLE_ENFORCE_EQ(param_tensor,
-                    param_out_tensor,
+  PADDLE_ENFORCE_EQ(param_tensor->IsSharedBufferWith(*param_out_tensor),
+                    true,
                     common::errors::InvalidArgument(
                         "the input tensor not equal with output tensor"));
 

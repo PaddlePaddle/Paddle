@@ -825,7 +825,7 @@ void BatchNormKernel(const Context &ctx,
           auto *inv_var_ptr = inv_var.data<BatchNormParamType<T>>();
           const int threads = 512 > C ? C : 512;
           const int blocks = (C + 511) / 512;
-          InverseVariance<T><<<blocks, threads>>>(
+          InverseVariance<T><<<blocks, threads, 0, ctx.stream()>>>(
               est_var->template data<BatchNormParamType<T>>(),
               epsilon,
               C,
