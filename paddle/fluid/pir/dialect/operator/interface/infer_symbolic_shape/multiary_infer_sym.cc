@@ -2049,8 +2049,8 @@ bool WarprnntOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &input_shape = input_shape_or_data.shape();
 
-  std::vector<symbol::DimExpr> &loss_shape;
-  std::vector<symbol::DimExpr> &warpctcgrad_shape = input_shape;
+  std::vector<symbol::DimExpr> loss_shape = {};
+  std::vector<symbol::DimExpr> warpctcgrad_shape = input_shape;
 
   symbol::DimExpr B = input_shape[0];
   loss_shape.emplace_back(B);
