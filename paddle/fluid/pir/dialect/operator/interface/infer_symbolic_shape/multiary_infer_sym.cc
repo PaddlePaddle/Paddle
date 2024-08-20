@@ -960,7 +960,7 @@ bool DeformableConvOpInferSymbolicShape(
                   (filter_shape[i + 2] - symbol::DimExpr(1)) +
               symbol::DimExpr(1);
     conv_output_size =
-        (input_shape[i + 2] + symbol::DimExpr(2 * paddings[i]) - dkernel) /
+        (x_shape[i + 2] + symbol::DimExpr(2 * paddings[i]) - dkernel) /
             symbol::DimExpr(strides[i]) +
         symbol::DimExpr(1);
     output_shape.emplace_back(conv_output_size);
