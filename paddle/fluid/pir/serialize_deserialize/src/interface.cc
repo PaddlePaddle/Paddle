@@ -72,7 +72,10 @@ bool ReadModule(const std::string& file_path,
                 uint64_t pir_version) {
   std::ifstream f(file_path);
   Json data = Json::parse(f);
-  pir_version = GetPirVersion();
+  if (!pir_version) {
+    pir_version = GetPirVersion();
+  }
+
   PatchBuilder builder(pir_version);
 
   if (data.contains(BASE_CODE) && data[BASE_CODE].contains(MAGIC) &&
