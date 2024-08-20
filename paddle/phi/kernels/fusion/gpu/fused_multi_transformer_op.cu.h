@@ -1511,8 +1511,7 @@ void mbfmha(const phi::GPUContext &dev_ctx,
             const bool mask_broadcast_num_heads = true,
             const bool add_qkv_bias = true,
             const bool neox_rotary_style = false,
-            const int gqa_group_size = -1,
-            const float rope_theta = 10000.0f) {
+            const int gqa_group_size = -1) {
   VLOG(1) << "MBFMHA is used in FusedMT.";
   Masked_multihead_attention_params<T> params;
   cudaStream_t stream = dev_ctx.stream();
@@ -1575,7 +1574,6 @@ void mbfmha(const phi::GPUContext &dev_ctx,
   params.max_seq_length = max_seq_length;
   params.inv_sqrt_dh = inv_sqrt_dh;
   params.rotary_emb_dims = rotary_emb_dims;
-  params.rope_theta = rope_theta;
 
   /*
   Note(Zhengzekang): We preallocate the partial variable by
