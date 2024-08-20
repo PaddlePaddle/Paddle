@@ -71,7 +71,7 @@ class PToRReshardFunction(ReshardFunction):
                 src_mesh,
                 [src_dist_attr],
                 [dst_dist_attr],
-                dst_dist_attr.chunk_id,
+                src_value.get_defining_op().dist_attr.chunk_id,
             )
         )
         return reduced_value
