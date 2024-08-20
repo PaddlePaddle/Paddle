@@ -1810,8 +1810,7 @@ void FusedGemmEpilogueInferMeta(const MetaTensor& x,
 
   int K_from_x = static_cast<int>(trans_x ? x_mat_dims[0] : x_mat_dims[1]);
   int K_from_y = static_cast<int>(trans_y ? y_dims[1] : y_dims[0]);
-
-  bool check_dim = K_from_x != -1;
+  bool check_dim = (!config.is_runtime && K_from_x != -1) || config.is_runtime;
   if (check_dim) {
     PADDLE_ENFORCE_EQ(
         K_from_x,
