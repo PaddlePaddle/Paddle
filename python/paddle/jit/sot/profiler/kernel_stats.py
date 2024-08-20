@@ -74,7 +74,7 @@ class KernelInfo:
 
 # TODO(SigureMo): Split into multiple files by visitor type
 class KernelStatsVisitor(EventVisitor):
-    SKIP_KERNEL_NAMES = ["full", "full_int_array"]
+    SKIP_KERNEL_NAMES = ["full", "full_int_array", "shadow_feed"]
     KERNEL_NAME_REGEX = re.compile("(?P<kernel_name>.+) kernel launch")
 
     def __init__(self):
@@ -164,6 +164,7 @@ class SotStepProfilerGuard:
         self.enable_kernel_stats = enable_kernel_stats
         self.enable_chrome_tracing = enable_chrome_tracing
         self.started = False
+        self.profiler = None
 
     def _kernel_stats(self, prof):
         kernel_stats_visitor = KernelStatsVisitor()
@@ -192,7 +193,9 @@ class SotStepProfilerGuard:
 
     def stop(self):
         if self.started:
+            assert self.profiler is not None
             self.profiler.stop()
+            self.profiler = None
 
     def __enter__(self):
         self.start()
