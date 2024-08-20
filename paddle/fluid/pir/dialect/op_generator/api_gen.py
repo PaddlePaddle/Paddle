@@ -277,15 +277,19 @@ class CodeGen:
         return False
 
     def _is_optional_output(self, op_info, output_name):
-        op_names = op_info.op_phi_name
-        for name in op_names:
-            if name.endswith(('_grad', '_grad_')):
-                return False
         output_optional_list = op_info.output_optional_list
         output_name_list = op_info.output_name_list
         output_index = output_name_list.index(output_name)
         if op_info.output_optional_list[output_index] == 'true':
             return True
+        else:
+            return False
+
+    def _is_optional_inplace_output(self, op_info, output_name):
+        op_names = op_info.op_phi_name
+        for name in op_names:
+            if name.endswith(('_grad', '_grad_')):
+                return False
         inplace_map = op_info.inplace_map
         input_optional_list = op_info.input_optional_list
         input_name_list = op_info.input_name_list
@@ -366,7 +370,6 @@ class CodeGen:
         assert len(name_list) == len(type_list) == len(intermediate_list)
 
         output_num = len(type_list) - intermediate_list.count('true')
-
         if output_num > 1:
             ret = []
             for name, type, intermediate in zip(
@@ -374,7 +377,7 @@ class CodeGen:
             ):
                 if intermediate == 'true':
                     continue
-                if self._is_optional_output(op_info, name):
+                if self._is_optional_inplace_output(op_info, name):
                     ret.append(OPTIONAL_VALUE_TYPE_MAP[type])
                 else:
                     ret.append(VALUE_TYPE_MAP[type])
@@ -382,7 +385,7 @@ class CodeGen:
         elif output_num == 1:
             index = intermediate_list.index('false')
             name = name_list[index]
-            if self._is_optional_output(op_info, name):
+            if self._is_optional_inplace_output(op_info, name):
                 return OPTIONAL_VALUE_TYPE_MAP[type_list[index]]
             else:
                 return VALUE_TYPE_MAP[type_list[index]]
@@ -451,7 +454,7 @@ class CodeGen:
                     ret += OPTIONAL_VALUE_INPUT_TEMPLATE.format(name=name)
         return ret
 
-    def _gen_handle_optional_outputs(self, op_info, op_name):
+    def _gen_handle_optional_inplace_outputs(self, op_info, op_name):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
@@ -461,7 +464,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_output(op_info, name):
+            if self._is_optional_inplace_output(op_info, name):
                 if VECTOR_TYPE in type:
                     ret += OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE.format(
                         name=name,
@@ -482,16 +485,13 @@ class CodeGen:
 
         ret = ""
         for i, out_name in enumerate(name_list):
-            if self._is_optional_output(op_info, out_name):
-                if inplace_map is not None and out_name in inplace_map.keys():
-                    in_name = inplace_map[out_name]
-                    ret += SET_NULL_TYPE_WITH_INPLACE_TEMPLATE.format(
-                        input=in_name, op_name=op_name, index=i
-                    )
-                else:
-                    ret += SET_NULL_TYPE_TEMPLATE.format(
-                        op_name=op_name, index=i
-                    )
+            if self._is_optional_inplace_output(op_info, out_name):
+                in_name = inplace_map[out_name]
+                ret += SET_NULL_TYPE_WITH_INPLACE_TEMPLATE.format(
+                    input=in_name, op_name=op_name, index=i
+                )
+            elif self._is_optional_output(op_info, out_name):
+                ret += SET_NULL_TYPE_TEMPLATE.format(op_name=op_name, index=i)
         return ret
 
     def _gen_in_combine(self, op_info, is_mutable_attr, is_vector_mutable_attr):
@@ -595,7 +595,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_output(op_info, name):
+            if self._is_optional_inplace_output(op_info, name):
                 ret_list.append(f'optional_{name}')
             elif VECTOR_TYPE in type:
                 split_op_name = f'{name}_split_op'
@@ -877,7 +877,7 @@ class CodeGen:
                     ),
                     in_combine=in_combine,
                     compute_op=compute_op,
-                    handle_optional_outputs=self._gen_handle_optional_outputs(
+                    handle_optional_outputs=self._gen_handle_optional_inplace_outputs(
                         op_info, kernel_name
                     ),
                     set_null_type=self._gen_set_null_type(op_info, kernel_name),
@@ -936,7 +936,7 @@ class CodeGen:
                 ),
                 in_combine=in_combine,
                 compute_op=compute_op,
-                handle_optional_outputs=self._gen_handle_optional_outputs(
+                handle_optional_outputs=self._gen_handle_optional_inplace_outputs(
                     op_info, op_name
                 ),
                 set_null_type=self._gen_set_null_type(op_info, op_name),
