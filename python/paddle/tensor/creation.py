@@ -1097,6 +1097,7 @@ def fill_constant(
             if convert_dtype(value.dtype) != dtype:
                 value = paddle.cast(value, dtype)
             inputs['ValueTensor'] = value
+        shape = [shape] if isinstance(shape, int) else shape
 
         paddle.utils.check_shape(shape)
         check_dtype(
