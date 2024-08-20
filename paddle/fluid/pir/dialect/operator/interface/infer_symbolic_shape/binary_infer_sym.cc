@@ -1011,12 +1011,51 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool MatrixNmsOpInferSymbolicShape(pir::Operation *op,
-//                                    pir::InferSymbolicShapeContext
-//                                    *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MatrixNmsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &bboxes_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &scores_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &box_shape = bboxes_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &score_shape =
+      scores_shape_or_data.shape();
+
+  const size_t score_size = score_dims.size();
+
+  std::vector<symbol::DimExpr> out_shape = {};
+
+  infer_context->AddEqualCstr(box_shape[2], symbol::DimExpr(4));
+  infer_context->AddEqualCstr(box_shape[1], score_shape[2]);
+  if (op->HasAttribute("keep_top_k")) {
+    int keep_top_k = op->attribute<pir::Int64Attribute>("keep_top_k").data();
+    auto keep_top_k_dim = symbol::DimExpr(keep_top_k);
+    out_shape = {keep_top_k_dim * box_shape[0], box_shape[2] + 2};
+  } else {
+    symbol::DimExpr out_unknown = infer_context->GetNextSymName();
+    out_shape = {out_unknown, box_shape[2] + 2};
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  std::vector<symbol::DimExpr> index_shape = {box_shape[1], symbol::DimExpr(1)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(index_shape)});
+
+  std::vector<symbol::DimExpr> roisnum_shape = {};
+  roisnum_shape.emplace_back(infer_context->GetNextSymName());
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(roisnum_shape)});
+
+  return true;
+}
 
 bool MarginCrossEntropyOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
