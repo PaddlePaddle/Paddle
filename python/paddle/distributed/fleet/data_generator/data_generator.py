@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import sys
+from typing import Sequence
 
 __all__ = []
 
@@ -232,7 +233,10 @@ class DataGenerator:
 # for example, [(name, float_list), (name, str_list), (name, int_list)]
 class MultiSlotStringDataGenerator(DataGenerator):
     def _gen_str(
-        self, line: tuple[tuple[str, list[str]]] | list[tuple[str, list[str]]]
+        self,
+        line: (
+            Sequence[tuple[str, list[str]], ...] | list[tuple[str, list[str]]]
+        ),
     ) -> str:
         '''
         Further processing the output of the process() function rewritten by
@@ -279,7 +283,8 @@ class MultiSlotStringDataGenerator(DataGenerator):
 
 class MultiSlotDataGenerator(DataGenerator):
     def _gen_str(
-        self, line: tuple[tuple[str, list[int]]] | list[tuple[str, list[int]]]
+        self,
+        line: Sequence[tuple[str, list[float]]] | list[tuple[str, list[float]]],
     ) -> str:
         '''
         Further processing the output of the process() function rewritten by

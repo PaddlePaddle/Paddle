@@ -25,7 +25,6 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
-import numpy.typing as npt
 from google.protobuf import text_format
 
 import paddle
@@ -38,6 +37,7 @@ from ..utils.fs import FS
 from .graphviz import GraphPreviewGenerator
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
 
     from paddle import Tensor
     from paddle._typing import NestedNumbericSequence
@@ -66,10 +66,10 @@ class UtilBase:
         self.role_maker: PaddleCloudRoleMaker | None = None
         self.dist_strategy: DistributedStrategy | None = None
 
-    def _set_strategy(self, dist_strategy: None | DistributedStrategy) -> None:
+    def _set_strategy(self, dist_strategy: DistributedStrategy | None) -> None:
         self.dist_strategy = dist_strategy
 
-    def _set_role_maker(self, role_maker: None | PaddleCloudRoleMaker) -> None:
+    def _set_role_maker(self, role_maker: PaddleCloudRoleMaker | None) -> None:
         self.role_maker = role_maker
 
     def _set_file_system(self, fs_client: FS) -> None:
@@ -80,7 +80,7 @@ class UtilBase:
 
     def all_reduce(
         self,
-        input: NestedNumbericSequence | np.NDArray[Any],
+        input: NestedNumbericSequence | npt.NDArray[Any],
         mode: Literal["sum", "min", "max"] = "sum",
         comm_world: Literal["worker", "server", "all"] = "worker",
     ) -> npt.NDArray[Any] | None:
