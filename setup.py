@@ -1521,6 +1521,36 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'interface.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/serialize_deserialize/include',
+                recursive=True,
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'dense_tensor.inl',
+                paddle_source_dir + '/paddle/phi/core',
+                recursive=True,
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'op_yaml_info.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface',
+                recursive=True,
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'op_yaml_info_util.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
+                recursive=True,
+            )
+        )
     )
 
     jit_layer_headers = [
