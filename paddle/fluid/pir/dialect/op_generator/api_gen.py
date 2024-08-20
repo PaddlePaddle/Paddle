@@ -776,7 +776,9 @@ class CodeGen:
                 op_info, op_name
             )
 
-            x_cast = f"auto new_{x} = pir::PromoteCast(\"{x}\", {x}, promotion_type);"
+            x_cast = (
+                f'auto new_{x} = pir::PromoteCast("{x}", {x}, promotion_type);'
+            )
             if op_info.is_sparse_op:
                 op_name += "sp_" if op_name[-1] == "_" else "_sp"
             type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
@@ -794,7 +796,7 @@ class CodeGen:
                 op_info, op_name
             )
 
-            x_cast = f"pir::PromoteCastInplace(\"{x}\", {x}, promotion_type);"
+            x_cast = f'pir::PromoteCastInplace("{x}", {x}, promotion_type);'
 
             type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
                 op_name=op_name,
@@ -805,7 +807,7 @@ class CodeGen:
             )
         else:
             type_promotion_logic_str = (
-                f"\n VLOG(5) << \" No Type Promotion for {op_name} api. \"; "
+                f'\n VLOG(5) << " No Type Promotion for {op_name} api. "; '
             )
 
         return type_promotion_logic_str
