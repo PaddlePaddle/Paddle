@@ -117,6 +117,9 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
     } else if (bfloat16_ops_ == "onednn_op.multiply" ||
                bfloat16_ops_ == "onednn_op.multiply_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    } else if (bfloat16_ops_ == "onednn_op.squeeze" ||
+               bfloat16_ops_ == "onednn_op.squeeze_") {
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
     }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
@@ -287,6 +290,9 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
 
     } else if (bfloat16_ops_ == "onednn_op.multiply" ||
                bfloat16_ops_ == "onednn_op.multiply_") {
+      op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+    } else if (bfloat16_ops_ == "onednn_op.squeeze" ||
+               bfloat16_ops_ == "onednn_op.squeeze_") {
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
     }
 
@@ -2049,6 +2055,8 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
         paddle::onednn::dialect::Add_Op::name(),
         paddle::onednn::dialect::MultiplyOp::name(),
         paddle::onednn::dialect::Multiply_Op::name(),
+        paddle::onednn::dialect::SqueezeOp::name(),
+        paddle::onednn::dialect::Squeeze_Op::name(),
     };
 
     // op with one inputs and one output
@@ -2064,12 +2072,6 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
         paddle::onednn::dialect::Relu_Op::name(),
         paddle::onednn::dialect::SigmoidOp::name(),
         paddle::onednn::dialect::Sigmoid_Op::name(),
-    };
-
-    // op with two inputs and two output
-    const std::vector<std::string> bfloat16_ops_two_two{
-        paddle::onednn::dialect::SqueezeOp::name(),
-        paddle::onednn::dialect::Squeeze_Op::name(),
     };
 
     // op with three inputs and one outputs
@@ -2120,36 +2122,6 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
     for (auto op : bfloat16_ops_one_one) {
       ps.Add(paddle::drr::Create<CpuBfloat16DequantPatternOne_one>(
           context, op, benefit_idx));
-      benefit_idx++;
-    }
-
-    // op with two inputs and two output
-    benefit_idx = 1;
-    for (auto op : bfloat16_ops_two_two) {
-      ps.Add(paddle::drr::Create<CpuBfloat16Pattern2_2>(
-          context, op, benefit_idx, 0));
-      benefit_idx++;
-    }
-
-    // shape or aixs not in permitied list, not use quant op before it
-    // benefit_idx = 1;
-    // for (auto op : bfloat16_ops_two_two) {
-    //   if( op != paddle::onednn::dialect::ReshapeOp::name() ||
-    //     op != paddle::onednn::dialect::Reshape_Op::name())
-    //   ps.Add(paddle::drr::Create<CpuBfloat16InplacePattern2_2>(
-    //       context, op, benefit_idx, 1));
-    //   benefit_idx++;
-    // }
-    benefit_idx = 1;
-    for (auto op : bfloat16_ops_two_two) {
-      ps.Add(paddle::drr::Create<CpuBfloat16DequantPattern2_2>(
-          context, op, benefit_idx, 0));
-      benefit_idx++;
-    }
-
-    for (auto op : bfloat16_ops_two_two) {
-      ps.Add(paddle::drr::Create<CpuBfloat16DequantPattern2_2>(
-          context, op, benefit_idx, 1));
       benefit_idx++;
     }
 
