@@ -34,7 +34,7 @@ def fused_rotary_position_embedding(
     use_neox_rotary_style: bool = True,
     time_major: bool = False,
     rotary_emb_base: float = 10000.0,
-) -> Tensor:
+) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Fused rotary position embedding.
 
