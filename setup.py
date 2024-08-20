@@ -1046,11 +1046,14 @@ def get_cinnconfig_jsons():
     src_cinnconfig_path = (
         env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinnconfig'
     )
+    prefix_len = len(src_cinnconfig_path) + 1
     p = Path(src_cinnconfig_path)
     json_list = list(p.glob('**/*.json'))
     json_path_list = []
     for json in json_list:
-        json_path_list += [str(json)]
+        json = str(json)
+        json = json[prefix_len:]
+        json_path_list += [json]
     return json_path_list
 
 
@@ -1081,6 +1084,7 @@ def get_package_data_and_package_dir():
     json_path_list = get_cinnconfig_jsons()
     for json in json_path_list:
         package_data['paddle.cinnconfig'] += [json]
+    print('cinnconfig json path:', package_data['paddle.cinnconfig'])
 
     if 'develop' in sys.argv:
         package_dir = {'': 'python'}

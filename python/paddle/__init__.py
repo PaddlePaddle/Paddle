@@ -592,7 +592,6 @@ if is_compiled_with_cinn():
     import pkg_resources
 
     data_file_path = pkg_resources.resource_filename('paddle.cinnconfig', '')
-    print(data_file_path)
     os.environ['CINN_CONFIG_PATH'] = data_file_path
 
 if __is_metainfo_generated and is_compiled_with_cuda():
