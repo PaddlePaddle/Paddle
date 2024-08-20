@@ -1040,14 +1040,14 @@ def get_paddle_extra_install_requirements():
         return []
 
 
-def get_cinnconfig_jsons():
+def get_cinn_config_jsons():
     from pathlib import Path
 
-    src_cinnconfig_path = (
-        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinnconfig'
+    src_cinn_config_path = (
+        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinn_config'
     )
-    prefix_len = len(src_cinnconfig_path) + 1
-    p = Path(src_cinnconfig_path)
+    prefix_len = len(src_cinn_config_path) + 1
+    p = Path(src_cinn_config_path)
     json_list = list(p.glob('**/*.json'))
     json_path_list = []
     for json in json_list:
@@ -1073,18 +1073,17 @@ def get_package_data_and_package_dir():
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
 
-    whl_cinnconfig_path = paddle_binary_dir + '/python/paddle/cinnconfig'
-    src_cinnconfig_path = (
-        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinnconfig'
+    whl_cinn_config_path = paddle_binary_dir + '/python/paddle/cinn_config'
+    src_cinn_config_path = (
+        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinn_config'
     )
-    package_data['paddle.cinnconfig'] = []
-    if os.path.exists(whl_cinnconfig_path):
-        shutil.rmtree(whl_cinnconfig_path)
-    shutil.copytree(src_cinnconfig_path, whl_cinnconfig_path)
-    json_path_list = get_cinnconfig_jsons()
+    package_data['paddle.cinn_config'] = []
+    if os.path.exists(whl_cinn_config_path):
+        shutil.rmtree(whl_cinn_config_path)
+    shutil.copytree(src_cinn_config_path, whl_cinn_config_path)
+    json_path_list = get_cinn_config_jsons()
     for json in json_path_list:
-        package_data['paddle.cinnconfig'] += [json]
-    print('cinnconfig json path:', package_data['paddle.cinnconfig'])
+        package_data['paddle.cinn_config'] += [json]
 
     if 'develop' in sys.argv:
         package_dir = {'': 'python'}
@@ -1704,7 +1703,7 @@ def get_setup_parameters():
         'paddle.base.incubate.checkpoint',
         'paddle.amp',
         'paddle.cost_model',
-        'paddle.cinnconfig',
+        'paddle.cinn_config',
         'paddle.hapi',
         'paddle.vision',
         'paddle.vision.models',
