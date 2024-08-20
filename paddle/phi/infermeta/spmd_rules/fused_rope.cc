@@ -36,16 +36,16 @@ void check_q(const DistMetaTensor& q) {
 
   PADDLE_ENFORCE_EQ(q_ndim,
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor q's ndim must be 4 with shape [batch_size, "
                         "seq_len_q, num_heads, head_dim]"));
   PADDLE_ENFORCE_EQ(
       q_ndim,
       q_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   q_ndim,
-                                   q_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor q's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      q_ndim,
+                                      q_dims_mapping_size));
 }
 
 // check k/v's shape equal to q's shape
@@ -56,41 +56,41 @@ void check_k_or_v(const DistMetaTensor& k_or_v,
   int dims_mapping_size = k_or_v.dist_attr().dims_mapping().size();
   PADDLE_ENFORCE_EQ(ndim,
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The Tensor k/v's shape must be [batch_size, "
                         "seq_len_kv, num_heads, head_dim]"));
 
   PADDLE_ENFORCE_EQ(
       ndim,
       dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor k/v's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   ndim,
-                                   dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor k/v's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      ndim,
+                                      dims_mapping_size));
 
   int64_t k_num_head = shape[kNumHeadsDimIndex];
   int64_t q_num_head = q_shape[kNumHeadsDimIndex];
-  PADDLE_ENFORCE_EQ(
-      q_num_head % k_num_head == 0,
-      true,
-      phi::errors::InvalidArgument("The num_head of q must be divisible by k "
-                                   "and v, but got [%d] vs [%d]",
-                                   q_num_head,
-                                   k_num_head));
+  PADDLE_ENFORCE_EQ(q_num_head % k_num_head == 0,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The num_head of q must be divisible by k "
+                        "and v, but got [%d] vs [%d]",
+                        q_num_head,
+                        k_num_head));
 
   for (size_t i = 0; i <= kHeadDimIndex; ++i) {
     if (i == kNumHeadsDimIndex) {
-      PADDLE_ENFORCE_EQ(
-          q_shape[i] % shape[i] == 0,
-          true,
-          phi::errors::InvalidArgument("The num_head of q must be divisible by "
-                                       "k and v, but got [%d] vs [%d]",
-                                       q_shape[i],
-                                       shape[i]));
+      PADDLE_ENFORCE_EQ(q_shape[i] % shape[i] == 0,
+                        true,
+                        common::errors::InvalidArgument(
+                            "The num_head of q must be divisible by "
+                            "k and v, but got [%d] vs [%d]",
+                            q_shape[i],
+                            shape[i]));
     } else {
       PADDLE_ENFORCE_EQ(q_shape[i],
                         shape[i],
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The shape except for num_head of q "
                             "must be same as k and v, but got [%d] vs [%d]",
                             str_join(q_shape),
@@ -107,7 +107,7 @@ void check_sin_cos(const DistMetaTensor& sin,
                    const int64_t head_dim) {
   PADDLE_ENFORCE_EQ(sin.dims(),
                     cos.dims(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The dims of sin and cos must be the same. But "
                         "received sin's dims is {%s}, cos's dims is {%s}.",
                         sin.dims(),
@@ -118,19 +118,19 @@ void check_sin_cos(const DistMetaTensor& sin,
   PADDLE_ENFORCE_EQ(
       (ndim == 2 || ndim == 4),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The Tensor sin/cos's ndim must be 2 or 4. but given [%d]", ndim));
 
   int seq_len_dim_index = ndim == 2 ? 0 : 1;
   int head_dim_index = ndim == 2 ? 1 : 3;
   if (ndim == 4) {
-    PADDLE_ENFORCE_EQ(
-        (shape[0] == 1 && shape[kNumHeadsDimIndex] == 1),
-        true,
-        phi::errors::InvalidArgument("The batch_size and num_heads of sin/cos "
-                                     "must be 1, but given [%d], [%d]",
-                                     shape[0],
-                                     shape[kNumHeadsDimIndex]));
+    PADDLE_ENFORCE_EQ((shape[0] == 1 && shape[kNumHeadsDimIndex] == 1),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The batch_size and num_heads of sin/cos "
+                          "must be 1, but given [%d], [%d]",
+                          shape[0],
+                          shape[kNumHeadsDimIndex]));
   }
 
   const std::vector<int64_t> position_ids_shape =
@@ -140,7 +140,7 @@ void check_sin_cos(const DistMetaTensor& sin,
         (shape[seq_len_dim_index] >= seq_len &&
          shape[head_dim_index] == head_dim),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The seq_len of sin/cos must be greater or equal to q's seq_len, "
             "and head_dim must be equal to q's head_dim, but given [%d], [%d]",
             shape[seq_len_dim_index],
@@ -148,7 +148,7 @@ void check_sin_cos(const DistMetaTensor& sin,
 
     PADDLE_ENFORCE_EQ(position_ids_shape.size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The position_ids's ndim must be 2, but given [%d]",
                           position_ids_shape.size()));
 
@@ -156,7 +156,7 @@ void check_sin_cos(const DistMetaTensor& sin,
         (position_ids_shape[0] == batch_size &&
          position_ids_shape[1] == seq_len),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The batch_size and seq_len of position_ids must be the same as "
             "those of q. But received position_ids's "
             "shape is {%s}, q's batch_size is {%d}, q's seq_len is {%d}.",
@@ -168,7 +168,7 @@ void check_sin_cos(const DistMetaTensor& sin,
         (shape[seq_len_dim_index] == seq_len &&
          shape[head_dim_index] == head_dim),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The seq_len and head_dim of sin/cos must be equal to q's shape"
             ", but given [%d], [%d]",
             shape[seq_len_dim_index],
@@ -297,10 +297,10 @@ SpmdInfo FusedRopeInferSpmd(const DistMetaTensor& q,
     PADDLE_ENFORCE_EQ(
         k_shape,
         v_shape,
-        phi::errors::InvalidArgument("The shape of k and v must be same, "
-                                     "but [%d]  vs [%d]",
-                                     str_join(k_shape),
-                                     str_join(v_shape)));
+        common::errors::InvalidArgument("The shape of k and v must be same, "
+                                        "but [%d]  vs [%d]",
+                                        str_join(k_shape),
+                                        str_join(v_shape)));
   }
 
   const TensorDistAttr& position_ids_dist_attr_src = position_ids.dist_attr();
@@ -453,10 +453,10 @@ SpmdInfo FusedRopeInferSpmdReverse(const DistMetaTensor& q,
     PADDLE_ENFORCE_EQ(
         out_k_shape,
         out_v_shape,
-        phi::errors::InvalidArgument("The shape of k and v must be same, "
-                                     "but [%d]  vs [%d]",
-                                     str_join(out_k_shape),
-                                     str_join(out_v_shape)));
+        common::errors::InvalidArgument("The shape of k and v must be same, "
+                                        "but [%d]  vs [%d]",
+                                        str_join(out_k_shape),
+                                        str_join(out_v_shape)));
   }
 
   std::unordered_map<std::string, int64_t> axis_to_dim_map =

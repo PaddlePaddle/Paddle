@@ -105,10 +105,10 @@ void DenseToCooKernel(const Context& dev_ctx,
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_LE(sparse_dim,
                     x_dims.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "sparse_dim must be less than the size of x.dims()"));
   PADDLE_ENFORCE_GT(
-      sparse_dim, 0, phi::errors::InvalidArgument("sparse_dim must be >0"));
+      sparse_dim, 0, common::errors::InvalidArgument("sparse_dim must be >0"));
   auto dims_2d = flatten_to_2d(x_dims, sparse_dim);
   const int rows = dims_2d[0];
   const int cols = dims_2d[1];
@@ -275,9 +275,9 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
 
   if (batches > 1) {
 #ifdef PADDLE_WITH_HIP
-    PADDLE_THROW(
-        phi::errors::Unimplemented("'rocsparse_csr2coo' only supports batches "
-                                   "with a value of 1 currently."));
+    PADDLE_THROW(common::errors::Unimplemented(
+        "'rocsparse_csr2coo' only supports batches "
+        "with a value of 1 currently."));
 #else
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
     GetBatchSizes<IntT><<<config.block_per_grid.x, config.thread_per_block.x>>>(
@@ -405,7 +405,7 @@ void CooToCsrGPUKernel(const GPUContext& dev_ctx,
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
 

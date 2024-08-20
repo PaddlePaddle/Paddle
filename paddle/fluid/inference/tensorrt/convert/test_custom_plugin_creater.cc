@@ -114,7 +114,7 @@ TEST(CustomPluginCreater, StaticShapePlugin) {
   PADDLE_ENFORCE_EQ(
       (*custom_plugin_tell)(custom_op, false, true),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "(*custom_plugin_tell)(custom_op, false, true) is False."));
 
   OpTeller::Global().SetOpConverterType(&custom_op,
@@ -200,7 +200,7 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
   PADDLE_ENFORCE_EQ(
       (*custom_plugin_tell)(custom_op, false, true),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "(*custom_plugin_tell)(custom_op, false, true) is False."));
 
   OpTeller::Global().SetOpConverterType(&custom_op,

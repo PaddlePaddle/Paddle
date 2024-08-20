@@ -187,7 +187,8 @@ void GroupNormInferMeta(const MetaTensor& x,
                         const std::string& data_layout,
                         MetaTensor* y,
                         MetaTensor* mean,
-                        MetaTensor* variance);
+                        MetaTensor* variance,
+                        MetaConfig config = MetaConfig());
 
 void LayerNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,

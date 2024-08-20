@@ -73,7 +73,7 @@ class ConvOneDNNHandlerT
       PADDLE_ENFORCE_EQ(
           input->layout(),
           DataLayout::ONEDNN,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The input tensor's layout should be %d, but got %d.",
               DataLayout::ONEDNN,
               input->layout()));
@@ -81,7 +81,7 @@ class ConvOneDNNHandlerT
       PADDLE_ENFORCE_EQ(
           filter->layout(),
           DataLayout::ONEDNN,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The Filter tensor's layout should be %d, but got %d.",
               DataLayout::ONEDNN,
               filter->layout()));
@@ -89,14 +89,14 @@ class ConvOneDNNHandlerT
       PADDLE_ENFORCE_GE(
           input->dims().size(),
           4,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input must be with 4 or 5 dimensions, i.e. NCHW or "
               "NCDHW, but got dimension = %d .",
               input->dims().size()));
       PADDLE_ENFORCE_LE(
           input->dims().size(),
           5,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input must be with 4 or 5 dimensions, i.e. NCHW or "
               "NCDHW, but got dimension = %d .",
               input->dims().size()));
@@ -104,14 +104,14 @@ class ConvOneDNNHandlerT
       PADDLE_ENFORCE_GE(
           filter->dims().size(),
           4,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
               "OIDHW, but got dimension = %d .",
               filter->dims().size()));
       PADDLE_ENFORCE_LE(
           filter->dims().size(),
           5,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
               "OIDHW, but got dimension = %d .",
               filter->dims().size()));
@@ -120,7 +120,7 @@ class ConvOneDNNHandlerT
         PADDLE_ENFORCE_EQ(
             bias->layout(),
             DataLayout::ONEDNN,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The Bias tensor's layout should be %d, but got %d.",
                 DataLayout::ONEDNN,
                 bias->layout()));
@@ -132,7 +132,7 @@ class ConvOneDNNHandlerT
           PADDLE_ENFORCE_EQ(
               bias_shape[1],
               output_shape[1],
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "Bias must only have 1 dimension or only bias_dims[1] == "
                   "output_dims[1] i.e. [X] or [1, X, 1, 1], but got dimension "
                   "== %d and failed",
@@ -142,7 +142,7 @@ class ConvOneDNNHandlerT
             PADDLE_ENFORCE_EQ(
                 bias_shape[i],
                 1,
-                phi::errors::InvalidArgument(
+                common::errors::InvalidArgument(
                     "Bias with multiply dimensions must only have 1 dimension "
                     "> 1, i.e. [1, X, 1, 1], but got %d-th dimension == %d .",
                     i,
@@ -276,7 +276,7 @@ class ConvOneDNNHandlerT
       PADDLE_ENFORCE_EQ(
           in->layout(),
           DataLayout::ONEDNN,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The input tensor's layout should be %d, but got %d.",
               DataLayout::ONEDNN,
               in->layout()));
@@ -284,7 +284,7 @@ class ConvOneDNNHandlerT
       PADDLE_ENFORCE_EQ(
           filter->layout(),
           DataLayout::ONEDNN,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The filter tensor's layout should be %d, but got %d.",
               DataLayout::ONEDNN,
               filter->layout()));
@@ -292,7 +292,7 @@ class ConvOneDNNHandlerT
       PADDLE_ENFORCE_EQ(
           out_grad->layout(),
           DataLayout::ONEDNN,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The output_grad tensor's layout should be %d, but got %d.",
               DataLayout::ONEDNN,
               out_grad->layout()));
@@ -300,7 +300,7 @@ class ConvOneDNNHandlerT
       PADDLE_ENFORCE_EQ(
           is_test,
           false,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "is_test attribute should be set to False in training phase."));
 
       std::vector<int64_t> strides(begin(strides_in), end(strides_in));

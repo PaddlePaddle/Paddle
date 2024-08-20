@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import copy
 import os
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -38,6 +38,9 @@ OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+    from typing import Any, Callable, Literal
+
     import numpy.typing as npt
 
     from paddle import Tensor
@@ -792,9 +795,7 @@ class ASPHelper:
         return False
 
     @classmethod
-    def _get_prune_func_by_name(
-        cls, param_name: str
-    ) -> Callable[
+    def _get_prune_func_by_name(cls, param_name: str) -> Callable[
         [npt.NDArray[Any], int, int, MaskAlgo, str],
         tuple[npt.NDArray[Any], npt.NDArray[Any]],
     ]:

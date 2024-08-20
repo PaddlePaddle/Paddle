@@ -60,7 +60,7 @@ def geqrf(x):
     n_batch = x.shape[0]
     out = np.zeros([n_batch, m, n], dtype=x.dtype)
     taus = np.zeros([n_batch, min(m, n)], dtype=x.dtype)
-    org_taus_shape = list(org_x_shape[:-2]) + [min(m, n)]
+    org_taus_shape = [*org_x_shape[:-2], min(m, n)]
     for i in range(n_batch):
         out[i], t = _geqrf(x[i])
         taus[i, :] = t.reshape(-1)

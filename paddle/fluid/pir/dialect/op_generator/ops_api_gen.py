@@ -40,10 +40,10 @@ static PyMethodDef OpsAPI[] = {{
 
 void BindOpsAPI(pybind11::module *module) {{
   if (PyModule_AddFunctions(module->ptr(), OpsAPI) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
   if (PyModule_AddFunctions(module->ptr(), ManualOpsAPI) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
 }}
 """
@@ -212,9 +212,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'seed',
     'shadow_feed',
     'shadow_feed_tensors',
-    'shuffle_batch',
     'sparse_momentum',
-    'tdm_sampler',
     'soft_relu',
     'match_matrix_tensor',
     'c_reduce_max',
@@ -225,7 +223,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_prod_',
     'c_scatter',
     "cross_entropy_grad2",
-    'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',
     'pull_sparse_v2',

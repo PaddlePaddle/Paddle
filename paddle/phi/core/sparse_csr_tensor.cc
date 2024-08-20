@@ -29,9 +29,9 @@ inline void check_shape(const DDim& dims) {
   PADDLE_ENFORCE_EQ(
       valid,
       true,
-      phi::errors::InvalidArgument("the SparseCsrTensor only support 2-D or "
-                                   "3-D Tensor, but get %d-D Tensor",
-                                   dims.size()));
+      common::errors::InvalidArgument("the SparseCsrTensor only support 2-D or "
+                                      "3-D Tensor, but get %d-D Tensor",
+                                      dims.size()));
 }
 #define Check(non_zero_crows, non_zero_cols, non_zero_elements, dims)          \
   {                                                                            \
@@ -39,12 +39,12 @@ inline void check_shape(const DDim& dims) {
     PADDLE_ENFORCE_EQ(                                                         \
         non_zero_cols.place(),                                                 \
         non_zero_crows.place(),                                                \
-        phi::errors::InvalidArgument(                                          \
+        common::errors::InvalidArgument(                                       \
             "non_zero_crows and non_zero_cols must have the same place."));    \
     PADDLE_ENFORCE_EQ(                                                         \
         non_zero_cols.place(),                                                 \
         non_zero_elements.place(),                                             \
-        phi::errors::InvalidArgument(                                          \
+        common::errors::InvalidArgument(                                       \
             "non_zero_cols and non_zero_elements must have the same place.")); \
   }
 
@@ -100,7 +100,7 @@ void SparseCsrTensor::Resize(const DDim& dense_dims,
   PADDLE_ENFORCE_EQ(
       this->initialized(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the SparseCsrTensor must be initialized when call Resize "
           "function."));
   check_shape(dense_dims);
@@ -144,7 +144,7 @@ void SparseCsrTensor::SetMember(const DenseTensor& non_zero_crows,
 void SparseCsrTensor::set_meta(SparseTensorMeta&& meta) {
   PADDLE_ENFORCE_EQ(meta_.valid(),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Only when the original attribute of Tensor is "
                         "incomplete, can it be reset."));
   meta_ = std::move(meta);
@@ -154,7 +154,7 @@ void SparseCsrTensor::set_meta(const SparseTensorMeta& meta) {
   PADDLE_ENFORCE_EQ(
       meta.valid(),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input meta is invalid, please check the meta attribute."));
   meta_.dims = meta.dims;
   meta_.dtype = meta.dtype;

@@ -131,7 +131,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                               const Functor& functor) {
   PADDLE_ENFORCE_EQ(x.dims(),
                     y.dims(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Currently only support same shape elementwise "
                         "compute. The input tensor X's shape "
                         "should be identical with Y's shape. But received X's "

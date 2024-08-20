@@ -46,7 +46,7 @@ void CopyValidData(phi::DenseTensor* dst_tensor,
     PADDLE_ENFORCE_GE(
         pad_seq_len,
         valid_seq_len,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The padded sequence length can not "
             "be less than its original length. Expected %ld >= %ld, but got "
             "%ld < %ld. Please check input value.",
@@ -125,7 +125,7 @@ class PaddingLoDTensorFunctor<phi::CPUContext, T> {
     PADDLE_ENFORCE_EQ(
         pad_value.numel() == 1 || pad_value.numel() == step_width,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The numel of 'pad_value' can only be 1 or be equal to the "
             "'step_width', but got %ld != 1 and %ld. Please check the input "
             "value.",

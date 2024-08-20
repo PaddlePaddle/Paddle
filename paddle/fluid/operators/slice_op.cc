@@ -42,7 +42,7 @@ class SliceOp : public framework::OperatorWithKernel {
                         1,
                         common::errors::InvalidArgument(
                             "The size of axes must be 1 when the Input of "
-                            "SliceOp is LoDTensorArray, "
+                            "SliceOp is phi::TensorArray, "
                             "but received %d.",
                             axes.size()));
       if (ctx->IsRuntime()) {
@@ -209,8 +209,8 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
       // The default type of out is phi::DenseTensor.
       // However, if no axis is decreased and the type of input is not
       // phi::DenseTensor, the type of out should be the same as input.
-      // For example, input is a LoDTensorArray and no axis is decreased, the
-      // output should be a LoDTensorArray.
+      // For example, input is a phi::TensorArray and no axis is decreased, the
+      // output should be a phi::TensorArray.
       ctx->SetOutputType(out_name, ctx->GetInputType(x_name));
       ctx->SetOutputDataType(out_name, ctx->GetInputDataType(x_name));
     }

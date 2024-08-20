@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence
+
 import paddle
 from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
@@ -19,12 +23,20 @@ from paddle.base.framework import Variable
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __all__ = []
 
 
 def reindex_graph(
-    x, neighbors, count, value_buffer=None, index_buffer=None, name=None
-):
+    x: Tensor,
+    neighbors: Tensor,
+    count: Tensor,
+    value_buffer: Tensor | None = None,
+    index_buffer: Tensor | None = None,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
     """
 
     Reindex Graph API.
@@ -137,8 +149,13 @@ def reindex_graph(
 
 
 def reindex_heter_graph(
-    x, neighbors, count, value_buffer=None, index_buffer=None, name=None
-):
+    x: Tensor,
+    neighbors: Sequence[Tensor],
+    count: Sequence[Tensor],
+    value_buffer: Tensor | None = None,
+    index_buffer: Tensor | None = None,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
     """
 
     Reindex HeterGraph API.

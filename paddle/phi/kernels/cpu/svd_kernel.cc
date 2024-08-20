@@ -51,11 +51,11 @@ void LapackSvd(
                            iwork.data(),
                            &info);
   if (info < 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "This %s-th argument has an illegal value", info));
   }
   if (info > 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "DBDSDC/SBDSDC did not converge, updating process failed. May be you "
         "passes a invalid matrix."));
   }

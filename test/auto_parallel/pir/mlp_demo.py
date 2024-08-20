@@ -165,7 +165,11 @@ class TestMLPPipelineParallel(unittest.TestCase):
             loss = dist_model(image, label)
 
     def _pipeline_schedule(
-        self, enable_schedule=False, schedule_mode="FThenB", accumulate_steps=1
+        self,
+        enable_schedule=False,
+        schedule_mode="FThenB",
+        accumulate_steps=1,
+        grad_merge=False,
     ):
         self.init_env()
         paddle.set_flags({'FLAGS_enable_pir_api': 1})
@@ -183,23 +187,30 @@ class TestMLPPipelineParallel(unittest.TestCase):
         strategy.pipeline.enable = enable_schedule
         strategy.pipeline.schedule_mode = schedule_mode
         strategy.pipeline.accumulate_steps = accumulate_steps
+
+        if grad_merge:
+            gradient_merge = strategy.gradient_merge
+            gradient_merge.enable = True
+            gradient_merge.k_steps = accumulate_steps
+            gradient_merge.avg = True
+
         dist_loader = dist.shard_dataloader(loader, meshes=[mesh1, mesh2])
         dist_model = dist.to_static(
             pp_layer, dist_loader, loss_fn, opt, strategy
         )
         dist_model.train()
 
-        loss0 = None
+        loss = None
         for batch_id, (image, label) in enumerate(dist_loader()):
+            if batch_id > 2:
+                break
             loss = dist_model(image, label)
-            if loss0 is None:
-                loss0 = loss
-        if accumulate_steps > 1 and loss0 is not None:
-            loss0 = np.mean(loss0)
-        return loss0
+
+            if accumulate_steps > 1 and loss is not None:
+                loss = np.mean(loss)
+        return loss
 
     def test_pp_pass(self):
-        self.init_env()
         ref_loss = self._pipeline_schedule()
         # only split_program
         loss_split_prog_acc1 = self._pipeline_schedule(
@@ -207,18 +218,21 @@ class TestMLPPipelineParallel(unittest.TestCase):
         )
         self.assertEqual(ref_loss, loss_split_prog_acc1)
 
-        # accumulate_steps > 1, but no gradient merge
         loss_split_prog_acc4 = self._pipeline_schedule(
-            enable_schedule=True, schedule_mode="FThenB", accumulate_steps=4
+            enable_schedule=True,
+            schedule_mode="FThenB",
+            accumulate_steps=4,
+            grad_merge=True,
         )
+
         if ref_loss is None:
             self.assertEqual(ref_loss, loss_split_prog_acc4)
         else:
             ret_1 = np.allclose(
-                ref_loss,
                 loss_split_prog_acc4,
-                rtol=1e-5,
-                atol=1e-4,
+                ref_loss,
+                rtol=1e-3,
+                atol=1e-2,
                 equal_nan=True,
             )
             self.assertEqual(ret_1, True)

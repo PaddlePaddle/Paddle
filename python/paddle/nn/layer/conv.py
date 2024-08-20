@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -32,6 +32,8 @@ from ..initializer import Normal
 from .layers import Layer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import (
         DataLayout1D,
@@ -146,7 +148,8 @@ class _ConvNd(Layer):
             filter_shape = [
                 self._in_channels,
                 out_channels // groups,
-            ] + self._kernel_size
+                *self._kernel_size,
+            ]
         else:
             if in_channels % groups != 0:
                 raise ValueError("in_channels must be divisible by groups.")
@@ -165,7 +168,8 @@ class _ConvNd(Layer):
             filter_shape = [
                 out_channels,
                 in_channels // groups,
-            ] + self._kernel_size
+                *self._kernel_size,
+            ]
 
         def _get_default_param_initializer():
             if transposed:

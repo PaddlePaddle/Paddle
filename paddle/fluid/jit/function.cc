@@ -32,7 +32,7 @@ std::vector<Tensor> Function::operator()(
     const std::vector<Tensor>& inputs) const {
   PADDLE_ENFORCE_EQ(IsValid(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Function engine ptr is nullptr, please check it."));
   auto dense_tensors = utils::ToDenseTensors(inputs);
   return utils::ToTensors(this->operator()(dense_tensors));
@@ -42,7 +42,7 @@ std::vector<DenseTensor> Function::operator()(
     const std::vector<DenseTensor>& inputs) const {
   PADDLE_ENFORCE_EQ(IsValid(),
                     true,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Function engine ptr is nullptr, please check it."));
   return (*engine_)(inputs);
 }

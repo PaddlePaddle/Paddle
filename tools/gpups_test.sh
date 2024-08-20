@@ -125,7 +125,8 @@ parallel_list="^init_phi_test$|\
 ^test_roll_op$|\
 ^test_switch_autotune$|\
 ^test_to_tensor$|\
-^test_top_k_v2_op$"
+^test_top_k_v2_op$|\
+^test_pir_amp$"
 
 cd ${work_dir}/build
 tmp_dir=`mktemp -d`

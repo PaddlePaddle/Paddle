@@ -42,7 +42,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   VLOG(3) << "Running AD API: "
           << "multiply";
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "multiply dygraph", paddle::platform::TracerEventType::Operator, 1);
 
   // AMP Logic
@@ -70,13 +70,15 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Type promotion Logic
-  if (phi::NeedTypePromotion("multiply", x.dtype(), y.dtype())) {
+  if (phi::NeedTypePromotion(
+          "multiply", x.dtype(), y.dtype(), x.shape(), y.shape())) {
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1)
         << "got different data type, run type promotion "
            "automatically, this may cause data type been changed.";
     auto op_name = phi::TransToFluidOpName("multiply");
-    auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
+    auto promotion_type = phi::GetPromoteDtype(
+        op_name, x.dtype(), y.dtype(), x.shape(), y.shape());
 
     auto new_x = egr::PromoteCast("x", x, promotion_type);
     auto new_y = egr::PromoteCast("y", y, promotion_type);
@@ -153,7 +155,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
   // Node Creation
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "multiply node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);
@@ -240,7 +242,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
   VLOG(3) << "Running AD API: "
           << "multiply_";
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "multiply_ dygraph", paddle::platform::TracerEventType::Operator, 1);
 
   // AMP Logic
@@ -249,13 +251,15 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
       << " No AMP for multiply__ad_func because it is a inplace or cast api. ";
 
   // Type promotion Logic
-  if (phi::NeedTypePromotion("multiply_", x.dtype(), y.dtype())) {
+  if (phi::NeedTypePromotion(
+          "multiply_", x.dtype(), y.dtype(), x.shape(), y.shape())) {
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1)
         << "got different data type, run type promotion "
            "automatically, this may cause data type been changed.";
     auto op_name = phi::TransToFluidOpName("multiply_");
-    auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
+    auto promotion_type = phi::GetPromoteDtype(
+        op_name, x.dtype(), y.dtype(), x.shape(), y.shape());
 
     x = egr::PromoteCastInplace("x", x, promotion_type);
     auto new_y = egr::PromoteCast("y", y, promotion_type);
@@ -319,7 +323,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
   std::shared_ptr<MultiplyGradNode> grad_node;
   // Set grad_node before API Call
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "multiply node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);
@@ -412,7 +416,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   VLOG(3) << "Running AD API: "
           << "multiply";
   // Dygraph Record Event
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
+  phi::RecordEvent dygraph_entrance_record_event(
       "multiply dygraph", paddle::platform::TracerEventType::Operator, 1);
 
   // AMP Logic
@@ -440,13 +444,15 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Type promotion Logic
-  if (phi::NeedTypePromotion("multiply", x.dtype(), y.dtype())) {
+  if (phi::NeedTypePromotion(
+          "multiply", x.dtype(), y.dtype(), x.shape(), y.shape())) {
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1)
         << "got different data type, run type promotion "
            "automatically, this may cause data type been changed.";
     auto op_name = phi::TransToFluidOpName("multiply");
-    auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
+    auto promotion_type = phi::GetPromoteDtype(
+        op_name, x.dtype(), y.dtype(), x.shape(), y.shape());
 
     auto new_x = egr::PromoteCast("x", x, promotion_type);
     auto new_y = egr::PromoteCast("y", y, promotion_type);
@@ -522,7 +528,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
 
   // Node Creation
   if (require_any_grad) {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "multiply node_creation",
         paddle::platform::TracerEventType::OperatorInner,
         1);

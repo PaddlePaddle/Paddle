@@ -109,8 +109,8 @@ static void check_valid_type(const DataType& dtype) {
     case DataType::FLOAT64:
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type: %s",
-                                                phi::DataTypeToString(dtype)));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Unsupported data type: %s", phi::DataTypeToString(dtype)));
   }
 }
 
@@ -200,9 +200,10 @@ std::tuple<Tensor, Tensor> huber_loss_decomp(const Tensor& input,
   }
   auto val = label - input;
   auto abs_val = abs<T>(val);
+  auto factor = full_scalar<T>(0.5, input.dtype());
   auto ans = where<T>(abs_val <= delta_full,
-                      0.5 * val * val,
-                      delta_full * (abs_val - 0.5 * delta_full));
+                      factor * val * val,
+                      delta_full * (abs_val - factor * delta_full));
   return std::make_tuple(ans, val);
 }
 
@@ -286,13 +287,13 @@ Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
   std::size_t x_ndims = x.dims().size();
   std::size_t y_ndims = y.dims().size();
   if (x_ndims != 3) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
         "but received X's shape: [%s].",
         x_ndims));
   }
   if (y_ndims != 3) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
         "but received Y's shape: [%s].",
         y_ndims));
@@ -302,7 +303,7 @@ Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
   auto y_shape = phi::vectorize(y.dims());
 
   if (x_shape[0] != y_shape[0]) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input(X) and Input(Y) must have the same batch size in BmmOp, "
         "but received X's batch size: [%s],"
         "Y's batch size [%s].",
@@ -311,7 +312,7 @@ Tensor bmm_decomp(const Tensor& x, const Tensor& y) {
   }
 
   if (x_shape[2] != y_shape[1]) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
         "but receive X's width: [%s],"
         "Y's height: [%s].",
@@ -352,8 +353,8 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   } else if (data_layout_ == DataLayout::kNHWC) {
     feature_axis = rank - 1;
   } else {
-    PADDLE_THROW(
-        phi::errors::InvalidArgument("Unknown storage order: %s", data_layout));
+    PADDLE_THROW(common::errors::InvalidArgument("Unknown storage order: %s",
+                                                 data_layout));
   }
   std::vector<int64_t> reduce_axes;
   for (int i = 0; i < rank; ++i) {
@@ -570,22 +571,18 @@ Tensor relu6_decomp(const Tensor& x) {
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
-                                          const IntArray& axis) {
+Tensor squeeze_decomp(const Tensor& x, const IntArray& axis) {
   auto axis_ = process_dims(x, axis.GetData());
   auto out_shape = get_squeeze_dims(x, axis_);
   Tensor out = reshape<T>(x, out_shape);
-  Tensor xshape;
-  return std::make_tuple(out, xshape);
+  return out;
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor> unsqueeze_decomp(const Tensor& x,
-                                            const IntArray& axis) {
+Tensor unsqueeze_decomp(const Tensor& x, const IntArray& axis) {
   auto out_shape = get_expand_dims(x, axis.GetData());
   Tensor out = reshape<T>(x, out_shape);
-  Tensor xshape;
-  return std::make_tuple(out, xshape);
+  return out;
 }
 
 template <typename T>
@@ -653,7 +650,8 @@ std::vector<Tensor> unbind_decomp(const Tensor x, int axis) {
     axis = x.shape().size() + axis;
   }
   if (x.shape()[axis] == -1) {
-    PADDLE_THROW(phi::errors::Unimplemented("unbind axis must not be dynamic"));
+    PADDLE_THROW(
+        common::errors::Unimplemented("unbind axis must not be dynamic"));
   }
   size_t num = x.shape()[axis];
   std::vector<Tensor> tmp = backend::split_with_num<T>(x, num, axis);
@@ -855,7 +853,7 @@ std::tuple<Tensor, Tensor> dropout_decomp(
       // train: out = input * mask / ( 1.0 - p )
       if (p.to<float>() == 1.0) {
         // Process p=1. for avoid divide zero error (x*mask/(1.0-p))
-        auto zero = full_scalar<T>(0.0, org_dtype);
+        auto zero = full_like_decomp<T>(x, 0.0, org_dtype, x.place());
         return std::make_tuple(x * zero, cast<T>(zero, DataType::UINT8));
       } else {
         auto ans = (x * mask) / ones_p;
@@ -922,6 +920,27 @@ Tensor hardswish_decomp(const Tensor& x) {
                             full_scalar<T>(0.0, x.dtype())),
                  full_scalar<T>(THRESHOLD, x.dtype()));
   return (minimum_out * x) / full_scalar<T>(SCALE, x.dtype());
+}
+
+template <typename T>
+Tensor heaviside_decomp(const Tensor& x, const Tensor& y) {
+  Tensor zero, one;
+  if (has_dynamic_shape(x.shape())) {
+    Tensor zero_x = backend::full_with_tensor<T>(shape<T>(x), 0.0, x.dtype());
+    Tensor zero_y = backend::full_with_tensor<T>(shape<T>(y), 0.0, x.dtype());
+    zero = zero_x + zero_y;
+    one = backend::full_with_tensor<T>(shape<T>(zero), 1.0, x.dtype());
+  } else {
+    auto out_dims = phi::funcs::BroadcastTwoDims(x.dims(), y.dims());
+    zero = full<T>(phi::vectorize(out_dims), 0.0, x.dtype());
+    one = full<T>(phi::vectorize(out_dims), 1.0, x.dtype());
+  }
+  Tensor broadcast_x = x + zero;
+  Tensor broadcast_y = y + zero;
+  Tensor res = where<T>(broadcast_x > zero, one, broadcast_x);
+  res = where<T>(broadcast_x == zero, broadcast_y, res);
+  res = where<T>(broadcast_x < zero, zero, res);
+  return res;
 }
 
 template <typename T>
@@ -1071,32 +1090,21 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
 }
 
 template <typename T>
-std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
-                                          int start_axis,
-                                          int end_axis) {
+Tensor flatten_decomp(const Tensor& x, int start_axis, int end_axis) {
   auto x_dim = x.shape();
   if (x_dim.size() == 0) {
     start_axis = 0;
     end_axis = 0;
   }
   if (end_axis < start_axis) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "end_axis must be greater than or equal to start_axis."));
   }
 
   if (has_dynamic_shape(x.shape())) {
     auto x_shape = shape<T>(x);
-    Tensor x_shape_tensor = full<T>({1}, 0, x_shape.dtype());
-    std::vector<Tensor> tmp_shape;
-    tmp_shape.push_back(x_shape_tensor);
-    for (size_t i = 0; i < x_dim.size(); i++) {
-      tmp_shape.push_back(get_slice<T>(x_shape, i));
-    }
-    x_shape_tensor = concat<T>(tmp_shape);
-    x_shape_tensor =
-        backend::full_with_tensor<T>(x_shape_tensor, 0.0, DataType::FLOAT32);
     if (end_axis == start_axis) {
-      return std::make_tuple(backend::reshape<T>(x, x_shape), x_shape_tensor);
+      return backend::reshape<T>(x, x_shape);
     }
     std::vector<Tensor> out_shape;
 
@@ -1116,18 +1124,16 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
     }
 
     Tensor out_shape_tensor = concat<T>(out_shape);
-    return std::make_tuple(backend::reshape<T>(x, out_shape_tensor),
-                           x_shape_tensor);
+    return backend::reshape<T>(x, out_shape_tensor);
   } else {
     std::vector<int64_t> tmp_shape(x_dim);
     tmp_shape.insert(tmp_shape.begin(), 0);
-    auto xshape = full<T>(tmp_shape, 0.0, DataType::FLOAT32);
     if (x_dim.size() == 0) {
       std::vector<int64_t> res_shape(1, 1);
-      return std::make_tuple(reshape<T>(x, res_shape), xshape);
+      return reshape<T>(x, res_shape);
     }
     if (end_axis == start_axis) {
-      return std::make_tuple(reshape<T>(x, x_dim), xshape);
+      return reshape<T>(x, x_dim);
     }
 
     int slice_numel = 1;
@@ -1143,7 +1149,7 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
       out_shape.push_back(x_dim[i]);
     }
 
-    return std::make_tuple(reshape<T>(x, out_shape), xshape);
+    return reshape<T>(x, out_shape);
   }
 }
 
@@ -1201,11 +1207,11 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
     c_axis = {1, 3};
   } else {
     PADDLE_THROW(
-        phi::errors::Unimplemented("Only support NCHW and NHWC format."));
+        common::errors::Unimplemented("Only support NCHW and NHWC format."));
   }
   size_t rank = x.shape().size();
   if (rank < 3 || rank > 5) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Only support NCHW and NHWC format in rank {3, 4, 5}."));
   }
 
@@ -1407,7 +1413,8 @@ Tensor embedding_decomp(const Tensor& x,
                         const int64_t padding_idx,
                         const bool sparse) {
   if (weight.dims().size() != 2) {
-    PADDLE_THROW(phi::errors::Unimplemented("Only support weight with 2-D."));
+    PADDLE_THROW(
+        common::errors::Unimplemented("Only support weight with 2-D."));
   }
 
   const int64_t NoPadding = -1;
@@ -1449,7 +1456,7 @@ Tensor embedding_decomp(const Tensor& x,
     if (x.dims().size() <= 1) {
       res = gather<T>(weight_tmp, x);
       if (x.dims().size() == 0) {
-        res = std::get<0>(squeeze_decomp<T>(res, {0}));
+        res = squeeze_decomp<T>(res, {0});
       }
     } else {
       std::vector<int64_t> tar_shape{-1};

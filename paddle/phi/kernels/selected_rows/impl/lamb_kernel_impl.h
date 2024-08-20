@@ -149,7 +149,7 @@ void ComputeRowImpl(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         kIsSameType,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "When multi_precision=False, T and MT must be the same type."));
   }
 
@@ -189,17 +189,17 @@ void ComputeRowImpl(const Context& dev_ctx,
   VLOG(10) << "Beta1Pow place: " << beta1_pow.place()
            << " , Beta2Pow place: " << beta2_pow.place();
   // Diff from here
-  PADDLE_ENFORCE_EQ(
-      IsMultiPrecision,
-      false,
-      phi::errors::Unimplemented("SelectedRows gradient is not supported when "
-                                 "multi_precision=True."));
+  PADDLE_ENFORCE_EQ(IsMultiPrecision,
+                    false,
+                    common::errors::Unimplemented(
+                        "SelectedRows gradient is not supported when "
+                        "multi_precision=True."));
   constexpr bool kIsSameType = std::is_same<T, MT>::value;
-  PADDLE_ENFORCE_EQ(
-      kIsSameType,
-      true,
-      phi::errors::Unimplemented("SelectedRows gradient is not supported when "
-                                 "multi_precision=True."));
+  PADDLE_ENFORCE_EQ(kIsSameType,
+                    true,
+                    common::errors::Unimplemented(
+                        "SelectedRows gradient is not supported when "
+                        "multi_precision=True."));
   if (grad.rows().size() == 0) {
     VLOG(3) << "grad row size is 0!!";
     return;

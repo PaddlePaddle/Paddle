@@ -52,13 +52,13 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
   int output_ndim = input_ndim - static_cast<int>(decrease_axis.size());
   auto input_dist_attr_src = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr_src.dims_mapping();
-  PADDLE_ENFORCE_EQ(
-      input_ndim,
-      input_dims_mapping.size(),
-      phi::errors::InvalidArgument("The Tensor Input's rank [%d] and Input's "
-                                   "dims_mapping size [%d] are not matched.",
-                                   input_ndim,
-                                   input_dims_mapping.size()));
+  PADDLE_ENFORCE_EQ(input_ndim,
+                    input_dims_mapping.size(),
+                    common::errors::InvalidArgument(
+                        "The Tensor Input's rank [%d] and Input's "
+                        "dims_mapping size [%d] are not matched.",
+                        input_ndim,
+                        input_dims_mapping.size()));
 
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
@@ -145,21 +145,21 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
 
   int decrease_axis_num = decrease_axis.size();
 
-  PADDLE_ENFORCE_EQ(
-      input_ndim,
-      out_ndim + decrease_axis_num,
-      phi::errors::InvalidArgument("The Tensor Input's rank [%d] is not equal "
-                                   "to the Tensor Output's rank [%d]",
-                                   input_ndim,
-                                   out_ndim));
+  PADDLE_ENFORCE_EQ(input_ndim,
+                    out_ndim + decrease_axis_num,
+                    common::errors::InvalidArgument(
+                        "The Tensor Input's rank [%d] is not equal "
+                        "to the Tensor Output's rank [%d]",
+                        input_ndim,
+                        out_ndim));
 
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor Output's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor Output's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping_size));
 
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
@@ -298,21 +298,21 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
       static_cast<int>(out_dist_attr.dims_mapping().size());
   int decrease_axis_num = decrease_axis.size();
 
-  PADDLE_ENFORCE_EQ(
-      input_ndim,
-      out_ndim + decrease_axis_num,
-      phi::errors::InvalidArgument("The Tensor Input's rank [%d] is not equal "
-                                   "to the Tensor Output's rank [%d]",
-                                   input_ndim,
-                                   out_ndim));
+  PADDLE_ENFORCE_EQ(input_ndim,
+                    out_ndim + decrease_axis_num,
+                    common::errors::InvalidArgument(
+                        "The Tensor Input's rank [%d] is not equal "
+                        "to the Tensor Output's rank [%d]",
+                        input_ndim,
+                        out_ndim));
 
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping_size,
-      phi::errors::InvalidArgument("The Tensor Output's rank [%d] and Its "
-                                   "dims_mapping size [%d] are not matched.",
-                                   out_ndim,
-                                   out_dims_mapping_size));
+      common::errors::InvalidArgument("The Tensor Output's rank [%d] and Its "
+                                      "dims_mapping size [%d] are not matched.",
+                                      out_ndim,
+                                      out_dims_mapping_size));
 
   // Step1: Build Einsum Notation
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";

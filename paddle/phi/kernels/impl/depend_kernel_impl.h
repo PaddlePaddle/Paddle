@@ -26,7 +26,7 @@ void DependKernel(const Context& dev_ctx,
   auto out_name = out;
   PADDLE_ENFORCE_EQ(x_name,
                     out_name,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Input(X) and Output(Out) variable should be the "
                         "same, but got Input is %s and Output is %s.",
                         x_name,

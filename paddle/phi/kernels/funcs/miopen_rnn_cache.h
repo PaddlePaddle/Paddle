@@ -93,10 +93,10 @@ struct CudnnRNNCache {
 
     const auto numDirections = is_bidirec_ ? 2 : 1;
 
-    PADDLE_ENFORCE_EQ(
-        miopen_type,
-        miopenFloat,
-        phi::errors::InvalidArgument("MIOPEN do not support double datatype."));
+    PADDLE_ENFORCE_EQ(miopen_type,
+                      miopenFloat,
+                      common::errors::InvalidArgument(
+                          "MIOPEN do not support double datatype."));
     auto miopen_size = sizeof(float);
 
     x_desc_ = new miopenTensorDescriptor_t[seq_length_];
@@ -259,7 +259,7 @@ struct CudnnRNNCache {
     PADDLE_ENFORCE_EQ(
         weights_size_,
         miopen_size * weight_numel,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The miopen lstm and setting weight size should be same."));
 
     int dim_w[3];

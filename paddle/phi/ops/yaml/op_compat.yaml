@@ -3605,6 +3605,12 @@
   outputs :
     out : Out
 
+- op : straight_through_estimator_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : strided_slice
   backward : strided_slice_grad
   inputs :
@@ -4081,12 +4087,6 @@
     x : X
   outputs :
     out: Out
-
-- op: c_sync_calc_stream
-  inputs :
-    x : X
-  outputs :
-    out : Out
 
 - op: c_sync_comm_stream
   inputs :
@@ -4609,6 +4609,12 @@
   inputs:
     {x : X, window : Window}
   outputs:
+    out : Out
+
+- op: sync_calc_stream(c_sync_calc_stream)
+  inputs :
+    x : X
+  outputs :
     out : Out
 
 - op: temporal_shift
