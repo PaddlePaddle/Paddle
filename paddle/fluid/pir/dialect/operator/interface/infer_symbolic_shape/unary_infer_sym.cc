@@ -1827,10 +1827,6 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
       num_classes_expr = symbol::DimExpr(num_classes);
     } else {
       num_classes_expr = infer_context->GetNextSymName();
-      PADDLE_ENFORCE_EQ(!num_classes_shape_or_date.data().has_value(),
-                        true,
-                        common::errors::InvalidArgument(
-                            "The num classes should have data! Please check."));
     }
   }
 
