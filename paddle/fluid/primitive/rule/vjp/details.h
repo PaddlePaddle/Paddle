@@ -830,20 +830,37 @@ void stack_grad(const std::vector<Tensor>& x,
   std::vector<int> sections(x_num, 1);
   std::vector<Tensor> x_grad_tmp =
       split<T>(out_grad, phi::IntArray(sections), axis);
-
-  // compose shape for each input tensor
-  std::vector<int64_t> grad_shape;
   auto out_dim = out_grad.dims().size();
-  for (int i = 0; i < out_dim; ++i) {
-    if (i != axis) {
-      grad_shape.push_back(out_grad.dims()[i]);
+  if (has_dynamic_shape(out_grad.shape())) {
+    Tensor out_grad_shape = shape<T>(out_grad);
+    std::vector<Tensor> grad_shape;
+    for (int i = 0; i < out_dim; i++) {
+      if (i != axis) {
+        grad_shape.push_back(get_slice<T>(out_grad_shape, i));
+      }
     }
-  }
+    Tensor grad_shape_tensor = concat<T>(grad_shape);
 
-  // assign to each input tensor if need grad(stop_gradient=False)
-  for (int i = 0; i < x_num; ++i) {
-    if (x_grad[i]) {
-      set_output<T>(reshape<T>(x_grad_tmp[i], grad_shape), x_grad[i]);
+    for (int i = 0; i < x_num; i++) {
+      if (x_grad[i]) {
+        set_output<T>(backend::reshape<T>(x_grad_tmp[i], grad_shape_tensor),
+                      x_grad[i]);
+      }
+    }
+  } else {
+    // compose shape for each input tensor
+    std::vector<int64_t> grad_shape;
+    for (int i = 0; i < out_dim; ++i) {
+      if (i != axis) {
+        grad_shape.push_back(out_grad.dims()[i]);
+      }
+    }
+
+    // assign to each input tensor if need grad(stop_gradient=False)
+    for (int i = 0; i < x_num; ++i) {
+      if (x_grad[i]) {
+        set_output<T>(reshape<T>(x_grad_tmp[i], grad_shape), x_grad[i]);
+      }
     }
   }
 }
@@ -1002,15 +1019,20 @@ void expand_grad(const Tensor& x,
                  const IntArray& shape,
                  Tensor* x_grad) {
   if (x_grad) {
-    if (out_grad.dims() != x.dims()) {
-      auto axes = get_reduce_dims_from_out(out_grad.dims(), x.dims());
-      auto reduced = out_grad.sum(common::vectorize(axes), x.dtype(), false);
-      if (reduced.dims().size() != x.dims().size()) {
-        reduced = reshape<T>(reduced, x.shape());
-      }
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+      auto reduced = reduce_as<T>(out_grad, x);
       set_output<T>(reduced, x_grad);
     } else {
-      by_pass<T>(out_grad, x_grad);
+      if (out_grad.dims() != x.dims()) {
+        auto axes = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        auto reduced = out_grad.sum(common::vectorize(axes), x.dtype(), false);
+        if (reduced.dims().size() != x.dims().size()) {
+          reduced = reshape<T>(reduced, x.shape());
+        }
+        set_output<T>(reduced, x_grad);
+      } else {
+        by_pass<T>(out_grad, x_grad);
+      }
     }
   }
 }
