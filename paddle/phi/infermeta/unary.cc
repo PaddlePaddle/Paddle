@@ -2923,8 +2923,9 @@ void OneHotInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "Rank of Input(X) should be at least 0."));
 
+  int num_classes_int = num_classes.to<int>();
   auto out_dims_vec = common::vectorize(x_dims);
-  out_dims_vec.push_back(num_classes);
+  out_dims_vec.push_back(num_classes_int);
   auto out_dims = common::make_ddim(out_dims_vec);
 
   out->set_dims(out_dims);
