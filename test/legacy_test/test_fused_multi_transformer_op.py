@@ -1961,5 +1961,28 @@ class TestFusedMultiTransformerOpUseMBMMHA(TestFusedMultiTransformerOp):
         self.x_type = np.float16
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpUseMBMMHAGQA(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        base.set_flags({'FLAGS_fused_multi_transformer_op_use_mbfmha': True})
+        # Use GQA
+        self.gqa_group_size = 8
+        self.has_cache_kv = True
+        self.gen_cache_kv = False
+        self.remove_padding = True
+        self.query_length = 1
+        self.key_length, self.value_length = 1, 1
+        self.cache_length = 2049
+        self.layers = 2
+        self.rotary_emb_dims = 2
+        self.x_type = np.float16
+
+
 if __name__ == "__main__":
     unittest.main()
