@@ -55,7 +55,7 @@ class GlobaleToSubMeshFunction(ReshardFunction):
                     src_dist_attr.process_mesh,
                     [src_dist_attr],
                     [dst_dist_attr],
-                    src_dist_attr.chunk_id,
+                    chunk_id,
                 )
             )
             return dst_value

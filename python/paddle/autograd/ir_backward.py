@@ -1035,6 +1035,7 @@ def calc_gradient_helper(
         state,
         ValueDict(),
     )
+
     # now value_to_valuegrad should be value <-> value (add sum op for the same values's grad value)
     outputs_set, inputs_set, no_gradvar_set = create_backward_prune_set(
         outputs_fwd_set, inputs_fwd_set, no_grad_set, state
@@ -1045,6 +1046,8 @@ def calc_gradient_helper(
         if op in state.op_to_opgrad:
             op_chunk_id = op.dist_attr.chunk_id
             for bwd_op in state.op_to_opgrad[op]:
+                if bwd_op.dist_attr is None:
+                    continue
                 bwd_op.dist_attr = (
                     paddle.base.libpaddle.pir.create_op_dist_attribute(
                         bwd_op.dist_attr.process_mesh,

@@ -81,6 +81,8 @@ class SameStatusReshardFunction(ReshardFunction):
                         use_src_value_ops[0].result(0).all_used_ops()
                     )
                 for op in use_src_value_ops:
+                    if op.dist_attr is None:
+                        continue
                     if op.dist_attr.chunk_id != -1:
                         chunk_id = op.dist_attr.chunk_id
                         break
