@@ -2144,7 +2144,7 @@
   kernel :
     func : fused_multi_transformer
     data_type : x
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_softmax_mask
   args : (Tensor x, Tensor mask)
