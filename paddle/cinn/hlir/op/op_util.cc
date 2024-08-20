@@ -50,8 +50,10 @@ CINNSchedule GetElementwiseScheduleFunc(
     }
     PADDLE_ENFORCE_NE(vec_ast.empty(),
                       true,
-                      phi::errors::InvalidArgument("The vec_ast is "
-                                                   "empty! Please check.\n"));
+                      phi::errors::InvalidArgument(
+                          "The vector of AbstractSyntaxTree is empty!"
+                          "Please ensure that the argument pack "
+                          "contains at least one valid expression."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -82,8 +84,10 @@ CINNSchedule GetInjectiveScheduleFunc(
     }
     PADDLE_ENFORCE_NE(vec_ast.empty(),
                       true,
-                      phi::errors::InvalidArgument("The vec_ast is "
-                                                   "empty! Please check.\n"));
+                      phi::errors::InvalidArgument(
+                          "The vector of AbstractSyntaxTree is empty!"
+                          "Please ensure that the argument pack "
+                          "contains at least one valid expression."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
