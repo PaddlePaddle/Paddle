@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+from os.path import dirname
+
+sys.path.append(dirname(dirname(__file__)))
+
 import unittest
 
 import numpy as np
+import utils
 
 import paddle
 
@@ -36,6 +42,24 @@ class LayerCase(paddle.nn.Layer):
         var_7 = var_6.transpose([0, 4, 5, 3, 1, 2])
         var_8 = var_7.reshape([-1, 512, 8, 8])
         return var_8
+
+
+def create_inputspec():
+    inputspec = (
+        paddle.static.InputSpec(
+            shape=(-1, -1, -1, -1), dtype=paddle.float32, stop_gradient=False
+        ),
+        paddle.static.InputSpec(
+            shape=(4,), dtype=paddle.int32, stop_gradient=False
+        ),
+        paddle.static.InputSpec(
+            shape=(1,), dtype=paddle.int32, stop_gradient=False
+        ),
+        paddle.static.InputSpec(
+            shape=(1,), dtype=paddle.int32, stop_gradient=False
+        ),
+    )
+    return inputspec
 
 
 def create_tensor_inputs():
@@ -63,26 +87,16 @@ class TestLayer(unittest.TestCase):
         self.inputs = create_tensor_inputs()
         self.net = LayerCase()
 
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({"FLAGS_prim_all": with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
+    def train(self, net, use_cinn=False):
+        net = utils.apply_to_static(self.net, use_cinn, create_inputspec())
+        net.eval()
         paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
+        out = net(*self.inputs)
+        return out
 
     def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
-        )
+        st_out = self.train(self.net, use_cinn=False)
+        cinn_out = self.train(self.net, use_cinn=True)
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):

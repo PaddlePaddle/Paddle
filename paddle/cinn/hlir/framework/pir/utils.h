@@ -49,22 +49,23 @@ struct CINNKernelInfo {
       return arg_idx == other.arg_idx && value_idx == other.value_idx;
     }
   };
-  using IntArgBindInfo = std::variant<ArgDimIdx, ArgValueIdx>;
-  // int_args_map records where the int_args_map.key argument (dtype is Int) in
-  // the kernel parameter is taken from (dtype is IntArgBindInfo).
-  // IntArgBindInfo can be either ArgDimIdx or ArgValueIdx, with the former
-  // means the int argument is from the shape of a tensor argument, and the
-  // latter means the int argument is from the value of a tensor argument.
-  // Examples:
+  using SymbolArgBindInfo = std::variant<ArgDimIdx, ArgValueIdx>;
+  // Symbol arguments are int type arguments in kernel parameters, which pass
+  // runtime values of symbols related to dynamic shape. symbol_args_map records
+  // where the argument at position symbol_args_map.key(dtype is int) is taken
+  // from (dtype is SymbolArgBindInfo). SymbolArgBindInfo can be either
+  // ArgDimIdx or ArgValueIdx, with the former means the argument is from
+  // the shape of a tensor parameter, and the latter means the argument is
+  // from the value of a tensor parameter. Examples:
   //   a func like: foo(tensor A, tensor B, int S1, int S2)
   //   S1 = A.shape[4]
-  //   S2 = B[6] // B is a 1-D tensor
-  //   int_args_map will be like
+  //   S2 = flatten(B)[6]
+  //   symbol_args_map will be like
   //   {
   //     2: ArgDimIdx{0, 4},
   //     3: ArgValueIdx{1, 6}
   //   }
-  std::map<int, IntArgBindInfo> int_args_map;
+  std::map<int, SymbolArgBindInfo> symbol_args_map;
 };
 
 struct CompatibleInfo {

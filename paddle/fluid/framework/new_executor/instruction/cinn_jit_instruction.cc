@@ -50,8 +50,8 @@ class CinnJitInstruction::FnPtrImpl {
       func_args_.emplace_back(buffer);
     }
 
-    // 2. Convert int args about dynamic shape to cinn_pod_value_t
-    const auto& GetIntArg = common::Overloaded{
+    // 2. Convert symbol args about dynamic shape to cinn_pod_value_t
+    const auto& GetSymbolArg = common::Overloaded{
         [&](const CINNKernelInfo::ArgDimIdx& binding_info) -> int64_t {
           return static_cast<int64_t>(
               kernel_tensor_args[binding_info.arg_idx]->dims().at(
@@ -84,8 +84,8 @@ class CinnJitInstruction::FnPtrImpl {
                                       "for dynamic shape arg now"));
         }};
 
-    for (const auto& [_, binding_info] : cinn_kernel_info_.int_args_map) {
-      func_args_.emplace_back(std::visit(GetIntArg, binding_info));
+    for (const auto& [_, binding_info] : cinn_kernel_info_.symbol_args_map) {
+      func_args_.emplace_back(std::visit(GetSymbolArg, binding_info));
     }
 
     if (VLOG_IS_ON(4)) {
@@ -101,7 +101,7 @@ class CinnJitInstruction::FnPtrImpl {
            bool is_gpu) {
     VLOG(6) << "Start Run: " << cinn_kernel_info_.fn_name;
 
-    // Pass real data to cinn_buffer_t func args placeholder
+    // Pass real tensor data to cinn_buffer_t func args placeholder
     for (size_t i = 0; i < kernel_tensor_args.size(); ++i) {
       cinn_pod_value_to_buffer_p(&(func_args_[i]))->memory =
           reinterpret_cast<uint8_t*>(kernel_tensor_args[i]->data());
