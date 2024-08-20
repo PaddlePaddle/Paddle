@@ -1264,7 +1264,7 @@ bool FusedMultiTransformerOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(4))
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  if (cache_kv_data_list.at(0).isa<symbol::NullShapeOrDataDimExpr>()) {
+  if (cache_kv_data_list.size() > 0) {
     const std::vector<symbol::DimExpr> &c_shape =
         cache_kv_data_list.at(0).shape();
 
