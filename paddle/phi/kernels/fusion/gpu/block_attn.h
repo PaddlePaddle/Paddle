@@ -1723,7 +1723,7 @@ void blha(const phi::GPUContext &dev_ctx,
 
   params.timestep = timestep + pre_cache_length;
   params.inv_sqrt_dh = 1.0f / std::sqrt(dim_head);
-  ;
+
   params.rotary_emb_dims = rotary_emb_dims;
 
   VLOG(3) << "batch_size: " << batch_size << " q_num_head: " << q_num_head
