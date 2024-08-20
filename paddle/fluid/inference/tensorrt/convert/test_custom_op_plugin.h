@@ -221,8 +221,8 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
                       phi::errors::InvalidArgument(
                           "The length of attr_field must be equal to "
                           "the size of expect_string_attr plus 1. "
-                          "Expected %d, but received %d.",
-                          expect_string_attr.size() + 1,
+                          "Expected %llu, but received %llu.",
+                          static_cast<size_t>(expect_string_attr.size() + 1),
                           static_cast<size_t>(attr_field.length)));
     const char* receive_string_attr =
         reinterpret_cast<const char*>(attr_field.data);
@@ -231,7 +231,7 @@ class custom_op_plugin_creator : public nvinfer1::IPluginCreator {
         std::string(receive_string_attr),
         phi::errors::InvalidArgument("The received string attribute '%s' "
                                      "does not match the expected value '%s'.",
-                                     receive_string_attr.c_str(),
+                                     receive_string_attr,
                                      expect_string_attr.c_str()));
 
     // ints_attr
