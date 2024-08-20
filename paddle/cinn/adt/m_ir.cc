@@ -178,9 +178,8 @@ std::unordered_map<Index, LoopIterators> GenerateAnchorIndex2LoopIterators(
     PADDLE_ENFORCE_EQ(
         anchor_index2loop_iters.emplace(anchor_index, anchor_loop_iters).second,
         true,
-        phi::errors::AlreadyExists("The anchor index %d has already "
-                                   "been associated with loop iters.",
-                                   anchor_index));
+        phi::errors::AlreadyExists("The anchor index has already "
+                                   "been associated with loop iters."));
   }
   return anchor_index2loop_iters;
 }
