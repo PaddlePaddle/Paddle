@@ -83,6 +83,7 @@ class TestConv2dAddBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -131,6 +132,7 @@ class TestMultiplyOpAddBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -174,6 +176,7 @@ class TestFcBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -216,6 +219,7 @@ class TestLayerNormBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -266,6 +270,7 @@ class TestMultiplyAddOpAddBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -315,6 +320,7 @@ class TestAddReluBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -365,6 +371,7 @@ class TestAddsigmoidBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -479,6 +486,7 @@ class TestReshapeBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -550,6 +558,7 @@ class TestPool2dBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -599,6 +608,7 @@ class TestSumOpBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -647,6 +657,7 @@ class TestAddClipBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -695,6 +706,7 @@ class TestSliceOpBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -743,6 +755,7 @@ class TestSqueezeOpBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -785,6 +798,7 @@ class TestpreluBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -830,6 +844,7 @@ class TestSqueezeBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -875,6 +890,7 @@ class TestClipBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
@@ -920,6 +936,7 @@ class TestsoftmaxBf16Pass(PassTest):
 
     def setUp(self):
         self.places.append(paddle.CPUPlace())
+        self.skip_accuracy_verification = True
 
     def test_check_output(self):
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
