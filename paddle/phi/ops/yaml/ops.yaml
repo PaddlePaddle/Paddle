@@ -1642,7 +1642,7 @@
   output : Tensor(out)
   infer_meta :
     func : ExpandAsInferMeta
-    local_shape: target_shape
+    local_shape: out
   kernel :
     func : expand_as
     data_type : x
@@ -3918,7 +3918,7 @@
   infer_meta :
     func : ReshapeInferMeta
     spmd_rule : ReshapeInferSpmd
-    local_shape: shape
+    local_shape: out
     global_shape: out
   kernel :
     func : reshape
