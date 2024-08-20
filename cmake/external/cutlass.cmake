@@ -21,6 +21,7 @@ set(CUTLASS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cutlass)
 include_directories("${CUTLASS_SOURCE_DIR}/")
 include_directories("${CUTLASS_SOURCE_DIR}/include/")
 include_directories("${CUTLASS_SOURCE_DIR}/tools/util/include/")
+include_directories("paddle/phi/kernels/fusion/gpu/")
 
 add_definitions("-DPADDLE_WITH_CUTLASS")
 add_definitions("-DSPCONV_WITH_CUTLASS=0")

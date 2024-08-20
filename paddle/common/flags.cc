@@ -1818,6 +1818,11 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "Enable xqa optim in block_multihead_attention kernel (GQA).");
 
+PHI_DEFINE_EXPORTED_bool(
+    blha_use_tensorcore,
+    false,
+    "Enable xqa optim in block_multihead_attention kernel (GQA).");
+
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",
