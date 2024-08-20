@@ -50,9 +50,6 @@ void LUKernel(const Context& dev_ctx,
   auto ipiv_data = pivots->data<int>();
 
   auto info_dims = common::slice_ddim(outdims, 0, outrank - 2);
-  if (info_dims.size() == 0) {
-    info_dims = common::make_ddim({1});
-  }
   infos->Resize(info_dims);
   dev_ctx.template Alloc<int>(infos);
   auto info_data = infos->data<int>();

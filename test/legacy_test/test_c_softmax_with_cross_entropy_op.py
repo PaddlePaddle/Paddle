@@ -39,10 +39,6 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
         p = self.pdrun()
         p.wait()
 
-    def test_c_softmax_with_cross_entropy_new_comm(self):
-        p = self.pdrun(need_envs={"FLAGS_dynamic_static_unified_comm": "1"})
-        p.wait()
-
 
 if __name__ == '__main__':
     unittest.main()

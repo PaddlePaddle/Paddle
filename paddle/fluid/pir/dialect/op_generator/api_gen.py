@@ -25,6 +25,53 @@ from op_gen import (
     to_pascal_case,
 )
 
+# white ops list whose kernel can automatically do type promotion.
+# future will get this list from same place with dynamic graph.
+type_promote_white_list = {
+    "add": ["x", "y"],
+    "subtract": ["x", "y"],
+    "divide": ["x", "y"],
+    "floor_divide": ["x", "y"],
+    "elementwise_pow": ["x", "y"],
+    "where": ["x", "y"],
+    "equal": ["x", "y"],
+    "not_equal": ["x", "y"],
+    "less_than": ["x", "y"],
+    "less_equal": ["x", "y"],
+    "greater_than": ["x", "y"],
+    "greater_equal": ["x", "y"],
+    "logical_and": ["x", "y"],
+    "logical_or": ["x", "y"],
+    "logical_xor": ["x", "y"],
+    "fmax": ["x", "y"],
+    "fmin": ["x", "y"],
+    "maximum": ["x", "y"],
+    "minimum": ["x", "y"],
+    "remainder": ["x", "y"],
+    "huber_loss": ["input", "label"],
+    "nextafter": ["x", "y"],
+    "atan2": ["x", "y"],
+    "multiply": ["x", "y"],
+}
+
+type_promote_inplace_white_list = {
+    "add_": ["x", "y"],
+    "subtract_": ["x", "y"],
+    "divide_": ["x", "y"],
+    "floor_divide_": ["x", "y"],
+    "where_": ["x", "y"],
+    "equal_": ["x", "y"],
+    "not_equal_": ["x", "y"],
+    "less_than_": ["x", "y"],
+    "less_equal_": ["x", "y"],
+    "greater_than_": ["x", "y"],
+    "greater_equal_": ["x", "y"],
+    "logical_and_": ["x", "y"],
+    "logical_or_": ["x", "y"],
+    "logical_xor_": ["x", "y"],
+    "remainder_": ["x", "y"],
+}
+
 PD_MANUAL_API_LIST = {
     'embedding_grad',
     'assign',
@@ -61,6 +108,8 @@ CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/type_defs.h"
+#include "paddle/phi/common/type_promotion.h"
+#include "paddle/fluid/pir/utils/type_promotion_utils.h"
 
 {body}
 
@@ -89,6 +138,8 @@ API_IMPL_TEMPLATE = """
 API_INNER_CODE_TEMPLATE = """
     // AMP Logic
     {amp_logic}
+    // Type Promotion Logic
+    {type_promotion_logic}
     {check_data_type}
     {handle_optional_inputs}
     {in_combine}
@@ -118,6 +169,25 @@ AMP_OPTIONAL_INPUTS_TEMPLATE = """if ({optional_input}) {{ amp_values_vector.pus
 """
 
 AMP_NEW_INPUTS_TEMPLATE = """auto new_{input} = paddle::imperative::{cast_func}("{input}", {input}, amp_dst_dtype, op_name);
+"""
+
+TYPE_PROMOTION_LOGIC_TEMPLATE = """
+    auto op_name = phi::TransToFluidOpName("{op_name}");
+    auto x_dtype = paddle::imperative::GetDataType({x});
+    auto y_dtype = paddle::imperative::GetDataType({y});
+    auto x_shape = pir::GetValueShape({x});
+    auto y_shape = pir::GetValueShape({y});
+    if (phi::NeedTypePromotion("{op_name}", x_dtype, y_dtype, x_shape, y_shape)) {{
+    VLOG(5) << "got different data type, run type promotion automatically.";
+    LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
+    //{op_name}
+    auto promotion_type = phi::GetPromoteDtype("{op_name}", x_dtype, y_dtype, x_shape, y_shape);
+
+    {x_cast}
+    auto new_{y} = pir::PromoteCast("{y}", {y}, promotion_type);
+
+    return paddle::dialect::{op_name}({args});
+  }}
 """
 
 OP_DISPATCH_TEMPLATE = """
@@ -675,6 +745,71 @@ class CodeGen:
             args=self._gen_amp_args(op_info, is_mutable_attr),
         )
 
+    def _gen_type_promotion_args(self, op_info, op_name):
+        type_promote_inputs_call_list = []
+        inplace_map = op_info.inplace_map
+        for name in op_info.input_name_list:
+            if op_name in type_promote_white_list:
+                if name in type_promote_white_list[op_name]:
+                    type_promote_inputs_call_list.append(f"new_{name}")
+                else:
+                    type_promote_inputs_call_list.append(f"{name}")
+            elif op_name in type_promote_inplace_white_list:
+                if name == type_promote_inplace_white_list[op_name][0]:
+                    type_promote_inputs_call_list.append(f"{name}")
+                elif name in type_promote_inplace_white_list[op_name]:
+                    type_promote_inputs_call_list.append(f"new_{name}")
+                else:
+                    type_promote_inputs_call_list.append(f"{name}")
+
+        attr_list = op_info.attribute_name_list
+        args = type_promote_inputs_call_list + attr_list
+        return ', '.join(args)
+
+    def _gen_type_promotion_logic(self, op_info, op_name):
+        input_list = op_info.input_name_list
+        if op_name in type_promote_white_list:
+            x = type_promote_white_list[op_name][0]
+            y = type_promote_white_list[op_name][1]
+
+            type_promote_inputs_call_args_str = self._gen_type_promotion_args(
+                op_info, op_name
+            )
+
+            x_cast = f"auto new_{x} = pir::PromoteCast(\"{x}\", {x}, promotion_type);"
+            if op_info.is_sparse_op:
+                op_name += "sp_" if op_name[-1] == "_" else "_sp"
+            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+                op_name=op_name,
+                x=x,
+                y=y,
+                x_cast=x_cast,
+                args=type_promote_inputs_call_args_str,
+            )
+        elif op_name in type_promote_inplace_white_list:
+            x = type_promote_inplace_white_list[op_name][0]
+            y = type_promote_inplace_white_list[op_name][1]
+
+            type_promote_inputs_call_args_str = self._gen_type_promotion_args(
+                op_info, op_name
+            )
+
+            x_cast = f"pir::PromoteCastInplace(\"{x}\", {x}, promotion_type);"
+
+            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+                op_name=op_name,
+                x=x,
+                y=y,
+                x_cast=x_cast,
+                args=type_promote_inputs_call_args_str,
+            )
+        else:
+            type_promotion_logic_str = (
+                f"\n VLOG(5) << \" No Type Promotion for {op_name} api. \"; "
+            )
+
+        return type_promotion_logic_str
+
     def _gen_check_data_type(self, op_info, op_name):
         mapping_input_name_to_type = dict(
             zip(op_info.input_name_list, op_info.input_type_list)
@@ -855,6 +990,9 @@ class CodeGen:
                     amp_logic=self._gen_amp_logic(
                         op_info, op_name, is_mutable_attr
                     ),
+                    type_promotion_logic=self._gen_type_promotion_logic(
+                        op_info, op_name
+                    ),
                     check_data_type=self._gen_check_data_type(
                         op_info, kernel_name
                     ),
@@ -915,6 +1053,9 @@ class CodeGen:
             api_inner_code = API_INNER_CODE_TEMPLATE.format(
                 amp_logic=self._gen_amp_logic(
                     op_info, op_name, is_mutable_attr
+                ),
+                type_promotion_logic=self._gen_type_promotion_logic(
+                    op_info, op_name
                 ),
                 check_data_type=self._gen_check_data_type(op_info, kernel_name),
                 handle_optional_inputs=self._gen_handle_optional_inputs(

@@ -161,6 +161,8 @@ TEST(DrrTest, AttentionFuse) {
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    phi::errors::Unavailable("pm fail to run program"));
   EXPECT_EQ(program.block()->size(), 2u);
 }
