@@ -29,8 +29,11 @@ CINNSchedule GetElementwiseScheduleFunc(
     const Target& target,
     bool vectorizable) {
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
-    CHECK(!args.empty()) << "The input argument of ElementwiseSchedule is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_NE(args.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The input argument of ElementwiseSchedule is "
+                          "invalid! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
     PADDLE_ENFORCE_GT(arg_pack.size(),
                       0U,
@@ -45,7 +48,10 @@ CINNSchedule GetElementwiseScheduleFunc(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_NE(vec_ast.empty(),
+                      true,
+                      phi::errors::InvalidArgument("The vec_ast is "
+                                                   "empty! Please check.\n"));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
@@ -61,8 +67,11 @@ CINNSchedule GetInjectiveScheduleFunc(
     const Target& target,
     bool vectorizable) {
   return CINNSchedule([=](lang::Args args, lang::RetValue* ret) {
-    CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
-                            "empty! Please check.\n";
+    PADDLE_ENFORCE_NE(args.empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The input argument of InjectiveSchedule is "
+                          "invalid! Please check.\n"));
     cinn::common::CINNValuePack arg_pack = args[0];
     std::vector<Expr> vec_ast;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -71,7 +80,10 @@ CINNSchedule GetInjectiveScheduleFunc(
         vec_ast.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_NE(vec_ast.empty(),
+                      true,
+                      phi::errors::InvalidArgument("The vec_ast is "
+                                                   "empty! Please check.\n"));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
