@@ -1002,15 +1002,20 @@ void expand_grad(const Tensor& x,
                  const IntArray& shape,
                  Tensor* x_grad) {
   if (x_grad) {
-    if (out_grad.dims() != x.dims()) {
-      auto axes = get_reduce_dims_from_out(out_grad.dims(), x.dims());
-      auto reduced = out_grad.sum(common::vectorize(axes), x.dtype(), false);
-      if (reduced.dims().size() != x.dims().size()) {
-        reduced = reshape<T>(reduced, x.shape());
-      }
+    if (has_dynamic_shape(x.shape()) || has_dynamic_shape(out_grad.shape())) {
+      auto reduced = reduce_as<T>(out_grad, x);
       set_output<T>(reduced, x_grad);
     } else {
-      by_pass<T>(out_grad, x_grad);
+      if (out_grad.dims() != x.dims()) {
+        auto axes = get_reduce_dims_from_out(out_grad.dims(), x.dims());
+        auto reduced = out_grad.sum(common::vectorize(axes), x.dtype(), false);
+        if (reduced.dims().size() != x.dims().size()) {
+          reduced = reshape<T>(reduced, x.shape());
+        }
+        set_output<T>(reduced, x_grad);
+      } else {
+        by_pass<T>(out_grad, x_grad);
+      }
     }
   }
 }
