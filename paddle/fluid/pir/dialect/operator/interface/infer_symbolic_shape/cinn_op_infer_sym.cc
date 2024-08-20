@@ -20,10 +20,9 @@ namespace cinn::dialect {
 
 bool BroadcastOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const std::vector<int64_t> &shape =
-      paddle::dialect::details::GetVectorAttr<int64_t>(op, "out_shape");
-
   const std::vector<symbol::DimExpr> &out_dims = [&] {
+    const std::vector<int64_t> &shape =
+        paddle::dialect::details::GetVectorAttr<int64_t>(op, "out_shape");
     std::vector<symbol::DimExpr> out_dims;
     for (int64_t dim : shape) {
       out_dims.emplace_back(dim);
@@ -31,9 +30,34 @@ bool BroadcastOpInferSymbolicShape(
     return out_dims;
   }();
 
-  symbol::ShapeOrDataDimExprs shape_data{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
-  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  const auto &DealWithMinusOneAndSetOutput =
+      [&](const std::vector<symbol::DimExpr> &expand_shape) {
+        std::vector<symbol::DimExpr> result_shape(expand_shape);
+        const auto &x_shape_or_data =
+            infer_context->GetShapeOrDataForValue(op->operand_source(0));
+        const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+        for (size_t i = 0; i < expand_shape.size(); i++) {
+          if (expand_shape[i] == symbol::DimExpr{-1}) {  // copy the dim from x
+            // the shape is right aligned
+            int index = i - (expand_shape.size() - x_dims.size());
+            PADDLE_ENFORCE_GE(index,
+                              0,
+                              common::errors::InvalidArgument(
+                                  "in ExpandOpInferSymbolicShape, "
+                                  "the dim to copy must >= 0, "
+                                  "but got %d",
+                                  index));
+
+            result_shape[i] = x_dims[index];
+          }
+        }
+
+        infer_context->SetShapeOrDataForValue(
+            op->result(0),
+            symbol::ShapeOrDataDimExprs{
+                symbol::TensorShapeOrDataDimExprs(result_shape)});
+      };
+  DealWithMinusOneAndSetOutput(out_dims);
   return true;
 }
 
