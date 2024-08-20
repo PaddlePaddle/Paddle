@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include <cstdlib>
-#include <filesystem>
+#include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/phi/core/enforce.h"
 namespace pir {
 

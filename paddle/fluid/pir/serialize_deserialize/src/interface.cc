@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include <stdio.h>
-#include <filesystem>
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
