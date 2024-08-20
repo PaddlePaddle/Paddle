@@ -86,7 +86,6 @@ struct Block_AttN_params {
   // 1.f / sqrt(Dh)
   float inv_sqrt_dh;
 
-  bool add_qkv_bias;
   bool neox_rotary_style;
 
   const float *cache_k_quant_scales = nullptr;
@@ -208,7 +207,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   const T *q_bias_base = nullptr;
   const T *k_bias_base = nullptr;
 
-  if (params.add_qkv_bias) {
+  if (params.qkv_bias) {
     q_bias_base = params.qkv_bias;
     k_bias_base = params.qkv_bias + params.q_num_head * Dh;
   }
@@ -230,7 +229,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
           k, params.q_num_head * Dh + qk_offset + kv_hi * Dh);
     }
 
-    if (params.add_qkv_bias) {
+    if (params.qkv_bias) {
       const int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
       const int k_bias_offset = kv_hi * Dh + tid * QK_VEC_SIZE;
       Qk_vec q_bias;
@@ -537,7 +536,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
         v,
         (params.q_num_head + params.kv_num_head) * Dh + qkv_base_offset +
             kv_hi * Dh + vi);
-    if (params.add_qkv_bias) {
+    if (params.qkv_bias) {
       v_bias = *reinterpret_cast<const V_vec *>(
           &params.qkv_bias[(params.q_num_head + params.kv_num_head) * Dh +
                            kv_hi * Dh + vi]);
@@ -716,7 +715,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   const T *q_bias_base = nullptr;
   const T *k_bias_base = nullptr;
 
-  if (params.add_qkv_bias) {
+  if (params.qkv_bias) {
     q_bias_base = params.qkv_bias;
     k_bias_base = params.qkv_bias + params.q_num_head * Dh;
   }
@@ -744,7 +743,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
           k, params.q_num_head * Dh + qk_offset + kv_hi * Dh);
     }
 
-    if (params.add_qkv_bias) {
+    if (params.qkv_bias) {
       const int q_bias_offset = hi * Dh + lane_id * QK_VEC_SIZE;
       const int k_bias_offset = kv_hi * Dh + lane_id * QK_VEC_SIZE;
       Qk_vec q_bias;
@@ -1089,7 +1088,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
         v,
         (params.q_num_head + params.kv_num_head) * Dh + qkv_base_offset +
             kv_hi * Dh + vi);
-    if (params.add_qkv_bias) {
+    if (params.qkv_bias) {
       v_bias = *reinterpret_cast<const V_vec *>(
           &params.qkv_bias[(params.q_num_head + params.kv_num_head) * Dh +
                            kv_hi * Dh + vi]);
@@ -1641,20 +1640,13 @@ void blha(const phi::GPUContext &dev_ctx,
           const int dim_head,
           const int timestep,
           const int rotary_emb_dims,
-          float inv_sqrt_dh,
-          const bool add_qkv_bias = true,
           const bool neox_rotary_style = false,
-          const int quant_round_type = 1,
-          const float quant_max_bound = 127.0f,
-          const float quant_min_bound = -127.0f,
           const phi::DenseTensor *cache_k_quant_scales = nullptr,
           const phi::DenseTensor *cache_v_quant_scales = nullptr,
           const phi::DenseTensor *cache_k_dequant_scales = nullptr,
           const phi::DenseTensor *cache_v_dequant_scales = nullptr,
-          const phi::DenseTensor *dequant_qkv_scales = nullptr,
           const phi::DenseTensor *shift = nullptr,
           const phi::DenseTensor *smooth = nullptr,
-          const float quant_fmha_out_scale = -1,
           int use_cachekv_int8 = 0) {
   Block_AttN_params<T> params;
 
@@ -1717,9 +1709,10 @@ void blha(const phi::GPUContext &dev_ctx,
     params.rotary_emb = nullptr;
   }
 
-  params.add_qkv_bias = add_qkv_bias;
-  if (add_qkv_bias) {
+  if (qkv_bias_tensor) {
     params.qkv_bias = qkv_bias_tensor->data<T>();
+  } else {
+    params.qkv_bias = nullptr;
   }
 
   params.batch_size = batch_size;
@@ -1729,7 +1722,8 @@ void blha(const phi::GPUContext &dev_ctx,
   params.gqa_num_per_partitions = q_num_head / kv_num_head;
 
   params.timestep = timestep + pre_cache_length;
-  params.inv_sqrt_dh = inv_sqrt_dh;
+  params.inv_sqrt_dh = 1.0f / std::sqrt(dim_head);
+  ;
   params.rotary_emb_dims = rotary_emb_dims;
 
   VLOG(3) << "batch_size: " << batch_size << " q_num_head: " << q_num_head
@@ -3708,166 +3702,6 @@ void gqa_rotary_qk_variable(
                                                         kv_head_num,
                                                         seq_len,
                                                         dim_head);
-  }
-}
-
-template <typename T, int VecSize, int RoundType>
-__global__ void ShiftSmoothQuant(const T *input,
-                                 const T *shift,
-                                 const T *smooth,
-                                 float scale,
-                                 int8_t *out,
-                                 int num,
-                                 int cols,
-                                 float quant_max_bound,
-                                 float quant_min_bound) {
-  phi::AlignedVector<T, VecSize> in_vec;
-  phi::AlignedVector<T, VecSize> shift_vec;
-  phi::AlignedVector<T, VecSize> smooth_vec;
-  phi::AlignedVector<int8_t, VecSize> out_vec;
-
-  for (int linear_id = blockIdx.x * blockDim.x + threadIdx.x;
-       linear_id * VecSize < num;
-       linear_id += gridDim.x * blockDim.x) {
-    int idx = linear_id * VecSize;
-    phi::Load<T, VecSize>(input + idx, &in_vec);
-    phi::Load<T, VecSize>(shift + (idx % cols), &shift_vec);
-    phi::Load<T, VecSize>(smooth + (idx % cols), &smooth_vec);
-
-#pragma unroll
-    for (int i = 0; i < VecSize; i++) {
-      float quant_value =
-          quant_max_bound *
-          static_cast<float>((in_vec[i] + shift_vec[i]) * smooth_vec[i]) *
-          scale;
-      quant_value = static_cast<float>(RoundType == 1 ? round(quant_value)
-                                                      : rintf(quant_value));
-      quant_value =
-          quant_value > quant_max_bound ? quant_max_bound : quant_value;
-      quant_value =
-          quant_value < quant_min_bound ? quant_min_bound : quant_value;
-      out_vec[i] = static_cast<int8_t>(quant_value);
-    }
-    phi::Store<int8_t, VecSize>(out_vec, out + idx);
-  }
-}
-
-template <typename T, int VecSize, int RoundType>
-__global__ void ShiftSmooth(const T *input,
-                            const T *shift,
-                            const T *smooth,
-                            T *out,
-                            int num,
-                            int cols) {
-  phi::AlignedVector<T, VecSize> in_vec;
-  phi::AlignedVector<T, VecSize> shift_vec;
-  phi::AlignedVector<T, VecSize> smooth_vec;
-  phi::AlignedVector<T, VecSize> out_vec;
-
-  for (int linear_id = blockIdx.x * blockDim.x + threadIdx.x;
-       linear_id * VecSize < num;
-       linear_id += gridDim.x * blockDim.x) {
-    int idx = linear_id * VecSize;
-    phi::Load<T, VecSize>(input + idx, &in_vec);
-    phi::Load<T, VecSize>(shift + (idx % cols), &shift_vec);
-    phi::Load<T, VecSize>(smooth + (idx % cols), &smooth_vec);
-
-#pragma unroll
-    for (int i = 0; i < VecSize; i++) {
-      out_vec[i] = (in_vec[i] + shift_vec[i]) * smooth_vec[i];
-    }
-    phi::Store<T, VecSize>(out_vec, out + idx);
-  }
-}
-
-template <typename T>
-void shift_smooth_quant(const phi::GPUContext &dev_ctx,
-                        phi::DenseTensor *fmha_out,
-                        const phi::DenseTensor &fmha_in,
-                        const phi::DenseTensor &out_linear_shift,
-                        const phi::DenseTensor &out_linear_smooth,
-                        float out_linear_in_scale,
-                        const int num_head,
-                        const int dim_head,
-                        const int quant_round_type,
-                        const float quant_max_bound,
-                        const float quant_min_bound) {
-  constexpr int block_size = 512;
-  constexpr int waves = 32;
-  constexpr int vec_size = 16 / sizeof(T);
-
-  int max_blocks = fmha_out->numel() / vec_size;
-  int num_blocks = 0;
-  if (out_linear_in_scale > 0) {
-    if (quant_round_type == 0) {
-      GetNumBlocks(ShiftSmoothQuant<T, vec_size, 0>,
-                   block_size,
-                   0,
-                   max_blocks,
-                   waves,
-                   &num_blocks);
-      ShiftSmoothQuant<T, vec_size, 0>
-          <<<num_blocks, block_size, 0, dev_ctx.stream()>>>(
-              fmha_in.data<T>(),
-              out_linear_shift.data<T>(),
-              out_linear_smooth.data<T>(),
-              out_linear_in_scale,
-              fmha_out->data<int8_t>(),
-              fmha_out->numel(),
-              num_head * dim_head,
-              quant_max_bound,
-              quant_min_bound);
-    } else {
-      GetNumBlocks(ShiftSmoothQuant<T, vec_size, 1>,
-                   block_size,
-                   0,
-                   max_blocks,
-                   waves,
-                   &num_blocks);
-      ShiftSmoothQuant<T, vec_size, 1>
-          <<<num_blocks, block_size, 0, dev_ctx.stream()>>>(
-              fmha_in.data<T>(),
-              out_linear_shift.data<T>(),
-              out_linear_smooth.data<T>(),
-              out_linear_in_scale,
-              fmha_out->data<int8_t>(),
-              fmha_out->numel(),
-              num_head * dim_head,
-              quant_max_bound,
-              quant_min_bound);
-    }
-  } else {
-    if (quant_round_type == 0) {
-      GetNumBlocks(ShiftSmooth<T, vec_size, 0>,
-                   block_size,
-                   0,
-                   max_blocks,
-                   waves,
-                   &num_blocks);
-      ShiftSmooth<T, vec_size, 0>
-          <<<num_blocks, block_size, 0, dev_ctx.stream()>>>(
-              fmha_in.data<T>(),
-              out_linear_shift.data<T>(),
-              out_linear_smooth.data<T>(),
-              fmha_out->data<T>(),
-              fmha_out->numel(),
-              num_head * dim_head);
-    } else {
-      GetNumBlocks(ShiftSmooth<T, vec_size, 1>,
-                   block_size,
-                   0,
-                   max_blocks,
-                   waves,
-                   &num_blocks);
-      ShiftSmooth<T, vec_size, 1>
-          <<<num_blocks, block_size, 0, dev_ctx.stream()>>>(
-              fmha_in.data<T>(),
-              out_linear_shift.data<T>(),
-              out_linear_smooth.data<T>(),
-              fmha_out->data<T>(),
-              fmha_out->numel(),
-              num_head * dim_head);
-    }
   }
 }
 
