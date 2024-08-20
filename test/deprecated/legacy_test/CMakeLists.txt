@@ -658,7 +658,7 @@ set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
                                                                        120)
 
 set(TEST_CINN_OPS test_slice_op_deprecated test_layer_norm_op_deprecated
-                  test_where_op test_instance_norm_op_deprecated)
+                  test_instance_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)

@@ -35,6 +35,29 @@ _supported_int_dtype_ = [
     DataType.INT64,
 ]
 
+SUPPORT_PROMOTION_OPS = [
+    "__add__",
+    "__radd__",
+    "__sub__",
+    "__rsub__",
+    "__mul__",
+    "__rmul__",
+    "__mod__",
+    "__div__",
+    "__rdiv__",
+    "__truediv__",
+    "__rtruediv__",
+    "__floordiv__",
+    "__pow__",
+    "__rpow__",
+    "__eq__",
+    "__ne__",
+    "__lt__",
+    "__le__",
+    "__gt__",
+    "__ge__",
+]
+
 
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
@@ -343,6 +366,9 @@ def monkey_patch_value():
                     and self.dtype in _supported_int_dtype_
                 ):
                     self = paddle.cast(self, DataType.FLOAT32)
+                # bool(tensor) + int(scalar) will do type promotion to int64
+                if self.dtype == paddle.bool:
+                    self = paddle.cast(self, DataType.INT64)
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
                 if scalar_method is not None:
@@ -353,47 +379,36 @@ def monkey_patch_value():
 
             # 2. create Value for scalar
             lhs_dtype = safe_get_dtype(self)
-            other_var_value = other_var
             if not isinstance(other_var, Value):
                 if reverse:
                     for elem in self.shape:
                         if elem < 0:
-                            other_var_value = create_tensor_with_batchsize(
+                            other_var = create_tensor_with_batchsize(
                                 self, other_var, lhs_dtype
                             )
 
                             break
                     else:
                         # when break is not triggered, enter the else branch
-                        other_var_value = paddle.tensor.creation.fill_constant(
+                        other_var = paddle.tensor.creation.fill_constant(
                             self.shape,
                             lhs_dtype,
                             other_var,
                         )
                 else:
                     # add fill_op to current_block
-                    other_var_value = paddle.tensor.creation.fill_constant(
+                    other_var = paddle.tensor.creation.fill_constant(
                         [],
                         lhs_dtype,
                         other_var,
                     )
 
-            # 3. unify right var type to left var
-            rhs_dtype = safe_get_dtype(other_var_value)
-            if lhs_dtype != rhs_dtype:
-                other_var_value = paddle.cast(other_var_value, lhs_dtype)
             if reverse:
                 tmp = self
-                self = other_var_value
-                other_var_value = tmp
+                self = other_var
+                other_var = tmp
 
-            if (
-                python_api == paddle.divide
-            ) and self.dtype in _supported_int_dtype_:
-                self = paddle.cast(self, DataType.FLOAT32)
-                other_var_value = paddle.cast(other_var_value, DataType.FLOAT32)
-
-            out = python_api(self, other_var_value)
+            out = python_api(self, other_var)
             return out
 
         __impl__.__doc__ = """

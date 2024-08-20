@@ -1044,7 +1044,8 @@ set(TEST_CINN_OPS
     test_arg_min_max_op
     test_slice_op
     test_softmax_op
-    test_cumsum_op)
+    test_cumsum_op
+    test_where_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)

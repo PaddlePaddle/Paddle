@@ -249,14 +249,16 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         (out, conv, bn, ops) = outs
         fetch_names = [out, conv, bn]
         if paddle.framework.use_pir_api():
-            fetch_names = fetch_names + [
+            fetch_names = [
+                *fetch_names,
                 ops[1].result(0),
                 ops[0].result(0),
                 ops[3].result(0),
                 ops[2].result(0),
             ]
         else:
-            fetch_names = fetch_names + [
+            fetch_names = [
+                *fetch_names,
                 'bn_moving_mean',
                 'bn_moving_variance',
                 'bn_scale',
@@ -330,7 +332,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             layout, fetch_list=fetch_names, only_forward=only_forward
         )
 
-        fetch_names = [out, conv, bn] + fetch_names
+        fetch_names = [out, conv, bn, *fetch_names]
 
         for i in range(1, len(bn_fetches)):
             bn_val = bn_fetches[i]
