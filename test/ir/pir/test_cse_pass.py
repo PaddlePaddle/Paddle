@@ -218,6 +218,7 @@ class TestCSECommutative(unittest.TestCase, AssertOpCountEqualMixin):
                 b = x2 * x1
                 c = paddle.maximum(b, a)
                 d = paddle.minimum(c, x3)
+                x3 = paddle.cast(x3, 'bool')
                 e = paddle.logical_and(d, c)
                 f = paddle.logical_or(e, x3)
                 g = paddle.logical_xor(f, e)

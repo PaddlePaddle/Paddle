@@ -1468,6 +1468,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
     def get_static_desire(self, place):
         core._set_prim_all_enabled(False)
         paddle.enable_static()
+
         if isinstance(place, base.CPUPlace):
             paddle.set_device("cpu")
         if isinstance(place, base.CUDAPlace):
