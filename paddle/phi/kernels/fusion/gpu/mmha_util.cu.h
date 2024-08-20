@@ -3552,7 +3552,7 @@ struct MMHAStore {
     *reinterpret_cast<Vec*>(&src_vec) = src;
 #pragma unroll
     for (int i = 0; i < VecSize; i++) {
-      src_vec[i] = src_vec[i] * static_cast<T>(scale);
+      src_vec[i] = static_cast<T>(static_cast<float>(src_vec[i]) * scale);
     }
     phi::Store<T, VecSize>(src_vec, dst_ + idx);
   }

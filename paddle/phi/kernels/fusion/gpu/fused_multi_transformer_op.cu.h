@@ -95,8 +95,6 @@ struct Masked_multihead_attention_params {
 
   // 1.f / sqrt(Dh)
   float inv_sqrt_dh;
-  float inv_compression_ratio = 1.0f;
-  float rope_theta = 10000.0f;
 
   bool add_qkv_bias;
   bool neox_rotary_style;
@@ -1520,10 +1518,8 @@ void mbfmha(const phi::GPUContext &dev_ctx,
   cudaStream_t stream = dev_ctx.stream();
 
   if (gqa_group_size > 0) {
-    // params.gqa_group_size = gqa_group_size;
-    // params.gqa_num_per_partitions = num_head / gqa_group_size;
-    throw std::runtime_error(
-        "GQA is not supported in mmha when use flash_decoding");
+    params.gqa_group_size = gqa_group_size;
+    params.gqa_num_per_partitions = num_head / gqa_group_size;
   } else {
     params.gqa_group_size = num_head;
     params.gqa_num_per_partitions = 1;
