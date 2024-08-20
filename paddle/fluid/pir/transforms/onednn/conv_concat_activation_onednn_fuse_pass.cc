@@ -882,6 +882,7 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                         {"groups", pat.Attr("groups" + std::to_string(i))},
                         {"data_format",
                          pat.Attr("data_format" + std::to_string(i))},
+                        {"mkldnn_data_type", res.StrAttr("float32")},
                         {"fuse_activation", res.StrAttr("clip")},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
