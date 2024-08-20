@@ -353,10 +353,16 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
 
 bool Conv2dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<int64_t> output_size =
-      paddle::dialect::details::GetVectorAttr<int64_t>(op, "output_size");
-  std::vector<int> vec_output_size(output_size.begin(), output_size.end());
+  return ConvTransposeOpInferSymbolicShape(op, infer_context);
+}
 
+bool Conv2dTransposeBiasOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return ConvTransposeOpInferSymbolicShape(op, infer_context);
+}
+
+bool Conv3dTransposeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return ConvTransposeOpInferSymbolicShape(op, infer_context);
 }
 
@@ -456,22 +462,28 @@ bool ConvTransposeOpInferSymbolicShape(
         phi::errors::InvalidArgument(
             "The Attr(output_padding) and Attr(stride) of Op(conv_transpose) "
             "should be the same."));
-
+  const bool channel_last = (data_format != "kNHWC");
   const symbol::DimExpr C =
-      (data_format != DataLayout::kNHWC ? x_shape[1]
-                                        : x_shape[x_shape.size() - 1]);
+      (channel_last ? x_shape[1] : x_shape[x_shape.size() - 1]);
 
   infer_context->AddEqualCstr(filter_shape[0], C);
 
   const std::vector<symbol::DimExpr> x_data_dims =
-      data_format != DataLayout::kNHWC
+      channel_last
           ? std::vector<symbol::DimExpr>(x_shape.begin() + 2, x_shape.end())
           : std::vector<symbol::DimExpr>(x_shape.begin() + 1,
                                          x_shape.end() - 1);
 
-  std::vector<symbol::DimExpr> filter_data_dims = std::vector<symbol::DimExpr>(
-      filter_shape.begin() + 2, filter_shape.end());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
+  const std::vector<symbol::DimExpr> filter_data_dims = [&]() {
+    if (channel_last && FLAGS_manually_trans_conv_filter) {
+      return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
+                                          filter_s_or_d.shape().end() - 1);
+    } else {
+      return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
+                                          filter_s_or_d.shape().end());
+    }
+  }();
+  std::vector<symbol::DimExpr> ksize = filter_data_dims;
 
   UpdatePaddingAndDilation(&new_paddings,
                            &new_dilations,
@@ -480,21 +492,21 @@ bool ConvTransposeOpInferSymbolicShape(
                            strides,
                            ksize);
 
-  std::vector<symbol::DimExpr> output_shape;
-  output_shape.push_back(x_shape[0]);
+  std::vector<symbol::DimExpr> output_shape({x_shape[0]});
 
-  if (data_format != DataLayout::kNHWC) {
+  if (channel_last) {
     output_shape.push_back(filter_shape[1] * groups);
   }
 
-  const int offset = (data_format != DataLayout::kNHWC ? 2 : 1);
+  const int offset = (channel_last ? 2 : 1);
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
-    auto filter_extent = new_dilations[i] * (filter_shape[i + 2] - 1) + 1;
-    auto infer_shape = (x_shape[i + offset].Get<std::int64_t>() > 0)
-                           ? (x_shape[i + offset] - 1) * strides[i] -
-                                 new_paddings[2 * i] - new_paddings[2 * i + 1] +
-                                 filter_extent
-                           : -1;
+    symbol::DimExpr filter_extent =
+        new_dilations[i] * (filter_shape[i + 2] - 1) + 1;
+    symbol::DimExpr infer_shape =
+        (x_shape[i + offset].Get<std::int64_t>() > 0)
+            ? (x_shape[i + offset] - 1) * strides[i] - new_paddings[2 * i] -
+                  new_paddings[2 * i + 1] + filter_extent
+            : -1;
     if (output_size.size() > 0) {
       output_shape.push_back(output_size[i]);
     } else if (output_padding.size() > 0) {
@@ -504,7 +516,7 @@ bool ConvTransposeOpInferSymbolicShape(
     }
   }
 
-  if (data_format == DataLayout::kNHWC) {
+  if (!channel_last) {
     output_shape.push_back(filter_shape[1] * groups);
   }
 
