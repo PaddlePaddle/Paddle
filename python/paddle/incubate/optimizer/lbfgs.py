@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 import paddle
 from paddle.optimizer import Optimizer
@@ -26,21 +26,12 @@ from .line_search_dygraph import _strong_wolfe
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    from typing_extensions import NotRequired, TypedDict
-
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
-    from paddle.optimizer.lr import LRScheduler
+    from paddle.optimizer.optimizer import _ParameterConfig
     from paddle.regularizer import WeightDecayRegularizer
 
-    class _ParameterConfig(TypedDict):
-        params: Sequence[Tensor]
-        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
-        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
-
-    _T = TypeVar('_T', covariant=True)
-    _KT = TypeVar("_KT")
-    _VT = TypeVar("_VT")
+    _T_co = TypeVar('_T_co', covariant=True)
 
 
 @deprecated(since="2.5.0", update_to="paddle.optimizer.LBFGS", level=1)
@@ -142,8 +133,8 @@ class LBFGS(Optimizer):
     tolerance_grad: float
     tolerance_change: float
     history_size: int
-    line_search_fn: str | None
-    state: dict[_KT, _VT]
+    line_search_fn: Literal['strong_wolfe'] | None
+    state: defaultdict
 
     def __init__(
         self,
@@ -153,7 +144,7 @@ class LBFGS(Optimizer):
         tolerance_grad: float = 1e-7,
         tolerance_change: float = 1e-9,
         history_size: int = 100,
-        line_search_fn: str | None = None,
+        line_search_fn: Literal['strong_wolfe'] | None = None,
         parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
@@ -255,7 +246,7 @@ class LBFGS(Optimizer):
         self._set_param(x)
         return loss, flat_grad
 
-    def step(self, closure: Callable[[], _T]) -> _T:
+    def step(self, closure: Callable[[], _T_co]) -> _T_co:
         """
         Performs a single optimization step.
 
