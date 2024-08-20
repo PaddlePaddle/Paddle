@@ -772,7 +772,8 @@ bool CoalesceTensorOpInferSymbolicShape(
 
   auto dtype = op->attribute("dtype")
                    .dyn_cast<paddle::dialect::DataTypeAttribute>()
-                   .data() const auto &attributes = op->attributes();
+                   .data();
+  const auto &attributes = op->attributes();
   bool use_align =
       attributes.at("use_align").dyn_cast<pir::BoolAttribute>().data();
   int align_size =
