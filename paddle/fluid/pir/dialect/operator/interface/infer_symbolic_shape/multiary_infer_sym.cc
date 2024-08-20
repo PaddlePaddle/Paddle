@@ -955,8 +955,10 @@ bool DeformableConvOpInferSymbolicShape(
 
   std::vector<symbol::DimExpr> output_shape = {x_shape[0], filter_shape[0]};
   symbol::DimExpr conv_output_size, dkernel;
-  for (int i = 0; i < strides.size(); ++i) {
-    dkernel = dsymbol::DimExpr(dilations[i] * (filter_shape[i + 2] - 1) + 1);
+  for (size_t i = 0; i < strides.size(); ++i) {
+    dkernel = symbol::DimExpr(dilations[i]) *
+                  (filter_shape[i + 2] - symbol::DimExpr(1)) +
+              symbol::DimExpr(1);
     conv_output_size =
         (input_shape[i + 2] + symbol::DimExpr(2 * paddings[i]) - dkernel) /
             symbol::DimExpr(strides[i]) +
