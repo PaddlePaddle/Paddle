@@ -269,7 +269,7 @@ class RunProgramOpTest(unittest.TestCase):
                 outputs['Out'],
                 outputs['OutScope'],
                 None,
-                *self.attrs
+                *self.attrs,
             )
 
             return outputs['Out']
@@ -321,7 +321,7 @@ class RunProgramOpTest(unittest.TestCase):
                 outputs['Out'],
                 outputs['OutScope'],
                 None,
-                *self.attrs
+                *self.attrs,
             )
 
             for param in input_param_list:

@@ -703,6 +703,9 @@ class Engine:
             if loss.initialized():
                 with static.program_guard(dist_program, startup_program):
                     if self._strategy.amp.enable:
+                        self._strategy.amp.level = (
+                            self._strategy.amp.level.upper()
+                        )
                         amp_lists = paddle.static.amp.decorator.AutoMixedPrecisionLists(
                             custom_white_list=self._strategy.amp.custom_white_list,
                             custom_black_list=self._strategy.amp.custom_black_list,
@@ -2164,6 +2167,9 @@ class Engine:
                 feed_list.append(copy_var)
 
         return feed_list
+
+    def get_feed_name_list(self) -> list[str]:
+        return [spec.name for spec in self._inputs_spec + self._labels_spec]
 
     def _prepare_dataloader(
         self,

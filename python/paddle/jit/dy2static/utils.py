@@ -395,12 +395,17 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     def get_new_closure(original_fn, generated_fn):
         if generated_fn.__closure__ is None:
             return None
-        assert original_fn.__closure__ is not None
+
         original_closure_vars = inspect.getclosurevars(original_fn).nonlocals
-        generated_free_vars = generated_fn.__code__.co_freevars
+        generated_closure_vars = inspect.getclosurevars(generated_fn).nonlocals
+        # NOTE(SigureMo): [Why not `assert original_fn.__closure__ is not None`?]
+        # If the original function is a recursive function, the original function will
+        # not capture itself as a free var, it will access itself from global. But the
+        # transformed code always inside a create_xxx function, so the generated function
+        # will capture itself as a free var.
         return tuple(
-            wrap_cell(original_closure_vars[freevar_name])
-            for freevar_name in generated_free_vars
+            wrap_cell(original_closure_vars.get(freevar_name, freevar))
+            for freevar_name, freevar in generated_closure_vars.items()
         )
 
     def get_new_globals(original_fn, generated_fn):

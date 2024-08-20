@@ -172,8 +172,9 @@ class TestStatic(unittest.TestCase):
     @compare_legacy_with_pt
     def test(self):
         paddle.enable_static()
-        main_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program):
+        main_program = paddle.base.Program()
+        startup_program = paddle.base.Program()
+        with paddle.base.program_guard(main_program, startup_program):
             indices = paddle.static.data(
                 name='indices', shape=[4, 4], dtype='int32'
             )
@@ -189,6 +190,7 @@ class TestStatic(unittest.TestCase):
             out = sp_y.to_dense()
 
             exe = paddle.static.Executor()
+            exe.run(startup_program)
             indices_data = [
                 [0, 0, 0, 0],
                 [0, 0, 0, 0],
@@ -198,19 +200,11 @@ class TestStatic(unittest.TestCase):
             values_data = np.array([[1.0], [2.0], [3.0], [4.0]]).astype(
                 'float32'
             )
-            bias_data = np.array([1.0]).astype('float32')
-            weight_data = np.array([2.0]).astype('float32')
-            mean_data = np.array([1.0]).astype('float32')
-            variance_data = np.array([2.0]).astype('float32')
-
             fetch = exe.run(
+                main_program,
                 feed={
                     'indices': indices_data,
                     'values': values_data,
-                    sparse_batch_norm.bias.name: bias_data,
-                    sparse_batch_norm.weight.name: weight_data,
-                    sparse_batch_norm._mean.name: mean_data,
-                    sparse_batch_norm._variance.name: variance_data,
                 },
                 fetch_list=[out],
                 return_numpy=True,
@@ -219,9 +213,9 @@ class TestStatic(unittest.TestCase):
                 [
                     [
                         [
-                            [[0.0], [-1.6832708], [0.0], [0.1055764]],
-                            [[0.0], [0.0], [1.8944236], [0.0]],
-                            [[0.0], [0.0], [0.0], [3.683271]],
+                            [[0.0], [-1.3416353], [0.0], [-0.44721174]],
+                            [[0.0], [0.0], [0.44721198], [0.0]],
+                            [[0.0], [0.0], [0.0], [1.3416355]],
                         ]
                     ]
                 ]

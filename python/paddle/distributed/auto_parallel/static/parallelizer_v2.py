@@ -550,6 +550,7 @@ class Parallelizer:
                     "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
                     "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
                 )
+
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
                 "enable_send_recv_overlap": enable_send_recv_overlap,
@@ -559,6 +560,8 @@ class Parallelizer:
                 "pp_stage": get_pp_stage(self._dist_context, rank),
                 "vpp_degree": self._strategy.pipeline.vpp_degree,
                 "dist_context": self._dist_context,
+                "program_runtimes": self._strategy.pipeline.program_runtimes,
+                "memory_limit_times": self._strategy.pipeline.memory_limit_times,
                 "split_backward": self._strategy.pipeline.split_backward,
                 "grad_to_global_grad": grad_to_global_grad,
             }
