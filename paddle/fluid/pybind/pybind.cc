@@ -2952,10 +2952,10 @@ All parameter, weight, gradient are variables in Paddle.
       .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
       .value("PythonUserDefined",
              paddle::platform::TracerEventType::PythonUserDefined)
-      .value("DygraphKernelCall",
-             paddle::platform::TracerEventType::DygraphKernelCall)
-      .value("StaticKernelCall",
-             paddle::platform::TracerEventType::StaticKernelCall);
+      .value("DygraphKernelLaunch",
+             paddle::platform::TracerEventType::DygraphKernelLaunch)
+      .value("StaticKernelLaunch",
+             paddle::platform::TracerEventType::StaticKernelLaunch);
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);

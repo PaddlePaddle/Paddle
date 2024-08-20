@@ -1503,7 +1503,7 @@ class Layer:
 
             self._built = True
 
-        if in_profiler_mode() and not True:
+        if in_profiler_mode():
             with profiler.RecordEvent(
                 self.__class__.__name__, profiler.TracerEventType.Forward
             ):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -36,8 +37,8 @@ EVENT_TYPE_NAME_MAPPING = {
     TracerEventType.Communication: "Communication",
     TracerEventType.PythonOp: "PythonOp",
     TracerEventType.PythonUserDefined: "PythonUserDefined",
-    TracerEventType.DygraphKernelCall: "DygraphKernelCall",
-    TracerEventType.StaticKernelCall: "StaticKernelCall",
+    TracerEventType.DygraphKernelLaunch: "DygraphKernelLaunch",
+    TracerEventType.StaticKernelLaunch: "StaticKernelLaunch",
 }
 
 
@@ -66,18 +67,32 @@ class KernelRunMode(Enum):
 
 @dataclass
 class KernelInfo:
-    # name: str # TODO: Add name field to KernelInfo
+    name: str  # TODO: Add name field to KernelInfo
     run_mode: KernelRunMode
     duration: float
 
 
+# TODO(SigureMo): Split into multiple files by visitor type
 class KernelStatsVisitor(EventVisitor):
+    SKIP_KERNEL_NAMES = ["full", "full_int_array"]
+    KERNEL_NAME_REGEX = re.compile("(?P<kernel_name>.+) kernel launch")
+
     def __init__(self):
         self.kernels = []
 
+    def get_kernel_name(self, event_name):
+        if match_obj := self.KERNEL_NAME_REGEX.match(event_name):
+            return match_obj.group("kernel_name")
+        raise ValueError(f"Unexpected event name: {event_name}")
+
     def calc_kernel_count(self, mode):
         return len(
-            [kernel for kernel in self.kernels if kernel.run_mode == mode]
+            [
+                kernel
+                for kernel in self.kernels
+                if kernel.run_mode == mode
+                and kernel.name not in KernelStatsVisitor.SKIP_KERNEL_NAMES
+            ]
         )
 
     def calc_kernel_duration(self, mode):
@@ -86,17 +101,24 @@ class KernelStatsVisitor(EventVisitor):
                 kernel.duration
                 for kernel in self.kernels
                 if kernel.run_mode == mode
+                and kernel.name not in KernelStatsVisitor.SKIP_KERNEL_NAMES
             ]
         )
 
-    def visit_DygraphKernelCall(self, event_node):
+    def visit_DygraphKernelLaunch(self, event_node):
         duration = event_node.end_ns - event_node.start_ns
-        self.kernels.append(KernelInfo(KernelRunMode.Dygraph, duration))
+        kernel_name = self.get_kernel_name(event_node.name)
+        self.kernels.append(
+            KernelInfo(kernel_name, KernelRunMode.Dygraph, duration)
+        )
         self.generic_visit(event_node)
 
-    def visit_StaticKernelCall(self, event_node):
+    def visit_StaticKernelLaunch(self, event_node):
         duration = event_node.end_ns - event_node.start_ns
-        self.kernels.append(KernelInfo(KernelRunMode.Static, duration))
+        kernel_name = self.get_kernel_name(event_node.name)
+        self.kernels.append(
+            KernelInfo(kernel_name, KernelRunMode.Static, duration)
+        )
         self.generic_visit(event_node)
 
     def print_summary(self):
@@ -113,22 +135,34 @@ class KernelStatsVisitor(EventVisitor):
         percentage_static_kernel_duration = static_kernel_duration / (
             static_kernel_duration + dygraph_kernel_duration
         )
+        print(
+            [
+                (kernel.name, kernel.run_mode, kernel.duration)
+                for kernel in self.kernels
+            ]
+        )
         print(f"dygraph kernel count: {dygraph_kernel_count}")
         print(f"static kernel count: {static_kernel_count}")
         print(
-            f"percentage dygraph kernel count: {percentage_static_kernel_count:.2%}"
+            f"percentage static kernel count: {percentage_static_kernel_count:.2%}"
         )
         print(
-            f"dygraph kernel duration: {dygraph_kernel_duration / 1000:.2f} ms"
+            f"dygraph kernel duration: {dygraph_kernel_duration / 1000000:.2f} ms"
         )
-        print(f"static kernel duration: {static_kernel_duration / 1000:.2f} ms")
         print(
-            f"percentage dygraph kernel duration: {percentage_static_kernel_duration:.2%}"
+            f"static kernel duration: {static_kernel_duration / 1000000:.2f} ms"
+        )
+        print(
+            f"percentage static kernel duration: {percentage_static_kernel_duration:.2%}"
         )
 
 
 class SotStepProfilerGuard:
-    def __init__(self):
+    EXPORT_CHROME_TRACING_PATH = "./sot-chrome-tracing/"
+
+    def __init__(self, enable_kernel_stats=True, enable_chrome_tracing=False):
+        self.enable_kernel_stats = enable_kernel_stats
+        self.enable_chrome_tracing = enable_chrome_tracing
         self.started = False
 
     def _kernel_stats(self, prof):
@@ -137,7 +171,12 @@ class SotStepProfilerGuard:
         kernel_stats_visitor.print_summary()
 
     def on_trace_ready(self, prof):
-        self._kernel_stats(prof)
+        if self.enable_kernel_stats:
+            self._kernel_stats(prof)
+        if self.enable_chrome_tracing:
+            profiler.export_chrome_tracing(
+                SotStepProfilerGuard.EXPORT_CHROME_TRACING_PATH
+            )(prof)
 
     def start(self):
         if ENV_ENABLE_SOT_STEP_PROFILER.get():
