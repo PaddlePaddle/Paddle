@@ -112,11 +112,8 @@ class BeamSearchFunctor<phi::XPUContext, T> {
       low_level.push_back(low_offset);
       for (auto &item : items) {
         if (parent_idx) {
-          std::cout << "paridx_len: " << parent_idx->numel() << std::endl;
-          std::cout << "parent_idx_data: " << parent_idx_data << std::endl;
           parent_idx_data[low_offset] = static_cast<int>(low_level.size() - 1);
         }
-
         selected_ids_data[low_offset] = item.id;
         selected_scores_data[low_offset] = item.score;
         low_offset++;
