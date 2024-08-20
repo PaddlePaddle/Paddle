@@ -937,12 +937,40 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-// bool DeformableConvOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool DeformableConvOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const auto &filter_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const std::vector<symbol::DimExpr> &filter_shape =
+      filter_shape_or_data.shape();
+
+  const std::vector<int> &strides = details::GetVectorAttr<int>(op, "strides");
+  const std::vector<int> &paddings =
+      details::GetVectorAttr<int>(op, "paddings");
+  const std::vector<int> &dilations =
+      details::GetVectorAttr<int>(op, "dilations");
+
+  std::vector<symbol::DimExpr> output_shape = {x_shape[0], filter_shape[0]};
+  symbol::DimExpr conv_output_size, dkernel;
+  for (int i = 0; i < strides.size(); ++i) {
+    dkernel = dsymbol::DimExpr(dilations[i] * (filter_shape[i + 2] - 1) + 1);
+    conv_output_size =
+        (input_shape[i + 2] + symbol::DimExpr(2 * paddings[i]) - dkernel) /
+            symbol::DimExpr(strides[i]) +
+        symbol::DimExpr(1);
+    output_shape.emplace_back(conv_output_size);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+
+  return true;
+}
 
 // bool DetectionMapOpInferSymbolicShape(pir::Operation *op,
 //                                       pir::InferSymbolicShapeContext
