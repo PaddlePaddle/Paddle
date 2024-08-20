@@ -251,7 +251,7 @@ std::vector<symbol::DimExpr> GetSymShapeForInputValue(
   };
 
   std::vector<symbol::DimExpr> result_dim_exprs;
-  for (size_t i = 0; i < result_dims.size(); ++i) {
+  for (int i = 0; i < result_dims.size(); ++i) {
     result_dim_exprs.emplace_back(GetDimExpr(result_dims[i], i));
   }
   return result_dim_exprs;
