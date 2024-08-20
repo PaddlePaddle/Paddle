@@ -204,9 +204,9 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       reinterpret_cast<PyTypeObject *>(framework_tensor.ptr());
   framework_tensor
       .def("__array__",
-           [](phi::DenseTensor &self,
-              py::arg("dtype") = py::none(),
-              py::arg("copy") = py::none()) { return TensorToPyArray(self); })
+           [](phi::DenseTensor &self, py::arg("copy") = py::none()) {
+             return TensorToPyArray(self);
+           })
       .def("_ptr",
            [](const phi::DenseTensor &self) {
              return reinterpret_cast<uintptr_t>(self.data());
