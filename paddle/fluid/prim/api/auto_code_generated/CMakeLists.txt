@@ -116,11 +116,11 @@ execute_process(
 execute_process(
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
           ${tmp_eager_tensor_operants_cc_path} ${eager_tensor_operants_cc_path})
-execute_process(
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-          ${tmp_static_tensor_operants_h_path} ${static_tensor_operants_h_path})
-execute_process(
-  COMMAND
-    ${CMAKE_COMMAND} -E copy_if_different ${tmp_static_tensor_operants_cc_path}
-    ${static_tensor_operants_cc_path})
+# execute_process(
+#   COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#           ${tmp_static_tensor_operants_h_path} ${static_tensor_operants_h_path})
+# execute_process(
+#   COMMAND
+#     ${CMAKE_COMMAND} -E copy_if_different ${tmp_static_tensor_operants_cc_path}
+#     ${static_tensor_operants_cc_path})
 message("copy prim xxx_tensor_operants.tmp to xxx_tensor_operants")

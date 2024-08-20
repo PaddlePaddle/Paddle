@@ -20,14 +20,31 @@ namespace cinn::dialect {
 
 bool BroadcastOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  VLOG(1) << "start GetShapeOrDataForValue";
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  VLOG(1) << "end GetShapeOrDataForValue";
+
   const std::vector<int64_t> &shape =
       paddle::dialect::details::GetVectorAttr<int64_t>(op, "out_shape");
 
   const std::vector<symbol::DimExpr> &out_dims = [&] {
     std::vector<symbol::DimExpr> out_dims;
-    for (int64_t dim : shape) {
-      out_dims.emplace_back(dim);
+
+    for (auto i = 0; i < shape.size(); i++) {
+      int64_t dim = shape[i];
+      if (dim == -1) {
+        VLOG(1) << "dim == -1, i: " << i
+                << ", x_shape.size(): " << x_shape.size();
+        out_dims.emplace_back(x_shape[i]);
+      } else {
+        out_dims.emplace_back(dim);
+      }
     }
+
+    // for (int64_t dim : shape) {
+    //   out_dims.emplace_back(dim);
+    // }
     return out_dims;
   }();
 
