@@ -941,12 +941,14 @@ class UnsqueezeOpPattern
                              .dims());
 
       std::vector<int> output_shape;
+      const size_t output_rank = in_shape.size() + axis_vec.size();
 
-      for (size_t i = 0; i < in_shape.size(); ++i) {
-        output_shape.push_back(in_shape[i]);
+      for (size_t i = 0, input_index = 0; i < output_rank; ++i) {
         if (axis_set.count(i)) {
           output_shape.push_back(1);
+          continue;
         }
+        output_shape.push_back(in_shape[input_index++]);
       }
       ReplaceWithCinnReshapeOp(op, rewriter, output_shape);
       rewriter.EraseOp(op);
