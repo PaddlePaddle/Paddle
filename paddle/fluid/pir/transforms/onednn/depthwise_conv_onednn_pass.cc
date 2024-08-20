@@ -45,7 +45,6 @@ class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
                 {"padding_algorithm", pat.Attr("padding_algorithm")},
                 {"dilations", pat.Attr("dilations")},
                 {"groups", pat.Attr("groups")},
-                {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
                 {"data_format", pat.Attr("data_format")}});
 
     depthwise_conv({&pat.Tensor("input"), &pat.Tensor("filter")},
@@ -73,7 +72,7 @@ class DepthwiseConvPattern : public paddle::drr::DrrPatternBase {
                    {"padding_algorithm", pat.Attr("padding_algorithm")},
                    {"dilations", pat.Attr("dilations")},
                    {"groups", pat.Attr("groups")},
-                   {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                   {"mkldnn_data_type", res.StrAttr("float32")},
                    {"data_format", pat.Attr("data_format")},
                }});
 

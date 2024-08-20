@@ -73,8 +73,6 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
                       pat.Attr("padding_algorithm" + std::to_string(i))},
                      {"dilations", pat.Attr("dilations" + std::to_string(i))},
                      {"groups", pat.Attr("groups" + std::to_string(i))},
-                     {"mkldnn_data_type",
-                      pat.Attr("mkldnn_data_type" + std::to_string(i))},
                      {"data_format",
                       pat.Attr("data_format" + std::to_string(i))}})
               : pat.Op(
@@ -204,8 +202,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
                         {"groups", pat.Attr("groups" + std::to_string(i))},
                         {"data_format",
                          pat.Attr("data_format" + std::to_string(i))},
-                        {"mkldnn_data_type",
-                         pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"mkldnn_data_type", res.StrAttr("float32")},
                         {"fuse_activation", res.StrAttr(activation_name_)},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
@@ -329,8 +326,6 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
                       pat.Attr("padding_algorithm" + std::to_string(i))},
                      {"dilations", pat.Attr("dilations" + std::to_string(i))},
                      {"groups", pat.Attr("groups" + std::to_string(i))},
-                     {"mkldnn_data_type",
-                      pat.Attr("mkldnn_data_type" + std::to_string(i))},
                      {"data_format",
                       pat.Attr("data_format" + std::to_string(i))}})
               : pat.Op(
@@ -426,8 +421,7 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
                         {"groups", pat.Attr("groups" + std::to_string(i))},
                         {"data_format",
                          pat.Attr("data_format" + std::to_string(i))},
-                        {"mkldnn_data_type",
-                         pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"mkldnn_data_type", res.StrAttr("float32")},
                         {"fuse_activation", res.StrAttr("hard_sigmoid")},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
@@ -551,8 +545,6 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
                       pat.Attr("padding_algorithm" + std::to_string(i))},
                      {"dilations", pat.Attr("dilations" + std::to_string(i))},
                      {"groups", pat.Attr("groups" + std::to_string(i))},
-                     {"mkldnn_data_type",
-                      pat.Attr("mkldnn_data_type" + std::to_string(i))},
                      {"data_format",
                       pat.Attr("data_format" + std::to_string(i))}})
               : pat.Op(
@@ -654,8 +646,7 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
                         {"groups", pat.Attr("groups" + std::to_string(i))},
                         {"data_format",
                          pat.Attr("data_format" + std::to_string(i))},
-                        {"mkldnn_data_type",
-                         pat.Attr("mkldnn_data_type" + std::to_string(i))},
+                        {"mkldnn_data_type", res.StrAttr("float32")},
                         {"fuse_activation", gelu},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
@@ -780,8 +771,6 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                       pat.Attr("padding_algorithm" + std::to_string(i))},
                      {"dilations", pat.Attr("dilations" + std::to_string(i))},
                      {"groups", pat.Attr("groups" + std::to_string(i))},
-                     {"mkldnn_data_type",
-                      pat.Attr("mkldnn_data_type" + std::to_string(i))},
                      {"data_format",
                       pat.Attr("data_format" + std::to_string(i))}})
               : pat.Op(
@@ -893,8 +882,6 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                         {"groups", pat.Attr("groups" + std::to_string(i))},
                         {"data_format",
                          pat.Attr("data_format" + std::to_string(i))},
-                        {"mkldnn_data_type",
-                         pat.Attr("mkldnn_data_type" + std::to_string(i))},
                         {"fuse_activation", res.StrAttr("clip")},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
