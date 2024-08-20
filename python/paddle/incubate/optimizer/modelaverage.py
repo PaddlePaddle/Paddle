@@ -31,18 +31,10 @@ from paddle.optimizer import Optimizer
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
-    from typing_extensions import NotRequired, TypedDict
-
     from paddle import Tensor
     from paddle.base.framework import Program
-    from paddle.optimizer.lr import LRScheduler
-    from paddle.regularizer import WeightDecayRegularizer
+    from paddle.optimizer.optimizer import _ParameterConfig
     from paddle.static import Executor
-
-    class _ParameterConfig(TypedDict):
-        params: Sequence[Tensor]
-        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
-        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
 
 
 __all__ = []
