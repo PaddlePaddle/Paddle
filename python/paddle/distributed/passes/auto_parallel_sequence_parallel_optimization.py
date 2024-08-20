@@ -18,7 +18,7 @@ from paddle.distributed.auto_parallel.static.utils import (
     naive_set_dist_op_attr_for_program_by_mesh,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY
-from paddle.distributed.passes.pass_utils import AutoParallelStreamType
+from paddle.distributed.utils.stream_utils import ExecutionStreamType
 from paddle.static import default_main_program
 
 from .auto_parallel_sharding import _is_reshard_op
@@ -135,7 +135,7 @@ class SequenceParallelOptimizationPass(PassBase):
                 },
             )
             new_op.dist_attr.execution_stream = (
-                AutoParallelStreamType.CALC_STREAM.value
+                ExecutionStreamType.DefaultStream.value
             )
             block._remove_op(i, False)
             block._remove_op(i - 1, False)

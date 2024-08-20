@@ -22,7 +22,7 @@ from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
-from ...base.data_feeder import check_variable_and_dtype
+from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
     _current_expected_place,
     core,
@@ -842,6 +842,19 @@ def binary_cross_entropy_with_logits(
         )
 
     if in_dynamic_or_pir_mode():
+        if in_pir_mode():
+            check_type(
+                logit,
+                'logit',
+                paddle.pir.Value,
+                'binary_cross_entropy_with_logits',
+            )
+            check_type(
+                label,
+                'label',
+                paddle.pir.Value,
+                'binary_cross_entropy_with_logits',
+            )
         one = _C_ops.full(
             [1],
             1.0,

@@ -141,7 +141,7 @@ def split_program(program, op_indices):
     op_indices = [idx if idx >= 0 else idx + op_num for idx in op_indices]
 
     if op_indices[0] != 0:
-        op_indices = [0] + op_indices
+        op_indices = [0, *op_indices]
     if op_indices[-1] != op_num:
         op_indices.append(op_num)
 
@@ -1418,10 +1418,11 @@ def split_matmul_grad_to_matmul(
         assert (
             x_dims[0:2] == out_grad_dims[0:2]
         ), f"The first two dimensions of x must be equal to that of out_grad, but got x_dims:{x_dims} and out_grad_dims:{out_grad_dims}."
-    new_x_dims = [x_dims[0] * x_dims[1]] + list(x_dims[2:])
-    new_out_grad_dims = [out_grad_dims[0] * out_grad_dims[1]] + list(
-        out_grad_dims[2:]
-    )
+    new_x_dims = [x_dims[0] * x_dims[1], *list(x_dims[2:])]
+    new_out_grad_dims = [
+        out_grad_dims[0] * out_grad_dims[1],
+        *out_grad_dims[2:],
+    ]
 
     # NOTE(Ruibiao): Why insert reshape op here?
     # When the rank of input matrix is 3, MatmulGradKernel use reshape to fold the first two dimensions of x and out_grad (see FoldInitDims in matmul_grad_kernel_impl.h), and then calls blas.Matmul to calculate y_grad.
