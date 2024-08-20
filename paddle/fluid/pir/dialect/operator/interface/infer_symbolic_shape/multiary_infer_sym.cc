@@ -974,10 +974,28 @@ bool DetectionMapOpInferSymbolicShape(
             "Input(PosCount) is not null."));
   }
 
+  std::vector<symbol::DimExpr> output_pos_count = {
+      infer_context->GetNextSymName(), symbol::DimExpr(1)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_pos_count)});
+
+  std::vector<symbol::DimExpr> output_true_pos = {
+      infer_context->GetNextSymName(), symbol::DimExpr(2)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_true_pos)});
+
+  std::vector<symbol::DimExpr> output_false_pos = {
+      infer_context->GetNextSymName(), symbol::DimExpr(2)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_false_pos)});
+
   std::vector<symbol::DimExpr> m_ap_shape = {symbol::DimExpr(1)};
-  infer_context->SetShapeOrDataForValue(op->result(0), pos_count_shape_or_data);
-  infer_context->SetShapeOrDataForValue(op->result(1), true_pos_shape_or_data);
-  infer_context->SetShapeOrDataForValue(op->result(2), false_pos_shape_or_data);
   infer_context->SetShapeOrDataForValue(
       op->result(3),
       symbol::ShapeOrDataDimExprs{
