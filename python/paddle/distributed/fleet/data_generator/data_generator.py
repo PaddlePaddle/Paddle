@@ -14,7 +14,10 @@
 from __future__ import annotations
 
 import sys
-from typing import Sequence
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 __all__ = []
 
@@ -234,9 +237,7 @@ class DataGenerator:
 class MultiSlotStringDataGenerator(DataGenerator):
     def _gen_str(
         self,
-        line: (
-            Sequence[tuple[str, list[str]], ...] | list[tuple[str, list[str]]]
-        ),
+        line: Sequence[tuple[str, list[str]]],
     ) -> str:
         '''
         Further processing the output of the process() function rewritten by
@@ -284,7 +285,7 @@ class MultiSlotStringDataGenerator(DataGenerator):
 class MultiSlotDataGenerator(DataGenerator):
     def _gen_str(
         self,
-        line: Sequence[tuple[str, list[float]]] | list[tuple[str, list[float]]],
+        line: Sequence[tuple[str, list[float]]],
     ) -> str:
         '''
         Further processing the output of the process() function rewritten by
