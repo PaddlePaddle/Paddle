@@ -1,6 +1,7 @@
 httpx
-numpy>=1.13
-protobuf>=3.20.2 
+numpy>=1.13 ; platform_system != "Windows"
+numpy>=1.13,<2.1 ; platform_system == "Windows"
+protobuf>=3.20.2
 Pillow
 decorator
 astor
