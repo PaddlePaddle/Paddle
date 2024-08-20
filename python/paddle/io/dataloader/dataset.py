@@ -66,29 +66,34 @@ class Dataset(Generic[_T]):
             >>> import paddle
             >>> from paddle.io import Dataset
 
-            >>> # define a fixed dataset
-            >>> class FixedDataset(Dataset):
+            >>> # define a random dataset
+            >>> class RandomDataset(Dataset):
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
             ...     def __getitem__(self, idx):
-            ...         image = paddle.full([5], 0.5, dtype='float32')
-            ...         label = paddle.full([1], idx % 9, dtype='int64')
+            ...         image = paddle.randn([784]).astype('float32')
+            ...         label = paddle.randint(0, 9, (1, )).astype('int64')
             ...         return image, label
             ...
             ...     def __len__(self):
             ...         return self.num_samples
             ...
-            >>> dataset = FixedDataset(2)
+            >>> dataset = RandomDataset(10)
             >>> for i in range(len(dataset)):
             ...     image, label = dataset[i]
             ...     # do something
-            ...     print(image, label)
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.50000000, 0.50000000, 0.50000000, 0.50000000, 0.50000000]) Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True, [0])
-            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.50000000, 0.50000000, 0.50000000, 0.50000000, 0.50000000]) Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,  [1])
-
+            ...     print(f"Image shape: {image.shape}, Label: {label.item()}")
+            Image shape: [784], Label: 2
+            Image shape: [784], Label: 4
+            Image shape: [784], Label: 4
+            Image shape: [784], Label: 7
+            Image shape: [784], Label: 3
+            Image shape: [784], Label: 1
+            Image shape: [784], Label: 0
+            Image shape: [784], Label: 1
+            Image shape: [784], Label: 7
+            Image shape: [784], Label: 4
     """
 
     def __init__(self) -> None:
