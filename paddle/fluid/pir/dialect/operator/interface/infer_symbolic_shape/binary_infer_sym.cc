@@ -214,47 +214,33 @@ bool BmmOpInferSymbolicShape(pir::Operation *op,
   const auto &y_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
-  const std::vector<symbol::DimExpr> &y_dims = y_shape_or_data.shape();
-  std::size_t x_ndims = x_dims.size();
-  std::size_t y_ndims = y_dims.size();
+  const std::vector<symbol::DimExpr> &x_shapes = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &y_shapes = y_shape_or_data.shape();
+  std::size_t x_size = x_shapes.size();
+  std::size_t y_size = y_shapes.size();
 
   PADDLE_ENFORCE_EQ(
-      x_ndims,
+      x_size,
       3,
       common::errors::InvalidArgument("Input(X) of BmmOp must be 3-dimensional "
                                       "in BmmOp, but received X's shape: [%d].",
-                                      x_ndims));
+                                      x_size));
   PADDLE_ENFORCE_EQ(
-      y_ndims,
+      y_size,
       3,
       common::errors::InvalidArgument("Input(Y) of BmmOp must be 3-dimensional "
                                       "in BmmOp, but received Y's shape: [%d].",
-                                      y_ndims));
+                                      y_size));
 
-  auto cal_shape_fn = [](const symbol::DimExpr &x,
-                         const symbol::DimExpr &y,
-                         const std::string &error_str) -> symbol::DimExpr {
-    if (!x.Has<std::int64_t>()) {
-      return y;
-    } else if (!y.Has<std::int64_t>()) {
-      return x;
-    }
-    PADDLE_ENFORCE_EQ(x, y, common::errors::InvalidArgument(error_str, x, y));
-    return x;
-  };
+  infer_context->AddEqualCstr(const symbol::DimExpr &x_shapes[2],
+                              const symbol::DimExpr &y_shapes[1]);
+  infer_context->AddEqualCstr(const symbol::DimExpr &x_shapes[0],
+                              const symbol::DimExpr &y_shapes[0]);
 
-  cal_shape_fn(x_dims[2],
-               y_dims[1],
-               "Input(X)'s width must be equal with Input(Y)'s height in "
-               "BmmOp, but receive X's width: [%d], Y's height: [%d].");
-  symbol::DimExpr batch_size = cal_shape_fn(
-      x_dims[0],
-      y_dims[0],
-      "Input(X) and Input(Y) must have the same batch size in BmmOp, but "
-      "received X's batch size: [%d], Y's batch size [%d]");
-  symbol::DimExpr out_height = x_dims[1];
-  symbol::DimExpr out_width = y_dims[2];
+  symbol::DimExpr batch_size = x_shapes[0];
+
+  symbol::DimExpr out_height = x_shapes[1];
+  symbol::DimExpr out_width = y_shapes[2];
 
   std::vector<symbol::DimExpr> out_dims = {batch_size, out_height, out_width};
 
