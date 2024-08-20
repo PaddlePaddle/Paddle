@@ -217,6 +217,22 @@ def stack_net3(x):
     return paddle.stack(x, axis=0)
 
 
+def scale_net(x):
+    return paddle.scale(x, scale=-2.3)
+
+
+def square_net(x):
+    return paddle.square(x)
+
+
+def transpose_net(x):
+    return paddle.transpose(x, perm=[0, 3, 1, 2])
+
+
+def swiglu_net(x, y):
+    return paddle.incubate.nn.functional.swiglu(x, y)
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -2212,6 +2228,58 @@ class TestPrimStackWithGrad6(TestPrimConcatWithGrad5):
         self.net = stack_net3
         self.enable_cinn = False
         self.tol = 1e-6
+
+
+class TestPrimScaleWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [20, 30, 70]
+        self.init_x_shape = [None, None, 70]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = scale_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSquareWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [20, 30, 70]
+        self.init_x_shape = [None, None, 70]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = square_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimTransposeWithGrad(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [20, 30, 50, 70]
+        self.init_x_shape = [None, None, None, 70]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = transpose_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSwigluWithGrad(TestPrimBaseOneGradTwoInputs):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.y_shape = [30, 200, 40]
+        self.init_y_shape = [None, None, 40]
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.y = np.random.random(self.y_shape).astype(self.dtype)
+        self.net = swiglu_net
+        self.enable_cinn = False
+        self.tol = 1e-5
+        self.y_without_grad = True
 
 
 if __name__ == "__main__":
