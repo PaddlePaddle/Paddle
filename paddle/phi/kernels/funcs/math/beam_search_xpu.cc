@@ -62,7 +62,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
                   bool is_accumulated) {
     auto abs_lod = phi::ToAbsOffset(scores->lod());
     auto &high_level = abs_lod[level];
-    std::cout << "Hit here1\n";
+
     auto items = SelectTopBeamSizeItems(pre_ids,
                                         pre_scores,
                                         ids,
@@ -72,7 +72,6 @@ class BeamSearchFunctor<phi::XPUContext, T> {
                                         end_id,
                                         is_accumulated,
                                         ids->place());
-    std::cout << "Hit here2\n";
     auto selected_items = ToMap(items, high_level.back());
     if (FLAGS_v == 3) {
       VLOG(3) << "selected_items:";
@@ -83,7 +82,7 @@ class BeamSearchFunctor<phi::XPUContext, T> {
         }
       }
     }
-    std::cout << "Hit here3\n";
+
     PruneEndBeams(
         pre_ids, abs_lod, &selected_items, level, end_id, ids->place());
     // calculate the output tensor's height
@@ -96,7 +95,6 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     auto dims = common::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     selected_ids->Resize(dims);
-    std::cout << "Hit here4\n";
     auto *selected_ids_data = context.template HostAlloc<int64_t>(selected_ids);
     selected_scores->Resize(dims);
     auto *selected_scores_data =
@@ -104,7 +102,6 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     if (parent_idx != nullptr) {
       parent_idx->Resize({static_cast<int64_t>(num_instances)});
     }
-    std::cout << "Hit here5\n";
     auto *parent_idx_data =
         parent_idx ? context.template HostAlloc<int>(parent_idx) : nullptr;
 
@@ -112,24 +109,19 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     std::vector<size_t> low_level;
     size_t low_offset = 0;
     for (auto &items : selected_items) {
-      std::cout << "Hit here5-1\n";
       low_level.push_back(low_offset);
       for (auto &item : items) {
-        std::cout << "Hit here5-2\n";
         if (parent_idx) {
-          std::cout << "Hit here5-2-2\n";
           std::cout << "paridx_len: " << parent_idx->numel() << std::endl;
           std::cout << "parent_idx_data: " << parent_idx_data << std::endl;
           parent_idx_data[low_offset] = static_cast<int>(low_level.size() - 1);
         }
-        std::cout << "Hit here5-3\n";
+
         selected_ids_data[low_offset] = item.id;
         selected_scores_data[low_offset] = item.score;
-        std::cout << "Hit here5-4\n";
         low_offset++;
       }
     }
-    std::cout << "Hit here6\n";
     low_level.push_back(low_offset);
 
     // fill lod
@@ -144,7 +136,6 @@ class BeamSearchFunctor<phi::XPUContext, T> {
     }
     selected_ids->set_lod(lod);
     selected_scores->set_lod(lod);
-    std::cout << "Hit here7\n";
   }
 
   /*
