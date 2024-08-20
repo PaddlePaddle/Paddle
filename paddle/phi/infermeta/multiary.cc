@@ -1953,6 +1953,9 @@ void DetectionMapInferMeta(const MetaTensor& detect_res,
             "Input(PosCount) is not null."));
   }
 
+  accum_pos_count->set_dims({-1, 1});
+  accum_true_pos->set_dims({-1, 2});
+  accum_false_pos->set_dims({-1, 2});
   m_ap->set_dims(common::make_ddim({1}));
 }
 
