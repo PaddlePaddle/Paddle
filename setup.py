@@ -1090,27 +1090,23 @@ def get_paddle_extra_install_requirements():
             ]
 
             version_str = get_tensorrt_version()
-            version_without_prefix = version_str.replace("tensorrt==", "")
+            if not version_str:
+                return paddle_cuda_requires, []
+
+            version_main = ".".join(version_str.split(".")[:3])
 
             matched_package = None
             for (
                 paddle_tensorrt_requires
             ) in PADDLE_TENSORRT_INSTALL_REQUIREMENTS:
-                paddle_tensorrt_requires_without_prefix = (
-                    paddle_tensorrt_requires.replace("tensorrt==", "")
+                paddle_tensorrt_version = paddle_tensorrt_requires.split("==")[
+                    1
+                ]
+                paddle_tensorrt_main = ".".join(
+                    paddle_tensorrt_version.split(".")[:3]
                 )
 
-                if (
-                    version_without_prefix
-                    == paddle_tensorrt_requires_without_prefix
-                ):
-                    matched_package = paddle_tensorrt_requires
-                    break
-
-                if (
-                    version_without_prefix.split('.post')[0]
-                    == paddle_tensorrt_requires_without_prefix.split('.post')[0]
-                ):
+                if version_main == paddle_tensorrt_main:
                     matched_package = paddle_tensorrt_requires
                     break
 
@@ -1118,8 +1114,10 @@ def get_paddle_extra_install_requirements():
                 paddle_tensorrt_requires = [matched_package]
             else:
                 print(
-                    f"No exact match found for TensorRT Version: {version_str}. Please check the predefined versions."
+                    f"No exact match found for TensorRT Version: {version_str}. We currently support TensorRT versions 8.5.3.1, 8.6.0, and 8.6.1."
                 )
+                return paddle_cuda_requires, []
+
     return paddle_cuda_requires, paddle_tensorrt_requires
 
 
