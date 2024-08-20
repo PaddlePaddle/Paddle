@@ -221,6 +221,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_simple_net_ep)
   set_tests_properties(test_semi_auto_parallel_simple_net_ep
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+  py_test_modules(test_semi_auto_parallel_moe_ep MODULES
+                  test_semi_auto_parallel_moe_ep)
+  set_tests_properties(test_semi_auto_parallel_moe_ep
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 500)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
