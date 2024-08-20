@@ -108,7 +108,7 @@ class LinearQuanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             if len(self._scales.shape) > 1:
-                if len(self._zero_point.shape) > 1:
+                if self._zero_point.sum() != 0:
                     quant_weight = paddle.clip(
                         paddle.round(input.cast('float32') / self._scales)
                         + self._zero_point,
@@ -233,7 +233,7 @@ class LinearDequanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             if len(self._scales.shape) > 1:
-                if len(self._zero_point.shape) > 1:
+                if self._zero_point.sum() != 0:
                     quant_dequant_weight = (
                         input.cast('float32') - self._zero_point
                     ) * self._scales
