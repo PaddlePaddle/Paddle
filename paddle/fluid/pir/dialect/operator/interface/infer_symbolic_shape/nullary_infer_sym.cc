@@ -211,11 +211,11 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
   if (op->operand_source(0)) {
     // num_rows is operand
     const auto &num_rows_shape_or_data =
-        infer_context->GetGetShapeOrDataForValue(op->operand_source(0));
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
     if (num_rows_shape_or_data.data().has_value()) {
       num_rows_dim = num_rows_shape_or_data.data().value()[0];
     } else {
-      num_rows_dim = infer_context->GetNextDimExpr();
+      num_rows_dim = infer_context->GetNextSymName();
     }
   } else if (op->HasAttribute("num_rows")) {
     // num_rows is attribute
@@ -228,12 +228,12 @@ bool EyeOpInferSymbolicShape(pir::Operation *op,
   if (op->operand_source(1)) {
     // num_columns is operand
     const auto &num_columns_shape_or_data =
-        infer_context->GetGetShapeOrDataForValue(op->operand_source(1));
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
     if (num_columns_shape_or_data.data().has_value()) {
       symbol::DimExpr num_columns_dim =
           num_columns_shape_or_data.data().value()[0];
     } else {
-      symbol::DimExpr num_columns_dim = infer_context->GetNextDimExpr();
+      symbol::DimExpr num_columns_dim = infer_context->GetNextSymName();
     }
   } else if (op->HasAttribute("num_columns")) {
     // num_columns is attribute
