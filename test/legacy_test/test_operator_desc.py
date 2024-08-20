@@ -35,7 +35,7 @@ class TestOperator(unittest.TestCase):
             self.assertFail()
         except ValueError as a_err:
             self.assertEqual(
-                str(a_err), "Operator \"no_such_op\" has not been registered."
+                str(a_err), 'Operator "no_such_op" has not been registered.'
             )
 
     def test_op_desc_creation(self):

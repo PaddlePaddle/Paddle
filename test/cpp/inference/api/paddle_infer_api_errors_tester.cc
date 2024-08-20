@@ -40,9 +40,18 @@ struct FakeException {
 TEST(Status, pd_exception) {
   FakeException e;
   Status status = get_status([&]() { e.pd_exception(1); });
-  CHECK(!status.ok());
-  CHECK(status == status);
-  CHECK(!(status != status));
+  PADDLE_ENFORCE_EQ(
+      status.ok(),
+      false,
+      phi::errors::PreconditionNotMet("Status should not be OK."));
+  PADDLE_ENFORCE_EQ(
+      status == status,
+      true,
+      phi::errors::PreconditionNotMet("Status should be equal to itself."));
+  PADDLE_ENFORCE_EQ(status != status,
+                    false,
+                    phi::errors::PreconditionNotMet(
+                        "Status should not be different from itself."));
   PADDLE_ENFORCE_EQ(
       status.code(),
       common::ErrorCode::INVALID_ARGUMENT + 1,
@@ -55,7 +64,10 @@ TEST(Status, basic_exception) {
   FakeException e;
   Status status;
   status = get_status([&]() { e.base_exception(); });
-  CHECK(!status.ok());
+  PADDLE_ENFORCE_EQ(
+      status.ok(),
+      false,
+      phi::errors::PreconditionNotMet("Status should not be OK."));
   LOG(INFO) << status.error_message();
 }
 
@@ -63,7 +75,9 @@ TEST(Status, no_exception) {
   FakeException e;
   Status status;
   status = get_status([&]() { e.no_exception(); });
-  CHECK(status.ok());
+  PADDLE_ENFORCE_EQ(status.ok(),
+                    true,
+                    phi::errors::PreconditionNotMet("Status should be OK."));
 }
 
 TEST(Status, copy) {

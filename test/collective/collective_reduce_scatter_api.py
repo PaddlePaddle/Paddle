@@ -39,26 +39,6 @@ class TestCollectiveReduceScatterAPI(TestCollectiveAPIRunnerBase):
             paddle.distributed.reduce_scatter(toutdata, tindata)
             return [toutdata]
 
-    def get_model_new(
-        self,
-        main_prog,
-        startup_program,
-        rank,
-        dtype='float32',
-        reduce_type=None,
-    ):
-        with base.program_guard(main_prog, startup_program):
-            tindata = paddle.static.data(
-                name="tindata", shape=[10, 1000], dtype=dtype
-            )
-            tindata.desc.set_need_check_feed(False)
-            # toutdata = layers.fill_constant(shape=[5, 1000], dtype=dtype, value=1.0)
-            toutdata = paddle.static.data(
-                name="toutdata", shape=[5, 1000], dtype=dtype
-            )
-            paddle.distributed.reduce_scatter(toutdata, tindata)
-            return [toutdata]
-
 
 if __name__ == "__main__":
     runtime_main(TestCollectiveReduceScatterAPI, "reduce_scatter")

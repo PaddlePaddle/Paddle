@@ -22,7 +22,7 @@ from op_test import OpTest
 import paddle
 from paddle.base import core
 
-sys.path.append("../../rnn")
+sys.path.append("../rnn")
 from convert import get_params_for_net
 from rnn_numpy import SimpleRNN
 
