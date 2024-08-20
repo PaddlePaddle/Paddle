@@ -19,14 +19,16 @@ import paddle
 from paddle.base import framework, unique_name
 from paddle.base.dygraph import base as imperative_base
 from paddle.base.framework import Variable
-from paddle.base.layer_helper import LayerHelper, LayerHelperBase
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_pir_mode
 from paddle.optimizer import Optimizer
 from paddle.pir.core import create_parameter
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle.base.framework import Operator, Program
+    from paddle.base.framework import Operator
+    from paddle.base.layer_helper import LayerHelperBase
+    from paddle.static import Program
 
 
 __all__ = []
