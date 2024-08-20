@@ -378,23 +378,21 @@ bool ConvTransposeOpInferSymbolicShape(
   auto filter_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
-  const auto &attributes = op->attributes();
-  std::vector<int> paddings =
-      attributes.at("paddings").dyn_cast<pir::Int32Attribute>().data();
-  std::vector<int> dilations =
-      attributes.at("dilations").dyn_cast<pir::Int32Attribute>().data();
   std::vector<int> strides =
-      attributes.at("strides").dyn_cast<pir::Int32Attribute>().data();
+      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
+  std::vector<int> paddings =
+      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
   std::vector<int> output_padding =
-      attributes.at("output_padding").dyn_cast<pir::Int32Attribute>().data();
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_padding");
   std::vector<int> output_size =
-      attributes.at("output_size").dyn_cast<pir::Int32Attribute>().data();
-  std::string padding_algorithm = attributes.at("padding_algorithm")
-                                      .dyn_cast<pir::StrAttribute>()
-                                      .AsString();
-  int groups = attributes.at("groups").dyn_cast<pir::Int32Attribute>().data();
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+  std::string padding_algorithm =
+      op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
+  int groups = op->attribute<pir::Int32Attribute>("groups").data();
+  std::vector<int> dilations =
+      paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
   std::string data_format =
-      attributes.at("data_format").dyn_cast<pir::StrAttribute>().AsString();
+      op->attribute<pir::StrAttribute>("data_format").AsString();
 
   std::vector<symbol::DimExpr> new_paddings;
   for (const auto &i : paddings) {
@@ -476,11 +474,11 @@ bool ConvTransposeOpInferSymbolicShape(
 
   const std::vector<symbol::DimExpr> filter_data_dims = [&]() {
     if (channel_last && FLAGS_manually_trans_conv_filter) {
-      return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 1,
-                                          filter_s_or_d.shape().end() - 1);
+      return std::vector<symbol::DimExpr>(filter_shape.begin() + 1,
+                                          filter_shape.end() - 1);
     } else {
-      return std::vector<symbol::DimExpr>(filter_s_or_d.shape().begin() + 2,
-                                          filter_s_or_d.shape().end());
+      return std::vector<symbol::DimExpr>(filter_shape.begin() + 2,
+                                          filter_shape.end());
     }
   }();
   std::vector<symbol::DimExpr> ksize = filter_data_dims;
