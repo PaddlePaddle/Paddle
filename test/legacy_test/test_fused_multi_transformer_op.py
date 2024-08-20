@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 
@@ -1558,12 +1557,6 @@ class TestFusedMultiTransformerOp(OpTest):
             np.testing.assert_allclose(
                 final_out_ref, final_out, rtol=self.rtol, atol=self.atol
             )
-
-
-class TestFusedMultiTransformerOpWithNewComm(TestFusedMultiTransformerOp):
-    def with_new_comm(self):
-        self.remove_padding = True
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
 
 @unittest.skipIf(

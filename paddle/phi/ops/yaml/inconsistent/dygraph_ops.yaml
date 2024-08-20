@@ -37,6 +37,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : AssignInferSpmd
   kernel :
     func : assign
   backward : assign_grad
