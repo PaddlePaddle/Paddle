@@ -1230,11 +1230,12 @@ bool FusedMultiTransformerOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
-  const auto &qkv_data_list =
+  const auto &qkv_weight_data_list =
       infer_context->GetShapeOrDataForValue(op->operand_source(3))
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-  const std::vector<symbol::DimExpr> &y_shape = qkv_data_list.at(0).shape();
+  const std::vector<symbol::DimExpr> &y_shape =
+      qkv_weight_data_list.at(0).shape();
 
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
@@ -1261,7 +1262,7 @@ bool FusedMultiTransformerOpInferSymbolicShape(
     infer_context->AddEqualCstr(x_shape[2], y_shape[0]);
   }
   const auto &cache_kv_data_list =
-      infer_context->GetShapeOrDataForValue(op->operand_source(4))
+      infer_context->GetShapeOrDataForValue(op->operand_source(5))
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
   if (cache_kv_data_list.size() > 0) {
