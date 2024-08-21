@@ -508,7 +508,7 @@ bool Conv2dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // const auto &output_shape_or_data =
   //     infer_context->GetShapeOrDataForValue(op->operand_source(2));
-  const std::vector<int> output_size;
+  const std::vector<int> &output_size;
   // if (!output_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
   //   output_size = output_shape_or_data.shape();
   // } else {
