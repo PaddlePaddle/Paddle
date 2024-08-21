@@ -502,6 +502,7 @@ endif()
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
     test_affine_channel_op
+    test_slice_op
     test_scatter_op
     test_concat_op
     test_elementwise_add_op
@@ -885,7 +886,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool_max_op PROPERTIES TIMEOUT 500)
-set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
@@ -1028,7 +1028,6 @@ set(TEST_CINN_OPS
     test_batch_norm_op_prim_nchw
     test_batch_norm_op_prim_nhwc
     test_dropout_op
-    test_group_norm_op
     test_tile_op
     test_sum_op
     test_squeeze2_op
@@ -1040,7 +1039,11 @@ set(TEST_CINN_OPS
     test_pad_op
     test_pool2d_op
     test_erf_op
-    test_cumsum_op)
+    test_arg_min_max_op
+    test_slice_op
+    test_softmax_op
+    test_cumsum_op
+    test_where_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1066,6 +1069,7 @@ set_tests_properties(
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
+    test_arg_min_max_op
     test_adagrad_op
     test_reduce_op
     test_adamw_op
@@ -1103,6 +1107,7 @@ set(STATIC_BUILD_TESTS
     test_random_routing_op
     test_searchsorted_op
     test_sparse_momentum_op
+    test_sparse_norm_op
     test_sgd_op_bf16
     test_softmax_mask_fuse_upper_triangle_op
     test_sparse_pooling_op
@@ -1256,3 +1261,4 @@ set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
+set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)

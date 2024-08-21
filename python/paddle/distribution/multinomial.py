@@ -159,12 +159,7 @@ class Multinomial(distribution.Distribution):
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
 
-        samples = self._categorical.sample(
-            [
-                self.total_count,
-            ]
-            + list(shape)
-        )
+        samples = self._categorical.sample([self.total_count, *list(shape)])
         return (
             paddle.nn.functional.one_hot(samples, self.probs.shape[-1])
             .cast(self.probs.dtype)

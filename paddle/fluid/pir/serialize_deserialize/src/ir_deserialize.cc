@@ -218,8 +218,11 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   Json& opresults_json = op_json->at(OPRESULTS);
   std::vector<pir::Type> output_types;
   std::vector<int64_t> output_ids;
+  int64_t value_id_ = -1;
   for (auto& opresult_json : opresults_json) {
-    int64_t value_id_ = opresult_json.at(VALUE_ID).template get<int64_t>();
+    if (opresult_json.contains(VALUE_ID)) {
+      value_id_ = opresult_json.at(VALUE_ID).template get<int64_t>();
+    }
     output_ids.push_back(value_id_);
     output_types.push_back(ReadType(&(opresult_json.at(TYPE_TYPE))));
     VLOG(6) << "Finish Read value " << value_id_ << ".";
@@ -271,7 +274,9 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
           output_ids.size()));
 
   for (uint32_t i = 0; i < op->num_results(); i++) {
-    id_value_map[output_ids[i]] = op->result(i);
+    if (output_ids[i] != -1) {
+      id_value_map[output_ids[i]] = op->result(i);
+    }
   }
 
   VLOG(4) << "Finish Read Operation " << op->name() << ".";
@@ -333,7 +338,8 @@ pir::Attribute ProgramReader::ReadAttribute(Json* attr_json) {
 pir::Type ProgramReader::ReadType(Json* type_json) {
   VLOG(6) << "Begin Read Type. ";
   auto type_name = type_json->at(ID).template get<std::string>();
-  if (patch_builder && patch_builder->HasOpPatch(type_name)) {
+  VLOG(8) << "Check patches for: " << type_name;
+  if (patch_builder && patch_builder->HasTypePatch(type_name)) {
     VLOG(8) << type_name << " brefore: " << *type_json;
     Json type_patch = patch_builder->GetJsonTypePatch(type_name);
     patch_builder->ApplyTypePatches(type_name, type_json, type_patch);

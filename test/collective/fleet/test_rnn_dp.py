@@ -30,7 +30,7 @@ class RNNEncoder(nn.Layer):
         direction="forward",
         dropout=0.0,
         pooling_type=None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self._input_size = input_size
@@ -44,7 +44,7 @@ class RNNEncoder(nn.Layer):
             num_layers=num_layers,
             direction=direction,
             dropout=dropout,
-            **kwargs
+            **kwargs,
         )
 
     def get_input_dim(self):

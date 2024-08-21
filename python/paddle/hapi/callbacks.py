@@ -70,16 +70,16 @@ def config_callbacks(
         _cbks if isinstance(_cbks, (list, tuple)) else [_cbks]
     )
     if not any(isinstance(k, ProgBarLogger) for k in cbks) and verbose:
-        cbks = [ProgBarLogger(log_freq, verbose=verbose)] + cbks
+        cbks = [ProgBarLogger(log_freq, verbose=verbose), *cbks]
 
     if not any(isinstance(k, ModelCheckpoint) for k in cbks):
-        cbks = cbks + [ModelCheckpoint(save_freq, save_dir)]
+        cbks = [*cbks, ModelCheckpoint(save_freq, save_dir)]
 
     for k in cbks:
         if isinstance(k, EarlyStopping):
             k.save_dir = save_dir
     if not any(isinstance(k, LRScheduler) for k in cbks):
-        cbks = cbks + [LRScheduler()]
+        cbks = [*cbks, LRScheduler()]
 
     cbk_list = CallbackList(cbks)
     cbk_list.set_model(model)
