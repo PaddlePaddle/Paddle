@@ -345,8 +345,9 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(out_s_or_d)};
   }();
-
-  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  vlog(3) << "Conv2dOpInferSymbolicShape: " << shape_data;
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{shape_data});
 
   return true;
 }
