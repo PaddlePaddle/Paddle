@@ -37,7 +37,6 @@ class TestCollectiveReduceScatterAPI(test_base.TestDistBase):
                 "reduce_scatter",
                 "nccl",
                 dtype=dtype,
-                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_reduce_scatter_nccl_dygraph(self):
