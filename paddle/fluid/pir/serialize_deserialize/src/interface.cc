@@ -69,11 +69,12 @@ void WriteModule(const pir::Program& program,
 
 bool ReadModule(const std::string& file_path,
                 pir::Program* program,
-                uint64_t pir_version) {
+                int64_t pir_version) {
   std::ifstream f(file_path);
   Json data = Json::parse(f);
-  if (!pir_version) {
+  if (pir_version < 0) {
     pir_version = GetPirVersion();
+    VLOG(6) << "pir_version is null, get pir_version: " << pir_version;
   }
 
   PatchBuilder builder(pir_version);
