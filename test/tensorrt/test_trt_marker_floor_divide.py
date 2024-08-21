@@ -32,12 +32,12 @@ class TestFloorDivideTRTPattern(PassTest):
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(name='x', shape=[4], dtype='float32')
                 y = paddle.static.data(name='y', shape=[4], dtype='float32')
-                floor_divide_out =  paddle.floor_divide(x, y)
+                floor_divide_out = paddle.floor_divide(x, y)
                 out = paddle.assign(floor_divide_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
                     "x": np.array([2, 3, 8, 7]).astype("float32"),
-                    "y": np.array([1,5,3,3]).astype("float32"),
+                    "y": np.array([1, 5, 3, 3]).astype("float32"),
                 }
                 self.fetch_list = [out]
                 self.valid_op_map = {

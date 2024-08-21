@@ -32,7 +32,7 @@ class TestElementWisePowTRTPattern(PassTest):
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(name='x', shape=[3], dtype='float32')
                 y = paddle.static.data(name='y', shape=[1], dtype='float32')
-                pow_out =  paddle.pow(x, y)
+                pow_out = paddle.pow(x, y)
                 out = paddle.assign(pow_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {

@@ -32,7 +32,7 @@ class TestRemainderTRTPattern(PassTest):
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(name='x', shape=[4], dtype='float32')
                 y = paddle.static.data(name='y', shape=[4], dtype='float32')
-                remainder_out =  paddle.remainder(x, y)
+                remainder_out = paddle.remainder(x, y)
                 out = paddle.assign(remainder_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {

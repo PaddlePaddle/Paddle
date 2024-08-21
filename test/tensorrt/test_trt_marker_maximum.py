@@ -30,9 +30,9 @@ class TestMaximumTRTPattern(PassTest):
             main_prog = paddle.static.Program()
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
-                x = paddle.static.data(name='x', shape=[2,2], dtype='int32')
-                y = paddle.static.data(name='y', shape=[2,2], dtype='int32')
-                maximum_out =  paddle.maximum(x, y)
+                x = paddle.static.data(name='x', shape=[2, 2], dtype='int32')
+                y = paddle.static.data(name='y', shape=[2, 2], dtype='int32')
+                maximum_out = paddle.maximum(x, y)
                 out = paddle.assign(maximum_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {

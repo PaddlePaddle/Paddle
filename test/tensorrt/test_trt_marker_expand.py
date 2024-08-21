@@ -31,7 +31,7 @@ class TestExpandTRTPattern(PassTest):
             start_prog = paddle.static.Program()
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(name="x", shape=[3], dtype="float32")
-                expand_out =  paddle.expand(x, shape=[2, 3])
+                expand_out = paddle.expand(x, shape=[2, 3])
                 out = paddle.assign(expand_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {

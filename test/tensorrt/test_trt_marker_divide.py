@@ -32,7 +32,7 @@ class TestDivideTRTPattern(PassTest):
             with paddle.pir.core.program_guard(main_prog, start_prog):
                 x = paddle.static.data(name='x', shape=[3], dtype='float32')
                 y = paddle.static.data(name='y', shape=[3], dtype='float32')
-                divide_out =  paddle.divide(x, y)
+                divide_out = paddle.divide(x, y)
                 out = paddle.assign(divide_out)
                 self.pass_attr_list = [{'trt_op_marker_pass': {}}]
                 self.feeds = {
