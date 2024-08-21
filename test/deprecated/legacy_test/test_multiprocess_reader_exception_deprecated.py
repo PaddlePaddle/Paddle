@@ -114,7 +114,7 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
 
     def test_main(self):
         for p in self.places():
-            for iterable in [True]:
+            for iterable in [False]:
                 try:
                     with base.scope_guard(base.Scope()):
                         self.main_impl(p, iterable)

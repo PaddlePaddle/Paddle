@@ -114,7 +114,7 @@ class TestCaseBase(unittest.TestCase):
     def test_main(self):
         reader = random_reader(self.sample_num)
         for use_sample_generator in [False, True]:
-            for iterable in [True]:
+            for iterable in [False]:
                 for drop_last in [False, True]:
                     with base.program_guard(base.Program(), base.Program()):
                         self.run_main(
@@ -144,4 +144,5 @@ class TestCase3(TestCaseBase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
