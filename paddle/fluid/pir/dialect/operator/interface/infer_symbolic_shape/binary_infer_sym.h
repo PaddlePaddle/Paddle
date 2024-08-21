@@ -91,10 +91,10 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unpool3d)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(YoloBox)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(YoloBoxHead)
 
+using paddle::dialect::IscloseOpInferSymbolicShape;
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {
 using paddle::dialect::convtransposefunction;
-using paddle::dialect::IscloseOpInferSymbolicShape;
 
 }  // namespace cinn::dialect

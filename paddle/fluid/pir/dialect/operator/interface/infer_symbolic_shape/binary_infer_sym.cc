@@ -521,8 +521,7 @@ bool Conv2dTransposeOpInferSymbolicShape(
     const auto &attributes = op->attributes();
     if (op->HasAttribute("output_size")) {
       output_size =
-          op->attribute<paddle::dialect::IntArrayAttribute>("output_size")
-              .data();
+          paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
     } else {
       output_size = {};
     }
