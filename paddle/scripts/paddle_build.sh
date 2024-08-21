@@ -2398,6 +2398,7 @@ function parallel_test_base_xpu() {
 EOF
 
 set +x
+        echo "Starting running xpu tests"
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
@@ -2475,6 +2476,41 @@ set +x
                 is_retry_execuate=1
             fi
 
+        fi
+        if [[ "$IF_KUNLUN3" == "ON" ]]; then
+            #install paddlex
+            git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
+            cd PaddleX
+            pip install -e .
+
+            #install paddle x dependency
+            paddlex --install PaddleClas
+
+            #download paddle dataset
+            wget -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
+            tar -xf ./dataset/cls_flowers_examples.tar -C ./dataset/
+
+            #train Reset50
+            echo "Starting to train ResNet50 model..."
+            python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
+                -o Global.mode=train \
+                -o Global.dataset_dir=./dataset/cls_flowers_examples \
+                -o Global.output=resnet50_output \
+                -o Global.device="xpu:${CUDA_VISIBLE_DEVICES}"
+            echo "Training Resnet50 completed!"
+
+            #inference Reset50
+            IFS=',' read -ra DEVICES <<< "$CUDA_VISIBLE_DEVICES"
+            echo ${DEVICES[0]}
+
+            echo "Starting to predict ResNet50 model..."
+            python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
+                -o Global.mode=predict \
+                -o Predict.model_dir="./resnet50_output/best_model" \
+                -o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
+                -o Global.device="xpu:${DEVICES[0]}"
+            echo "Predicting Resnet50 completed!"
+            cd ..
         fi
 set -x
         ut_endTime_s=`date +%s`
@@ -2761,13 +2797,9 @@ set +x
 
         if [ ${WITH_CINN:-OFF} == "ON" ]; then
             pushd ${PADDLE_ROOT}/build/paddle/cinn
-            ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp
-            popd
-            pushd ${PADDLE_ROOT}/build/test/cinn
-            ctest -N -E "test_paddle_model_convertor|test_cinn_fake_resnet|test_cinn_sub_graph_map_expr|test_assign_value_op_mapper|test_batch_norm_op"  | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' >> ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp
+            ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
             popd
             ctest -N -L "RUN_TYPE=CINN" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_ut_list
-            cat ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp | sort | uniq > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
             echo "========================================"
             echo "pr_ci_cinn_ut_list: "
             cat ${PADDLE_ROOT}/build/pr_ci_cinn_ut_list
@@ -2780,7 +2812,7 @@ set +x
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
 
         if [ ${WITH_CINN=-OFF} == "ON" ]; then
-            run_cinn_ut="OFF"
+            run_cinn_ut=`check_cinn_file_diff`
             if [[ "OFF" == ${run_cinn_ut} ]]; then
               echo "No CINN-related changes were found"
               echo "Skip PR-CI-CINN-GPU UT CI"
@@ -2794,21 +2826,6 @@ set +x
                 cinn_gpu_ut_endTime_s=`date +%s`
                 echo "ipipe_log_param_cinn_gpu_TestCases_Total_Time: $[ $cinn_gpu_ut_endTime_s - $cinn_gpu_ut_startTime_s ]s"
                 echo "ipipe_log_param_cinn_gpu_TestCases_Total_Time: $[ $cinn_gpu_ut_endTime_s - $cinn_gpu_ut_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
-
-                # pr-ci-cinn-gpu
-                export LD_LIBRARY_PATH=/usr/local/cuda/lib:/usr/local/cuda/lib64:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH}
-                export LD_LIBRARY_PATH=/usr/local/lib/python3.9/dist-packages/paddle/libs:${LD_LIBRARY_PATH}
-                export LD_LIBRARY_PATH=${PADDLE_ROOT}/build/python/paddle/libs/:${LD_LIBRARY_PATH}
-                pip install nvidia-pyindex
-                pip install nvidia-tensorrt
-                pip install xgboost
-                bash ${PADDLE_ROOT}/tools/cinn/build.sh prepare_model
-                bash ${PADDLE_ROOT}/tools/cinn/build.sh run_demo 2>&1 | tee /dev/null
-                demo_test=${PIPESTATUS[0]}
-                if [[ ${demo_test} -ne 0 ]];then
-                    echo -e "\033[31mcinn demo test failed\033[0m"
-                    exit -1
-                fi
             fi
 
             # run pr-ci-cinn ut
@@ -2960,6 +2977,8 @@ set +x
                             done
 
                         if [[ "$retry_cases" != "" ]]; then
+			    # re-run test run 1 job
+			    export CTEST_PARALLEL_LEVEL=1
                             card_test "$retry_cases" -1 2
                         fi
                         exec_times=$[$exec_times+1]

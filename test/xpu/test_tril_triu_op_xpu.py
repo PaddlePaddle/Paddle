@@ -140,7 +140,7 @@ class TestTrilTriuOpError(unittest.TestCase):
         errmsg = {
             "diagonal: TypeError": f"diagonal in {op_type} must be a python Int",
         }
-        expected = list(errmsg.keys())[0]
+        expected = next(iter(errmsg.keys()))
         with self.assertRaisesRegex(
             eval(expected.split(':')[-1]), errmsg[expected]
         ):
@@ -155,7 +155,7 @@ class TestTrilTriuOpError(unittest.TestCase):
         errmsg = {
             "input: ValueError": f"x shape in {op_type} must be at least 2-D",
         }
-        expected = list(errmsg.keys())[0]
+        expected = next(iter(errmsg.keys()))
         with self.assertRaisesRegex(
             eval(expected.split(':')[-1]), errmsg[expected]
         ):
