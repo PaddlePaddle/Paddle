@@ -20,16 +20,18 @@ from tensorrt_test_base import TensorRTBaseTest
 import paddle
 
 
+def conv2d_wrapper(x):
+    conv = paddle.nn.Conv2D(3, 3, (3, 3))
+    return conv(x)
+
+
 class TestConv2dTRTPattern(TensorRTBaseTest):
     def setUp(self):
-        self.python_api = paddle.nn.functional.conv2d
-        self.api_args = {
-            "x": np.random.random([2, 3, 8, 8]).astype("float32"),
-            "w": np.random.random([6, 3, 3, 3]).astype("float32"),
-        }
-        self.program_config = {"feed_list": ["x", "w"]}
-        self.min_shape = {"x": [1, 3, 8, 8], "w": [1, 3, 3, 3]}
-        self.max_shape = {"x": [10, 3, 8, 8], "w": [10, 3, 3, 3]}
+        self.python_api = conv2d_wrapper
+        self.api_args = {"x": np.random.random([2, 3, 8, 8]).astype("float32")}
+        self.program_config = {"feed_list": ["x"]}
+        self.min_shape = {"x": [1, 3, 8, 8]}
+        self.max_shape = {"x": [10, 3, 8, 8]}
 
     def test_trt_result(self):
         self.check_trt_result()

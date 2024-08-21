@@ -21,7 +21,7 @@ import paddle
 
 
 def batch_norm_wrapper(x):
-    batch_norm = paddle.nn.BatchNorm2D(1)
+    batch_norm = paddle.nn.BatchNorm(num_channels=1, is_test=True)
     return batch_norm(x)
 
 

@@ -214,10 +214,21 @@ class PaddleToTensorRTConverter:
         out_types = []
         for result_value in output_values:
             output_tensor = value_to_trt_tensor[result_value.id]
+            if output_tensor is None:
+                out_names.append("")
+                out_shapes.append([])
+                out_types.append(None)
+                continue
             network.mark_output(output_tensor)
             out_names.append(output_tensor.name)
             out_shapes.append(result_value.shape)
             out_types.append(result_value.dtype)
+            if (
+                result_value.has_one_use()
+                and result_value.all_used_ops()[0].name() == "cf.yield"
+            ):
+                # if result value is a return value, it doesn't need get shape, continue
+                continue
             min_shape = get_value_shape_range_info(
                 result_value, False, paddle.base.core.ShapeMode.kMIN
             )
@@ -272,6 +283,9 @@ class PaddleToTensorRTConverter:
             )
 
             for out_index in range(len(out)):
+                if out[out_index].use_empty():
+                    # if result value is not been used, it doesn't need get shape, continue
+                    continue
                 ori_value = output_values[out_index]
                 current_value = out[out_index]
                 orin_min_shape = self.shape_map[ori_value.id]["min_shape"]
