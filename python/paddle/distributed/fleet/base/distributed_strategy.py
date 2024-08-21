@@ -32,6 +32,177 @@ if TYPE_CHECKING:
     from paddle.hapi.static_flops import Table
     from paddle.static import BuildStrategy
 
+
+class SyncConf(TypedDict):
+    k_step: int
+    max_merge_var_num: int
+    send_queue_size: int
+    independent_recv_thread: bool
+    thread_pool_size: int
+    send_wait_times: int
+    runtime_split_send_recv: bool
+
+
+class TrainerDescConf(TypedDict):
+    dump_fields_path: str
+    dump_field: list[str]
+    dump_param: list[str]
+    stat_var_names: list[str]
+
+
+class FsClientParam(TypedDict):
+    uri: str
+    user: str
+    passwd: str
+    hadoop_bin: str
+
+
+class SparseTableConf(TypedDict):
+    sparse_table_class: str
+    sparse_shard_num: int
+    sparse_accessor_class: str
+    sparse_learning_rate: float
+    sparse_initial_g2sum: int
+    sparse_initial_range: float
+    sparse_weight_bounds: list[int]
+    sparse_fea_dim: int
+    sparse_embedx_dim: int
+    sparse_embedx_threshold: int
+    sparse_nonclk_coeff: float
+    sparse_click_coeff: float  # ?
+    sparse_base_threshold: float
+    sparse_delta_threshold: float
+    sparse_delta_keep_days: int
+    sparse_delete_after_unseen_days: int
+    sparse_show_click_decay_rate: float
+    sparse_delete_threshold: float
+    sparse_converter: str
+    sparse_deconverter: str
+    sparse_enable_cache: bool
+    sparse_cache_rate: float
+    sparse_cache_file_num: int
+    sparse_beta1_decay_rate: float
+    sparse_beta2_decay_rate: float
+    sparse_ada_epsilon: float
+    sparse_optimizer: str
+    sparse_ssd_unseenday_threshold: int  # ?
+    embed_sparse_optimizer: str
+    embed_sparse_learning_rate: float
+    embed_sparse_weight_bounds: list[int]
+    embed_sparse_initial_range: float
+    embed_sparse_initial_g2sum: int
+    embed_sparse_beta1_decay_rate: float
+    embed_sparse_beta2_decay_rate: float
+    embedx_sparse_optimizer: str
+    embedx_sparse_learning_rate: float
+    embedx_sparse_weight_bounds: list[int]
+    embedx_sparse_initial_range: float
+    embedx_sparse_initial_g2sum: int
+    embedx_sparse_beta1_decay_rate: float
+    embedx_sparse_beta2_decay_rate: float
+    feature_learning_rate: float
+    nodeid_slot: int
+    sparse_load_filter_slots: list  # ?
+    sparse_save_filter_slots: list  # ?
+    sparse_zero_init: bool
+    use_gpu_graph: bool
+    use_cvm: bool
+
+
+class AmpConf(TypedDict):
+    init_loss_scaling: float
+    use_dynamic_loss_scaling: bool
+    incr_every_n_steps: int
+    decr_every_n_nan_or_inf: int
+    incr_ratio: float
+    decr_ratio: float
+    custom_white_list: list[str]
+    custom_black_list: list[str]
+    custom_black_varnames: list[str]
+    use_pure_fp16: bool
+    use_pure_bf16: bool
+    use_fp16_guard: bool
+
+
+class QATConfig(TypedDict):
+    channel_wise_abs_max: bool
+    weight_bits: int
+    activation_bits: int
+    not_quant_pattern: list[str]
+    algo: str
+
+
+class RecomputeConfig(TypedDict):
+    checkpoints: list[str]
+    enable_offload: bool
+    checkpoint_shape: list[int]
+
+
+class ShardingConfig(TypedDict):
+    sharding_segment_strategy: str | None
+    segment_broadcast_MB: float | None
+    segment_anchors: list[str]
+    sharding_degree: int | None
+    gradient_merge_acc_step: int | None
+    optimize_offload: bool | None
+    dp_degree: int | None
+    mp_degree: int | None
+    pp_degree: int | None
+    pp_allreduce_in_optimize: bool | None
+    optimize_cast: bool | None
+
+
+class PipelineConfig(TypedDict):
+    micro_batch_size: int
+
+
+class TensorParallelConfig(TypedDict):
+    tensor_parallel_degree: int
+    tensor_init_seed: int
+
+
+class HybridConfig(TypedDict):
+    dp_degree: int
+    mp_degree: int
+    pp_degree: int
+    sep_degree: int
+    sharding_degree: int
+    order: list[str]
+
+
+class LocalSGDConfig(TypedDict):
+    k_steps: int
+    begin_step: int
+
+
+class AdaptiveLocalSGDConfig(TypedDict):
+    init_k_steps: int
+    begin_step: int
+
+
+class DGCConfig(TypedDict):
+    rampup_begin_step: int
+    rampup_step: int
+    sparsity: list[float]
+
+
+class GradientMergeConfig(TypedDict):
+    k_steps: int
+    avg: bool
+
+
+class LarsConfig(TypedDict):
+    lars_coeff: float
+    lars_weight_decay: float
+    epsilon: float
+    exclude_from_weight_decay: list[str]
+
+
+class LambConfig(TypedDict):
+    lamb_weight_decay: float
+    exclude_from_weight_decay: list[str]
+
+
 __all__ = []
 
 non_auto_func_called = True
@@ -397,7 +568,7 @@ class DistributedStrategy:
             )
 
     @property
-    def a_sync_configs(self) -> TypedDict:
+    def a_sync_configs(self) -> SyncConf:
         """
 
         Set a_sync update configurations. In general, asynchronous parameter server
@@ -439,14 +610,14 @@ class DistributedStrategy:
 
     @a_sync_configs.setter
     @is_strict_auto
-    def a_sync_configs(self, configs: TypedDict) -> None:
+    def a_sync_configs(self, configs: SyncConf) -> None:
         check_configs_key(
             self.strategy.a_sync_configs, configs, "a_sync_configs"
         )
         assign_configs_value(self.strategy.a_sync_configs, configs)
 
     @property
-    def trainer_desc_configs(self) -> TypedDict:
+    def trainer_desc_configs(self) -> TrainerDescConf:
         """
 
         Set trainer desc configurations.
@@ -512,14 +683,14 @@ class DistributedStrategy:
 
     @trainer_desc_configs.setter
     @is_strict_auto
-    def trainer_desc_configs(self, configs: TypedDict) -> None:
+    def trainer_desc_configs(self, configs: TrainerDescConf) -> None:
         check_configs_key(
             self.strategy.trainer_desc_configs, configs, "trainer_desc_configs"
         )
         assign_configs_value(self.strategy.trainer_desc_configs, configs)
 
     @property
-    def fs_client_param(self) -> TypedDict:
+    def fs_client_param(self) -> FsClientParam:
         """
 
         Set fs client configurations.
@@ -550,25 +721,25 @@ class DistributedStrategy:
 
     @fs_client_param.setter
     @is_strict_auto
-    def fs_client_param(self, configs: TypedDict) -> None:
+    def fs_client_param(self, configs: FsClientParam) -> None:
         check_configs_key(
             self.strategy.fs_client_param, configs, "fs_client_param"
         )
         assign_configs_value(self.strategy.fs_client_param, configs)
 
     @property
-    def sparse_table_configs(self) -> TypedDict:
+    def sparse_table_configs(self) -> SparseTableConf:
         return self.strategy.downpour_table_param
 
     @sparse_table_configs.setter
     @is_strict_auto
-    def sparse_table_configs(self, configs: TypedDict) -> None:
+    def sparse_table_configs(self, configs: SparseTableConf) -> None:
         from google.protobuf.descriptor import FieldDescriptor
 
         table_param = self.strategy.downpour_table_param
 
         def set_table_config(
-            msg: str, config_name: str, configs: TypedDict, index: int = 0
+            msg: str, config_name: str, configs: SparseTableConf, index: int = 0
         ) -> None:
             for field in msg.DESCRIPTOR.fields:
                 name = config_name + "." + field.name
@@ -611,7 +782,7 @@ class DistributedStrategy:
                 )
 
     @sparse_table_configs.setter
-    def fleet_desc_configs(self, configs: TypedDict) -> None:
+    def fleet_desc_configs(self, configs: SparseTableConf) -> None:
         support_sparse_key_list = [
             'sparse_table_class',
             'sparse_compress_in_save',
@@ -970,7 +1141,7 @@ class DistributedStrategy:
             logger.warning("amp should have value of bool type")
 
     @property
-    def amp_configs(self) -> TypedDict:
+    def amp_configs(self) -> AmpConf:
         """
 
         Set automatic mixed precision training configurations. In general, amp has several configurable
@@ -1031,7 +1202,7 @@ class DistributedStrategy:
 
     @amp_configs.setter
     @is_strict_auto
-    def amp_configs(self, configs: TypedDict) -> None:
+    def amp_configs(self, configs: AmpConf) -> None:
         check_configs_key(self.strategy.amp_configs, configs, "amp_configs")
         assign_configs_value(self.strategy.amp_configs, configs)
 
@@ -1084,7 +1255,7 @@ class DistributedStrategy:
         self.strategy.qat = flag
 
     @property
-    def qat_configs(self) -> TypedDict:
+    def qat_configs(self) -> QATConfig:
         """
         Set quantization training configurations. In general, qat has several configurable
         settings that can be configured through a dict.
@@ -1113,7 +1284,7 @@ class DistributedStrategy:
         return get_msg_dict(self.strategy.qat_configs)
 
     @qat_configs.setter
-    def qat_configs(self, configs: TypedDict) -> None:
+    def qat_configs(self, configs: QATConfig) -> None:
         check_configs_key(self.strategy.qat_configs, configs, "qat_configs")
         assign_configs_value(self.strategy.qat_configs, configs)
 
@@ -1401,13 +1572,13 @@ class DistributedStrategy:
             logger.warning("nccl_comm_num should have value of int type")
 
     @property
-    def recompute_configs(self) -> TypedDict:
+    def recompute_configs(self) -> RecomputeConfig:
         """
 
         Set recompute configurations.
 
         **Note**:
-        checkpoints(list): list of string name of checkpoints. In general, the recompute
+        checkpoints(list[str]): list of string name of checkpoints. In general, the recompute
         strategy of current implementation should have some manually assign checkpoints.
 
         enable_offload(bool): enable recompute checkpoints offload feature. this feature
@@ -1415,7 +1586,7 @@ class DistributedStrategy:
         the memcpy from host to device takes time, it is a trade off between larger batch
         size and training speed.
 
-        checkpoint_shape(list): list of int that specific the shape of checkpoint. so far
+        checkpoint_shape(list[int]): list of int that specific the shape of checkpoint. so far
         recompute-offload requires that all checkpoint to be same shape, and every dimension
         specific here should be determined ("-1" is not allowed).
 
@@ -1436,7 +1607,7 @@ class DistributedStrategy:
 
     @recompute_configs.setter
     @is_strict_auto
-    def recompute_configs(self, configs: TypedDict) -> None:
+    def recompute_configs(self, configs: RecomputeConfig) -> None:
         check_configs_key(
             self.strategy.recompute_configs, configs, "checkpoint_configs"
         )
@@ -1474,7 +1645,7 @@ class DistributedStrategy:
             logger.warning("sharding should have value of bool type")
 
     @property
-    def sharding_configs(self) -> TypedDict:
+    def sharding_configs(self) -> ShardingConfig:
         """
 
         Set sharding configurations.
@@ -1533,7 +1704,7 @@ class DistributedStrategy:
 
     @sharding_configs.setter
     @is_strict_auto
-    def sharding_configs(self, configs: TypedDict) -> None:
+    def sharding_configs(self, configs: ShardingConfig) -> None:
         check_configs_key(
             self.strategy.sharding_configs, configs, "sharding_configs"
         )
@@ -1698,7 +1869,7 @@ class DistributedStrategy:
             logger.warning("pipeline should have value of bool type")
 
     @property
-    def pipeline_configs(self) -> dict[str, Any]:
+    def pipeline_configs(self) -> PipelineConfig:
         """
 
         Set pipeline parallelism configurations. In pipeline parallelism,
@@ -1729,7 +1900,7 @@ class DistributedStrategy:
 
     @pipeline_configs.setter
     @is_strict_auto
-    def pipeline_configs(self, configs: dict[str, Any]) -> None:
+    def pipeline_configs(self, configs: PipelineConfig) -> None:
         check_configs_key(
             self.strategy.pipeline_configs, configs, "pipeline_configs"
         )
@@ -1760,7 +1931,7 @@ class DistributedStrategy:
             logger.warning("tensor_parallel should have value of bool type")
 
     @property
-    def tensor_parallel_configs(self) -> dict[int]:
+    def tensor_parallel_configs(self) -> TensorParallelConfig:
         """
 
         Set tensor_parallel configurations.
@@ -1787,7 +1958,7 @@ class DistributedStrategy:
 
     @tensor_parallel_configs.setter
     @is_strict_auto
-    def tensor_parallel_configs(self, configs: dict[int]) -> None:
+    def tensor_parallel_configs(self, configs: TensorParallelConfig) -> None:
         check_configs_key(
             self.strategy.tensor_parallel_configs,
             configs,
@@ -1796,7 +1967,7 @@ class DistributedStrategy:
         assign_configs_value(self.strategy.tensor_parallel_configs, configs)
 
     @property
-    def hybrid_configs(self) -> dict[str, Any]:
+    def hybrid_configs(self) -> HybridConfig:
         """
 
         Dynamic graph hybrid parallel strategy configuration. Five-way hybrid parallelism
@@ -1833,7 +2004,7 @@ class DistributedStrategy:
         return get_msg_dict(self.strategy.hybrid_configs)
 
     @hybrid_configs.setter
-    def hybrid_configs(self, configs: TypedDict) -> None:
+    def hybrid_configs(self, configs: HybridConfig) -> None:
         hybrid_config = copy.deepcopy(configs)
         if "order" in hybrid_config:
             self.hybrid_parallel_order = hybrid_config["order"]
@@ -1887,7 +2058,7 @@ class DistributedStrategy:
             logger.warning("localsgd should have value of bool type")
 
     @property
-    def localsgd_configs(self) -> TypedDict:
+    def localsgd_configs(self) -> LocalSGDConfig:
         """
 
         Set LocalSGD training configurations. LocalSGD has a configurable
@@ -1912,7 +2083,7 @@ class DistributedStrategy:
 
     @localsgd_configs.setter
     @is_strict_auto
-    def localsgd_configs(self, configs: TypedDict) -> None:
+    def localsgd_configs(self, configs: LocalSGDConfig) -> None:
         check_configs_key(
             self.strategy.localsgd_configs, configs, "localsgd_configs"
         )
@@ -1945,7 +2116,7 @@ class DistributedStrategy:
             logger.warning("adaptive_localsgd should have value of bool type")
 
     @property
-    def adaptive_localsgd_configs(self) -> dict[str, Any]:
+    def adaptive_localsgd_configs(self) -> AdaptiveLocalSGDConfig:
         """
 
         Set AdaptiveLocalSGD training configurations. AdaptiveLocalSGD has a configurable
@@ -1973,7 +2144,9 @@ class DistributedStrategy:
 
     @adaptive_localsgd_configs.setter
     @is_strict_auto
-    def adaptive_localsgd_configs(self, configs: dict[str, Any]) -> None:
+    def adaptive_localsgd_configs(
+        self, configs: AdaptiveLocalSGDConfig
+    ) -> None:
         check_configs_key(
             self.strategy.adaptive_localsgd_configs,
             configs,
@@ -2009,7 +2182,7 @@ class DistributedStrategy:
             logger.warning("dgc should have value of bool type")
 
     @property
-    def dgc_configs(self) -> dict[str, Any]:
+    def dgc_configs(self) -> DGCConfig:
         r"""
 
         Set Deep Gradient Compression training configurations. In general, dgc has several configurable
@@ -2040,7 +2213,7 @@ class DistributedStrategy:
 
     @dgc_configs.setter
     @is_strict_auto
-    def dgc_configs(self, configs: dict[str, Any]) -> None:
+    def dgc_configs(self, configs: DGCConfig) -> None:
         check_configs_key(self.strategy.dgc_configs, configs, "dgc_configs")
         assign_configs_value(self.strategy.dgc_configs, configs)
 
@@ -2102,7 +2275,7 @@ class DistributedStrategy:
             logger.warning("gradient_merge should have value of bool type")
 
     @property
-    def gradient_merge_configs(self) -> dict[str, Any]:
+    def gradient_merge_configs(self) -> GradientMergeConfig:
         """
 
         the key-value configs of distribute_strategy
@@ -2125,7 +2298,7 @@ class DistributedStrategy:
 
     @gradient_merge_configs.setter
     @is_strict_auto
-    def gradient_merge_configs(self, configs: dict[str, Any]) -> None:
+    def gradient_merge_configs(self, configs: GradientMergeConfig) -> None:
         check_configs_key(
             self.strategy.gradient_merge_configs, configs, "gradient_configs"
         )
@@ -2160,7 +2333,7 @@ class DistributedStrategy:
             logger.warning("lars should have value of bool type")
 
     @property
-    def lars_configs(self) -> dict[str, Any]:
+    def lars_configs(self) -> LarsConfig:
         """
 
         Set Lars training configurations.
@@ -2170,7 +2343,7 @@ class DistributedStrategy:
         **lars_weight_decay** (float): weight decay coefficient in lars formula.
         **epsilon (float)**: argument is used to avoid potential division-by-zero
         when compute the local lr;
-        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
+        **exclude_from_weight_decay (list[str])**: is a list of name strings of layers which
         will be exclude from weight decay in lars formula.
 
         Examples:
@@ -2191,7 +2364,7 @@ class DistributedStrategy:
 
     @lars_configs.setter
     @is_strict_auto
-    def lars_configs(self, configs: dict[str, Any]) -> None:
+    def lars_configs(self, configs: LarsConfig) -> None:
         check_configs_key(self.strategy.lars_configs, configs, "lars_configs")
         assign_configs_value(self.strategy.lars_configs, configs)
 
@@ -2226,14 +2399,14 @@ class DistributedStrategy:
             logger.warning("lamb should have value of bool type")
 
     @property
-    def lamb_configs(self) -> dict[str, Any]:
+    def lamb_configs(self) -> LambConfig:
         """
 
         Set Lars training configurations.
 
         **Notes**:
         **lamb_weight_decay** (float): weight decay coefficient in lamb formula.
-        **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
+        **exclude_from_weight_decay (list[str])**: is a list of name strings of layers which
         will be exclude from weight decay in lamb formula.
 
         Examples:
@@ -2252,7 +2425,7 @@ class DistributedStrategy:
 
     @lamb_configs.setter
     @is_strict_auto
-    def lamb_configs(self, configs: TypedDict) -> None:
+    def lamb_configs(self, configs: LambConfig) -> None:
         check_configs_key(self.strategy.lamb_configs, configs, "lamb_configs")
         assign_configs_value(self.strategy.lamb_configs, configs)
 
@@ -2419,7 +2592,7 @@ class DistributedStrategy:
             logger.warning("qat should have value of bool type")
 
     @property
-    def qat_configs(self) -> TypedDict:
+    def qat_configs(self) -> QATConfig:
         """
 
         Set quantization training configurations. In general, qat has several configurable
@@ -2455,7 +2628,7 @@ class DistributedStrategy:
         return get_msg_dict(self.strategy.qat_configs)
 
     @qat_configs.setter
-    def qat_configs(self, configs: TypedDict) -> None:
+    def qat_configs(self, configs: QATConfig) -> None:
         check_configs_key(self.strategy.qat_configs, configs, "qat_configs")
         assign_configs_value(self.strategy.qat_configs, configs)
 
