@@ -29,6 +29,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #include "paddle/phi/core/platform/resource_pool.h"
 
 namespace paddle {

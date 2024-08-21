@@ -520,7 +520,7 @@ static void PreparedOpRunImpl(
 
   {
     phi::RecordEvent record_event("infer_shape",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
@@ -539,7 +539,7 @@ static void PreparedOpRunImpl(
 
   {
     phi::RecordEvent record_event("compute",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
 
@@ -593,7 +593,7 @@ static void PreparedOpRunPtImpl(
     const framework::AttributeMap& default_attrs) {
   {
     phi::RecordEvent record_event("infer_shape",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
     DygraphInferShapeContext<VarType> infer_shape_ctx(&ins,
@@ -612,7 +612,7 @@ static void PreparedOpRunPtImpl(
 
   {
     phi::RecordEvent record_event("compute",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
 

@@ -366,6 +366,66 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
       use_calc_stream);
 }
 
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllToAll(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const std::vector<int64_t>& out_size_each_rank,
+    const std::vector<int64_t>& in_size_each_rank,
+    bool sync_op,
+    bool use_calc_stream) {
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
+  const phi::DDim& out_dim = out_tensor->dims();
+  const phi::DDim& in_dim = in_tensor.dims();
+
+  // XCCL only support all_to_all_single
+  PADDLE_ENFORCE_EQ(
+      in_dim[0],
+      out_dim[0],
+      common::errors::PreconditionNotMet(
+          "XPU AllToAll: input dim (%d) and output dim (%d) differ",
+          in_dim[0],
+          out_dim[0]));
+  PADDLE_ENFORCE_EQ(
+      in_dim[0] % size_,
+      0,
+      common::errors::PreconditionNotMet(
+          "XPU AllToAll: input dim (%d) not divisible by nranks (%d)",
+          in_dim[0],
+          size_));
+  int64_t size_on_each_rank = in_dim[0] / size_;
+  for (size_t i = 0; i < in_size_each_rank.size(); i++) {
+    PADDLE_ENFORCE_EQ(size_on_each_rank,
+                      in_size_each_rank[i],
+                      common::errors::PreconditionNotMet(
+                          "XPU AllToAll only support all_to_all_single mode"));
+    PADDLE_ENFORCE_EQ(size_on_each_rank,
+                      out_size_each_rank[i],
+                      common::errors::PreconditionNotMet(
+                          "XPU AllToAll only support all_to_all_single mode"));
+  }
+
+  return Collective(
+      [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
+        VLOG(3) << "[bkcl_all_to_all] "
+                << "sendbuff: " << in_tensor.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(in_tensor.dtype()))
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+
+        comm_context->AllToAll(out_tensor, in_tensor, stream);
+      },
+      in_tensor,
+      CommType::ALLTOALL,
+      sync_op,
+      use_calc_stream);
+}
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,

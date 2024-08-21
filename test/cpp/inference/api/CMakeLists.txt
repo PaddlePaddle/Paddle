@@ -1007,9 +1007,31 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --infer_model=${INT8_DATA_DIR}/resnet50/model)
   endif()
 
+  # chinese_ner
+  set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
+  download_model_and_data_without_verify(
+    ${CHINESE_NER_INSTALL_DIR} "chinese_ner_model.tar.gz"
+    "chinese_ner-data.txt.tar.gz")
+  inference_analysis_test(
+    test_analyzer_capi_exp_ner
+    SRCS
+    analyzer_capi_exp_ner_tester.cc
+    EXTRA_DEPS
+    paddle_inference_c_shared
+    ARGS
+    --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
+
   # resnet50
   set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
   download_data_without_verify(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
+  inference_analysis_test(
+    test_analyzer_capi_exp
+    SRCS
+    analyzer_capi_exp_tester.cc
+    EXTRA_DEPS
+    paddle_inference_c_shared
+    ARGS
+    --infer_model=${RESNET50_MODEL_DIR}/model)
 
   if(WITH_GPU)
     inference_analysis_test(
