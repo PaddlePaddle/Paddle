@@ -18,7 +18,7 @@
 
 #include <vector>
 
-#include "paddle/common/errors.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
