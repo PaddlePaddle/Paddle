@@ -1029,11 +1029,12 @@ bool MatrixNmsOpInferSymbolicShape(
   infer_context->AddEqualCstr(box_shape[1], score_shape[2]);
   if (op->HasAttribute("keep_top_k")) {
     int keep_top_k = op->attribute<pir::Int64Attribute>("keep_top_k").data();
-    auto keep_top_k_dim = symbol::DimExpr(keep_top_k);
-    out_shape = {keep_top_k_dim * box_shape[0], box_shape[2] + 2};
+    symbol::DimExpr keep_top_k_dim = symbol::DimExpr(keep_top_k);
+    out_shape = {keep_top_k_dim * box_shape[0],
+                 box_shape[2] + symbol::DimExpr(2)};
   } else {
     symbol::DimExpr out_unknown = infer_context->GetNextSymName();
-    out_shape = {out_unknown, box_shape[2] + 2};
+    out_shape = {out_unknown, box_shape[2] + symbol::DimExpr(2)};
   }
 
   infer_context->SetShapeOrDataForValue(
