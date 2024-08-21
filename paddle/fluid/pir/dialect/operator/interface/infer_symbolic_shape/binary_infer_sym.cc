@@ -353,7 +353,7 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
 
 bool convtransposefunction(pir::Operation *op,
                            pir::InferSymbolicShapeContext *infer_context,
-                           std::vector<int> output_size) {
+                           std::vector<symbol::DimExpr> output_size) {
   auto x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   auto filter_shape =
@@ -506,18 +506,14 @@ bool convtransposefunction(pir::Operation *op,
 
 bool Conv2dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<int> output_size;
-
   const auto &output_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
 
   if (!output_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
-    const std::vector<symbol::DimExpr> ouput_shape =
+    const std::vector<symbol::DimExpr> ouput_size =
         output_shape_or_data.shape();
-    for (const auto &dim : ouput_shape) {
-      output_size.push_back(dim.Get<int>());
-    }
   } else {
+    std::vector<int> output_size;
     const auto &attributes = op->attributes();
     if (op->HasAttribute("output_size")) {
       output_size =
