@@ -105,26 +105,10 @@ bool AssignValue_OpInferSymbolicShape(
 
 bool DataOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &attributes = op->attributes();
-  pir::Attribute attr = attributes.at("shape");
-
-  const std::vector<symbol::DimExpr> sym_dims = [&] {
-    std::vector<symbol::DimExpr> sym_dims;
-    const std::vector<int64_t> &dims =
-        attr.dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
-    for (auto dim : dims) {
-      symbol::DimExpr dim_expr;
-      if (dim == pir::ShapedTypeInterface::kDynamic) {
-        symbol::DimExpr symbolic_dim_expr(infer_context->GetNextSymName());
-        dim_expr = symbolic_dim_expr;
-      } else {
-        symbol::DimExpr numeric_dim_expr(dim);
-        dim_expr = numeric_dim_expr;
-      }
-      sym_dims.push_back(dim_expr);
-    }
-    return sym_dims;
-  }();
+  std::string name =
+      op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+  const std::vector<symbol::DimExpr> sym_dims =
+      details::GetSymShapeForInputValue(name, op->result(0), infer_context);
 
   auto IsNumelLEKMaxRank = [](pir::Value value) {
     const auto &dims = value.type().dyn_cast<pir::DenseTensorType>().dims();
@@ -204,21 +188,12 @@ bool EmptyOpInferSymbolicShape(pir::Operation *op,
 
 bool FeedOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const common::DDim &result_dims =
-      op->result(0).type().dyn_cast<pir::DenseTensorType>().dims();
-  std::vector<symbol::DimExpr> out_dims;
-  for (int i = 0; i < result_dims.size(); i++) {
-    if (result_dims[i] == -1) {
-      out_dims.emplace_back(infer_context->GetNextSymName());
-    } else {
-      out_dims.emplace_back(result_dims[i]);
-    }
-  }
-
+  std::string name =
+      op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+  const auto &symbolic_shape =
+      details::GetSymShapeForInputValue(name, op->result(0), infer_context);
   infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
-
+      op->result(0), symbol::TensorShapeOrDataDimExprs(symbolic_shape));
   return true;
 }
 
