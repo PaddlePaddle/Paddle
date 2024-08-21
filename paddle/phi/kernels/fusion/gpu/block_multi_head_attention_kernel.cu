@@ -729,7 +729,6 @@ void DispatchWithDtype(
       blha_tc<T>(
           dev_ctx,
           qkv_out_decoder,
-          nullptr,
           &block_tables,
           &cum_offsets,
           &seq_lens_decoder,

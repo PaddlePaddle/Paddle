@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/fusion/gpu/block_attn_tc_utils.h"
 
@@ -348,7 +350,6 @@ inline __device__ void prefill_cache_kv(uint8_t* cache_k,
 
 template <typename CacheKV_traits, typename T, const int kNThreads>
 __global__ void writeDecoderCacheKVKernel(T* qkv_input,
-                                          T* qkv_bias,
                                           const float* rotary_emb,
                                           const int* block_tables,
                                           const int* seq_lens,
@@ -431,11 +432,7 @@ __global__ void writeDecoderCacheKVKernel(T* qkv_input,
 
     if (warp_id == 1) {
       T_vec kv_src;
-      T_vec kv_bias;
       kv_src.load_from(qkv_input + kv_load_idx + lane_id * PackSize);
-      kv_bias.load_from(qkv_bias + (head_idx + head_num) * kHeadDim +
-                        lane_id * PackSize);
-      kv_src.add(kv_bias);
 
       block_attn::apply_rotary_embedding<cuteType, PackSize, kHeadDim>(
           kv_src, lane_id, rotary_emb + bi * kHeadDim);
@@ -454,12 +451,7 @@ __global__ void writeDecoderCacheKVKernel(T* qkv_input,
   } else {
     if (warp_id == 0) {
       T_vec kv_src;
-      T_vec kv_bias;
       kv_src.load_from(qkv_input + kv_load_idx + lane_id * PackSize);
-      kv_bias.load_from(qkv_bias +
-                        (head_idx + head_num + kv_head_num) * kHeadDim +
-                        lane_id * PackSize);
-      kv_src.add(kv_bias);
       kv_src.store_to(data_v_smem + lane_id * PackSize);
     }
     __syncthreads();
@@ -494,7 +486,6 @@ __global__ void writeDecoderCacheKVKernel(T* qkv_input,
 
 template <typename CacheKV_traits, typename T, const int kNThreads>
 __global__ void writeC16DecoderCacheKVKernel(T* qkv_input,
-                                             T* qkv_bias,
                                              const float* rotary_emb,
                                              const int* block_tables,
                                              const int* seq_lens,
@@ -537,11 +528,7 @@ __global__ void writeC16DecoderCacheKVKernel(T* qkv_input,
       lane_id * PackSize;
 
   T_vec kv_src;
-  T_vec kv_bias;
   kv_src.load_from(qkv_input + kv_load_idx);
-
-  kv_bias.load_from(qkv_bias + kv_bias_idx);
-  kv_src.add(kv_bias);
 
   if (warp_id == 0) {
     block_attn::apply_rotary_embedding<cuteType, PackSize, kHeadDim>(
@@ -556,7 +543,6 @@ template <typename T, int cachenbits>
 class WriteDecoderCacheKvHdim128 {
  public:
   void operator()(const T* qkv_input,
-                  const T* qkv_bias,
                   const float* rotary_emb,
                   const int* block_tables,
                   const int* seq_lens,
@@ -575,7 +561,6 @@ class WriteDecoderCacheKvHdim128 {
 template <typename T, int cachenbits>
 void WriteDecoderCacheKvHdim128<T, cachenbits>::operator()(
     const T* qkv_input,
-    const T* qkv_bias,
     const float* rotary_emb,
     const int* block_tables,
     const int* seq_lens,
@@ -599,7 +584,6 @@ void WriteDecoderCacheKvHdim128<T, cachenbits>::operator()(
   auto kernel = &writeDecoderCacheKVKernel<cache_traits, T, ThreadsPerBlock>;
 
   kernel<<<grid_dim, ThreadsPerBlock, 0, stream>>>(const_cast<T*>(qkv_input),
-                                                   const_cast<T*>(qkv_bias),
                                                    rotary_emb,
                                                    block_tables,
                                                    seq_lens,
@@ -616,7 +600,6 @@ template <typename T>
 class WriteC16DecoderCacheKvHdim128 {
  public:
   void operator()(const T* qkv_input,
-                  const T* qkv_bias,
                   const float* rotary_emb,
                   const int* block_tables,
                   const int* seq_lens,
@@ -633,7 +616,6 @@ class WriteC16DecoderCacheKvHdim128 {
 template <typename T>
 void WriteC16DecoderCacheKvHdim128<T>::operator()(
     const T* qkv_input,
-    const T* qkv_bias,
     const float* rotary_emb,
     const int* block_tables,
     const int* seq_lens,
@@ -654,7 +636,6 @@ void WriteC16DecoderCacheKvHdim128<T>::operator()(
   auto kernel = &writeC16DecoderCacheKVKernel<cache_traits, T, ThreadsPerBlock>;
 
   kernel<<<grid_dim, ThreadsPerBlock, 0, stream>>>(const_cast<T*>(qkv_input),
-                                                   const_cast<T*>(qkv_bias),
                                                    rotary_emb,
                                                    block_tables,
                                                    seq_lens,
@@ -676,8 +657,8 @@ template <bool Is_first,
           typename Tensor0,
           typename Tensor1,
           typename T>
-inline __device__ void softmax_rescale_o(Tensor0& scores,
-                                         Tensor1& acc_o,
+inline __device__ void softmax_rescale_o(Tensor0& scores,  // NOLINT
+                                         Tensor1& acc_o,   // NOLINT
                                          const T* scores_max,
                                          const T* scores_max_prev,
                                          T* scores_sum,
@@ -701,7 +682,7 @@ inline __device__ void softmax_rescale_o(Tensor0& scores,
     block_attn::scale_apply_exp2<kMiLen>(
         scores, scores_max, scores_sum, softmax_scale);
   }
-};
+}
 
 template <typename Kernel_traits, typename ParamType>
 __global__ __launch_bounds__(
@@ -753,12 +734,6 @@ __global__ __launch_bounds__(
       Shape<Int<kBlockM>, Int<kHeadDim>>{},
       Stride<Int<kHeadDim>, _1>{});
 
-  Tensor gQbias = make_tensor(
-      make_gmem_ptr(reinterpret_cast<const cuteType*>(params.qkv_bias) +
-                    q_bias_offset),
-      Shape<Int<kBlockM>, Int<kHeadDim>>{},
-      Stride<Int<kHeadDim>, _1>{});
-
   const int32_t block_idx = partition_idx * kTileN;
   const int* block_table =
       params.block_table + bi * params.max_num_blocks_per_seq + block_idx;
@@ -784,10 +759,7 @@ __global__ __launch_bounds__(
   extern __shared__ char smem_[];
   Tensor sQ = make_tensor(make_smem_ptr(reinterpret_cast<cuteType*>(smem_)),
                           typename Kernel_traits::SmemLayoutQ{});
-  Tensor sQbias =
-      make_tensor(sQ.data() + size(sQ), typename Kernel_traits::SmemLayoutQ{});
-  Tensor sQK = make_tensor(sQbias.data() + size(sQbias),
-                           typename Kernel_traits::SmemLayoutQK{});
+  Tensor sQK = make_tensor(sQ.data(), typename Kernel_traits::SmemLayoutQK{});
 
   Tensor sK = make_tensor(sQK.data() + size(sQK),
                           typename Kernel_traits::SmemLayoutKV{});
@@ -806,8 +778,6 @@ __global__ __launch_bounds__(
 
   Tensor tQgQ = gmem_thr_copy_Q.partition_S(gQ);
   Tensor tQsQ = gmem_thr_copy_Q.partition_D(sQ);
-  Tensor tQgQbias = gmem_thr_copy_Q.partition_S(gQbias);
-  Tensor tQsQbias = gmem_thr_copy_Q.partition_D(sQbias);
 
   Tensor tKgK = gmem_thr_copy_KV.partition_S(gK);
   Tensor tKsK = gmem_thr_copy_KV.partition_D(sK);
@@ -841,15 +811,12 @@ __global__ __launch_bounds__(
 
   Tensor tSsQK = smem_thr_copy_Q.partition_S(sQK);
   Tensor tSrQK = thr_mma.partition_fragment_A(sQK);
-  Tensor tSsQbias = smem_thr_copy_Q.partition_S(sQbias);
   Tensor tSsK = smem_thr_copy_K.partition_S(sK);
   Tensor tSrK = thr_mma.partition_fragment_B(sK);
   Tensor tOsVt = smem_thr_copy_V.partition_S(sVt);
   Tensor tOrVt = thr_mma.partition_fragment_B(sVtNoSwizzle);
 
   block_attn::copy<false>(gmem_thr_copy_Q, tQgQ, tQsQ, tQcQ, kGqaGroupSize);
-  block_attn::copy<false>(
-      gmem_thr_copy_Q, tQgQbias, tQsQbias, tQcQ, kGqaGroupSize);
 
   cute::cp_async_fence();
   block_attn::cp_async_wait<0>();
@@ -873,10 +840,8 @@ __global__ __launch_bounds__(
        i += 2 * Kernel_traits::kNThreads) {
     const int row_index = i / kHeadDim;
     const int col_index = i % kHeadDim;
-    float bias1 = static_cast<float>(sQbias(row_index, col_index));
-    float bias2 = static_cast<float>(sQbias(row_index, col_index + 1));
-    float v1 = static_cast<float>(sQ(row_index, col_index)) + bias1;
-    float v2 = static_cast<float>(sQ(row_index, col_index + 1)) + bias2;
+    float v1 = static_cast<float>(sQ(row_index, col_index));
+    float v2 = static_cast<float>(sQ(row_index, col_index + 1));
     float cos = rotary_emb[col_index];
     float sin = rotary_emb[col_index + 1];
     sQ(row_index, col_index) = static_cast<cuteType>(cos * v1 - sin * v2);
@@ -1153,7 +1118,7 @@ __global__ __launch_bounds__(
 template <typename Kernel_traits, typename ParamType>
 inline __device__ float caluate_logit_scale(const int partition_num,
                                             const int pack_max_partition_num,
-                                            ParamType& params,
+                                            const ParamType& params,
                                             char* shared_mem) {
   constexpr int32_t kNFloatPacksize = 16 / sizeof(float);
   constexpr int32_t kNReduceThreads = Kernel_traits::kNReduceThreads;
@@ -1322,7 +1287,7 @@ __global__ void __launch_bounds__(Kernel_traits::kNReduceThreads)
 }
 
 template <typename Kernel_traits, typename ParamType>
-void run_block_attn(ParamType& params, cudaStream_t stream) {
+void run_block_attn(const ParamType& params, cudaStream_t stream) {
   dim3 grid;
   // 最后一个block做当前seq，剩下的做cache kv的
   grid.x = params.max_num_partitions;
@@ -1364,7 +1329,7 @@ void run_block_attn(ParamType& params, cudaStream_t stream) {
 }
 
 template <typename T, typename CacheKVTraits, typename ParamType, int kBlockN>
-void run_block_attn_hdim128(ParamType& params, cudaStream_t stream) {
+void run_block_attn_hdim128(const ParamType& params, cudaStream_t stream) {
   const int gqaGroupSize = params.head_num / params.kv_head_num;
   constexpr int kTileN = kBlockN / 64;
   switch (gqaGroupSize) {
@@ -1375,6 +1340,16 @@ void run_block_attn_hdim128(ParamType& params, cudaStream_t stream) {
     }
     case 4: {
       run_block_attn<Block_attn_kernel_traits<4, kTileN, CacheKVTraits>>(
+          params, stream);
+      break;
+    }
+    case 6: {
+      run_block_attn<Block_attn_kernel_traits<6, kTileN, CacheKVTraits>>(
+          params, stream);
+      break;
+    }
+    case 7: {
+      run_block_attn<Block_attn_kernel_traits<7, kTileN, CacheKVTraits>>(
           params, stream);
       break;
     }
@@ -1399,7 +1374,6 @@ void run_block_attn_hdim128(ParamType& params, cudaStream_t stream) {
 template <typename T, typename out_type, int max_seq_per_block, int cachenbits>
 void set_params(const phi::GPUContext& dev_ctx,
                 const phi::DenseTensor& qkv_tensor,
-                const phi::DenseTensor* qkv_bias_tensor,
                 const phi::DenseTensor* block_tables,
                 const phi::DenseTensor* cum_offsets_tensor,
                 const phi::DenseTensor* sequence_lengths_tensor,
@@ -1427,11 +1401,6 @@ void set_params(const phi::GPUContext& dev_ctx,
   memset(&params, 0, sizeof(params));
 
   params.qkv_input = const_cast<T*>(qkv_tensor.data<T>());
-  if (qkv_bias_tensor) {
-    params.qkv_bias = const_cast<T*>(qkv_bias_tensor->data<T>());
-  } else {
-    params.qkv_bias = nullptr;
-  }
   params.attn_out = out_tensor->data<typename params_type::out_type>();
 
   params.seq_lens = const_cast<int*>(sequence_lengths_tensor->data<int>());
@@ -1481,7 +1450,6 @@ void set_params(const phi::GPUContext& dev_ctx,
     params.cache_v_quant_scale = nullptr;
     WriteC16DecoderCacheKvHdim128<T> writeDecoderCacheKV;
     writeDecoderCacheKV(params.qkv_input,
-                        params.qkv_bias,
                         params.rotary_emb,
                         params.block_table,
                         params.seq_lens,
@@ -1502,7 +1470,6 @@ void set_params(const phi::GPUContext& dev_ctx,
     params.cache_v_quant_scale = cache_v_quant_scales->data<T>();
     WriteDecoderCacheKvHdim128<T, cachenbits> writeDecoderCacheKV;
     writeDecoderCacheKV(params.qkv_input,
-                        params.qkv_bias,
                         params.rotary_emb,
                         params.block_table,
                         params.seq_lens,
@@ -1524,7 +1491,6 @@ void set_params(const phi::GPUContext& dev_ctx,
 template <typename T>
 void blha_tc(const phi::GPUContext& dev_ctx,
              const phi::DenseTensor& qkv_tensor,
-             const phi::DenseTensor* qkv_bias_tensor,
              const phi::DenseTensor* block_tables,
              const phi::DenseTensor* cum_offsets_tensor,
              const phi::DenseTensor* sequence_lengths_tensor,
@@ -1562,7 +1528,6 @@ void blha_tc(const phi::GPUContext& dev_ctx,
 
   set_params_func(dev_ctx,
                   qkv_tensor,
-                  qkv_bias_tensor,
                   block_tables,
                   cum_offsets_tensor,
                   sequence_lengths_tensor,

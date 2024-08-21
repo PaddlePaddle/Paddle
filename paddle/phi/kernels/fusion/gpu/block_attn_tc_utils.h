@@ -54,7 +54,6 @@ struct Block_attn_params {
   using out_type = _out_type;
   static_assert(kCacheBits == 8 || kCacheBits == 16);
   T *__restrict__ qkv_input;
-  T *__restrict__ qkv_bias;
   cache_type *__restrict__ cache_k;
   cache_type *__restrict__ cache_v;
 
@@ -468,7 +467,7 @@ struct Vec {
   }
 
   template <typename S>
-  inline __device__ void to(Vec<S, NUM_ELT> &other) {
+  inline __device__ void to(Vec<S, NUM_ELT> &other) {  // NOLINT
 #pragma unroll
     for (int it = 0; it < NUM_ELT; it++) {
       other.data.elt[it] = S(this->data.elt[it]);
@@ -574,9 +573,9 @@ template <bool Is_even_MN = true,
           typename Engine2,
           typename Layout2>
 inline __device__ void copy(TiledCopy thr_copy,
-                            Tensor<Engine0, Layout0> &S,
-                            Tensor<Engine1, Layout1> &D,
-                            Tensor<Engine2, Layout2> const &identity_MN,
+                            Tensor<Engine0, Layout0> &S,  // NOLINT
+                            Tensor<Engine1, Layout1> &D,  // NOLINT
+                            const Tensor<Engine2, Layout2> &identity_MN,
                             const int max_MN = 0) {
   CUTE_STATIC_ASSERT_V(rank(S) == Int<3>{});
   CUTE_STATIC_ASSERT_V(rank(D) == Int<3>{});
@@ -598,7 +597,7 @@ inline __device__ void copy(TiledCopy thr_copy,
 }
 
 template <int kMiLen, typename Engine, typename Layout>
-inline __device__ void apply_mask(Tensor<Engine, Layout> &scores,
+inline __device__ void apply_mask(Tensor<Engine, Layout> &scores,  // NOLINT
                                   const uint32_t warp_id,
                                   const uint32_t col,
                                   const uint32_t reamin_seq_len) {
@@ -619,7 +618,7 @@ inline __device__ void apply_mask(Tensor<Engine, Layout> &scores,
 }
 
 template <typename T, int PackSize, int kHeadDim>
-inline __device__ void apply_rotary_embedding(Vec<T, PackSize> &vec,
+inline __device__ void apply_rotary_embedding(Vec<T, PackSize> &vec,  // NOLINT
                                               const int tid,
                                               const float *rope_cos_sin) {
   static_assert(PackSize % 4 == 0);
@@ -644,11 +643,11 @@ template <bool A_in_regs = false,
           typename TiledMma,
           typename TiledCopy0,
           typename TiledCopy1>
-inline __device__ void gemm(Tensor0 &acc,
-                            Tensor1 &tCrA,
-                            Tensor2 &tCrB,
-                            Tensor3 const &tCsA,
-                            Tensor4 const &tCsB,
+inline __device__ void gemm(Tensor0 &acc,   // NOLINT
+                            Tensor1 &tCrA,  // NOLINT
+                            Tensor2 &tCrB,  // NOLINT
+                            const Tensor3 &tCsA,
+                            const Tensor4 &tCsB,
                             TiledMma tiled_mma,
                             TiledCopy0 smem_thr_copy_A,
                             TiledCopy1 smem_thr_copy_B) {
@@ -764,11 +763,11 @@ template <typename CacheKV_traits,
           typename Tensor4,
           typename TiledMma,
           typename TiledCopy0>
-inline __device__ void gemm_qk_quant(Tensor0 &acc,
-                                     Tensor1 &tCrA,
-                                     Tensor2 &tCsA,
-                                     Tensor3 &tCrB,
-                                     Tensor4 const &sB,
+inline __device__ void gemm_qk_quant(Tensor0 &acc,   // NOLINT
+                                     Tensor1 &tCrA,  // NOLINT
+                                     Tensor2 &tCsA,  // NOLINT
+                                     Tensor3 &tCrB,  // NOLINT
+                                     const Tensor4 &sB,
                                      TiledMma tiled_mma,
                                      TiledCopy0 smem_thr_copy_A,
                                      const int32_t tidx,
@@ -814,11 +813,11 @@ template <typename CacheKV_traits,
           typename Tensor4,
           typename TiledMma,
           typename TiledCopy0>
-inline __device__ void gemm_value_quant(Tensor0 &acc,
-                                        Tensor1 &tCrA,
-                                        Tensor2 &tCsA,
-                                        Tensor3 &tCrB,
-                                        Tensor4 const &sB,
+inline __device__ void gemm_value_quant(Tensor0 &acc,   // NOLINT
+                                        Tensor1 &tCrA,  // NOLINT
+                                        Tensor2 &tCsA,  // NOLINT
+                                        Tensor3 &tCrB,  // NOLINT
+                                        const Tensor4 &sB,
                                         TiledMma tiled_mma,
                                         TiledCopy0 smem_thr_copy_A,
                                         int32_t tidx,
@@ -862,7 +861,7 @@ inline __device__ auto convert_layout_acc_rowcol(Layout acc_layout) {
   auto l = logical_divide(acc_layout, Shape<_2>{});  // ((2, 2), MMA_M, MMA_N)
   return make_layout(make_layout(get<0, 1>(l), get<1>(l)),
                      make_layout(get<0, 0>(l), get<2>(l)));
-};
+}
 
 template <typename cuteType, int kDataNumPer2Byte, int kNThreads>
 inline __device__ void write_cache_k(cuteType *fragment_data1,
@@ -882,7 +881,7 @@ inline __device__ void write_cache_k(cuteType *fragment_data1,
     value.data.elt[1] = value2;
     value.store_to(smem + idx * kNThreads * 2 + tidx * 2);
   }
-};
+}
 
 template <typename cuteType, int kDataNumPer2Byte>
 inline __device__ void write_cache_v(cuteType *fragment_data1,
@@ -899,7 +898,7 @@ inline __device__ void write_cache_v(cuteType *fragment_data1,
     fragment_dst[0] = value1;
     fragment_dst[1] = value2;
   }
-};
+}
 
 template <int N>
 CUTE_HOST_DEVICE void cp_async_wait() {
@@ -931,7 +930,7 @@ template <int THREADS>
 struct Allreduce {
   static_assert(THREADS == 32 || THREADS == 16 || THREADS == 8 || THREADS == 4);
   template <typename T, typename Operator>
-  static __device__ inline T run(T x, Operator &op) {
+  static __device__ inline T run(T x, Operator &op) {  // NOLINT
     constexpr int OFFSET = THREADS / 2;
     x = op(x, __shfl_xor_sync(uint32_t(-1), x, OFFSET));
     return Allreduce<OFFSET>::run(x, op);
@@ -943,14 +942,14 @@ struct Allreduce {
 template <>
 struct Allreduce<2> {
   template <typename T, typename Operator>
-  static __device__ inline T run(T x, Operator &op) {
+  static __device__ inline T run(T x, Operator &op) {  // NOLINT
     x = op(x, __shfl_xor_sync(uint32_t(-1), x, 1));
     return x;
   }
 };
 
 template <int kMiLen, typename Engine0, typename Layout0, typename T>
-__device__ inline void reduce_max(Tensor<Engine0, Layout0> const &tensor,
+__device__ inline void reduce_max(const Tensor<Engine0, Layout0> &tensor,
                                   T *scores_max) {
   static_assert(Layout0::rank == 2, "Only support 2D Tensor");
   MaxOp<T> max_op;
@@ -966,10 +965,11 @@ __device__ inline void reduce_max(Tensor<Engine0, Layout0> const &tensor,
 
 // Apply the exp to all the elements.
 template <int kMiLen, typename Engine0, typename Layout0, typename T>
-inline __device__ void scale_apply_exp2(Tensor<Engine0, Layout0> &tensor,
-                                        T const *max,
-                                        T *sum,
-                                        const float scale) {
+inline __device__ void scale_apply_exp2(
+    Tensor<Engine0, Layout0> &tensor,  // NOLINT
+    T const *max,
+    T *sum,
+    const float scale) {
   static_assert(Layout0::rank == 2, "Only support 2D Tensor");
 #pragma unroll
   for (int mi = 0; mi < kMiLen; ++mi) {
