@@ -2477,6 +2477,7 @@ set +x
             fi
 
         fi
+
         #if [[ "$IF_KUNLUN3" == "ON" ]]; then
         #    #install paddlex
         #    git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
