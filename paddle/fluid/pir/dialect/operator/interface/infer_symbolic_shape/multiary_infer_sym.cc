@@ -2138,12 +2138,39 @@ bool HsigmoidLossOpInferSymbolicShape(
   return true;
 }
 
-// bool ViterbiDecodeOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool ViterbiDecodeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &transition_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &length_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const std::vector<symbol::DimExpr> &input_shape = input_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &transition_shape =
+      transition_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &length_shape =
+      length_shape_or_data.shape();
+
+  infer_context->AddEqualCstr(input_shape[0], length_shape[0]);
+  infer_context->AddEqualCstr(input_shape[2], transition_shape[0]);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(length_shape)});
+
+  symbol::DimExpr batch_size = input_shape[0];
+
+  std::vector<symbol::DimExpr> path_shape = {batch_size,
+                                             infer_context->GetNextSymName()};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(path_shape)});
+
+  return true;
+}
 
 // bool WarpctcOpInferSymbolicShape(pir::Operation *op,
 //                                  pir::InferSymbolicShapeContext
