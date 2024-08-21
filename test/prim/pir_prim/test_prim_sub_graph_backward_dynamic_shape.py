@@ -229,8 +229,12 @@ def transpose_net(x):
     return paddle.transpose(x, perm=[0, 3, 1, 2])
 
 
-def swiglu_net(x, y):
+def swiglu_net1(x, y):
     return paddle.incubate.nn.functional.swiglu(x, y)
+
+
+def swiglu_net2(x):
+    return paddle.incubate.nn.functional.swiglu(x)
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
@@ -2266,7 +2270,7 @@ class TestPrimTransposeWithGrad(TestPrimBaseWithGrad):
         self.tol = 1e-6
 
 
-class TestPrimSwigluWithGrad(TestPrimBaseOneGradTwoInputs):
+class TestPrimSwigluWithGrad1(TestPrimBaseOneGradTwoInputs):
     def setUp(self):
         np.random.seed(2023)
         self.dtype = "float32"
@@ -2276,10 +2280,22 @@ class TestPrimSwigluWithGrad(TestPrimBaseOneGradTwoInputs):
         self.init_x_shape = [None, None, 40]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(self.dtype)
-        self.net = swiglu_net
+        self.net = swiglu_net1
         self.enable_cinn = False
         self.tol = 1e-5
         self.y_without_grad = True
+
+
+class TestPrimSwigluWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [20, 30, 50, 70]
+        self.init_x_shape = [None, None, None, 70]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = swiglu_net2
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 if __name__ == "__main__":
