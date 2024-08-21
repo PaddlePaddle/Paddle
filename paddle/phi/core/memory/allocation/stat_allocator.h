@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/memory/stats.h"
+#include "paddle/phi/core/platform/profiler/mem_tracing.h"
 
 namespace paddle {
 namespace memory {
@@ -42,7 +42,7 @@ class StatAllocator : public Allocator {
     platform::RecordMemEvent(allocation->ptr(),
                              allocation->place(),
                              allocation->size(),
-                             platform::TracerMemEventType::Free);
+                             phi::TracerMemEventType::Free);
     underlying_allocator_->Free(allocation);
   }
 
@@ -61,7 +61,7 @@ class StatAllocator : public Allocator {
     platform::RecordMemEvent(allocation->ptr(),
                              allocation->place(),
                              allocation->size(),
-                             platform::TracerMemEventType::Allocate);
+                             phi::TracerMemEventType::Allocate);
     return allocation.release();
   }
 
