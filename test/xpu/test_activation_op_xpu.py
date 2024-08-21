@@ -23,7 +23,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -582,31 +582,37 @@ class XPUTestPowOP(XPUOpTestWrapper):
 
     class XPUTestPowBase(TestActivationOPBase):
         def set_case(self):
-            self.op_type = "pow"
             self.dtype = self.in_type
-
+            self.op_type = "pow"
+            self.place = paddle.XPUPlace(0)
+            self.inputs = {}
             self.init_config()
+            self.init_data()
+            self.attrs = {'factor': self.factor, 'use_xpu': True}
+            if self.dtype == np.uint16:
+                x_float32 = convert_uint16_to_float(self.inputs['X'])
+                self.outputs = {'Out': np.power(x_float32, self.factor)}
+            else:
+                self.outputs = {'Out': np.power(self.inputs['X'], self.factor)}
+
+        def init_config(self):
+            self.range = (-1, 2)
+            self.shape = [100]
+            self.factor = 3.0
+
+        def init_data(self):
             if self.dtype == np.uint16:
                 x_float32 = np.random.uniform(
                     self.range[0], self.range[1], self.shape
                 ).astype('float32')
                 x = convert_float_to_uint16(x_float32)
                 self.inputs = {'X': x}
-                self.outputs = {'Out': np.power(x_float32, self.factor)}
             else:
                 self.inputs = {
                     'X': np.random.uniform(
                         self.range[0], self.range[1], self.shape
                     ).astype(self.dtype)
                 }
-                self.outputs = {'Out': np.power(self.inputs['X'], self.factor)}
-
-            self.attrs = {'factor': self.factor, 'use_xpu': True}
-
-        def init_config(self):
-            self.range = (-1, 2)
-            self.shape = [12]
-            self.factor = 3.0
 
     class XPUTestPow1(XPUTestPowBase):
         def init_config(self):
@@ -1428,37 +1434,68 @@ class XPUTestRsqrtOP(XPUOpTestWrapper):
 
     class XPUTestRsqrtBase(TestActivationOPBase):
         def set_case(self):
-            self.op_type = "rsqrt"
             self.dtype = self.in_type
-            self.init_config()
-            out = np.reciprocal(np.sqrt(self.x))
+            self.op_type = "rsqrt"
+            self.place = paddle.XPUPlace(0)
+            self.inputs = {}
+            self.init_shape()
+            self.init_data()
+            if self.dtype == np.uint16:
+                x_float32 = convert_uint16_to_float(self.inputs['X'])
+                self.outputs = {'Out': np.reciprocal(np.sqrt(x_float32))}
+            else:
+                self.outputs = {'Out': np.reciprocal(np.sqrt(self.inputs['X']))}
 
-            self.inputs = {'X': self.x}
-            self.outputs = {'Out': out}
-            self.attrs = {'use_xpu': True}
+        def init_shape(self):
+            self.shape = (4, 10, 10)
 
-        def init_config(self):
-            self.x = np.random.uniform(0.01, 4, [11, 17]).astype(self.dtype)
+        def init_data(self):
+            if self.dtype == np.uint16:
+                x = np.random.uniform(0.25, 1, self.shape).astype("float32")
+                x = convert_float_to_uint16(x)
+                self.inputs = {'X': x}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.25, 1, self.shape).astype(
+                        self.dtype
+                    )
+                }
 
-    class XPUTestRsqrt_ZeroDim(XPUTestRsqrtBase):
-        def init_config(self):
-            self.x = np.random.uniform(0.01, 4, []).astype(self.dtype)
+    class TestRsqrtOp1(XPUTestRsqrtBase):
+        def init_shape(self):
+            self.shape = (8, 16, 8)
 
-    class XPUTestRsqrt2(XPUTestRsqrtBase):
-        def init_config(self):
-            self.x = np.random.uniform(0.01, 4, [1024, 8]).astype(self.dtype)
+    class TestRsqrtOp2(XPUTestRsqrtBase):
+        def init_shape(self):
+            self.shape = (8, 16)
 
-    class XPUTestRsqrt3(XPUTestRsqrtBase):
-        def init_config(self):
-            self.x = np.random.uniform(0.01, 4, [4, 512, 15, 15]).astype(
-                self.dtype
-            )
+    class TestRsqrtOp3(XPUTestRsqrtBase):
+        def init_shape(self):
+            self.shape = (4, 8, 16)
 
-    class XPUTestRsqrt4(XPUTestRsqrtBase):
-        def init_config(self):
-            self.x = np.random.uniform(0.01, 4, [4, 256, 22, 22]).astype(
-                self.dtype
-            )
+    class TestRsqrtOp4(XPUTestRsqrtBase):
+        def init_shape(self):
+            self.shape = (4, 8, 8)
+
+    class TestRsqrtOp5(XPUTestRsqrtBase):
+        def init_shape(self):
+            self.shape = (4, 8, 16)
+
+    class TestRsqrtOp6(XPUTestRsqrtBase):
+        def init_shape(self):
+            self.shape = (1024, 8)
+
+    class TestRsqrtOp7(XPUTestRsqrtBase):
+        def init_shape(self):
+            self.shape = (4, 512, 15, 15)
+
+    class TestRsqrtOp8(XPUTestRsqrtBase):
+        def init_shape(self):
+            self.shape = (4, 256, 22, 22)
+
+    class TestRsqrtOp_ZeorDim(XPUTestRsqrtBase):
+        def init_shape(self):
+            self.shape = []
 
 
 support_types = get_xpu_op_support_types('rsqrt')
