@@ -591,6 +591,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   std::unordered_set<std::string> store_buffer_names =
       CollectStoreBufferNames(func_bodies);
   std::unordered_set<std::string> arg_name_set;
+  const int& input_tensor_size = group_func_arg_tensors->size();
   for (auto& arg_tensor : *group_func_arg_tensors) {
     // input data name.
     group->mut_input_names().push_back(arg_tensor->name);
@@ -659,32 +660,59 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
   }
 
-  std::map<int, CINNKernelInfo::ArgDimIdx> mps;
+  std::map<int, CINNKernelInfo::SymbolArgBindInfo> mps;
   // update args for dynamic dim
-  int num_tensor_args = static_cast<int>(group_func_args->size());
   int non_tensor_arg_idx = group_func_args->size();
-  std::unordered_set<std::string> int_args_set;
-  for (int tensor_arg_idx = 0; tensor_arg_idx < num_tensor_args;
+  std::unordered_set<std::string> symbol_args_set;
+  for (int tensor_arg_idx = 0; tensor_arg_idx < input_tensor_size;
        tensor_arg_idx++) {
-    auto tensor_dim = (*group_func_arg_tensors)[tensor_arg_idx]->sym_shape;
-    int tensor_dim_size = tensor_dim.size();
-    for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
-         tensor_arg_dim_idx++) {
-      if (tensor_dim[tensor_arg_dim_idx]->IsUniSymbolic()) {
-        const std::string symbol_name =
-            tensor_dim[tensor_arg_dim_idx]->ToString();
-        if (int_args_set.count(symbol_name) != 0) {
-          continue;
+    const auto& AddDimSymbolArgs = [&]() {
+      const auto& tensor_dim =
+          (*group_func_arg_tensors).at(tensor_arg_idx)->sym_shape;
+      int tensor_dim_size = tensor_dim.size();
+      for (int tensor_arg_dim_idx = 0; tensor_arg_dim_idx < tensor_dim_size;
+           tensor_arg_dim_idx++) {
+        if (tensor_dim[tensor_arg_dim_idx]->IsUniSymbolic()) {
+          const std::string& symbol_name =
+              tensor_dim[tensor_arg_dim_idx]->ToString();
+          if (symbol_args_set.count(symbol_name) != 0) {
+            continue;
+          }
+          symbol_args_set.insert(symbol_name);
+          group_func_args->emplace_back(
+              ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
+          group->mut_symbol_args_map()[non_tensor_arg_idx++] =
+              CINNKernelInfo::ArgDimIdx{tensor_arg_idx, tensor_arg_dim_idx};
+          VLOG(4) << "device kernel func's " << symbol_name << " is from "
+                  << tensor_arg_idx << ".shape(" << tensor_arg_dim_idx << ")";
         }
-        int_args_set.insert(symbol_name);
-        group_func_args->emplace_back(
-            ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
-        group->mut_int_args_map()[non_tensor_arg_idx++] = {tensor_arg_idx,
-                                                           tensor_arg_dim_idx};
-        VLOG(4) << "device kernel func's " << symbol_name << " is from "
-                << tensor_arg_idx << ".shape(" << tensor_arg_dim_idx << ")";
       }
-    }
+    };
+    const auto& AddValueSymbolArgs = [&]() {
+      const auto& opt_tensor_value =
+          (*group_func_arg_tensors).at(tensor_arg_idx)->value();
+      if (opt_tensor_value) {
+        const int& tensor_value_size = opt_tensor_value.value().size();
+        for (int value_idx = 0; value_idx < tensor_value_size; ++value_idx) {
+          const auto& value_expr = opt_tensor_value.value()[value_idx];
+          if (value_expr.is_var()) {
+            const std::string& symbol_name = value_expr.as_var()->name;
+            if (symbol_args_set.count(symbol_name) != 0) {
+              continue;
+            }
+            symbol_args_set.insert(symbol_name);
+            group_func_args->emplace_back(
+                ir::_Var_::Make(symbol_name, cinn::common::Int(64)));
+            group->mut_symbol_args_map()[non_tensor_arg_idx++] =
+                CINNKernelInfo::ArgValueIdx{tensor_arg_idx, value_idx};
+            VLOG(4) << "device kernel func's " << symbol_name << " is from "
+                    << tensor_arg_idx << ".data(" << value_idx << ")";
+          }
+        }
+      }
+    };
+    AddDimSymbolArgs();
+    AddValueSymbolArgs();
   }
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (int i = 0; i < func_bodies.size(); ++i) {

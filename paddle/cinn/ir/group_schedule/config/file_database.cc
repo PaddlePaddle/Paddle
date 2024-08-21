@@ -14,10 +14,10 @@
 
 #include "paddle/cinn/ir/group_schedule/config/file_database.h"
 
-#include <sys/stat.h>
-
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/json_util.h>
+#include <sys/stat.h>
+#include <cstdlib>
 #include <fstream>
 
 #include "paddle/cinn/utils/multi_threading.h"
@@ -92,7 +92,7 @@ std::string IterSpaceTypeToDir(const common::Target target,
     filename += i.first + i.second;
     filename += "_";
   }
-  const std::string kDirSuffix = "_EREBE";
+  const std::string kDirSuffix = "_EREBE/";
   dirname = dirname.substr(0, dirname.size() - 1) + kDirSuffix;
   filename = filename.substr(0, filename.size() - 1);
 
@@ -106,14 +106,24 @@ std::string IterSpaceTypeToDir(const common::Target target,
                             test_path));
     }
   };
+  const char* envValue = getenv("CINN_CONFIG_PATH");
+  std::string config_file_addr;
+  if (envValue == nullptr)
+    config_file_addr = "";
+  else
+    config_file_addr = envValue;
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  if (root_path == "") {
+    root_path = config_file_addr + "/tile_config/";
+  }
   std::string target_str = target.arch_str() + "_" + target.device_name_str();
   checkexist(root_path);
   checkexist(root_path + target_str);
   checkexist(root_path + target_str + "/" + dirname);
   VLOG(3) << "Dump_path is "
-          << root_path + target_str + "/" + dirname + "/" + filename + ".json";
-  return root_path + target_str + "/" + dirname + "/" + filename + ".json";
+          << root_path + target_str + "/" + dirname + filename + ".json";
+
+  return root_path + target_str + "/" + dirname + filename + ".json";
 }
 
 bool FileTileConfigDatabase::ToFile(const common::Target& target,
