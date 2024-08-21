@@ -83,7 +83,7 @@ bool ReadModule(const std::string& file_path,
       data[BASE_CODE][MAGIC] == PIR) {
     uint64_t file_version =
         data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
-    if (file_version != pir_version) {
+    if (file_version != (uint64_t)pir_version) {
       builder.SetFileVersion(file_version);
       const char* paddle_root = PADDLE_ROOT;
       VLOG(8) << "Paddle path: " << paddle_root;
