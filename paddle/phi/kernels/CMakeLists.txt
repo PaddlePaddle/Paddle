@@ -223,6 +223,8 @@ if(WITH_ROCM)
     "fusion/gpu/fused_bn_add_activation_kernel.cu"
     "fusion/gpu/fused_feedforward_kernel.cu"
     "fusion/gpu/fused_feedforward_grad_kernel.cu"
+    "fusion/gpu/fused_multi_transformer_int8_kernel.cu"
+    "fusion/gpu/fused_multi_transformer_kernel.cu"
     "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu")
   list(
     REMOVE_ITEM
