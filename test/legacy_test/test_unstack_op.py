@@ -192,7 +192,9 @@ class TestUnStackBF16Op(OpTest):
         self.initDefaultParameters()
         self.initParameters()
         self.op_type = 'unstack'
+        self.prim_op_type = "comp"
         self.python_api = paddle.unstack
+        self.public_python_api = paddle.unstack
         self.x = np.random.random(size=self.input_dim).astype(np.float32)
         outs = np.split(self.x, self.input_dim[self.axis], self.axis)
         new_shape = list(self.input_dim)
