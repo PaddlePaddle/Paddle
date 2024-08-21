@@ -976,8 +976,8 @@ bool DeformableConvOpInferSymbolicShape(
     output_shape.emplace_back(conv_output_size);
   }
 
-  infer_context->AddEqualCstr(out_shape[2], offset_shape[2]);
-  infer_context->AddEqualCstr(out_shape[3], offset_shape[3]);
+  infer_context->AddEqualCstr(output_shape[2], offset_shape[2]);
+  infer_context->AddEqualCstr(output_shape[3], offset_shape[3]);
   infer_context->AddEqualCstr(offset_shape[1],
                               symbol::DimExpr(2 * deformable_groups) *
                                   filter_shape[2] * filter_shape[3]);
@@ -985,8 +985,8 @@ bool DeformableConvOpInferSymbolicShape(
     const auto &mask_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(3));
     const std::vector<symbol::DimExpr> &mask_shape = mask_shape_or_data.shape();
-    infer_context->AddEqualCstr(out_shape[2], mask_shape[2]);
-    infer_context->AddEqualCstr(out_shape[3], mask_shape[3]);
+    infer_context->AddEqualCstr(output_shape[2], mask_shape[2]);
+    infer_context->AddEqualCstr(output_shape[3], mask_shape[3]);
     infer_context->AddEqualCstr(
         mask_shape[1],
         symbol::DimExpr(deformable_groups) * filter_shape[2] * filter_shape[3]);
