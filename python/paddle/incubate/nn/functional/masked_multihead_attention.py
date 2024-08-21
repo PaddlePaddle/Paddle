@@ -44,7 +44,7 @@ def masked_multihead_attention(
     quant_round_type: int = ...,
     quant_max_bound: float = ...,
     quant_min_bound: float = ...,
-) -> Tensor: ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -68,7 +68,7 @@ def masked_multihead_attention(
     quant_round_type: int = ...,
     quant_max_bound: float = ...,
     quant_min_bound: float = ...,
-) -> tuple[Tensor, Tensor]: ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 def masked_multihead_attention(
@@ -99,7 +99,7 @@ def masked_multihead_attention(
 
     Args:
         x (Tensor): The input tensor could be 2-D tensor. Its shape is [batch_size, 3 * num_head * head_dim].
-        cache_kvs (list(Tensor)|tuple(Tensor)): The cache structure tensors for the generation model. Its shape is [2, batch_size, num_head, max_seq_len, head_dim].
+        cache_kvs (Tensor): The cache structure tensors for the generation model. Its shape is [2, batch_size, num_head, max_seq_len, head_dim].
         bias (Tensor, optional): The bias tensor. Its shape is [3, num_head, head_dim].
         src_mask (Tensor, optional): The src_mask tensor. Its shape is [batch_size, 1, 1, sequence_length].
         sequence_lengths (Tensor, optional): The sequence_lengths tensor, used to index input. Its shape is [batch_size, 1].
