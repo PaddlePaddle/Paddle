@@ -406,18 +406,11 @@ class BuildExtension(build_ext):
 
     def finalize_options(self) -> None:
         super().finalize_options()
-        self.parallel = True
         # NOTE(Aurelius84): Set location of compiled shared library.
         # Carefully to modify this because `setup.py build/install`
         # and `load` interface rely on this attribute.
         if self.output_dir is not None:
             self.build_lib = self.output_dir
-
-    # def build_extension(self, ext):
-    #     orignal_compile = self.compiler.__class__.compile
-    #     self.compiler.__class__.compile = single_extension_compile
-    #     super().build_extension(ext)
-    #     self.compiler.__class__.compile = orignal_compile
 
     def build_extensions(self) -> None:
         if OS_NAME.startswith("darwin"):
@@ -442,7 +435,6 @@ class BuildExtension(build_ext):
             original_compile = self.compiler.compile
             original_spawn = self.compiler.spawn
         else:
-            # original_compile = self.compiler._compile
             original_compile = self.compiler.__class__._compile
 
         def unix_custom_single_compiler(
