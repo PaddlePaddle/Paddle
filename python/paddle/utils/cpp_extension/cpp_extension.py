@@ -15,11 +15,10 @@
 # isort: skip_file
 
 from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any, Sequence
-import concurrent
+from typing import TYPE_CHECKING, Any
 import os
 import copy
+import concurrent
 import re
 import setuptools
 from setuptools.command.easy_install import easy_install
@@ -68,6 +67,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from types import ModuleType
 
 # Note(zhouwei): On windows, it will export function 'PyInit_[name]' by default,
@@ -630,12 +631,18 @@ class BuildExtension(build_ext):
                     else:
                         cflags = []
 
-                    cflags = prepare_win_cudaflags(cflags) + ['--use-local-env']
+                    cflags = [*prepare_win_cudaflags(cflags), '--use-local-env']
                     for flag in MSVC_COMPILE_FLAGS:
-                        cflags = ['-Xcompiler', flag] + cflags
-                    cmd = (
-                        [nvcc_cmd, '-c', src, '-o', obj] + include_list + cflags
-                    )
+                        cflags = ['-Xcompiler', flag, *cflags]
+                    cmd = [
+                        nvcc_cmd,
+                        '-c',
+                        src,
+                        '-o',
+                        obj,
+                        *include_list,
+                        *cflags,
+                    ]
                 elif isinstance(self.cflags, dict):
                     cflags = MSVC_COMPILE_FLAGS + self.cflags['cxx']
                     cmd += cflags
@@ -747,8 +754,8 @@ class BuildExtension(build_ext):
         """
         Make sure to use Clang as compiler on Mac platform
         """
-        compiler_infos = ['clang'] + CLANG_COMPILE_FLAGS
-        linker_infos = ['clang'] + CLANG_LINK_FLAGS
+        compiler_infos = ['clang', *CLANG_COMPILE_FLAGS]
+        linker_infos = ['clang', *CLANG_LINK_FLAGS]
         self.compiler.set_executables(
             compiler=compiler_infos,
             compiler_so=compiler_infos,

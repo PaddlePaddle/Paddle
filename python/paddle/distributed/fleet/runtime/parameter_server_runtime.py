@@ -497,7 +497,7 @@ class ParameterServerRuntime(RuntimeBase):
                 optimizer.type, varname
             )
 
-            for var_name in [varname] + reshaped_varnames + origin_varnames:
+            for var_name in [varname, *reshaped_varnames, *origin_varnames]:
                 var = self.origin_main_program.global_block().vars[var_name]
                 block.append_op(
                     type='recv_save',
