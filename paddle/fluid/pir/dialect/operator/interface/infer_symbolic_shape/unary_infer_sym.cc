@@ -1822,9 +1822,7 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
       num_classes = op->attribute<pir::Int64Attribute>("num_classes").data();
       num_classes_expr = symbol::DimExpr(num_classes);
     } else if (num_classes_shape_or_date.data().has_value()) {
-      num_classes =
-          num_classes_shape_or_date.data().value().at(0).Get<int64_t>();
-      num_classes_expr = symbol::DimExpr(num_classes);
+      num_classes_expr = num_classes_shape_or_date.data().value().at(0);
     } else {
       num_classes_expr = infer_context->GetNextSymName();
     }
