@@ -44,7 +44,7 @@ def masked_multihead_attention(
     quant_round_type: int = ...,
     quant_max_bound: float = ...,
     quant_min_bound: float = ...,
-) -> Tensor: ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
