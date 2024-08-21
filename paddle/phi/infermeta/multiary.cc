@@ -5416,7 +5416,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
     sequence_width = static_cast<int>(logits_dims[2]);
   } else {
     max_sequence_length = -1;
-    num_classes = -1;
+    num_sequences = -1;
     sequence_width =
         static_cast<int>(common::product(logits_dims) / logits_dims[0]);
   }
