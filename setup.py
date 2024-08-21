@@ -1040,6 +1040,23 @@ def get_paddle_extra_install_requirements():
         return []
 
 
+def get_cinn_config_jsons():
+    from pathlib import Path
+
+    src_cinn_config_path = (
+        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinn_config'
+    )
+    prefix_len = len(src_cinn_config_path) + 1
+    p = Path(src_cinn_config_path)
+    json_list = list(p.glob('**/*.json'))
+    json_path_list = []
+    for json in json_list:
+        json = str(json)
+        json = json[prefix_len:]
+        json_path_list += [json]
+    return json_path_list
+
+
 def get_package_data_and_package_dir():
     if os.name != 'nt':
         package_data = {
@@ -1055,6 +1072,19 @@ def get_package_data_and_package_dir():
     package_data['paddle.base'] += [
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
+
+    whl_cinn_config_path = paddle_binary_dir + '/python/paddle/cinn_config'
+    src_cinn_config_path = (
+        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinn_config'
+    )
+    package_data['paddle.cinn_config'] = []
+    if os.path.exists(whl_cinn_config_path):
+        shutil.rmtree(whl_cinn_config_path)
+    shutil.copytree(src_cinn_config_path, whl_cinn_config_path)
+    json_path_list = get_cinn_config_jsons()
+    for json in json_path_list:
+        package_data['paddle.cinn_config'] += [json]
+
     if 'develop' in sys.argv:
         package_dir = {'': 'python'}
     else:
@@ -1696,6 +1726,7 @@ def get_setup_parameters():
         'paddle.base.incubate.checkpoint',
         'paddle.amp',
         'paddle.cost_model',
+        'paddle.cinn_config',
         'paddle.hapi',
         'paddle.vision',
         'paddle.vision.models',

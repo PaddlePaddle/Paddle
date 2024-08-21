@@ -37,6 +37,7 @@ COMMON_DECLARE_bool(print_ir);
 PD_DECLARE_bool(cinn_measure_kernel_time);
 PHI_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_string(tile_config_policy);
+PD_DECLARE_string(cinn_tile_config_filename_label);
 constexpr int kThreadsPerWarp = 32;
 constexpr int kMaxThreadsPerBlock = 1024;
 // now each has the same weight
@@ -383,6 +384,12 @@ void TestSearchForTileConfig(int spatial_l_bound,
   FLAGS_cinn_measure_kernel_time = true;
   FLAGS_enable_cinn_compile_cache = false;
   FLAGS_tile_config_policy = "search";
+  // set tile_file path to test path when user use default setting
+  std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  if (root_path == "") {
+    const std::string kTestFileDir = "./tile_file_test/";
+    FLAGS_cinn_tile_config_filename_label = kTestFileDir;
+  }
 
   // Define the search space bounds and sampling probabilities.
   int spatial_left_bound = spatial_l_bound;
