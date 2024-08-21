@@ -1080,7 +1080,11 @@ def get_paddle_extra_install_requirements():
         ].split("|")
 
     if env_dict.get("TENSORRT_FOUND") == "ON":
-        if platform.system() == 'Linux':
+        version_str = get_tensorrt_version()
+        version_default = int(version_str.split(".")[0])
+        if platform.system() == 'Linux' or (
+            platform.system() == 'Windows' and version_default >= 10
+        ):
 
             PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
                 "tensorrt==8.5.3.1",
@@ -1088,7 +1092,6 @@ def get_paddle_extra_install_requirements():
                 "tensorrt==8.6.1.post1",
             ]
 
-            version_str = get_tensorrt_version()
             if not version_str:
                 return paddle_cuda_requires, []
 
