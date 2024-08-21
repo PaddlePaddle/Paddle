@@ -4875,7 +4875,7 @@
     backend : place
     data_type : dtype
   traits : pir::SideEffectTrait
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unbind
   args : (Tensor input, int axis = 0)

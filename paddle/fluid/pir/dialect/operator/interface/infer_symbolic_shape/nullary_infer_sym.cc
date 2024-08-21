@@ -486,11 +486,22 @@ bool TriuIndicesOpInferSymbolicShape(
   return true;
 }
 
-// bool TruncatedGaussianRandomOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool TruncatedGaussianRandomOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<int> shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "shape");
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.reserve(shape.size());
+  for (const int &dim : shape) {
+    out_shape.emplace_back(symbol::DimExpr(static_cast<int64_t>(dim)));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
 
 bool UniformOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
