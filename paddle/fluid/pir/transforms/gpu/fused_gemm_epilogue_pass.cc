@@ -133,6 +133,7 @@ class FusedLinearGradSinglePattern
 
     bool have_sum_op = false;
     pir::Value sum_output;
+    pir::Value sum_input;
     for (auto user_it = dout.use_begin(); user_it != dout.use_end();
          ++user_it) {
       if (!user_it->owner()) {
@@ -141,6 +142,7 @@ class FusedLinearGradSinglePattern
       if (auto sum_op = user_it->owner()->dyn_cast<paddle::dialect::SumOp>()) {
         have_sum_op = true;
         sum_output = sum_op->result(0);
+        sum_input = sum_op->operand_source(0);
         rewriter.SetInsertionPointAfter(sum_op);
         break;
       }
@@ -161,7 +163,7 @@ class FusedLinearGradSinglePattern
         matmul_grad->operand_source(0),
         matmul_grad->operand_source(1),
         pir::Value(),
-        matmul_grad->operand_source(2),
+        sum_input,
         attr_map);
 
     rewriter.ReplaceAllUsesWith(matmul_grad.result(0), fuse_gemm.result(0));
