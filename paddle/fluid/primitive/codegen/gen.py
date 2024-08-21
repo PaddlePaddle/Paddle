@@ -400,7 +400,7 @@ def process_optional_inplace_output_info(apis):
         inputs_dict = to_named_dict(api['inputs'])
         for output in api['outputs']:
             if not api['is_fwd']:
-                output['optional'] = False
+                return
             else:
                 if (
                     api.get("inplace", None)

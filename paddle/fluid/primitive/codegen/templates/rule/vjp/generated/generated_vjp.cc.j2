@@ -95,9 +95,17 @@ auto op_res = backend::{{api.name}}<LazyTensor>({{common.args(input_names, attr_
   {% if outputs|length > 1 %}
     {% for i in range(outputs|length) %}
       {% if outputs[i].typename=='Tensor' %}
+        {% if outputs[i].optional %}
+vjp_res[{{i}}][0] = std::get<{{i}}>(op_res).get();
+        {% else %}
 vjp_res[{{i}}][0] = std::get<{{i}}>(op_res);
+        {% endif %}
       {% else %}
+        {% if outputs[i].optional %}
+vjp_res[{{i}}] = std::get<{{i}}>(op_res).get();
+        {% else %}
 vjp_res[{{i}}] = std::get<{{i}}>(op_res);
+        {% endif %}
       {% endif %}
     {% endfor %}
   {% elif outputs|length == 1 %}

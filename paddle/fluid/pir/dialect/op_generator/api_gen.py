@@ -285,6 +285,14 @@ class CodeGen:
         else:
             return False
 
+    def _is_backward_op(self, op_info):
+        op_names = op_info.op_phi_name
+        for name in op_names:
+            if name.endswith(('_grad', '_grad_')):
+                return True
+        else:
+            return False
+
     def _is_optional_inplace_output(self, op_info, output_name):
         op_names = op_info.op_phi_name
         for name in op_names:
@@ -300,6 +308,15 @@ class CodeGen:
             input_index = input_name_list.index(inplace_map[output_name])
             if input_optional_list[input_index] == 'true':
                 return True
+        return False
+
+    def _need_optional_output(self, op_info, name):
+        if self._is_optional_inplace_output(op_info, name):
+            return True
+        if self._is_backward_op(op_info) and self._is_optional_output(
+            op_info, name
+        ):
+            return True
         return False
 
     # =====================================
@@ -377,7 +394,7 @@ class CodeGen:
             ):
                 if intermediate == 'true':
                     continue
-                if self._is_optional_inplace_output(op_info, name):
+                if self._need_optional_output(op_info, name):
                     ret.append(OPTIONAL_VALUE_TYPE_MAP[type])
                 else:
                     ret.append(VALUE_TYPE_MAP[type])
@@ -385,7 +402,7 @@ class CodeGen:
         elif output_num == 1:
             index = intermediate_list.index('false')
             name = name_list[index]
-            if self._is_optional_inplace_output(op_info, name):
+            if self._need_optional_output(op_info, name):
                 return OPTIONAL_VALUE_TYPE_MAP[type_list[index]]
             else:
                 return VALUE_TYPE_MAP[type_list[index]]
@@ -464,7 +481,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_inplace_output(op_info, name):
+            if self._need_optional_output(op_info, name):
                 if VECTOR_TYPE in type:
                     ret += OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE.format(
                         name=name,
@@ -595,7 +612,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_inplace_output(op_info, name):
+            if self._need_optional_output(op_info, name):
                 ret_list.append(f'optional_{name}')
             elif VECTOR_TYPE in type:
                 split_op_name = f'{name}_split_op'
