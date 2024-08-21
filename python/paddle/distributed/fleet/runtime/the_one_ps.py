@@ -159,7 +159,7 @@ class Accessor:
     def to_string(self, indent):
         accessor_str = "{}accessor {{{}\n{}}}"
         attrs = ""
-        attrs += f"accessor_class: \"{self.accessor_class}\" "
+        attrs += f'accessor_class: "{self.accessor_class}" '
         attrs += f"fea_dim: {self.feature_dim} "
         attrs += f"embedx_dim: {self.embedding_dim} "
         attrs += "\n"
@@ -432,13 +432,13 @@ class CommonAccessor:
     def to_string(self, indent):
         accessor_str = "{}common {{{}\n{}}}"
         attrs = ""
-        attrs += f"name: \"{self.accessor_class}\" "
+        attrs += f'name: "{self.accessor_class}" '
 
         if self.table_name:
-            attrs += f"table_name: \"{self.table_name}\" "
+            attrs += f'table_name: "{self.table_name}" '
 
         if self.entry:
-            attrs += f"entry: \"{self.entry}\" "
+            attrs += f'entry: "{self.entry}" '
         attrs += f"trainer_num: {self.trainer_num} "
         attrs += f"sync: {self.sync} "
         if self.table_num:
@@ -447,13 +447,13 @@ class CommonAccessor:
             attrs += f"table_dim: {self.table_dim} "
 
         for param in self.params:
-            attrs += f"params: \"{param}\" "
+            attrs += f'params: "{param}" '
 
         for dim in self.dims:
             attrs += f"dims: {dim} "
 
         for initializer in self.initializers:
-            attrs += f"initializers: \"{initializer}\" "
+            attrs += f'initializers: "{initializer}" '
 
         attrs += "\n"
         return accessor_str.format(
@@ -472,11 +472,11 @@ class Tensor:
     def to_string(self, indent):
         program_str = "{}tensor {{{}\n{}}}"
         attrs = ""
-        attrs += f"feed_var_name: \"{self.feed_var_name}\" "
-        attrs += f"fetch_var_name: \"{self.fetch_var_name}\" "
+        attrs += f'feed_var_name: "{self.feed_var_name}" '
+        attrs += f'fetch_var_name: "{self.fetch_var_name}" '
         attrs += f"startup_program_id: {self.startup_program_id} "
         attrs += f"main_program_id: {self.main_program_id} "
-        attrs += f"tensor_table_class: \"{self.tensor_table_class}\" "
+        attrs += f'tensor_table_class: "{self.tensor_table_class}" '
         attrs += "\n"
         return program_str.format(
             conv_indent(indent), attrs, conv_indent(indent)
@@ -504,7 +504,7 @@ class Table:
 
         attrs = ""
         attrs += f"table_id: {self.id} "
-        attrs += f"table_class: \"{self.table_class}\" "
+        attrs += f'table_class: "{self.table_class}" '
         attrs += f"shard_num: {self.shard_num} "
         attrs += f"type: {self.type}"
         attrs += "\n"
@@ -543,9 +543,9 @@ class Service:
         service_str = "{}service_param {{{}\n{}}}"
 
         attrs = ""
-        attrs += f"server_class: \"{self.server_class}\" "
-        attrs += f"client_class: \"{self.client_class}\" "
-        attrs += f"service_class: \"{self.service_class}\" "
+        attrs += f'server_class: "{self.server_class}" '
+        attrs += f'client_class: "{self.client_class}" '
+        attrs += f'service_class: "{self.service_class}" '
         attrs += f"start_server_port: {self.start_server_port} "
         attrs += f"server_thread_num: {self.server_thread_num} "
 

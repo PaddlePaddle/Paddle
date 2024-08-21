@@ -44,9 +44,7 @@ AddNGradNodeFinal::operator()(
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
   phi::RecordEvent node_execution_inner(
-      "Local_AddNGradNodeFinal",
-      paddle::platform::TracerEventType::OperatorInner,
-      1);
+      "Local_AddNGradNodeFinal", phi::TracerEventType::OperatorInner, 1);
 
   // Apply Gradient Hooks
   auto hooked_grads = ApplyGradientHooks(grads);

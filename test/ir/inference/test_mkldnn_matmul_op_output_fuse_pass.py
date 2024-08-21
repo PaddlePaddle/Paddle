@@ -33,10 +33,10 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
     def make_network(self):
         with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
-                name='x', shape=[-1] + self.shape_x, dtype=self.d_type
+                name='x', shape=[-1, *self.shape_x], dtype=self.d_type
             )
             y = paddle.static.data(
-                name='y', shape=[-1] + self.shape_y, dtype=self.d_type
+                name='y', shape=[-1, *self.shape_y], dtype=self.d_type
             )
             out = paddle.matmul(x, y)
             out = paddle.transpose(out, perm=[0, 2, 1, 3])
@@ -52,8 +52,8 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
 
     def set_feeds(self, out):
         self.feeds = {
-            "x": np.random.random([self.bs] + self.shape_x).astype(self.d_type),
-            "y": np.random.random([self.bs] + self.shape_y).astype(self.d_type),
+            "x": np.random.random([self.bs, *self.shape_x]).astype(self.d_type),
+            "y": np.random.random([self.bs, *self.shape_y]).astype(self.d_type),
         }
         self.fetch_list = [out]
 
@@ -75,10 +75,10 @@ class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
     def make_network(self):
         with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
-                name='x', shape=[-1] + self.shape_x, dtype=self.d_type
+                name='x', shape=[-1, *self.shape_x], dtype=self.d_type
             )
             y = paddle.static.data(
-                name='y', shape=[-1] + self.shape_y, dtype=self.d_type
+                name='y', shape=[-1, *self.shape_y], dtype=self.d_type
             )
             out = paddle.matmul(x, y)
             out = paddle.transpose(out, perm=[0, 1, 2, 3])
@@ -98,10 +98,10 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
     def make_network(self):
         with base.program_guard(self.main_program, self.startup_program):
             x = paddle.static.data(
-                name='x', shape=[-1] + self.shape_x, dtype=self.d_type
+                name='x', shape=[-1, *self.shape_x], dtype=self.d_type
             )
             y = paddle.static.data(
-                name='y', shape=[-1] + self.shape_y, dtype=self.d_type
+                name='y', shape=[-1, *self.shape_y], dtype=self.d_type
             )
             out = paddle.matmul(x, y)
             out = paddle.transpose(out, perm=[0, 2, 1, 3])
