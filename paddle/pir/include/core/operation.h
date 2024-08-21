@@ -144,6 +144,7 @@ class IR_API alignas(8) Operation final
   std::vector<OpOperand> operands() const;
   Value operand_source(uint32_t index) const;
   std::vector<Value> operands_source() const;
+  uint32_t operands_source_index(const Value &target_value) const;
   Type operand_type(uint32_t index) const { return operand(index).type(); }
 
   ///
