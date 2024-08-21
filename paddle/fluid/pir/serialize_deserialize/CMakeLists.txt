@@ -7,7 +7,7 @@ include_directories(pir_save_load PRIVATE
 
 link_directories(${PADDLE_BINARY_DIR}/third_party/install/yaml-cpp/lib/)
 target_compile_definitions(yaml INTERFACE YAML_CPP_STATIC_DEFINE)
-if(NOT WIN32 AND NOT APPLE)
+if(LINUX)
   link_libraries(stdc++fs)
 endif()
 
