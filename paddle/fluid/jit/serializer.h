@@ -20,14 +20,30 @@
 #include <unordered_map>
 
 #include "paddle/phi/common/place.h"
-
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 namespace paddle {
 
 namespace framework {
 class Variable;
 class ProgramDesc;
 }  // namespace framework
+namespace pir {
+class IrContext{
+public:
+  static IrContext *Instance();
+};
 
+class Program{
+public:
+  Program(IrContext* context);
+};
+class Value;
+bool IR_API ReadModule(const std::string& file_path,
+                       pir::Program* program,
+                       const uint64_t& pir_version);
+}
 namespace jit {
 class Layer;
 using Variable = paddle::framework::Variable;
@@ -64,6 +80,8 @@ class Deserializer {
   // void ReadExtraInfo(const std::string& file_name) const;
 
   // void ReadByteCode(const std::string& file_name) const;
+
+  pir::Program LoadPirProgram(const std::string& file_name);
 
   framework::ProgramDesc LoadProgram(const std::string& file_name);
 };

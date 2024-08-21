@@ -28,7 +28,7 @@
 #include "paddle/fluid/jit/serializer_utils.h"
 
 COMMON_DECLARE_string(jit_engine_type);
-
+COMMON_DECLARE_bool(enable_pir_api);
 namespace paddle {
 namespace jit {
 
@@ -131,6 +131,14 @@ framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   fin.read(&buffer[0], buffer.size());  // NOLINT
   fin.close();
   return framework::ProgramDesc(buffer);
+}
+
+pir::Program Deserializer::LoadPirProgram(const std::string& file_name) {
+  VLOG(3) << "LoadPirProgram from: " << file_name;
+  std::shared_ptr<pir::Program> pir_program_;
+  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+  pir::ReadModule(file_name, pir_program_.get(), 1 /*pir_version*/);
+  return *pir_program_;
 }
 
 Layer Load(const std::string& file_path, const phi::Place& place) {
