@@ -86,7 +86,7 @@ class TestConv2dAddBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestMultiplyOpAddBf16Pass(PassTest):
@@ -135,7 +135,7 @@ class TestMultiplyOpAddBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestFcBf16Pass(PassTest):
@@ -179,7 +179,7 @@ class TestFcBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestLayerNormBf16Pass(PassTest):
@@ -222,7 +222,7 @@ class TestLayerNormBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestMultiplyAddOpAddBf16Pass(PassTest):
@@ -273,7 +273,7 @@ class TestMultiplyAddOpAddBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestAddReluBf16Pass(PassTest):
@@ -323,7 +323,7 @@ class TestAddReluBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestAddsigmoidBf16Pass(PassTest):
@@ -374,7 +374,7 @@ class TestAddsigmoidBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestfusedConv2dFusePass(PassTest):
@@ -441,7 +441,7 @@ class TestfusedConv2dFusePass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestReshapeBf16Pass(PassTest):
@@ -489,7 +489,7 @@ class TestReshapeBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestPool2dBf16Pass(PassTest):
@@ -561,7 +561,7 @@ class TestPool2dBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestSumOpBf16Pass(PassTest):
@@ -611,7 +611,7 @@ class TestSumOpBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestAddClipBf16Pass(PassTest):
@@ -660,7 +660,7 @@ class TestAddClipBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestSliceOpBf16Pass(PassTest):
@@ -709,7 +709,7 @@ class TestSliceOpBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestSqueezeOpBf16Pass(PassTest):
@@ -758,7 +758,7 @@ class TestSqueezeOpBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestpreluBf16Pass(PassTest):
@@ -801,7 +801,7 @@ class TestpreluBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestSqueezeBf16Pass(PassTest):
@@ -847,7 +847,7 @@ class TestSqueezeBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestClipBf16Pass(PassTest):
@@ -893,7 +893,7 @@ class TestClipBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestsoftmaxBf16Pass(PassTest):
@@ -939,7 +939,7 @@ class TestsoftmaxBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 class TestConvTransposeOpBf16Pass(PassTest):
@@ -1004,7 +1004,7 @@ class TestConvTransposeOpBf16Pass(PassTest):
         self.skip_accuracy_verification = True
 
     def test_check_output(self):
-        self.check_pass_correct(atol=1e-2, rtol=1e-2)
+        self.check_pass_correct()
 
 
 if __name__ == "__main__":
