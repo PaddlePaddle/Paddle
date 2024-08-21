@@ -204,6 +204,30 @@ class TestBuildFakeProgram(unittest.TestCase):
         self.assertEqual(input2.dist_attr().process_mesh, mesh)
         self.assertEqual(input2.dist_attr().dims_mapping, [-1, 0])
 
+        # check full_int_array op result dist_attr
+        input1_shape = input1.get_defining_op().operand_source(0)
+        input1_shape_op_dist_attr = input1_shape.get_defining_op().dist_attr
+        tensor_dist_attr = input1_shape_op_dist_attr.result(
+            0
+        ).as_tensor_dist_attr()
+        self.assertEqual(tensor_dist_attr.process_mesh, mesh)
+        self.assertEqual(tensor_dist_attr.dims_mapping, [-1])
+
+        input2_shape = input2.get_defining_op().operand_source(0)
+        input2_shape_op_dist_attr = input2_shape.get_defining_op().dist_attr
+        tensor_dist_attr = input2_shape_op_dist_attr.result(
+            0
+        ).as_tensor_dist_attr()
+        self.assertEqual(tensor_dist_attr.process_mesh, mesh)
+        self.assertEqual(tensor_dist_attr.dims_mapping, [-1])
+
+        # check shape value dist_attr
+        self.assertEqual(input1_shape.dist_attr().process_mesh, mesh)
+        self.assertEqual(input1_shape.dist_attr().dims_mapping, [-1])
+
+        self.assertEqual(input2_shape.dist_attr().process_mesh, mesh)
+        self.assertEqual(input2_shape.dist_attr().dims_mapping, [-1])
+
 
 if __name__ == "__main__":
     unittest.main()
