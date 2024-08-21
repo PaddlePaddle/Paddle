@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from functools import reduce
-from typing import TYPE_CHECKING, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import paddle
 from paddle.optimizer import Optimizer
@@ -134,7 +134,7 @@ class LBFGS(Optimizer):
     tolerance_change: float
     history_size: int
     line_search_fn: Literal['strong_wolfe'] | None
-    state: defaultdict
+    state: dict[str, dict[str, Any]]
 
     def __init__(
         self,
@@ -185,7 +185,7 @@ class LBFGS(Optimizer):
 
         self._numel_cache = None
 
-    def state_dict(self) -> dict[str, Tensor]:
+    def state_dict(self) -> dict[str, dict[str, Any]]:
         r"""Returns the state of the optimizer as a :class:`dict`.
 
         Return:
