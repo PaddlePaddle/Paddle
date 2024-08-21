@@ -17,7 +17,6 @@
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/barrier.h>
 #include "paddle/phi/core/distributed/gloo_comm_context.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 namespace phi {
@@ -28,11 +27,11 @@ void BarrierKernel(const Context& dev_ctx,
                    DenseTensor* out) {
 #if defined(PADDLE_WITH_GLOO)
   auto comm_ctx =
-      static_cast<distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
+      static_cast<distributed::GlooCommContext*>(dev_ctx.GetCommContext());
   PADDLE_ENFORCE_NE(
       comm_ctx,
       nullptr,
-      errors::Unavailable("NCCLCommContext is nullptr, collective op should "
+      errors::Unavailable("GlooCommContext is nullptr, collective op should "
                           "has ring_id attr."));
 #else
   PADDLE_THROW(phi::errors::Unavailable(
