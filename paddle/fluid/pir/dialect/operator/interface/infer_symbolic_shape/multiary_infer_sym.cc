@@ -2235,7 +2235,7 @@ bool WarpctcOpInferSymbolicShape(
   symbol::DimExpr max_sequence_length, num_sequences;
   symbol::DimExpr sequence_width = symbol::DimExpr(1);
 
-  if (op->operand_source(2)) {
+  if (op->operand_source(2) && op->operand_source(3)) {
     max_sequence_length = logits_shape[0];
     num_sequences = logits_shape[1];
     sequence_width = logits_shape[2];
