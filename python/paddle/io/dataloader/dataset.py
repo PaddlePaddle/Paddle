@@ -81,17 +81,6 @@ class Dataset(Generic[_T]):
             >>> for i in range(len(dataset)):
             ...     image, label = dataset[i]
             ...     # do something
-            ...     print(f"Image shape: {image.shape}, Label: {label.item()}")
-            Image shape: [784], Label: 0
-            Image shape: [784], Label: 1
-            Image shape: [784], Label: 2
-            Image shape: [784], Label: 3
-            Image shape: [784], Label: 4
-            Image shape: [784], Label: 5
-            Image shape: [784], Label: 6
-            Image shape: [784], Label: 7
-            Image shape: [784], Label: 8
-            Image shape: [784], Label: 0
     """
 
     def __init__(self) -> None:
