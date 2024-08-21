@@ -92,5 +92,12 @@ inline bool operator!=(const ProcessMesh& lhs, const ProcessMesh& rhs) {
   return !operator==(lhs, rhs);
 }
 
+// split the mesh into sub-meshes at the given axis
+std::vector<ProcessMesh> SplitMesh(const ProcessMesh& mesh, int axis);
+
+// return which dimension that the sub_mesh is splitted from the global_mesh,
+// if sub_mesh is not a subset of global_mesh, return -1
+int SubMeshDim(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh);
+
 }  // namespace distributed
 }  // namespace phi
