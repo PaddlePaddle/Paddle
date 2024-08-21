@@ -19,14 +19,14 @@ from __future__ import annotations
 
 import unittest
 
-from test_case_base import TestCaseBase
+from test_case_base import (
+    TestCaseBase,
+    test_instruction_translator_cache_context,
+)
 
 import paddle
 from paddle.jit import sot
 from paddle.jit.sot import symbolic_translate
-from paddle.jit.sot.opcode_translator.executor.executor_cache import (
-    OpcodeExecutorCache,
-)
 from paddle.jit.sot.utils import strict_mode_guard
 
 
@@ -259,9 +259,10 @@ class TestEnumerateCache(TestCaseBase):
             paddle.randn([5, 10]),
         ]
 
-        out = symbolic_translate(for_enumerate_cache)(func_list, x)
-        out = symbolic_translate(for_enumerate_cache)(func_list, x)
-        self.assert_nest_match(OpcodeExecutorCache().translate_count, 1)
+        with test_instruction_translator_cache_context() as ctx:
+            out = symbolic_translate(for_enumerate_cache)(func_list, x)
+            out = symbolic_translate(for_enumerate_cache)(func_list, x)
+            self.assertEqual(ctx.translate_count, 1)
 
 
 # after_loop_fn need zzz, and zzz is created as UndefinedVar when generating loop body
