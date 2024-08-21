@@ -141,6 +141,7 @@ class FusedLinearGradSinglePattern
       if (auto sum_op = user_it->owner()->dyn_cast<paddle::dialect::SumOp>()) {
         have_sum_op = true;
         sum_output = sum_op->result(0);
+        rewriter.SetInsertionPointAfter(sum_op);
         break;
       }
     }
