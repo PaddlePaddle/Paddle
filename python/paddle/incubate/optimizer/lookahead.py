@@ -27,7 +27,6 @@ from paddle.pir.core import create_parameter
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.base.framework import Operator
-    from paddle.base.layer_helper import LayerHelperBase
     from paddle.static import Program
 
 
@@ -126,7 +125,7 @@ class LookAhead(Optimizer):
     alpha: float
     k: int
     type: str
-    helper: LayerHelperBase | None
+    helper: LayerHelper
 
     _slow_str = "slow"
 
