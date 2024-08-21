@@ -532,34 +532,17 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
   if (i1 >= i1_end) return;
   U curr_mean = mean[i1];
   U curr_invvar = rsqrt_<U>(var[i1] + epsilon);
-  int loop = min(int64_t(VPT), n2 - int64_t(i2_off));
-  int back = VPT - loop;
-  int64_t load_idx = i1 * n2 + i2_off - back;
-  int write_idx = thr_load_row_off * row_stride + thr_load_col_off - back;
-  //if could, loop VPT times to make ldg128
-  if(load_idx >= 0 && write_idx >= 0){
-  #pragma unroll
-    for (int k = 0; k < VPT; ++k) {
-      bool w_flag = (k >= back);
-      load_idx = i1 * n2 + i2_off - back + k;
-      write_idx = thr_load_row_off * row_stride + thr_load_col_off - back + k;
-      U curr_input = static_cast<U>(input[load_idx]);
-      U curr_dout = static_cast<U>(dout[load_idx]);
-      warp_buf1[write_idx] += curr_dout * w_flag;
-      warp_buf2[write_idx] +=
-          curr_dout * (curr_input - curr_mean) * curr_invvar * w_flag;
-    }
-  } else {
-    load_idx += back;
-    write_idx += back;
-  #pragma unroll
-    for (int k = 0; k < loop; ++k, ++load_idx, ++write_idx) {
-      U curr_input = static_cast<U>(input[load_idx]);
-      U curr_dout = static_cast<U>(dout[load_idx]);
-      warp_buf1[write_idx] += curr_dout;
-      warp_buf2[write_idx] +=
-          curr_dout * (curr_input - curr_mean) * curr_invvar;
-    }
+  const int loop = min(VPT, n2 - i2_off);
+#pragma unroll
+  for (int k = 0; k < loop; ++k) {
+    const int i2 = i2_off + k;
+    const int64_t load_idx = i1 * n2 + i2;
+    const int write_idx = thr_load_row_off * row_stride + thr_load_col_off + k;
+    U curr_input = static_cast<U>(input[load_idx]);
+    U curr_dout = static_cast<U>(dout[load_idx]);
+    warp_buf1[write_idx] += curr_dout;
+    warp_buf2[write_idx] +=
+        curr_dout * (curr_input - curr_mean) * curr_invvar;
   }
 }
 #ifdef PADDLE_WITH_CUDA
