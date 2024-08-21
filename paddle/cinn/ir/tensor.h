@@ -26,7 +26,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/dim.h"
@@ -35,11 +34,6 @@
 #include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
-
-namespace ast_gen_ius {
-class TensorGroup;
-}  // namespace ast_gen_ius
-
 namespace ir {
 
 class _Tensor_;

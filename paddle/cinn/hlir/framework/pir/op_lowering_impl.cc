@@ -17,7 +17,6 @@
 #include <string>
 
 #include "paddle/cinn/adt/map_expr_ctx.h"
-#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/common/target.h"

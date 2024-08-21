@@ -32,7 +32,6 @@
 namespace cinn {
 namespace lang {
 
-using ast_gen_ius::TensorGroup;
 using ir::Tensor;
 using poly::Stage;
 
@@ -138,47 +137,49 @@ std::vector<ir::Buffer> GetTempBuffers(
 }
 
 //! Collect the temporary tensors from a computational graph.
-std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
-                                       const TensorGroup& tensor_group,
-                                       Expr body) {
-  std::unordered_set<std::string> tensor_arg_names;
-  std::unordered_set<std::string> buffer_arg_names;
-  for (auto& tensor : tensor_args) {
-    tensor_arg_names.insert(tensor->name);
-    if (tensor->buffer.defined()) {
-      buffer_arg_names.insert(tensor->buffer->name);
-    }
-  }
-  std::map<std::string, ir::Buffer>
-      name_to_buffer;  // used to avoid duplication.
+// std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>&
+// tensor_args,
+//                                        const TensorGroup& tensor_group,
+//                                        Expr body) {
+//   std::unordered_set<std::string> tensor_arg_names;
+//   std::unordered_set<std::string> buffer_arg_names;
+//   for (auto& tensor : tensor_args) {
+//     tensor_arg_names.insert(tensor->name);
+//     if (tensor->buffer.defined()) {
+//       buffer_arg_names.insert(tensor->buffer->name);
+//     }
+//   }
+//   std::map<std::string, ir::Buffer>
+//       name_to_buffer;  // used to avoid duplication.
 
-  auto all_temp_tensors =
-      ir::ir_utils::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
-        return x->as_tensor() && x->as_tensor()->buffer.defined() &&
-               (!tensor_group.Contain(x->as_tensor()->name) ||
-                ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
-                  !tensor_arg_names.count(x->as_tensor()->name)) ||
-                 utils::EndsWith(x->as_tensor()->buffer->name, "temp_buffer")));
-      });
-  for (auto& e : all_temp_tensors) {
-    auto buffer_name = e.as_tensor()->buffer->name;
-    if (!name_to_buffer.count(buffer_name)) {
-      name_to_buffer[buffer_name] = e.as_tensor()->buffer;
-    } else {
-      // Just copy from old code, but why?
-      if (e.as_tensor()->buffer->numel() <
-          name_to_buffer[buffer_name]->numel()) {
-        name_to_buffer[buffer_name] = e.as_tensor()->buffer;
-      }
-    }
-  }
+//   auto all_temp_tensors =
+//       ir::ir_utils::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
+//         return x->as_tensor() && x->as_tensor()->buffer.defined() &&
+//                (!tensor_group.Contain(x->as_tensor()->name) ||
+//                 ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
+//                   !tensor_arg_names.count(x->as_tensor()->name)) ||
+//                  utils::EndsWith(x->as_tensor()->buffer->name,
+//                  "temp_buffer")));
+//       });
+//   for (auto& e : all_temp_tensors) {
+//     auto buffer_name = e.as_tensor()->buffer->name;
+//     if (!name_to_buffer.count(buffer_name)) {
+//       name_to_buffer[buffer_name] = e.as_tensor()->buffer;
+//     } else {
+//       // Just copy from old code, but why?
+//       if (e.as_tensor()->buffer->numel() <
+//           name_to_buffer[buffer_name]->numel()) {
+//         name_to_buffer[buffer_name] = e.as_tensor()->buffer;
+//       }
+//     }
+//   }
 
-  std::vector<ir::Buffer> temp_buffers;
-  for (auto& i : name_to_buffer) {
-    temp_buffers.push_back(i.second);
-  }
-  return temp_buffers;
-}
+//   std::vector<ir::Buffer> temp_buffers;
+//   for (auto& i : name_to_buffer) {
+//     temp_buffers.push_back(i.second);
+//   }
+//   return temp_buffers;
+// }
 
 //! Collect the temporary tensors from a computational graph.
 std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args,
@@ -228,62 +229,63 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args,
   return temp_buffers;
 }
 
-std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
-    ast_gen_ius::TensorGroup* tensor_group,
-    const std::vector<Tensor>& tensor_args) {
-  std::set<ir::Tensor> res;
-  for (const ir::Tensor& a : tensor_group->GetAllTensors()) {
-    for (const ir::Tensor& t : tensor_group->GetCtrlDepTensors(a->name)) {
-      res.emplace(t);
-    }
-  }
-  for (const ir::Tensor& t : tensor_args) {
-    if (res.count(t)) {
-      res.erase(t);
-    }
-  }
-  return res;
-}
+// std::set<ir::Tensor> CollectTempTensorsFromCtrlDepends(
+//     ast_gen_ius::TensorGroup* tensor_group,
+//     const std::vector<Tensor>& tensor_args) {
+//   std::set<ir::Tensor> res;
+//   for (const ir::Tensor& a : tensor_group->GetAllTensors()) {
+//     for (const ir::Tensor& t : tensor_group->GetCtrlDepTensors(a->name)) {
+//       res.emplace(t);
+//     }
+//   }
+//   for (const ir::Tensor& t : tensor_args) {
+//     if (res.count(t)) {
+//       res.erase(t);
+//     }
+//   }
+//   return res;
+// }
 
-ir::LoweredFunc LowerToAst(const std::string& name,
-                           const std::vector<Tensor>& tensor_args,
-                           ast_gen_ius::TensorGroup* tensor_group,
-                           const Target& target) {
-  std::vector<ir::LoweredFunc> result =
-      LowerToAstVec(name, tensor_args, tensor_group, target);
-  PADDLE_ENFORCE_EQ(result.size(),
-                    1UL,
-                    phi::errors::InvalidArgument(
-                        "LowerToAst contains not only 1 LoweredFunc, "
-                        "use LowerToAstVec instead."));
-  return result[0];
-}
+// ir::LoweredFunc LowerToAst(const std::string& name,
+//                            const std::vector<Tensor>& tensor_args,
+//                            ast_gen_ius::TensorGroup* tensor_group,
+//                            const Target& target) {
+//   std::vector<ir::LoweredFunc> result =
+//       LowerToAstVec(name, tensor_args, tensor_group, target);
+//   PADDLE_ENFORCE_EQ(result.size(),
+//                     1UL,
+//                     phi::errors::InvalidArgument(
+//                         "LowerToAst contains not only 1 LoweredFunc, "
+//                         "use LowerToAstVec instead."));
+//   return result[0];
+// }
 
-std::vector<ir::LoweredFunc> LowerToAstVec(
-    const std::string& name,
-    const std::vector<Tensor>& tensor_args,
-    ast_gen_ius::TensorGroup* tensor_group,
-    const Target& target) {
-  std::set<ir::Tensor> ctrl_deps =
-      CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);
-  auto lower_instance = detail::LowerTensorGroup(
-      name,
-      tensor_args,
-      {},
-      tensor_group,
-      std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
-      target);
-  std::vector<ir::LoweredFunc> result = lower_instance();
-  for (auto& res : result) {
-    target.arch.Match(
-        [&](common::NVGPUArch) { res->device_api = ir::DeviceAPI::GPU; },
-        [&](common::HygonDCUArchHIP) { res->device_api = ir::DeviceAPI::GPU; },
-        [&](std::variant<common::UnknownArch,
-                         common::X86Arch,
-                         common::ARMArch>) {});
-  }
-  return result;
-}
+// std::vector<ir::LoweredFunc> LowerToAstVec(
+//     const std::string& name,
+//     const std::vector<Tensor>& tensor_args,
+//     ast_gen_ius::TensorGroup* tensor_group,
+//     const Target& target) {
+//   std::set<ir::Tensor> ctrl_deps =
+//       CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);
+//   auto lower_instance = detail::LowerTensorGroup(
+//       name,
+//       tensor_args,
+//       {},
+//       tensor_group,
+//       std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
+//       target);
+//   std::vector<ir::LoweredFunc> result = lower_instance();
+//   for (auto& res : result) {
+//     target.arch.Match(
+//         [&](common::NVGPUArch) { res->device_api = ir::DeviceAPI::GPU; },
+//         [&](common::HygonDCUArchHIP) { res->device_api = ir::DeviceAPI::GPU;
+//         },
+//         [&](std::variant<common::UnknownArch,
+//                          common::X86Arch,
+//                          common::ARMArch>) {});
+//   }
+//   return result;
+// }
 
 }  // namespace lang
 }  // namespace cinn

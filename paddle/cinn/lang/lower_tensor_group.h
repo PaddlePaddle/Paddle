@@ -25,7 +25,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/ir/buffer.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -42,30 +41,30 @@ namespace cinn {
 namespace lang {
 namespace detail {
 
-class LowerTensorGroup {
- public:
-  LowerTensorGroup(const std::string& fn_name,
-                   const std::vector<ir::Tensor>& tensor_args,
-                   const std::vector<ir::Var>& scalar_args,
-                   ast_gen_ius::TensorGroup* tensor_group,
-                   const std::vector<ir::Tensor>& temp_tensor_args = {},
-                   const Target& target = cinn::common::DefaultHostTarget());
+// class LowerTensorGroup {
+//  public:
+//   LowerTensorGroup(const std::string& fn_name,
+//                    const std::vector<ir::Tensor>& tensor_args,
+//                    const std::vector<ir::Var>& scalar_args,
+//                    ast_gen_ius::TensorGroup* tensor_group,
+//                    const std::vector<ir::Tensor>& temp_tensor_args = {},
+//                    const Target& target = cinn::common::DefaultHostTarget());
 
-  std::vector<ir::LoweredFunc> operator()();
+//   std::vector<ir::LoweredFunc> operator()();
 
-  std::vector<ir::Expr> GenerateFunctionBody(
-      ast_gen_ius::TensorGroup* tensor_group);
+//   std::vector<ir::Expr> GenerateFunctionBody(
+//       ast_gen_ius::TensorGroup* tensor_group);
 
-  std::vector<ir::Argument> GenerateFunctionArgumentList(ir::Expr fn_body);
+//   std::vector<ir::Argument> GenerateFunctionArgumentList(ir::Expr fn_body);
 
- private:
-  const std::string& fn_name_;
-  const std::vector<ir::Tensor>& tensor_args_;
-  const std::vector<Var>& scalar_args_;
-  std::vector<ir::Tensor> temp_tensor_args_;
-  ast_gen_ius::TensorGroup* tensor_group_;
-  Target target_;
-};
+//  private:
+//   const std::string& fn_name_;
+//   const std::vector<ir::Tensor>& tensor_args_;
+//   const std::vector<Var>& scalar_args_;
+//   std::vector<ir::Tensor> temp_tensor_args_;
+//   ast_gen_ius::TensorGroup* tensor_group_;
+//   Target target_;
+// };
 
 }  // namespace detail
 }  // namespace lang

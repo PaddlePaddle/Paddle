@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
@@ -32,22 +31,22 @@ namespace cinn {
 namespace lang {
 using ir::Tensor;
 
-ir::LoweredFunc LowerToAst(
-    const std::string &name,
-    const std::vector<Tensor> &tensor_args,
-    ast_gen_ius::TensorGroup *tensor_group,
-    const Target &target = cinn::common::DefaultHostTarget());
+// ir::LoweredFunc LowerToAst(
+//     const std::string &name,
+//     const std::vector<Tensor> &tensor_args,
+//     ast_gen_ius::TensorGroup *tensor_group,
+//     const Target &target = cinn::common::DefaultHostTarget());
 
-std::vector<ir::LoweredFunc> LowerToAstVec(
-    const std::string &name,
-    const std::vector<Tensor> &tensor_args,
-    ast_gen_ius::TensorGroup *tensor_group,
-    const Target &target = cinn::common::DefaultHostTarget());
+// std::vector<ir::LoweredFunc> LowerToAstVec(
+//     const std::string &name,
+//     const std::vector<Tensor> &tensor_args,
+//     ast_gen_ius::TensorGroup *tensor_group,
+//     const Target &target = cinn::common::DefaultHostTarget());
 
-std::vector<ir::Buffer> GetTempBuffers(
-    const std::vector<Tensor> &tensor_args,
-    const ast_gen_ius::TensorGroup &tensor_group,
-    Expr body);
+// std::vector<ir::Buffer> GetTempBuffers(
+//     const std::vector<Tensor> &tensor_args,
+//     const ast_gen_ius::TensorGroup &tensor_group,
+//     Expr body);
 
 std::vector<ir::Argument> GetArgs(
     const Expr &func_body, const std::vector<std::string> &input_output_nodes);
