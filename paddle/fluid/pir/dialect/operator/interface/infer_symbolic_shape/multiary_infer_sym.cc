@@ -833,10 +833,18 @@ bool CoalesceTensorOpInferSymbolicShape(
       numel += static_cast<int64_t>(len);
     }
     infer_context->SetShapeOrDataForValue(
-        op->result(0),
+        op->result(1),
         symbol::ShapeOrDataDimExprs{
             symbol::TensorShapeOrDataDimExprs({numel})});
   }
+
+  const symbol::TensorListShapeOrDataDimExprs &output_shape;
+  for (const auto &input_shape : input_shapes) {
+    output_shape.push_back(input_shape.shape());
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorListShapeOrDataDimExprs(output_shape));
+
   return true;
 }
 
