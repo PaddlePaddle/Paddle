@@ -1025,10 +1025,50 @@ bool MatrixNmsOpInferSymbolicShape(
   infer_context->AddEqualCstr(bboxes_shape[2], symbol::DimExpr(4));
   infer_context->AddEqualCstr(bboxes_shape[1], scores_shape[2]);
 
+  symbol::DimExpr batch_size = scores_shape[0];
+  int nms_top_k = op->attribute<pir::Int32Attribute>("nms_top_k").data();
+  int keep_top_k = op->attribute<pir::Int32Attribute>("keep_top_k").data();
+  int background_label =
+      op->attribute<pir::Int32Attribute>("background_label").data();
+  bool use_gaussian = op->attribute<pir::BoolAttribute>("use_gaussian").data();
+
+  symbol::DimExpr num_kept = symbol::DimExpr(0);
+
+  if (batch_size.isa<int64_t>()) {
+    int64_t batch_size_value =
+        static_cast<int64_t>(batch_size.Get<std::int64_t>());
+    for (size_t i = 0; i < batch_size_value; ++i) {
+      symbol::DimExpr class_num_expr = scores_shape[1];
+      int64_t class_num = 0;
+      if (class_num_expr.isa<int64_t>()) {
+        class_num = static_cast<int64_t>(class_num_expr.Get<std::int64_t>());
+      }
+      symbol::DimExpr num_pre_expr = scores_shape[2];
+      int64_t num_pre = 0;
+      if (num_pre_expr.isa<int64_t>()) {
+        num_pre = static_cast<int64_t>(num_pre_expr.Get<std::int64_t>());
+      }
+
+      int num_out = 0;
+      for (size_t c = 0; c < class_num; ++c) {
+        if (c == background_label) continue;
+        if (num_pre > 0 && nms_top_k > -1 && num_pre > nms_top_k) {
+          num_pre = nms_top_k;
+        }
+        num_out += 1;
+        num_out += num_pre - 1;
+      }
+
+      if (num_out > 0 && keep_top_k > -1 && num_out > keep_top_k) {
+        num_out = keep_top_k;
+      }
+      num_kept = num_kept + symbol::DimExpr(num_out);
+    }
+  }
+
   std::vector<symbol::DimExpr> out_shape = {
-      bboxes_shape[1], bboxes_shape[2] + symbol::DimExpr(2)};
-  std::vector<symbol::DimExpr> index_shape = {bboxes_shape[1],
-                                              symbol::DimExpr(1)};
+      num_kept, bboxes_shape[2] + symbol::DimExpr(2)};
+  std::vector<symbol::DimExpr> index_shape = {num_kept, symbol::DimExpr(1)};
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
