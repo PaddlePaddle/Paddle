@@ -2827,7 +2827,16 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("peak_allocated",
                      &paddle::platform::MemPythonNode::peak_allocated)
       .def_readwrite("peak_reserved",
-                     &paddle::platform::MemPythonNode::peak_reserved);
+                     &paddle::platform::MemPythonNode::peak_reserved)
+      .def("__repr__", [](paddle::platform::MemPythonNode &event_node) {
+        std::stringstream ostr;
+        ostr << "MemPythonNode(timestamp_ns=" << event_node.timestamp_ns
+             << ", addr=" << event_node.addr << ", type='"
+             << paddle::platform::StringTracerMemEventType(event_node.type)
+             << "', process_id=" << event_node.process_id
+             << ", thread_id=" << event_node.thread_id << ")";
+        return ostr.str();
+      });
 
   py::class_<paddle::platform::DevicePythonNode>(m, "DevicePythonNode")
       .def(py::init<>())
@@ -2861,7 +2870,18 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::DevicePythonNode::occupancy)
       .def_readwrite("num_bytes",
                      &paddle::platform::DevicePythonNode::num_bytes)
-      .def_readwrite("value", &paddle::platform::DevicePythonNode::value);
+      .def_readwrite("value", &paddle::platform::DevicePythonNode::value)
+      .def("__repr__", [](paddle::platform::DevicePythonNode &event_node) {
+        std::stringstream ostr;
+        ostr << "DevicePythonNode(name='" << event_node.name << "', type='"
+             << paddle::platform::StringTracerEventType(event_node.type)
+             << "', start_ns=" << event_node.start_ns
+             << ", end_ns=" << event_node.end_ns
+             << ", device_id=" << event_node.device_id
+             << ", context_id=" << event_node.context_id
+             << ", stream_id=" << event_node.stream_id << ")";
+        return ostr.str();
+      });
 
   py::class_<paddle::platform::HostPythonNode>(m, "HostPythonNode")
       .def(py::init<>())
@@ -2888,7 +2908,17 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readwrite("device_node",
                      &paddle::platform::HostPythonNode::device_node_ptrs)
       .def_readwrite("mem_node",
-                     &paddle::platform::HostPythonNode::mem_node_ptrs);
+                     &paddle::platform::HostPythonNode::mem_node_ptrs)
+      .def("__repr__", [](paddle::platform::HostPythonNode &event_node) {
+        std::stringstream ostr;
+        ostr << "HostPythonNode(name='" << event_node.name << "', type='"
+             << paddle::platform::StringTracerEventType(event_node.type)
+             << "', start_ns=" << event_node.start_ns
+             << ", end_ns=" << event_node.end_ns
+             << ", process_id=" << event_node.process_id
+             << ", thread_id=" << event_node.thread_id << ")";
+        return ostr.str();
+      });
 
   py::class_<paddle::platform::Profiler>(m, "_Profiler")
       .def("create",
@@ -2928,34 +2958,21 @@ All parameter, weight, gradient are variables in Paddle.
       .def("end", [](phi::RecordEvent *event) { event->End(); });
 
   py::enum_<paddle::platform::TracerMemEventType>(m, "TracerMemEventType")
-      .value("Allocate", paddle::platform::TracerMemEventType::Allocate)
-      .value("Free", paddle::platform::TracerMemEventType::Free)
-      .value("ReservedAllocate",
-             paddle::platform::TracerMemEventType::ReservedAllocate)
-      .value("ReservedFree",
-             paddle::platform::TracerMemEventType::ReservedFree);
+#define X(name) .value(#name, paddle::platform::TracerMemEventType::name)
+      TRACER_MEM_EVENT_TYPES
+#undef X
+      ;  // NOLINT
 
   py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
-      .value("Operator", paddle::platform::TracerEventType::Operator)
-      .value("Dataloader", paddle::platform::TracerEventType::Dataloader)
-      .value("ProfileStep", paddle::platform::TracerEventType::ProfileStep)
-      .value("CudaRuntime", paddle::platform::TracerEventType::CudaRuntime)
-      .value("Kernel", paddle::platform::TracerEventType::Kernel)
-      .value("Memcpy", paddle::platform::TracerEventType::Memcpy)
-      .value("Memset", paddle::platform::TracerEventType::Memset)
-      .value("UserDefined", paddle::platform::TracerEventType::UserDefined)
-      .value("OperatorInner", paddle::platform::TracerEventType::OperatorInner)
-      .value("Forward", paddle::platform::TracerEventType::Forward)
-      .value("Backward", paddle::platform::TracerEventType::Backward)
-      .value("Optimization", paddle::platform::TracerEventType::Optimization)
-      .value("Communication", paddle::platform::TracerEventType::Communication)
-      .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
-      .value("PythonUserDefined",
-             paddle::platform::TracerEventType::PythonUserDefined)
-      .value("DygraphKernelLaunch",
-             paddle::platform::TracerEventType::DygraphKernelLaunch)
-      .value("StaticKernelLaunch",
-             paddle::platform::TracerEventType::StaticKernelLaunch);
+#define X(name) .value(#name, paddle::platform::TracerEventType::name)
+      TRACER_EVENT_TYPES
+#undef X
+      ;  // NOLINT
+
+  m.def("tracer_event_type_to_string",
+        &paddle::platform::StringTracerEventType);
+  m.def("tracer_mem_event_type_to_string",
+        &paddle::platform::StringTracerMemEventType);
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);
