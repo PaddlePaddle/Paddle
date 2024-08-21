@@ -5439,6 +5439,7 @@ void WarpctcInferMeta(const MetaTensor& logits,
   loss->set_dims({num_sequences, 1});
   loss->set_dtype(logits.dtype());
   warpctcgrad->set_dims({max_sequence_length, num_sequences, sequence_width});
+  warpctcgrad->set_dtype(logits.dtype());
 }
 
 void WarprnntInferMeta(const MetaTensor& input,
