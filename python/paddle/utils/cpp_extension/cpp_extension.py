@@ -366,7 +366,7 @@ def _generate_extension_name(sources):
     return '_'.join(file_prefix)
 
 
-def paddle_single_extension_compile(
+def single_extension_compile(
     self,
     sources,
     output_dir=None,
@@ -462,7 +462,7 @@ class BuildExtension(build_ext):
 
     def build_extension(self, ext):
         orignal_compile = self.compiler.__class__.compile
-        self.compiler.__class__.compile = paddle_single_extension_compile
+        self.compiler.__class__.compile = single_extension_compile
         super().build_extension(ext)
         self.compiler.__class__.compile = orignal_compile
 
