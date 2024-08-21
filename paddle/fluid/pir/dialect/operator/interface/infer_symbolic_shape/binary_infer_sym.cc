@@ -1177,12 +1177,36 @@ bool SegmentPoolOpInferSymbolicShape(
   return true;
 }
 
-// bool SequenceMaskOpInferSymbolicShape(pir::Operation *op,
-//                                       pir::InferSymbolicShapeContext
-//                                       *infer_context) {
-//   // pass
-//   return true;
-// }
+bool SequenceMaskOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  std::vector<symbol::DimExpr> y_dims = x_shape;
+  if (op->HasAttribute("maxlen")) {
+    int maxlen = op->attribute<pir::Int64Attribute>("maxlen").data();
+    y_dims.push_back(maxlen > 0 ? symbol::DimExpr(maxlen)
+                                : infer_context->GetNextSymName());
+  } else if (op->operand_source(1)) {
+    const auto &maxlen_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    if (maxlen_shape_or_data.data().has_value()) {
+      y_dims.push_back(maxlen_shape_or_data.data().value()[0]);
+    } else {
+      y_dims.push_back(infer_context->GetNextSymName());
+    }
+  } else {
+    PADDLE_THROW(::common::errors::InvalidArgument(
+        "Find maxlen or max_len_tensor Failed"));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(y_dims)});
+
+  return true;
+}
 
 // bool ShuffleBatchOpInferSymbolicShape(pir::Operation *op,
 //                                       pir::InferSymbolicShapeContext
