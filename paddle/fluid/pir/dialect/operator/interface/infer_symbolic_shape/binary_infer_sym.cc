@@ -175,22 +175,22 @@ bool Atan2OpInferSymbolicShape(pir::Operation *op,
 bool BceLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto &label_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
-  int rank = input_shape.shape().size();
+  int rank = input_shape.size();
   PADDLE_ENFORCE_EQ(rank,
-                    label_shape.shape().size(),
+                    label_shape.size(),
                     common::errors::InvalidArgument(
                         "Input(X) and Input(Label) shall have the same rank."
                         "But received: the rank of Input(X) is [%d], "
                         "the rank of Input(Label) is [%d].",
                         rank,
-                        label_shape.shape().size()));
+                        label_shape.size()));
 
   for (int i = 0; i < rank; ++i) {
-    infer_context->AddEqualCstr(input_shape.shape()[i], label_shape.shape()[i]);
+    infer_context->AddEqualCstr(input_shape[i], label_shape[i]);
   }
 
   infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
@@ -254,8 +254,8 @@ bool Binomial_OpInferSymbolicShape(
 bool CtcAlignOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  std::vector<symbol::DimExpr> out_shape = {input_shape.shape()[0], 1};
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  std::vector<symbol::DimExpr> out_shape = {input_shape[0], 1};
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(out_shape)};
   infer_context->SetShapeOrDataForValue(op->result(0), input_shape);
@@ -373,12 +373,12 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
 bool CrossOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto &y_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
-  size_t x_dim = x_shape.shape().size();
-  size_t y_dim = y_shape.shape().size();
+  size_t x_dim = x_shape.size();
+  size_t y_dim = y_shape.size();
 
   PADDLE_ENFORCE_EQ(x_dim,
                     y_dim,
@@ -391,14 +391,14 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
                         y_dim));
 
   for (size_t i = 0; i < x_dim; i++) {
-    infer_context->AddEqualCstr(x_shape.shape()[i], y_shape.shape()[i]);
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
   }
 
   const int axis = op->attribute<pir::Int32Attribute>("axis").data();
   if (axis != common::DDim::kMaxRank) {
     const int dim = axis < 0 ? axis + x_dim : axis;
-    infer_context->AddEqualCstr(x_shape.shape()[dim], symbol::DimExpr{3});
-    infer_context->AddEqualCstr(y_shape.shape()[dim], symbol::DimExpr{3});
+    infer_context->AddEqualCstr(x_shape[dim], symbol::DimExpr{3});
+    infer_context->AddEqualCstr(y_shape[dim], symbol::DimExpr{3});
   }
 
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
@@ -431,7 +431,7 @@ bool DropoutOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data.shape());
 
   if (op->result(1)) {
     symbol::TensorShapeOrDataDimExprs mask_shape(x_shape_or_data.shape());
@@ -557,7 +557,7 @@ bool FusedSoftmaxMaskOpInferSymbolicShape(
                                       "received the dimension of mask is %d",
                                       mask_dims.size()));
 
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(0), x_dims);
 
   return true;
 }
@@ -742,7 +742,8 @@ bool IndexSampleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        operand_shape_or_data.shape());
   return true;
 }
 
@@ -1133,7 +1134,8 @@ bool SearchsortedOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
   // TODO(fty1777): Add constrains between the shapes of `sorted_sequence` and
   // `values`
-  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        operand_shape_or_data.shape());
   return true;
 }
 
@@ -1257,7 +1259,8 @@ bool IscloseOpInferSymbolicShape(
   // The shape of output is the same as input `values` (op->operand_source(1))
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        operand_shape_or_data.shape());
   return true;
 }
 
@@ -1291,7 +1294,8 @@ bool AccuracyCheckOpInferSymbolicShape(
   // The shape of output is the same as input `values` (op->operand_source(1))
   const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        operand_shape_or_data.shape());
   return true;
 }
 
@@ -1299,7 +1303,7 @@ bool ReduceAsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &target_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  infer_context->SetShapeOrDataForValue(op->result(0), target_shape);
+  infer_context->SetShapeOrDataForValue(op->result(0), target_shape.shape());
   return true;
 }
 
