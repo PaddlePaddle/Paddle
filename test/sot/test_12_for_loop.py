@@ -308,5 +308,17 @@ class TestListCompWithFallback(TestCaseBase):
         self.assert_results(comp_with_fallback, x)
 
 
+def for_arange(x):
+    for i in paddle.arange(0, 5):
+        x = x + i
+    return x
+
+
+class TestArange(TestCaseBase):
+    def test_arange(self):
+        x = paddle.to_tensor(1)
+        self.assert_results(for_arange, x)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -2141,7 +2141,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         var_loader = self.get_compute_fn_and_update_changed_vars(
             update_names,
             self.stack,
-            self.indexof(for_iter.hold),
+            self.indexof(for_iter),
             extra_store_vars,
         )
 
