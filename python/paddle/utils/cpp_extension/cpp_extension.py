@@ -26,7 +26,7 @@ import setuptools
 from setuptools.command.easy_install import easy_install
 from setuptools.command.build_ext import build_ext
 from setuptools._distutils.dep_util import newer_group
-from setuptools.distutils.errors import DistutilsSetupError
+from setuptools.dist import DistutilsSetupError
 from setuptools._distutils import log
 from distutils.command.build import build
 
