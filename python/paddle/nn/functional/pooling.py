@@ -136,8 +136,8 @@ def _update_padding_nd(padding, num_dims, channel_last=False, ceil_mode=False):
         if padding == "VALID":
             if ceil_mode is not False:
                 raise ValueError(
-                    "When Attr(padding) is \"VALID\", Attr(ceil_mode) must be False. "
-                    "Received ceil_mode: True."
+                    'When Attr(padding) is "VALID", Attr(ceil_mode) must be False. '
+                    'Received ceil_mode: True.'
                 )
 
             padding_algorithm = "VALID"

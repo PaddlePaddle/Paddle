@@ -2398,6 +2398,7 @@ function parallel_test_base_xpu() {
 EOF
 
 set +x
+        echo "Starting running xpu tests"
         export XPU_OP_LIST_DIR=$tmp_dir
         ut_startTime_s=`date +%s`
         test_cases=$(ctest -N -V -LE "(RUN_TYPE=DIST_KUNLUN)" | grep "_xpu" )        # cases list which would be run exclusively
@@ -2475,6 +2476,41 @@ set +x
                 is_retry_execuate=1
             fi
 
+        fi
+        if [[ "$IF_KUNLUN3" == "ON" ]]; then
+            #install paddlex
+            git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
+            cd PaddleX
+            pip install -e .
+
+            #install paddle x dependency
+            paddlex --install PaddleClas
+
+            #download paddle dataset
+            wget -q https://paddle-model-ecology.bj.bcebos.com/paddlex/data/cls_flowers_examples.tar -P ./dataset
+            tar -xf ./dataset/cls_flowers_examples.tar -C ./dataset/
+
+            #train Reset50
+            echo "Starting to train ResNet50 model..."
+            python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
+                -o Global.mode=train \
+                -o Global.dataset_dir=./dataset/cls_flowers_examples \
+                -o Global.output=resnet50_output \
+                -o Global.device="xpu:${CUDA_VISIBLE_DEVICES}"
+            echo "Training Resnet50 completed!"
+
+            #inference Reset50
+            IFS=',' read -ra DEVICES <<< "$CUDA_VISIBLE_DEVICES"
+            echo ${DEVICES[0]}
+
+            echo "Starting to predict ResNet50 model..."
+            python main.py -c paddlex/configs/image_classification/ResNet50.yaml \
+                -o Global.mode=predict \
+                -o Predict.model_dir="./resnet50_output/best_model" \
+                -o Predict.input_path="https://paddle-model-ecology.bj.bcebos.com/paddlex/imgs/demo_image/general_image_classification_001.jpg" \
+                -o Global.device="xpu:${DEVICES[0]}"
+            echo "Predicting Resnet50 completed!"
+            cd ..
         fi
 set -x
         ut_endTime_s=`date +%s`
@@ -2941,6 +2977,8 @@ set +x
                             done
 
                         if [[ "$retry_cases" != "" ]]; then
+			    # re-run test run 1 job
+			    export CTEST_PARALLEL_LEVEL=1
                             card_test "$retry_cases" -1 2
                         fi
                         exec_times=$[$exec_times+1]

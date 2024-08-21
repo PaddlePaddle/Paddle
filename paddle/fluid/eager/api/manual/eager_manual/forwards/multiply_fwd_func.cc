@@ -70,13 +70,15 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Type promotion Logic
-  if (phi::NeedTypePromotion("multiply", x.dtype(), y.dtype())) {
+  if (phi::NeedTypePromotion(
+          "multiply", x.dtype(), y.dtype(), x.shape(), y.shape())) {
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1)
         << "got different data type, run type promotion "
            "automatically, this may cause data type been changed.";
     auto op_name = phi::TransToFluidOpName("multiply");
-    auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
+    auto promotion_type = phi::GetPromoteDtype(
+        op_name, x.dtype(), y.dtype(), x.shape(), y.shape());
 
     auto new_x = egr::PromoteCast("x", x, promotion_type);
     auto new_y = egr::PromoteCast("y", y, promotion_type);
@@ -249,13 +251,15 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
       << " No AMP for multiply__ad_func because it is a inplace or cast api. ";
 
   // Type promotion Logic
-  if (phi::NeedTypePromotion("multiply_", x.dtype(), y.dtype())) {
+  if (phi::NeedTypePromotion(
+          "multiply_", x.dtype(), y.dtype(), x.shape(), y.shape())) {
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1)
         << "got different data type, run type promotion "
            "automatically, this may cause data type been changed.";
     auto op_name = phi::TransToFluidOpName("multiply_");
-    auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
+    auto promotion_type = phi::GetPromoteDtype(
+        op_name, x.dtype(), y.dtype(), x.shape(), y.shape());
 
     x = egr::PromoteCastInplace("x", x, promotion_type);
     auto new_y = egr::PromoteCast("y", y, promotion_type);
@@ -440,13 +444,15 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Type promotion Logic
-  if (phi::NeedTypePromotion("multiply", x.dtype(), y.dtype())) {
+  if (phi::NeedTypePromotion(
+          "multiply", x.dtype(), y.dtype(), x.shape(), y.shape())) {
     VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1)
         << "got different data type, run type promotion "
            "automatically, this may cause data type been changed.";
     auto op_name = phi::TransToFluidOpName("multiply");
-    auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
+    auto promotion_type = phi::GetPromoteDtype(
+        op_name, x.dtype(), y.dtype(), x.shape(), y.shape());
 
     auto new_x = egr::PromoteCast("x", x, promotion_type);
     auto new_y = egr::PromoteCast("y", y, promotion_type);
