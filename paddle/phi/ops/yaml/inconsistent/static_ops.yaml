@@ -343,6 +343,29 @@
   optional : skip_update, master_params, master_params_out
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
+- op : fused_multi_transformer_int8
+  args: (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkv_w, Tensor[]
+    qkv_bias, Tensor[] cache_kv, Tensor time_step, Tensor src_mask, Tensor[] out_linear_w,
+    Tensor[] out_linear_bias, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[]
+    ffn1_weight, Tensor[] ffn1_bias, Tensor[] ffn2_weight, Tensor[] ffn2_bias,
+    Tensor[] qkv_out_scale, Tensor[] out_linear_out_scale, Tensor[] ffn1_out_scale,
+    Tensor[] ffn2_out_scale, bool pre_layer_norm = true, float epsilon = 1e-5, float
+    dropout_rate = .5f, bool is_test = false, str dropout_implementation = "downgrade_in_infer",
+    str act_method = "gelu", bool trans_qkvw = true, int ring_id = -1, int num_head
+    = 0, int dim_head = 0, int dim_ffn = 0, float[] qkv_in_scale = {}, float[] out_linear_in_scale
+    = {}, float[] ffn1_in_scale = {}, float[] ffn2_in_scale = {}, int quant_round_type
+    = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
+  output: Tensor[](cache_kv_out){cache_kv.size()}, Tensor(out)
+  infer_meta:
+    func: FusedMultiTransformerInt8InferMeta
+  kernel:
+    func: fused_multi_transformer_int8
+  optional: qkv_bias, cache_kv, time_step, src_mask, out_linear_bias, ffn1_bias,
+    ffn2_bias, qkv_out_scale, out_linear_out_scale, ffn1_out_scale, ffn2_out_scale,
+    cache_kv_out
+  data_transform :
+    skip_transform : time_step
+
 - op : get_tensor_from_selected_rows
   args : (Tensor x)
   output : Tensor(out)
