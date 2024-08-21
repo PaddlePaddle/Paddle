@@ -3453,7 +3453,7 @@
     param : [x]
   kernel :
     func : npu_identity
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : numel
   args : (Tensor x)
