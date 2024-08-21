@@ -35,7 +35,6 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Conv2dTranspose)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Conv2dTransposeBias)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Conv3d)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Conv3dTranspose)
-OP_DECLARE_INFER_SYMBOLIC_SHAPE(ConvTranspose)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cross)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(Correlation)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(DepthwiseConv)
@@ -95,5 +94,7 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(YoloBoxHead)
 }  // namespace paddle::dialect
 
 namespace cinn::dialect {
+using paddle::dialect::convtransposefunction;
 using paddle::dialect::IscloseOpInferSymbolicShape;
-}
+
+}  // namespace cinn::dialect
