@@ -189,7 +189,7 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
            "the current data type of shape["
         << i << "] is " << shape[i].type();
 
-    res = res * shape[i] + indices[i];
+    res = RampRelatedAdd(RampRelatedMul(res, shape[i]), indices[i]);
 
     if (i > 0) {
       res = cinn::common::AutoSimplify(res);
