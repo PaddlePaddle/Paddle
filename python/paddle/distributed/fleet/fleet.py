@@ -11,6 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fleet import AMPOptimizer
+
+    from paddle import core
 
 import copy
 import os
@@ -34,7 +42,11 @@ from .utils.log_util import logger, set_log_level
 __all__ = []
 
 
-def apply_ir_passes(main_program, startup_program, config):
+def apply_ir_passes(
+    main_program: paddle.static.Program,
+    startup_program: paddle.static.Program,
+    config: paddle.static.BuildStrategy,
+) -> paddle.static.BuildStrategy:
     build_strategy = config._user_defined_strategy.build_strategy._copy()
     if not _global_flags()['FLAGS_apply_pass_to_program']:
         return build_strategy
@@ -62,7 +74,7 @@ def apply_ir_passes(main_program, startup_program, config):
     )
 
 
-def _inited_runtime_handler_(func):
+def _inited_runtime_handler_(func: callable) -> callable:
     def __impl__(*args, **kwargs):
         cls = args[0]
 
@@ -74,7 +86,7 @@ def _inited_runtime_handler_(func):
     return __impl__
 
 
-def _is_non_distributed_check_(func):
+def _is_non_distributed_check_(func: callable) -> callable:
     def __impl__(*args, **kwargs):
         cls = args[0]
 
@@ -154,7 +166,7 @@ class Fleet:
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._role_maker = None
         self.strategy_compiler = None
         self._is_collective = False
@@ -165,11 +177,11 @@ class Fleet:
 
     def init(
         self,
-        role_maker=None,
-        is_collective=False,
-        strategy=None,
-        log_level="INFO",
-    ):
+        role_maker: RoleMakerBase | None = None,
+        is_collective: bool = False,
+        strategy: DistributedStrategy | None = None,
+        log_level: int | str = "INFO",
+    ) -> Fleet:
         """
         Initialize role_maker in Fleet.
 
@@ -361,13 +373,13 @@ class Fleet:
     # test allreduce perf
     def allreduce_perf(
         self,
-        iteration,
-        x,
-        group,
-        perf_size,
-        perf_threshold_time,
-        warmup=False,
-    ):
+        iteration: int,
+        x: paddle.Tensor,
+        group: tp.HybridCommunicateGroup,
+        perf_size: int,
+        perf_threshold_time: float,
+        warmup: bool = False,
+    ) -> None:
         if group is None or group.nranks <= 1:
             logger.warning("allreduce_perf is invalid, group invalid!")
             return
@@ -390,7 +402,14 @@ class Fleet:
             )
 
     # test reduce perf
-    def reduce_perf(self, iteration, x, group, perf_size, perf_threshold_time):
+    def reduce_perf(
+        self,
+        iteration: int,
+        x: paddle.Tensor,
+        group: tp.HybridCommunicateGroup,
+        perf_size: int,
+        perf_threshold_time: float,
+    ) -> None:
         if group is None or group.nranks <= 1:
             logger.warning("reduce_perf is invalid, group invalid!")
             return
@@ -412,8 +431,13 @@ class Fleet:
 
     # test broadcast perf
     def broadcast_perf(
-        self, iteration, x, group, perf_size, perf_threshold_time
-    ):
+        self,
+        iteration: int,
+        x: paddle.Tensor,
+        group: tp.HybridCommunicateGroup,
+        perf_size: int,
+        perf_threshold_time: float,
+    ) -> None:
         if group is None or group.nranks <= 1:
             logger.warning("broadcast_perf is invalid, group invalid!")
             return
@@ -435,8 +459,13 @@ class Fleet:
 
     # test allgather perf
     def allgather_perf(
-        self, iteration, x, group, perf_size, perf_threshold_time
-    ):
+        self,
+        iteration: int,
+        x: paddle.Tensor,
+        group: tp.HybridCommunicateGroup,
+        perf_size: int,
+        perf_threshold_time: float,
+    ) -> None:
         if group is None or group.nranks <= 1:
             logger.warning("allgather_perf is invalid, group invalid!")
             return
@@ -460,12 +489,12 @@ class Fleet:
     # test reduce_scatter perf
     def reduce_scatter_perf(
         self,
-        iteration,
-        x,
-        group,
-        perf_size,
-        perf_threshold_time,
-    ):
+        iteration: int,
+        x: paddle.Tensor,
+        group: tp.HybridCommunicateGroup,
+        perf_size: int,
+        perf_threshold_time: float,
+    ) -> None:
         if group is None or group.nranks <= 1:
             logger.warning("reduce_scatter_perf is invalid, group invalid!")
             return
@@ -500,7 +529,12 @@ class Fleet:
                 f"[Perf Warning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
             )
 
-    def _collective_perf_impl(self, round=50, context={}, hcg=None):
+    def _collective_perf_impl(
+        self,
+        round: int = 50,
+        context: dict = {},
+        hcg: tp.HybridCommunicateGroup | None = None,
+    ) -> None:
         if hcg is None:
             hcg = self.get_hybrid_communicate_group()
 
@@ -560,7 +594,12 @@ class Fleet:
                 )
                 nbytes = nbytes << 1
 
-    def collective_perf(self, comm_type, round=50, size_and_time={}):
+    def collective_perf(
+        self,
+        comm_type: str,
+        round: int = 50,
+        size_and_time: dict = {},
+    ) -> None:
         """
         Run performance test for given communication type
         and compare the time cost with the threshold.
@@ -595,7 +634,7 @@ class Fleet:
             context = {comm_type: [size, time_threshold]}
             self._collective_perf_impl(round=round, context=context)
 
-    def _init_hybrid_parallel_env(self):
+    def _init_hybrid_parallel_env(self) -> None:
         """initialize the hybrid environment."""
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
         self.dp_degree = self.hybrid_configs["dp_degree"]
@@ -660,15 +699,15 @@ class Fleet:
             else:
                 model_parallel_random_seed(tensor_init_seed)
 
-    def get_hybrid_communicate_group(self):
+    def get_hybrid_communicate_group(self) -> tp.HybridCommunicateGroup:
         assert self._hcg is not None
         return self._hcg
 
-    def get_hybrid_parallel_topology(self):
+    def get_hybrid_parallel_topology(self) -> tp.CommunicateTopology:
         assert self._topology is not None
         return self._topology
 
-    def is_first_worker(self):
+    def is_first_worker(self) -> bool:
         """
         Check whether the node is the first instance of worker.
 
@@ -685,7 +724,7 @@ class Fleet:
         """
         return self._role_maker._is_first_worker()
 
-    def worker_index(self):
+    def worker_index(self) -> int:
         """
         Get current worker index.
 
@@ -703,7 +742,7 @@ class Fleet:
         """
         return self._role_maker._worker_index()
 
-    def worker_num(self):
+    def worker_num(self) -> int:
         """
         Get current total worker number.
 
@@ -721,19 +760,19 @@ class Fleet:
         """
         return self._role_maker._worker_num()
 
-    def node_num(self):
+    def node_num(self) -> str | None:
         return self._role_maker._get_node_num()
 
-    def local_rank(self):
+    def local_rank(self) -> str | None:
         return self._role_maker._get_local_rank()
 
-    def local_device_ids(self):
+    def local_device_ids(self) -> str | None:
         return self._role_maker._get_local_device_ids()
 
-    def world_device_ids(self):
+    def world_device_ids(self) -> str | None:
         return self._role_maker._get_world_device_ids()
 
-    def is_worker(self):
+    def is_worker(self) -> bool:
         """
         Check whether the node is an instance of worker.
 
@@ -752,10 +791,10 @@ class Fleet:
         """
         return self._role_maker._is_worker()
 
-    def is_coordinator(self):
+    def is_coordinator(self) -> bool:
         return self._role_maker._is_coordinator()
 
-    def worker_endpoints(self, to_string=False):
+    def worker_endpoints(self, to_string: bool = False) -> list | str:
         """
         Get current worker endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
@@ -776,7 +815,7 @@ class Fleet:
         else:
             return self._role_maker._get_trainer_endpoints()
 
-    def server_num(self):
+    def server_num(self) -> int:
         """
         Get current total worker number.
 
@@ -793,7 +832,7 @@ class Fleet:
         """
         return len(self._role_maker._get_pserver_endpoints())
 
-    def server_index(self):
+    def server_index(self) -> int:
         """
         Get current server index.
 
@@ -811,7 +850,7 @@ class Fleet:
         """
         return self._role_maker._server_index()
 
-    def server_endpoints(self, to_string=False):
+    def server_endpoints(self, to_string: bool = False) -> list | str:
         """
         Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
@@ -833,7 +872,7 @@ class Fleet:
         else:
             return self._role_maker._get_pserver_endpoints()
 
-    def is_server(self):
+    def is_server(self) -> bool:
         """
         Check whether the node is an instance of server.
 
@@ -852,7 +891,7 @@ class Fleet:
         """
         return self._role_maker._is_server()
 
-    def barrier_worker(self):
+    def barrier_worker(self) -> None:
         """
         barrier all workers
 
@@ -869,7 +908,11 @@ class Fleet:
         """
         self._role_maker._barrier("worker")
 
-    def all_reduce(self, input, mode="sum"):
+    def all_reduce(
+        self,
+        input: paddle.Tensor,
+        mode: str = "sum",
+    ) -> list | int:
         """
         all reduce input between all workers, mode can be sum, mean or max, default is sum
 
@@ -889,7 +932,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def init_worker(self, scopes=None):
+    def init_worker(self, scopes: paddle.static.Scope | None = None) -> None:
         """
         initialize `Communicator` for parameter server training.
 
@@ -914,18 +957,20 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def init_coordinator(self, scopes=None):
+    def init_coordinator(
+        self, scopes: paddle.static.Scope | None = None
+    ) -> None:
         """
         initialize coordinator node
         """
         self._runtime_handle._init_coordinator(scopes)
 
-    def make_fl_strategy(self):
+    def make_fl_strategy(self) -> None:
         self._runtime_handle._make_fl_strategy()
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def get_fl_client(self):
+    def get_fl_client(self) -> core.DistFleetWrapper:
         """
         get worker(training node) ptr
         """
@@ -933,7 +978,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def init_server(self, *args, **kwargs):
+    def init_server(self, *args, **kwargs) -> None:
         """
         init_server executor to initialize startup program,
         if the `args` is not empty, it will run load_persistables for increment training.
@@ -959,7 +1004,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def load_model(self, path, mode):
+    def load_model(self, path: str, mode: int) -> None:
         """
         load fleet model from path
 
@@ -984,7 +1029,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def load_one_table(self, table_id, path, mode):
+    def load_one_table(self, table_id: int, path: str, mode: int) -> None:
         """
         load fleet one table from path
 
@@ -1009,7 +1054,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def load_inference_model(self, path, mode):
+    def load_inference_model(self, path: str, mode: int) -> None:
         """
         load fleet inference model from path
 
@@ -1034,7 +1079,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def run_server(self):
+    def run_server(self) -> None:
         """
         run server will run pserver main program with executor.
 
@@ -1059,7 +1104,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def stop_worker(self):
+    def stop_worker(self) -> None:
         """
         stop `Communicator` and give training complete notice to parameter server.
 
@@ -1083,7 +1128,13 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def save(self, dirname, feed=[], fetch=[], **configs):
+    def save(
+        self,
+        dirname: str,
+        feed: list = [],
+        fetch: list = [],
+        **configs,
+    ) -> None:
         inference = True
 
         if not feed and not fetch:
@@ -1132,14 +1183,14 @@ class Fleet:
     @inited_runtime_handler
     def save_inference_model(
         self,
-        executor,
-        dirname,
-        feeded_var_names,
-        target_vars,
-        main_program=None,
-        export_for_deployment=True,
-        mode=0,
-    ):
+        executor: paddle.static.Executor,
+        dirname: str,
+        feeded_var_names: list,
+        target_vars: list,
+        main_program: paddle.static.Program | None = None,
+        export_for_deployment: bool = True,
+        mode: int = 0,
+    ) -> None:
         """
         save inference model for inference.
 
@@ -1172,7 +1223,13 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def save_persistables(self, executor, dirname, main_program=None, mode=0):
+    def save_persistables(
+        self,
+        executor: paddle.static.Executor,
+        dirname: str,
+        main_program: paddle.static.Program | None = None,
+        mode: int = 0,
+    ) -> None:
         """
 
         saves all persistable tensors from :code:`main_program` to
@@ -1219,26 +1276,29 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def save_cache_model(self, dirname, **configs):
+    def save_cache_model(self, dirname: str, **configs) -> int:
         return self._runtime_handle._save_cache_model(dirname, **configs)
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def check_save_pre_patch_done(self):
+    def check_save_pre_patch_done(self) -> None:
         return self._runtime_handle._check_save_pre_patch_done()
 
     @is_non_distributed_check
     @inited_runtime_handler
     def save_cache_table(
-        self, table_id, pass_id, mem_cache_key_threshold=4000000000
-    ):
+        self,
+        table_id: int,
+        pass_id: int,
+        mem_cache_key_threshold: int = 4000000000,
+    ) -> None:
         return self._runtime_handle._save_cache_table(
             table_id, pass_id, mem_cache_key_threshold
         )
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def save_one_table(self, table_id, path, mode):
+    def save_one_table(self, table_id: int, path: str, mode: int) -> None:
         """
         save fleet one table from path
 
@@ -1264,8 +1324,13 @@ class Fleet:
     @is_non_distributed_check
     @inited_runtime_handler
     def save_dense_params(
-        self, executor, dirname, scope, program, var_names=None
-    ):
+        self,
+        executor: paddle.static.Executor,
+        dirname: str,
+        scope: paddle.static.Scope,
+        program: paddle.static.Program,
+        var_names: list | None = None,
+    ) -> None:
         """
         save fleet one table from path
 
@@ -1295,7 +1360,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def set_date(self, table_id, day_id):
+    def set_date(self, table_id: int, day_id: str) -> None:
         """
         set_date for gpups table
 
@@ -1319,10 +1384,14 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def shrink(self, threshold=None):
+    def shrink(self, threshold: int) -> None:
         self._runtime_handle._shrink(threshold)
 
-    def distributed_optimizer(self, optimizer, strategy=None):
+    def distributed_optimizer(
+        self,
+        optimizer: paddle.optimizer.Optimizer,
+        strategy: tp.DistributedStrategy | None = None,
+    ) -> Fleet:
         """
         Optimizer for distributed training.
 
@@ -1370,7 +1439,7 @@ class Fleet:
 
         return self
 
-    def _get_amp_optimizer(self):
+    def _get_amp_optimizer(self) -> paddle.optimizer.Optimizer:
         # imitate target optimizer retrieval
         amp_optimizer = None
         for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
@@ -1387,14 +1456,18 @@ class Fleet:
         ), "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
         return amp_optimizer
 
-    def get_loss_scaling(self):
+    def get_loss_scaling(self) -> float:
         """Return the real-time loss scaling factor."""
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.get_loss_scaling()
 
     def amp_init(
-        self, place, scope=None, test_program=None, use_fp16_test=False
-    ):
+        self,
+        place: paddle.CUDAPlace,
+        scope: paddle.static.Scope | None = None,
+        test_program: paddle.static.Program | None = None,
+        use_fp16_test: bool = False,
+    ) -> AMPOptimizer:
         """
         Init the amp training, such as cast fp32 parameters to fp16 type.
 
@@ -1452,7 +1525,7 @@ class Fleet:
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
 
-    def _get_qat_optimizer(self):
+    def _get_qat_optimizer(self) -> paddle.optimizer.Optimizer:
         # imitate target optimizer retrieval
         qat_optimizer = None
         for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
@@ -1469,7 +1542,12 @@ class Fleet:
         ), "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
         return qat_optimizer
 
-    def qat_init(self, place, scope=None, test_program=None):
+    def qat_init(
+        self,
+        place: paddle.CUDAPlace,
+        scope: paddle.static.Scope | None = None,
+        test_program: paddle.static.Program | None = None,
+    ) -> paddle.optimizer.Optimizer:
         """
         Init the qat training, such as insert qdq ops and scale variables.
 
@@ -1484,7 +1562,7 @@ class Fleet:
             place, scope=scope, test_program=test_program
         )
 
-    def _final_strategy(self):
+    def _final_strategy(self) -> tp.DistributedStrategy:
         if "valid_strategy" not in self._context:
             print(
                 "WARNING: You may need to call minimize function before this function is called"
@@ -1493,7 +1571,7 @@ class Fleet:
         else:
             return self._context["valid_strategy"]
 
-    def _get_applied_meta_list(self):
+    def _get_applied_meta_list(self) -> list:
         if "applied_meta_list" not in self._context:
             print(
                 "WARNING: You may need to call minimize function before _get_applied_meta_list called"
@@ -1502,7 +1580,7 @@ class Fleet:
         else:
             return self._context["applied_meta_list"]
 
-    def _get_applied_graph_list(self):
+    def _get_applied_graph_list(self) -> list:
         if "applied_graph_list" not in self._context:
             print(
                 "WARNING: You may need to call minimize function before _get_applied_graph_list called"
@@ -1512,8 +1590,15 @@ class Fleet:
             return self._context["applied_graph_list"]
 
     def minimize(
-        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
-    ):
+        self,
+        loss: paddle.Tensor,
+        startup_program: paddle.static.Program | None = None,
+        parameter_list: list | None = None,
+        no_grad_set: set | None = None,
+    ) -> tuple[
+        list[paddle.static.Operator],
+        list[tuple[paddle.static.Parameter, paddle.Tensor]],
+    ]:
         """
         Add distributed operations to minimize ``loss`` by updating ``parameter_list``.
 
@@ -1581,8 +1666,15 @@ class Fleet:
             )
 
     def _minimize_impl(
-        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
-    ):
+        self,
+        loss: paddle.Tensor,
+        startup_program: paddle.static.Program | None = None,
+        parameter_list: list | None = None,
+        no_grad_set: set | None = None,
+    ) -> tuple[
+        list[paddle.static.Operator],
+        list[tuple[paddle.static.Parameter, paddle.Tensor]],
+    ]:
         context = {}
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy
@@ -1880,10 +1972,10 @@ class Fleet:
 
     def _minimize_losses_impl(
         self,
-        losses,
-        startup_programs=None,
-        parameter_list=None,
-        no_grad_set=None,
+        losses: list[paddle.Tensor],
+        startup_programs: list[paddle.static.Program] | None = None,
+        parameter_list: list[paddle.static.Parameter] | None = None,
+        no_grad_set: set[str] | None = None,
     ):
         context = {}
 
