@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
-
+import concurrent
 import os
 import copy
 import re
@@ -69,7 +69,7 @@ from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
 from ...base import core
 from concurrent.futures import ThreadPoolExecutor
-import concurrent
+
 
 if TYPE_CHECKING:
     from types import ModuleType
