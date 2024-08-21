@@ -922,161 +922,172 @@ class MultiplyOpPattern
   }
 };
 
- class SubtractOpPattern : public pir::OpRewritePattern<paddle::dialect::SubtractOp> {
-  public:
-   using pir::OpRewritePattern<paddle::dialect::SubtractOp>::OpRewritePattern;
-   bool MatchAndRewrite(paddle::dialect::SubtractOp op,
-                        pir::PatternRewriter &rewriter) const override {
-     if (op->HasAttribute(kCanRunTrtAttr) &&
-         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-       return false;
-     }
-     pir::Value x = op.operand_source(0);
-     pir::Value y = op.operand_source(1);
-     auto x_dtype = pir::GetDataTypeFromValue(x);
-     auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
-       VLOG(3) << "elementwise_sub do not support boolean datatype.";
-       return false;
-     }
-     
-     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-     return true;
-   }
- };
+class SubtractOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::SubtractOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::SubtractOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::SubtractOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "elementwise_sub do not support boolean datatype.";
+      return false;
+    }
 
- class DivideOpPattern : public pir::OpRewritePattern<paddle::dialect::DivideOp> {
-  public:
-   using pir::OpRewritePattern<paddle::dialect::DivideOp>::OpRewritePattern;
-   bool MatchAndRewrite(paddle::dialect::DivideOp op,
-                        pir::PatternRewriter &rewriter) const override {
-     if (op->HasAttribute(kCanRunTrtAttr) &&
-         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-       return false;
-     }
-     pir::Value x = op.operand_source(0);
-     pir::Value y = op.operand_source(1);
-     auto x_dtype = pir::GetDataTypeFromValue(x);
-     auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
-       VLOG(3) << "elementwise_div do not support boolean datatype.";
-       return false;
-     }
-     
-     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-     return true;
-   }
- };
-class ElementwisePowOpPattern : public pir::OpRewritePattern<paddle::dialect::ElementwisePowOp> {
-  public:
-   using pir::OpRewritePattern<paddle::dialect::ElementwisePowOp>::OpRewritePattern;
-   bool MatchAndRewrite(paddle::dialect::ElementwisePowOp op,
-                        pir::PatternRewriter &rewriter) const override {
-     if (op->HasAttribute(kCanRunTrtAttr) &&
-         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-       return false;
-     }
-     pir::Value x = op.operand_source(0);
-     pir::Value y = op.operand_source(1);
-     auto x_dtype = pir::GetDataTypeFromValue(x);
-     auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()||x_dtype.isa<pir::Int32Type>()|| y_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::Int32Type>()){
-       VLOG(3) << "elementwise_pow do not support boolean datatype and int32 datatype.";
-       return false;
-     }
-     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-     return true;
-   }
- };
-class MinimumOpPattern : public pir::OpRewritePattern<paddle::dialect::MinimumOp> {
-  public:
-   using pir::OpRewritePattern<paddle::dialect::MinimumOp>::OpRewritePattern;
-   bool MatchAndRewrite(paddle::dialect::MinimumOp op,
-                        pir::PatternRewriter &rewriter) const override {
-     if (op->HasAttribute(kCanRunTrtAttr) &&
-         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-       return false;
-     }
-     pir::Value x = op.operand_source(0);
-     pir::Value y = op.operand_source(1);
-     auto x_dtype = pir::GetDataTypeFromValue(x);
-     auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
-       VLOG(3) << "elementwise_min do not support boolean datatype.";
-       return false;
-     }
-     
-     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-     return true;
-   }
- };
-class MaximumOpPattern : public pir::OpRewritePattern<paddle::dialect::MaximumOp> {
-  public:
-   using pir::OpRewritePattern<paddle::dialect::MaximumOp>::OpRewritePattern;
-   bool MatchAndRewrite(paddle::dialect::MaximumOp op,
-                        pir::PatternRewriter &rewriter) const override {
-     if (op->HasAttribute(kCanRunTrtAttr) &&
-         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-       return false;
-     }
-     pir::Value x = op.operand_source(0);
-     pir::Value y = op.operand_source(1);
-     auto x_dtype = pir::GetDataTypeFromValue(x);
-     auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
-       VLOG(3) << "elementwise_max do not support boolean datatype.";
-       return false;
-     }
-     
-     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-     return true;
-   }
- };
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
 
-class FloorDivideOpPattern : public pir::OpRewritePattern<paddle::dialect::FloorDivideOp> {
-  public:
-   using pir::OpRewritePattern<paddle::dialect::FloorDivideOp>::OpRewritePattern;
-   bool MatchAndRewrite(paddle::dialect::FloorDivideOp op,
-                        pir::PatternRewriter &rewriter) const override {
-     if (op->HasAttribute(kCanRunTrtAttr) &&
-         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-       return false;
-     }
-     pir::Value x = op.operand_source(0);
-     pir::Value y = op.operand_source(1);
-     auto x_dtype = pir::GetDataTypeFromValue(x);
-     auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
-       VLOG(3) << "elementwise_floordiv do not support boolean datatype.";
-       return false;
-     }
-     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-     return true;
-   }
- };
+class DivideOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::DivideOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::DivideOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::DivideOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "elementwise_div do not support boolean datatype.";
+      return false;
+    }
 
-class RemainderOpPattern : public pir::OpRewritePattern<paddle::dialect::RemainderOp> {
-  public:
-   using pir::OpRewritePattern<paddle::dialect::RemainderOp>::OpRewritePattern;
-   bool MatchAndRewrite(paddle::dialect::RemainderOp op,
-                        pir::PatternRewriter &rewriter) const override {
-     if (op->HasAttribute(kCanRunTrtAttr) &&
-         op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-       return false;
-     }
-     pir::Value x = op.operand_source(0);
-     pir::Value y = op.operand_source(1);
-     auto x_dtype = pir::GetDataTypeFromValue(x);
-     auto y_dtype = pir::GetDataTypeFromValue(y);
-     if(x_dtype.isa<pir::BoolType>()|| y_dtype.isa<pir::BoolType>()){
-       VLOG(3) << "elementwise_mod do not support boolean datatype.";
-       return false;
-     }
-     
-     op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-     return true;
-   }
- };
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class ElementwisePowOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::ElementwisePowOp> {
+ public:
+  using pir::OpRewritePattern<
+      paddle::dialect::ElementwisePowOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::ElementwisePowOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || x_dtype.isa<pir::Int32Type>() ||
+        y_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::Int32Type>()) {
+      VLOG(3) << "elementwise_pow do not support"
+                 "boolean datatype and int32 datatype.";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+class MinimumOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::MinimumOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MinimumOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MinimumOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "elementwise_min do not support boolean datatype.";
+      return false;
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+class MaximumOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::MaximumOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MaximumOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MaximumOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "elementwise_max do not support boolean datatype.";
+      return false;
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class FloorDivideOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::FloorDivideOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::FloorDivideOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::FloorDivideOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "elementwise_floordiv do not support boolean datatype.";
+      return false;
+    }
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
+class RemainderOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::RemainderOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::RemainderOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::RemainderOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+    pir::Value x = op.operand_source(0);
+    pir::Value y = op.operand_source(1);
+    auto x_dtype = pir::GetDataTypeFromValue(x);
+    auto y_dtype = pir::GetDataTypeFromValue(y);
+    if (x_dtype.isa<pir::BoolType>() || y_dtype.isa<pir::BoolType>()) {
+      VLOG(3) << "elementwise_mod do not support boolean datatype.";
+      return false;
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
