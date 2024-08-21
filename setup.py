@@ -973,7 +973,6 @@ def find_libnvinfer():
     tensorrt_library_path = env_dict.get("TENSORRT_LIBRARY_DIR")
 
     libnvinfer_file = os.path.join(tensorrt_library_path, trt_infer_rt_path)
-    print("trt_library", libnvinfer_file)
 
     if os.path.exists(libnvinfer_file):
         return libnvinfer_file
@@ -1081,7 +1080,7 @@ def get_paddle_extra_install_requirements():
         ].split("|")
 
     if env_dict.get("TENSORRT_FOUND") == "ON":
-        if platform.system() == 'Linux' or platform.system() == 'Windows':
+        if platform.system() == 'Linux':
 
             PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
                 "tensorrt==8.5.3.1",
