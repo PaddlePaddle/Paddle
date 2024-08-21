@@ -947,13 +947,13 @@ def get_setup_requires():
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
             if (
-                "<\"3.6\"" in setup_requires_i
-                or "<=\"3.6\"" in setup_requires_i
-                or "<\"3.5\"" in setup_requires_i
-                or "<=\"3.5\"" in setup_requires_i
-                or "<\"3.7\"" in setup_requires_i
-                or "<=\"3.7\"" in setup_requires_i
-                or "<\"3.8\"" in setup_requires_i
+                '<"3.6"' in setup_requires_i
+                or '<="3.6"' in setup_requires_i
+                or '<"3.5"' in setup_requires_i
+                or '<="3.5"' in setup_requires_i
+                or '<"3.7"' in setup_requires_i
+                or '<="3.7"' in setup_requires_i
+                or '<"3.8"' in setup_requires_i
             ):
                 continue
             setup_requires_tmp += [setup_requires_i]
@@ -1506,11 +1506,16 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # operator init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/ir',
+            )
+        )
         + list(  # pass utils init headers
             find_files(
                 'general_functions.h',
                 paddle_source_dir + '/paddle/fluid/pir/utils',
-                recursive=True,
             )
         )
         + list(  # serialize and deserialize interface headers
@@ -1518,7 +1523,25 @@ def get_headers():
                 'interface.h',
                 paddle_source_dir
                 + '/paddle/fluid/pir/serialize_deserialize/include',
-                recursive=True,
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'dense_tensor.inl',
+                paddle_source_dir + '/paddle/phi/core',
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'op_yaml_info.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface',
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'op_yaml_info_util.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
             )
         )
     )

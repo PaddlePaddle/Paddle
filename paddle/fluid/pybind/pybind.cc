@@ -1173,22 +1173,23 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
 
-  m.def("need_type_promotion",
+  m.def("need_type_promotion_old_ir",
         [](const std::string &op_name,
            framework::proto::VarType::Type type_x,
            framework::proto::VarType::Type type_y) {
-          return phi::NeedTypePromotion(op_name,
-                                        framework::TransToPhiDataType(type_x),
-                                        framework::TransToPhiDataType(type_y));
+          return phi::NeedTypePromotionOldIr(
+              op_name,
+              framework::TransToPhiDataType(type_x),
+              framework::TransToPhiDataType(type_y));
         });
-  m.def("get_promote_dtype",
+  m.def("get_promote_dtype_old_ir",
         [](const std::string &op_name,
            framework::proto::VarType::Type type_x,
            framework::proto::VarType::Type type_y) {
           return framework::TransToProtoVarType(
-              phi::GetPromoteDtype(op_name,
-                                   framework::TransToPhiDataType(type_x),
-                                   framework::TransToPhiDataType(type_y)));
+              phi::GetPromoteDtypeOldIr(op_name,
+                                        framework::TransToPhiDataType(type_x),
+                                        framework::TransToPhiDataType(type_y)));
         });
   m.def("is_common_dtype_for_scalar",
         [](framework::proto::VarType::Type type_x,
