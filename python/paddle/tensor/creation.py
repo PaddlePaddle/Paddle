@@ -1042,6 +1042,7 @@ def fill_constant(
     out: paddle.Tensor | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
+    shape = [shape] if isinstance(shape, int) else shape
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
@@ -1097,7 +1098,6 @@ def fill_constant(
             if convert_dtype(value.dtype) != dtype:
                 value = paddle.cast(value, dtype)
             inputs['ValueTensor'] = value
-        shape = [shape] if isinstance(shape, int) else shape
 
         paddle.utils.check_shape(shape)
         check_dtype(
