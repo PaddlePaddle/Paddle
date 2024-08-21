@@ -1647,6 +1647,59 @@ bool RoiAlignOpInferSymbolicShape(
   return true;
 }
 
+bool SpectralNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &weight_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &u_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &v_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+
+  size_t rank_weight = weight_shape.size();
+
+  PADDLE_ENFORCE_GE(rank_weight,
+                    2,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(Weights) should be greater equal "
+                        "than 2, but received Weight rank(%d)",
+                        rank_weight));
+  PADDLE_ENFORCE_LE(rank_weight,
+                    5,
+                    common::errors::InvalidArgument(
+                        "The rank of Input(Weights) should be less equal than "
+                        "5, but received Weight rank(%d)",
+                        rank_weight));
+
+  int dim = op->attribute<pir::Int32Attribute>("dim").data();
+  int power_iters = op->attribute<pir::Int32Attribute>("power_iters").data();
+
+  PADDLE_ENFORCE_EQ(dim == 0 || dim == 1,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Attr(dim) can only be 0 or 1, but received %d", dim));
+  PADDLE_ENFORCE_GE(
+      power_iters,
+      0,
+      common::errors::InvalidArgument(
+          "Attr(power_iters) should be greater equal then 0, but received %d",
+          power_iters));
+
+  symbol::DimExpr weight = 1;
+  for (size_t i = 0; i < rank_weight; i++) {
+    if (i != static_cast<size_t>(dim)) {
+      weight = weight * weight_shape[i];
+    }
+  }
+  infer_context->AddEqualCstr(u_shape[0], weight_shape[dim]);
+  infer_context->AddEqualCstr(v_shape[0], weight);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(weight_shape)});
+
+  return true;
+}
 // bool LstmOpInferSymbolicShape(pir::Operation *op,
 //                               pir::InferSymbolicShapeContext
 //                               *infer_context)
@@ -2138,12 +2191,39 @@ bool HsigmoidLossOpInferSymbolicShape(
   return true;
 }
 
-// bool ViterbiDecodeOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool ViterbiDecodeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &transition_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &length_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const std::vector<symbol::DimExpr> &input_shape = input_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &transition_shape =
+      transition_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &length_shape =
+      length_shape_or_data.shape();
+
+  infer_context->AddEqualCstr(input_shape[0], length_shape[0]);
+  infer_context->AddEqualCstr(input_shape[2], transition_shape[0]);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(length_shape)});
+
+  symbol::DimExpr batch_size = input_shape[0];
+
+  std::vector<symbol::DimExpr> path_shape = {batch_size,
+                                             infer_context->GetNextSymName()};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(path_shape)});
+
+  return true;
+}
 
 // bool WarpctcOpInferSymbolicShape(pir::Operation *op,
 //                                  pir::InferSymbolicShapeContext
