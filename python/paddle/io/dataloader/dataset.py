@@ -77,10 +77,14 @@ class Dataset(Generic[_T]):
             ...     def __len__(self):
             ...         return self.num_samples
             ...
-            >>> dataset = RandomDataset(10)
+            >>> dataset = RandomDataset(3)
             >>> for i in range(len(dataset)):
             ...     image, label = dataset[i]
             ...     # do something
+            ...     print(f"Image shape: {image.shape}, Label: {label.item()}")
+            Image shape: [784], Label: 0
+            Image shape: [784], Label: 1
+            Image shape: [784], Label: 2
     """
 
     def __init__(self) -> None:
