@@ -59,6 +59,19 @@ class AutoLayoutPass : public pir::Pass {
  private:
   void RewriteLayout(pir::Operation* op,
                      const std::vector<pir::Value>& input_values) {  // NOLINT
+    if (op->name() == "builtin.combine") {
+      auto concrete_op = op->dyn_cast<pir::CombineOp>();
+      auto out = concrete_op.out();
+      std::vector<pir::Type> new_out_type;
+      for (auto v : op->operands_source()) {
+        new_out_type.push_back(v.type());
+      }
+      auto new_out_type_v =
+          pir::VectorType::get(pir::IrContext::Instance(), new_out_type);
+      out.set_type(new_out_type_v);
+      return;
+    }
+
     if (op->HasAttribute("data_format")) {
       op->set_attribute("data_format", pir::StrAttribute::get(ctx_, "NHWC"));
     }
@@ -150,6 +163,19 @@ class AutoLayoutPass : public pir::Pass {
   void DoTransposeOpOperand(pir::Operation* op,
                             pir::Builder& builder) {  // NOLINT
     builder.set_insertion_point(op);
+
+    // For conv2d, only transpose the input.
+    if (op->name() == "pd_op.conv2d") {
+      auto inp = op->operand(0);
+      if (!JudgeValue(inp.source())) return;
+      auto transpose_op =
+          builder.Build<paddle::dialect::TransposeOp>(inp.source(), NCHW2NHWC_);
+      pir::SetNewLayoutForValue(transpose_op->result(0),
+                                common::DataLayout::NHWC);
+      inp.set_source(transpose_op->result(0));
+      return;
+    }
+
     for (auto& operand : op->operands()) {
       if (!JudgeValue(operand.source())) continue;
 
