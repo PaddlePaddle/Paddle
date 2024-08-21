@@ -12,39 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
 import re
 from dataclasses import dataclass
 from enum import Enum
 
 from paddle import profiler
-from paddle.base.core import TracerEventType
+from paddle.base.core import tracer_event_type_to_string
 
 from ..utils.envs import ENV_ENABLE_SOT_STEP_PROFILER
-
-EVENT_TYPE_NAME_MAPPING = {
-    TracerEventType.Operator: "Operator",
-    TracerEventType.Dataloader: "Dataloader",
-    TracerEventType.ProfileStep: "ProfileStep",
-    TracerEventType.CudaRuntime: "CudaRuntime",
-    TracerEventType.Kernel: "Kernel",
-    TracerEventType.Memcpy: "Memcpy",
-    TracerEventType.Memset: "Memset",
-    TracerEventType.UserDefined: "UserDefined",
-    TracerEventType.OperatorInner: "OperatorInner",
-    TracerEventType.Forward: "Forward",
-    TracerEventType.Backward: "Backward",
-    TracerEventType.Optimization: "Optimization",
-    TracerEventType.Communication: "Communication",
-    TracerEventType.PythonOp: "PythonOp",
-    TracerEventType.PythonUserDefined: "PythonUserDefined",
-    TracerEventType.DygraphKernelLaunch: "DygraphKernelLaunch",
-    TracerEventType.StaticKernelLaunch: "StaticKernelLaunch",
-}
 
 
 class EventVisitor:
     def visit(self, event_node):
-        event_type_name = EVENT_TYPE_NAME_MAPPING[event_node.type]
+        event_type_name = tracer_event_type_to_string(event_node.type)
         visit_method_name = f"visit_{event_type_name}"
         if not hasattr(self, visit_method_name):
             self.generic_visit(event_node)
@@ -67,7 +48,7 @@ class KernelRunMode(Enum):
 
 @dataclass
 class KernelInfo:
-    name: str  # TODO: Add name field to KernelInfo
+    name: str
     run_mode: KernelRunMode
     duration: float
 
@@ -121,7 +102,7 @@ class KernelStatsVisitor(EventVisitor):
         )
         self.generic_visit(event_node)
 
-    def print_summary(self):
+    def summary(self) -> str:
         static_kernel_duration = self.calc_kernel_duration(KernelRunMode.Static)
         dygraph_kernel_duration = self.calc_kernel_duration(
             KernelRunMode.Dygraph
@@ -135,49 +116,65 @@ class KernelStatsVisitor(EventVisitor):
         percentage_static_kernel_duration = static_kernel_duration / (
             static_kernel_duration + dygraph_kernel_duration
         )
-        print(
-            [
-                (kernel.name, kernel.run_mode, kernel.duration)
-                for kernel in self.kernels
-            ]
-        )
-        print(f"dygraph kernel count: {dygraph_kernel_count}")
-        print(f"static kernel count: {static_kernel_count}")
-        print(
-            f"percentage static kernel count: {percentage_static_kernel_count:.2%}"
-        )
-        print(
-            f"dygraph kernel duration: {dygraph_kernel_duration / 1000000:.2f} ms"
-        )
-        print(
-            f"static kernel duration: {static_kernel_duration / 1000000:.2f} ms"
-        )
-        print(
-            f"percentage static kernel duration: {percentage_static_kernel_duration:.2%}"
-        )
+        step_summary = ""
+        step_summary += f"dygraph kernel count: {dygraph_kernel_count}\n"
+        step_summary += f"static kernel count: {static_kernel_count}\n"
+        step_summary += f"percentage static kernel count: {percentage_static_kernel_count:.2%}\n"
+
+        step_summary += f"dygraph kernel duration: {dygraph_kernel_duration / 1000000:.2f} ms\n"
+        step_summary += f"static kernel duration: {static_kernel_duration / 1000000:.2f} ms\n"
+        step_summary += f"percentage static kernel duration: {percentage_static_kernel_duration:.2%}\n"
+        # TODO: remove this
+        # print(
+        #     [
+        #         (kernel.name, kernel.run_mode, kernel.duration)
+        #         for kernel in self.kernels
+        #     ]
+        # )
+        return step_summary
 
 
 class SotStepProfilerGuard:
     EXPORT_CHROME_TRACING_PATH = "./sot-chrome-tracing/"
+    STEP_CNT = 0
+    LAST_INFO_SUMMARY = None
 
     def __init__(self, enable_kernel_stats=True, enable_chrome_tracing=False):
         self.enable_kernel_stats = enable_kernel_stats
         self.enable_chrome_tracing = enable_chrome_tracing
         self.started = False
-        self.profiler = None
+        self.record_event = None
 
     def _kernel_stats(self, prof):
         kernel_stats_visitor = KernelStatsVisitor()
         kernel_stats_visitor(prof.profiler_result.get_data())
-        kernel_stats_visitor.print_summary()
+        # breakpoint()
+        return kernel_stats_visitor.summary()
 
-    def on_trace_ready(self, prof):
+    def collect_step_info_summary(self, prof):
+        summary = ""
         if self.enable_kernel_stats:
-            self._kernel_stats(prof)
+            summary += self._kernel_stats(prof)
         if self.enable_chrome_tracing:
             profiler.export_chrome_tracing(
                 SotStepProfilerGuard.EXPORT_CHROME_TRACING_PATH
             )(prof)
+        return summary
+
+    def on_trace_ready(self, prof):
+        summary = self.collect_step_info_summary(prof)
+        if SotStepProfilerGuard.STEP_CNT == 0:
+            coldstart_title = f"SOT step profiler info summary (ColdStart, step#{SotStepProfilerGuard.STEP_CNT}):"
+            coldstart_report = f"{coldstart_title}\n{summary}"
+            print(coldstart_report)
+        else:
+            warmup_title = f"SOT step profiler info summary (Warmup, step#{SotStepProfilerGuard.STEP_CNT}):"
+            warmup_report = f"{warmup_title}\n{summary}"
+            if SotStepProfilerGuard.LAST_INFO_SUMMARY is None:
+                atexit.register(
+                    lambda: print(SotStepProfilerGuard.LAST_INFO_SUMMARY)
+                )
+            SotStepProfilerGuard.LAST_INFO_SUMMARY = warmup_report
 
     def start(self):
         if ENV_ENABLE_SOT_STEP_PROFILER.get():
@@ -196,6 +193,7 @@ class SotStepProfilerGuard:
             assert self.profiler is not None
             self.profiler.stop()
             self.profiler = None
+        SotStepProfilerGuard.STEP_CNT += 1
 
     def __enter__(self):
         self.start()
