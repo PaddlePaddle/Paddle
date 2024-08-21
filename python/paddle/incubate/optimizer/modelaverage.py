@@ -19,7 +19,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base import framework
 from paddle.base.dygraph import base as imperative_base
-from paddle.base.layer_helper import LayerHelper, LayerHelperBase
+from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.framework import (
     in_dynamic_mode,
@@ -32,9 +32,8 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
     from paddle import Tensor
-    from paddle.base.framework import Program
     from paddle.optimizer.optimizer import _ParameterConfig
-    from paddle.static import Executor
+    from paddle.static import Executor, Program
 
 
 __all__ = []
@@ -181,7 +180,7 @@ class ModelAverage(Optimizer):
 
     """
 
-    helper: LayerHelperBase | None
+    helper: LayerHelper
     average_window: float
     min_average_window: int
     max_average_window: int
