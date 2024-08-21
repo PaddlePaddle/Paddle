@@ -362,9 +362,11 @@ bool Conv2dTransposeOpInferSymbolicShape(
   if (!output_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
     output_size = output_shape_or_data.shape();
   } else {
-    output_size =
-        paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
-    if (output_size.size() == 0) {
+    const auto &attributes = op->attributes();
+    if (op->HasAttribute("output_size")) {
+      output_size =
+          attributes.at("output_size").dyn_cast<pir::Int32Attribute>().data();
+    } else {
       output_size = {};
     }
   }
