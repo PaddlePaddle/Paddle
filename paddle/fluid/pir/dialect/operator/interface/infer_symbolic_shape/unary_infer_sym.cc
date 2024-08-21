@@ -442,11 +442,9 @@ bool CholeskyOpInferSymbolicShape(
 
 bool ClassCenterSampleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  // 获取输入张量的符号形状或数据
   const symbol::ShapeOrDataDimExprs &label_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
-  // 确保输入张量的rank为1
   PADDLE_ENFORCE_EQ(label_shape_or_data.shape().size(),
                     1,
                     common::errors::InvalidArgument(
@@ -454,14 +452,11 @@ bool ClassCenterSampleOpInferSymbolicShape(
                         "but the value given is %d.",
                         label_shape_or_data.shape().size()));
 
-  // 设置输出张量 remapped_label 的符号形状
   infer_context->SetShapeOrDataForValue(op->result(0), label_shape_or_data);
 
-  symbol::DimExpr out_unknown =
-      infer_context->GetNextSymName();  // unknown until runtime
+  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
   const std::vector<symbol::DimExpr> out_dims = {out_unknown};
 
-  // 设置输出张量 sampled_local_class_center 的符号形状
   symbol::ShapeOrDataDimExprs sampled_local_class_center_dims{
       symbol::TensorShapeOrDataDimExprs(out_dims)};
   infer_context->SetShapeOrDataForValue(op->result(1),
