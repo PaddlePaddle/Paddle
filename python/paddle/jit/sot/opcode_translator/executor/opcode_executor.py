@@ -1057,10 +1057,11 @@ class OpcodeExecutorBase:
         retval = []
         for item in unpack_values:
             if isinstance(item, RangeVariable):
-                retval.extend(item.get_py_value())
-            else:
-                assert isinstance(item, (TupleVariable, ListVariable))
-                retval.extend(item.get_wrapped_items())
+                raise FallbackError(
+                    "list is not implemented unpack RangeVariable"
+                )
+            assert isinstance(item, (TupleVariable, ListVariable))
+            retval.extend(item.get_wrapped_items())
 
         if instr.opname in {
             "BUILD_TUPLE_UNPACK_WITH_CALL",
