@@ -70,8 +70,8 @@ class Dataset(Generic[_T]):
             ...         self.num_samples = num_samples
             ...
             ...     def __getitem__(self, idx):
-            ...         image = paddle.randn([784]).astype('float32')
-            ...         label = paddle.randint(0, 9, (1, )).astype('int64')
+            ...         image = paddle.full([784], 0.5, dtype='float32')
+            ...         label = paddle.full([1], idx % 9, dtype='int64')
             ...         return image, label
             ...
             ...     def __len__(self):
@@ -82,16 +82,16 @@ class Dataset(Generic[_T]):
             ...     image, label = dataset[i]
             ...     # do something
             ...     print(f"Image shape: {image.shape}, Label: {label.item()}")
-            Image shape: [784], Label: 2
-            Image shape: [784], Label: 4
-            Image shape: [784], Label: 4
-            Image shape: [784], Label: 7
-            Image shape: [784], Label: 3
-            Image shape: [784], Label: 1
             Image shape: [784], Label: 0
             Image shape: [784], Label: 1
-            Image shape: [784], Label: 7
+            Image shape: [784], Label: 2
+            Image shape: [784], Label: 3
             Image shape: [784], Label: 4
+            Image shape: [784], Label: 5
+            Image shape: [784], Label: 6
+            Image shape: [784], Label: 7
+            Image shape: [784], Label: 8
+            Image shape: [784], Label: 0
     """
 
     def __init__(self) -> None:
