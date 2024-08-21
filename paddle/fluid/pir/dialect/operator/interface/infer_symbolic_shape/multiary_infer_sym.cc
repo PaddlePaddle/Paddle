@@ -942,6 +942,10 @@ bool DeformableConvOpInferSymbolicShape(
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const auto &offset_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &offset_shape =
+      offset_shape_or_data.shape();
   const auto &filter_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
   const std::vector<symbol::DimExpr> &filter_shape =
@@ -952,6 +956,12 @@ bool DeformableConvOpInferSymbolicShape(
       details::GetVectorAttr<int>(op, "paddings");
   const std::vector<int> &dilations =
       details::GetVectorAttr<int>(op, "dilations");
+  const int groups = op->attribute<pir::Int32Attribute>("groups").data();
+  const int deformable_groups =
+      op->attribute<pir::Int32Attribute>("deformable_groups").data();
+
+  infer_context->AddEqualCstr(x_shape[1],
+                              filter_shape[1] * symbol::DimExpr(groups));
 
   std::vector<symbol::DimExpr> output_shape = {x_shape[0], filter_shape[0]};
   symbol::DimExpr conv_output_size, dkernel;
@@ -964,6 +974,22 @@ bool DeformableConvOpInferSymbolicShape(
             symbol::DimExpr(strides[i]) +
         symbol::DimExpr(1);
     output_shape.emplace_back(conv_output_size);
+  }
+
+  infer_context->AddEqualCstr(out_shape[2], offset_shape[2]);
+  infer_context->AddEqualCstr(out_shape[3], offset_shape[3]);
+  infer_context->AddEqualCstr(offset_shape[1],
+                              symbol::DimExpr(2 * deformable_groups) *
+                                  filter_shape[2] * filter_shape[3]);
+  if (op->operand_source(3)) {
+    const auto &mask_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(3));
+    const std::vector<symbol::DimExpr> &mask_shape = mask_shape_or_data.shape();
+    infer_context->AddEqualCstr(out_shape[2], mask_shape[2]);
+    infer_context->AddEqualCstr(out_shape[3], mask_shape[3]);
+    infer_context->AddEqualCstr(
+        mask_shape[1],
+        symbol::DimExpr(deformable_groups) * filter_shape[2] * filter_shape[3]);
   }
 
   infer_context->SetShapeOrDataForValue(
