@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import os
 import warnings
 from typing import TYPE_CHECKING, Callable, TypeVar
 
@@ -33,12 +34,15 @@ if TYPE_CHECKING:
 def check_view_value(value: Value) -> bool:
     # check if the value is a view tensor
     if value.get_defining_op().name() in stride_ops:
+        # TODO(ooooo-create): The `x = stride_op(x)` shouldn't return True.
         return True
     all_used_ops = value.all_used_ops()
     if len(all_used_ops) == 0:
         return False
     for op in all_used_ops:
         if op.name() in stride_ops and op.operand_source(0).is_same(value):
+            # TODO(ooooo-create): The `y = stride_op(x).clone()` and `y = stride_op(x) + op` should also return False.
+            # Now is True.
             return True
     return False
 
@@ -60,8 +64,14 @@ def _inplace_apis_in_dygraph_only_(
             from ..base.dygraph.base import in_to_static_mode
 
             if in_to_static_mode():
+                stride_in_no_check_dy2st_diff = os.environ.get(
+                    "stride_in_no_check_dy2st_diff", "0"
+                )
                 if in_pir_mode():
-                    if check_view_value(args[0]):
+                    if (
+                        stride_in_no_check_dy2st_diff == '1'
+                        and check_view_value(args[0])
+                    ):
                         raise ValueError(
                             f'Sorry about what\'s happened. In to_static mode, {func.__name__}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided API be called, and call paddle.assign() before inplace input.'
                         )
