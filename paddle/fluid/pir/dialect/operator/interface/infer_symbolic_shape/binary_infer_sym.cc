@@ -265,10 +265,7 @@ bool CtcAlignOpInferSymbolicShape(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(input_shape)});
-  infer_context->SetShapeOrDataForValue(
-      op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(shape_data)});
+  infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
   return true;
 }
 
