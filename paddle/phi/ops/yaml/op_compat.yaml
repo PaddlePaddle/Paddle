@@ -1651,6 +1651,26 @@
   outputs :
     {x_grad : DX, y_grad : DY, bias_grad : DBias}
 
+- op : fused_multi_transformer
+  inputs:
+    {x : X, ln_scales : LnScale, ln_biases : LnBias, qkv_weights : QKVW, qkv_biases : QKVBias, cache_kvs : CacheKV,
+    pre_caches : PreCaches, rotary_tensor : RotaryPosEmb, beam_offset : BeamCacheOffset, time_step : TimeStep,
+    seq_lengths : SeqLengths, src_mask : SrcMask, out_linear_weights : OutLinearW, out_linear_biases : OutLinearBias,
+    ffn_ln_scales : FFNLnScale, ffn_ln_biases : FFNLnBias, ffn1_weights : FFN1Weight, ffn1_biases : FFN1Bias,
+    ffn2_weights : FFN2Weight, ffn2_biases : FFN2Bias}
+  outputs:
+    {cache_kv_outs : CacheKVOut, out : Out}
+
+- op : fused_multi_transformer_int8
+  inputs:
+    {x : X, ln_scale : LnScale, ln_bias : LnBias, qkv_w : QKVW, qkv_bias : QKVBias, cache_kv : CacheKV,
+    time_step : TimeStep, src_mask : SrcMask, out_linear_w : OutLinearW, out_linear_bias : OutLinearBias,
+    ffn_ln_scale : FFNLnScale, ffn_ln_bias : FFNLnBias, ffn1_weight : FFN1Weight, ffn1_bias : FFN1Bias,
+    ffn2_weight : FFN2Weight, ffn2_bias : FFN2Bias, qkv_out_scale : QKVOutScale, out_linear_out_scale : OutLinearOutScale,
+    ffn1_out_scale : FFN1OutScale, ffn2_out_scale : FFN2OutScale}
+  outputs:
+    {cache_kv_out : CacheKVOut, out : Out}
+
 - op : fused_transpose
   inputs:
     {x : X}
