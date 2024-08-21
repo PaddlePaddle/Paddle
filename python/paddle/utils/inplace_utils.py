@@ -69,7 +69,7 @@ def _inplace_apis_in_dygraph_only_(
                 )
                 if in_pir_mode():
                     if (
-                        stride_in_no_check_dy2st_diff == '1'
+                        stride_in_no_check_dy2st_diff != '1'
                         and check_view_value(args[0])
                     ):
                         raise ValueError(
