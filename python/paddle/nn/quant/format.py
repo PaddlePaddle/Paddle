@@ -108,14 +108,26 @@ class LinearQuanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             if len(self._scales.shape) > 1:
-                new_s = paddle.repeat_interleave(
-                    self._scales, self._group_size, 0
-                )
-                quant_weight = paddle.clip(
-                    paddle.round(input.cast('float32') / new_s * self._qmax),
-                    self._qmin,
-                    self._qmax,
-                )
+                if self._zero_point.sum() != 0:
+                    quant_weight = paddle.clip(
+                        paddle.round(input.cast('float32') / self._scales)
+                        + self._zero_point,
+                        self._qmin,
+                        self._qmax,
+                    )
+                else:
+                    new_s = paddle.repeat_interleave(
+                        self._scales, self._group_size, 0
+                    )
+                    new_zp = paddle.repeat_interleave(
+                        self._zero_point, self._group_size, 0
+                    )
+                    quant_weight = paddle.clip(
+                        paddle.round(input.cast('float32') / new_s * self._qmax)
+                        + new_zp,
+                        self._qmin,
+                        self._qmax,
+                    )
                 return quant_weight.cast(input.dtype)
             return _C_ops.quantize_linear(
                 input.cast('float32'),
@@ -221,12 +233,20 @@ class LinearDequanter(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             if len(self._scales.shape) > 1:
-                new_s = paddle.repeat_interleave(
-                    self._scales, self._group_size, 0
-                )
-                quant_dequant_weight = (
-                    input.cast('float32') / self._qmax * new_s
-                )
+                if self._zero_point.sum() != 0:
+                    quant_dequant_weight = (
+                        input.cast('float32') - self._zero_point
+                    ) * self._scales
+                else:
+                    new_s = paddle.repeat_interleave(
+                        self._scales, self._group_size, 0
+                    )
+                    new_zp = paddle.repeat_interleave(
+                        self._zero_point, self._group_size, 0
+                    )
+                    quant_dequant_weight = (
+                        (input.cast('float32') - new_zp) / self._qmax * new_s
+                    )
                 return quant_dequant_weight.cast(input.dtype)
 
             return _C_ops.dequantize_linear(

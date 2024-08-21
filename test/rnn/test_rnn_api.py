@@ -23,6 +23,8 @@ import numpy as np
 
 from paddle import base
 
+paddle.enable_static()
+
 bidirectional_list = ["bidirectional", "bidirect"]
 
 
