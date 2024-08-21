@@ -4126,6 +4126,8 @@
   outputs:
     {precision : Precision, recall : Recall, f1_score : F1-Score, num_infer_chunks : NumInferChunks, num_label_chunks : NumLabelChunks, num_correct_chunks : NumCorrectChunks}
 
+- op: comm_init_all(c_comm_init_all)
+
 - op: crf_decoding
   inputs:
     emission: Emission

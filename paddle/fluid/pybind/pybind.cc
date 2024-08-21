@@ -2922,37 +2922,34 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::ProfilerOptions::trace_switch);
 
   py::class_<phi::RecordEvent>(m, "_RecordEvent")
-      .def(py::init([](std::string name, platform::TracerEventType type) {
+      .def(py::init([](std::string name, phi::TracerEventType type) {
         return std::make_unique<phi::RecordEvent>(
             name, type, 1, phi::EventRole::kOrdinary);
       }))
       .def("end", [](phi::RecordEvent *event) { event->End(); });
 
-  py::enum_<paddle::platform::TracerMemEventType>(m, "TracerMemEventType")
-      .value("Allocate", paddle::platform::TracerMemEventType::Allocate)
-      .value("Free", paddle::platform::TracerMemEventType::Free)
-      .value("ReservedAllocate",
-             paddle::platform::TracerMemEventType::ReservedAllocate)
-      .value("ReservedFree",
-             paddle::platform::TracerMemEventType::ReservedFree);
+  py::enum_<phi::TracerMemEventType>(m, "TracerMemEventType")
+      .value("Allocate", phi::TracerMemEventType::Allocate)
+      .value("Free", phi::TracerMemEventType::Free)
+      .value("ReservedAllocate", phi::TracerMemEventType::ReservedAllocate)
+      .value("ReservedFree", phi::TracerMemEventType::ReservedFree);
 
-  py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
-      .value("Operator", paddle::platform::TracerEventType::Operator)
-      .value("Dataloader", paddle::platform::TracerEventType::Dataloader)
-      .value("ProfileStep", paddle::platform::TracerEventType::ProfileStep)
-      .value("CudaRuntime", paddle::platform::TracerEventType::CudaRuntime)
-      .value("Kernel", paddle::platform::TracerEventType::Kernel)
-      .value("Memcpy", paddle::platform::TracerEventType::Memcpy)
-      .value("Memset", paddle::platform::TracerEventType::Memset)
-      .value("UserDefined", paddle::platform::TracerEventType::UserDefined)
-      .value("OperatorInner", paddle::platform::TracerEventType::OperatorInner)
-      .value("Forward", paddle::platform::TracerEventType::Forward)
-      .value("Backward", paddle::platform::TracerEventType::Backward)
-      .value("Optimization", paddle::platform::TracerEventType::Optimization)
-      .value("Communication", paddle::platform::TracerEventType::Communication)
-      .value("PythonOp", paddle::platform::TracerEventType::PythonOp)
-      .value("PythonUserDefined",
-             paddle::platform::TracerEventType::PythonUserDefined);
+  py::enum_<phi::TracerEventType>(m, "TracerEventType")
+      .value("Operator", phi::TracerEventType::Operator)
+      .value("Dataloader", phi::TracerEventType::Dataloader)
+      .value("ProfileStep", phi::TracerEventType::ProfileStep)
+      .value("CudaRuntime", phi::TracerEventType::CudaRuntime)
+      .value("Kernel", phi::TracerEventType::Kernel)
+      .value("Memcpy", phi::TracerEventType::Memcpy)
+      .value("Memset", phi::TracerEventType::Memset)
+      .value("UserDefined", phi::TracerEventType::UserDefined)
+      .value("OperatorInner", phi::TracerEventType::OperatorInner)
+      .value("Forward", phi::TracerEventType::Forward)
+      .value("Backward", phi::TracerEventType::Backward)
+      .value("Optimization", phi::TracerEventType::Optimization)
+      .value("Communication", phi::TracerEventType::Communication)
+      .value("PythonOp", phi::TracerEventType::PythonOp)
+      .value("PythonUserDefined", phi::TracerEventType::PythonUserDefined);
   m.def("load_profiler_result", &paddle::platform::LoadProfilerResult);
   m.def("enable_memory_recorder", &paddle::platform::EnableMemoryRecorder);
   m.def("disable_memory_recorder", &paddle::platform::DisableMemoryRecorder);

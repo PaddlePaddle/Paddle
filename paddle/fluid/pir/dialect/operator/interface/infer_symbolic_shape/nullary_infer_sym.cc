@@ -103,6 +103,66 @@ bool AssignValue_OpInferSymbolicShape(
   return AssignValueOpInferSymbolicShape(op, infer_context);
 }
 
+bool CudnnLstmOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const auto &init_h_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &init_h_shape =
+      init_h_shape_or_data.shape();
+  const auto &init_c_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const std::vector<symbol::DimExpr> &init_c_shape =
+      init_c_shape_or_data.shape();
+  bool is_bidirec = op->attribute<pir::BoolAttribute>("is_bidirec").data();
+  int hidden_size = op->attribute<pir::Int32Attribute>("hidden_size").data();
+  size_t ndims = init_c_shape.size();
+
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "The rank of Input in CudnnLSTM  must be 3. But "
+                        "received Input's rank is %d.",
+                        x_shape.size()));
+  PADDLE_ENFORCE_EQ(init_h_shape.size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "The rank of InitH in CudnnLSTM  must be 3. But "
+                        "received InitH's rank is %d.",
+                        init_h_shape.size()));
+
+  if (op->operand_source(5)) {
+    const auto &sequence_length_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(5));
+    const std::vector<symbol::DimExpr> &sequence_length_shape =
+        sequence_length_shape_or_data.shape();
+    infer_context->AddEqualCstr(x_shape[1], sequence_length_shape[0]);
+  }
+
+  infer_context->AddEqualCstr(x_shape[1], init_h_shape[1]);
+  for (size_t i = 0; i < ndims; ++i) {
+    infer_context->AddEqualCstr(init_c_shape[i], init_h_shape[i]);
+  }
+  std::vector<symbol::DimExpr> out_shape = x_shape;
+  out_shape[2] = is_bidirec ? symbol::DimExpr{hidden_size * 2}
+                            : symbol::DimExpr{hidden_size};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(init_c_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(init_h_shape)});
+  return true;
+}
+
 bool DataOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   std::string name =
@@ -426,11 +486,22 @@ bool TriuIndicesOpInferSymbolicShape(
   return true;
 }
 
-// bool TruncatedGaussianRandomOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool TruncatedGaussianRandomOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<int> shape =
+      paddle::dialect::details::GetVectorAttr<int>(op, "shape");
+  std::vector<symbol::DimExpr> out_shape;
+  out_shape.reserve(shape.size());
+  for (const int &dim : shape) {
+    out_shape.emplace_back(symbol::DimExpr(static_cast<int64_t>(dim)));
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
 
 bool UniformOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
