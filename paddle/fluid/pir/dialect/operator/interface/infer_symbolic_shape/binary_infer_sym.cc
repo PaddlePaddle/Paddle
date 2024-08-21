@@ -354,6 +354,10 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
 
 bool Conv2dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<int64_t> output_size =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "output_size");
+  std::vector<int> vec_output_size(output_size.begin(), output_size.end());
+
   return ConvTransposeOpInferSymbolicShape(op, infer_context);
 }
 
