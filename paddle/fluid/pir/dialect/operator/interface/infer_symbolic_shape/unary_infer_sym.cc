@@ -2935,17 +2935,51 @@ bool UnbindOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool UniformRandomInplaceOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UniformInplaceOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  float min = op->attribute<pir::FloatAttribute>("min").data();
+  float max = op->attribute<pir::FloatAttribute>("max").data();
+  int diag_num = op->attribute<pir::Int32Attribute>("diag_num").data();
+  int diag_step = op->attribute<pir::Int32Attribute>("diag_step").data();
 
-// bool UniformRandomInplace_OpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return UniformRandomInplaceOpInferSymbolicShape(op, infer_context);
-// }
+  PADDLE_ENFORCE_LT(
+      min,
+      max,
+      common::errors::InvalidArgument(
+          "The uniform_random's min must less then max. But received min = "
+          "%f great than or equal max = %f.",
+          min,
+          max));
+  PADDLE_ENFORCE_GE(diag_num,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The uniform_random's diag_num must greater than or "
+                        "equal 0. But received diag_num (%d) < 0.",
+                        diag_num));
+  PADDLE_ENFORCE_GE(diag_step,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The uniform_random's diag_step must greater than or "
+                        "equal 0. But received diag_step (%d) < 0.",
+                        diag_step));
+  PADDLE_ENFORCE_NE(op->result(0),
+                    nullptr,
+                    common::errors::InvalidArgument(
+                        "uniform_random should have output tensor out."));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  return true;
+}
+
+bool UniformInplace_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return UniformInplaceOpInferSymbolicShape(op, infer_context);
+}
 
 // bool UniformRandomBatchSizeLikeOpInferSymbolicShape(
 //     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
