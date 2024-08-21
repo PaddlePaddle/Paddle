@@ -49,7 +49,7 @@ class ProxyLayer(Layer):
         # NOTE: All verify logics are finished in Engine.Prepare
         self.inner_layer = layer
         self.loss_func = loss_func
-        self.metrics = metrics
+        self.metrics = metrics or []
         # train / eval / predict
         self.mode = None
 
@@ -66,6 +66,8 @@ class ProxyLayer(Layer):
         as_not_paddle_func(
             inspect.getmodule(ProxyLayer).__name__ + ".ProxyLayer"
         )
+
+        self._logger = get_logger(logging.INFO)
 
     @paddle.jit.not_to_static
     def append_loss_to_shadow_output(self, mode):
@@ -87,7 +89,7 @@ class ProxyLayer(Layer):
 
         # step 3. calculate loss if needed
         new_inputs = self._prepare(self.output_vars, labels)
-        self._loss_vars[mode] = self.call_loss(new_inputs)
+        self._loss_vars[mode] = self.call_loss(new_inputs, mode)
         if paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]:
@@ -113,7 +115,7 @@ class ProxyLayer(Layer):
 
         # step 3. calculate loss if needed
         new_inputs = self._prepare(self.output_vars, labels)
-        self._loss_vars[mode] = self.call_loss(new_inputs)
+        self._loss_vars[mode] = self.call_loss(new_inputs, mode)
         if paddle.base.framework.get_flags("FLAGS_enable_pir_api")[
             "FLAGS_enable_pir_api"
         ]:
@@ -141,9 +143,10 @@ class ProxyLayer(Layer):
 
         NOTE(dev): We use @not_to_static to avoid AST Analysis.
         """
+        labels = labels or []
         return to_list(outputs) + to_list(labels)
 
-    def call_loss(self, inputs):
+    def call_loss(self, inputs, mode):
         """
         Apply Loss Function on outputs and labels.
 
@@ -152,9 +155,14 @@ class ProxyLayer(Layer):
 
         Returns: List[Variable]
         """
-        res = []
+        res = None
         if self.loss_func is not None:
             res = self.loss_func(*inputs)
+        else:
+            self._logger.info(
+                "Found loss_func is None, using output vars of self.forward() as loss vars"
+            )
+            res = self._output_vars[mode]
         return res
 
     def call_metrics(self, inputs):
