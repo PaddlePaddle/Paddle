@@ -17,7 +17,7 @@ limitations under the License. */
 #include <map>
 #include <string>
 
-#include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/trace_event.h"
 #include "paddle/phi/common/place.h"
 
 namespace paddle {
@@ -38,7 +38,7 @@ class RecordMemEvent {
       const void* ptr,
       const Place& place,
       size_t size,
-      const TracerMemEventType type = TracerMemEventType::Allocate);
+      const phi::TracerMemEventType type = phi::TracerMemEventType::Allocate);
 
   // size_cache: In the outer map, key is device type, 'cpu'  or 'gpu', and in
   // the inner map, key is device ip.

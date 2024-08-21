@@ -133,8 +133,7 @@ void EagerDeletionOpHandle::RunImpl() {
     CallOnce();
   }
 
-  phi::RecordEvent record_event(
-      Name(), platform::TracerEventType::UserDefined, 2);
+  phi::RecordEvent record_event(Name(), phi::TracerEventType::UserDefined, 2);
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (size_t i = 0; i < var_infos_.size(); ++i) {
     auto *var_info = var_infos_[i];
