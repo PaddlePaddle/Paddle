@@ -85,6 +85,7 @@ from .variables import (
     ListVariable,
     MethodVariable,
     NullVariable,
+    RangeVariable,
     SequenceIterVariable,
     SliceVariable,
     SymbolicVariable,
@@ -1055,8 +1056,11 @@ class OpcodeExecutorBase:
 
         retval = []
         for item in unpack_values:
-            assert isinstance(item, (TupleVariable, ListVariable))
-            retval.extend(item.get_wrapped_items())
+            if isinstance(item, RangeVariable):
+                retval.extend(item.get_py_value())
+            else:
+                assert isinstance(item, (TupleVariable, ListVariable))
+                retval.extend(item.get_wrapped_items())
 
         if instr.opname in {
             "BUILD_TUPLE_UNPACK_WITH_CALL",
