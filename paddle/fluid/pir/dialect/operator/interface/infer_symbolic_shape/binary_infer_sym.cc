@@ -354,21 +354,29 @@ bool Conv2dOpInferSymbolicShape(pir::Operation *op,
 
 bool Conv2dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<int64_t> output_size =
-      paddle::dialect::details::GetVectorAttr<int64_t>(op, "output_size");
-  std::vector<int> vec_output_size(output_size.begin(), output_size.end());
-
-  return ConvTransposeOpInferSymbolicShape(op, infer_context);
+  std::vector<int> output_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+  std::vector<int> vec_output_size;
+  if (output_size.size() == 0) {
+    vec_output_size = {};
+  } else {
+    vec_output_size = {output_size.begin(), output_size.end()};
+  }
+  return ConvTransposeOpInferSymbolicShape(op, infer_context, vec_output_size);
 }
 
 bool Conv2dTransposeBiasOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return ConvTransposeOpInferSymbolicShape(op, infer_context);
+  std::vector<int> output_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+  return ConvTransposeOpInferSymbolicShape(op, infer_context, output_size);
 }
 
 bool Conv3dTransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return ConvTransposeOpInferSymbolicShape(op, infer_context);
+  std::vector<int> output_size =
+      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
+  return ConvTransposeOpInferSymbolicShape(op, infer_context, output_size);
 }
 
 bool Conv3dOpInferSymbolicShape(pir::Operation *op,
@@ -377,7 +385,9 @@ bool Conv3dOpInferSymbolicShape(pir::Operation *op,
 }
 
 bool ConvTransposeOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+    pir::Operation *op,
+    pir::InferSymbolicShapeContext *infer_context,
+    std::vector<int> output_size) {
   auto x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   auto filter_shape =
@@ -389,8 +399,6 @@ bool ConvTransposeOpInferSymbolicShape(
       paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
   std::vector<int> output_padding =
       paddle::dialect::details::GetVectorAttr<int>(op, "output_padding");
-  std::vector<int> output_size =
-      paddle::dialect::details::GetVectorAttr<int>(op, "output_size");
   std::string padding_algorithm =
       op->attribute<pir::StrAttribute>("padding_algorithm").AsString();
   int groups = op->attribute<pir::Int32Attribute>("groups").data();
