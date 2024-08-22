@@ -513,20 +513,17 @@ bool Conv2dTransposeOpInferSymbolicShape(
     for (const auto &i : out_size) {
       output_size.push_back(symbol::DimExpr{i});
     }
+    VLOG(3) << "output_size: attribute" << output_size;
     return convtransposefunction(op, infer_context, output_size);
   } else {
     const auto &output_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
-    if (!output_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
-      const std::vector<symbol::DimExpr> &output_size =
-          output_shape_or_data.data().has_value()
-              ? output_shape_or_data.data().value()
-              : output_shape_or_data.shape();
-      return convtransposefunction(op, infer_context, output_size);
-    } else {
-      std::vector<symbol::DimExpr> output_size = {};
-      return convtransposefunction(op, infer_context, output_size);
-    }
+    const std::vector<symbol::DimExpr> &output_size =
+        output_shape_or_data.data().has_value()
+            ? output_shape_or_data.data().value()
+            : output_shape_or_data.shape();
+    VLOG(3) << "output_size: operand" << output_size;
+    return convtransposefunction(op, infer_context, output_size);
   }
 }
 
