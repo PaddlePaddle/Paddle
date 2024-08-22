@@ -328,8 +328,7 @@ class KernelFactory {
                                         bool use_strided_kernel = false) const;
 
   bool HasKernel(const std::string& kernel_name,
-                 const KernelKey& kernel_key,
-                 bool return_false_if_xpu_not_support = false) const;
+                 const KernelKey& kernel_key) const;
 
   const Kernel& SelectKernel(const std::string& kernel_name,
                              const KernelKey& kernel_key) const;
