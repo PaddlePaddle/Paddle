@@ -80,30 +80,8 @@ class LinearQuanter(Layer):
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
         self._group_size = group_size
-        if isinstance(self._bit_length, tuple):
-            if (
-                self._bit_length[0] == 4
-                and self._bit_length[1] == 3
-                and len(self._bit_length) == 2
-            ):
-                self._qmin = -1 * 448
-                self._qmax = 448
-            elif (
-                self._bit_length[0] == 5
-                and self._bit_length[1] == 2
-                and len(self._bit_length) == 2
-            ):
-                self._qmin = -1 * 57344
-                self._qmax = 57344
-            else:
-                raise NotImplementedError(
-                    "Currently, only float8_e4m3 and float8_e5m2 formats are supported. Please set quant_bits to (4,3) or (5,2) for the corresponding format."
-                )
-        else:
-            self._qmax = (1 << (self._bit_length - 1)) - 1
-            self._qmin = -1 * self._qmax - 1
-        if isinstance(self._bit_length, tuple):
-            self._bit_length = self._bit_length[0] + self._bit_length[1] + 1
+        self._qmax = (1 << (self._bit_length - 1)) - 1
+        self._qmin = -1 * self._qmax - 1
 
     def forward(self, input):
         if in_dynamic_mode():
@@ -137,10 +115,6 @@ class LinearQuanter(Layer):
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-                "qmin",
-                self._qmin,
-                "qmax",
-                self._qmax,
             ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
@@ -155,8 +129,6 @@ class LinearQuanter(Layer):
                 attrs={
                     'quant_axis': self._quant_axis,
                     'bit_length': self._bit_length,
-                    'qmin': self._qmin,
-                    'qmax': self._qmax,
                 },
             )
             return out
@@ -205,30 +177,8 @@ class LinearDequanter(Layer):
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
         self._group_size = group_size
-        if isinstance(self._bit_length, tuple):
-            if (
-                self._bit_length[0] == 4
-                and self._bit_length[1] == 3
-                and len(self._bit_length) == 2
-            ):
-                self._qmin = -1 * 448
-                self._qmax = 448
-            elif (
-                self._bit_length[0] == 5
-                and self._bit_length[1] == 2
-                and len(self._bit_length) == 2
-            ):
-                self._qmin = -1 * 57344
-                self._qmax = 57344
-            else:
-                raise NotImplementedError(
-                    "Currently, only float8_e4m3 and float8_e5m2 formats are supported. Please set quant_bits to (4,3) or (5,2) for the corresponding format."
-                )
-        else:
-            self._qmax = (1 << (self._bit_length - 1)) - 1
-            self._qmin = -1 * self._qmax - 1
-        if isinstance(self._bit_length, tuple):
-            self._bit_length = self._bit_length[0] + self._bit_length[1] + 1
+        self._qmax = (1 << (self._bit_length - 1)) - 1
+        self._qmin = -1 * self._qmax - 1
 
     def forward(self, input):
         if in_dynamic_mode():
@@ -248,7 +198,6 @@ class LinearDequanter(Layer):
                         (input.cast('float32') - new_zp) / self._qmax * new_s
                     )
                 return quant_dequant_weight.cast(input.dtype)
-
             return _C_ops.dequantize_linear(
                 input.cast('float32'),
                 self._scales,
@@ -257,10 +206,6 @@ class LinearDequanter(Layer):
                 self._quant_axis,
                 "bit_length",
                 self._bit_length,
-                "qmin",
-                self._qmin,
-                "qmax",
-                self._qmax,
             ).cast(input.dtype)
         else:
             out = self._helper.create_variable_for_type_inference(input.dtype)
@@ -275,8 +220,6 @@ class LinearDequanter(Layer):
                 attrs={
                     'quant_axis': self._quant_axis,
                     'bit_length': self._bit_length,
-                    'qmin': self._qmin,
-                    'qmax': self._qmax,
                 },
             )
             return out
