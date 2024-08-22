@@ -36,7 +36,6 @@ if TYPE_CHECKING:
 
     from .base.topology import CommunicateTopology, HybridCommunicateGroup
 
-    mode_Literal = Literal['sum', 'mean', 'max']
 
 import copy
 import os
@@ -924,7 +923,7 @@ class Fleet:
     def all_reduce(
         self,
         input: Tensor,
-        mode: mode_Literal = "sum",
+        mode: Literal['sum', 'mean', 'max'] = "sum",
     ) -> list[int] | int:
         """
         all reduce input between all workers, mode can be sum, mean or max, default is sum
