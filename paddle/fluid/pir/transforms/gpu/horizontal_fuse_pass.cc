@@ -310,7 +310,6 @@ class HorizontalFusePattern : public pir::RewritePattern {
 
     // delete fused matmul op
     for (auto fused_matmul_op : fused_matmul_ops) {
-      std::cout << fused_matmul_op->name() << std::endl;
       rewriter->EraseOp(fused_matmul_op);
     }
   }
