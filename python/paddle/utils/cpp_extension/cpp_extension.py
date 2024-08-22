@@ -472,13 +472,11 @@ class BuildExtension(build_ext):
                             CUDA_HOME is not None
                         ), "Not found CUDA runtime, \
                             please use `export CUDA_HOME= XXX` to specify it."
-                        print('-----------', CCACHE_HOME)
                         if CCACHE_HOME is not None:
                             nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                             nvcc_cmd = f'{CCACHE_HOME} {nvcc_cmd}'
                         else:
                             nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
-                        print('+++++++++++', nvcc_cmd)
                         self.set_executable('compiler_so', nvcc_cmd)
                         # {'nvcc': {}, 'cxx: {}}
                         if isinstance(cflags, dict):
