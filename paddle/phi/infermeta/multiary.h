@@ -298,6 +298,10 @@ void ChunkEvalInferMeta(const MetaTensor& inference,
                         MetaTensor* num_label_chunks,
                         MetaTensor* num_correct_chunks);
 
+void ConcatTensorInferMeta(const std::vector<const MetaTensor*>& input,
+                           std::vector<MetaTensor*> output,
+                           MetaTensor* concated_out);
+
 void CrfDecodingInferMeta(const MetaTensor& emission,
                           const MetaTensor& transition,
                           const MetaTensor& label,
