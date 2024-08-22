@@ -1030,14 +1030,13 @@ bool MatrixNmsOpInferSymbolicShape(
   int keep_top_k = op->attribute<pir::Int32Attribute>("keep_top_k").data();
   int background_label =
       op->attribute<pir::Int32Attribute>("background_label").data();
-  bool use_gaussian = op->attribute<pir::BoolAttribute>("use_gaussian").data();
 
   symbol::DimExpr num_kept = symbol::DimExpr(0);
 
   if (batch_size.isa<int64_t>()) {
     int64_t batch_size_value =
         static_cast<int64_t>(batch_size.Get<std::int64_t>());
-    for (size_t i = 0; i < batch_size_value; ++i) {
+    for (int64_t i = 0; i < batch_size_value; ++i) {
       symbol::DimExpr class_num_expr = scores_shape[1];
       int64_t class_num = 0;
       if (class_num_expr.isa<int64_t>()) {
@@ -1050,7 +1049,7 @@ bool MatrixNmsOpInferSymbolicShape(
       }
 
       int num_out = 0;
-      for (size_t c = 0; c < class_num; ++c) {
+      for (int64_t c = 0; c < class_num; ++c) {
         if (c == background_label) continue;
         if (num_pre > 0 && nms_top_k > -1 && num_pre > nms_top_k) {
           num_pre = nms_top_k;
