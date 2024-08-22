@@ -1291,21 +1291,7 @@ bool FusedMultiTransformerOpInferSymbolicShape(
   return true;
 }
 
-// bool GenerateProposalsOpInferSymbolicShape(pir::Operation *op,
-//                                            pir::InferSymbolicShapeContext
-//                                            *infer_context) {
-//   // pass
-//   return true;
-// }
-
-// bool GraphKhopSamplerOpInferSymbolicShape(pir::Operation *op,
-//                                           pir::InferSymbolicShapeContext
-//                                           *infer_context) {
-//   // pass
-//   return true;
-// }
-
-bool GenerateProposalsV2OpInferSymbolicShape(
+bool GenerateProposalsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   symbol::DimExpr out_unknown_1 = infer_context->GetNextSymName();
   symbol::DimExpr out_unknown_2 = infer_context->GetNextSymName();
@@ -1337,24 +1323,19 @@ bool GenerateProposalsV2OpInferSymbolicShape(
   return true;
 }
 
+// bool GraphKhopSamplerOpInferSymbolicShape(pir::Operation *op,
+//                                           pir::InferSymbolicShapeContext
+//                                           *infer_context) {
+//   // pass
+//   return true;
+// }
+
 // bool GraphSampleNeighborsOpInferSymbolicShape(pir::Operation *op,
 //                                               pir::InferSymbolicShapeContext
 //                                               *infer_context) {
 //   // pass
 //   return true;
 // }
-
-// bool GruOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context)
-//                              {
-//   // pass
-//   return true;
-// }
-
-bool GenerateProposalsOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return GenerateProposalsV2OpInferSymbolicShape(op, infer_context);
-}
 
 bool GruOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
@@ -1415,12 +1396,18 @@ bool GruOpInferSymbolicShape(pir::Operation *op,
 bool GruUnitOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Get symbolic shapes of the input tensors
-  auto input_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  auto hidden_prev_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
-  auto weight_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+  const symbol::ShapeOrDataDimExprs &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &hidden_prev_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const symbol::ShapeOrDataDimExprs &weight_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const symbol::ShapeOrDataDimExprs &bias_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+
+  auto input_shape = input_shape_or_data.shape();
+  auto hidden_prev_shape = hidden_prev_shape_or_data.shape();
+  auto weight_shape = weight_shape_or_data.shape();
 
   // Validate input dimensions
   symbol::DimExpr batch_size = input_shape[0];
@@ -1435,9 +1422,8 @@ bool GruUnitOpInferSymbolicShape(
   infer_context->AddEqualCstr(weight_width, frame_size * 3);
 
   // If bias is used, check its dimensions
-  if (op->num_operands() > 3) {
-    auto bias_shape =
-        infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
+  if (!bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    auto bias_shape = bias_shape_or_data.shape();
     symbol::DimExpr bias_height = bias_shape[0];
     symbol::DimExpr bias_width = bias_shape[1];
     infer_context->AddEqualCstr(bias_height, 1);
