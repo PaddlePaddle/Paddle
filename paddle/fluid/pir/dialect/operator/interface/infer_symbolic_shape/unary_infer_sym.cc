@@ -1695,7 +1695,7 @@ bool MultinomialOpInferSymbolicShape(
 
 bool NanmedianOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  std::vector<int64_t> axis_list;
+  std::vector<int> axis_list;
   bool keep_dim = false;
   std::string mode;
   if (op->HasAttribute("axes")) {
@@ -1723,7 +1723,7 @@ bool NanmedianOpInferSymbolicShape(
     for (size_t i = 0; i < axis_list.size(); i++) {
       if (axis_list[i] < 0) {
         axis_list[i] += x_rank;
-        infer_context->AddequalCstr(axis_list[i], DimExpr(0))
+        infer_context->AddEqualCstr(axis_list[i], DimExpr(0))
       }
       if (x_rank == 0) {
         infer_context->AddGreatThanOneCstr(axis_list[i]);
