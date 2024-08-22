@@ -1064,10 +1064,11 @@ class GeneratorLoader(DataLoaderBase):
         else:
             places = _get_paddle_place(places)
         has_lod = False
-        for f in self._feed_list:
-            if f.lod_level != 0:
-                has_lod = True
-                break
+        if not in_pir_mode():
+            for f in self._feed_list:
+                if f.lod_level != 0:
+                    has_lod = True
+                    break
 
         if has_lod:
             self.set_sample_list_generator(
