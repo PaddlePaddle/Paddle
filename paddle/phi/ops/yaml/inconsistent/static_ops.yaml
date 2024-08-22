@@ -55,6 +55,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : AssignInferSpmd
   kernel :
     func : assign_raw
   backward : assign_grad
@@ -192,6 +193,16 @@
     data_type : dtype
   inplace: (input -> output)
 
+- op : comm_init_all
+  args : (int[] devices={}, int ring_id=0)
+  output :
+  infer_meta :
+    func : CommInitAllInferMeta
+    param : [devices, ring_id]
+  kernel :
+    func : comm_init_all
+    data_type : DataType::FLOAT32
+
 - op : dequantize_linear
   args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int qmin = -128, int qmax = 127, int round_type = 0, bool is_test = true, bool only_observer = false)
   output : Tensor(y), Tensor(out_state), Tensor(out_accum), Tensor(out_scale)
@@ -204,6 +215,7 @@
     data_type : x
   optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
@@ -340,6 +352,29 @@
     data_type : params
   optional : skip_update, master_params, master_params_out
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
+
+- op : fused_multi_transformer_int8
+  args: (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkv_w, Tensor[]
+    qkv_bias, Tensor[] cache_kv, Tensor time_step, Tensor src_mask, Tensor[] out_linear_w,
+    Tensor[] out_linear_bias, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[]
+    ffn1_weight, Tensor[] ffn1_bias, Tensor[] ffn2_weight, Tensor[] ffn2_bias,
+    Tensor[] qkv_out_scale, Tensor[] out_linear_out_scale, Tensor[] ffn1_out_scale,
+    Tensor[] ffn2_out_scale, bool pre_layer_norm = true, float epsilon = 1e-5, float
+    dropout_rate = .5f, bool is_test = false, str dropout_implementation = "downgrade_in_infer",
+    str act_method = "gelu", bool trans_qkvw = true, int ring_id = -1, int num_head
+    = 0, int dim_head = 0, int dim_ffn = 0, float[] qkv_in_scale = {}, float[] out_linear_in_scale
+    = {}, float[] ffn1_in_scale = {}, float[] ffn2_in_scale = {}, int quant_round_type
+    = 1, float quant_max_bound = 127.0, float quant_min_bound = -127.0)
+  output: Tensor[](cache_kv_out){cache_kv.size()}, Tensor(out)
+  infer_meta:
+    func: FusedMultiTransformerInt8InferMeta
+  kernel:
+    func: fused_multi_transformer_int8
+  optional: qkv_bias, cache_kv, time_step, src_mask, out_linear_bias, ffn1_bias,
+    ffn2_bias, qkv_out_scale, out_linear_out_scale, ffn1_out_scale, ffn2_out_scale,
+    cache_kv_out
+  data_transform :
+    skip_transform : time_step
 
 - op : get_tensor_from_selected_rows
   args : (Tensor x)
@@ -502,6 +537,7 @@
     func : matmul_with_flatten
     data_type : x
   backward : matmul_with_flatten_grad
+  # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : maximum
   args : (Tensor x, Tensor y)
@@ -525,6 +561,7 @@
   kernel:
     func : memcpy
     param: [x, dst_place_type]
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : min
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
@@ -597,7 +634,7 @@
   inplace : (x -> out)
 
 - op : partial_recv
-  args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, bool use_calc_stream = false, int num = 1, int id = 0)
+  args : (int ring_id = 0, int peer = 0, DataType dtype=DataType::FLOAT32, int[] out_shape= {}, int num = 1, int id = 0)
   output : Tensor(out)
   infer_meta :
     func: PartialRecvInferMeta
@@ -683,6 +720,7 @@
     data_type : x
   optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : recv_v2
   args : (int[] out_shape = {}, DataType dtype = DataType::FLOAT32, int peer = 0, int ring_id = 0, bool use_calc_stream = false, bool dynamic_shape = false)
@@ -694,6 +732,7 @@
     func : recv_v2
     param : [ring_id, dynamic_shape, peer, out_shape, dtype, use_calc_stream]
     data_type : dtype
+  # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : remainder
   args : (Tensor x, Tensor y)
@@ -788,6 +827,7 @@
   kernel :
     func : set_value
   backward: set_value_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : shadow_feed
   args : (Tensor x)
@@ -815,6 +855,7 @@
   output : Tensor(out)
   infer_meta:
     func: UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param: [x]
   kernel:
     func: share_data
@@ -925,6 +966,7 @@
     func: FusedAttentionInferMeta
   optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, ln_mean_2, ln_var_2, bias_dropout_residual_out, cache_kv_out
   backward: fused_attention_grad
+  # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op: fused_feedforward
   args: (Tensor x, Tensor dropout1_seed, Tensor dropout2_seed, Tensor linear1_weight, Tensor linear1_bias, Tensor linear2_weight, Tensor linear2_bias, Tensor ln1_scale, Tensor ln1_bias, Tensor ln2_scale, Tensor ln2_bias, bool pre_layer_norm, float ln1_epsilon, float ln2_epsilon, str act_method, float dropout1_prob, float dropout2_prob, str dropout1_implementation, str dropout2_implementation, bool is_test, bool dropout1_fix_seed, bool dropout2_fix_seed, int dropout1_seed_val, int dropout2_seed_val, bool add_residual, int ring_id)
@@ -936,6 +978,7 @@
     func: FusedFeedForwardInferMeta
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
+  # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op: moving_average_abs_max_scale
   args: (Tensor x, Tensor in_accum, Tensor in_state, float moving_rate=0.9f, bool is_test=false)

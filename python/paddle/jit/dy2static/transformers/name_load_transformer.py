@@ -121,7 +121,7 @@ class AttributeJstTransformer(BaseTransformer):
             value = node.value
             node = (
                 gast.parse(
-                    f"_jst.Attr({ast_to_source_code(value).strip()}, \"{attr}\")"
+                    f'_jst.Attr({ast_to_source_code(value).strip()}, "{attr}")'
                 )
                 .body[0]
                 .value

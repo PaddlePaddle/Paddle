@@ -266,8 +266,12 @@ def _convert_to_place(device: str) -> PlaceLike:
                     "The device must be a string which is like 'cpu', {}".format(
                         ', '.join(
                             f"'{x}', '{x}:x'"
-                            for x in ['gpu', 'xpu', 'npu']
-                            + core.get_all_custom_device_type()
+                            for x in [
+                                'gpu',
+                                'xpu',
+                                'npu',
+                                *core.get_all_custom_device_type(),
+                            ]
                         )
                     )
                 )

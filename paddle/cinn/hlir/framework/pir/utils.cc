@@ -227,25 +227,10 @@ bool HaveUnkDim(const ::pir::Operation& op) {
 }
 
 bool AllInputDenseTensor(const ::pir::Operation& op) {
-  const auto& IsDenseTensor = [](const ::pir::Type& type) -> bool {
-    return type.isa<::pir::DenseTensorType>();
-  };
-
-  // Judge for vector<Type>
-  const auto& IsAllDenseTensor =
-      [&](const std::vector<::pir::Type>& types) -> bool {
-    for (auto& type : types) {
-      if (!IsDenseTensor(type)) return false;
-    }
-    return true;
-  };
-
   for (size_t i = 0; i < op.num_operands(); ++i) {
     auto value = op.operand_source(i);
     if (!value || !value.type()) continue;
-    if (auto vector_type = value.type().dyn_cast<::pir::VectorType>()) {
-      if (!IsAllDenseTensor(vector_type.data())) return false;
-    } else if (!IsDenseTensor(value.type())) {
+    if (!value.type().isa<::pir::DenseTensorType>()) {
       return false;
     }
   }
@@ -436,7 +421,7 @@ bool IsSupportInCinn(const ::pir::Operation& op) {
 }  // namespace
 
 bool CompatibleInfo::IsDeniedForCinn(const ::pir::Operation& op) {
-  bool flag = IsDeniedInCinn(op);
+  bool flag = IsDeniedInCinn(op) || CauseNewSymbolicShape(op);
   VLOG(4) << "CompatibleInfo::IsDeniedForCinn of " << op.name()
           << " is: " << flag;
   return flag;

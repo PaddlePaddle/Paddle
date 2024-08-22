@@ -78,11 +78,11 @@ class TestLKJCholeskyShape(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': () + extra_shape,
+                'expect': tuple(extra_shape),
             },
             {
                 'input': (2, 2),
-                'expect': (2, 2) + extra_shape,
+                'expect': (2, 2, *extra_shape),
             },
         ]
         return cases

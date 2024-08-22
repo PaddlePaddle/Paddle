@@ -98,6 +98,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
       }
       return areOperandsValid();
     }
+
     return false;
   }
 
@@ -239,6 +240,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
 
     for (auto it = val.use_begin(); it != val.use_end(); ++it) {
       pir::Operation* curr_op = it.owner();
+
       if (!IsValidOp(curr_op, val)) {
         continue;
       }
