@@ -707,7 +707,7 @@ bool GatherTreeOpInferSymbolicShape(
                     common::errors::InvalidArgument(
                         "The shape of Input(Parents) must be same with the "
                         "shape of Input(Ids)."));
-  int rank = ids_shape.size();
+  size_t rank = ids_shape.size();
   for (size_t i = 0; i < rank; ++i) {
     infer_context->AddEqualCstr(ids_shape[i], parents_shape[i]);
   }
