@@ -518,7 +518,7 @@ bool Conv2dTransposeOpInferSymbolicShape(
   } else {
     const auto &output_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
-    const std::vector<symbol::DimExpr> &output_size =
+    std::vector<symbol::DimExpr> output_size =
         output_shape_or_data.data().has_value()
             ? output_shape_or_data.data().value()
             : output_shape_or_data.shape();
