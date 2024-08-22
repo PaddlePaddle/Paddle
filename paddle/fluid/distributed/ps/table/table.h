@@ -180,6 +180,9 @@ class Table {
   float *_global_lr = nullptr;
   std::shared_ptr<ValueAccessor> _value_accessor;
   AfsClient _afs_client;
+  std::string _fs_name;
+  std::string _fs_user;
+  std::string _pass_wd;
 };
 REGISTER_PSCORE_REGISTERER(Table);
 
