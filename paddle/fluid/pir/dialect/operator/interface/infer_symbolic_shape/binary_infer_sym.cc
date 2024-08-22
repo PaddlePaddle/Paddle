@@ -518,15 +518,11 @@ bool Conv2dTransposeOpInferSymbolicShape(
     const auto &output_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
     if (!output_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
-      std::vector<symbol::DimExpr> output_size;
-      for (const auto &i : output_shape_or_data) {
-        if (i.data().hasvalue()) {
-          output_size.push_back(i.data().value());
-        } else {
-          output_size.push_back(i.shape());
-        }
-        return convtransposefunction(op, infer_context, output_size);
-      }
+      const std::vector<symbol::DimExpr> &output_size =
+          output_shape_or_data.data().has_value()
+              ? output_shape_or_data.data().value()
+              : output_shape_or_data.shape();
+      return convtransposefunction(op, infer_context, output_size);
     } else {
       std::vector<symbol::DimExpr> output_size = {};
       return convtransposefunction(op, infer_context, output_size);
@@ -612,8 +608,7 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
 // }
 
 // bool DotOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context)
-//                              {
+//                              pir::InferSymbolicShapeContext *infer_context) {
 //   // pass
 //   return true;
 // }
@@ -1012,8 +1007,7 @@ bool KronOpInferSymbolicShape(pir::Operation *op,
 }
 
 // bool LstsqOpInferSymbolicShape(pir::Operation *op,
-//                                pir::InferSymbolicShapeContext
-//                                *infer_context)
+//                                pir::InferSymbolicShapeContext *infer_context)
 //                                {
 //   // pass
 //   return true;
@@ -1445,8 +1439,7 @@ bool IndexSelectStridedOpInferSymbolicShape(
   std::vector<symbol::DimExpr> output_dims(input_dims.begin(),
                                            input_dims.end());
   output_dims.erase(output_dims.begin() + dim);
-  // No need to add any constraints here as we are simply removing a
-  // dimension.
+  // No need to add any constraints here as we are simply removing a dimension.
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
