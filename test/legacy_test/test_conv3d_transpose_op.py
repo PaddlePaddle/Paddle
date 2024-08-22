@@ -307,9 +307,9 @@ class TestConv3DTransposeOp(OpTest):
     def test_check_output(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_pir=True)
         else:
-            self.check_output()
+            self.check_output(check_pir=True)
 
     def test_check_grad(self):
         if self.use_cudnn:
