@@ -234,9 +234,9 @@ bool Binomial_OpInferSymbolicShape(
   return BinomialOpInferSymbolicShape(op, infer_context);
 }
 
-bool BincountOpInferSymbolicShape(pir::Operation *op,
-//                                pir::InferSymbolicShapeContext
-//                                *infer_context) {
+// bool BincountOpInferSymbolicShape(pir::Operation *op,
+//                                   pir::InferSymbolicShapeContext
+//                                   *infer_context) {
 //   // pass
 //   return true;
 // }
@@ -1240,8 +1240,8 @@ bool SequenceMaskOpInferSymbolicShape(
 //   return true;
 // }
 
-bool StftOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+bool StftOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &window_shape_or_data =
