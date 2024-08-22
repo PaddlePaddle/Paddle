@@ -283,7 +283,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       2U,
-                      common::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The size of pack_args in conv2d is incorrect. "
                           "Expected size should be greater than or equal "
                           "to 2, but receive %d. ",
@@ -324,7 +324,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                           "greater than or equal to 3, but got %d.",
                           pack_args.size()));
     PADDLE_ENFORCE(pack_args[2].is_string(),
-                   common::errors::InvalidArgument(
+                   ::common::errors::InvalidArgument(
                        "Datatype error! pack_args[2] is not string."));
     std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
@@ -506,7 +506,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  PADDLE_ENFORCE(out_type.size(); ::common::errors::NotFound(
+  PADDLE_ENFORCE(out_type.size(),
+                 ::common::errors::NotFound(
                      "Out_type of conv2d op is empty! Please check."));
   strategy->AddImpl(conv2d_compute, conv2d_schedule, "strategy.conv2d.x86", 1);
   return strategy;
@@ -685,7 +686,8 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  PADDLE_ENFORCE(out_type.size(); ::common::errors::NotFound(
+  PADDLE_ENFORCE(out_type.size(),
+                 ::common::errors::NotFound(
                      "Out_type of depthwise_conv op is empty! Please check."));
   if (out_type[0] == Float(32)) {
     strategy->AddImpl(depthwise_conv2d_compute,
@@ -807,7 +809,8 @@ std::shared_ptr<OpStrategy> StrategyForBatchNorm(
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
-  PADDLE_ENFORCE(out_type.size(); ::common::errors::NotFound(
+  PADDLE_ENFORCE(out_type.size(),
+                 ::common::errors::NotFound(
                      "Out_type of batchnorm op is empty! Please check."));
   if (out_type[0] == Float(32)) {
     strategy->AddImpl(batchnorm_compute,
@@ -883,10 +886,9 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
                       false,
                       ::common::errors::NotFound(
                           "Padding_size for pool1d is empty! Please check."));
-    PADDLE_ENFORCE(pool_type == "max" ||
-                   pool_type ==
-                       "avg" ::common::errors::InvalidArgument(
-                           "pool_type for pool1d should be max or avg."));
+    PADDLE_ENFORCE(pool_type == "max" || pool_type == "avg",
+                   ::common::errors::InvalidArgument(
+                       "pool_type for pool1d should be max or avg."));
 
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       2,
@@ -911,7 +913,8 @@ std::shared_ptr<OpStrategy> StrategyForPool1d(
     PADDLE_ENFORCE(out.size() == 1U || out.size() == 2U,
                    ::common::errors::InvalidArgument(
                        "The size of pe::Pool1d's output should be 1 or 2."));
-    PADDLE_ENFORCE(out_type.size(); ::common::errors::NotFound(
+    PADDLE_ENFORCE(out_type.size(),
+                   ::common::errors::NotFound(
                        "Output type of Pool1d is empty! Please check."));
     std::vector<CINNValue> res;
     for (auto &t : out) {
@@ -1530,9 +1533,9 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         ::common::errors::NotFound(
             "The input tensors of softmax compute is empty! Please check."));
     Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE(A.as_tensor(),
+    PADDLE_ENFORCE(A_expr.as_tensor(),
                    ::common::errors::InvalidArgument(
-                       "Datatype error! A is not a tensor."));
+                       "Datatype error! A_expr is not a tensor."));
     ir::Tensor A = A_expr.as_tensor_ref();
     int new_axis = axis;
     if (axis == -1) {
@@ -1688,9 +1691,9 @@ std::shared_ptr<OpStrategy> StrategyForDropoutInfer(
         ::common::errors::NotFound("The input tensors of dropout_infer compute "
                                    "is empty! Please check."));
     Expr A_expr = pack_args[0];
-    PADDLE_ENFORCE(A.as_tensor(),
+    PADDLE_ENFORCE(A_expr.as_tensor(),
                    ::common::errors::InvalidArgument(
-                       "Datatype error! A is not a tensor."));
+                       "Datatype error! A_expr is not a tensor."));
     ir::Tensor A = A_expr.as_tensor_ref();
 
     PADDLE_ENFORCE_EQ(pack_args.size(),
