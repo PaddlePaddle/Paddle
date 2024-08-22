@@ -144,7 +144,9 @@ class TestGemmEpilogueHorizontalFusePattern(PassTest):
                     self.feeds[f"w{i}"] = np.random.random(weight_shape).astype(
                         "float16"
                     )
-                    self.feeds[f"b{i}"] = np.random.random(bias_shape).astype("float16")
+                    self.feeds[f"b{i}"] = np.random.random(bias_shape).astype(
+                        "float16"
+                    )
 
                 self.fetch_list = res_vec
                 self.valid_op_map = {
@@ -192,10 +194,18 @@ class TestMatmulHorizontalFusePatternFirstCase(PassTest):
 
                 # Define input and weight tensors
                 x = paddle.static.data(name="x", shape=x_shape, dtype="float16")
-                w1 = paddle.static.data(name="w1", shape=w1_shape, dtype="float16")
-                w2 = paddle.static.data(name="w2", shape=w2_shape, dtype="float16")
-                w3 = paddle.static.data(name="w3", shape=w3_shape, dtype="float16")
-                w4 = paddle.static.data(name="w4", shape=w4_shape, dtype="float16")
+                w1 = paddle.static.data(
+                    name="w1", shape=w1_shape, dtype="float16"
+                )
+                w2 = paddle.static.data(
+                    name="w2", shape=w2_shape, dtype="float16"
+                )
+                w3 = paddle.static.data(
+                    name="w3", shape=w3_shape, dtype="float16"
+                )
+                w4 = paddle.static.data(
+                    name="w4", shape=w4_shape, dtype="float16"
+                )
 
                 # Reshape input tensor
                 x = paddle.reshape(x, x_shape)
@@ -263,9 +273,15 @@ class TestMatmulHorizontalFusePatternSecondCase(PassTest):
 
                 # Define input and weight tensors
                 x = paddle.static.data(name="x", shape=x_shape, dtype="float16")
-                w1 = paddle.static.data(name="w1", shape=w1_shape, dtype="float16")
-                w2 = paddle.static.data(name="w2", shape=w2_shape, dtype="float16")
-                w3 = paddle.static.data(name="w3", shape=w2_shape, dtype="float16")
+                w1 = paddle.static.data(
+                    name="w1", shape=w1_shape, dtype="float16"
+                )
+                w2 = paddle.static.data(
+                    name="w2", shape=w2_shape, dtype="float16"
+                )
+                w3 = paddle.static.data(
+                    name="w3", shape=w2_shape, dtype="float16"
+                )
 
                 weights = [w1, w2, w3]
 
