@@ -20,7 +20,7 @@
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/equation_variable.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::adt {
 
 DEFINE_ADT_TAG(tReduced);

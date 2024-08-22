@@ -375,7 +375,7 @@ class Conv1dXPUFusePass : public FusePassBase {
 
 void Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
@@ -464,7 +464,7 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
     auto* block = conv->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     // recompute bias and weight for conv1d_xpu op
     // update shape of conv_filter
@@ -491,7 +491,7 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
         auto ew_bias_add_y_dims = ew_bias_add_y_t->dims();
         PADDLE_ENFORCE_EQ(filter_dims[0],
                           ew_bias_add_y_dims[0],
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "the shape[%d] of elewise bias tensor "
                               "must equal out_channel[%d] of conv",
                               ew_bias_add_y_dims[0],
@@ -503,7 +503,7 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
             scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(filter_dims[0],
                           bn_bias_t->dims()[0],
-                          platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "the shape[%d] of bn bias tensor "
                               "must equal out_channel[%d] of conv",
                               bn_bias_t->dims()[0],
@@ -514,16 +514,11 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
             scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
         auto bn_var_t =
             scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
-        float* filter_ptr =
-            filter_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_scale_ptr =
-            bn_scale_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_bias_ptr =
-            bn_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_mean_ptr =
-            bn_mean_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_var_ptr =
-            bn_var_t->mutable_data<float>(paddle::platform::CPUPlace());
+        float* filter_ptr = filter_t->mutable_data<float>(phi::CPUPlace());
+        float* bn_scale_ptr = bn_scale_t->mutable_data<float>(phi::CPUPlace());
+        float* bn_bias_ptr = bn_bias_t->mutable_data<float>(phi::CPUPlace());
+        float* bn_mean_ptr = bn_mean_t->mutable_data<float>(phi::CPUPlace());
+        float* bn_var_ptr = bn_var_t->mutable_data<float>(phi::CPUPlace());
         auto mean_len = bn_mean_t->numel();
         auto filter_len = filter_t->numel();
         auto filter_stride = filter_len / mean_len;
@@ -534,7 +529,7 @@ int Conv1dXPUFusePass::ApplyImpl(ir::Graph* graph,
         auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
                                  ->GetMutable<phi::DenseTensor>();
         float* fusion_bias_ptr =
-            fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
+            fusion_bias_t->mutable_data<float>(phi::CPUPlace());
         // recompute bias and weights
         if (!with_conv_bias) {  // prev node is conv
           for (int i = 0; i < mean_len; ++i) {

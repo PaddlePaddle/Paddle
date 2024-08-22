@@ -31,7 +31,7 @@
 namespace symbol {
 
 #define SYMBOL_NOT_IMPLEMENTED \
-  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"))
+  PADDLE_THROW(common::errors::Unimplemented("Not Implemented"))
 
 template <typename T>
 struct UnaryDimExpr {
@@ -158,7 +158,10 @@ template <typename T>
 struct Broadcastable final : public BinaryDimExpr<T> {
   using BinaryDimExpr<T>::BinaryDimExpr;
   bool operator==(const Broadcastable& other) const {
-    return this->data == other.data;
+    return (this->data->lhs == other.data->lhs &&
+            this->data->rhs == other.data->rhs) ||
+           (this->data->lhs == other.data->rhs &&
+            this->data->rhs == other.data->lhs);
   }
 };
 

@@ -559,7 +559,7 @@ BroadcastKernelForDifferentVecSize(const KPDevice &ctx,
       break;
     }
     default: {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported vectorized size: %d!", vec_size));
       break;
     }
@@ -770,36 +770,36 @@ void BroadcastKernel(const KPDevice &ctx,
   PADDLE_ENFORCE_EQ(
       ins.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "XPU only support inputs is 2, but received %d", ins.size()));
 #endif
 
   PADDLE_ENFORCE_EQ(
       ins.size(),
       kArity,
-      phi::errors::InvalidArgument("The number of inputs is expected to be "
-                                   "equal to the "
-                                   "arity of functor. But received: the "
-                                   "number of inputs "
-                                   "is %d, the arity of functor is %d.",
-                                   ins.size(),
-                                   kArity));
+      common::errors::InvalidArgument("The number of inputs is expected to be "
+                                      "equal to the "
+                                      "arity of functor. But received: the "
+                                      "number of inputs "
+                                      "is %d, the arity of functor is %d.",
+                                      ins.size(),
+                                      kArity));
   PADDLE_ENFORCE_EQ(
       outs->size(),
       NumOuts,
-      phi::errors::InvalidArgument("Number of outputs shall equal to number "
-                                   "of functions, "
-                                   "but number of outputs is %d, of "
-                                   "functions is %d.",
-                                   outs->size(),
-                                   NumOuts));
+      common::errors::InvalidArgument("Number of outputs shall equal to number "
+                                      "of functions, "
+                                      "but number of outputs is %d, of "
+                                      "functions is %d.",
+                                      outs->size(),
+                                      NumOuts));
 
   for (auto i = 0; i < outs->size(); ++i) {
     if (i > 0) {
       PADDLE_ENFORCE_EQ(
           (*outs)[i]->dims(),
           (*outs)[0]->dims(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The shape of each output tensor shall be identical yet, but "
               "%d-th output tensor`s shape is not.",
               i));

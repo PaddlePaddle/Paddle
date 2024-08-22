@@ -81,6 +81,25 @@ class TestSimpleNetWithRecomputeForSemiAutoParallel(
             self.check_tensor_eq(param, param_base, rtol=1e-4)
             self.check_tensor_eq(param.grad, param_base.grad)
 
+    def test_dp_demo_net_use_reentrant_false(self):
+        self.set_random_seed(self._seed)
+        (
+            self.dp_loss,
+            self.dp_parameters,
+        ) = self.run_dynamic_recompute(
+            DemoNet(
+                "recompute_use_reentrant_false_dp_demo",
+                is_recompute=True,
+                recompute_use_reentrant=False,
+            ),
+            shard_input=True,
+        )
+        self.check_tensor_eq(self.dp_loss, self.base_loss)
+        self.check_tensor_eq(self.dp_loss, self.base_loss)
+        for param, param_base in zip(self.dp_parameters, self.base_parameters):
+            self.check_tensor_eq(param, param_base, rtol=1e-4)
+            self.check_tensor_eq(param.grad, param_base.grad)
+
     def test_mp_demo_net(self):
         self.set_random_seed(self._seed)
         mp_layer = dist.shard_layer(
@@ -98,9 +117,32 @@ class TestSimpleNetWithRecomputeForSemiAutoParallel(
             self.check_tensor_eq(param, param_base)
             self.check_tensor_eq(param.grad, param_base.grad)
 
+    def test_mp_demo_net_use_reentrant_false(self):
+        self.set_random_seed(self._seed)
+        mp_layer = dist.shard_layer(
+            DemoNet(
+                "recompute_use_reentrant_false_mp_demo",
+                is_recompute=True,
+                recompute_use_reentrant=False,
+            ),
+            self._mesh,
+            self.shard_fn,
+        )
+        (
+            self.mp_loss,
+            self.mp_parameters,
+        ) = self.run_dynamic_recompute(mp_layer)
+
+        self.check_tensor_eq(self.mp_loss, self.base_loss)
+        for param, param_base in zip(self.mp_parameters, self.base_parameters):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
+
     def run_test_case(self):
         self.test_dp_demo_net()
+        self.test_dp_demo_net_use_reentrant_false()
         self.test_mp_demo_net()
+        self.test_mp_demo_net_use_reentrant_false()
 
 
 if __name__ == '__main__':

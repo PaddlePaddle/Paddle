@@ -28,22 +28,29 @@ class FusedDropoutAddPattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &full_orig_op = pat.Op(paddle::dialect::FullOp::name(),
+                                      {
+                                          {"dtype", pat.Attr("dtype")},
+                                          {"place", pat.Attr("place")},
+                                          {"shape", pat.Attr("shape")},
+                                          {"value", pat.Attr("value")},
+                                      });
+    full_orig_op({}, {&pat.Tensor("p")});
     const auto &dropout = pat.Op(paddle::dialect::DropoutOp::name(),
-                                 {{"p", pat.Attr("p")},
-                                  {"is_test", pat.Attr("is_test")},
+                                 {{"is_test", pat.Attr("is_test")},
                                   {"mode", pat.Attr("mod")},
                                   {"seed", pat.Attr("seed")},
                                   {"fix_seed", pat.Attr("fix_seed")}});
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
 
-    dropout({&pat.Tensor("x"), &pat.Tensor("seed_tensor")},
+    dropout({&pat.Tensor("x"), &pat.Tensor("seed_tensor"), &pat.Tensor("p")},
             {&pat.Tensor("dropout_out"), &pat.Tensor("mask")});
     pat.Tensor("add_out") = add(pat.Tensor("dropout_out"), pat.Tensor("y"));
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &fused_dropout_add =
         res.Op(paddle::dialect::FusedDropoutAddOp::name(),
-               {{{"p", pat.Attr("p")},
+               {{{"p", pat.Attr("value")},
                  {"is_test", pat.Attr("is_test")},
                  {"mode", pat.Attr("mod")},
                  {"seed", pat.Attr("seed")},
@@ -60,34 +67,42 @@ class FusedDropoutGradAddGradPattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
+    const auto &full_orig_op = pat.Op(paddle::dialect::FullOp::name(),
+                                      {
+                                          {"dtype", pat.Attr("dtype")},
+                                          {"place", pat.Attr("place")},
+                                          {"shape", pat.Attr("shape")},
+                                          {"value", pat.Attr("value")},
+                                      });
+    full_orig_op({}, {&pat.Tensor("p")});
     const auto &dropout = pat.Op(paddle::dialect::DropoutOp::name(),
-                                 {{"p", pat.Attr("p")},
-                                  {"is_test", pat.Attr("is_test")},
+                                 {{"is_test", pat.Attr("is_test")},
                                   {"mode", pat.Attr("mod")},
                                   {"seed", pat.Attr("seed")},
                                   {"fix_seed", pat.Attr("fix_seed")}});
     const auto &add = pat.Op(paddle::dialect::AddOp::name());
 
     const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
-    const auto &dropout_grad = pat.Op(paddle::dialect::DropoutGradOp::name(),
-                                      {{"p", pat.Attr("p")},
-                                       {"is_test", pat.Attr("is_test")},
-                                       {"mode", pat.Attr("mod")}});
+    const auto &dropout_grad =
+        pat.Op(paddle::dialect::DropoutGradOp::name(),
+               {{"is_test", pat.Attr("is_test")}, {"mode", pat.Attr("mod")}});
 
-    dropout({&pat.Tensor("x"), &pat.Tensor("seed_tensor")},
+    dropout({&pat.Tensor("x"), &pat.Tensor("seed_tensor"), &pat.Tensor("p")},
             {&pat.Tensor("dropout_out"), &pat.Tensor("mask")});
     pat.Tensor("add_out") = add(pat.Tensor("dropout_out"), pat.Tensor("y"));
     add_grad({&pat.Tensor("dropout_out"),
               &pat.Tensor("y"),
               &pat.Tensor("add_out_grad")},
              {&pat.Tensor("dropout_out_grad"), &pat.Tensor("y_grad")});
-    dropout_grad({&pat.Tensor("mask"), &pat.Tensor("dropout_out_grad")},
+    dropout_grad({&pat.Tensor("mask"),
+                  &pat.Tensor("dropout_out_grad"),
+                  &pat.Tensor("p")},
                  {&pat.Tensor("x_grad")});
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &fused_dropout_add =
         res.Op(paddle::dialect::FusedDropoutAddOp::name(),
-               {{{"p", pat.Attr("p")},
+               {{{"p", pat.Attr("value")},
                  {"is_test", pat.Attr("is_test")},
                  {"mode", pat.Attr("mod")},
                  {"seed", pat.Attr("seed")},
@@ -95,7 +110,7 @@ class FusedDropoutGradAddGradPattern : public paddle::drr::DrrPatternBase {
 
     const auto &fused_dropout_add_grad =
         res.Op(paddle::dialect::FusedDropoutAddGradOp::name(),
-               {{{"p", pat.Attr("p")},
+               {{{"p", pat.Attr("value")},
                  {"is_test", pat.Attr("is_test")},
                  {"mode", pat.Attr("mod")},
                  {"fix_seed", pat.Attr("fix_seed")}}});

@@ -295,7 +295,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"backward op [{src_op}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -551,7 +551,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"backward op [{src_op}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -800,7 +800,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"backward op [{src_op}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():

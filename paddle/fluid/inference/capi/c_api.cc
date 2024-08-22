@@ -37,35 +37,35 @@ void PD_DeletePaddleBuf(PD_PaddleBuf* buf) {
 
 void PD_PaddleBufResize(PD_PaddleBuf* buf, size_t length) {
   PADDLE_ENFORCE_NOT_NULL(buf,
-                          paddle::platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The pointer of Buffer shouldn't be nullptr"));
   buf->buf.Resize(length);
 }
 
 void PD_PaddleBufReset(PD_PaddleBuf* buf, void* data, size_t length) {
   PADDLE_ENFORCE_NOT_NULL(buf,
-                          paddle::platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The pointer of Buffer shouldn't be nullptr"));
   buf->buf.Reset(data, length);
 }
 
 bool PD_PaddleBufEmpty(PD_PaddleBuf* buf) {
   PADDLE_ENFORCE_NOT_NULL(buf,
-                          paddle::platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The pointer of Buffer shouldn't be nullptr"));
   return buf->buf.empty();
 }
 
 void* PD_PaddleBufData(PD_PaddleBuf* buf) {
   PADDLE_ENFORCE_NOT_NULL(buf,
-                          paddle::platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The pointer of Buffer shouldn't be nullptr"));
   return buf->buf.data();
 }
 
 size_t PD_PaddleBufLength(PD_PaddleBuf* buf) {
   PADDLE_ENFORCE_NOT_NULL(buf,
-                          paddle::platform::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The pointer of Buffer shouldn't be nullptr"));
   return buf->buf.length();
 }
@@ -84,7 +84,10 @@ paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype) {
     case PD_UINT8:
       return PD_PaddleDType::UINT8;
     default:
-      CHECK(false) << "Unsupport dtype.";
+      PADDLE_ENFORCE_EQ(false,
+                        true,
+                        common::errors::Unimplemented(
+                            "Unsupport dtype in ConvertToPaddleDType."));
       return PD_PaddleDType::FLOAT32;
   }
 }
@@ -100,7 +103,10 @@ PD_DataType ConvertToPDDataType(PD_PaddleDType dtype) {
     case PD_PaddleDType::UINT8:
       return PD_DataType::PD_UINT8;
     default:
-      CHECK(false) << "Unsupport dtype.";
+      PADDLE_ENFORCE_EQ(false,
+                        true,
+                        common::errors::Unimplemented(
+                            "Unsupport dtype in ConvertToPDDataType."));
       return PD_DataType::PD_UNKDTYPE;
   }
 }
@@ -114,7 +120,10 @@ PD_ACPrecision ConvertToACPrecision(Precision dtype) {
     case Precision::kHalf:
       return PD_ACPrecision::kHalf;
     default:
-      CHECK(false) << "Unsupport precision.";
+      PADDLE_ENFORCE_EQ(false,
+                        true,
+                        common::errors::Unimplemented(
+                            "Unsupport precision in ConvertToACPrecision."));
       return PD_ACPrecision::kFloat32;
   }
 }

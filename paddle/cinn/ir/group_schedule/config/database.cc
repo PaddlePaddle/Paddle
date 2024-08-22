@@ -46,40 +46,5 @@ TileConfigMap NaiveTileConfigDatabase::GetConfigs(
   return config_map_.at(iter_space_type);
 }
 
-ScheduleConfigManager& ScheduleConfigManager::Instance() {
-  static ScheduleConfigManager schedule_config_manager;
-  return schedule_config_manager;
-}
-
-void ScheduleConfigManager::AddConfigDatabase(
-    const std::string& id,
-    const std::shared_ptr<TileConfigDatabase>& database) {
-  tile_config_data_[id] = database;
-}
-
-ScheduleConfigMap ScheduleConfigManager::ExtractConfigs(
-    const common::Target& target,
-    const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info) const {
-  if (policy_ == "default" || tile_config_data_.count(policy_) == 0) {
-    return BuildScheduleConfig(group_info, target);
-  }
-  std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
-      InitBasicInfo(group_info);
-  IterSpaceType iter_space_type = [&] {
-    std::string sp_state =
-        base_info->has_dynamic_spatial ? "dynamic" : "static";
-    std::string rd_state = base_info->has_dynamic_reduce ? "dynamic" : "static";
-    return IterSpaceType{{"S", sp_state}, {"R", rd_state}};
-  }();
-
-  TileConfigMap tile_config_map =
-      tile_config_data_.at(policy_)->GetConfigs(target, iter_space_type);
-  return CombineBaseInfoAndConfig(tile_config_map, base_info);
-}
-
-void ScheduleConfigManager::SetPolicy(const std::string& policy) {
-  policy_ = policy;
-}
-
 }  // namespace ir
 }  // namespace cinn

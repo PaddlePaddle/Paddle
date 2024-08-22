@@ -88,6 +88,7 @@ class DemoNet(nn.Layer):
         out = self.relu_1(out)
         out = self.linear_1(out)
         out = self.relu_2(out)  # triggle forward partial allreduce
+        out = paddle.cast(out, 'float32')
         return out
 
 
@@ -134,11 +135,12 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
             "pd_op.sgd_",
             "pd_op.sgd_",
             "pd_op.relu_grad",
-            "pd_op.c_allreduce_sum_",
+            "pd_op.c_allreduce_sum",
             "pd_op.matmul_grad",
             "pd_op.relu_grad",
             "pd_op.matmul_grad",
             "pd_op.relu_grad",
+            "pd_op.cast",
             "pd_op.subtract_grad",
             "pd_op.square_grad",
             "pd_op.mean_grad",

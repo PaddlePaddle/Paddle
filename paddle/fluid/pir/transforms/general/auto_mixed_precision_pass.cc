@@ -71,14 +71,14 @@ class AutoMixedPrecisionPass : public pir::Pass {
     PADDLE_ENFORCE_EQ(
         Has(pir::Pass::kPlaceAttr),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using AutoMixedPrecisionPass, place attribute is required!"
             "Use Set method to set the place attribute."));
     PADDLE_ENFORCE_EQ(
         Has("__mixed_precision_mode__"),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Pass initialize failed."
             "When using AutoMixedPrecisionPass, precision_mode attribute is "
             "required!"
@@ -293,6 +293,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
         return phi::Backend::GPU;
       case phi::AllocationType::XPU:
         return phi::Backend::XPU;
+      case phi::AllocationType::CUSTOM:
+        return phi::Backend::CUSTOM;
       default:
         return phi::Backend::UNDEFINED;
     }
@@ -405,7 +407,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
       auto new_vec_type = pir::VectorType::get(context, results_type);
       result.set_type(new_vec_type);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "result type is not DenseTensorType or VectorType"));
     }
   }
@@ -590,7 +592,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
           GetPhiKernelInPrecision(op_type, backend, precision_mode_);
       PADDLE_ENFORCE(
           phi_kernel.IsValid(),
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "op [%s] kernel doesn't support precision [%s] on backend [%s]",
               op->name(),
               phi::DataTypeToString(precision_mode_).c_str(),
@@ -635,7 +637,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
       PADDLE_ENFORCE_EQ(
           op->num_results(),
           output_defs.size(),
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "op [%s] kernel output args defs should equal op outputs",
               op->name()));
 

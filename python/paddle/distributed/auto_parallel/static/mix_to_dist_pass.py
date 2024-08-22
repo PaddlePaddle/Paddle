@@ -16,18 +16,30 @@ import paddle
 
 from .reshard_funcs.base_reshard_func import is_replicated
 
+dist_skip_op_list = [
+    "builtin.combine",
+    "builtin.split",
+    "cf.yield",
+    "cf.tuple_push",
+    "cf.tuple_pop",
+    "cf.stack_create",
+    "pd_op.pylayer",
+]
+
 
 def verify_dist_block(block):
     for op in block.ops:
+        if op.name() in dist_skip_op_list:
+            continue
         if op.name() == "dist_op.shard_tensor":
             raise RuntimeError("Block still contain shard_tensor_op.")
-        if op.name() == "builtin.combine":
-            continue
         if op.dist_attr is None:
             raise RuntimeError(
-                f"The op {op} does not hase OperatorDistAttr after Mix2Dist Pass."
+                f"The op {op} does not have OperatorDistAttr after Mix2Dist Pass."
             )
         for result in op.results():
+            if not result.initialized():
+                continue
             if not (result.is_dist() or result.is_combine()):
                 raise RuntimeError(f"The {op}'s output is not dist tensor type")
 
@@ -55,7 +67,34 @@ def apply_mix2dist_pass(program):
             shard_operand_value.set_type(shard_result_value.type())
             shard_operand_value.stop_gradient = shard_result_value.stop_gradient
             shard_operand_value.persistable = shard_result_value.persistable
-
+        elif (
+            prev_op.name() == "pd_op.randint"
+            or prev_op.name() == "pd_op.gaussian"
+        ):
+            mesh = shard_result_value.dist_attr().process_mesh
+            # input
+            shape_value = prev_op.operand_source(0)
+            dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                mesh, [-1 for _ in range(len(shape_value.shape))], {}
+            )
+            shape_value.update_dist_attr(dist_attr)
+            # op
+            prev_op.dist_attr = (
+                paddle.base.libpaddle.pir.create_op_dist_attribute(
+                    mesh, [dist_attr], [shard_result_value.dist_attr()]
+                )
+            )
+            # deal with full_int_array op
+            prev_prev_op = shape_value.get_defining_op()
+            prev_prev_op.dist_attr = (
+                paddle.base.libpaddle.pir.create_op_dist_attribute(
+                    mesh, [], [dist_attr]
+                )
+            )
+            # output
+            shard_operand_value.set_type(shard_result_value.type())
+            shard_operand_value.stop_gradient = shard_result_value.stop_gradient
+            shard_operand_value.persistable = shard_result_value.persistable
         else:
             dist_attr = shard_result_value.dist_attr()
             if not is_replicated(dist_attr):

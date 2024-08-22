@@ -19,9 +19,7 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/utils/blank.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class element_visitor {
  public:
@@ -29,7 +27,7 @@ class element_visitor {
 
   template <typename T>
   Attribute operator()(const T& attr UNUSED) const {
-    PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
+    PADDLE_THROW(common::errors::Unimplemented("Unimplemented operand."));
   }
 
   template <typename T>
@@ -52,7 +50,7 @@ class element_visitor {
 template <>
 Attribute element_visitor::operator()(
     const std::vector<::pir::Value>& attr UNUSED) const {
-  PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
+  PADDLE_THROW(common::errors::Unimplemented("Unimplemented operand."));
 }
 
 class operation_visitor {
@@ -63,7 +61,7 @@ class operation_visitor {
   template <typename T1, typename T2>
   Attribute operator()(const T1& attr UNUSED,
                        const T2& operation UNUSED) const {
-    PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
+    PADDLE_THROW(common::errors::Unimplemented("Unimplemented operand."));
   }
 
   template <typename T, std::enable_if_t<std::is_integral<T>::value>* = nullptr>
@@ -79,7 +77,7 @@ class operation_visitor {
 
       default:
         PADDLE_THROW(
-            platform::errors::Unimplemented("Unimplemented operation type."));
+            common::errors::Unimplemented("Unimplemented operation type."));
     }
   }
 
@@ -222,8 +220,8 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
           }
 
           default:
-            PADDLE_THROW(platform::errors::Unimplemented(
-                "Unimplemented condition type."));
+            PADDLE_THROW(
+                common::errors::Unimplemented("Unimplemented condition type."));
         }
       });
     }
@@ -234,8 +232,8 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
     PDNode* var_pdnode = pattern->RetrieveNode(var_map.pattern_var());
     PADDLE_ENFORCE_NOT_NULL(
         var_pdnode,
-        platform::errors::NotFound("Not found the var %s in the pattern.",
-                                   var_map.pattern_var()));
+        common::errors::NotFound("Not found the var %s in the pattern.",
+                                 var_map.pattern_var()));
     var_pdnode->AsOutput();
   }
 }
@@ -315,7 +313,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
               condition_attr = GetVarAttrValue(condition_node->Var(),
                                                condition.condition_attr());
             } else {
-              PADDLE_THROW(platform::errors::Unimplemented(
+              PADDLE_THROW(common::errors::Unimplemented(
                   "Unimplemented for operation."));
             }
             bool check_failed = false;
@@ -496,10 +494,10 @@ void GeneratePass::ApplyImpl(Graph* graph) const {
 }
 
 void GeneratePass::VerifyDesc() const {
-  PADDLE_ENFORCE_NE(multi_pass_desc_.pass_descs_size(),
-                    0,
-                    platform::errors::InvalidArgument(
-                        "Size of PassDesc should not be empty."));
+  PADDLE_ENFORCE_NE(
+      multi_pass_desc_.pass_descs_size(),
+      0,
+      common::errors::InvalidArgument("Size of PassDesc should not be empty."));
 }
 
 bool GeneratePass::VerifyGraph(const Graph& graph) {
@@ -507,7 +505,8 @@ bool GeneratePass::VerifyGraph(const Graph& graph) {
   return true;
 }
 
-namespace generate_pass {
+}  // namespace paddle::framework::ir
+namespace paddle::framework::ir::generate_pass {
 
 VarHelper::VarHelper(const char* name) : name_(name), type_(Type::kInput) {}
 VarHelper::VarHelper(const std::string& name, Type type)
@@ -581,7 +580,8 @@ void SubgraphHelper::AddOutputVars(const VarHelper& var_helper) {
   output_vars_.push_back(var_helper.name_);
 }
 
-}  // namespace generate_pass
+}  // namespace paddle::framework::ir::generate_pass
+namespace paddle::framework::ir {
 
 PassPairs::PassPairs(const SubgraphType& pattern, const SubgraphType& replace) {
   AddPassDesc(pattern, replace);
@@ -594,7 +594,7 @@ void PassPairs::AddPassDesc(const SubgraphType& pattern,
   pass_desc->mutable_replace()->CopyFrom(replace.ProgramDesc().blocks(0).ops());
   PADDLE_ENFORCE_EQ(pattern.InputVars().size(),
                     replace.InputVars().size(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Size of lambda expression arguments is not equal "
                         "between pattern/replace subgraph."));
   for (size_t i = 0; i < pattern.InputVars().size(); i++) {
@@ -604,7 +604,7 @@ void PassPairs::AddPassDesc(const SubgraphType& pattern,
   }
   PADDLE_ENFORCE_EQ(pattern.OutputVars().size(),
                     replace.OutputVars().size(),
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Size of lambda expression returns is not equal "
                         "between pattern/replace subgraph."));
   for (size_t i = 0; i < pattern.OutputVars().size(); i++) {
@@ -618,6 +618,4 @@ const proto::MultiPassDesc& PassPairs::MultiPassDesc() const {
   return multi_pass_desc_;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

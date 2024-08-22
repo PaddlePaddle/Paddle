@@ -26,7 +26,6 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -38,7 +37,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/poly/stage.h"
@@ -58,12 +56,15 @@ std::shared_ptr<framework::OpStrategy> StrategyForGaussianRandom(
     const Target &target) {
   framework::CINNCompute gaussian_random_compute(
       [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(attrs.attr_store.count("shape"));
+        PADDLE_ENFORCE_GT(attrs.attr_store.count("shape"),
+                          0,
+                          ::common::errors::InvalidArgument(
+                              "The attribute 'shape' must be present in the "
+                              "attribute store; please check your inputs."));
         ir::Tensor shape_tensor;
         std::string tensor_name = "gaussian_random_out";
         auto out = pe::Identity(shape_tensor, tensor_name).front();
-        auto stages = CreateStages({out});
-        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        std::vector<CINNValue> res{CINNValue(out)};
         *ret = CINNValuePack{res};
       });
   auto strategy = std::make_shared<framework::OpStrategy>();
@@ -72,27 +73,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGaussianRandom(
                     "strategy.gaussian_random.x86",
                     1);
   return strategy;
-}
-
-std::vector<framework::shape_t> InferShapeForGaussianRandom(
-    const std::vector<framework::shape_t> &inputs_shape,
-    const framework::AttrMapType &attrs) {
-  CHECK(attrs.count("shape"));
-  auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
-  return {shape};
-}
-
-std::vector<Type> InferDtypeForGaussianRandom(
-    const std::vector<Type> &inputs_type, const framework::AttrMapType &attrs) {
-  std::string dtype = "float32";
-  if (attrs.find("dtype") != attrs.end()) {
-    dtype = absl::get<std::string>(attrs.at("dtype"));
-  }
-  std::vector<Type> res{cinn::common::Str2Type(dtype)};
-  CHECK(res[0].is_float(32) || res[0].is_float(64))
-      << "gaussian_random only support float32 and float64, but here " << res[0]
-      << "! Please check.";
-  return res;
 }
 
 }  // namespace op
@@ -106,10 +86,6 @@ CINN_REGISTER_HELPER(gaussian_random_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForGaussianRandom)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForGaussianRandom))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForGaussianRandom))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kNonFusible)
       .set_support_level(4);

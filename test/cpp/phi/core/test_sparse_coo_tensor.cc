@@ -49,8 +49,15 @@ TEST(sparse_coo_tensor, construct) {
   SparseCooTensor sparse(indices, elements, dense_dims);
 
   CHECK(sparse.initialized() == true);
-  CHECK_EQ(sparse.nnz(), static_cast<int64_t>(non_zero_data.size()));
-  CHECK_EQ(sparse.numel(), 9);
+  PADDLE_ENFORCE_EQ(
+      sparse.nnz(),
+      non_zero_data.size(),
+      common::errors::InvalidArgument(
+          "Required sparse.nnz() should be equal to non_zero_data.size(). "));
+  PADDLE_ENFORCE_EQ(sparse.numel(),
+                    9,
+                    common::errors::InvalidArgument(
+                        "Required sparse.numel() should be equal to 9. "));
   CHECK(sparse.dims() == dense_dims);
   CHECK(sparse.dtype() == DataType::FLOAT32);
   CHECK(sparse.place() == phi::CPUPlace());
@@ -72,20 +79,35 @@ TEST(sparse_coo_tensor, other_function) {
 
   SparseCooTensor coo(indices, elements, dense_dims);
   CHECK(coo.initialized());
-  CHECK_EQ(coo.dims(), dense_dims);
+  PADDLE_ENFORCE_EQ(coo.dims(),
+                    dense_dims,
+                    common::errors::InvalidArgument(
+                        "Required coo.dims() should be equal to dense_dims. "));
 
   // Test Resize
   auto dense_dims_3d = common::make_ddim({2, 4, 4});
   coo.Resize(dense_dims_3d, 1, 3);
-  CHECK_EQ(coo.nnz(), 3);
+  PADDLE_ENFORCE_EQ(coo.nnz(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "Required coo.nnz() should be equal to 3. "));
 
   // Test shallow_copy
   SparseCooTensor coo2(coo);
-  CHECK(coo.dims() == coo2.dims());
+  PADDLE_ENFORCE_EQ(
+      coo.dims(),
+      coo2.dims(),
+      common::errors::Fatal("`coo.dims()` is not equal to `coo2.dims()`, "
+                            "something wrong with shallow copy assignment"));
 
   // Test shallow_copy_assignment
   SparseCooTensor coo3 = coo2;
   CHECK(coo3.dims() == coo2.dims());
+  PADDLE_ENFORCE_EQ(
+      coo3.dims(),
+      coo2.dims(),
+      common::errors::Fatal("`coo3.dims()` is not equal to `coo2.dims()`, "
+                            "something wrong with shallow copy assignment"));
 }
 
 }  // namespace tests

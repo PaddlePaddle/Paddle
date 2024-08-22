@@ -35,11 +35,13 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                             DenseTensor* out) {
 #if defined(PADDLE_WITH_CUTLASS)
   PADDLE_ENFORCE_EQ(
-      ((arch == 80) || (arch == 70) || (arch == 75) || (arch == 86)),
+      ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
+       (arch == 89) || (arch == 90)),
       true,
-      phi::errors::InvalidArgument("Currently, arch only support 70, 80."));
+      common::errors::InvalidArgument(
+          "Currently, arch only support 70, 75, 80, 86, 89, 90."));
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Please compile with cutlass to make cutlass available"));
 #endif
 
@@ -159,7 +161,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
       }
     }
 #else
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Please compile with cutlass to make cutlass available"));
 #endif
   } else {  // m <= 3: gemv

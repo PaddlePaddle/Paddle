@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import numpy as np
 
+import paddle
 from paddle import _C_ops, pir
 
 from ...base import core, framework, unique_name
@@ -74,16 +77,18 @@ class Bilinear(Initializer):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Constructor for BilinearInitializer."""
         super().__init__()
 
-    def forward(self, var, block=None):
+    def forward(
+        self, var: paddle.Tensor, block: pir.Block | None = None
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with Bilinear initialization.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
+            block(Block|None, optional): The block in which initialization ops
                    should be added. Used in static graph only, default None.
 
         Returns:
@@ -151,7 +156,7 @@ class Bilinear(Initializer):
             value_name = "values"
             values = [float(v) for v in weight.flat]
         else:
-            raise TypeError("Unsupported dtype %s", var.dtype)
+            raise TypeError(f"Unsupported dtype {var.dtype}")
 
         if np.prod(shape) > 1024 * 1024:
             raise ValueError("The size of input is too big. ")

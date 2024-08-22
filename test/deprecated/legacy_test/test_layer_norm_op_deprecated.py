@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 from functools import reduce
 from operator import mul
@@ -271,7 +272,17 @@ class TestLayerNormOp(unittest.TestCase):
                         "bias_grad",
                     )
 
-        places = [core.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda()
+            and core.op_support_gpu("layer_norm")
+            and self.use_cudnn
+        ):
+            places.append(core.CPUPlace())
         if (
             core.is_compiled_with_cuda()
             and core.op_support_gpu("layer_norm")

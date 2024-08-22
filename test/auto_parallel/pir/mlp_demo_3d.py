@@ -146,13 +146,13 @@ class TestML3DParallel(unittest.TestCase):
             'pd_op.relu_grad',
             'pd_op.matmul_grad',
             'dist_op.reshard',
-            'dist_op.reshard',
             'pd_op.relu_grad',
             'pd_op.matmul_grad',
             'dist_op.reshard',
-            'dist_op.reshard',
             'pd_op.relu_grad',
+            'dist_op.reshard',
             'pd_op.sgd_',
+            'dist_op.reshard',
             'pd_op.sgd_',
         ]
         assert op_names == std_ops

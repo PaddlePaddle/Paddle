@@ -17,6 +17,7 @@ from __future__ import annotations
 import dis
 import functools
 import inspect
+import opcode
 import operator
 import sys
 import traceback
@@ -24,8 +25,6 @@ import types
 from dataclasses import dataclass
 from itertools import chain
 from typing import Any, Callable
-
-import opcode
 
 from paddle.jit.utils import OrderedSet
 
@@ -83,6 +82,7 @@ from .variables import (
     ContainerVariable,
     DictVariable,
     GlobalVariable,
+    IterVariable,
     ListVariable,
     MethodVariable,
     NullVariable,
@@ -365,9 +365,9 @@ class OpcodeExecutorBase:
         self.new_code: types.CodeType | None = self.empty_code
         self.guard_fn = None
         self._name = "Executor"
-        self._call_shape: tuple[
-            str, ...
-        ] | None = None  # store kwnames for Python 3.11+
+        self._call_shape: tuple[str, ...] | None = (
+            None  # store kwnames for Python 3.11+
+        )
         self._prepare_virtual_env()
         self.stop_state = None
 
@@ -407,7 +407,7 @@ class OpcodeExecutorBase:
             NotImplementedError: If the method is not implemented.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def transform(self):
         """
@@ -417,7 +417,7 @@ class OpcodeExecutorBase:
             NotImplementedError: If the method is not implemented.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def find_space_of_var_name(self, name):
         code = self._graph.pycode_gen._origin_code
@@ -521,13 +521,13 @@ class OpcodeExecutorBase:
             file = inspect.getfile(code)
             if file.startswith("<") and file.endswith(">"):
                 message_lines.append(
-                    f"{indent}  File \"{file}\", line {current_line}"
+                    f'{indent}  File "{file}", line {current_line}'
                 )
                 continue
             lines, start = inspect.getsourcelines(code)
             real_name = code.co_name
             message_lines.append(
-                f"{indent}  File \"{code.co_filename}\", line {current_line}, in {real_name}"
+                f'{indent}  File "{code.co_filename}", line {current_line}, in {real_name}'
             )
             if current_line != -1:
                 message_lines.append(
@@ -1237,7 +1237,7 @@ class OpcodeExecutorBase:
         if isinstance(method, NullVariable):
             method = self_var
         else:
-            args = [self_var] + args
+            args = [self_var, *args]
         self.stack.push(method(*args))
 
     @call_break_graph_decorator(
@@ -1749,7 +1749,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return Stop(state="Return")
 
     def get_compute_fn_and_update_changed_vars(
-        self, restore_names, stack, end_idx
+        self, restore_names, stack, end_idx, extra_store_vars
     ):
         """
         this function will:
@@ -1764,8 +1764,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
             restore_names: the names used in resume functions.
             end_idx: instruction index where simulation get break.
             stack: current stack
+            extra_store_vars: for iterator, we need store the holder if it is a Tensor
         """
-        store_vars = list(OrderedSet(stack))
+        store_vars = list(OrderedSet(list(stack) + extra_store_vars))
         store_var_info = {var.id: None for var in stack}
 
         for name in restore_names:
@@ -1865,7 +1866,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         # 4. compile codes before if
         update_var_names = list(true_fn_read_names | false_fn_read_names)
         var_loader = self.get_compute_fn_and_update_changed_vars(
-            update_var_names, self.stack, cur_index
+            update_var_names, self.stack, cur_index, []
         )
 
         # 5. create if sturcture and call true_fn and false_fn
@@ -1965,7 +1966,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 3. compile sub graph before call
         var_loader = self.get_compute_fn_and_update_changed_vars(
-            read_names, self.stack, cur_index
+            read_names, self.stack, cur_index, []
         )
 
         # 4. recover stack
@@ -2028,11 +2029,14 @@ class OpcodeExecutor(OpcodeExecutorBase):
         loop_body_read_names, loop_body_write_names = analysis_used_names(
             self._instructions, loop_body_start_idx, loop_body_end_idx
         )
-        loop_body_inputs = self._find_names_in_space(
-            loop_body_read_names | loop_body_write_names,
-            (Space.locals, Space.cells),
-        ) + ["_break_flag"]
-        loop_body_outputs = list(loop_body_write_names) + ["_break_flag"]
+        loop_body_inputs = [
+            *self._find_names_in_space(
+                loop_body_read_names | loop_body_write_names,
+                (Space.locals, Space.cells),
+            ),
+            "_break_flag",
+        ]
+        loop_body_outputs = [*list(loop_body_write_names), "_break_flag"]
 
         def create_loop_body():
             pycode_gen = PyCodeGen(self._frame)
@@ -2128,8 +2132,17 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 5. compile sub graph before for-loop
         update_names = list(loop_body_read_names | after_loop_read_names)
+        extra_store_vars = (
+            [iterator]
+            if isinstance(iterator, IterVariable)
+            and isinstance(iterator.hold, TensorVariable)
+            else []
+        )
         var_loader = self.get_compute_fn_and_update_changed_vars(
-            update_names, self.stack, self.indexof(for_iter)
+            update_names,
+            self.stack,
+            self.indexof(for_iter),
+            extra_store_vars,
         )
 
         # 6. prepare a new loop and call loop body
@@ -2218,10 +2231,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # why add write_names as input? check case in test/sot/test_12_for_loop.py
         # test_for_without_zero_iter
-        input_var_names = self._find_names_in_space(
-            read_names | write_names, (Space.locals, Space.cells)
-        ) + [iterator.id]
-        output_var_names = list(write_names) + [iterator.id]
+        input_var_names = [
+            *self._find_names_in_space(
+                read_names | write_names, (Space.locals, Space.cells)
+            ),
+            iterator.id,
+        ]
+        output_var_names = [*list(write_names), iterator.id]
 
         # 2. create inline call loop fn
         def create_inline_call_fn():

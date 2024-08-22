@@ -101,14 +101,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
         ]
         self.supported_embedding_types = [
             "lookup_table",
-            "pull_sparse",
             "pull_sparse_v2",
             "pull_box_sparse",
             "pull_gpups_sparse",
         ]
         self.supported_embedding_grad_types = [
             "lookup_table_grad",
-            "push_sparse",
             "push_sparse_v2",
         ]
         op_maker = core.op_proto_and_checker_maker
@@ -621,7 +619,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 ):
                     print("sparse_table_to_index ", sparse_table_to_index)
                     print("emb_to_table ", emb_to_table)
-                    raise ValueError("key error: %s" % key)
+                    raise ValueError(f"key error: {key}")
                 if strategy.get(key) is None:
                     strategy[key] = {}
                 st = strategy[key]

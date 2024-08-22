@@ -212,8 +212,9 @@ def fc(
             if num_flatten_dims == -1:
                 num_flatten_dims = len(input_shape) - 1
             param_shape = [
-                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
-            ] + [size]
+                reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1),
+                size,
+            ]
             w = helper.create_parameter(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
@@ -923,21 +924,21 @@ def conv2d(
     if not isinstance(use_cudnn, bool):
         raise ValueError(
             "Attr(use_cudnn) should be True or False. Received "
-            "Attr(use_cudnn): %s. " % str(use_cudnn)
+            f"Attr(use_cudnn): {use_cudnn}. "
         )
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
-            "Attr(data_format): %s." % str(data_format)
+            f"Attr(data_format): {data_format}."
         )
 
     channel_last = data_format == "NHWC"
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            f"The channel dimension of the input({str(input.shape)}) should be defined. "
-            f"Received: {str(num_channels)}."
+            f"The channel dimension of the input({input.shape}) should be defined. "
+            f"Received: {num_channels}."
         )
     assert param_attr is not False, "param_attr should not be False here."
 
@@ -987,8 +988,8 @@ def conv2d(
             ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({padding}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[2:4]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -997,8 +998,8 @@ def conv2d(
             ):
                 if not (padding[0] == [0, 0] and padding[3] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({padding}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1016,8 +1017,7 @@ def conv2d(
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
+                f"Unknown padding: '{padding}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             padding_algorithm = "VALID"
@@ -1028,7 +1028,7 @@ def conv2d(
 
     padding = _update_padding(padding, data_format)
 
-    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
+    filter_shape = [num_filters, int(num_filter_channels), *filter_size]
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
@@ -1233,13 +1233,13 @@ def conv3d(
     if not isinstance(use_cudnn, bool):
         raise ValueError(
             "Attr(use_cudnn) should be True or False. Received "
-            "Attr(use_cudnn): %s. " % str(use_cudnn)
+            f"Attr(use_cudnn): {use_cudnn}. "
         )
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCDHW' or 'NDHWC'. Received "
-            "Attr(data_format): %s." % str(data_format)
+            f"Attr(data_format): {data_format}."
         )
 
     channel_last = data_format == "NDHWC"
@@ -1250,8 +1250,8 @@ def conv3d(
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            f"The channel dimension of the input({str(input.shape)}) should be defined. "
-            f"Received: {str(num_channels)}."
+            f"The channel dimension of the input({input.shape}) should be defined. "
+            f"Received: {num_channels}."
         )
 
     if groups is None:
@@ -1264,7 +1264,7 @@ def conv3d(
         if num_channels % groups != 0:
             raise ValueError(
                 "The number of input channels must be divisible by Attr(groups). "
-                f"Received: number of channels({str(num_channels)}), groups({str(groups)})."
+                f"Received: number of channels({num_channels}), groups({groups})."
             )
         num_filter_channels = num_channels // groups
 
@@ -1279,8 +1279,8 @@ def conv3d(
             ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({padding}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[2:5]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1289,8 +1289,8 @@ def conv3d(
             ):
                 if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({padding}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1311,8 +1311,7 @@ def conv3d(
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
+                f"Unknown padding: '{padding}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             padding_algorithm = "VALID"
@@ -1324,7 +1323,7 @@ def conv3d(
     padding = _update_padding(padding, data_format)
 
     input_shape = input.shape
-    filter_shape = [num_filters, num_filter_channels] + filter_size
+    filter_shape = [num_filters, num_filter_channels, *filter_size]
 
     def _get_default_param_initializer():
         filter_elem_num = (
@@ -1600,8 +1599,8 @@ def conv2d_transpose(
             ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({padding}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[2:4]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1610,8 +1609,8 @@ def conv2d_transpose(
             ):
                 if not (padding[0] == [0, 0] and padding[3] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({padding}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1626,8 +1625,7 @@ def conv2d_transpose(
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
+                f"Unknown padding: '{padding}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             padding_algorithm = "VALID"
@@ -1721,7 +1719,7 @@ def conv2d_transpose(
             f"but received the groups of input is {groups}"
         )
 
-    filter_shape = [input_channel, num_filters // groups] + filter_size
+    filter_shape = [input_channel, num_filters // groups, *filter_size]
 
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr
@@ -1971,8 +1969,8 @@ def conv3d_transpose(
             ):
                 if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({padding}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[2:5]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -1981,8 +1979,8 @@ def conv3d_transpose(
             ):
                 if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
                     raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
+                        f"Non-zero padding({padding}) in the batch or channel dimensions "
+                        "is not supported."
                     )
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
@@ -2008,8 +2006,7 @@ def conv3d_transpose(
         padding = padding.upper()
         if padding not in ["SAME", "VALID"]:
             raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
+                f"Unknown padding: '{padding}'. It can only be 'SAME' or 'VALID'."
             )
         if padding == "VALID":
             padding_algorithm = "VALID"
@@ -2080,7 +2077,7 @@ def conv3d_transpose(
             f"Received: Attr(num_filters) is {num_filters}, the groups is {groups}"
         )
 
-    filter_shape = [input_channel, num_filters // groups] + filter_size
+    filter_shape = [input_channel, num_filters // groups, *filter_size]
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr
     )
@@ -2296,7 +2293,7 @@ def deformable_conv(
     dilation = paddle.utils.convert_to_list(dilation, 2, 'dilation')
 
     input_shape = input.shape
-    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
+    filter_shape = [num_filters, int(num_filter_channels), *filter_size]
 
     def _get_default_param_initializer():
         filter_elem_num = filter_size[0] * filter_size[1] * num_channels
@@ -2819,8 +2816,7 @@ def batch_norm(
     if in_dygraph_mode():
         inputs_has_MomentumTensor = False
         attrs_has_momentum = False
-        tmp_tensor_type = core.eager.Tensor
-        if isinstance(momentum, tmp_tensor_type):
+        if isinstance(momentum, paddle.Tensor):
             inputs_has_MomentumTensor = True
         else:
             attrs_has_momentum = True
@@ -3791,7 +3787,7 @@ def embedding(
             >>> exe = paddle.static.Executor(place)
             >>> exe.run(paddle.static.default_startup_program())
 
-            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
+            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64) # type: ignore[var-annotated]
             >>> out, = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output])
             >>> print(out)
             [[[1. 1. 1.]
@@ -3822,9 +3818,7 @@ def embedding(
     padding_idx = (
         -1
         if padding_idx is None
-        else padding_idx
-        if padding_idx >= 0
-        else (size[0] + padding_idx)
+        else padding_idx if padding_idx >= 0 else (size[0] + padding_idx)
     )
     helper.append_op(
         type='lookup_table_v2',
@@ -3989,9 +3983,7 @@ def sparse_embedding(
     padding_idx = (
         -1
         if padding_idx is None
-        else padding_idx
-        if padding_idx >= 0
-        else (size[0] + padding_idx)
+        else padding_idx if padding_idx >= 0 else (size[0] + padding_idx)
     )
 
     if table_class not in [
@@ -4111,23 +4103,23 @@ class ExponentialMovingAverage:
 
             >>> for pass_id in range(3):
             ...     for batch_id in range(6):
-            ...         data = numpy.random.random(size=(10, 5)).astype('float32')
+            ...         feed_data = numpy.random.random(size=(10, 5)).astype('float32')
             ...         exe.run(program=static.default_main_program(),
-            ...         feed={'x': data},
+            ...         feed={'x': feed_data},
             ...         fetch_list=[cost.name])
 
             ...     # usage 1
             ...     with ema.apply(exe):
-            ...         data = numpy.random.random(size=(10, 5)).astype('float32')
+            ...         feed_data = numpy.random.random(size=(10, 5)).astype('float32')
             ...         exe.run(program=test_program,
-            ...             feed={'x': data},
+            ...             feed={'x': feed_data},
             ...             fetch_list=[hidden.name])
 
             ...     # usage 2
             ...     with ema.apply(exe, need_restore=False):
-            ...         data = numpy.random.random(size=(10, 5)).astype('float32')
+            ...         feed_data = numpy.random.random(size=(10, 5)).astype('float32')
             ...         exe.run(program=test_program,
-            ...             feed={'x': data},
+            ...             feed={'x': feed_data},
             ...             fetch_list=[hidden.name])
             ...     ema.restore(exe)
 

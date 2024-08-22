@@ -16,12 +16,27 @@
 #include <vector>
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/fluid/framework/details/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 
 namespace paddle {
+class Tensor;
 namespace primitive {
+template <typename T>
+static Tensor get_slice(const Tensor& x, int64_t idx) {
+  return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
+}
+
+template <typename T>
+static Tensor get_slice_vec(const Tensor& x,
+                            int64_t start_idx,
+                            int64_t end_idx) {
+  return slice<T>(x, {0}, {start_idx}, {end_idx}, {1}, {});
+}
 
 template <typename T>
 void set_output(const Tensor& x_tmp, Tensor* x);
@@ -53,16 +68,16 @@ static std::vector<int64_t> get_expand_dims(const Tensor& origin,
     PADDLE_ENFORCE_LE(
         offset,
         result.size(),
-        platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
-                                     "elements in origin_dims[%lu].",
-                                     offset,
-                                     result.size()));
+        common::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                   "elements in origin_dims[%lu].",
+                                   offset,
+                                   result.size()));
     result.insert(result.begin() + offset, 1);
   }
   return result;
 }
 
-// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+// This function compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_unsqueeze_dims(
     const Tensor& origin, const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();
@@ -77,10 +92,10 @@ static std::vector<int64_t> get_unsqueeze_dims(
       PADDLE_ENFORCE_LT(
           k,
           origin_dims.size(),
-          platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
-                                       "elements in origin_dims[%lu].",
-                                       k,
-                                       origin_dims.size()));
+          common::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                     "elements in origin_dims[%lu].",
+                                     k,
+                                     origin_dims.size()));
       result.push_back(origin_dims[k]);
       k++;
     }
@@ -88,7 +103,42 @@ static std::vector<int64_t> get_unsqueeze_dims(
   return result;
 }
 
-// This fucction compute unsqueeze dims for reshape to replace unsqueeze.
+// This function compute `dynamic` unsqueeze dims for reshape to replace
+// unsqueeze. And should used only on `dynamic`.
+template <typename T>
+Tensor get_unsqueeze_dims(const Tensor& origin_shape,
+                          const std::vector<int64_t>& axis) {
+  auto total_shape_size = origin_shape.numel() + axis.size();
+  const Tensor one = full<T>({1}, 1, origin_shape.dtype());
+
+  std::vector<Tensor> result(total_shape_size, one);
+  // to support axis not in increasing order.
+  std::vector<bool> is_set(total_shape_size, false);
+
+  for (size_t i = 0; i < axis.size(); ++i) {
+    PADDLE_ENFORCE_LT(
+        axis[i],
+        total_shape_size,
+        common::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                   "elements in origin_dims[%lu].",
+                                   axis[i],
+                                   total_shape_size));
+    is_set[axis[i]] = true;
+  }
+
+  size_t j = 0;
+  for (size_t i = 0; i < total_shape_size; ++i) {
+    if (is_set[i]) {
+      continue;
+    }
+    result[i] = get_slice<T>(origin_shape, int64_t(j));
+    is_set[i] = true;
+    ++j;
+  }
+  return concat<T>(result);
+}
+
+// This function compute unsqueeze dims for reshape to replace unsqueeze.
 static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
                                              const std::vector<int64_t>& axis) {
   auto origin_dims = origin.shape();
@@ -130,10 +180,38 @@ static std::vector<int64_t> process_dims(const Tensor& origin,
 }
 
 // These method don't need to be specified
+// These method only handle the static shape case
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {
-  std::vector<int64_t> result;
+  bool has_dynamic_shape = false;
+  for (int i = 0; i < dout_dims.size(); i++) {
+    if (dout_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      has_dynamic_shape,
+      false,
+      common::errors::InvalidArgument(
+          "Function get_reduce_dims_from_out() only use in static shape case, "
+          "but the input [dout_dims] have the dynamic shape."));
+
+  for (int i = 0; i < in_dims.size(); i++) {
+    if (in_dims[i] == -1) {
+      has_dynamic_shape = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE_EQ(
+      has_dynamic_shape,
+      false,
+      common::errors::InvalidArgument(
+          "Function get_reduce_dims_from_out() only use in static shape case, "
+          "but the input [in_dims] have the dynamic shape."));
+
   int bat = dout_dims.size() - in_dims.size();
+  std::vector<int64_t> result;
   for (int i = 0; i < bat; ++i) {
     result.push_back(i);
   }
@@ -144,7 +222,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
       PADDLE_ENFORCE_EQ(
           in_dims[i],
           dout_dims[i + bat],
-          platform::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "ReduceDims dimension mismatch. Operands could "
               "not be broadcast together with the shape of dout = [%s] and "
               "the shape of in_dims = [%s]. Received [%d] in X is not equal to "
@@ -161,7 +239,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
 
 static phi::DDim get_reduce_dims(const phi::DDim& x_dims,
                                  const phi::DDim& y_dims) {
-  auto out_dims = paddle::operators::details::BroadcastTwoDims(x_dims, y_dims);
+  auto out_dims = phi::funcs::BroadcastTwoDims(x_dims, y_dims);
   return get_reduce_dims_from_out(out_dims, x_dims);
 }
 

@@ -52,7 +52,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& scale,
                           int quant_axis,
-                          int bit_length,
+                          int qmax,
                           bool only_observer,
                           DenseTensor* out) {
   auto* in = &x;
@@ -67,20 +67,20 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
   }
 
   if (quant_axis < 0) {
-    float max_range = (std::pow(2, bit_length - 1) - 1);
+    float max_range = qmax;
     DequantizeFunctor<Context, D>()(
         dev_ctx, &in_tmp, &scale, static_cast<D>(max_range), out);
   } else {
     PADDLE_ENFORCE_EQ(
         scale.numel(),
         in_tmp.dims()[quant_axis],
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of first scale values must be the same with "
             "quant_axis dimension value of Input(X) when the `scale` has "
             "only one element, but %ld != %ld here.",
             scale.numel(),
             in_tmp.dims()[quant_axis]));
-    int max_range = (std::pow(2, bit_length - 1) - 1);
+    int max_range = qmax;
 
     ChannelDequantizeFunctorV2<Context, D>()(
         dev_ctx, &in_tmp, &scale, static_cast<D>(max_range), quant_axis, out);
@@ -98,6 +98,8 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const paddle::optional<DenseTensor>& in_state,
                             int quant_axis,
                             int bit_length,
+                            int qmin,
+                            int qmax,
                             int round_type,
                             bool is_test,
                             bool only_observer,
@@ -107,24 +109,24 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                             DenseTensor* out_scale) {
   PADDLE_ENFORCE_NE(in_scale.get_ptr(),
                     nullptr,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto scale = in_scale.get();
   switch (scale.dtype()) {
     case phi::DataType::FLOAT64:
       DeQuantizeLinearImpl<T, Context, double>(
-          dev_ctx, x, scale, quant_axis, bit_length, only_observer, out);
+          dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
     case phi::DataType::FLOAT32:
       DeQuantizeLinearImpl<T, Context, float>(
-          dev_ctx, x, scale, quant_axis, bit_length, only_observer, out);
+          dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
     case phi::DataType::FLOAT16:
       DeQuantizeLinearImpl<T, Context, float16>(
-          dev_ctx, x, scale, quant_axis, bit_length, only_observer, out);
+          dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "In DeQuantizeLinearKernel, "
           "data type %d for scale/output is not supported ",
           scale.dtype()));
@@ -141,6 +143,8 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
                                const paddle::optional<DenseTensor>& in_state,
                                int quant_axis,
                                int bit_length,
+                               int qmin,
+                               int qmax,
                                int round_type,
                                bool only_observer,
                                DenseTensor* out,
@@ -149,11 +153,10 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
                                DenseTensor* out_scale) {
   PADDLE_ENFORCE_NE(scale.get_ptr(),
                     nullptr,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto* in = &x;
   dev_ctx.template Alloc<float>(out);
-  int bin_cnt = std::pow(2, bit_length - 1) - 1;
 
   if (quant_axis < 0) {
     // training
@@ -180,7 +183,7 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
-          dev_ctx, *in, *out_scale, bin_cnt, round_type, out);
+          dev_ctx, *in, *out_scale, qmax, round_type, out);
     }
   } else {
     T* out_scale_data = dev_ctx.template Alloc<T>(out_scale);
@@ -190,7 +193,7 @@ void QuantizeLinearTrainKernel(const Context& dev_ctx,
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
-          dev_ctx, *in, *out_scale, bin_cnt, round_type, quant_axis, out);
+          dev_ctx, *in, *out_scale, qmax, round_type, quant_axis, out);
     }
   }
 }
@@ -202,31 +205,32 @@ void QuantizeLinearInferKernel(const Context& dev_ctx,
                                const DenseTensor& zero_point,
                                int quant_axis,
                                int bit_length,
+                               int qmin,
+                               int qmax,
                                int round_type,
                                bool only_observer,
                                DenseTensor* out) {
   PADDLE_ENFORCE_NE(scale.get_ptr(),
                     nullptr,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "in_scale can't be nullptr in DeQuantizeLinearKernel"));
   auto* in = &x;
   auto* in_scale = scale.get_ptr();
   dev_ctx.template Alloc<float>(out);
-  int bin_cnt = std::pow(2, bit_length - 1) - 1;
 
   if (quant_axis < 0) {
     if (only_observer) {
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       phi::funcs::ClipAndFakeQuantFunctor<Context, T>()(
-          dev_ctx, *in, *in_scale, bin_cnt, round_type, out);
+          dev_ctx, *in, *in_scale, qmax, round_type, out);
     }
   } else {
     if (only_observer) {
       phi::Copy<Context>(dev_ctx, *in, dev_ctx.GetPlace(), false, out);
     } else {
       phi::funcs::ChannelClipAndFakeQuantFunctor<Context, T>()(
-          dev_ctx, *in, *in_scale, bin_cnt, round_type, quant_axis, out);
+          dev_ctx, *in, *in_scale, qmax, round_type, quant_axis, out);
     }
   }
 }
@@ -242,6 +246,8 @@ void QuantizeLinearKernel(const Context& dev_ctx,
                           const paddle::optional<DenseTensor>& in_state,
                           int quant_axis,
                           int bit_length,
+                          int qmin,
+                          int qmax,
                           int round_type,
                           bool is_test,
                           bool only_observer,
@@ -258,6 +264,8 @@ void QuantizeLinearKernel(const Context& dev_ctx,
                                           in_state,
                                           quant_axis,
                                           bit_length,
+                                          qmin,
+                                          qmax,
                                           round_type,
                                           only_observer,
                                           out,
@@ -271,6 +279,8 @@ void QuantizeLinearKernel(const Context& dev_ctx,
                                           zero_point,
                                           quant_axis,
                                           bit_length,
+                                          qmin,
+                                          qmax,
                                           round_type,
                                           only_observer,
                                           out);
@@ -287,6 +297,8 @@ void QuantizeLinearDeprecatedTrainKernel(
     const paddle::optional<DenseTensor>& in_state,
     int quant_axis,
     int bit_length,
+    int qmin,
+    int qmax,
     int round_type,
     bool only_observer,
     DenseTensor* out,
@@ -303,6 +315,8 @@ void QuantizeLinearDeprecatedTrainKernel(
                                         in_state,
                                         quant_axis,
                                         bit_length,
+                                        qmin,
+                                        qmax,
                                         round_type,
                                         only_observer,
                                         out,
@@ -318,6 +332,8 @@ void QuantizeLinearDeprecatedInferKernel(const Context& dev_ctx,
                                          const DenseTensor& zero_point,
                                          int quant_axis,
                                          int bit_length,
+                                         int qmin,
+                                         int qmax,
                                          int round_type,
                                          bool only_observer,
                                          DenseTensor* out) {
@@ -329,6 +345,8 @@ void QuantizeLinearDeprecatedInferKernel(const Context& dev_ctx,
                                         zero_point,
                                         quant_axis,
                                         bit_length,
+                                        qmin,
+                                        qmax,
                                         round_type,
                                         only_observer,
                                         out);
@@ -341,6 +359,8 @@ void DeQuantizeLinearDeprecatedKernel(const Context& dev_ctx,
                                       const DenseTensor& zero_point,
                                       int quant_axis,
                                       int bit_length,
+                                      int qmin,
+                                      int qmax,
                                       int round_type,
                                       bool only_observer,
                                       DenseTensor* out) {
@@ -354,6 +374,8 @@ void DeQuantizeLinearDeprecatedKernel(const Context& dev_ctx,
                                      nullptr,
                                      quant_axis,
                                      bit_length,
+                                     qmin,
+                                     qmax,
                                      round_type,
                                      true,
                                      only_observer,

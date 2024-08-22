@@ -31,6 +31,16 @@ def program_scope_guard():
             yield main_program
 
 
+@contextmanager
+def flag_guard(flag_name, flag_value):
+    old_value = paddle.get_flags(flag_name)[flag_name]
+    paddle.set_flags({flag_name: flag_value})
+    try:
+        yield
+    finally:
+        paddle.set_flags({flag_name: old_value})
+
+
 def walk_block(block, fn):
     for op in block.ops:
         fn(op)
@@ -208,6 +218,7 @@ class TestCSECommutative(unittest.TestCase, AssertOpCountEqualMixin):
                 b = x2 * x1
                 c = paddle.maximum(b, a)
                 d = paddle.minimum(c, x3)
+                x3 = paddle.cast(x3, 'bool')
                 e = paddle.logical_and(d, c)
                 f = paddle.logical_or(e, x3)
                 g = paddle.logical_xor(f, e)
@@ -372,6 +383,60 @@ class TestCSECanNotReplace(unittest.TestCase, AssertOpCountEqualMixin):
             self.assert_op_count_equal(main_program, {"pd_op.add": 2})
             paddle.base.libpaddle.pir.apply_cse_pass(main_program)
             self.assert_op_count_equal(main_program, {"pd_op.add": 2})
+
+    def test_can_not_replace_op_with_subblocks(self):
+        with program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.static.data("x1", [2, 2], dtype="float32")
+            x2 = paddle.static.data("x2", [2, 2], dtype="float32")
+            cond = paddle.static.data("cond", [], dtype="bool")
+            loop_var = paddle.static.data("i", [], dtype="int32")
+
+            def loop_body(loop_var):
+                tmp_var = x1 * x2
+                return [loop_var + 1]
+
+            def get_cond(loop_var):
+                return cond
+
+            paddle.static.nn.while_loop(get_cond, loop_body, [loop_var])
+            paddle.static.nn.while_loop(get_cond, loop_body, [loop_var])
+
+            self.assert_op_count_equal(main_program, {"pd_op.while": 2})
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.while": 2})
+
+
+@unittest.skipUnless(
+    paddle.is_compiled_with_cinn(),
+    "This case only works when compiled with CINN",
+)
+class TestCSEDenyFullInCinn(unittest.TestCase, AssertOpCountEqualMixin):
+    CINN_FLAGS_NAME = "FLAGS_use_cinn"
+
+    def test_replace_full_without_cinn(self):
+        with flag_guard(
+            self.CINN_FLAGS_NAME, False
+        ), program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.full([2], 1.0, dtype="float32")
+            x2 = paddle.full([2], 1.0, dtype="float32")
+
+            self.assert_op_count_equal(main_program, {"pd_op.full": 2})
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.full": 1})
+
+    def test_replace_full_with_cinn(self):
+        with flag_guard(
+            self.CINN_FLAGS_NAME, True
+        ), program_scope_guard() as main_program:
+            # Inputs
+            x1 = paddle.full([2], 1.0, dtype="float32")
+            x2 = paddle.full([2], 1.0, dtype="float32")
+
+            self.assert_op_count_equal(main_program, {"pd_op.full": 2})
+            paddle.base.libpaddle.pir.apply_cse_pass(main_program)
+            self.assert_op_count_equal(main_program, {"pd_op.full": 2})
 
 
 if __name__ == "__main__":

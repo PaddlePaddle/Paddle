@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import _collections_abc
+import _weakrefset
 import abc
 import codecs
 import collections
@@ -45,8 +47,6 @@ import uuid
 import warnings
 import weakref
 
-import _collections_abc
-import _weakrefset
 import decorator
 import google.protobuf
 import numpy

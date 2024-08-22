@@ -40,6 +40,14 @@ class RuntimeSymbols {
     scalar_holder_ = std::move(rhs.scalar_holder_);
   }
 
+  RuntimeSymbols &operator=(RuntimeSymbols &&rhs) noexcept {
+    if (this != &rhs) {
+      symbols_ = std::move(rhs.symbols_);
+      scalar_holder_ = std::move(rhs.scalar_holder_);
+    }
+    return *this;
+  }
+
   /**
    * Register function address.
    * @param name Name of the symbol.

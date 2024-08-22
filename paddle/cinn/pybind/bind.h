@@ -49,7 +49,6 @@ void BindBackends(pybind11::module *m);
 void BindPoly(pybind11::module *m);
 void BindOptim(pybind11::module *m);
 void BindPE(pybind11::module *m);
-void BindFrontend(pybind11::module *m);
 void BindFramework(pybind11::module *m);
 void BindUtils(pybind11::module *m);
 void BindSchedule(pybind11::module *m);

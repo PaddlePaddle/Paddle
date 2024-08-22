@@ -126,7 +126,7 @@ class IPUController(CollectiveController):
             cur_endpoint = endpoints[idx // poprun_args.nproc_per_host]
             rank_in_node = idx % poprun_args.nproc_per_host
             poprun_command.append(
-                f'--instance-mpi-local-args={idx}:\"-x PADDLE_TRAINER_ID={idx} -x PADDLE_CURRENT_ENDPOINT={cur_endpoint} -x PADDLE_RANK_IN_NODE={rank_in_node}\"'
+                f'--instance-mpi-local-args={idx}:"-x PADDLE_TRAINER_ID={idx} -x PADDLE_CURRENT_ENDPOINT={cur_endpoint} -x PADDLE_RANK_IN_NODE={rank_in_node}"'
             )
 
         # executor
@@ -140,8 +140,8 @@ class IPUController(CollectiveController):
         print("-----------  PopRun Command -----------")
         print("poprun \\")
         for i in range(len(poprun_command) - 1):
-            print("%s \\" % (poprun_command[i]))
-        print("%s" % (poprun_command[len(poprun_command) - 1]))
+            print(f"{poprun_command[i]} \\")
+        print(f"{poprun_command[len(poprun_command) - 1]}")
         print("---------------------------------------")
 
         # replace training_script_args

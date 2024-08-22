@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm_int8.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_multi_transformer_op.cu.h"
+#include "paddle/phi/kernels/rms_norm_kernel.h"
 
 /*
 Note(Zhengzekang):
@@ -30,8 +31,6 @@ FusedMultiTransformer.
 
 namespace phi {
 namespace fusion {
-
-namespace {  // NOLINT
 
 template <typename T>
 class BiasActHelper {
@@ -89,7 +88,7 @@ class BiasActHelper {
             dev_ctx_, bias_data, rows_, cols_, load_func, store_func);
       }
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Currently Only Support GeGLU, SwiGLU, GeLU"));
     }
   }
@@ -142,7 +141,7 @@ class GEMMHelper {
                                                            compute_bias);
       ffn_linear_compute.ComputeForward(weight, input, bias, output, output);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Currently GemmHelper only support `None`. "));
     }
   }
@@ -223,9 +222,25 @@ class NormHelper {
           output_data,
           mean_data,
           var_data);
+    } else if (norm_type_ == "rmsnorm") {
+      // For rmsnorm, it use Input's type weight and bias.
+      const T *norm_weight_data =
+          norm_weight ? norm_weight->data<T>() : nullptr;
+      const T *norm_bias_data = norm_bias ? norm_bias->data<T>() : nullptr;
+      phi::ResidualAddRmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
+                                                         x_data,
+                                                         residual_data,
+                                                         bias_data,
+                                                         norm_weight_data,
+                                                         norm_bias_data,
+                                                         epsilon_,
+                                                         rows_,
+                                                         cols_,
+                                                         bias_residual_out_data,
+                                                         output_data);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Currently NormHelper only support `layernorm`. "));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Currently NormHelper only support `layernorm` and `rmsnorm`. "));
     }
   }
 
@@ -252,9 +267,22 @@ class NormHelper {
                                        output_data,
                                        mean_data,
                                        var_data);
+    } else if (norm_type_ == "rmsnorm") {
+      // For rmsnorm, it use Input's type weight and bias.
+      const T *norm_weight_data =
+          norm_weight ? norm_weight->data<T>() : nullptr;
+      const T *norm_bias_data = norm_bias ? norm_bias->data<T>() : nullptr;
+      phi::RmsNormWrapper<T, phi::GPUContext>(dev_ctx_,
+                                              x_data,
+                                              norm_weight_data,
+                                              norm_bias_data,
+                                              epsilon_,
+                                              rows_,
+                                              cols_,
+                                              output_data);
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Currently NormHelper only support `layernorm`. "));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Currently NormHelper only support `layernorm` and `rmsnorm`. "));
     }
   }
 
@@ -318,8 +346,6 @@ class FFNHelper {
   int dim_embed_;
   std::string gemm_method_;
 };
-
-}  // namespace
 
 }  // namespace fusion
 }  // namespace phi

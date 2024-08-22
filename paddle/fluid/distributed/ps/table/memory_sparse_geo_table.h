@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/common_table.h"
 #include "paddle/fluid/distributed/ps/table/depends/feature_value.h"
@@ -49,7 +50,7 @@ class MemorySparseGeoTable : public Table {
   int32_t Save(const std::string& path, const std::string& param) override {
     return 0;
   }
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   int32_t Save_v2(const std::string& path, const std::string& param) override {
     return 0;
   }

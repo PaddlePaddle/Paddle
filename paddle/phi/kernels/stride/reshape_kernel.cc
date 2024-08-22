@@ -14,24 +14,28 @@
 
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include <algorithm>
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/strided_reshape_utils.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
 template <typename Context>
 void ReshapeStridedKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const IntArray& shape,
-                          DenseTensor* out,
-                          DenseTensor* xshape) {
+                          DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
   DDim x_dims = x.dims();
   DDim x_stride = x.strides();
   size_t x_offset = x.offset();
-  if (xshape) {
-    x_dims = DDim(xshape->dims().Get() + 1, xshape->dims().size() - 1);
-  }
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape.GetData(), &meta_out);
 

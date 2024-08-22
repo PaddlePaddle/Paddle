@@ -18,8 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 void SetInMemDescWithSqueeze2FuseSupport(
     const std::vector<int> fused_squeeze2_axes,
@@ -194,8 +193,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fused_transpose,
                    OneDNN,

@@ -13,8 +13,12 @@
 # limitations under the License.
 
 from .blha_get_max_len import blha_get_max_len
-from .block_multihead_attention import block_multihead_attention
+from .block_multihead_attention import (
+    block_multihead_attention,
+    block_multihead_attention_xpu,  # noqa: F401
+)
 from .fused_dot_product_attention import (
+    cudnn_flash_attention,  # noqa: F401
     fused_dot_product_attention,  # noqa: F401
 )
 from .fused_dropout_add import fused_dropout_add
@@ -26,6 +30,7 @@ from .fused_matmul_bias import (
     fused_linear_activation,
     fused_matmul_bias,
 )
+from .fused_moe import fused_moe
 from .fused_rms_norm import fused_rms_norm
 from .fused_rotary_position_embedding import fused_rotary_position_embedding
 from .fused_transformer import (
@@ -49,6 +54,7 @@ __all__ = [
     'fused_linear_activation',
     'fused_bias_dropout_residual_layer_norm',
     'fused_ec_moe',
+    'fused_moe',
     'fused_dropout_add',
     'fused_rotary_position_embedding',
     'variable_length_memory_efficient_attention',

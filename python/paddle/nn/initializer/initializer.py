@@ -16,17 +16,36 @@ from __future__ import annotations
 
 import functools
 import math
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
-
-import paddle
+from typing_extensions import TypeAlias
 
 from ...base.framework import (
     EagerParamBase,
     default_main_program,
     in_dygraph_mode,
+    use_pir_api,
 )
 from .lazy_init import lazy_init_helper
+
+if TYPE_CHECKING:
+    import paddle
+
+    _NonLinearity: TypeAlias = Literal[  # noqa: PYI047
+        "sigmoid",
+        "linear",
+        "conv1d",
+        "conv2d",
+        "conv3d",
+        "conv1d_transpose",
+        "conv2d_transpose",
+        "conv3d_transpose",
+        "tanh",
+        "relu",
+        "leaky_relu",
+        "selu",
+    ]
 
 __all__ = []
 
@@ -40,7 +59,7 @@ class Initializer:
     directly, but need to use one of its implementations.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def __call__(
@@ -53,9 +72,9 @@ class Initializer:
 
     def forward(
         self, param: paddle.Tensor, block: paddle.pir.Block | None = None
-    ):
+    ) -> paddle.Tensor | None:
         """Add corresponding initialization operations to the network."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _lazy_init(
         self, param: paddle.Tensor, block: paddle.pir.Block | None = None
@@ -68,7 +87,10 @@ class Initializer:
         def init_op_creator(
             forward, param: paddle.Tensor, block: paddle.pir.Block | None
         ):
-            new_var = param._to_static_var(True, block=block)
+            if use_pir_api():
+                new_var = param
+            else:
+                new_var = param._to_static_var(True, block=block)
             # Record initializer operator
             with lazy_init_helper():
                 forward(new_var, block)

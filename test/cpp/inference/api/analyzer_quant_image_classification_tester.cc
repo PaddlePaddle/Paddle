@@ -29,6 +29,10 @@ void SetConfig(AnalysisConfig *cfg, std::string model_path) {
   cfg->DisableGpu();
   cfg->SwitchIrOptim(true);
   cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
+  cfg->EnableNewIR();
+  cfg->EnableNewExecutor();
+  cfg->SetOptimizationLevel(3);
+
   if (FLAGS_enable_mkldnn) cfg->EnableMKLDNN();
 }
 

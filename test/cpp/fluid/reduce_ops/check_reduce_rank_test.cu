@@ -22,7 +22,7 @@ namespace details {
 
 TEST(test_reduce_rank_check, all) {
   using EnforceNotMet = common::enforce::EnforceNotMet;
-  constexpr int kMaxRank = framework::DDim::kMaxRank;
+  constexpr int kMaxRank = phi::DDim::kMaxRank;
 
   for (int rank = 0; rank < kMaxRank; rank++) {
     for (int reduce_rank = 0; reduce_rank <= rank; reduce_rank++) {

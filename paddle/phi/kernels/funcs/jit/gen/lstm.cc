@@ -20,9 +20,7 @@
 #include "paddle/phi/kernels/funcs/jit/macro.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace gen {
+namespace phi::jit::gen {
 
 void LSTMJitCode::genCode() {
   if (use_peephole_) {
@@ -134,9 +132,7 @@ DECLARE_LSTM_CREATOR(LSTMC1H1);
 
 #undef DECLARE_LSTM_CREATOR
 
-}  // namespace gen
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::gen
 
 namespace gen = phi::jit::gen;
 

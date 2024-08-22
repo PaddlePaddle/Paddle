@@ -13,6 +13,8 @@
 # limitations under the License.
 """This is definition of dataset class, which is high performance IO."""
 
+from __future__ import annotations
+
 from google.protobuf import text_format
 
 import paddle
@@ -41,7 +43,7 @@ class DatasetFactory:
         """Init."""
         pass
 
-    def create_dataset(self, datafeed_class="QueueDataset"):
+    def create_dataset(self, datafeed_class="QueueDataset") -> DatasetBase:
         """
         Create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
         the default is "QueueDataset".
@@ -60,9 +62,7 @@ class DatasetFactory:
             dataset = globals()[datafeed_class]()
             return dataset
         except:
-            raise ValueError(
-                "datafeed class %s does not exist" % datafeed_class
-            )
+            raise ValueError(f"datafeed class {datafeed_class} does not exist")
 
 
 class DatasetBase:
@@ -269,9 +269,10 @@ class DatasetBase:
             slot_var = multi_slot.slots.add()
             slot_var.is_used = True
             slot_var.name = var.name
-            if var.lod_level == 0:
-                slot_var.is_dense = True
-                slot_var.shape.extend(var.shape)
+            if not paddle.framework.in_pir_mode():
+                if var.lod_level == 0:
+                    slot_var.is_dense = True
+                    slot_var.shape.extend(var.shape)
             if var.dtype == paddle.float32:
                 slot_var.type = "float"
             elif var.dtype == paddle.int64:

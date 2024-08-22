@@ -18,9 +18,6 @@ gather_srcs(
 
 gather_srcs(cinnapi_src SRCS map_expr_to_ir.cc)
 
-cinn_cc_test(test_cinn_pe_elementwise SRCS pe_elementwise_test.cc DEPS cinncore)
-cinn_cc_test(test_cinn_pe_broadcast SRCS pe_broadcast_test.cc DEPS cinncore)
-cinn_cc_test(test_cinn_pe_transform SRCS pe_transform_test.cc DEPS cinncore)
 cinn_cc_test(test_load_params SRCS load_params_test.cc DEPS cinncore)
 
 foreach(header ${param_proto_HDRS})

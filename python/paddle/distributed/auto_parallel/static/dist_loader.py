@@ -188,7 +188,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                     batch_size = array.shape[0]
                     assert (
                         batch_size % self.dp_world_sizes[i] == 0
-                    ), f"batch_size [{str(batch_size)}] is not divisible by dp_world_size [{str(self.dp_world_sizes[i])}]"
+                    ), f"batch_size [{batch_size}] is not divisible by dp_world_size [{self.dp_world_sizes[i]}]"
                     partial_data.append(
                         np.split(array, self.dp_world_sizes[i])[
                             self.dp_ranks[i]

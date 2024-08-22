@@ -34,11 +34,11 @@ namespace ir {
   if (pat.arg##_n()) {                                                         \
     PADDLE_ENFORCE_NE(subgraph.count(pat.arg##_n()),                           \
                       0UL,                                                     \
-                      platform::errors::NotFound(                              \
-                          "Node not found for PDNode %s", pat.arg##_repr()));  \
+                      common::errors::NotFound("Node not found for PDNode %s", \
+                                               pat.arg##_repr()));             \
     var = subgraph.at(pat.arg##_n());                                          \
     PADDLE_ENFORCE_NOT_NULL(var,                                               \
-                            platform::errors::NotFound(                        \
+                            common::errors::NotFound(                          \
                                 "node %s not exists in the sub-graph", #arg)); \
   }
 

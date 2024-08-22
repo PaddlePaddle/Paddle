@@ -26,7 +26,7 @@ namespace cinn::dialect::ir {
 
 class PirToPyCodeConverter {
  public:
-  explicit PirToPyCodeConverter(pir::Program* program)
+  explicit PirToPyCodeConverter(const pir::Program* program)
       : program_(program), file_name_(), dump_symbolic_shape_(true) {}
   PirToPyCodeConverter(const PirToPyCodeConverter&) = delete;
   PirToPyCodeConverter(PirToPyCodeConverter&&) = delete;
@@ -44,7 +44,7 @@ class PirToPyCodeConverter {
   void SaveIfFlagEnabled() const;
 
  private:
-  pir::Program* program_;
+  const pir::Program* program_;
   std::string file_name_;
   bool dump_symbolic_shape_;
 };

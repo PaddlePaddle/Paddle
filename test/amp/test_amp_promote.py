@@ -36,11 +36,6 @@ from paddle.static import amp
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
 )
-@unittest.skipIf(
-    core.is_compiled_with_xpu()
-    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
-    "Bugs on XPU3 ,disable it temporarily.",
-)
 class TestStaticAmpPromoteStats(AmpTestBase):
     def check_promote_results(
         self, use_amp, dtype, level, use_promote, expected_op_calls, debug_info
@@ -99,14 +94,15 @@ class TestStaticAmpPromoteStats(AmpTestBase):
             "reduce_mean": 0,
             "adamw": 0,
         }
-        self.check_promote_results(
-            True,
-            'float16',
-            'O1',
-            use_promote=True,
-            expected_op_calls=expected_fp16_calls,
-            debug_info="TestStaticAmpPromoteStats/test_static_amp_o1",
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self.check_promote_results(
+                True,
+                'float16',
+                'O1',
+                use_promote=True,
+                expected_op_calls=expected_fp16_calls,
+                debug_info="TestStaticAmpPromoteStats/test_static_amp_o1",
+            )
 
     def test_static_amp_o2(self):
         expected_fp16_calls = {
@@ -118,14 +114,15 @@ class TestStaticAmpPromoteStats(AmpTestBase):
             "reduce_mean": 1,
             "adamw": 4,
         }
-        self.check_promote_results(
-            True,
-            'float16',
-            'O2',
-            use_promote=True,
-            expected_op_calls=expected_fp16_calls,
-            debug_info="TestStaticAmpPromoteStats/test_static_amp_o2",
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self.check_promote_results(
+                True,
+                'float16',
+                'O2',
+                use_promote=True,
+                expected_op_calls=expected_fp16_calls,
+                debug_info="TestStaticAmpPromoteStats/test_static_amp_o2",
+            )
 
 
 @unittest.skipIf(
@@ -141,11 +138,6 @@ class TestStaticAmpPromoteStats(AmpTestBase):
     core.is_compiled_with_xpu()
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
-)
-@unittest.skipIf(
-    core.is_compiled_with_xpu()
-    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
-    "Bugs on XPU3 ,disable it temporarily.",
 )
 class TestEagerAmpPromoteStats(AmpTestBase):
     def check_promote_results(
@@ -229,11 +221,6 @@ class TestEagerAmpPromoteStats(AmpTestBase):
     core.is_compiled_with_xpu()
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
-)
-@unittest.skipIf(
-    core.is_compiled_with_xpu()
-    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
-    "Bugs on XPU3 ,disable it temporarily.",
 )
 class TestPirAmpPromoteStats(AmpTestBase):
     def check_promote_results(
@@ -343,11 +330,6 @@ class TestPirAmpPromoteStats(AmpTestBase):
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
 )
-@unittest.skipIf(
-    core.is_compiled_with_xpu()
-    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
-    "Bugs on XPU3 ,disable it temporarily.",
-)
 class TestEagerAmpPromoteSimple(AmpTestBase):
     def setUp(self):
         self._conv = paddle.nn.Conv2D(
@@ -393,11 +375,6 @@ class TestEagerAmpPromoteSimple(AmpTestBase):
     core.is_compiled_with_xpu()
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
-)
-@unittest.skipIf(
-    core.is_compiled_with_xpu()
-    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
-    "Bugs on XPU3 ,disable it temporarily.",
 )
 class TestPirAmpPromoteSimple(AmpTestBase):
     def init_net(self):

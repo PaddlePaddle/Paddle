@@ -203,7 +203,7 @@ class TestPostTrainingQuantizationProgram(TestPostTrainingQuantization):
         try:
             os.system("mkdir " + self.int8_model)
         except Exception as e:
-            print(f"Failed to create {self.int8_model} due to {str(e)}")
+            print(f"Failed to create {self.int8_model} due to {e}")
             sys.exit(-1)
 
         place = paddle.CPUPlace()

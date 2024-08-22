@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 
@@ -126,6 +125,7 @@ class TestFusedMultiTransformerOp(OpTest):
         self.attn_mask_type = np.float64
         # self.attn_mask_type = np.bool_
         self.pre_layer_norm = True
+        self.norm_type = "layernorm"
         self.has_attn_mask = True
 
         # has_cache_kv, gen_cache_kv, stage
@@ -204,18 +204,18 @@ class TestFusedMultiTransformerOp(OpTest):
                     random.randint(1, self.cache_length)
                     for _ in range(self.batch_size)
                 ]
-                self.seq_lens[
-                    random.randint(0, self.batch_size)
-                ] = self.cache_length
+                self.seq_lens[random.randint(0, self.batch_size)] = (
+                    self.cache_length
+                )
                 self.seq_lens = np.array(self.seq_lens).astype(np.int32)
             else:
                 self.seq_lens = [
                     random.randint(1, self.query_length)
                     for _ in range(self.batch_size)
                 ]
-                self.seq_lens[
-                    random.randint(0, self.batch_size)
-                ] = self.query_length
+                self.seq_lens[random.randint(0, self.batch_size)] = (
+                    self.query_length
+                )
                 self.seq_lens = np.array(self.seq_lens).astype(np.int32)
 
         if self.has_pre_cache and self.gqa_group_size <= 0:
@@ -819,6 +819,7 @@ class TestFusedMultiTransformerOp(OpTest):
             dropout_rate=self.dropout_prob,
             activation=self.act_method,
             training=self.training,
+            norm_type=self.norm_type,
             use_neox_rotary_style=self.neox_rotary_style,
             gqa_group_size=self.gqa_group_size,
         )
@@ -1457,6 +1458,7 @@ class TestFusedMultiTransformerOp(OpTest):
             dropout_rate=self.dropout_prob,
             activation=self.act_method,
             training=self.training,
+            norm_type=self.norm_type,
             use_neox_rotary_style=self.neox_rotary_style,
             gqa_group_size=self.gqa_group_size if not self.use_fake_mha else -1,
         )
@@ -1557,10 +1559,16 @@ class TestFusedMultiTransformerOp(OpTest):
             )
 
 
-class TestFusedMultiTransformerOpWithNewComm(TestFusedMultiTransformerOp):
-    def with_new_comm(self):
-        self.remove_padding = True
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMultiTransformer requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMultiTransformerOpVariableRmsnorm(TestFusedMultiTransformerOp):
+    def config(self):
+        super().config()
+        self.norm_type = "rmsnorm"
 
 
 @unittest.skipIf(

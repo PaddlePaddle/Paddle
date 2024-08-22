@@ -48,7 +48,7 @@ class TestReshape2MatmulFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=10), min_size=2, max_size=2
             )
         )
-        x_shape = reshape + [1, 1]
+        x_shape = [*reshape, 1, 1]
 
         # 2. Generate attr:transpose_X/transpose_Y/alpha of matmul
         alpha = 1.0

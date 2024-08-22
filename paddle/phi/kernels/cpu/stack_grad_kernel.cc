@@ -37,6 +37,16 @@ void StackGradKernel(const Context& dev_ctx,
     }
   }
   auto dy_data = out.data<T>();
+
+  // zero sized tensor case
+  if (out.numel() == 0) {
+    for (int i = 0; i < n; i++) {
+      auto x_grad_dim = x_grad[i]->dims();
+      x_grad[i]->Resize(x_grad_dim);
+    }
+    return;
+  }
+
   int pre = 1;
   for (int i = 0; i < axis; ++i) pre *= static_cast<int>(out.dims()[i]);
   int total_num = static_cast<int>(out.numel());

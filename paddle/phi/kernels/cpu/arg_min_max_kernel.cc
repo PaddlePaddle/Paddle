@@ -135,7 +135,7 @@ struct VisitDataArgMinMaxFunctor {
         PADDLE_ENFORCE_LE(
             x_dims.size(),
             6,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "%s operator doesn't supports tensors whose ranks are greater "
                 "than 6.",
                 (EnumArgMinMaxValue == kArgMin ? "argmin" : "argmax")));
@@ -156,7 +156,7 @@ void ArgMinMaxKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "argmin/argmax input numel must > 0, bug got %d", x.numel()));
   if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(

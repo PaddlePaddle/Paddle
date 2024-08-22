@@ -31,6 +31,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -65,6 +66,12 @@ SrcNode src_node() { return SrcNode(); }
 DstNode dst_node() { return DstNode(); }
 
 const float INF = std::numeric_limits<float>::max();
+
+// for some edge weight, we need to set it to INF, but which
+// may cause precision problem. So we choose a value
+// large enough.
+const float THRESHOLD = INF / 2.0f;
+
 template <class... Ts>
 struct overloaded : Ts... {
   using Ts::operator()...;
@@ -166,8 +173,10 @@ struct FlowGraph {
   };
 
   std::vector<Edge> edges;
-  // std::vector<Node> nodes;
   std::unordered_map<Node, std::vector<EdgeIndex>> adjs;
+
+  // used to avoid duplicate links
+  std::unordered_map<Node, std::unordered_set<Node>> adjs_by_node;
   std::unordered_map<Node, EdgeIndex> cur_arcs;
   std::unordered_map<Node, size_t> heights;
   const pir::Program& program;
@@ -181,12 +190,18 @@ struct FlowGraph {
       return;
     }
 
+    if (adjs_by_node[src].find(dst) != adjs_by_node[src].end()) {
+      return;
+    }
+
     edges.emplace_back(src, dst, capacity, flow, real);
     adjs[src].push_back(edges.size() - 1);
+    adjs_by_node[src].insert(dst);
 
     // add reverse edge
     edges.emplace_back(dst, src, 0, flow);
     adjs[dst].push_back(edges.size() - 1);
+    adjs_by_node[dst].insert(src);
   }
 
   explicit FlowGraph(const pir::Program& program) : program(program) {
@@ -256,7 +271,7 @@ struct FlowGraph {
         continue;
       }
       Node op_node(&op);
-      AddEdge(src_node(), op_node, INF);
+      AddEdge(src_node(), op_node, THRESHOLD);
 
       auto layout_transform_iface =
           op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
@@ -269,12 +284,12 @@ struct FlowGraph {
 
       for (const auto& op_operand : relevate_inputs) {
         Node operand_node(op_operand);
-        AddEdge(src_node(), operand_node, INF);
+        AddEdge(src_node(), operand_node, THRESHOLD);
       }
 
       for (const auto& op_result : relevate_outputs) {
         Node op_result_node(op_result);
-        AddEdge(src_node(), op_result_node, INF);
+        AddEdge(src_node(), op_result_node, THRESHOLD);
       }
     }
 
@@ -294,9 +309,46 @@ struct FlowGraph {
       if (prefer_layout == common::DataLayout::NHWC) {
         Node op_node(&op);
         mutable_nodes.insert(op_node);
-        AddEdge(op_node, dst_node(), INF);
+        AddEdge(op_node, dst_node(), THRESHOLD);
         VLOG(10) << "[PreProcess] node: " << op_node
                  << " should be set to NHWC";
+      }
+    }
+
+    // (%397) = "pd_op.isinf" (%398)
+    // (%401) = "pd_op.if" (%400)
+    //     (%402) = "pd_op.clip" (%397, %3, %2) {}
+    //     () = "cf.yield" (%402) {}
+    // } else {
+    //     () = "cf.yield" (%1) {}
+    // }
+    // just like the example above, we cannot build full
+    // dependency while graph containing control flow
+    // so we need a special process
+    for (auto& op : *(program.block())) {
+      auto layout_transform_iface =
+          op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
+      const auto& relevate_outputs =
+          layout_transform_iface ? layout_transform_iface.RelevantOutputs(&op)
+                                 : op.results();
+
+      for (const auto& op_result : relevate_outputs) {
+        Node op_result_node(op_result);
+        for (auto it = op_result.use_begin(); it != op_result.use_end(); ++it) {
+          auto user_op = it->owner();
+          while (user_op->GetParentProgram()->block() != user_op->GetParent()) {
+            user_op = user_op->GetParentOp();
+          }
+          // if user_op is in main block, no additional process
+          if (user_op == it->owner()) {
+            continue;
+          }
+          // else user_op in main_block, link it with its producer
+          Node user_op_node(user_op);
+          VLOG(10) << "[PreProcess] control flow link:" << op_result_node
+                   << " -> " << user_op_node;
+          AddEdge(op_result_node, user_op_node, 1.0f, 0.0f, true);
+        }
       }
     }
 
@@ -410,7 +462,7 @@ struct FlowGraph {
       is_node_layout_visited.insert(node);
       if (mutable_nodes.count(node) == 0) {
         VLOG(10) << "add node to nchw set: " << node;
-        AddEdge(src_node(), node, INF);
+        AddEdge(src_node(), node, THRESHOLD);
       }
       for (const auto& e : adjs[node]) {
         auto& edge = edges[e];
@@ -457,6 +509,9 @@ struct FlowGraph {
         auto left_capacity = e.capacity - e.flow;
         auto update_flow = std::min(cf - ret, left_capacity);
         auto f = FindBlockingFlow(next_node, update_flow);
+        VLOG(10) << "find blocking flow: " << src << " -> " << next_node
+                 << " flow: " << f << " capa: " << left_capacity
+                 << " update_flow: " << update_flow;
         if (f > 0) {
           e.flow += f;
           auto reverse_e_ind = e_ind ^ 1;
@@ -486,9 +541,14 @@ struct FlowGraph {
       for (auto& [node, nexts] : adjs) {
         cur_arcs[node] = 0;
       }
+      VLOG(10) << "--------------------[find blocking flow "
+                  "start]---------------------------";
       while (auto f = FindBlockingFlow(src_node(), INF)) {
         total_flow += f;
+        VLOG(10) << "[new flow]: " << f;
       }
+      VLOG(10) << "--------------------[find blocking flow end]" << total_flow
+               << "---------------------------";
     }
     VLOG(10) << "--------------------[max flow end]---------------------------";
     return total_flow;
@@ -751,8 +811,19 @@ class TransferLayoutPass : public pir::Pass {
             pir::StrAttribute::get(transpose_op->ir_context(),
                                    "transfer_layout_pass"));
         auto replace_uses_in_cut_set = [&](pir::OpOperand arg) {
-          return (operation_set.find(arg.owner()) != operation_set.end()) &&
-                 (arg.owner() != transpose_op.operation());
+          bool is_arg_in_cut_set =
+              operation_set.find(arg.owner()) != operation_set.end();
+          auto cur_op = arg.owner();
+          auto parent = cur_op->GetParentOp();
+          while (parent && !is_arg_in_cut_set) {
+            is_arg_in_cut_set =
+                operation_set.find(parent) != operation_set.end();
+            VLOG(10) << "[replace_uses_in_cut_set]" << parent << " "
+                     << is_arg_in_cut_set;
+            cur_op = parent;
+            parent = cur_op->GetParentOp();
+          }
+          return is_arg_in_cut_set && (arg.owner() != transpose_op.operation());
         };
         pir::SetNewLayoutForValue(transpose_op.out(), new_layout);
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import collections
 import inspect
+import os
 import threading
 import warnings
 import weakref
@@ -26,7 +27,6 @@ from typing_extensions import ParamSpec, Self
 import paddle
 import paddle.pir.core as ir_static
 from paddle import decomposition, get_flags
-from paddle._typing import NestedSequence
 from paddle.base import core, framework
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
@@ -38,7 +38,6 @@ from paddle.framework import in_dynamic_mode, use_pir_api
 from paddle.nn.layer import layers
 from paddle.pir import Value
 from paddle.pir.core import _convert_into_value, static_op_arg_cast_guard
-from paddle.static import InputSpec, Program
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
@@ -75,6 +74,8 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
+    from paddle._typing import NestedSequence
+    from paddle.static import InputSpec, Program
     from paddle.static.amp.fp16_utils import AmpOptions
 
 _RetT = TypeVar("_RetT")
@@ -97,6 +98,54 @@ def synchronized(func):
             return func(*args, **kwargs)
 
     return lock_func
+
+
+def show_op_callstack(op):
+    op_callstack = op.callstack
+    index = op_callstack.index("    outputs = static_func(*inputs)")
+    op_callstack_result = '\n'.join(op_callstack[index + 1 :])
+    raise ValueError(
+        f'In transformed code:\n\n{op_callstack_result}\n\nSorry about what\'s happened. In to_static mode, {op.name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call paddle.assign() before inplace input.If you certainly make sure it\'s safe, you can set env stride_in_no_check_dy2st_diff to 1.'
+    )
+
+
+def check_view_api_used_by_inplace(program: paddle.pir.Program) -> None:
+    """
+    check viewed value used by inplace op in pir mode.
+
+    Two scenarios will raise ValueError:
+        # one
+        a = transpose(b)
+        a.add_(c)
+        # two
+        a = transpose(b)
+        b.add_(c)
+    """
+    all_vars_list = program.list_vars()
+    for value in all_vars_list:
+        if len(value.all_used_ops()) == 0:
+            return
+        uesd_by_stride_ops = []
+        for op in value.all_used_ops()[::-1]:
+            inplace_info = paddle.core.pir.get_op_inplace_info(op)
+            if op.name() in framework.stride_ops and op.operand_source(
+                0
+            ).is_same(value):
+                uesd_by_stride_ops.append(op)
+            if op.name().endswith("_") and any(
+                op.operand_source(index).is_same(value)
+                for index in inplace_info.keys()
+            ):
+                if value.get_defining_op().name() in framework.stride_ops:
+                    show_op_callstack(op)
+                if len(uesd_by_stride_ops) == 0:
+                    continue
+                if (
+                    op.name() == "pd_op.set_value_"
+                    or op.name() == "pd_op.set_value_with_tensor_"
+                ):
+                    continue
+                show_op_callstack(op)
 
 
 class FunctionCache:
@@ -347,9 +396,9 @@ class StaticFunction(Generic[_InputT, _RetT]):
                     "When using 'to_static' to convert method of a class, "
                     "please ensure the class inherits from nn.Layer"
                 )
-            self._class_instance._original_funcs[
-                function.__name__
-            ] = self._dygraph_function
+            self._class_instance._original_funcs[function.__name__] = (
+                self._dygraph_function
+            )
         else:
             self._dygraph_function = function
             self._class_instance = None
@@ -452,9 +501,9 @@ class StaticFunction(Generic[_InputT, _RetT]):
                 and self._dygraph_function.__name__
                 not in instance._original_funcs.keys()
             ):
-                instance._original_funcs[
-                    self._dygraph_function.__name__
-                ] = self._dygraph_function
+                instance._original_funcs[self._dygraph_function.__name__] = (
+                    self._dygraph_function
+                )
             new_static_layer._class_instance = instance
             self._descriptor_cache[instance] = new_static_layer
 
@@ -538,7 +587,7 @@ class StaticFunction(Generic[_InputT, _RetT]):
 
     def get_concrete_program(
         self, *args: _InputT.args, **kwargs: _InputT.kwargs
-    ) -> tuple[ConcreteProgram, PartialProgramLayer | PirPartialProgramLayer]:
+    ) -> tuple[ConcreteProgram, PirPartialProgramLayer]:
         raise NotImplementedError("Not implemented yet.")
 
     def get_concrete_program_with_cache_key(self, cached_key):
@@ -739,7 +788,7 @@ class SymbolicStaticFunction(StaticFunction):
             backend=backend,
         )
         if self._class_instance is not None:
-            args = (self._class_instance,) + args
+            args = (self._class_instance, *args)
         return traced_fun(*args, **kwargs)
 
     @property
@@ -829,7 +878,7 @@ class ASTStaticFunction(StaticFunction[_InputT, _RetT]):
 
     def get_concrete_program(
         self, *args: _InputT.args, **kwargs: _InputT.kwargs
-    ) -> tuple[ConcreteProgram, PartialProgramLayer | PirPartialProgramLayer]:
+    ) -> tuple[ConcreteProgram, PirPartialProgramLayer]:
         """
         Returns traced concrete program and inner executable partial layer.
 
@@ -1119,7 +1168,7 @@ class HookHelper:
                     hook_result = (hook_result,)
                 inputs = hook_result
 
-        return [self.class_instance] + list(inputs)
+        return [self.class_instance, *list(inputs)]
 
     def apply_post_hooks(self, inputs, outputs):
         """
@@ -1218,8 +1267,9 @@ class ConcreteProgram:
                     input_kwargs_spec, main_program
                 )
                 if class_instance:
-                    static_inputs = tuple(
-                        [class_instance] + list(static_inputs)
+                    static_inputs = (
+                        class_instance,
+                        *list(static_inputs),
                     )
 
                 # 2. Builds program only once and returns the output Variables.
@@ -1259,6 +1309,8 @@ class ConcreteProgram:
                         outputs = [outputs]
 
         main_program = update_op_callstack_with_origin_info(main_program)
+        if not os.environ.get("stride_in_no_check_dy2st_diff", "0") == "1":
+            check_view_api_used_by_inplace(main_program)
 
         return ConcreteProgram(
             inputs=static_inputs,
@@ -1318,8 +1370,9 @@ class ConcreteProgram:
                     input_kwargs_spec, main_program
                 )
                 if class_instance:
-                    static_inputs = tuple(
-                        [class_instance] + list(static_inputs)
+                    static_inputs = (
+                        class_instance,
+                        *list(static_inputs),
                     )
 
                 # 2. Builds program only once and returns the output Variables.

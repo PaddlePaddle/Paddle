@@ -25,7 +25,7 @@ void AddVarToScope(Scope* param_scope,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
-  tensor->mutable_data<float>(platform::CPUPlace());
+  tensor->mutable_data<float>(phi::CPUPlace());
 }
 
 Scope* CreateParamScope() {
@@ -85,17 +85,17 @@ TEST(FCFusePass, basic) {
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
                     num_nodes_after + 6,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
                         num_nodes_before,
                         num_nodes_after));
   PADDLE_ENFORCE_EQ(num_fc_nodes_after,
                     1,
-                    platform::errors::InvalidArgument("num_fc_nodes_after=%d.",
-                                                      num_fc_nodes_after));
+                    common::errors::InvalidArgument("num_fc_nodes_after=%d.",
+                                                    num_fc_nodes_after));
   PADDLE_ENFORCE_EQ(num_mul_nodes_before,
                     num_fc_nodes_after + num_sparse_fc_nodes_after,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "num_mul_nodes_before=%d, num_fc_nodes_after=%d + "
                         "num_sparse_fc_nodes_after=%d.",
                         num_mul_nodes_before,

@@ -26,7 +26,7 @@ from paddle.base import core
     "core is not compiled with CUDA",
 )
 class TestFusedDropoutAdd(unittest.TestCase):
-    def _test_fused_dropout_add(self):
+    def test_fused_dropout_add(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()
             with paddle.static.program_guard(main_program):

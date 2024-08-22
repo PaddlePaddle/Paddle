@@ -50,7 +50,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
 
     PADDLE_ENFORCE_NOT_NULL(
         schedule_block,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The schedule block pointer in CanReplace must not be null."));
 
     if (block_realize->schedule_block.As<ir::ScheduleBlock>()->name.substr(
@@ -109,10 +109,21 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     return true;
   }
 
+  int GetBlockSize() const {
+    int block_size = 1;
+    for (auto& loop : cur_loops_) {
+      if (loop->as<ir::For>()->is_gpu_thread_binded()) {
+        block_size *= ir::GetLoopExtent(loop);
+      }
+    }
+    return block_size;
+  }
+
   template <typename OpT>
   void ReplaceByContinuousReduceExternCall(ir::Expr* store, bool return_warp) {
     auto* node = store->As<ir::Store>()->value.As<OpT>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node, ::common::errors::InvalidArgument("The node must not be null."));
     auto& operand = node->b();
     std::string reduce_func_name = hlir::pe::CrossThreadReduceExternalFuncName(
         store->As<ir::Store>()->value, operand.template As<ir::Load>()->tensor);
@@ -131,7 +142,8 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
   template <typename OpT>
   void ReplaceByDiscreteReduceExternCall(ir::Expr* store) {
     auto* node = store->As<ir::Store>()->value.As<OpT>();
-    CHECK(node);
+    PADDLE_ENFORCE_NOT_NULL(
+        node, ::common::errors::InvalidArgument("The node must not be null."));
     auto& operand = node->b();
     std::string reduce_func_name = hlir::pe::DiscreteReduceExternalFuncName(
         store->As<ir::Store>()->value, operand.template As<ir::Load>()->tensor);
@@ -139,7 +151,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
         operand.template As<ir::Load>()->tensor.as_tensor()->type();
     auto tmp_buffer = ir::_Buffer_::Make(
         "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",
-        {ir::Expr(512)});
+        {ir::Expr(GetBlockSize())});
     tmp_buffer->dtype = tmp_dtype;
     tmp_buffer->memory_type = ir::MemoryType::GPUShared;
     shm_buffer_.insert(tmp_buffer);
@@ -197,17 +209,21 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
         expr->schedule_block.As<ir::ScheduleBlock>();
     PADDLE_ENFORCE_NOT_NULL(
         schedule_block,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The schedule block pointer in Visit must not be null."));
     ir::Expr original_update_body = schedule_block->body;
     ir::Expr original_update_stmt;
-    CHECK(original_update_body.As<ir::Block>() ||
-          original_update_body.As<ir::Store>());
+    PADDLE_ENFORCE_EQ(original_update_body.As<ir::Block>() ||
+                          original_update_body.As<ir::Store>(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The type of original_update_body is incorrect."
+                          "Expected type is Block or Store."));
     if (original_update_body.As<ir::Block>()) {
       PADDLE_ENFORCE_EQ(
           original_update_body.As<ir::Block>()->stmts.size(),
           1,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The size of stmts is incorrect."
               "Expected size is 1, but receive %d.",
               original_update_body.As<ir::Block>()->stmts.size()));
@@ -215,15 +231,6 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     } else if (original_update_body.As<ir::Store>()) {
       original_update_stmt = original_update_body;
     }
-
-    const auto& IsWarpReduce = cinn::adt::match{
-        [&](const ir::NoneReduceMethod&) { return ir::Expr(false); },
-        [&](const ir::WarpReduceMethod&) { return ir::Expr(true); },
-        [&](const ir::BlockReduceMethod&) { return ir::Expr(false); },
-        [&](const ir::DiscreteReduceMethod&) { return ir::Expr(false); },
-    };
-    ir::Expr return_warp =
-        std::visit(IsWarpReduce, schedule_block->reduce_method);
 
 #define REPLACE_TO_EXTERNAL_CALL(Op)                              \
   if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {     \

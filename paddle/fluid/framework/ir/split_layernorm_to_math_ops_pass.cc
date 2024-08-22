@@ -207,7 +207,7 @@ void SplitLayerNormPass::ApplyImpl(Graph* graph) const {
       }
     }
     auto* dev_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
+        phi::DeviceContextPool::Instance().Get(phi::CPUPlace()));
     auto reduce_mean0_out_name(
         patterns::PDNodeName("split_layernorm", "reduce0"));
     auto* block = layer_norm_op->Op()->Block();

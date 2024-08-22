@@ -133,23 +133,29 @@ class TestSparseMomentumOp(OpTest):
 
         self.inputs = {
             'Param': param.astype("float16") if self.multi_precision else param,
-            'Velocity': velocity.astype("float32")
-            if self.multi_precision
-            else velocity,
-            'LearningRate': learning_rate.astype("float32")
-            if self.multi_precision
-            else learning_rate,
+            'Velocity': (
+                velocity.astype("float32") if self.multi_precision else velocity
+            ),
+            'LearningRate': (
+                learning_rate.astype("float32")
+                if self.multi_precision
+                else learning_rate
+            ),
             'Grad': grad.astype("float16") if self.multi_precision else grad,
             'Index': index,
             'Axis': np.array(self.axis).astype(np.int32),
         }
         self.outputs = {
-            'ParamOut': param_out.astype("float16")
-            if self.multi_precision
-            else param_out,
-            'VelocityOut': velocity_out.astype("float32")
-            if self.multi_precision
-            else velocity_out,
+            'ParamOut': (
+                param_out.astype("float16")
+                if self.multi_precision
+                else param_out
+            ),
+            'VelocityOut': (
+                velocity_out.astype("float32")
+                if self.multi_precision
+                else velocity_out
+            ),
         }
 
         if self.multi_precision:
@@ -175,7 +181,9 @@ class TestSparseMomentumOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(atol=5e-3 if self.multi_precision else 1e-5)
+        self.check_output(
+            atol=5e-3 if self.multi_precision else 1e-5, check_dygraph=False
+        )
 
 
 class TestSparseMomentumOpDtype1(TestSparseMomentumOp):

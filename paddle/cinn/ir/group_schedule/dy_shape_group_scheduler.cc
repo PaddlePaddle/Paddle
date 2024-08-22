@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
 #include "paddle/cinn/common/cas.h"
-#include "paddle/cinn/ir/group_schedule/config/database.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
@@ -115,10 +115,12 @@ void DynamicShapeGroupScheduler::InitBuckets() {
                                      std::move(bucket_info),
                                      std::move(config)};
     BucketContext bucket_context{std::move(predicate),
+                                 bucket_info.bucket_priority,
                                  std::move(ir_sch),
                                  std::move(schedule_block_graph),
                                  std::move(schedule_context)};
     bucket_contexts_.emplace_back(std::move(bucket_context));
+    VLOG(3) << "The bucket_contexts_.size() is " << bucket_contexts_.size();
   };
 
   ScheduleConfigManager& schedule_config_manager =
@@ -169,6 +171,14 @@ DynamicShapeGroupScheduler::GetIRs() {
                      context.ir_sch->GetModule().GetExprs()[0]);
   }
   return irs;
+}
+
+std::vector<int> DynamicShapeGroupScheduler::GetPriorities() {
+  std::vector<int> priorities;
+  for (BucketContext& context : bucket_contexts_) {
+    priorities.emplace_back(context.priority);
+  }
+  return priorities;
 }
 
 std::vector<std::pair<SymbolicPredicate, ir::Expr>>

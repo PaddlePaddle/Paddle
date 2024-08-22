@@ -16,10 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace fusion_group {
+namespace paddle::framework::ir::fusion_group {
 
 OperationMap *OperationMap::map = nullptr;
 
@@ -49,7 +46,7 @@ void OperationMap::Insert(int type,
   Operation op(type, num_operands, op_type, {expr}, input_names, output_names);
   PADDLE_ENFORCE_EQ(op.IsValid(),
                     true,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Operation %s is invalid. Please set correct "
                         "expression for forward calculation.",
                         op_type));
@@ -79,7 +76,7 @@ void OperationMap::Insert(int type,
                       grad_output_names);
     PADDLE_ENFORCE_EQ(grad_op.IsValid(),
                       true,
-                      platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Operation %s is invalid. Please set correct "
                           "expression for backward calculation.",
                           grad_op_type));
@@ -233,7 +230,4 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
   insert_handler_without_input("fill_constant", "${str_value}", {});
 }
 
-}  // namespace fusion_group
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fusion_group

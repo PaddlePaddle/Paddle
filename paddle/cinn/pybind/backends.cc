@@ -61,10 +61,7 @@ void BindExecutionEngine(py::module *m) {
                &ExecutionEngine::Create)),
            py::arg("options") = ExecutionOptions())
       .def("lookup", lookup)
-      .def("link",
-           &ExecutionEngine::Link,
-           py::arg("module"),
-           py::arg("add_module") = true);
+      .def("link", &ExecutionEngine::Link, py::arg("module"));
 
   {
     auto lookup = [](Compiler &self, absl::string_view name) {

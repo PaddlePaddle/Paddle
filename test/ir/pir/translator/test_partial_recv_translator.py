@@ -19,7 +19,7 @@ import test_op_translator
 
 import paddle
 from paddle.base.framework import (
-    convert_np_dtype_to_dtype_,
+    convert_np_dtype_to_proto_type,
 )
 from paddle.base.layer_helper import LayerHelper
 
@@ -33,7 +33,7 @@ class TestPartialRecvOpTranslator(test_op_translator.TestOpTranslator):
         attrs = {
             'ring_id': 0,
             'peer': 0,
-            'dtype': convert_np_dtype_to_dtype_(np.float32),
+            'dtype': convert_np_dtype_to_proto_type(np.float32),
             'out_shape': out.shape,
             'use_calc_stream': False,
             'num': 1,

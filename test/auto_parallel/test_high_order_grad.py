@@ -30,19 +30,18 @@ class TestHighOrderGrad(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
-        cmd = (
-            [sys.executable, "-u"]
-            + coverage_args
-            + [
-                "-m",
-                "paddle.distributed.launch",
-                "--devices",
-                "0,1",
-                "--log_dir",
-                tmp_dir.name,
-                launch_model_path,
-            ]
-        )
+        cmd = [
+            sys.executable,
+            "-u",
+            *coverage_args,
+            "-m",
+            "paddle.distributed.launch",
+            "--devices",
+            "0,1",
+            "--log_dir",
+            tmp_dir.name,
+            launch_model_path,
+        ]
 
         process = subprocess.Popen(cmd)
         process.wait()

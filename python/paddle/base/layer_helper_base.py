@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import copy
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -32,12 +34,15 @@ from .framework import (
 from .initializer import _global_bias_initializer, _global_weight_initializer
 from .param_attr import ParamAttr, WeightNormParamAttr
 
+if TYPE_CHECKING:
+    from paddle._typing.dtype_like import _DTypeLiteral
+
 __all__ = []
 
 
 class LayerHelperBase:
     # global dtype
-    __dtype = "float32"
+    __dtype: _DTypeLiteral = "float32"
 
     def __init__(self, name, layer_type):
         self._layer_type = layer_type
@@ -103,8 +108,7 @@ class LayerHelperBase:
             return value
         else:
             raise TypeError(
-                "The type of input value is invalid, expected type is 'ndarray' or 'Variable', but received %s"
-                % type(value)
+                f"The type of input value is invalid, expected type is 'ndarray' or 'Variable', but received {type(value)}"
             )
 
     def _create_weight_normalize(self, attr, shape, dtype):
@@ -265,9 +269,11 @@ class LayerHelperBase:
             # to achieve the subset.
             w = paddle.tensor.math._multiply_with_axis(
                 x=v,
-                y=scale
-                if dim is None
-                else paddle.reshape(x=scale, shape=[v.shape[dim]]),
+                y=(
+                    scale
+                    if dim is None
+                    else paddle.reshape(x=scale, shape=[v.shape[dim]])
+                ),
                 axis=-1 if dim is None else dim,
             )
             # To serialize the original parameter for inference, maybe a
@@ -460,7 +466,7 @@ class LayerHelperBase:
 
     def create_variable_for_type_inference(
         self, dtype, stop_gradient=False, shape=None
-    ):
+    ) -> paddle.Tensor:
         """Create a temporary variable that should be type inferred layer.
 
         Note:

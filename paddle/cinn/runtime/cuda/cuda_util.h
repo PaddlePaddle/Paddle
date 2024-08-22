@@ -68,12 +68,6 @@ void cinn_call_cholesky_nvgpu(void* v_args,
                               bool upper,
                               void* stream = nullptr);
 
-void cinn_assert_true_nvgpu(void* v_args,
-                            int num_args,
-                            int msg,
-                            bool only_warning,
-                            void* stream = nullptr);
-
 void cinn_call_triangular_solve_nvgpu(void* v_args,
                                       int num_args,
                                       int batch_size,

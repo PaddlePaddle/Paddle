@@ -21,6 +21,7 @@ import numpy as np
 import paddle
 import paddle.inference as paddle_infer
 from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -78,6 +79,7 @@ class TestDropout(UnittestBase):
         self.shapes = [[10, 10]]
         self.save_path = os.path.join(self.temp_dir.name, 'dropout')
 
+    @test_with_pir_api
     def test_static(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -102,11 +104,12 @@ class TestDropout(UnittestBase):
             infer_out = self.infer_prog()
             self.assertEqual(infer_out.shape, (10, 10))
 
-            self.assertTrue("Var[" in str(main_prog))
-            self.assertEqual(
-                main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
-                p.name,
-            )
+            if not in_pir_mode():
+                self.assertTrue("Var[" in str(main_prog))
+                self.assertEqual(
+                    main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
+                    p.name,
+                )
 
 
 if __name__ == '__main__':

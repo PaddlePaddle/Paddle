@@ -38,7 +38,7 @@ class VariableWrapper;
 void InitializeVariable(paddle::framework::Variable* var,
                         paddle::framework::proto::VarType::Type var_type);
 template <typename VarType>
-const paddle::platform::Place& GetPlace(const std::shared_ptr<VarType>& var);
+const phi::Place& GetPlace(const std::shared_ptr<VarType>& var);
 template <typename VarType>
 TEST_API const std::string& GetNameFromVar(std::shared_ptr<VarType> var);
 

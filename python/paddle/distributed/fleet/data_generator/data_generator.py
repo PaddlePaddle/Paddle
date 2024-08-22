@@ -11,8 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 __all__ = []
 
@@ -230,7 +235,10 @@ class DataGenerator:
 # add more generalized DataGenerator that can adapt user-defined slot
 # for example, [(name, float_list), (name, str_list), (name, int_list)]
 class MultiSlotStringDataGenerator(DataGenerator):
-    def _gen_str(self, line):
+    def _gen_str(
+        self,
+        line: Sequence[tuple[str, list[str]]],
+    ) -> str:
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,
@@ -275,7 +283,10 @@ class MultiSlotStringDataGenerator(DataGenerator):
 
 
 class MultiSlotDataGenerator(DataGenerator):
-    def _gen_str(self, line):
+    def _gen_str(
+        self,
+        line: Sequence[tuple[str, list[float]]],
+    ) -> str:
         '''
         Further processing the output of the process() function rewritten by
         user, outputting data that can be directly read by the MultiSlotDataFeed,
@@ -318,10 +329,10 @@ class MultiSlotDataGenerator(DataGenerator):
             for item in line:
                 name, elements = item
                 if not isinstance(name, str):
-                    raise ValueError("name%s must be in str type" % type(name))
+                    raise ValueError(f"name{type(name)} must be in str type")
                 if not isinstance(elements, list):
                     raise ValueError(
-                        "elements%s must be in list type" % type(elements)
+                        f"elements{type(elements)} must be in list type"
                     )
                 if not elements:
                     raise ValueError(
@@ -336,8 +347,7 @@ class MultiSlotDataGenerator(DataGenerator):
                         self._proto_info[-1] = (name, "float")
                     elif not isinstance(elem, int):
                         raise ValueError(
-                            "the type of element%s must be in int or float"
-                            % type(elem)
+                            f"the type of element{type(elem)} must be in int or float"
                         )
                     output += " " + str(elem)
         else:
@@ -348,10 +358,10 @@ class MultiSlotDataGenerator(DataGenerator):
             for index, item in enumerate(line):
                 name, elements = item
                 if not isinstance(name, str):
-                    raise ValueError("name%s must be in str type" % type(name))
+                    raise ValueError(f"name{type(name)} must be in str type")
                 if not isinstance(elements, list):
                     raise ValueError(
-                        "elements%s must be in list type" % type(elements)
+                        f"elements{type(elements)} must be in list type"
                     )
                 if not elements:
                     raise ValueError(
@@ -370,8 +380,7 @@ class MultiSlotDataGenerator(DataGenerator):
                             self._proto_info[index] = (name, "float")
                         elif not isinstance(elem, int):
                             raise ValueError(
-                                "the type of element%s must be in int or float"
-                                % type(elem)
+                                f"the type of element{type(elem)} must be in int or float"
                             )
                     output += " " + str(elem)
         return output + "\n"

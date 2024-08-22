@@ -23,7 +23,6 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
-#include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
 #include "paddle/cinn/hlir/op/op_util.h"
@@ -34,7 +33,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 
 namespace cinn {
@@ -51,16 +49,36 @@ ir::Tensor OneHot(const ir::Tensor& indices,
                   const Type& dtype,
                   const std::string& output_name) {
   int ndim = static_cast<int>(indices->shape.size());
-  CHECK(axis == -1 || (0 <= axis && axis <= ndim))
-      << "one_hot only accepts `axis` in [-1, data.ndim]"
-      << ", but got axis = " << axis << ", and data.ndim = " << ndim;
-  CHECK(depth > 0) << "one_hot only accepts `depth > 0`"
-                   << ", but got depth = " << depth;
+  PADDLE_ENFORCE_EQ(axis == -1 || (0 <= axis && axis <= ndim),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The one_hot op only accepts `axis` in [-1, "
+                        "data.ndim], but got axis = %d, and data.ndim = %d",
+                        axis,
+                        ndim));
+  PADDLE_ENFORCE_EQ(
+      depth > 0,
+      true,
+      ::common::errors::InvalidArgument(
+          "The one_hot op only accepts `depth` > 0, but got depth = %d.",
+          depth));
 
-  CHECK(on_value->shape.size() == 1U && on_value->shape[0].as_int32() == 1U)
-      << "The shape of on_value must be [1]";
-  CHECK(off_value->shape.size() == 1U && off_value->shape[0].as_int32() == 1U)
-      << "The shape of off_value must be [1]";
+  PADDLE_ENFORCE_EQ(
+      on_value->shape.size() == 1U && on_value->shape[0].as_int32() == 1U,
+      true,
+      ::common::errors::InvalidArgument(
+          "The shape of on_value must be [1], but got "
+          "shape = %d, and shape[0] = %d.",
+          on_value->shape.size(),
+          on_value->shape[0].as_int32()));
+  PADDLE_ENFORCE_EQ(
+      off_value->shape.size() == 1U && off_value->shape[0].as_int32() == 1U,
+      true,
+      ::common::errors::InvalidArgument(
+          "The shape of off_value must be [1], but "
+          "got shape = %d, and shape[0] = %d.",
+          off_value->shape.size(),
+          off_value->shape[0].as_int32()));
 
   int true_axis = (axis == -1) ? ndim : axis;
   std::vector<Expr> new_shape;
@@ -99,55 +117,6 @@ ir::Tensor OneHot(const ir::Tensor& indices,
   return res;
 }
 
-std::vector<framework::shape_t> InferShapeForOneHot(
-    const std::vector<framework::shape_t>& inputs_shape,
-    const framework::AttrMapType& attrs) {
-  CHECK_EQ(inputs_shape.size(), 3UL)
-      << "The number of one_hot's input should be 3";
-
-  int depth;
-  int axis;
-
-  for (auto& iter : attrs) {
-    if (iter.first == "depth") {
-      depth = absl::get<int>(iter.second);
-    } else if (iter.first == "axis") {
-      axis = absl::get<int>(iter.second);
-    }
-  }
-
-  const std::vector<int>& in_shape = inputs_shape[0];
-  int ndim = static_cast<int>(in_shape.size());
-  int true_axis = (axis == -1) ? in_shape.size() : axis;
-  int indices_index = 0;
-  std::vector<int> new_shape;
-
-  for (int i = 0; i < ndim + 1; ++i) {
-    if (i == true_axis) {
-      new_shape.push_back(depth);
-    } else {
-      new_shape.push_back(in_shape[indices_index++]);
-    }
-  }
-
-  std::vector<std::vector<int>> res{new_shape};
-  return res;
-}
-
-std::vector<Type> InferDtypeForOneHot(const std::vector<Type>& inputs_type,
-                                      const framework::AttrMapType& attrs) {
-  CHECK(!inputs_type.empty())
-      << "The input's type size is 0! Please check again.";
-
-  std::string dtype = "float32";
-  if (attrs.find("dtype") != attrs.end()) {
-    dtype = absl::get<std::string>(attrs.at("dtype"));
-  }
-
-  std::vector<Type> res{cinn::common::Str2Type(dtype)};
-  return res;
-}
-
 std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
     const framework::NodeAttr& attrs,
     const std::vector<ir::Tensor>& inputs,
@@ -168,29 +137,55 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
     }
   }
 
-  CHECK(depth > 0) << "one_hot only accepts `depth > 0`"
-                   << ", but got depth = " << depth;
+  PADDLE_ENFORCE_EQ(
+      depth > 0,
+      true,
+      ::common::errors::InvalidArgument(
+          "The one_hot op only accepts `depth` > 0, but got depth = %d.",
+          depth));
 
   framework::CINNCompute one_hot_compute([=](lang::Args args,
                                              lang::RetValue* ret) {
-    CHECK(!args.empty())
-        << "The input argument of one_hot compute is empty! Please check.\n";
+    PADDLE_ENFORCE_NE(
+        args.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The input argument of one_hot compute is empty! Please check."));
     cinn::common::CINNValuePack pack_args = args[0];
-    CHECK(!pack_args.empty())
-        << "at least one input tensor for transpose compute\n";
-    CHECK_GE(pack_args.size(), 3U);
+    PADDLE_ENFORCE_NE(
+        pack_args.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The input tensors for one_hot compute is empty! Please check."));
+    PADDLE_ENFORCE_GE(pack_args.size(),
+                      3U,
+                      ::common::errors::InvalidArgument(
+                          "At least 3 input tensors for one_hot compute\n"));
     Expr indices_expr = pack_args[0];
     Expr on_value_expr = pack_args[1];
     Expr off_value_expr = pack_args[2];
-    CHECK(indices_expr.as_tensor());
-    CHECK(on_value_expr.as_tensor());
-    CHECK(off_value_expr.as_tensor());
+    PADDLE_ENFORCE_NOT_NULL(
+        indices_expr.as_tensor(),
+        ::common::errors::InvalidArgument(
+            "Required indixes must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        on_value_expr.as_tensor(),
+        ::common::errors::InvalidArgument(
+            "Required on_value must be a tensor. Please check."));
+    PADDLE_ENFORCE_NOT_NULL(
+        off_value_expr.as_tensor(),
+        ::common::errors::InvalidArgument(
+            "Required off_value must be a tensor. Please check."));
 
     ir::Tensor indices = indices_expr.as_tensor_ref();
     ir::Tensor on_value = on_value_expr.as_tensor_ref();
     ir::Tensor off_value = off_value_expr.as_tensor_ref();
 
-    CHECK_EQ(pack_args.size(), 4U);
+    PADDLE_ENFORCE_EQ(
+        pack_args.size(),
+        4U,
+        ::common::errors::InvalidArgument(
+            "The number of input tensors for one_hot compute should be 4."));
     std::string tensor_name = pack_args[3].operator std::string();
 
     ir::Tensor out = OneHot(indices,
@@ -202,10 +197,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
                             tensor_name);
 
     std::vector<cinn::common::CINNValue> res;
-    auto stages = CreateStages({indices, on_value, off_value});
-    stages->InsertLazily(out);
     res.push_back(cinn::common::CINNValue(out));
-    res.push_back(cinn::common::CINNValue(stages));
     *ret = cinn::common::CINNValuePack{res};
   });
 
@@ -231,10 +223,6 @@ CINN_REGISTER_HELPER(one_hot_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForOneHot)
-      .set_attr("infershape",
-                MakeOpFunction(cinn::hlir::op::InferShapeForOneHot))
-      .set_attr("inferdtype",
-                MakeOpFunction(cinn::hlir::op::InferDtypeForOneHot))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kInjective)
       .set_support_level(4);

@@ -179,7 +179,7 @@ class TestImperativeQat(unittest.TestCase):
                 print('eval_acc_top1', eval_acc_top1)
                 self.assertTrue(
                     eval_acc_top1 > 0.9,
-                    msg="The test acc {%f} is less than 0.9." % eval_acc_top1,
+                    msg=f"The test acc {{{eval_acc_top1:f}}} is less than 0.9.",
                 )
 
             # test the correctness of `paddle.jit.save`
@@ -207,7 +207,7 @@ class TestImperativeQat(unittest.TestCase):
                     )
                 ],
             )
-            print('Quantized model saved in %s' % tmpdir)
+            print(f'Quantized model saved in {tmpdir}')
 
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)

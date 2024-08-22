@@ -18,9 +18,7 @@
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/utils/tribool.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class PlacementPassTest {
  private:
@@ -182,8 +180,6 @@ TEST(MKLDNNPlacementPass, placement_name) {
   PlacementPassTest().PlacementNameTest();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(onednn_placement_pass);

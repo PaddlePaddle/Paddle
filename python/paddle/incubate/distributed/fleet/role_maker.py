@@ -432,7 +432,7 @@ class MPISymmetricRoleMaker(MPIRoleMaker):
         elif mode == "min":
             mode = self.MPI.MIN
         else:
-            raise ValueError("unknown mode: %s" % mode)
+            raise ValueError(f"unknown mode: {mode}")
         self._node_type_comm.Allreduce(input, output, op=mode)
 
     def _barrier_worker(self):

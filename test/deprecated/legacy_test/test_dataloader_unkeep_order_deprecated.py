@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -105,17 +104,14 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                 start_val += 1
 
     def get_places(self):
-        place_list = [base.cpu_places(1)]
-        if base.is_compiled_with_cuda():
-            if os.name == "nt":
-                place_list.extend([base.cuda_places(0)])
-            else:
-                place_list.extend([base.cuda_places(0)])
-        return place_list
+        if paddle.is_compiled_with_cuda():
+            places = base.cuda_places(0)
+        else:
+            places = base.cpu_places(1)
+        return places
 
     def test_main(self):
-        for p in self.get_places():
-            self.run_main_with_place(p)
+        self.run_main_with_place(self.get_places())
 
     def run_main_with_place(self, places):
         with base.scope_guard(base.Scope()):

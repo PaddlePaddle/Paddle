@@ -22,6 +22,9 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #endif
+#ifdef CINN_WITH_HIP
+#include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#endif
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -46,6 +49,12 @@ namespace backends {
  * first module, add a device kernel function to the second module.
  */
 std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module);
+
+ir::Module CreateSwitchWithBroadcastConditionModule(
+    const std::vector<ir::Expr>& broadcast_conditions,
+    const std::vector<std::string>& case_func_names,
+    const std::string& wrapper_func_name,
+    const std::unordered_map<int, ir::Var>& symbolic_shape_var_index);
 
 namespace detail {
 
@@ -109,7 +118,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     ir::Var kernel_stream(KERNEL_STREAM, type_of<void*>());
 
     // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
-    // however, this make CodeGenCUDA_Dev before spliting the host and device
+    // however, this make CodeGenCudaDev before spliting the host and device
     // module Maybe we could reorder the process.
     std::optional<Expr> shared_mem_bytes;
     cinn::common::DefaultDeviceTarget().arch.Match(
@@ -118,7 +127,15 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-          CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+          CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
+          codegen_dev.Compile(ir::LoweredFunc(func));
+          shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#endif
+        },
+        [&](common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
+          hip::CodeGenHipDevice codegen_dev(
+              cinn::common::DefaultHygonDcuHipTarget());
           codegen_dev.Compile(ir::LoweredFunc(func));
           shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
 #endif
@@ -140,6 +157,9 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
+        },
+        [&](common::HygonDCUArchHIP) {
+          call_kernel = runtime::intrinsic::call_hip_kernel;
         });
 
     auto call_extern_api =
@@ -201,6 +221,10 @@ struct CollectBucketStrategyHostFunctionVisitor
   }
 
  private:
+  static bool compare_priority(const std::pair<int, std::pair<Expr, Expr>>& a,
+                               const std::pair<int, std::pair<Expr, Expr>>& b) {
+    return a.first > b.first;
+  }
   void Visit(const ir::_Module_* op, Expr* expr) {
     if (op->functions.size() == 1 && op->predicates.size() == 0) {
       expr->as_module()->predicates.push_back(ir::Expr(true));
@@ -208,10 +232,30 @@ struct CollectBucketStrategyHostFunctionVisitor
     PADDLE_ENFORCE_EQ(
         op->functions.size(),
         op->predicates.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of functions and predicates should be equal"));
+    PADDLE_ENFORCE_EQ(
+        op->functions.size(),
+        op->priorities.size(),
+        ::common::errors::InvalidArgument(
+            "The size of functions and priorities should be equal"));
+    // Sort funcitons and predicates according to the priority
+    std::vector<std::pair<Expr, Expr>> func_predicate;
+    std::vector<std::pair<int, std::pair<Expr, Expr>>> predicate_priority;
+    VLOG(3) << "The number of the functions is " << op->functions.size();
+    for (int i = 0; i < op->functions.size(); i++) {
+      auto func_pair = std::make_pair(op->functions[i], op->predicates[i]);
+      func_predicate.push_back(func_pair);
+      predicate_priority.push_back(
+          std::make_pair(op->priorities[i], func_pair));
+    }
+    sort(
+        predicate_priority.begin(), predicate_priority.end(), compare_priority);
+    predicate_priority[0].second.first;
+
     for (int i = 0; i < op->functions.size(); ++i) {
-      ProcessLoweredFunc(op->functions[i], op->predicates[i]);
+      ProcessLoweredFunc(predicate_priority[i].second.first,
+                         predicate_priority[i].second.second);
       if (i == 0) {
         ProcessArgs(op->functions[i]);
       }

@@ -17,9 +17,7 @@
 #include "paddle/cinn/common/macros.h"
 
 CINN_USE_REGISTER(nn_ops)
-CINN_USE_REGISTER(nn_grad_ops)
 CINN_USE_REGISTER(broadcast_ops)
-CINN_USE_REGISTER(broadcast_grad_ops)
 CINN_USE_REGISTER(elementwise_ops)
 CINN_USE_REGISTER(transform_ops)
 CINN_USE_REGISTER(gather_nd_ops)
@@ -38,6 +36,4 @@ CINN_USE_REGISTER(randint_ops)
 CINN_USE_REGISTER(cholesky_ops)
 CINN_USE_REGISTER(triangular_solve_ops)
 CINN_USE_REGISTER(bitcast_convert_ops)
-CINN_USE_REGISTER(op_external_api)
-CINN_USE_REGISTER(resize_ops)
 CINN_USE_REGISTER(assert_true_ops)

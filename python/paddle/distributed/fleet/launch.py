@@ -141,7 +141,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             default=None,
             help="It's for gpu training."
             "For example:"
-            "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu.",
+            '--gpus="0,1,2,3" will launch four training processes each bound to one gpu.',
         )
         base_group.add_argument("--selected_gpus", dest="gpus")
 
@@ -151,7 +151,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             type=str,
             default=None,
             help="It's for xpu training. For example: "
-            "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu.",
+            '--xpus="0,1,2,3" will launch four training processes each bound to one xpu.',
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
 
@@ -305,8 +305,7 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
 def cpuonly_check(args):
     if args.ips and len(args.ips.split(',')) > 1:
         raise RuntimeError(
-            "CPUONLY launch only support single trainer, that is len(ips)=1, but got %s."
-            % args.ips
+            f"CPUONLY launch only support single trainer, that is len(ips)=1, but got {args.ips}."
         )
     if args.run_mode:
         assert (
@@ -353,7 +352,7 @@ def get_cluster_info(args):
             os.environ["PADDLE_ENABLE_ELASTIC"] = str(
                 enable_elastic(args, device_mode)
             )
-            cwd = pathlib.Path().resolve()
+            cwd = pathlib.Path().cwd()
             rank_mapping_path = os.path.join(
                 cwd, "auto_parallel_rank_mapping.json"
             )

@@ -14,14 +14,13 @@
 
 from functools import reduce
 
+import paddle
 from legacy_test.nets import simple_img_conv_pool
 from legacy_test.test_dist_base import (
     TestDistRunnerBase,
     _insert_comm_op,
     runtime_main,
 )
-
-import paddle
 from paddle import base
 
 paddle.enable_static()
@@ -59,7 +58,7 @@ def cnn_model(data):
 
     SIZE = 10
     input_shape = conv_pool_2.shape
-    param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
+    param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1), SIZE]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
     predict = paddle.static.nn.fc(
@@ -102,14 +101,15 @@ class TestDistMnistDGC(TestDistRunnerBase):
                 learning_rate=self.lr,
                 momentum=0.9,
                 rampup_begin_step=2,
-                num_trainers=build_strategy.num_trainers
-                if build_strategy
-                else None,
+                num_trainers=(
+                    build_strategy.num_trainers if build_strategy else None
+                ),
             )
         if use_dgc:
             assert (
                 build_strategy is not None
             ), "build_strategy can be None with dgc"
+            paddle.distributed.collective._init_parallel_env("nccl")
             _insert_comm_op(opt, avg_cost, build_strategy)
         else:
             opt.minimize(avg_cost)

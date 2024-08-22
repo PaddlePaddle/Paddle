@@ -50,9 +50,11 @@ def register_dispatch(fn, parameters, handler):
         handler: The handler function.
     """
     _parameters = tuple(
-        Parameter.from_str(parameter)
-        if isinstance(parameter, str)
-        else parameter
+        (
+            Parameter.from_str(parameter)
+            if isinstance(parameter, str)
+            else parameter
+        )
         for parameter in parameters
     )
     if fn not in Dispatcher.handlers:

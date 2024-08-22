@@ -89,8 +89,8 @@ void GPUGather(const phi::GPUContext& ctx,
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
         1,
-        phi::errors::InvalidArgument("If the index's rank of gather_op is 2,"
-                                     " the second dimension should be 1."));
+        common::errors::InvalidArgument("If the index's rank of gather_op is 2,"
+                                        " the second dimension should be 1."));
   }
 
   // index size

@@ -128,6 +128,9 @@ void GlooCommContext::Scatter(phi::DenseTensor* out_tensor,
   gloo::ScatterOptions opts(gloo_context_);
   const auto& dtype = in_tensor.dtype();
   if (rank_ == src) {
+    if (size == 0) {
+      size = size_;
+    }
     GENERATE_FUNC(dtype, SetInputForScatter, &opts, in_tensor, size);
   }
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);

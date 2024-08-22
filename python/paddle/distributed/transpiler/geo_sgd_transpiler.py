@@ -54,9 +54,9 @@ from .distribute_transpiler import (
     slice_variable,
 )
 
-RPC_OP_ROLE_ATTR_NAME = (
-    op_role_attr_name
-) = core.op_proto_and_checker_maker.kOpRoleAttrName()
+RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = (
+    core.op_proto_and_checker_maker.kOpRoleAttrName()
+)
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 
@@ -253,7 +253,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             pserver_block = per_opt_block.program.global_block()
             param = pserver_block.vars[var_name]
 
-            delta_var_name = "%s.delta" % (param.name)
+            delta_var_name = f"{param.name}.delta"
             if var.name in self.sparse_var_splited_list:
                 delta_type = core.VarDesc.VarType.SELECTED_ROWS
                 sparse_grad_to_param.append(

@@ -69,7 +69,7 @@ def md5(doc):
     except UnicodeDecodeError as e:
         md5sum = None
         print(
-            f"Error({str(e)}) occurred when `md5({doc})`, discard it.",
+            f"Error({e}) occurred when `md5({doc})`, discard it.",
             file=sys.stderr,
         )
 

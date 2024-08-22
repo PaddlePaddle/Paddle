@@ -38,6 +38,7 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/common_table.h"
 #include "paddle/fluid/distributed/ps/table/graph/class_macro.h"
@@ -654,7 +655,7 @@ class GraphTable : public Table {
                        const std::string &converter UNUSED) {
     return 0;
   }
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   virtual int32_t Save_v2(const std::string &path,
                           const std::string &converter) {
     return 0;

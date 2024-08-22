@@ -275,7 +275,7 @@ def predict_dygraph(args, batch_generator):
         if step_idx == STEP_NUM:
             break
     logging.info(
-        "Dygraph Predict:  avg_speed: %.4f steps/s" % (np.mean(speed_list))
+        f"Dygraph Predict:  avg_speed: {np.mean(speed_list):.4f} steps/s"
     )
     return seq_ids, seq_scores
 

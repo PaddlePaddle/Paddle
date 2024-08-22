@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
@@ -44,9 +44,9 @@ TEST(test_share_buffer_op, test_share_buffer_op) {
   auto op = OpRegistry::CreateOp(desc);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::Place place = platform::CUDAPlace(0);
+  phi::Place place = phi::GPUPlace(0);
 #else
-  platform::Place place = platform::CPUPlace();
+  phi::Place place = phi::CPUPlace();
 #endif
 
   Scope scope;
@@ -57,7 +57,7 @@ TEST(test_share_buffer_op, test_share_buffer_op) {
     scope.Var(outputs[i])->GetMutable<phi::DenseTensor>();
   }
   op->Run(scope, place);
-  platform::DeviceContextPool::Instance().Get(place)->Wait();
+  phi::DeviceContextPool::Instance().Get(place)->Wait();
 
   for (size_t i = 0; i < n; ++i) {
     const auto &in_tensor = scope.Var(inputs[i])->Get<phi::DenseTensor>();

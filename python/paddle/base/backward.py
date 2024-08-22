@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import copy
 import logging
@@ -19,6 +21,7 @@ import os
 import re
 import warnings
 from collections.abc import Sequence
+from typing import TYPE_CHECKING, overload
 
 import paddle.base
 
@@ -26,6 +29,15 @@ from . import core, framework, log_helper, unique_name
 from .data_feeder import check_type
 from .framework import program_guard
 from .proto import framework_pb2
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from paddle import Tensor
+    from paddle.base.framework import Block
+    from paddle.distributed.auto_parallel.static.dist_context import (
+        DistributedContext,
+    )
 
 __all__ = []
 
@@ -160,8 +172,7 @@ class ProgramStats:
         for name in checkpoints_name:
             if name not in self.var_op_deps:
                 _logger.info(
-                    "Recompute Optimizer: deleted %s from checkpoints, because it is not used in paddle program."
-                    % name
+                    f"Recompute Optimizer: deleted {name} from checkpoints, because it is not used in paddle program."
                 )
             elif self.var_op_deps[name]["var_as_output_ops"] == []:
                 # input nodes
@@ -353,9 +364,9 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
     if op_role_attr_name not in attrs:
-        attrs[
-            op_role_attr_name
-        ] = core.op_proto_and_checker_maker.OpRole.Backward
+        attrs[op_role_attr_name] = (
+            core.op_proto_and_checker_maker.OpRole.Backward
+        )
     if op_device_attr_name not in attrs:
         attrs[op_device_attr_name] = ""
     for name, val in attrs.items():
@@ -623,9 +634,9 @@ def _addup_repetitive_outputs_(
                             else:
                                 grad_var_to_var[new_name] = var_name
                         # rename original var_name
-                        topo_order_for_grad_name[
-                            new_name
-                        ] = topo_order_for_grad_name[var_name]
+                        topo_order_for_grad_name[new_name] = (
+                            topo_order_for_grad_name[var_name]
+                        )
                         renamed_vars[var_name][0] = new_name
                         # before change: _rename_arg_(op_descs, var_name,
                         #                             new_name, 0, idx)
@@ -793,9 +804,9 @@ def _remove_no_grad_branch_(
                         )
                         is not None
                     ):
-                        grad_op_id_to_fwd_op[
-                            new_op_desc.original_id()
-                        ] = grad_op_id_to_fwd_op[op_desc.original_id()]
+                        grad_op_id_to_fwd_op[new_op_desc.original_id()] = (
+                            grad_op_id_to_fwd_op[op_desc.original_id()]
+                        )
                     to_insert.append((new_op_desc, idx))
 
     [op_descs.insert(p[1], p[0]) for p in reversed(to_insert)]
@@ -1026,7 +1037,7 @@ def _append_backward_ops_with_checkpoints_(
             start_idx += 1
 
     if segments != [] and segments[0][0] != 0:
-        recompute_segments = [[0, segments[0][0]]] + segments
+        recompute_segments = [[0, segments[0][0]], *segments]
     else:
         recompute_segments = segments
 
@@ -1079,8 +1090,9 @@ def _append_backward_ops_with_checkpoints_(
             if op.has_attr("sub_block"):
                 raise Exception(
                     "Recompute don't support ops with sub_block"
-                    "invoke op: %s"
-                    % _pretty_op_desc_(op.desc, "with_sub_block")
+                    "invoke op: {}".format(
+                        _pretty_op_desc_(op.desc, "with_sub_block")
+                    )
                 )
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, no_grad_dict[block.idx], []
@@ -1109,8 +1121,9 @@ def _append_backward_ops_with_checkpoints_(
             if op.has_attr("sub_block"):
                 raise Exception(
                     "Recompute don't support ops with sub_block"
-                    "invoke op: %s"
-                    % _pretty_op_desc_(op.desc, "with_sub_block")
+                    "invoke op: {}".format(
+                        _pretty_op_desc_(op.desc, "with_sub_block")
+                    )
                 )
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, no_grad_dict[block.idx], []
@@ -1139,8 +1152,9 @@ def _append_backward_ops_with_checkpoints_(
             if op.has_attr("sub_block"):
                 raise Exception(
                     "Recompute don't support ops with sub_block"
-                    "invoke op: %s"
-                    % _pretty_op_desc_(op.desc, "with_sub_block")
+                    "invoke op: {}".format(
+                        _pretty_op_desc_(op.desc, "with_sub_block")
+                    )
                 )
             input_and_output_names = []
             input_and_output_names.extend(op.desc.input_arg_names())
@@ -1188,9 +1202,9 @@ def _append_backward_ops_with_checkpoints_(
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
                 for g_op_desc in grad_op_desc:
-                    grad_op_id_to_fwd_op[
-                        g_op_desc.original_id()
-                    ] = grad_op_id_to_fwd_op[op_desc.original_id()]
+                    grad_op_id_to_fwd_op[g_op_desc.original_id()] = (
+                        grad_op_id_to_fwd_op[op_desc.original_id()]
+                    )
 
             # Set device for grad_op according to forward Op
             if op_desc.has_attr(device_attr_name):
@@ -1379,9 +1393,9 @@ def _append_backward_ops_(
             assert (
                 op_desc.original_id() not in distop_context.grad_op_id_to_op_id
             )
-            distop_context.grad_op_id_to_op_id[
-                op_desc.original_id()
-            ] = op.desc.original_id()
+            distop_context.grad_op_id_to_op_id[op_desc.original_id()] = (
+                op.desc.original_id()
+            )
 
     if callbacks is not None:
         assert isinstance(callbacks, (list, tuple))
@@ -1922,8 +1936,7 @@ def _get_no_grad_set_name(no_grad_set):
                     no_grad_set_name.add(no_grad_var)
                 else:
                     raise TypeError(
-                        "The type of no_grad_set's member must be paddle.base.Variable or str, but received %s."
-                        % (type(no_grad_var))
+                        f"The type of no_grad_set's member must be paddle.base.Variable or str, but received {type(no_grad_var)}."
                     )
         else:
             raise TypeError(
@@ -1941,14 +1954,43 @@ def _get_no_grad_set_value(no_grad_set):
                     no_grad_set_value.add(no_grad_value)
                 else:
                     raise TypeError(
-                        "The type of no_grad_set's member must be paddle.pir.Value, but received %s."
-                        % (type(no_grad_value))
+                        f"The type of no_grad_set's member must be paddle.pir.Value, but received {type(no_grad_value)}."
                     )
         else:
             raise TypeError(
                 f"The type of no_grad_set should be set or list or tuple, but received {type(no_grad_set)}"
             )
     return no_grad_set_value
+
+
+@overload
+@framework.static_only
+def append_backward(
+    loss: Tensor,
+    parameter_list: Sequence[Tensor | str] | None = ...,
+    no_grad_set: set[Tensor | str] | None = ...,
+    callbacks: (
+        Sequence[Callable[[Block, dict[str, Tensor | core.OpDesc]], None]]
+        | None
+    ) = ...,
+    checkpoints: None = ...,
+    distop_context: DistributedContext = ...,
+) -> list[tuple[Tensor, Tensor]]: ...
+
+
+@overload
+@framework.static_only
+def append_backward(
+    loss: Tensor,
+    parameter_list: Sequence[Tensor | str] | None = ...,
+    no_grad_set: set[Tensor | str] | None = ...,
+    callbacks: (
+        Sequence[Callable[[Block, dict[str, Tensor | core.OpDesc]], None]]
+        | None
+    ) = ...,
+    checkpoints: list[Tensor] = ...,
+    distop_context: DistributedContext = ...,
+) -> tuple[list[tuple[Tensor, Tensor]], list[str]]: ...
 
 
 @framework.static_only
@@ -2250,7 +2292,7 @@ def append_backward(
         for i, param in enumerate(parameter_list):
             check_type(
                 param,
-                'parameter_list[%s]' % i,
+                f'parameter_list[{i}]',
                 (framework.Variable, str),
                 'base.backward.append_backward',
             )
@@ -2669,6 +2711,10 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         If an input does not affect targets, the corresponding gradient Tensor
         will be None
     """
+    if framework.in_pir_mode():
+        return paddle.autograd.ir_backward.calc_gradient(
+            targets, inputs, target_gradients, no_grad_set
+        )
 
     # NOTE: If you want to modify the logic of calc_gradient, please modify
     # it inside the calc_gradient_helper and _get_grad_vars functions
@@ -2689,7 +2735,12 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
 
 @framework.static_only
-def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
+def gradients(
+    targets: Tensor | Sequence[Tensor],
+    inputs: Tensor | Sequence[Tensor],
+    target_gradients: Tensor | Sequence[Tensor] | None = None,
+    no_grad_set: set[Tensor | str] | None = None,
+) -> list[Tensor]:
     """
 
     Backpropagate the gradients of targets to inputs.
@@ -2697,10 +2748,10 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Args:
         targets (Tensor|list[Tensor]|tuple[Tensor]): The target Tensors.
         inputs (Tensor|list[Tensor]|tuple[Tensor]): The input Tensors.
-        target_gradients (Tensor|list[Tensor]|tuple[Tensor], optional): The gradient Tensor
+        target_gradients (Tensor|list[Tensor]|tuple[Tensor]|None, optional): The gradient Tensor
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set (set[Tensor|str], optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
+        no_grad_set (set[Tensor|str]|None, optional): Set of Tensors or Tensor.names in the :ref:`api_guide_Block_en` 0 whose gradients
             should be ignored. All Tensors with ``stop_gradient=True`` from all blocks will
             be automatically added into this set. If this parameter is not None, the Tensors or Tensor.names
             in this set will be added to the default set. Default: None.

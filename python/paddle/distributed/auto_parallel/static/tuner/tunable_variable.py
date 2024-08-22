@@ -87,7 +87,7 @@ class Choice(TunableVariable):
         types = {type(v) for v in values}
         if len(types) > 1:
             raise TypeError(
-                f"Choice can contain only one type of value, but found values: {str(values)} with types: {str(types)}."
+                f"Choice can contain only one type of value, but found values: {values} with types: {types}."
             )
         self._is_unknown_type = False
 
@@ -185,7 +185,7 @@ class IntRange(TunableVariable):
     def _check_int(self, val):
         int_val = int(val)
         if int_val != val:
-            raise ValueError(f"Expects val is an int, but found: {str(val)}.")
+            raise ValueError(f"Expects val is an int, but found: {val}.")
         return int_val
 
     def __repr__(self):

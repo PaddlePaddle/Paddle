@@ -406,7 +406,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def _try_to_compile(self, startup_program, main_program):
         node_num = self._node_num()
-        assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
+        assert node_num >= 1, f"nccl2 node_num must >= 1, now:{node_num}"
 
         if node_num <= 1:
             if self._strategy.nccl_comm_num > 1:

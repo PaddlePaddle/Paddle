@@ -18,6 +18,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 

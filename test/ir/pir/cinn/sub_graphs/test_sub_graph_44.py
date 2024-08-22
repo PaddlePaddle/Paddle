@@ -143,9 +143,7 @@ class TestLayer(TestBase):
             paddle.rand(shape=[1, 100, 256], dtype=paddle.float32),
         )
         self.net = LayerCase
-        self.with_train = False
         self.atol = 1e-8
-        self.with_cinn = False
 
     # NOTE prim + cinn lead to error
 

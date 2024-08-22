@@ -15,6 +15,7 @@
 import unittest
 
 import numpy
+import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     IrMode,
@@ -215,21 +216,26 @@ class TestStatic(Dy2StTestBase):
 class TestInt16(Dy2StTestBase):
     @test_legacy_and_pt_and_pir
     def test_static(self):
-        import numpy as np
-
         paddle.enable_static()
         data = np.array([1, 2], dtype="int16")
         x = paddle.to_tensor(data)
-        if paddle.base.framework.use_pir_api():
-            self.assertTrue(x.dtype == paddle.base.libpaddle.DataType.INT16)
-        else:
-            self.assertTrue(x.dtype == paddle.int16)
+        self.assertEqual(x.dtype, paddle.int16)
 
         y = paddle.to_tensor([1, 2], dtype="int16")
-        if paddle.base.framework.use_pir_api():
-            self.assertTrue(y.dtype == paddle.base.libpaddle.DataType.INT16)
+        self.assertEqual(y.dtype, paddle.int16)
+
+
+class TestNestedListWithTensor(Dy2StTestBase):
+    @test_legacy_and_pt_and_pir
+    def test_nested_list_with_tensor(self):
+        paddle.enable_static()
+        x = paddle.to_tensor(1)
+        y = paddle.to_tensor([[x]])
+        if paddle.framework.use_pir_api():
+            self.assertEqual(y.shape, [1, 1])
         else:
-            self.assertTrue(y.dtype == paddle.int16)
+            self.assertEqual(y.shape, (1, 1))
+        self.assertEqual(y.dtype, paddle.int64)
 
 
 if __name__ == '__main__':

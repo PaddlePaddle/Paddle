@@ -53,17 +53,17 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
       for (int j = 0; j < num_remain; j++) {
         int lbl = static_cast<int>(label_data[i * num_remain + j]);  // NOLINT
         if (lbl != ignore_index_) {
-          PADDLE_ENFORCE_GE(
-              lbl,
-              0,
-              phi::errors::OutOfRange("label value should >= 0 when label "
-                                      "value(%f) not equal to ignore_index(%f)",
-                                      lbl,
-                                      ignore_index_));
+          PADDLE_ENFORCE_GE(lbl,
+                            0,
+                            common::errors::OutOfRange(
+                                "label value should >= 0 when label "
+                                "value(%f) not equal to ignore_index(%f)",
+                                lbl,
+                                ignore_index_));
           PADDLE_ENFORCE_LT(
               lbl,
               axis_dim_,
-              phi::errors::OutOfRange(
+              common::errors::OutOfRange(
                   "label value should less than the shape of axis dimension "
                   "when label value(%f) not equal to ignore_index(%f), But "
                   "received label value as %ld and shape of axis dimension "

@@ -53,7 +53,7 @@ class DistributedElementwise(DistributedOperatorImplContainer):
         input_arg_names = op_desc.input_arg_names()
         assert (
             len(op_desc.output_arg_names()) == 1
-        ), f"elementwise op [{str(dist_op.serial_op)}] has [{len(op_desc.output_arg_names())}] outputs"
+        ), f"elementwise op [{dist_op.serial_op}] has [{len(op_desc.output_arg_names())}] outputs"
         output_arg_name = op_desc.output_arg_names()[0]
         num_inputs = len(input_arg_names)
 

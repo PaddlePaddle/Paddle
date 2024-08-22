@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/framework/ir/onednn/int8_scale_calculation_onednn_pass.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void SetOp(ProgramDesc* prog,
            const std::string& type,
@@ -149,8 +147,6 @@ TEST(Int8ScaleCalculationMkldnnPass,
   MainTest(true, removed_nodes_count, scale, scale_weights);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(int8_scale_calculation_onednn_pass);

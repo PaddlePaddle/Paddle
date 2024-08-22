@@ -32,22 +32,31 @@ void ConcatKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NE(
       x[0],
       nullptr,
-      phi::errors::InvalidArgument("The input should not be null."));
+      common::errors::InvalidArgument("The input should not be null."));
   axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
   PADDLE_ENFORCE_GE(
       axis,
       0,
-      phi::errors::InvalidArgument("concat: axis should be larger than or "
-                                   "equal to 0, but received axis is %d.",
-                                   axis));
+      common::errors::InvalidArgument("concat: axis should be larger than or "
+                                      "equal to 0, but received axis is %d.",
+                                      axis));
   PADDLE_ENFORCE_LT(axis,
                     x[0]->dims().size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "concat: axis should be less than x[0]->dims()!"
                         "But received axis is %d, while x[0]->dims()"
                         "size is %d.",
                         axis,
                         x[0]->dims().size()));
+
+  std::vector<phi::DDim> x_dims;
+  for (size_t i = 0; i < x.size(); ++i) {
+    x_dims.push_back(x[i]->dims());
+  }
+
+  phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
+  out->Resize(out_dims);
+  dev_ctx.template Alloc<T>(out);
 
   // If axis is 0, the lod of the output is not the same as inputs.
 
@@ -59,7 +68,7 @@ void ConcatKernel(const Context& dev_ctx,
         PADDLE_ENFORCE_EQ(
             x[i]->lod().size(),
             lod_size_0,
-            phi::errors::Unimplemented(
+            common::errors::Unimplemented(
                 "The lod level of all input LoDTensors should be same. "
                 "Maybe different lod level of input LoDTensors can concat,"
                 "it is not supported currently. The lod level of %dth input "
@@ -81,8 +90,6 @@ void ConcatKernel(const Context& dev_ctx,
     }
   }
 
-  dev_ctx.template Alloc<T>(out);
-
   std::vector<std::vector<int>> xdims_list;
   std::vector<const XPUType*> ptrs;
   for (unsigned int i = 0; i < x.size(); ++i) {
@@ -99,7 +106,7 @@ void ConcatKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_GT(xdims_list.size(),
                     0,
-                    phi::errors::InvalidArgument("No tensor need concat"));
+                    common::errors::InvalidArgument("No tensor need concat"));
 
   int r = xpu::concat<XPUType>(dev_ctx.x_context(),
                                ptrs,

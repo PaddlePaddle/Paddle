@@ -11,9 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from paddle.incubate.nn import functional as F
 from paddle.nn import Layer
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle._typing import ParamAttrLike
 
 
 class FusedLinear(Layer):
@@ -29,19 +36,19 @@ class FusedLinear(Layer):
     Parameters:
         in_features (int): The number of input units.
         out_features (int): The number of output units.
-        weight_attr (ParamAttr, optional): The attribute for the learnable
+        weight_attr (ParamAttr|None, optional): The attribute for the learnable
             weight of this layer. The default value is None and the weight will be
             initialized to zero. For detailed information, please refer to
             paddle.ParamAttr.
         transpose_weight (bool): Whether to transpose the `weight` Tensor before
             multiplication.
-        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
+        bias_attr (ParamAttr|bool|None, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
             to paddle.ParamAttr. The default value is None and the bias will be
             initialized to zero.
-        name (str, optional): Normally there is no need for user to set this parameter.
+        name (str|None, optional): Normally there is no need for user to set this parameter.
             For detailed information, please refer to :ref:`api_guide_Name` .
 
     Attribute:
@@ -68,15 +75,20 @@ class FusedLinear(Layer):
             [3, 5]
     """
 
+    weight: Tensor
+    bias: Tensor
+    transpose_weight: bool
+    name: str | None
+
     def __init__(
         self,
-        in_features,
-        out_features,
-        weight_attr=None,
-        bias_attr=None,
-        transpose_weight=False,
-        name=None,
-    ):
+        in_features: int,
+        out_features: int,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        transpose_weight: bool = False,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         if transpose_weight:
             weight_shape = [out_features, in_features]
@@ -92,7 +104,7 @@ class FusedLinear(Layer):
         self.transpose_weight = transpose_weight
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return F.fused_linear(
             input, self.weight, self.bias, self.transpose_weight, self.name
         )

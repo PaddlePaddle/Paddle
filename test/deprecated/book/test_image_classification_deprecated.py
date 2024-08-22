@@ -109,7 +109,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     data_shape = [3, 32, 32]
 
     images = paddle.static.data(
-        name='pixel', shape=[-1] + data_shape, dtype='float32'
+        name='pixel', shape=[-1, *data_shape], dtype='float32'
     )
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
@@ -120,7 +120,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         print("train resnet")
         net = resnet_cifar10(images, 32)
     else:
-        raise ValueError("%s network is not supported" % net_type)
+        raise ValueError(f"{net_type} network is not supported")
 
     predict = paddle.static.nn.fc(x=net, size=classdim, activation='softmax')
     cost = paddle.nn.functional.cross_entropy(

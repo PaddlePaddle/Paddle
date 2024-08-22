@@ -40,8 +40,7 @@ class InferSpmdContext {
   InferSpmdContext() = default;
   InferSpmdContext(
       paddle::small_vector<DistMetaTensor, phi::kInputSmallVectorSize> inputs,
-      paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs)
-      : inputs_(std::move(inputs)), attrs_(std::move(attrs)) {}
+      paddle::small_vector<Attribute, phi::kAttrSmallVectorSize> attrs);
 
   void EmplaceBackInput(DistMetaTensor input);
   void EmplaceBackAttr(Attribute attr);
@@ -100,7 +99,8 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
     static SpmdInfo Call(const InferSpmdContext& ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
                     "InferSpmd's Input should appear before Attributes.");
-      const DistMetaTensor& arg = ctx.InputAt(in_idx);
+      const std::pair<int, int> range = ctx.InputRangeAt(in_idx);
+      const DistMetaTensor& arg = ctx.InputAt(range.first);
       return InferSpmdFnCallHelper<Tail...>::template Call<in_idx + 1,
                                                            attr_idx>(
           ctx, pargs..., arg);
@@ -201,22 +201,22 @@ class SpmdRule {
       : forward_fn_(forward_fn), backward_fn_(backward_fn) {}
 
   SpmdInfo InferForward(const InferSpmdContext& ctx) const {
-    PADDLE_ENFORCE_NE(
-        forward_fn_,
-        nullptr,
-        phi::errors::NotFound("Current SpmdRule's forward function is not "
-                              "found, Please make sure "
-                              "that you have registered the rule correctly."));
+    PADDLE_ENFORCE_NE(forward_fn_,
+                      nullptr,
+                      common::errors::NotFound(
+                          "Current SpmdRule's forward function is not "
+                          "found, Please make sure "
+                          "that you have registered the rule correctly."));
     return forward_fn_(ctx);
   }
 
   SpmdInfo InferBackward(const InferSpmdContext& ctx) const {
-    PADDLE_ENFORCE_NE(
-        backward_fn_,
-        nullptr,
-        phi::errors::NotFound("Current SpmdRule's backward function is not "
-                              "found, Please make sure "
-                              "that you have registered the rule correctly."));
+    PADDLE_ENFORCE_NE(backward_fn_,
+                      nullptr,
+                      common::errors::NotFound(
+                          "Current SpmdRule's backward function is not "
+                          "found, Please make sure "
+                          "that you have registered the rule correctly."));
     return backward_fn_(ctx);
   }
 

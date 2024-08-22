@@ -15,16 +15,18 @@
 from __future__ import annotations
 
 import builtins
-import types
-from typing import Callable, TypeVar
+from typing import TYPE_CHECKING, Callable, TypeVar
 
 from typing_extensions import ParamSpec
+
+if TYPE_CHECKING:
+    from types import CodeType
 
 T = TypeVar("T")
 P = ParamSpec("P")
 
-NO_BREAKGRAPH_CODES: set[types.CodeType] = set()
-NO_FALLBACK_CODES: set[types.CodeType] = set()
+NO_BREAKGRAPH_CODES: set[CodeType] = set()
+NO_FALLBACK_CODES: set[CodeType] = set()
 
 
 def assert_true(input: bool):

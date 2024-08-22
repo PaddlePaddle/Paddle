@@ -31,8 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 OneDNNOperatorDialect::OneDNNOperatorDialect(pir::IrContext *ctx)
     : pir::Dialect(name(), ctx, pir::TypeId::get<OneDNNOperatorDialect>()) {
@@ -150,7 +149,6 @@ pir::OpPrintFn OneDNNOperatorDialect::PrintOperation(pir::Operation *op) const {
   return nullptr;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OneDNNOperatorDialect)

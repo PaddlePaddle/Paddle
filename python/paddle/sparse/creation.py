@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 
 import paddle
@@ -26,6 +30,12 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper import LayerHelper
 from paddle.tensor import max, to_tensor
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    from paddle import CPUPlace, CUDAPinnedPlace, CUDAPlace, Tensor
+    from paddle._typing import DTypeLike, NumbericSequence, ShapeLike
 
 __all__ = [
     'sparse_coo_tensor',
@@ -71,8 +81,18 @@ def _check_indices_dtype(dtype):
 
 
 def sparse_coo_tensor(
-    indices, values, shape=None, dtype=None, place=None, stop_gradient=True
-):
+    indices: (
+        list[list[int]]
+        | tuple[tuple[int, ...], ...]
+        | npt.NDArray[np.int_]
+        | Tensor
+    ),
+    values: NumbericSequence | npt.NDArray[Any] | Tensor,
+    shape: ShapeLike | None = None,
+    dtype: DTypeLike | None = None,
+    place: CPUPlace | CUDAPinnedPlace | CUDAPlace | str | None = None,
+    stop_gradient: bool = True,
+) -> Tensor:
     r"""
     Constructs a sparse ``paddle.Tensor`` in coordinate format according to the indices
     and values of the specified non-zero elements.
@@ -82,14 +102,14 @@ def sparse_coo_tensor(
             Can be a list, tuple, numpy\.ndarray, paddle\.Tensor. The indices must be 2-D.
         values(list|tuple|ndarray|Tensor): Initial values for the tensor.
             Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
-        shape(list|tuple, optional): The shape of the sparse tensor also represents the shape of
+        shape(list|tuple|None, optional): The shape of the sparse tensor also represents the shape of
             original dense tensor. If not provided the smallest shape will be inferred to
             hold all elements.
-        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
+        dtype(str|np.dtype|None, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data``
             except for python float number which gets dtype from ``get_default_type`` .
-        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str|None, optional): The place to allocate Tensor. Can be
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.
@@ -182,8 +202,14 @@ def sparse_coo_tensor(
 # TODO: need to support shape is None
 @dygraph_only
 def sparse_csr_tensor(
-    crows, cols, values, shape, dtype=None, place=None, stop_gradient=True
-):
+    crows: list[int] | tuple[int, ...] | npt.NDArray[np.int_] | Tensor,
+    cols: list[int] | tuple[int, ...] | npt.NDArray[np.int_] | Tensor,
+    values: NumbericSequence | npt.NDArray[Any] | Tensor,
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    place: CPUPlace | CUDAPinnedPlace | CUDAPlace | str | None = None,
+    stop_gradient: bool = True,
+) -> Tensor:
     r"""
     Constructs a sparse ``paddle.Tensor`` in CSR(Compressed Sparse Row) format according to the
     ``crows``, ``cols`` and ``values``.
@@ -200,11 +226,11 @@ def sparse_csr_tensor(
         shape(list|tuple, optional): The shape of the sparse tensor also represents the shape of
             original dense tensor.
             hold all elements.
-        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
+        dtype(str|np.dtype|None, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data``
             except for python float number which gets dtype from ``get_default_type`` .
-        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
+        place(CPUPlace|CUDAPinnedPlace|CUDAPlace|str|None, optional): The place to allocate Tensor. Can be
             CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
             string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
         stop_gradient(bool, optional): Whether to block the gradient propagation of Autograd. Default: True.

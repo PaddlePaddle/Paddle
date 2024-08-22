@@ -45,11 +45,17 @@ void SigmoidCrossEntropyWithLogitsKernel(
     if (static_cast<int>(label) == ignore_index) {
       out_data[idx] = static_cast<T>(0.);
     } else {
-      T pos_weight_idx = pos_weight_data == nullptr ? 1 : pos_weight_data[idx];
-      T term1 = (x > 0) ? x : 0;
-      T term2 = x * label;
-      T term3 = std::log(static_cast<T>(1) + std::exp(-std::abs(x)));
-      out_data[idx] = term1 - term2 + term3 * pos_weight_idx;
+      if (pos_weight_data == nullptr) {
+        T term1 = (x > 0) ? x : 0;
+        T term2 = x * label;
+        T term3 = std::log(static_cast<T>(1) + std::exp(-std::abs(x)));
+        out_data[idx] = term1 - term2 + term3;
+      } else {
+        T max_val = x < 0 ? -x : 0;
+        T term1 = (static_cast<T>(1.) - label) * x;
+        T term2 = std::log(std::exp(-max_val) + std::exp(-x - max_val));
+        out_data[idx] = term1 + pos_weight_data[idx] * (term2 + max_val);
+      }
     }
   }
 

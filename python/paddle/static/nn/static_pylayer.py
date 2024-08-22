@@ -330,7 +330,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                 ...     data_grad = paddle.static.gradients([ret], data)[0]
 
                 >>> exe.run(start_program)
-                >>> x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32)
+                >>> x = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]], dtype=np.float32) # type: ignore[var-annotated]
                 >>> x, x_grad, y = exe.run(
                 ...     main_program,
                 ...     feed={"X": x},
@@ -555,9 +555,9 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                         bwd_out_new = _append_grad_suffix_(
                             fwd_input_name
                         )  # "X" => "X@GRAD"
-                        mgr.var_old_to_new[
-                            bwd_output.name
-                        ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
+                        mgr.var_old_to_new[bwd_output.name] = (
+                            bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
+                        )
 
         # **Delete the backward input**
         for bwd_var in grad_var_ins:

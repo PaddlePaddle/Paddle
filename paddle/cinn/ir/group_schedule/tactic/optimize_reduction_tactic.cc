@@ -39,14 +39,14 @@ bool CanApply(const std::string& block_name, ir::IRSchedule* sch) {
   ir::Expr block_expr = sch->GetBlock(block_name);
   ir::ScheduleBlockRealize* block_realize =
       block_expr.As<ir::ScheduleBlockRealize>();
-  PADDLE_ENFORCE_NOT_NULL(
-      block_realize,
-      phi::errors::InvalidArgument("The block is not a ScheduleBlockRealize"));
+  PADDLE_ENFORCE_NOT_NULL(block_realize,
+                          ::common::errors::InvalidArgument(
+                              "The block is not a ScheduleBlockRealize"));
   ir::ScheduleBlock* sch_block =
       block_realize->schedule_block.As<ir::ScheduleBlock>();
   PADDLE_ENFORCE_NOT_NULL(
       sch_block,
-      phi::errors::InvalidArgument("The block is not a ScheduleBlock"));
+      ::common::errors::InvalidArgument("The block is not a ScheduleBlock"));
   analyzer::AnalyzeScheduleBlockReadWriteBuffer(sch_block);
 
   // 1. The block must have write buffer
@@ -137,7 +137,7 @@ void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
   PADDLE_ENFORCE_LT(
       first_reduce_loop_idx,
       loops.size(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "first_reduce_loop_idx should be less than number of loop."));
   ir::Expr block = sch->GetBlock(block_id);
   ir::Tensor reduce_tensor = analyzer::GetStoreTensorOfSBlock(block);
@@ -168,6 +168,12 @@ void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
         sch->SetBuffer(rf_block, "local");
       },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::HygonDCUArchHIP) {
+        rb_loops = sch->GetLoops(block_id);
+        rf_block = sch->GetBlock(rf_block_id);
+        sch->Bind(rb_loops.back(), "threadIdx.x");
+        sch->SetBuffer(rf_block, "local");
       });
 
   VLOG(6) << "Loop fusion and cross thread reduction: "

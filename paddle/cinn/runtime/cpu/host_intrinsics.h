@@ -122,13 +122,3 @@ inline double FN_FP64(cbrt)(double x);
 
 #undef FN_FP64
 }
-
-namespace cinn {
-namespace runtime {
-
-void cinn_assert_true_host(void* v_args,
-                           int num_args,
-                           int msg,
-                           bool only_warning);
-}  // namespace runtime
-}  // namespace cinn

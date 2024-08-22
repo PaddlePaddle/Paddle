@@ -29,7 +29,7 @@ Plan::Plan(const std::vector<std::shared_ptr<Job>>& job_list,
   for (size_t i = 0; i < job_list_.size(); ++i) {
     const auto& job = job_list_[i];
     PADDLE_ENFORCE(type_to_program_.find(job->Type()) != type_to_program_.end(),
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "The %d-th job (type:%s, micro_batch_id:%d) has no "
                        "corresponding Program.",
                        i,
@@ -51,7 +51,7 @@ Plan::Plan(
     const auto& job = job_list_[i];
     PADDLE_ENFORCE(
         type_to_ir_program_.find(job->Type()) != type_to_ir_program_.end(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The %d-th job (type:%s, micro_batch_id:%d) has no "
             "corresponding Program.",
             i,

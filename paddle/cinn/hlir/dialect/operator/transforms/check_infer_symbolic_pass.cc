@@ -66,6 +66,9 @@ class BlockDimExprsAsserter {
 
  private:
   void AssertOpRegions(const pir::Operation* op) {
+    // Inserting too many check op in while block will cause model too slow, so
+    // skip the while block checking.
+    if (op->isa<paddle::dialect::WhileOp>()) return;
     for (std::size_t i = 0; i < op->num_regions(); ++i) {
       for (auto& block : op->region(i)) {
         BlockDimExprsAsserter asserter(GraphDimExprs4Value, ir_ctx_, &block);
@@ -74,72 +77,8 @@ class BlockDimExprsAsserter {
     }
   }
 
-  void InitLocalShapeAnalysis(const pir::Operation& op,
-                              pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    auto VisitEachInputAndDimExprs = [&](const auto& Visit) {
-      for (int i = 0; i < op.num_operands(); ++i) {
-        pir::Value input = op.operand_source(i);
-        if (!input || !input.type()) continue;
-        const auto& value_dim_exprs = GraphDimExprs4Value(input);
-        Visit(input, value_dim_exprs);
-      }
-    };
-    auto NewSymbolReplacedDimExprs = [&](const auto& dim_exprs) {
-      auto NewSymbolReplaced = [shape_analysis](const auto& dim_expr) {
-        if (dim_expr.template isa<int64_t>()) return dim_expr;
-        return symbol::DimExpr(shape_analysis->GetNextSymName());
-      };
-      std::vector<symbol::DimExpr> ret;
-      ret.reserve(dim_exprs.size());
-      for (const auto& dim_expr : dim_exprs) {
-        ret.push_back(NewSymbolReplaced(dim_expr));
-      }
-      return ret;
-    };
-    auto NewSymbolReplacedTensor =
-        [&](const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data) {
-          auto shape = NewSymbolReplacedDimExprs(tensor_shape_or_data.shape());
-          const auto& data = tensor_shape_or_data.data();
-          if (!data.has_value()) {
-            return symbol::ShapeOrDataDimExprs(
-                symbol::TensorShapeOrDataDimExprs(shape));
-          } else {
-            auto replaecd_data = NewSymbolReplacedDimExprs(data.value());
-            return symbol::ShapeOrDataDimExprs(
-                symbol::TensorShapeOrDataDimExprs(shape, replaecd_data));
-          }
-        };
-    auto NewSymbolReplacedTensorList =
-        [&](const symbol::TensorListShapeOrDataDimExprs& shape_or_data_list) {
-          symbol::TensorListShapeOrDataDimExprs ret;
-          ret.reserve(shape_or_data_list.size());
-          for (auto& shape_or_data : shape_or_data_list) {
-            const auto& replaced_shape_or_data =
-                NewSymbolReplacedTensor(shape_or_data);
-            ret.push_back(replaced_shape_or_data
-                              .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
-          }
-          return symbol::ShapeOrDataDimExprs(ret);
-        };
-    auto GetNewSymbolReplaced = [&](const auto& value_dim_exprs) {
-      auto patterns = ::common::Overloaded{NewSymbolReplacedTensor,
-                                           NewSymbolReplacedTensorList};
-      return std::visit(patterns, value_dim_exprs.variant());
-    };
-    VisitEachInputAndDimExprs([&](auto value, const auto& value_dim_exprs) {
-      if (!value || !value.type()) return;
-      const auto& new_symbol_replaced = GetNewSymbolReplaced(value_dim_exprs);
-      shape_analysis->SetShapeOrDataForValue(value, new_symbol_replaced);
-    });
-  }
-
-  DimExprs4ValueT MakeOpDimExprs4Value(const pir::Operation* op) {
-    auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>();
-    InitLocalShapeAnalysis(*op, shape_analysis.get());
-    return [shape_analysis](
-               pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
-      return shape_analysis->GetShapeOrDataForValue(value);
-    };
+  DimExprs4ValueT GetOpDimExprs4Value(const pir::Operation* op) {
+    return MakeOpDimExprs4Value(op, GraphDimExprs4Value);
   }
 
   void AssertDimExprForOutput(pir::Operation* op) {  // NOLINT
@@ -150,15 +89,27 @@ class BlockDimExprsAsserter {
       LOG(INFO) << "skip the checking for [ " << op->name() << " ]";
       return;
     }
+    const bool is_same_operand_result_op = [&] {
+      if (op->num_operands() != 1 || op->num_results() != 1) return false;
+      if (!op->operand_source(0).type().isa<paddle::dialect::DenseTensorType>())
+        return false;
+      if (op->result(0).type().isa<paddle::dialect::DenseTensorType>())
+        return false;
+      return GraphDimExprs4Value(op->operand_source(0)) ==
+             GraphDimExprs4Value(op->result(0));
+    }();
+    // skip the ops which operand and result have same shape
+    if (is_same_operand_result_op) return;
 
-    auto OpDimExprs4Value = MakeOpDimExprs4Value(op);
+    auto OpDimExprs4Value = GetOpDimExprs4Value(op);
     const auto& inputs = [&] {
       std::vector<pir::Value> inputs;
       inputs.reserve(op->num_operands());
       for (int i = 0; i < op->num_operands(); ++i) {
         const auto& input = op->operand_source(i);
         if (!input || !input.type()) continue;
-        if (input.type().isa<pir::VectorType>()) {
+        if (input.type().isa<pir::VectorType>() ||
+            input.type().isa<paddle::dialect::DenseTensorArrayType>()) {
           return std::vector<pir::Value>{};
         }
         inputs.push_back(input);
@@ -169,7 +120,7 @@ class BlockDimExprsAsserter {
     builder_.SetInsertionPointAfter(op);
     for (std::size_t i = 0; i < op->num_results(); ++i) {
       pir::Value output = op->result(i);
-      if (!output || !output.type()) continue;
+      if (!output || !output.type() || output.use_empty()) continue;
       const auto& shape_or_data_dim_expr = GraphDimExprs4Value(output);
       if (!shape_or_data_dim_expr.isa<symbol::TensorShapeOrDataDimExprs>())
         continue;
@@ -263,9 +214,10 @@ class BlockDimExprsAsserter {
     auto opt_shape_tensor_from_dim_exprs =
         BuildShapeTensorFromDataDimExprs(inputs, output, OpDimExprs4Value);
     if (!opt_shape_tensor_from_dim_exprs.has_value()) return;
+    const auto& output_dims =
+        output.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+    if (::common::contain_unknown_dim(output_dims)) return;
     pir::Value flatten_output = [&] {
-      const auto& output_dims =
-          output.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
       if (output_dims.size() > 1) {
         return builder_
             .Build<paddle::dialect::FlattenOp>(

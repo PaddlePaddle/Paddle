@@ -23,8 +23,12 @@
 #include <string>
 #include <unordered_map>
 
+#ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
+#endif
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/pir/include/core/builder.h"
@@ -34,8 +38,6 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
-#include "paddle/cinn/frontend/op_mapper_registry.h"
-#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -95,10 +97,10 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
   PADDLE_ENFORCE_EQ(
       block->size(),
       sort_ops.size(),
-      phi::errors::InvalidArgument("sort_ops.size() must be equal to "
-                                   "block.size(), but received %d != %d",
-                                   block->size(),
-                                   sort_ops.size()));
+      common::errors::InvalidArgument("sort_ops.size() must be equal to "
+                                      "block.size(), but received %d != %d",
+                                      block->size(),
+                                      sort_ops.size()));
 
   return sort_ops;
 }
@@ -119,7 +121,7 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
       producers.insert(source_op);
       PADDLE_ENFORCE(
           op2id.count(source_op),
-          phi::errors::PreconditionNotMet("source op MUST in op2id map"));
+          common::errors::PreconditionNotMet("source op MUST in op2id map"));
       vec_res.emplace_back(source_op);
     }
   }
@@ -273,7 +275,10 @@ void SubgraphDetector::DoOpFusion() {
 void SubgraphDetector::BuildSubGraph() {
   std::unordered_set<SubGraph*> subgraph_set;
   for (auto* op : sort_ops_) {
-    CHECK(subgraph_map_.count(op));
+    PADDLE_ENFORCE_EQ(
+        subgraph_map_.count(op),
+        true,
+        common::errors::InvalidArgument("subgraph_map_ MUST contain op"));
     auto& subgraph = subgraph_map_[op];
     if (subgraph_set.count(subgraph.get())) {
       continue;
@@ -285,7 +290,10 @@ void SubgraphDetector::BuildSubGraph() {
 
   for (auto& subgraph : subgraph_list_) {
     for (auto& input_op : subgraph->input_ops) {
-      CHECK(subgraph_map_.count(input_op));
+      PADDLE_ENFORCE_EQ(
+          subgraph_map_.count(input_op),
+          true,
+          common::errors::InvalidArgument("subgraph_map_ MUST contain op"));
       auto& producer = subgraph_map_[input_op];
       subgraph->producers.insert(producer);
       producer->consumers.insert(subgraph);
@@ -498,8 +506,10 @@ namespace {
 
 struct IncrementalOrder {
   bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
-    CHECK(lhs->GetParent() == rhs->GetParent())
-        << "lhs and rhs should have same parent block.";
+    PADDLE_ENFORCE_EQ(lhs->GetParent() == rhs->GetParent(),
+                      true,
+                      common::errors::PreconditionNotMet(
+                          "lhs and rhs should have same parent block."));
     auto lhs_iter = lhs->operator Block::ConstIterator();
     auto rhs_iter = rhs->operator Block::ConstIterator();
     auto end_iter = lhs->GetParent()->end();
@@ -508,8 +518,10 @@ struct IncrementalOrder {
       if (lhs_iter == rhs_iter) return true;
       if (lhs_iter == end_iter) return false;
     }
-    CHECK(false) << "rhs " << rhs->id() << " is not reachable from lhs "
-                 << lhs->id();
+    PADDLE_ENFORCE_EQ(
+        false,
+        true,
+        common::errors::InvalidArgument("rhs is not reachable from lhs."));
     return false;
   }
 };
@@ -600,7 +612,9 @@ pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
 void ReplaceWithGroupOp(pir::Block* block,
                         const GroupOpsVec& group_ops) {  // NOLINT
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+#ifdef PADDLE_WITH_CINN
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+#endif
 #ifdef PADDLE_WITH_DNNL
   ctx->GetOrRegisterDialect<paddle::dialect::OneDNNOperatorDialect>();
 #endif
@@ -613,7 +627,9 @@ void ReplaceWithGroupOp(pir::Block* block,
   builder.set_insertion_point(insert_point);
   VLOG(6) << "Insert GroupOp after " << insert_point->name();
 
-  // step 2: Replace the old op with GroupOp.
+// step 2: Replace the old op with GroupOp.
+#ifdef PADDLE_WITH_CINN
+
   auto new_group_op = [&]() -> cinn::dialect::GroupOp {
     std::vector<pir::Type> output_types;
     for (auto& value : outputs) output_types.emplace_back(value.type());
@@ -624,6 +640,18 @@ void ReplaceWithGroupOp(pir::Block* block,
     }
     return group_op;
   }();
+#else
+  auto new_group_op = [&]() -> pir::GroupOp {
+    std::vector<pir::Type> output_types;
+    for (auto& value : outputs) output_types.emplace_back(value.type());
+
+    auto group_op = builder.Build<pir::GroupOp>(output_types);
+    for (auto op : group_ops) {
+      op->MoveTo(group_op.block(), group_op.block()->end());
+    }
+    return group_op;
+  }();
+#endif
 
   // step 3: Replace outputs of inner ops
   const std::vector<pir::Value> group_outs = new_group_op->results();

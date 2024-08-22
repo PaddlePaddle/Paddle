@@ -23,7 +23,7 @@ void QuantizeGradFunc(const Context& dev_ctx,
                       const DenseTensor& dout,
                       DenseTensor* dx) {
   PADDLE_ENFORCE_NOT_NULL(dx,
-                          phi::errors::PreconditionNotMet(
+                          common::errors::PreconditionNotMet(
                               "The QuantizeGradFunc output dx is nullptr"));
   // Initialize dx as same as d_out
   dev_ctx.template Alloc<T>(dx);
@@ -97,10 +97,12 @@ PD_REGISTER_KERNEL(fake_quantize_dequantize_abs_max_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FakeQuantizeDequantizeAbsMaxGradKernel,
-                   float) {}
+                   float,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(fake_quantize_dequantize_moving_average_abs_max_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FakeQuantizeDequantizeMovingAverageAbsMaxGradKernel,
-                   float) {}
+                   float,
+                   phi::dtype::float16) {}
 #endif

@@ -58,8 +58,7 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
 
     pat.Tensor("add_out") = add(pat.Tensor("conv_out"), pat.Tensor("bias"));
 
-    if (conv_name_ == paddle::dialect::Conv2dOp::name() ||
-        conv_name_ == paddle::onednn::dialect::FusedConv2dOp::name()) {
+    if (conv_name_ == paddle::dialect::Conv2dOp::name()) {
       pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         if (!pir::ValueIsPersistable(match_ctx.Tensor("bias"))) {
           return false;
@@ -96,7 +95,19 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
     }
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
-      if (bias_shape.size() != 1) return false;
+      auto output_shape = pir::GetShapeFromValue(match_ctx.Tensor("conv_out"));
+      if (bias_shape.size() != 1) {
+        if (bias_shape[1] != output_shape[1]) return false;
+        bool is_ok = true;
+        for (size_t i = 0; i < bias_shape.size(); i++) {
+          if (i == 1) continue;
+          if (bias_shape[i] != 1) {
+            is_ok = false;
+            break;
+          }
+        }
+        return is_ok;
+      }
       return true;
     });
 
@@ -304,7 +315,7 @@ class FusedConvTransposeAddFusePattern : public paddle::drr::DrrPatternBase {
 
 class Conv2dBiasFusePass : public pir::PatternRewritePass {
  public:
-  Conv2dBiasFusePass() : pir::PatternRewritePass("conv2d_bias_fuse_pass", 2) {}
+  Conv2dBiasFusePass() : pir::PatternRewritePass("conv2d_bias_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -319,7 +330,7 @@ class Conv2dBiasFusePass : public pir::PatternRewritePass {
 class Conv2dTransposeBiasFusePass : public pir::PatternRewritePass {
  public:
   Conv2dTransposeBiasFusePass()
-      : pir::PatternRewritePass("conv2d_transpose_bias_fuse_pass", 2) {}
+      : pir::PatternRewritePass("conv2d_transpose_bias_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -331,7 +342,7 @@ class Conv2dTransposeBiasFusePass : public pir::PatternRewritePass {
 
 class Conv3dBiasFusePass : public pir::PatternRewritePass {
  public:
-  Conv3dBiasFusePass() : pir::PatternRewritePass("conv3d_bias_fuse_pass", 2) {}
+  Conv3dBiasFusePass() : pir::PatternRewritePass("conv3d_bias_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

@@ -664,8 +664,12 @@ def predict_dygraph_jit(args, data):
 
 
 def predict_analysis_inference(args, data):
+    if use_pir_api():
+        model_filename = args.pir_model_filename
+    else:
+        model_filename = args.model_filename
     output = PredictorTools(
-        args.model_save_dir, args.model_filename, args.params_filename, [data]
+        args.model_save_dir, model_filename, args.params_filename, [data]
     )
     (out,) = output()
     return out
@@ -734,15 +738,16 @@ class TestMobileNet(Dy2StTestBase):
             rtol=1e-05,
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
-        if not use_pir_api():
-            predictor_pre = predict_analysis_inference(self.args, image)
-            np.testing.assert_allclose(
-                predictor_pre,
-                st_pre,
-                rtol=1e-05,
-                atol=1e-05,
-                err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
-            )
+        if os.name == "nt" and use_pir_api():
+            return
+        predictor_pre = predict_analysis_inference(self.args, image)
+        np.testing.assert_allclose(
+            predictor_pre,
+            st_pre,
+            rtol=1e-05,
+            atol=1e-05,
+            err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
+        )
 
     @test_legacy_and_pir
     def test_mobile_net_v1(self):

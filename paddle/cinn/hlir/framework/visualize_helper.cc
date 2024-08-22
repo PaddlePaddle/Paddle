@@ -25,7 +25,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/dot_lang.h"
 #include "paddle/cinn/utils/string.h"
@@ -88,51 +87,6 @@ bool PassPrinter::PassEnd(const std::string& pass_name,
                                                      pass_id_,
                                                      pass_name.c_str());
   WriteToFile(file_path, program_info);
-
-  ++pass_id_;
-  return true;
-}
-
-bool PassPrinter::PassBegin(const std::string& pass_name, Graph* g) {
-  if (save_path_.empty()) {
-    return false;
-  }
-  const auto& graph_info = g->DebugGroupedGraph(fetch_ids_);
-  VLOG(3) << "Before " << pass_name << " Pass:\n" << graph_info;
-  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_before.txt",
-                                                     save_path_.c_str(),
-                                                     pass_id_,
-                                                     pass_name.c_str());
-  WriteToFile(file_path, graph_info);
-
-  const auto& dot_info = g->VisualizeGraph(fetch_ids_);
-  const std::string& dot_path = utils::StringFormat("%s/pass_%d_%s_before.dot",
-                                                    save_path_.c_str(),
-                                                    pass_id_,
-                                                    pass_name.c_str());
-  WriteToFile(dot_path, dot_info);
-  return true;
-}
-
-bool PassPrinter::PassEnd(const std::string& pass_name, Graph* g) {
-  if (save_path_.empty()) {
-    return false;
-  }
-  const auto& graph_info = g->DebugGroupedGraph(fetch_ids_);
-  VLOG(3) << "After " << pass_name << " Pass:\n" << graph_info;
-
-  const std::string& file_path = utils::StringFormat("%s/pass_%d_%s_after.txt",
-                                                     save_path_.c_str(),
-                                                     pass_id_,
-                                                     pass_name.c_str());
-  WriteToFile(file_path, graph_info);
-
-  const auto& dot_info = g->VisualizeGraph(fetch_ids_);
-  const std::string& dot_path = utils::StringFormat("%s/pass_%d_%s_after.dot",
-                                                    save_path_.c_str(),
-                                                    pass_id_,
-                                                    pass_name.c_str());
-  WriteToFile(dot_path, dot_info);
 
   ++pass_id_;
   return true;

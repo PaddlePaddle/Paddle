@@ -352,9 +352,13 @@ void InverseGradInferMeta(const MetaTensor& out,
                           const MetaTensor& dout,
                           MetaTensor* dx);
 
-void KernelWithXShapeInferMeta(const MetaTensor& xshape,
+void KernelWithXShapeInferMeta(const MetaTensor& x,
                                const MetaTensor& out,
                                MetaTensor* dx);
+
+void GradSameWithXInferMeta(const MetaTensor& xshape,
+                            const MetaTensor& out,
+                            MetaTensor* dx);
 
 void LUGradInferMeta(const MetaTensor& x,
                      const MetaTensor& out,
@@ -406,6 +410,7 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const std::vector<int>& paddings,
                                    bool global_pooling,
                                    bool adaptive,
+                                   bool ceil_mode,
                                    MetaTensor* dx);
 
 void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import atexit
 import collections
 import glob
@@ -156,7 +158,7 @@ def bootstrap_context():
     bdist_egg.write_stub = origin_write_stub
 
 
-def load_op_meta_info_and_register_op(lib_filename):
+def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
     core.load_op_meta_info_and_register_op(lib_filename)
     return OpProtoHolder.instance().update_op_proto()
 
@@ -381,26 +383,25 @@ def prepare_unix_cudaflags(cflags):
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
     if core.is_compiled_with_rocm():
-        cflags = (
-            COMMON_HIPCC_FLAGS
-            + ['-Xcompiler', '-fPIC']
-            + cflags
-            + get_rocm_arch_flags(cflags)
-        )
+        cflags = [
+            *COMMON_HIPCC_FLAGS,
+            '-Xcompiler',
+            '-fPIC',
+            *cflags,
+            *get_rocm_arch_flags(cflags),
+        ]
     else:
-        cflags = (
-            COMMON_NVCC_FLAGS
-            + [
-                '-ccbin',
-                'cc',
-                '-Xcompiler',
-                '-fPIC',
-                '--expt-relaxed-constexpr',
-                '-DNVCC',
-            ]
-            + cflags
-            + get_cuda_arch_flags(cflags)
-        )
+        cflags = [
+            *COMMON_NVCC_FLAGS,
+            '-ccbin',
+            'cc',
+            '-Xcompiler',
+            '-fPIC',
+            '--expt-relaxed-constexpr',
+            '-DNVCC',
+            *cflags,
+            *get_cuda_arch_flags(cflags),
+        ]
 
     return cflags
 
@@ -409,7 +410,7 @@ def prepare_win_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + ['-w'] + cflags + get_cuda_arch_flags(cflags)
+    cflags = [*COMMON_NVCC_FLAGS, '-w', *cflags, *get_cuda_arch_flags(cflags)]
 
     return cflags
 
@@ -440,7 +441,13 @@ def get_rocm_arch_flags(cflags):
     """
     For ROCm platform, amdgpu target should be added for HIPCC.
     """
-    cflags = cflags + ['-fno-gpu-rdc', '-amdgpu-target=gfx906']
+    cflags = [
+        *cflags,
+        '-fno-gpu-rdc',
+        '-amdgpu-target=gfx906',
+        '-amdgpu-target=gfx926',
+        '-amdgpu-target=gfx928',
+    ]
     return cflags
 
 
@@ -512,7 +519,7 @@ def _get_include_dirs_when_compiling(compile_dir):
         include_dirs_file
     ), f"File {include_dirs_file} does not exist"
     with open(include_dirs_file, 'r') as f:
-        include_dirs = [line.strip() for line in f.readlines() if line.strip()]
+        include_dirs = [line.strip() for line in f if line.strip()]
 
     extra_dirs = ['paddle/base/platform']
     all_include_dirs = list(include_dirs)
@@ -882,7 +889,7 @@ def is_cuda_file(path):
     return items[-1] in cuda_suffix
 
 
-def get_build_directory(verbose=False):
+def get_build_directory(verbose: bool = False) -> str:
     """
     Return paddle extension root directory to put shared library. It could be specified by
     ``export PADDLE_EXTENSION_DIR=XXX`` . If not set, ``~/.cache/paddle_extension`` will be used
@@ -923,7 +930,7 @@ def get_build_directory(verbose=False):
     return root_extensions_directory
 
 
-def parse_op_info(op_name):
+def parse_op_info(op_name: str) -> tuple[list[str], list[str], list[str]]:
     """
     Parse input names and outputs detail information from registered custom op
     from OpInfoMap.
@@ -1209,21 +1216,25 @@ def _get_api_inputs_str(op_name):
     # input name by `@`, and only use first substr as argument
     params_list = ','.join([p.split("@")[0].lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
-    ins_map = "{%s}" % ','.join(
-        [
-            "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
-            for in_name in in_names
-        ]
+    ins_map = "{{{}}}".format(
+        ','.join(
+            [
+                "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
+                for in_name in in_names
+            ]
+        )
     )
     # e.g: {'num': n}
-    attrs_map = "{%s}" % ",".join(
-        [
-            "'{}' : {}".format(attr_name, attr_name.split("@")[0].lower())
-            for attr_name in attr_names
-        ]
+    attrs_map = "{{{}}}".format(
+        ",".join(
+            [
+                "'{}' : {}".format(attr_name, attr_name.split("@")[0].lower())
+                for attr_name in attr_names
+            ]
+        )
     )
     # e.g: ['Out', 'Index']
-    outs_list = "[%s]" % ','.join([f"'{name}'" for name in out_names])
+    outs_list = "[{}]".format(','.join([f"'{name}'" for name in out_names]))
 
     inplace_reverse_idx = core.eager._get_custom_operator_inplace_map(op_name)
 

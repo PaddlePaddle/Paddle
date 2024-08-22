@@ -28,7 +28,7 @@ class AllToAllBaseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
     phi::DDim dim = ctx->GetInputDim("X");
     if (dim[0] < 0) dim[0] = -1;

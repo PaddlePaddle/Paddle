@@ -337,7 +337,7 @@ static inline void* GetDsoHandleFromSearchPath(
     if (throw_on_error) {
       // NOTE: Special error report case, no need to change its format
       PADDLE_THROW(
-          phi::errors::PreconditionNotMet(error_msg, dso_name, errorno));
+          common::errors::PreconditionNotMet(error_msg, dso_name, errorno));
     } else {
       LOG(WARNING) << paddle::string::Sprintf(error_msg, dso_name, errorno);
     }
@@ -357,7 +357,7 @@ void* GetCublasDsoHandle() {
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, win_cublas_lib, true, {cuda_lib_path});
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cublas64_12.dll");
 #else
@@ -377,7 +377,7 @@ void* GetCublasDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublas.so");
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublas.so.12");
 #else
@@ -405,7 +405,7 @@ void* GetCublasLtDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublasLt.so");
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublasLt.so.12");
 #else
@@ -496,7 +496,7 @@ void* GetCUPTIDsoHandle() {
         FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
 #endif
 
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(
         FLAGS_cupti_dir, "libcupti.so.12", false, {cupti_lib_path});
@@ -591,7 +591,7 @@ void* GetCusparseDsoHandle() {
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cusparse64_12.dll");
 #else
@@ -611,7 +611,7 @@ void* GetCusparseDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cusparse_dir, "libcusparse.so");
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cusparse_dir, "libcusparse.so.12");
 #else
@@ -779,11 +779,12 @@ void* GetOpDsoHandle(const std::string& dso_name) {
 
 void* GetNvtxDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support Apple."));
+  PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Apple."));
 #elif defined(_WIN32)
-  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support Windows."));
+  PADDLE_THROW(common::errors::Unimplemented("Nvtx do not support Windows."));
 #elif !defined(PADDLE_WITH_CUDA)
-  PADDLE_THROW(phi::errors::Unimplemented("Nvtx do not support without CUDA."));
+  PADDLE_THROW(
+      common::errors::Unimplemented("Nvtx do not support without CUDA."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
 #endif
@@ -799,7 +800,7 @@ void* GetCUFFTDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so");
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so.11");
   } else {
     std::string warning_msg(
@@ -815,7 +816,7 @@ void* GetCUFFTDsoHandle() {
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, win_cufft_lib, true, {cuda_lib_path});
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cufft64_11.dll");
 #else

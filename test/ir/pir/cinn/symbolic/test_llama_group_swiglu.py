@@ -50,35 +50,7 @@ class TestTransposeReshape(unittest.TestCase):
         self.y = paddle.randn([4, 32, 11008], dtype="float16")
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 9)
-        utils.check_jit_kernel_structure(
-            static_fn,
-            {
-                'if_0': {
-                    'if_0_0': {'jit_kernel': 1},
-                    'else_0_0': {
-                        'if_0_0_0': {'jit_kernel': 1},
-                        'else_0_0_0': {'jit_kernel': 1},
-                    },
-                },
-                'else_0': {
-                    'if_0_0': {
-                        'if_0_0_0': {'jit_kernel': 1},
-                        'else_0_0_0': {
-                            'if_0_0_0_0': {'jit_kernel': 1},
-                            'else_0_0_0_0': {'jit_kernel': 1},
-                        },
-                    },
-                    'else_0_0': {
-                        'if_0_0_0': {'jit_kernel': 1},
-                        'else_0_0_0': {
-                            'if_0_0_0_0': {'jit_kernel': 1},
-                            'else_0_0_0_0': {'jit_kernel': 1},
-                        },
-                    },
-                },
-            },
-        )
+        utils.check_jit_kernel_number(static_fn, 1)
 
     def eval(self, use_cinn=False, mode="jit"):
         net = TransposeReshapeNet()

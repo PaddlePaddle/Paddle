@@ -142,5 +142,38 @@ class TestBuildOp5(unittest.TestCase):
             )
 
 
+class TestBuildOp6(unittest.TestCase):
+    def test_build_tensorrt_engine_op(self):
+        pir_program = get_ir_program()
+        tanh_out = pir_program.global_block().ops[-1].result(0)
+        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
+            pir_program
+        ):
+            # create fake tensorrt op
+            trt_params = paddle.base.libpaddle.TRTEngineParams()
+            trt_params.min_input_shape = {"x": [1, 1]}
+            trt_params.max_input_shape = {"x": [10, 1]}
+            trt_params.optim_input_shape = {"x": [5, 1]}
+            trt_params.engine_serialized_data = ""
+            out = paddle._C_ops.tensorrt_engine(
+                [tanh_out],
+                trt_params,
+                ["x"],
+                ["out"],
+                [[1, 1]],
+                [paddle.base.libpaddle.DataType.FLOAT32],
+                "NO DEBUG",
+            )
+            self.assertEqual(
+                out[0]
+                .get_defining_op()
+                .operands()[0]
+                .source()
+                .get_defining_op()
+                .name(),
+                "pd_op.tensorrt_engine",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

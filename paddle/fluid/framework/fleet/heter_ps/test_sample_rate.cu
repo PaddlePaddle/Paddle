@@ -41,8 +41,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/string/printf.h"
 
@@ -270,7 +270,7 @@ void testSampleRate() {
     int st = 0;
     int size = ids.size();
     NeighborSampleResult *result = new NeighborSampleResult(sample_size, size);
-    platform::CUDAPlace place = platform::CUDAPlace(device_id_mapping[i]);
+    phi::GPUPlace place = phi::GPUPlace(device_id_mapping[i]);
     platform::CUDADeviceGuard guard(device_id_mapping[i]);
     cudaMalloc((void **)&result->val, size * sample_size * sizeof(int64_t));
     cudaMalloc((void **)&result->actual_sample_size, size * sizeof(int));

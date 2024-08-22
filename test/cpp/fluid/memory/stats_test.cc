@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/stats.h"
+#include "paddle/phi/core/memory/stats.h"
 
 #include <condition_variable>
 #include <mutex>

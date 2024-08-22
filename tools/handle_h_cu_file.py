@@ -65,8 +65,7 @@ def insert_pile_to_h_file(rootPath):
             f'echo "__attribute__((constructor)) static void calledFirst{func}()\n{{" >> {line}'
         )
         os.system(
-            'echo \'    fprintf(stderr,"precise test map fileeee: %%s\\\\n", __FILE__);\n}\' >> %s'
-            % line
+            f'echo \'    fprintf(stderr,"precise test map fileeee: %s\\\\n", __FILE__);\n}}\' >> {line}'
         )
         os.system(f'echo "\n#endif" >> {line}')
 
@@ -83,7 +82,7 @@ def add_simple_cxx_test(rootPath):
         os.system(
             f'echo "TEST(interface_test, type) {{ }}\n" >> {simple_test_path}'
         )
-        os.system('echo "cc_test(" >> %s' % variant_test_cmakeflie_path)
+        os.system(f'echo "cc_test(" >> {variant_test_cmakeflie_path}')
         os.system(
             f'echo "  simple_precision_test" >> {variant_test_cmakeflie_path}'
         )
@@ -117,7 +116,7 @@ def get_h_cu_file(file_path):
             f"cat {dir_path}/{filename} | grep 'precise test map fileeee:'| uniq >> {rootPath}/build/ut_map/{ut}/related_{ut}.txt"
         )
     else:
-        print("%s has failed,no has direcotory" % ut)
+        print(f"{ut} has failed,no has direcotory")
 
 
 def doFun(file_path):

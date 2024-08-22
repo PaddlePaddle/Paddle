@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
 import numpy as np
 
 from paddle.nn import Layer
@@ -21,27 +25,43 @@ from paddle.utils import convert_to_list
 
 from .. import functional as F
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from paddle import Tensor
+    from paddle._typing import (
+        ParamAttrLike,
+        Size2,
+        Size3,
+        Size4,
+        Size6,
+    )
+    from paddle.nn.functional.common import _PaddingSizeMode
+
 __all__ = []
 
 
 class _Conv3D(Layer):
+    weight: Tensor
+    bias: Tensor
+
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        subm=False,
-        key=None,
-        padding_mode='zeros',
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NDHWC",
-        backend=None,
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Size3,
+        stride: Size3 = 1,
+        padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
+        dilation: Size3 = 1,
+        groups: Literal[1] = 1,
+        subm: bool = False,
+        key: str | None = None,
+        padding_mode: Literal['zeros'] = 'zeros',
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: Literal['NDHWC'] = "NDHWC",
+        backend: Literal['igemm'] | None = None,
+    ) -> None:
         super().__init__()
         assert (
             weight_attr is not False
@@ -84,7 +104,8 @@ class _Conv3D(Layer):
         )
 
         # the sparse conv restricts the shape is [D, H, W, in_channels, out_channels]
-        filter_shape = self._kernel_size + [
+        filter_shape = [
+            *self._kernel_size,
             self._in_channels,
             self._out_channels,
         ]
@@ -103,7 +124,7 @@ class _Conv3D(Layer):
             attr=self._bias_attr, shape=[self._out_channels], is_bias=True
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         if self._backend is None:
             out = F.conv._conv3d(
                 x,
@@ -136,7 +157,7 @@ class _Conv3D(Layer):
             )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         main_str = '{_in_channels}, {_out_channels}, kernel_size={_kernel_size}'
         if self._stride != [1] * len(self._stride):
             main_str += ', stride={_stride}'
@@ -153,23 +174,26 @@ class _Conv3D(Layer):
 
 
 class _Conv2D(Layer):
+    weight: Tensor
+    bias: Tensor
+
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        subm=False,
-        key=None,
-        padding_mode='zeros',
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NHWC",
-        backend=None,
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Size2,
+        stride: Size2 = 1,
+        padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
+        dilation: Size2 = 1,
+        groups: Literal[1] = 1,
+        subm: bool = False,
+        key: str | None = None,
+        padding_mode: Literal['zeros'] = 'zeros',
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: Literal["NHWC"] = "NHWC",
+        backend: Literal['igemm'] | None = None,
+    ) -> None:
         super().__init__()
         assert (
             weight_attr is not False
@@ -212,7 +236,8 @@ class _Conv2D(Layer):
         )
 
         # the sparse conv restricts the shape is [H, W, in_channels, out_channels]
-        filter_shape = self._kernel_size + [
+        filter_shape = [
+            *self._kernel_size,
             self._in_channels,
             self._out_channels,
         ]
@@ -231,7 +256,7 @@ class _Conv2D(Layer):
             attr=self._bias_attr, shape=[self._out_channels], is_bias=True
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         if self._backend is None:
             out = F.conv._conv2d(
                 x,
@@ -264,7 +289,7 @@ class _Conv2D(Layer):
             )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         main_str = '{_in_channels}, {_out_channels}, kernel_size={_kernel_size}'
         if self._stride != [1] * len(self._stride):
             main_str += ', stride={_stride}'
@@ -386,18 +411,18 @@ class Conv3D(_Conv3D):
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        padding_mode='zeros',
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NDHWC",
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Size3,
+        stride: Size3 = 1,
+        padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
+        dilation: Size3 = 1,
+        groups: Literal[1] = 1,
+        padding_mode: Literal['zeros'] = 'zeros',
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: Literal["NDHWC"] = "NDHWC",
+    ) -> None:
         super().__init__(
             in_channels,
             out_channels,
@@ -521,18 +546,18 @@ class Conv2D(_Conv2D):
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        padding_mode='zeros',
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NHWC",
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Size2,
+        stride: Size2 = 1,
+        padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
+        dilation: Size2 = 1,
+        groups: Literal[1] = 1,
+        padding_mode: Literal['zeros'] = 'zeros',
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: Literal["NHWC"] = "NHWC",
+    ) -> None:
         super().__init__(
             in_channels,
             out_channels,
@@ -660,20 +685,20 @@ class SubmConv3D(_Conv3D):
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        padding_mode='zeros',
-        key=None,
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NDHWC",
-        backend=None,
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Size3,
+        stride: Size3 = 1,
+        padding: _PaddingSizeMode | Size3 | Size6 | Sequence[Size2] = 0,
+        dilation: Size3 = 1,
+        groups: Literal[1] = 1,
+        padding_mode: Literal['zeros'] = 'zeros',
+        key: str | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: Literal["NDHWC"] = "NDHWC",
+        backend: Literal['igemm'] | None = None,
+    ) -> None:
         super().__init__(
             in_channels,
             out_channels,
@@ -802,20 +827,20 @@ class SubmConv2D(_Conv2D):
 
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride=1,
-        padding=0,
-        dilation=1,
-        groups=1,
-        padding_mode='zeros',
-        key=None,
-        weight_attr=None,
-        bias_attr=None,
-        data_format="NHWC",
-        backend=None,
-    ):
+        in_channels: int,
+        out_channels: int,
+        kernel_size: Size2,
+        stride: Size2 = 1,
+        padding: _PaddingSizeMode | Size2 | Size4 | Sequence[Size2] = 0,
+        dilation: Size2 = 1,
+        groups: Literal[1] = 1,
+        padding_mode: Literal['zeros'] = 'zeros',
+        key: str | None = None,
+        weight_attr: ParamAttrLike | None = None,
+        bias_attr: ParamAttrLike | None = None,
+        data_format: Literal["NHWC"] = "NHWC",
+        backend: Literal['igemm'] | None = None,
+    ) -> None:
         super().__init__(
             in_channels,
             out_channels,

@@ -32,7 +32,6 @@
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/framework/op.h"
-#include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
@@ -146,7 +145,7 @@ void PrintResult(const TuningResult& result) {
 TuningResult AutoTuner::Tune(const TuningOptions& options) {
   PADDLE_ENFORCE_GT(options.num_tuning_rounds,
                     0,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The num_tuning_rounds should be greater than 0."));
 
   TuningResult result;

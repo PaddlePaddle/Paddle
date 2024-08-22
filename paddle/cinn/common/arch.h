@@ -24,16 +24,22 @@ namespace common {
 
 struct UnknownArch {};
 
-struct X86Arch {};
+#define CINN_ARCH_CLASS_NAMES(_macro) \
+  _macro(X86Arch) _macro(ARMArch) _macro(NVGPUArch) _macro(HygonDCUArchHIP)
 
-struct ARMArch {};
-
-struct NVGPUArch {};
+#define DEFINE_CINN_ARCH(class_name) \
+  struct class_name {};
+CINN_ARCH_CLASS_NAMES(DEFINE_CINN_ARCH);
+#undef DEFINE_CINN_ARCH
 
 /**
  * The architecture used by the target. Determines the instruction set to use.
  */
-using ArchBase = std::variant<UnknownArch, X86Arch, ARMArch, NVGPUArch>;
+using ArchBase = std::variant<
+#define LIST_CINN_ARCH_ALTERNATIVE(class_name) class_name,
+    CINN_ARCH_CLASS_NAMES(LIST_CINN_ARCH_ALTERNATIVE)
+#undef LIST_CINN_ARCH_ALTERNATIVE
+        UnknownArch>;
 struct Arch final : public ArchBase {
   using ArchBase::ArchBase;
 

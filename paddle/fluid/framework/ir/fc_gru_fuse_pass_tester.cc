@@ -35,17 +35,17 @@ TEST(FcGruFusePass, basic) {
 
   PADDLE_ENFORCE_EQ(num_nodes_before,
                     num_nodes_after + 6,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The number of nodes before and after "
                         "the fuse does not meet expectations"));
   PADDLE_ENFORCE_EQ(
       num_fuse_gru_nodes_after,
       2,
-      platform::errors::PreconditionNotMet("The number of gru nodes before the "
-                                           "fuse does not meet expectations"));
+      common::errors::PreconditionNotMet("The number of gru nodes before the "
+                                         "fuse does not meet expectations"));
   PADDLE_ENFORCE_EQ(num_gru_nodes_before,
                     num_fuse_gru_nodes_after,
-                    platform::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "The number of fusion_gru nodes does not meet "
                         "expectations after fuse"));
 }

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import collections
 import copy
 import functools
@@ -20,7 +22,7 @@ import logging
 import os
 import pdb  # noqa: T100
 import re
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy
 
@@ -41,6 +43,9 @@ from .program_translator import (
     unwrap_decorators,
 )
 from .utils import is_builtin, is_paddle_func
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 __all__ = []
 
@@ -100,7 +105,7 @@ def builtin_modules():
 BUILTIN_LIKELY_MODULES = builtin_modules()
 
 
-def add_ignore_module(modules: List[Any]):
+def add_ignore_module(modules: list[ModuleType]):
     """
     Adds modules that ignore transcription
     """
@@ -110,21 +115,82 @@ def add_ignore_module(modules: List[Any]):
             BUILTIN_LIKELY_MODULES.append(module)
 
 
+@functools.lru_cache
+def get_module_functions(module: ModuleType) -> list[Callable[..., Any]]:
+    visited = set()
+
+    def _try_get_members(module) -> list[tuple[str, Any]]:
+        try:
+            return inspect.getmembers(module)
+        except Exception:
+            return []
+
+    def _get_module_functions(module):
+        if module in visited:
+            return []
+        visited.add(module)
+        results = []
+        for _member_name, member in _try_get_members(module):
+            if callable(member):
+                results.append(member)
+            if inspect.ismodule(member):
+                results.extend(_get_module_functions(member))
+        return results
+
+    return _get_module_functions(module)
+
+
+@functools.lru_cache
+def get_module_defining_path(module: ModuleType) -> str | None:
+    def _remove_module_init_suffix(file_path: str) -> str:
+        # TODO(SigureMo): use removesuffix after Python 3.9
+        return re.sub(r"__init__.py$", "", file_path)
+
+    if not hasattr(module, "__file__") or module.__file__ is None:
+        return None
+    return _remove_module_init_suffix(module.__file__)
+
+
 def is_unsupported(func):
     """
     Checks whether the func is supported by dygraph to static graph.
     """
 
-    for m in BUILTIN_LIKELY_MODULES:
-        for v in m.__dict__.values():
-            if not callable(v):
-                continue
-            if func is v:
-                translator_logger.log(
-                    2,
-                    f"Whitelist: {func} is part of built-in module and does not have to be transformed.",
-                )
-                return True
+    builtin_module_paths = [
+        module_path
+        for module in BUILTIN_LIKELY_MODULES
+        if (module_path := get_module_defining_path(module)) is not None
+    ]
+
+    # Skip module function by function defining path (For Python functions)
+    if hasattr(func, "__code__") and func.__code__.co_filename:
+        func_path = func.__code__.co_filename
+        if any(
+            func_path.startswith(module_path)
+            for module_path in builtin_module_paths
+        ):
+            translator_logger.log(
+                2,
+                "Whitelist: %s is part of built-in module and does not have to be transformed.",
+                func,
+            )
+            return True
+
+    builtin_functions = [
+        func
+        for module in BUILTIN_LIKELY_MODULES
+        for func in get_module_functions(module)
+    ]
+
+    # Skip module function by module members (For C/C++ binding functions)
+    for builtin_fn in builtin_functions:
+        if func is builtin_fn:
+            translator_logger.log(
+                2,
+                "Whitelist: %s is part of built-in module and does not have to be transformed.",
+                func,
+            )
+            return True
 
     # NOTE: should be placed before `is_paddle_func`
     # The api(s) should be considered as plain function and convert
@@ -142,6 +208,8 @@ def is_unsupported(func):
             func,
         )
         return True
+
+    return False
 
 
 def convert_call(func):

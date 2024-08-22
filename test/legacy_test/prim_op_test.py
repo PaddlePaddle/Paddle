@@ -303,7 +303,7 @@ class PrimForwardChecker:
     def init_checker(self):
         assert hasattr(
             self.op_test, 'prim_op_type'
-        ), "if you want to test comp op, please set prim_op_type with \'prim\' or \'comp\' in setUp function."
+        ), "if you want to test comp op, please set prim_op_type with 'prim' or 'comp' in setUp function."
         assert self.op_test.prim_op_type in [
             "comp",
             "prim",
@@ -646,9 +646,11 @@ class PrimForwardChecker:
                     static_inputs,
                     attrs,
                     self.kernel_sig,
-                    target_dtype=paddle.pir.core.DataType
-                    if in_pir_mode()
-                    else paddle.core.VarDesc.VarType,
+                    target_dtype=(
+                        paddle.pir.core.DataType
+                        if in_pir_mode()
+                        else paddle.core.VarDesc.VarType
+                    ),
                 )
                 if "one_hot" in self.op_type:
                     args = patch_for_one_hot(self.inputs, self.attrs, args)
@@ -689,7 +691,7 @@ class PrimForwardChecker:
         # check static forward
         if len(ret) != len(self.eager_desire):
             msg = (
-                f"The static comp forward api out tensor nums is different with eager forward api out tensor nums on {str(self.place)}."
+                f"The static comp forward api out tensor nums is different with eager forward api out tensor nums on {self.place}."
                 f'when enable_fw_comp is {self.enable_fw_comp}, static comp forward api out tensor nums = {len(ret)}, eager forward api out tensor nums = {len(self.eager_desire)}. \n'
             )
             raise RuntimeError(msg)
@@ -740,9 +742,11 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
-                target_dtype=paddle.pir.core.DataType
-                if use_pir_api()
-                else paddle.core.VarDesc.VarType,
+                target_dtype=(
+                    paddle.pir.core.DataType
+                    if use_pir_api()
+                    else paddle.core.VarDesc.VarType
+                ),
             )
             if "one_hot" in self.op_type:
                 args = patch_for_one_hot(self.inputs, self.attrs, args)
@@ -772,7 +776,7 @@ class PrimForwardChecker:
             # check jit comp forward
             if len(ret) != len(self.eager_desire):
                 msg = (
-                    f"The jit comp forward api out tensor nums is different with eager forward api out tensor nums on {str(self.place)}."
+                    f"The jit comp forward api out tensor nums is different with eager forward api out tensor nums on {self.place}."
                     f'when enable_fw_comp is {self.enable_fw_comp}, jit comp forward api out tensor nums = {len(ret)}, eager forward api out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
@@ -834,9 +838,11 @@ class PrimForwardChecker:
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
-                target_dtype=paddle.pir.core.DataType
-                if use_pir_api()
-                else paddle.core.VarDesc.VarType,
+                target_dtype=(
+                    paddle.pir.core.DataType
+                    if use_pir_api()
+                    else paddle.core.VarDesc.VarType
+                ),
             )
             inputs_sig, _, _ = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -865,7 +871,7 @@ class PrimForwardChecker:
             # check jit comp forward
             if len(ret) != len(self.eager_desire):
                 msg = (
-                    f"The jit comp with cinn forward api out tensor nums is different with eager forward api out tensor nums on {str(self.place)}."
+                    f"The jit comp with cinn forward api out tensor nums is different with eager forward api out tensor nums on {self.place}."
                     f'when enable_fw_comp is {self.enable_fw_comp}, enable_cinn is {core.is_compiled_with_cinn() and self.enable_cinn}, jit comp forward api out tensor nums = {len(ret)}, eager forward api out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
@@ -961,9 +967,11 @@ class PrimGradChecker(PrimForwardChecker):
                 paddle.to_tensor(
                     data=np_v,
                     place=self.place,
-                    dtype="bfloat16"
-                    if OpTestUtils.is_bfloat16_type(np_v.dtype)
-                    else np_v.dtype,
+                    dtype=(
+                        "bfloat16"
+                        if OpTestUtils.is_bfloat16_type(np_v.dtype)
+                        else np_v.dtype
+                    ),
                 )
             )
         return eager_vs
@@ -978,9 +986,11 @@ class PrimGradChecker(PrimForwardChecker):
                 paddle.static.data(
                     name='v_' + str(i),
                     shape=np_v.shape,
-                    dtype="bfloat16"
-                    if OpTestUtils.is_bfloat16_type(np_v.dtype)
-                    else np_v.dtype,
+                    dtype=(
+                        "bfloat16"
+                        if OpTestUtils.is_bfloat16_type(np_v.dtype)
+                        else np_v.dtype
+                    ),
                 )
             )
             feed.update({'v_' + str(i): np_v})
@@ -1062,7 +1072,7 @@ class PrimGradChecker(PrimForwardChecker):
             # check static forward
             if len(actual_ret) != len(self.eager_desire):
                 msg = (
-                    f"The eager comp grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                    f"The eager comp grad out tensor nums is different with eager grad out tensor nums on {self.place}."
                     f'when enable_rev_comp is {self.enable_rev_comp}, eager comp grad api out tensor nums = {len(actual_ret)}, eager grad out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
@@ -1114,9 +1124,11 @@ class PrimGradChecker(PrimForwardChecker):
                     static_inputs,
                     attrs,
                     self.kernel_sig,
-                    target_dtype=paddle.pir.core.DataType
-                    if in_pir_mode()
-                    else paddle.core.VarDesc.VarType,
+                    target_dtype=(
+                        paddle.pir.core.DataType
+                        if in_pir_mode()
+                        else paddle.core.VarDesc.VarType
+                    ),
                 )
                 inputs_sig, _, outputs_sig = self.kernel_sig
                 if hasattr(self.op_test, "python_out_sig"):
@@ -1180,7 +1192,7 @@ class PrimGradChecker(PrimForwardChecker):
         # check static grad out
         if len(actual_ret) != len(self.eager_desire):
             msg = (
-                f"The static comp grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                f"The static comp grad out tensor nums is different with eager grad out tensor nums on {self.place}."
                 f'when enable_fw_comp is {self.enable_fw_comp},enable_rev_comp is {self.enable_rev_comp}, static comp grad out tensor nums = {len(actual_ret)}, eager grad out tensor nums = {len(self.eager_desire)}. \n'
             )
             raise RuntimeError(msg)
@@ -1240,9 +1252,11 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
-                target_dtype=paddle.pir.core.DataType
-                if use_pir_api()
-                else paddle.core.VarDesc.VarType,
+                target_dtype=(
+                    paddle.pir.core.DataType
+                    if use_pir_api()
+                    else paddle.core.VarDesc.VarType
+                ),
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -1294,7 +1308,7 @@ class PrimGradChecker(PrimForwardChecker):
             # check jit comp grad out
             if len(ret) != len(self.eager_desire):
                 msg = (
-                    f"The jit comp grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                    f"The jit comp grad out tensor nums is different with eager grad out tensor nums on {self.place}."
                     f'when enable_fw_comp is {self.enable_fw_comp}, enable_rev_comp is {self.enable_rev_comp}, jit comp grad out tensor nums = {len(ret)}, eager grad out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)
@@ -1366,9 +1380,11 @@ class PrimGradChecker(PrimForwardChecker):
                 eager_tensor_inputs,
                 attrs_outputs,
                 self.kernel_sig,
-                target_dtype=paddle.pir.core.DataType
-                if use_pir_api()
-                else paddle.core.VarDesc.VarType,
+                target_dtype=(
+                    paddle.pir.core.DataType
+                    if use_pir_api()
+                    else paddle.core.VarDesc.VarType
+                ),
             )
             inputs_sig, _, outputs_sig = self.kernel_sig
             args = OpTestUtils.assumption_assert_and_transform(
@@ -1421,7 +1437,7 @@ class PrimGradChecker(PrimForwardChecker):
             # check jit comp grad out
             if len(ret) != len(self.eager_desire):
                 msg = (
-                    f"The jit comp with cinn grad out tensor nums is different with eager grad out tensor nums on {str(self.place)}."
+                    f"The jit comp with cinn grad out tensor nums is different with eager grad out tensor nums on {self.place}."
                     f'when enable_fw_comp is {self.enable_fw_comp}, enable_rev_comp is {self.enable_rev_comp}, enable_cinn is {self.enable_cinn and core.is_compiled_with_cinn()}, jit comp grad out tensor nums = {len(ret)}, eager grad out tensor nums = {len(self.eager_desire)}. \n'
                 )
                 raise RuntimeError(msg)

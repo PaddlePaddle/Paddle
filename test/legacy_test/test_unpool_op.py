@@ -514,13 +514,11 @@ class TestOutputSizeTensor(UnittestBase):
             exe.run(startup_prog)
             res = exe.run(fetch_list=[out])
             np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
-            if not in_pir_mode():
-                paddle.static.save_inference_model(
-                    self.save_path, [x], [out], exe
-                )
-                # Test for Inference Predictor
-                infer_outs = self.infer_prog()
-                np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
+
+            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
+            # Test for Inference Predictor
+            infer_outs = self.infer_prog()
+            np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
 
     def path_prefix(self):
         return 'unpool_var'

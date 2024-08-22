@@ -39,30 +39,55 @@ class IR_API ConstraintsManager {
 
   bool IsBroadcastable(const DimExpr& lhs, const DimExpr& rhs) const;
 
-  template <typename DoEachClusterT>
-  void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const;
+  struct Range {
+    std::int64_t min;
+    std::int64_t max;
+    // TODO(Hongqing-work): Subsitute INT32_MAX with a more meaningful value.
+    Range() : min(1), max(INT32_MAX) {}
+    Range(int min_val, int max_val) : min(min_val), max(max_val) {}
+  };
+  void AddInputRangeCstr(const DimExpr& dim_expr, const Range& range);
 
-  template <typename DoEachT>
-  void EqualConstraintsVisitor(const DoEachT& DoEach);
+  bool IsBoundedInput(const DimExpr& dim_expr) const;
 
-  template <typename DoEachT>
-  void GTOneConstraintsVisitor(const DoEachT& DoEach);
-
-  template <typename DoEachT>
-  void GTOneConstraintsVisitor(const DoEachT& DoEach) const;
-
-  template <typename DoEachT>
-  void BroadcastableConstraintsVisitor(const DoEachT& DoEach);
-
-  template <typename DoEachT>
-  void BroadcastableConstraintsVisitor(const DoEachT& DoEach) const;
-
-  using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
-  void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
+  const Range& GetRangeOfBoundedInput(const DimExpr& dim_expr) const;
 
   using EqualConstraints = common::UnionFindSet<DimExpr>;
   using GTOneConstraints = std::unordered_set<DimExpr>;
   using BroadcastableConstraints = std::unordered_set<Broadcastable<DimExpr>>;
+  using InputRangeConstraints = std::unordered_map<DimExpr, Range>;
+
+  void VisitEqualClusters(
+      const std::function<void(const std::vector<DimExpr>&)>& DoEachCluster)
+      const;
+
+  void EqualConstraintsVisitor(
+      const std::function<void(std::unordered_map<DimExpr, DimExpr>::iterator)>&
+          DoEach);
+
+  void GTOneConstraintsVisitor(
+      const std::function<void(GTOneConstraints::iterator)>& DoEach);
+
+  void GTOneConstraintsVisitor(
+      const std::function<void(GTOneConstraints::const_iterator)>& DoEach)
+      const;
+
+  void BroadcastableConstraintsVisitor(
+      const std::function<void(BroadcastableConstraints::iterator)>& DoEach);
+
+  void BroadcastableConstraintsVisitor(
+      const std::function<void(BroadcastableConstraints::const_iterator)>&
+          DoEach) const;
+
+  void InputRangeConstraintsVisitor(
+      const std::function<void(InputRangeConstraints::iterator)>& DoEach);
+
+  void InputRangeConstraintsVisitor(
+      const std::function<void(InputRangeConstraints::const_iterator)>& DoEach)
+      const;
+
+  using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
+  void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
 
   const EqualConstraints& equals() const { return equals_; }
 
@@ -71,6 +96,8 @@ class IR_API ConstraintsManager {
   const BroadcastableConstraints& broadcastables() const {
     return broadcastables_;
   }
+
+  const InputRangeConstraints& input_ranges() const { return input_ranges_; }
 
  private:
   void SubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs);
@@ -81,6 +108,7 @@ class IR_API ConstraintsManager {
   EqualConstraints equals_;
   GTOneConstraints gtones_;
   BroadcastableConstraints broadcastables_;
+  InputRangeConstraints input_ranges_;
 };
 
 std::ostream& operator<<(std::ostream& os,

@@ -22,10 +22,10 @@
 #include <hip/hip_runtime.h>
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
@@ -51,7 +51,7 @@ void SynchronizeDevice() {
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto& dev_type : dev_types) {
     auto i = phi::DeviceManager::GetDevice(dev_type);
-    auto place = paddle::platform::CustomPlace(dev_type, i);
+    auto place = phi::CustomPlace(dev_type, i);
     phi::DeviceManager::SynchronizeDevice(place);
   }
 #endif

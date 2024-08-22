@@ -116,6 +116,8 @@ class XPUTestUniqueOp(XPUOpTestWrapper):
                 return_counts=True,
                 axis=None,
             )
+            if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+                inverse = inverse.flatten()
             self.attrs = {
                 'dtype': int(core.VarDesc.VarType.INT64),
                 "return_index": True,
@@ -160,6 +162,8 @@ class XPUTestUniqueOp(XPUOpTestWrapper):
                 return_counts=True,
                 axis=1,
             )
+            if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+                inverse = inverse.flatten()
             self.attrs = {
                 'dtype': int(core.VarDesc.VarType.INT32),
                 "return_index": True,
@@ -188,7 +192,8 @@ class XPUTestUniqueOp(XPUOpTestWrapper):
                 return_counts=True,
                 axis=0,
             )
-
+            if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+                inverse = inverse.flatten()
             self.attrs = {
                 'dtype': int(core.VarDesc.VarType.INT32),
                 "return_index": True,
@@ -217,6 +222,8 @@ class XPUTestUniqueOp(XPUOpTestWrapper):
                 return_counts=True,
                 axis=-1,
             )
+            if np.lib.NumpyVersion(np.__version__) >= "2.0.0":
+                inverse = inverse.flatten()
             self.attrs = {
                 'dtype': int(core.VarDesc.VarType.INT32),
                 "return_index": True,

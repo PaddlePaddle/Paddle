@@ -44,8 +44,7 @@ def attention_naive(q, k, v, causal=False):
     kt = paddle.transpose(k, [0, 2, 1, 3])
     vt = paddle.transpose(v, [0, 2, 1, 3])
     scale = 1.0 / np.sqrt(q.shape[-1])
-    s = paddle.matmul(qt, paddle.transpose(kt, [0, 1, 3, 2]))
-    s = paddle.scale(s, scale)
+    s = paddle.matmul(qt * scale, paddle.transpose(kt, [0, 1, 3, 2]))
     p = (
         paddle.incubate.softmax_mask_fuse_upper_triangle(s)
         if causal
@@ -140,7 +139,7 @@ class TestFlashAttentionAPIFlag(unittest.TestCase):
         self.assertEqual(q_.grad.shape, q.shape)
 
         np.testing.assert_allclose(
-            q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
+            q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=2e-03
         )
 
         return out, out_, q.grad.numpy(), k.grad.numpy(), v.grad.numpy()

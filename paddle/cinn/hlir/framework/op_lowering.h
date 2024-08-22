@@ -17,8 +17,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/cinn/hlir/framework/graph.h"
-#include "paddle/cinn/hlir/framework/op_lowering_impl.h"
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/lang/packed_func.h"
@@ -31,7 +29,6 @@ namespace hlir {
 namespace framework {
 
 using cinn::common::Target;
-using GroupPtr = std::shared_ptr<hlir::framework::Graph::Group>;
 
 template <typename T>
 class OpLowerer {
@@ -55,27 +52,9 @@ class OpLowerer {
         group, apply_op_schedule, apply_group_schedule, apply_pass);
   }
 
-  void InsertNameGeneToScope(std::shared_ptr<Scope> scope) {
-    return impl_->InsertNameGeneToScope(scope);
-  }
-
  private:
   std::shared_ptr<OpLowererImplBase<T>> impl_;
 };
-
-template <typename T = GroupPtr>
-OpLowerer<T> CreateOpLowerer(const absl::flat_hash_map<std::string, Type>&,
-                             const absl::flat_hash_map<std::string, shape_t>&,
-                             const Target&);
-
-template <>
-inline OpLowerer<GroupPtr> CreateOpLowerer(
-    const absl::flat_hash_map<std::string, Type>& type_dict,
-    const absl::flat_hash_map<std::string, shape_t>& shape_dict,
-    const Target& target) {
-  auto* impl_base = new OpLowererImpl(type_dict, shape_dict, target);
-  return OpLowerer<GroupPtr>(impl_base);
-}
 
 #ifndef CINN_WITH_ONLY
 template <typename T = pir::OpLoweringGroupPtr>

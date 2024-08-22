@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/thread_local_allocator.h"
+#include "paddle/phi/core/memory/allocation/thread_local_allocator.h"
 
 #include <condition_variable>  // NOLINT
 #include <thread>              // NOLINT
 
 #include "gtest/gtest.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/core/memory/malloc.h"
 
 COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
 COMMON_DECLARE_string(allocator_strategy);
@@ -55,12 +55,11 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
         cv.wait(lock, [&] { return flag; });
       }
       for (size_t j = 0; j < devices.size(); ++j) {
-        thread_allocations[j][i] =
-            memory::Alloc(platform::CUDAPlace(devices[j]), 10);
+        thread_allocations[j][i] = memory::Alloc(phi::GPUPlace(devices[j]), 10);
         auto tl_allocator_impl =
             ThreadLocalCUDAAllocatorPool::Instance().Get(devices[j]);
         allocator_addresses[j][i] = tl_allocator_impl.get();
-        memory::Release(platform::CUDAPlace(devices[j]));
+        memory::Release(phi::GPUPlace(devices[j]));
       }
     });
   }

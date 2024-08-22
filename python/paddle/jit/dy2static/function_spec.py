@@ -403,7 +403,7 @@ def _replace_to_input_spec_with_new_name(args, arg_names):
                     paddle.base.framework.Variable,
                 ),
             ):
-                input_var.name = f"_jst.{str(order).zfill(order_digit)}.{name_prefix}.{str(index)}"
+                input_var.name = f"_jst.{str(order).zfill(order_digit)}.{name_prefix}.{index}"
                 index += 1
             args_with_spec.append(input_var)
     args_with_spec = paddle.utils.pack_sequence_as(args, args_with_spec)

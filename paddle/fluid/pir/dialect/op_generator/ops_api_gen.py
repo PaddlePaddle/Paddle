@@ -40,10 +40,10 @@ static PyMethodDef OpsAPI[] = {{
 
 void BindOpsAPI(pybind11::module *module) {{
   if (PyModule_AddFunctions(module->ptr(), OpsAPI) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
   if (PyModule_AddFunctions(module->ptr(), ManualOpsAPI) < 0) {{
-    PADDLE_THROW(phi::errors::Fatal("Add C++ api to core.ops failed!"));
+    PADDLE_THROW(common::errors::Fatal("Add C++ api to core.ops failed!"));
   }}
 }}
 """
@@ -93,6 +93,9 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'c_allreduce_avg_',
     'c_reduce_avg',
     'c_reduce_avg_',
+    'c_allreduce_avg',
+    'c_allreduce_max',
+    'c_reducescatter',
     'c_allreduce_min_',
     'c_allreduce_prod_',
     'distributed_fused_lamb_init',
@@ -128,10 +131,10 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'self_dp_attention',
     'get_tensor_from_selected_rows',
     'print',
-    'number_count',
     'assign_value',
     'share_data_',
     'onednn_to_paddle_layout',
+    'lars_momentum_',
     'lrn',
     'multi_gru',
     'matmul_with_flatten',
@@ -144,28 +147,29 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'coalesce_tensor_',
     'send_v2',
     'recv_v2',
+    'sequence_expand',
+    'sequence_softmax',
     'c_allgather',
     'qkv_unpack_mha',
+    'hash',
+    'beam_search_decode',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
     'all_reduce',
     'all_reduce_',
-    'assign_pos',
+    'anchor_generator',
     'batch_fc',
     'barrier',
-    'c_allreduce_avg',
-    'c_allreduce_max',
     'c_allreduce_min',
-    'c_allreduce_sum',
     'c_allreduce_prod',
     'c_embedding',
     'c_identity',
     'c_reduce_sum',
-    'c_reducescatter',
     'c_softmax_with_cross_entropy',
     'c_split',
+    'comm_init_all',
     'decayed_adagrad',
     'distributed_fused_lamb',
     'distributed_fused_lamb_',
@@ -190,12 +194,13 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_elementwise_div',
     'fused_elementwise_mul',
     'fused_elementwise_sub',
+    'fused_embedding_fc_lstm',
+    'fused_multi_transformer_int8',
     'fusion_group',
     'fusion_lstm',
     'fusion_seqpool_cvm_concat',
     'nce',
-    'lars_momentum',
-    'lars_momentum_',
+    'lrn',
     'max_pool2d_v2',
     'partial_sum',
     'pull_gpups_sparse',
@@ -209,9 +214,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'seed',
     'shadow_feed',
     'shadow_feed_tensors',
-    'shuffle_batch',
     'sparse_momentum',
-    'tdm_sampler',
     'soft_relu',
     'match_matrix_tensor',
     'c_reduce_max',
@@ -222,7 +225,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_prod_',
     'c_scatter',
     "cross_entropy_grad2",
-    'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',
     'pull_sparse_v2',
@@ -235,7 +237,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'nop_',
     'gemm_epilogue',
     'push_dense',
-    'limit_by_capacity',
     'global_scatter',
     'global_gather',
     'pull_box_sparse',

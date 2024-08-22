@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/ir/onednn/cpu_bfloat16_placement_pass.h"
 #include "paddle/fluid/platform/onednn_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void SetOp(ProgramDesc* prog,
            const std::string& type,
@@ -174,8 +172,6 @@ TEST(Bfloat16PlacementPass, check_data_types) {
   DefaultAttrTest(2, BuildProgramDescWithDataType());
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(cpu_bfloat16_placement_pass);

@@ -17,14 +17,12 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/detail/avx_mathfun.h"
 
-namespace phi {
-namespace funcs {
-namespace detail {
+namespace phi::funcs::detail {
 
 __m256 Exp(__m256 a) { return exp256_ps(a); }
 
-namespace forward {
-namespace avx {
+}  // namespace phi::funcs::detail
+namespace phi::funcs::detail::forward::avx {
 __m256 Relu(const __m256 a) {
   __m256 tmp = _mm256_set1_ps(0.0f);
   return _mm256_max_ps(a, tmp);
@@ -69,11 +67,9 @@ __m256 TanhV2(const __m256 a) {
 
 __m256 Identity(const __m256 a) { return a; }
 
-}  // namespace avx
-}  // namespace forward
+}  // namespace phi::funcs::detail::forward::avx
 
-namespace backward {
-namespace avx {
+namespace phi::funcs::detail::backward::avx {
 __m256 Relu(const __m256 a, const __m256 b) {
   return _mm256_mul_ps(
       a,
@@ -92,11 +88,6 @@ __m256 Tanh(const __m256 a, const __m256 b) {
 }
 
 __m256 Identity(const __m256 a, const __m256 b) { return a; }
-}  // namespace avx
-}  // namespace backward
-
-}  // namespace detail
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs::detail::backward::avx
 
 #endif

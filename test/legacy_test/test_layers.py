@@ -49,9 +49,14 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def static_graph(self):
-        with new_program_scope():
-            paddle.seed(self.seed)
+        paddle.seed(self.seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                paddle.framework.random._manual_program_seed(self.seed)
             paddle.framework.random._manual_program_seed(self.seed)
+        else:
+            paddle.framework.random._manual_program_seed(self.seed)
+        with new_program_scope():
             yield
 
     def get_static_graph_result(
@@ -68,11 +73,16 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def dynamic_graph(self, force_to_use_cpu=False):
+        paddle.seed(self.seed)
+        if paddle.framework.use_pir_api():
+            with paddle.pir_utils.OldIrGuard():
+                paddle.framework.random._manual_program_seed(self.seed)
+            paddle.framework.random._manual_program_seed(self.seed)
+        else:
+            paddle.framework.random._manual_program_seed(self.seed)
         with base.dygraph.guard(
             self._get_place(force_to_use_cpu=force_to_use_cpu)
         ):
-            paddle.seed(self.seed)
-            paddle.framework.random._manual_program_seed(self.seed)
             yield
 
 
@@ -622,7 +632,7 @@ class TestBook(LayerTest):
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
         if append_batch_size:
-            shape = [self._batch_size] + shape
+            shape = [self._batch_size, *shape]
         if dtype == 'float32':
             return np.random.random(shape).astype(dtype)
         elif dtype == 'float64':
@@ -649,7 +659,7 @@ class TestBook(LayerTest):
                     shape, dtype, append_batch_size
                 )
             if append_batch_size:
-                shape = [-1] + shape
+                shape = [-1, *shape]
             data = paddle.static.data(
                 name=name,
                 shape=shape,

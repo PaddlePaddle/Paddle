@@ -65,6 +65,8 @@ from .framework.dtype import (
     complex128,
     dtype,
     finfo,
+    float8_e4m3fn,
+    float8_e5m2,
     float16,
     float32,
     float64,
@@ -225,6 +227,7 @@ from .tensor.linalg import (  # noqa: F401
     dot,
     eigvalsh,
     histogram,
+    histogram_bin_edges,
     histogramdd,
     matmul,
     mv,
@@ -377,6 +380,7 @@ from .tensor.math import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     broadcast_shape,
+    cartesian_prod,
     ceil,
     clip,
     combinations,
@@ -585,6 +589,11 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
+    import pkg_resources
+
+    data_file_path = pkg_resources.resource_filename('paddle.cinn_config', '')
+    os.environ['CINN_CONFIG_PATH'] = data_file_path
+
 if __is_metainfo_generated and is_compiled_with_cuda():
     import os
     import platform
@@ -721,7 +730,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                     if not path_patched:
                         prev_path = os.environ['PATH']
                         os.environ['PATH'] = ';'.join(
-                            dll_paths + [os.environ['PATH']]
+                            [*dll_paths, os.environ['PATH']]
                         )
                         path_patched = True
                     res = kernel32.LoadLibraryW(dll)
@@ -750,6 +759,8 @@ __all__ = [
     'int16',
     'int32',
     'int64',
+    'float8_e4m3fn',
+    'float8_e5m2',
     'float16',
     'float32',
     'float64',
@@ -798,6 +809,7 @@ __all__ = [
     'is_tensor',
     'is_complex',
     'is_integer',
+    'cartesian_prod',
     'cross',
     'where',
     'where_',

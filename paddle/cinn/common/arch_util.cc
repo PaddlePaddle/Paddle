@@ -27,6 +27,8 @@ std::string GetArchNameImpl(ARMArch arch) { return "ARM"; }
 
 std::string GetArchNameImpl(NVGPUArch arch) { return "NVGPU"; }
 
+std::string GetArchNameImpl(HygonDCUArchHIP arch) { return "HygonDCU_HIP"; }
+
 std::string GetArchName(Arch arch) {
   return std::visit([](const auto& impl) { return GetArchNameImpl(impl); },
                     arch.variant());

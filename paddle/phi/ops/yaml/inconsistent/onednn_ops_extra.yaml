@@ -28,9 +28,11 @@
 
 - op : bilinear_interp
   data_format_tensors : x
+  extra_args : str mkldnn_data_type="float32"
 
 - op : cast
   dynamic_fallback : True
+  extra_args : str mkldnn_data_type="float32"
 
 - op : clip
   extra_args : str mkldnn_data_type="float32"
@@ -45,7 +47,7 @@
   extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
 
 - op : conv2d
-  extra_args : bool is_test=false
+  extra_args : str mkldnn_data_type="float32", bool is_test=false
   data_format_tensors : input
 
 - op : conv2d_grad
@@ -53,7 +55,7 @@
   data_format_tensors : input, out_grad
 
 - op : conv2d_transpose
-  extra_args : bool is_test=false
+  extra_args : str mkldnn_data_type="float32", bool is_test=false
   data_format_tensors : x
 
 - op : conv2d_transpose_bias
@@ -136,6 +138,7 @@
   extra_args : str mkldnn_data_type="float32"
 
 - op : gaussian
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : gelu
   extra_args : str mkldnn_data_type="float32"
@@ -197,6 +200,7 @@
 - op : multi_gru
 
 - op : multiply
+  extra_args : str mkldnn_data_type="float32"
 
 - op : multiply_grad
 
@@ -228,8 +232,10 @@
 
 - op : prior_box
   extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : relu
+  extra_args : str mkldnn_data_type="float32"
 
 - op : relu_grad
 
@@ -248,15 +254,18 @@
 - op : round
 
 - op : scale
+  extra_args : str mkldnn_data_type="float32"
 
 - op : sgd_
 
 - op : shape
   extra_args : str mkldnn_data_type="float32"
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : shuffle_channel
 
 - op : sigmoid
+  extra_args : str mkldnn_data_type="float32"
 
 - op : sigmoid_grad
 
@@ -299,6 +308,7 @@
 
 - op : sum
   dynamic_fallback : True
+  extra_args : str mkldnn_data_type="float32"
 
 - op : sum_grad
   dynamic_fallback : True

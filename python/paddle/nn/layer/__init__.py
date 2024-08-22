@@ -35,6 +35,7 @@ from .common import (  # noqa: F401
     Dropout2D,
     Dropout3D,
     Embedding,
+    FeatureAlphaDropout,
     Flatten,
     Fold,
     Identity,

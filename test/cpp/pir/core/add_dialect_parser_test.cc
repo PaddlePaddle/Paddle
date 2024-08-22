@@ -90,9 +90,9 @@ pir::Attribute TestParserDialect::ParseAttribute(
   PADDLE_ENFORCE_EQ(
       parenthesis_token_val,
       ")",
-      phi::errors::InvalidArgument("The token value of expectation is ), not " +
-                                   parenthesis_token_val + "." +
-                                   parser.GetErrorLocationInfo()));
+      common::errors::InvalidArgument(
+          "The token value of expectation is ), not " + parenthesis_token_val +
+          "." + parser.GetErrorLocationInfo()));
   return CharAttribute::Parse(parser);
 }
 

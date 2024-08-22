@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
-#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 
 namespace cinn {
 namespace ir {
@@ -25,13 +24,8 @@ std::unique_ptr<GroupScheduler> GroupScheduler::Make(
     const cinn::common::Target& target,
     bool is_dy_shape,
     const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info) {
-  if (is_dy_shape) {
-    return std::make_unique<DynamicShapeGroupScheduler>(
-        ir_sch, output_tensor_names, target, group_info);
-  } else {
-    return std::make_unique<StaticShapeGroupScheduler>(
-        ir_sch, output_tensor_names, target, group_info);
-  }
+  return std::make_unique<DynamicShapeGroupScheduler>(
+      ir_sch, output_tensor_names, target, group_info);
 }
 
 std::unordered_set<std::string> GroupScheduler::OutputTensorNames() const {

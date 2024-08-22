@@ -225,7 +225,7 @@ PlaceType CvtToCxxPlaceType(PD_PlaceType place_type) {
     case PD_PLACE_CUSTOM:
       return PlaceType::kCUSTOM;
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupport paddle place type %d.", place_type));
       return PlaceType::kUNK;
   }
@@ -259,7 +259,7 @@ DataType CvtToCxxDatatype(PD_DataType data_type) {
     case PD_DATA_INT8:
       return DataType::INT8;
     default:
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupport paddle data type %d.", data_type));
       return DataType::FLOAT32;
   }

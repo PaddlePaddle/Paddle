@@ -95,7 +95,7 @@ dygraph_parameter_name_checker = DygraphParameterNameChecker()
 generator = UniqueNameGenerator()
 
 
-def generate(key):
+def generate(key: str) -> str:
     """
     Generate unique name with prefix key. Currently, Paddle distinguishes the
     names of the same key by numbering it from zero. For example, when key=fc,

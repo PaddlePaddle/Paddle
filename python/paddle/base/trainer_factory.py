@@ -114,6 +114,8 @@ class TrainerFactory:
                     trainer._set_worker_places(opt_info["worker_places"])
                 if opt_info.get("use_ps_gpu") is not None:
                     trainer._set_use_ps_gpu(opt_info["use_ps_gpu"])
+                if opt_info.get("use_gpu_graph") is not None:
+                    trainer._set_use_gpu_graph(opt_info["use_gpu_graph"])
                 if opt_info.get("is_dump_in_simple_mode") is not None:
                     trainer._set_is_dump_in_simple_mode(
                         opt_info["is_dump_in_simple_mode"]

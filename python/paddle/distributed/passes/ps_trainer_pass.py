@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-
 from _collections import defaultdict
 
 import paddle
@@ -841,7 +840,8 @@ class PsTranspilePass(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, pass_ctx):
-        if core._is_compiled_with_gpu_graph() is False:
+        attrs = pass_ctx._attrs
+        if attrs['use_gpu_graph'] == 0:
             from ..transpiler.collective import MultiThread
 
             t = MultiThread()
@@ -1116,7 +1116,7 @@ class SplitTrainerOpsPass(PassBase):
                 outputs={"Out": []},
                 attrs={
                     "mode": "forward",
-                    "send_var_name": entrance_var + ["microbatch_id"],
+                    "send_var_name": [*entrance_var, "microbatch_id"],
                     "recv_var_name": [],
                     "message_name": comm_info["block_input_var_name"],
                     "next_endpoints": next_heter_worker_endpoints,
@@ -1386,8 +1386,10 @@ class SplitFlOpsPass(PassBase):
             outputs={'Out': []},
             attrs={
                 'mode': 'forward',  # mode 直接关联前向和反向 channel 选择
-                'send_var_name': self.partA_to_partB_tensor_name
-                + ["microbatch_id"],
+                'send_var_name': [
+                    *self.partA_to_partB_tensor_name,
+                    "microbatch_id",
+                ],
                 'recv_var_name': [],
                 'message_name': comm_info,
                 'next_endpoints': get_next_stage_trainers(
@@ -1410,8 +1412,10 @@ class SplitFlOpsPass(PassBase):
             outputs={'Out': []},
             attrs={
                 'mode': 'backward',
-                'send_var_name': self.partB_to_partA_grad_name
-                + ["microbatch_id"],
+                'send_var_name': [
+                    *self.partB_to_partA_grad_name,
+                    "microbatch_id",
+                ],
                 'recv_var_name': [],
                 'message_name': comm_info,
                 'next_endpoints': get_next_stage_trainers(

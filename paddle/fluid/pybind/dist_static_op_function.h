@@ -43,38 +43,11 @@ static PyObject *static_api_shard_tensor(PyObject *self,
     auto placements = CastPyArg2VectorOfPlacement(placements_obj, 2);
 
     int64_t ndim = GetValueDims(input).size();
-    std::vector<int64_t> dim_map(ndim, -1);
-    for (size_t i = 0; i < placements.size(); i++) {
-      auto &placement = placements[i];
-      if (placement->is_shard()) {
-        auto shard_dim =
-            dynamic_cast<const phi::distributed::Shard &>(*placement).get_dim();
-        PADDLE_ENFORCE_EQ(
-            dim_map[shard_dim],
-            -1,
-            common::errors::InvalidArgument(
-                "Tensor dim %lld is already sharded on mesh dim %lld,"
-                " DistTensor operator implementation does not support things "
-                "like hybrid"
-                " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
-                shard_dim,
-                dim_map[shard_dim]));
-        dim_map[shard_dim] = i;
-      }
-    }
-    paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
-    for (size_t i = 0; i < placements.size(); ++i) {
-      auto &p = placements[i];
-      if (p->is_partial()) {
-        partial_status.insert(
-            {i,
-             dynamic_cast<phi::distributed::Partial &>(*p).get_reduce_type()});
-      }
-    }
+    auto res = CvtPlacements(placements, ndim);
 
     // Call ir static api
     auto static_api_out = paddle::dialect::shard_tensor(
-        input, process_mesh, dim_map, partial_status);
+        input, process_mesh, std::get<0>(res), std::get<1>(res));
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -101,39 +74,122 @@ static PyObject *static_api_reshard(PyObject *self,
     auto placements = CastPyArg2VectorOfPlacement(placements_obj, 2);
 
     int64_t ndim = GetValueDims(input).size();
-    std::vector<int64_t> dim_map(ndim, -1);
-    for (size_t i = 0; i < placements.size(); i++) {
-      auto &placement = placements[i];
-      if (placement->is_shard()) {
-        auto shard_dim =
-            dynamic_cast<const phi::distributed::Shard &>(*placement).get_dim();
-        PADDLE_ENFORCE_EQ(
-            dim_map[shard_dim],
-            -1,
-            common::errors::InvalidArgument(
-                "Tensor dim %lld is already sharded on mesh dim %lld,"
-                " DistTensor operator implementation does not support things "
-                "like hybrid"
-                " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
-                shard_dim,
-                dim_map[shard_dim]));
-        dim_map[shard_dim] = i;
-      }
-    }
-    paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
-    for (size_t i = 0; i < placements.size(); ++i) {
-      auto &p = placements[i];
-      if (p->is_partial()) {
-        partial_status.insert(
-            {i,
-             dynamic_cast<phi::distributed::Partial &>(*p).get_reduce_type()});
-      }
-    }
+    auto res = CvtPlacements(placements, ndim);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::reshard(
+        input, process_mesh, std::get<0>(res), std::get<1>(res));
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+static PyObject *static_api_moe_sub_mesh_tensors(PyObject *self,
+                                                 PyObject *args,
+                                                 PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add moe_sub_mesh_tensors op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // input dist tensor
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto input = CastPyArg2Value(input_obj, "moe_sub_mesh_tensors", 0);
+
+    // local process_mesh list
+    PyObject *local_mesh_list_obj = PyTuple_GET_ITEM(args, 1);
+    std::vector<phi::distributed::ProcessMesh> local_mesh_list =
+        CastPyArg2VectorOfProcessMesh(local_mesh_list_obj, 1);
+
+    // local placements
+    PyObject *local_placements_obj = PyTuple_GET_ITEM(args, 2);
+    auto local_placements =
+        CastPyArg2VectorOfPlacement(local_placements_obj, 2);
+
+    // global process_mesh
+    PyObject *global_mesh_obj = PyTuple_GET_ITEM(args, 3);
+    auto global_mesh = CastPyArg2ProcessMesh(global_mesh_obj, 3);
+
+    // global placements
+    PyObject *global_placements_obj = PyTuple_GET_ITEM(args, 4);
+    auto global_placements =
+        CastPyArg2VectorOfPlacement(global_placements_obj, 4);
+
+    int64_t ndim = GetValueDims(input).size();
+    auto local_res = CvtPlacements(local_placements, ndim);
+    auto global_res = CvtPlacements(global_placements, ndim);
 
     // Call ir static api
     auto static_api_out =
-        paddle::dialect::reshard(input, process_mesh, dim_map, partial_status);
+        paddle::dialect::moe_sub_mesh_tensors(input,
+                                              local_mesh_list,
+                                              std::get<0>(local_res),
+                                              std::get<1>(local_res),
+                                              global_mesh,
+                                              std::get<0>(global_res),
+                                              std::get<1>(global_res));
 
+    VLOG(6) << "End of adding moe_sub_mesh_tensors op into program";
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+static PyObject *static_api_moe_global_mesh_tensor(PyObject *self,
+                                                   PyObject *args,
+                                                   PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add moe_global_mesh_tensor op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // input local tensor list
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto input =
+        CastPyArg2VectorOfValue(input_obj, "moe_global_mesh_tensor", 0);
+
+    // local process_mesh list
+    PyObject *local_mesh_list_obj = PyTuple_GET_ITEM(args, 1);
+    std::vector<phi::distributed::ProcessMesh> local_mesh_list =
+        CastPyArg2VectorOfProcessMesh(local_mesh_list_obj, 1);
+
+    // local placements
+    PyObject *local_placements_obj = PyTuple_GET_ITEM(args, 2);
+    auto local_placements =
+        CastPyArg2VectorOfPlacement(local_placements_obj, 2);
+
+    // global process_mesh
+    PyObject *global_mesh_obj = PyTuple_GET_ITEM(args, 3);
+    auto global_mesh = CastPyArg2ProcessMesh(global_mesh_obj, 3);
+
+    // global placements
+    PyObject *global_placements_obj = PyTuple_GET_ITEM(args, 4);
+    auto global_placements =
+        CastPyArg2VectorOfPlacement(global_placements_obj, 4);
+
+    // global shape
+    PyObject *global_shape_obj = PyTuple_GET_ITEM(args, 5);
+    auto global_shape = CastPyArg2VectorOfInt64(global_shape_obj, 5);
+
+    int64_t ndim = GetValueDims(input[0]).size();
+    auto local_res = CvtPlacements(local_placements, ndim);
+    auto global_res = CvtPlacements(global_placements, ndim);
+
+    // Call ir static api
+    auto static_api_out =
+        paddle::dialect::moe_global_mesh_tensor(input,
+                                                local_mesh_list,
+                                                std::get<0>(local_res),
+                                                std::get<1>(local_res),
+                                                global_mesh,
+                                                std::get<0>(global_res),
+                                                std::get<1>(global_res),
+                                                global_shape);
+
+    VLOG(6) << "End of adding moe_global_mesh_tensor op into program";
     return ToPyObject(static_api_out);
   } catch (...) {
     ThrowExceptionToPython(std::current_exception());
@@ -150,6 +206,14 @@ static PyMethodDef DistOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_reshard,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for reshard."},
+    {"moe_sub_mesh_tensors",
+     (PyCFunction)(void (*)(void))static_api_moe_sub_mesh_tensors,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for moe_sub_mesh_tensors."},
+    {"moe_global_mesh_tensor",
+     (PyCFunction)(void (*)(void))static_api_moe_global_mesh_tensor,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for moe_global_mesh_tensor."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

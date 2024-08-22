@@ -12,14 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/allocation/system_allocator.h"
+#include "paddle/phi/core/memory/allocation/system_allocator.h"
 
 #include <gtest/gtest.h>
 #include <memory>
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/memory/allocation/allocator.h"
 
 COMMON_DECLARE_bool(use_pinned_memory);
 

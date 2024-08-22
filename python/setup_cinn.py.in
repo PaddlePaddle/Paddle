@@ -142,6 +142,9 @@ if '${WITH_ONEDNN}' == 'ON':
     cinnlibs.append('${ONEDNN_SHARED_LIB}')
 
 cinnlibs.append('${PHI_LIB}')
+cinnlibs.append('${PHI_CORE_LIB}')
+if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
+    cinnlibs.append('${PHI_GPU_LIB}')
 cinnlibs.append('${IR_LIB}')
 cinnlibs.append('${COMMON_LIB}')
 
@@ -149,6 +152,9 @@ if '${WITH_GPU}' == 'ON':
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh')
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/float16.h')
     cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/cuda/bfloat16.h')
+
+if '${WITH_ROCM}' == 'ON':
+    cinnlibs.append('${CMAKE_BINARY_DIR}/dist/cinn/include/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h')
 
 for lib in cinnlibs:
     shutil.copy(lib, libs_path)

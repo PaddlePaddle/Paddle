@@ -25,11 +25,11 @@ class PullSparseV2Op : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Input(Ids) of PullSparseV2Op can not be null"));
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(),
                       1UL,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Output(Out) of PullSparseV2Op can not be null"));
 
     auto hidden_size =

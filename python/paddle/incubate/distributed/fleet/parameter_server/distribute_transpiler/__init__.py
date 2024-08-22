@@ -117,9 +117,9 @@ class FleetTranspiler(Fleet):
 
         def sync_strategy_envs():
             kwargs = {}
-            kwargs[
-                "pserver_endpoints"
-            ] = self._role_maker.get_pserver_endpoints()
+            kwargs["pserver_endpoints"] = (
+                self._role_maker.get_pserver_endpoints()
+            )
             kwargs["trainer_id"] = self._role_maker.worker_index()
             return kwargs
 
@@ -252,7 +252,7 @@ class FleetTranspiler(Fleet):
 
         if model_dir:
             if not os.path.isdir(model_dir):
-                raise ValueError("There is no directory named '%s'", model_dir)
+                raise ValueError(f"There is no directory named '{model_dir}'")
 
             sparse_varnames = self.compiled_config.get_sparse_varname_on_ps(
                 True
@@ -554,7 +554,7 @@ class FleetTranspiler(Fleet):
                 optimizer.type, varname
             )
 
-            for var_name in [varname] + reshaped_varnames + origin_varnames:
+            for var_name in [varname, *reshaped_varnames, *origin_varnames]:
                 var = self._origin_main_program.global_block().vars[var_name]
                 block.append_op(
                     type='recv_save',
@@ -818,7 +818,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
         super().__init__(optimizer, strategy)
         self._mode = mode
         if self._mode == PSMode.PSLIB:
-            self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
+            self._optimizer_name = f"Distributed{optimizer.type.capitalize()}"
             if optimizer.type != "adam":
                 print(
                     "Currently, distributed optimizer only support Adam"
@@ -851,10 +851,10 @@ class ParameterServerOptimizer(DistributedOptimizer):
         no_grad_set=None,
         callbacks=None,
     ):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def apply_gradients(self, params_grads):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _build_trainer_programs(self, compiled_config):
         _main = fleet._origin_main_program.clone()

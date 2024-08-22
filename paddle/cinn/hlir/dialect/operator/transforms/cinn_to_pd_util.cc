@@ -53,12 +53,8 @@ const auto& handler_reduce_sum_op =
   auto attrs = op->attributes();
 
   ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
-  attrs.insert({"axis", attr_axis});
-  attrs.insert({"dtype", attrs["dtype"]});
-  attrs.insert({"keepdim", attrs["keep_dim"]});
-  attrs.erase("dim");
-  attrs.erase("keep_dim");
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
 
   auto pd_op = rewriter.Build<paddle::dialect::SumOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
@@ -78,11 +74,8 @@ const auto& handler_reduce_max_op =
   // TODO(chenxi67): 1. CINN op Dialect Normalization；2.AST Op compute
   // Normalization
   ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
-  attrs.insert({"axis", attr_axis});
-  attrs.insert({"keepdim", attrs["keep_dim"]});
-  attrs.erase("dim");
-  attrs.erase("keep_dim");
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
 
   auto pd_op = rewriter.Build<paddle::dialect::MaxOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
@@ -100,11 +93,8 @@ const auto& handler_reduce_min_op =
   auto attrs = op->attributes();
 
   ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
-  attrs.insert({"axis", attr_axis});
-  attrs.insert({"keepdim", attrs["keep_dim"]});
-  attrs.erase("dim");
-  attrs.erase("keep_dim");
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
 
   auto pd_op = rewriter.Build<paddle::dialect::MinOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);
@@ -122,9 +112,8 @@ const auto& handler_reduce_prod_op =
   auto attrs = op->attributes();
 
   ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
-      attrs.at("dim").dyn_cast<::pir::ArrayAttribute>());
-  attrs.insert({"dims", attr_axis});
-  attrs.erase("dim");
+      attrs.at("axis").dyn_cast<::pir::ArrayAttribute>());
+  attrs["axis"] = attr_axis;
 
   auto pd_op = rewriter.Build<paddle::dialect::ProdOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);

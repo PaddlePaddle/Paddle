@@ -22,8 +22,7 @@
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename IntT, typename Context>
 void SumCooCPUKernel(const Context& dev_ctx,
@@ -176,7 +175,7 @@ void SumCsrKernel(const Context& dev_ctx,
   } else {
     PADDLE_ENFORCE_EQ(axis[0],
                       -1,
-                      phi::errors::Unimplemented(
+                      common::errors::Unimplemented(
                           "`axis` of SumCsrKernel only support None or -1 now."
                           "More number will be supported in the future."));
     out_crows = EmptyLike<int64_t, Context>(dev_ctx, x.crows());
@@ -253,8 +252,7 @@ void SumCooKernel(const Context& dev_ctx,
                                }));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(sum_coo,
                    CPU,

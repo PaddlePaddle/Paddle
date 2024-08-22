@@ -31,10 +31,10 @@ void ScaleKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       x.dims(),
       out->dims(),
-      phi::errors::InvalidArgument("In and out should have the same dim,"
-                                   " expected %s, but got %s.",
-                                   x.dims().to_str().c_str(),
-                                   out->dims().to_str().c_str()));
+      common::errors::InvalidArgument("In and out should have the same dim,"
+                                      " expected %s, but got %s.",
+                                      x.dims().to_str().c_str(),
+                                      out->dims().to_str().c_str()));
   if (x.numel() == 0 || !x.IsInitialized()) {
     return;
   }

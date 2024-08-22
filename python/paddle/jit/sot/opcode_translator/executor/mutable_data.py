@@ -153,13 +153,13 @@ class MutableData(Generic[InnerMutableDataT]):
         self.records[:] = self.records[:version]
 
     def get(self, key):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def set(self, key, value):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def apply(self, mutation: Mutation, write_cache: InnerMutableDataT):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def reproduce(self, version: int | None = None) -> InnerMutableDataT:
         if version is None:

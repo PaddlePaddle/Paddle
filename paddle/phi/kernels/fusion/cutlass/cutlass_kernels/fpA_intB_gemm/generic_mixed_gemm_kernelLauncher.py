@@ -135,7 +135,7 @@ def SubstituteTemplate(template, values):
     while changed:
         changed = False
         for key, value in values.items():
-            regex = "\\{%s\\}" % key
+            regex = f"\\{{{key}\\}}"
             newtext = re.sub(regex, value, text)
             if newtext != text:
                 changed = True
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     header_name = "autogen_tmp/arch_define.h"
     if archs:
         for arch in archs:
-            define_line = "#define USE_FPAINTB_GEMM_WITH_SM%s\n" % str(arch)
+            define_line = f"#define USE_FPAINTB_GEMM_WITH_SM{arch}\n"
             header_all += define_line
     with open(header_name, "w") as f:
         f.write(header_all)

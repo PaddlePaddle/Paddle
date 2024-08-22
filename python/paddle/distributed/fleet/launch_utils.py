@@ -26,10 +26,10 @@ import sys
 import tempfile
 import time
 from contextlib import closing
-from distutils.util import strtobool
 
 import paddle.utils.cpp_extension.extension_utils as utils
 from paddle import framework
+from paddle.utils import strtobool
 
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -291,7 +291,7 @@ def get_cluster(
                     trainer.accelerators.extend(devices_per_proc[i])
                 else:
                     trainer.accelerators.append(devices_per_proc[i])
-            trainer.endpoint = "%s" % (cur_node_endpoints[i])
+            trainer.endpoint = f"{cur_node_endpoints[i]}"
             trainer.rank = trainer_rank
             trainer_rank += 1
 
@@ -498,7 +498,7 @@ def start_local_trainers(
     for idx, t in enumerate(pod.trainers):
         proc_env = {
             "PADDLE_TRAINER_ID": "%d" % t.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{t.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "PADDLE_RANK_IN_NODE": str(idx),
@@ -523,18 +523,18 @@ def start_local_trainers(
             ]
 
         if len(t.accelerators) > 0 and pod.device_mode == DeviceMode.GPU:
-            proc_env["FLAGS_selected_gpus"] = "%s" % ",".join(
-                [str(g) for g in t.accelerators]
+            proc_env["FLAGS_selected_gpus"] = "{}".format(
+                ",".join([str(g) for g in t.accelerators])
             )
 
         if len(t.accelerators) > 0:
-            proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
-                [str(g) for g in t.accelerators]
+            proc_env["FLAGS_selected_accelerators"] = "{}".format(
+                ",".join([str(g) for g in t.accelerators])
             )
         # to do: same code style in future
         if framework.core.is_compiled_with_xpu() and len(t.accelerators) > 0:
-            proc_env["FLAGS_selected_xpus"] = "%s" % ",".join(
-                [str(g) for g in t.accelerators]
+            proc_env["FLAGS_selected_xpus"] = "{}".format(
+                ",".join([str(g) for g in t.accelerators])
             )
 
         current_env.update(proc_env)
@@ -545,12 +545,13 @@ def start_local_trainers(
             or os.environ.get("WITH_COVERAGE", "OFF") == "ON"
         ):
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]
-        cmd = (
-            [sys.executable, "-u"]
-            + coverage_args
-            + [training_script]
-            + training_script_args
-        )
+        cmd = [
+            sys.executable,
+            "-u",
+            *coverage_args,
+            training_script,
+            *training_script_args,
+        ]
 
         logger.debug(f"start trainer proc{cmd}  env:{current_env}")
 
@@ -571,9 +572,9 @@ def start_local_trainers(
         pre_fn = None if os.name == 'nt' else os.setsid
         if log_dir is not None:
             os.makedirs(log_dir, exist_ok=True)
-            if os.path.exists("%s/endpoints.log" % log_dir):
+            if os.path.exists(f"{log_dir}/endpoints.log"):
                 os.remove(f"{log_dir}/endpoints.log")
-            with open("%s/endpoints.log" % log_dir, "w") as f:
+            with open(f"{log_dir}/endpoints.log", "w") as f:
                 f.write("PADDLE_TRAINER_ENDPOINTS: \n")
                 f.write("\n".join(cluster.trainers_endpoints()))
             if (
@@ -613,8 +614,7 @@ def pull_worker_log(tp):
                 except UnicodeEncodeError:
                     sys.stdout.write(
                         'UnicodeEncodeError occurs at this line. '
-                        'Please refer to the original log file "%s"\n'
-                        % tp.log_fn.name
+                        f'Please refer to the original log file "{tp.log_fn.name}"\n'
                     )
             tp.log_offset = fin.tell()
 
@@ -802,7 +802,8 @@ def direct_start(args):
         sys.executable,
         "-u",
         args.training_script,
-    ] + args.training_script_args
+        *args.training_script_args,
+    ]
     proc = subprocess.Popen(cmd)
     proc.wait()
 
@@ -883,7 +884,7 @@ def get_mapped_cluster_without_rank_mapping(
         assert len(ranks_per_node) == 1
         for i in range(len(ranks_per_node)):
             trainer = Trainer()
-            trainer.endpoint = "%s" % (cur_node_endpoints[i])
+            trainer.endpoint = f"{cur_node_endpoints[i]}"
             trainer.rank = ranks_per_node[i]
             pod.trainers.append(trainer)
         cluster.pods.append(pod)
@@ -1002,7 +1003,7 @@ def get_mapped_cluster_with_rank_mapping(
             trainer.accelerators.append(
                 get_relative_gpu_id(local_device_ids[0])
             )
-            trainer.endpoint = "%s" % (cur_node_endpoints[i])
+            trainer.endpoint = f"{cur_node_endpoints[i]}"
             trainer.rank = ranks_per_node[i]
             pod.trainers.append(trainer)
         cluster.pods.append(pod)
@@ -1373,8 +1374,9 @@ class ParameterServerLauncher:
                     self.heter_worker_endpoints += ip_port_list
 
             self.stage_trainer_num = [
-                self.worker_num
-            ] + self.stage_heter_trainer_num
+                self.worker_num,
+                *self.stage_heter_trainer_num,
+            ]
             self.stage_num = len(self.stage_trainer_num)
 
         # get http_port
@@ -1621,7 +1623,8 @@ class ParameterServerLauncher:
                 sys.executable,
                 "-u",
                 args.training_script,
-            ] + args.training_script_args
+                *args.training_script_args,
+            ]
             self.cmds["server"].append(cmd)
 
             if idx == 0:
@@ -1729,7 +1732,8 @@ class ParameterServerLauncher:
                 sys.executable,
                 "-u",
                 args.training_script,
-            ] + args.training_script_args
+                *args.training_script_args,
+            ]
             self.cmds["worker"].append(cmd)
 
             if idx == 0:
@@ -1797,7 +1801,8 @@ class ParameterServerLauncher:
                 sys.executable,
                 "-u",
                 args.training_script,
-            ] + args.training_script_args
+                *args.training_script_args,
+            ]
             self.cmds["coordinator"].append(cmd)
 
             if idx == 0:
@@ -1856,11 +1861,11 @@ class ParameterServerLauncher:
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
-                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[
-                    stage_id + 1
-                ]
-                if stage_id <= self.stage_num - 1
-                else "",
+                "PADDLE_NEXT_HETER_TRAINER_IP_PORT_LIST": (
+                    self.stage_heter_map[stage_id + 1]
+                    if stage_id <= self.stage_num - 1
+                    else ""
+                ),
                 "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[
                     stage_id - 1
                 ],
@@ -1888,7 +1893,8 @@ class ParameterServerLauncher:
                 sys.executable,
                 "-u",
                 args.training_script,
-            ] + args.training_script_args
+                *args.training_script_args,
+            ]
             self.cmds["heter_worker"].append(cmd)
 
             if idx == 0:
@@ -1936,7 +1942,7 @@ def check_backend(backend):
             "paddle.distributed initialize error, "
             "backend argument can only be one of "
             "'nccl', 'gloo', 'bkcl', 'auto', 'heter', 'xccl' "
-            "but got %s" % backend
+            f"but got {backend}"
         )
 
     if backend == 'nccl' and not framework.core.is_compiled_with_cuda():

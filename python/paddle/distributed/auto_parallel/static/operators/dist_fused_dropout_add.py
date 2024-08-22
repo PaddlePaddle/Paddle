@@ -74,7 +74,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
         if is_enable_auto_rand_ctrl() and not op_dist_attr.is_recompute:
             assert (
                 op_dist_attr is not None
-            ), f"forward op [{str(src_op)}] don't have dist attribute !"
+            ), f"forward op [{src_op}] don't have dist attribute !"
 
             assert 'seed_tensor' in kwargs, "input [{}] is not given".format(
                 'seed_tensor'
@@ -101,7 +101,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     assert (
                         pre_op.type == "seed"
                         and len(pre_op.attr("rng_name")) == 0
-                    ), f"found exception op {str(pre_op)}"
+                    ), f"found exception op {pre_op}"
 
                     # determinate rng
                     X_var = main_block._var_recursive(kwargs['x'][0])

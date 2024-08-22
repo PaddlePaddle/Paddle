@@ -123,12 +123,6 @@ bool ConstraintsManager::IsEqual(const DimExpr& lhs, const DimExpr& rhs) const {
   return lhs == rhs || equals_.HasSameRoot(lhs, rhs);
 }
 
-template <typename DoEachClusterT>
-void ConstraintsManager::VisitEqualClusters(
-    const DoEachClusterT& DoEachCluster) const {
-  equals_.VisitCluster(DoEachCluster);
-}
-
 void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
   gtones_.insert(dim_expr);
 
@@ -224,6 +218,33 @@ bool ConstraintsManager::IsBroadcastable(const DimExpr& lhs,
   return false;
 }
 
+void ConstraintsManager::AddInputRangeCstr(
+    const DimExpr& dim_expr, const ConstraintsManager::Range& range) {
+  PADDLE_ENFORCE_EQ(dim_expr.isa<std::string>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Bounded input DimExpr should be a string type."));
+
+  PADDLE_ENFORCE_EQ(input_ranges_.find(dim_expr),
+                    input_ranges_.end(),
+                    common::errors::InvalidArgument(
+                        "Bounded input DimExpr range can only be added once."));
+  input_ranges_[dim_expr] = range;
+}
+
+bool ConstraintsManager::IsBoundedInput(const DimExpr& dim_expr) const {
+  return input_ranges_.count(dim_expr);
+}
+
+const ConstraintsManager::Range& ConstraintsManager::GetRangeOfBoundedInput(
+    const DimExpr& dim_expr) const {
+  PADDLE_ENFORCE_EQ(IsBoundedInput(dim_expr),
+                    true,
+                    common::errors::InvalidArgument(
+                        "DimExpr is not a bounded input dim expr."));
+  return input_ranges_.at(dim_expr);
+}
+
 void ConstraintsManager::SetEqualCallbackFunc(
     EqualCallbackFunc equal_callback_func) {
   equal_callback_func_ = equal_callback_func;
@@ -260,42 +281,90 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
     }
   });
   broadcastables_ = substituted_broadcastables;
+
+  InputRangeConstraints substituted_input_ranges;
+  InputRangeConstraintsVisitor([&](auto it) {
+    const DimExpr& substituted_dim_expr =
+        SubstituteDimExpr(it->first, substitution_pattern);
+    if (substituted_dim_expr != it->first) {
+      PADDLE_ENFORCE_EQ(substituted_dim_expr.isa<std::string>() ||
+                            substituted_dim_expr.isa<std::int64_t>(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Bounded input DimExpr can only be subsituted with "
+                            "a string or an integer."));
+      if (substituted_dim_expr.isa<std::int64_t>()) {
+        std::int64_t substituted_value =
+            substituted_dim_expr.Get<std::int64_t>();
+        const bool in_range = substituted_value >= it->second.min &&
+                              substituted_value <= it->second.max;
+        PADDLE_ENFORCE_EQ(in_range,
+                          true,
+                          common::errors::InvalidArgument(
+                              "Bounded input DimExpr range is inconsistent "
+                              "with other constraints."));
+      }
+      substituted_input_ranges[substituted_dim_expr] = it->second;
+    }
+  });
+  input_ranges_ = substituted_input_ranges;
 }
 
-template <typename DoEachT>
-void ConstraintsManager::EqualConstraintsVisitor(const DoEachT& DoEach) {
+void ConstraintsManager::VisitEqualClusters(
+    const std::function<void(const std::vector<DimExpr>&)>& DoEachCluster)
+    const {
+  equals_.VisitCluster(DoEachCluster);
+}
+
+void ConstraintsManager::EqualConstraintsVisitor(
+    const std::function<void(std::unordered_map<DimExpr, DimExpr>::iterator)>&
+        DoEach) {
   auto equals_parents = equals_.MutMap();
   for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
-void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) {
+void ConstraintsManager::GTOneConstraintsVisitor(
+    const std::function<void(GTOneConstraints::iterator)>& DoEach) {
   for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
-void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) const {
+void ConstraintsManager::GTOneConstraintsVisitor(
+    const std::function<void(GTOneConstraints::const_iterator)>& DoEach) const {
   for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
 void ConstraintsManager::BroadcastableConstraintsVisitor(
-    const DoEachT& DoEach) {
+    const std::function<void(BroadcastableConstraints::iterator)>& DoEach) {
   for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
 void ConstraintsManager::BroadcastableConstraintsVisitor(
-    const DoEachT& DoEach) const {
+    const std::function<void(BroadcastableConstraints::const_iterator)>& DoEach)
+    const {
   for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
+    DoEach(it);
+  }
+}
+
+void ConstraintsManager::InputRangeConstraintsVisitor(
+    const std::function<void(InputRangeConstraints::iterator)>& DoEach) {
+  for (auto it = input_ranges_.begin(); it != input_ranges_.end(); it++) {
+    DoEach(it);
+  }
+}
+
+void ConstraintsManager::InputRangeConstraintsVisitor(
+    const std::function<void(InputRangeConstraints::const_iterator)>& DoEach)
+    const {
+  for (auto it = input_ranges_.begin(); it != input_ranges_.end(); it++) {
     DoEach(it);
   }
 }
@@ -319,6 +388,11 @@ std::ostream& operator<<(std::ostream& stream,
   stream << "GreatThanOne Constraints:" << std::endl;
   constraints_manager.GTOneConstraintsVisitor(
       [&](const auto& it) { stream << "  " << *it << std::endl; });
+  stream << "Input Range Constraints:" << std::endl;
+  constraints_manager.InputRangeConstraintsVisitor([&](const auto& it) {
+    stream << "  InputRange[" << it->first << ", min: " << it->second.min
+           << ", max: " << it->second.max << "]" << std::endl;
+  });
   return stream;
 }
 
