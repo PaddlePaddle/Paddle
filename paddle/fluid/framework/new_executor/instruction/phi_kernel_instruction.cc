@@ -198,18 +198,18 @@ void PhiKernelInstruction::Run() {
     (*(phi_kernel_))(&(kernel_context_));
   }
 
-  std::cerr << phi_op_name_ << " kernel." << std::endl;
+  // std::cerr << phi_op_name_ << " kernel." << std::endl;
 
-  for (size_t i = 0; i < kernel_context_.InputsSize(); ++i) {
-    std::cerr << "phi input " << kernel_context_.InputAt<phi::DenseTensor>(i)
-              << std::endl;
-  }
+  // for (size_t i = 0; i < kernel_context_.InputsSize(); ++i) {
+  //   std::cerr << "phi input " << kernel_context_.InputAt<phi::DenseTensor>(i)
+  //             << std::endl;
+  // }
 
-  for (size_t i = 0; i < kernel_context_.OutputsSize(); ++i) {
-    std::cerr << "phi out "
-              << *(kernel_context_.MutableOutputAt<phi::DenseTensor>(i))
-              << std::endl;
-  }
+  // for (size_t i = 0; i < kernel_context_.OutputsSize(); ++i) {
+  //   std::cerr << "phi out "
+  //             << *(kernel_context_.MutableOutputAt<phi::DenseTensor>(i))
+  //             << std::endl;
+  // }
 
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
 }
