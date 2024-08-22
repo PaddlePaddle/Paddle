@@ -144,5 +144,4 @@ class TestCase3(TestCaseBase):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
