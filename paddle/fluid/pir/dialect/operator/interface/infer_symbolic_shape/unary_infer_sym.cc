@@ -2795,6 +2795,10 @@ bool Transpose_OpInferSymbolicShape(
   return TransposeOpInferSymbolicShape(op, infer_context);
 }
 
+bool TransLayoutOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return TransposeOpInferSymbolicShape(op, infer_context);
+}
 bool SqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   PADDLE_ENFORCE_EQ(
