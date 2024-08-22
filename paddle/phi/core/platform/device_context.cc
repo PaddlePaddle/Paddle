@@ -19,18 +19,22 @@ limitations under the License. */
 #include <set>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/expect.h"
 #include "paddle/phi/core/generator.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #endif
 
 namespace paddle {
@@ -105,7 +109,12 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
 #endif
   } else if (p.GetType() == phi::AllocationType::XPU) {
 #if defined(PADDLE_WITH_XPU)
-    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    auto* xpu_ctx = dynamic_cast<phi::XPUContext*>(dev_ctx);
+    if (!disable_setting_default_stream_for_allocator) {
+      instance.SetDefaultStream(phi::XPUPlace(p.GetDeviceId()),
+                                xpu_ctx->stream());
+    }
+    dev_ctx->SetAllocator(instance.GetAllocator(p, xpu_ctx->stream()).get());
     dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

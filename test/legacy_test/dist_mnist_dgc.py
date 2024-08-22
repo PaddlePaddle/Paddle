@@ -58,7 +58,7 @@ def cnn_model(data):
 
     SIZE = 10
     input_shape = conv_pool_2.shape
-    param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
+    param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1), SIZE]
     scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
     predict = paddle.static.nn.fc(
@@ -109,6 +109,7 @@ class TestDistMnistDGC(TestDistRunnerBase):
             assert (
                 build_strategy is not None
             ), "build_strategy can be None with dgc"
+            paddle.distributed.collective._init_parallel_env("nccl")
             _insert_comm_op(opt, avg_cost, build_strategy)
         else:
             opt.minimize(avg_cost)

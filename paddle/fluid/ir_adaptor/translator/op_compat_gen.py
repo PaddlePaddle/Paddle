@@ -140,6 +140,13 @@ def OpNameNormalizerInitialization(
         "out": "Output",
     }
 
+    op_name_mappings["lookup_table"] = "embedding"
+    op_arg_name_mappings["lookup_table"] = {
+        "x": "Ids",
+        "weight": "W",
+        "out": "Out",
+    }
+
     op_arg_name_mappings["set_value_grad"]["values_grad"] = "ValueTensor@GRAD"
     op_arg_name_mappings["fetch"] = {"x": "X"}
     op_arg_name_mappings["elementwise_add_grad_grad"] = {

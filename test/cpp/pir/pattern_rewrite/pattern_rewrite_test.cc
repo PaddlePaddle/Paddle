@@ -424,8 +424,10 @@ TEST(pattern_rewrite, Patterns) {
   //     },
   //     true,
   //     true));
-
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::ExecutionTimeout(
+                        "Sorry, the for program test is timeout."));
   EXPECT_EQ(program.block()->size(), 17u);
 }
 
@@ -491,7 +493,10 @@ TEST(constant_folding, ConstantFolding) {
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::ExecutionTimeout(
+                        "Sorry, the test for program is timeout."));
   EXPECT_EQ(program.block()->size(), 2u);
 }
 
@@ -516,7 +521,10 @@ TEST(constant_folding, ConstantFolding_Train) {
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::ExecutionTimeout(
+                        "Sorry, the test for program is timeout."));
   EXPECT_EQ(program.block()->size(), 4u);
 }
 
@@ -584,7 +592,10 @@ TEST(constant_folding, ConstantFolding_Combine) {
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::ExecutionTimeout(
+                        "Sorry, the test for program is timeout."));
   EXPECT_EQ(program.block()->size(), 2u);
 }
 
@@ -625,6 +636,9 @@ TEST(constant_folding, ConstantFolding_MultiOutput) {
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnableIRPrinting();
 
-  CHECK_EQ(pm.Run(&program), true);
+  PADDLE_ENFORCE_EQ(pm.Run(&program),
+                    true,
+                    common::errors::ExecutionTimeout(
+                        "Sorry, the test for program is timeout."));
   EXPECT_EQ(program.block()->size(), 4u);
 }

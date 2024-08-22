@@ -24,9 +24,7 @@ from typing import (
     Any,
     AnyStr,
     Callable,
-    Mapping,
     Protocol,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -49,6 +47,7 @@ from .dataloader.dataloader_iter import (
 
 if TYPE_CHECKING:
     import numbers
+    from collections.abc import Mapping, Sequence
 
     import numpy.typing as npt
 
