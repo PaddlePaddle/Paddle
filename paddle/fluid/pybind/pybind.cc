@@ -2959,16 +2959,16 @@ All parameter, weight, gradient are variables in Paddle.
       .def("end", [](phi::RecordEvent *event) { event->End(); });
 
   py::enum_<paddle::platform::TracerMemEventType>(m, "TracerMemEventType")
-#define X(name) .value(#name, phi::TracerMemEventType::name)
-      TRACER_MEM_EVENT_TYPES
-#undef X
-      ;  // NOLINT
+#define BIND_ENUM_ITEM(name) .value(#name, phi::TracerMemEventType::name)
+      FOR_EACH_TRACER_MEM_EVENT_TYPES(BIND_ENUM_ITEM)
+#undef BIND_ENUM_ITEM
+          ;  // NOLINT
 
   py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
-#define X(name) .value(#name, phi::TracerEventType::name)
-      TRACER_EVENT_TYPES
-#undef X
-      ;  // NOLINT
+#define BIND_ENUM_ITEM(name) .value(#name, phi::TracerEventType::name)
+      FOR_EACH_TRACER_EVENT_TYPES(BIND_ENUM_ITEM)
+#undef BIND_ENUM_ITEM
+          ;  // NOLINT
 
   m.def("tracer_event_type_to_string",
         &paddle::platform::StringTracerEventType);

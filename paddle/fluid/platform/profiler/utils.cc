@@ -149,11 +149,11 @@ float CalculateEstOccupancy(uint32_t DeviceId,
 
 const char* StringTracerMemEventType(TracerMemEventType type) {
   switch (type) {
-#define X(name)                  \
+#define CASE_NAME(name)          \
   case TracerMemEventType::name: \
     return #name;
-    TRACER_MEM_EVENT_TYPES
-#undef X
+    FOR_EACH_TRACER_MEM_EVENT_TYPES(CASE_NAME)
+#undef CASE_NAME
     default:
       return "Unknown";
   }
@@ -161,11 +161,11 @@ const char* StringTracerMemEventType(TracerMemEventType type) {
 
 const char* StringTracerEventType(TracerEventType type) {
   switch (type) {
-#define X(name)               \
+#define CASE_NAME(name)       \
   case TracerEventType::name: \
     return #name;
-    TRACER_EVENT_TYPES
-#undef X
+    FOR_EACH_TRACER_EVENT_TYPES(CASE_NAME)
+#undef CASE_NAME
     default:
       return "Unknown";
   }

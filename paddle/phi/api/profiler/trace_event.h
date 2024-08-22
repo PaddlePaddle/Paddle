@@ -20,63 +20,63 @@ limitations under the License. */
 
 namespace phi {
 
-#define TRACER_EVENT_TYPES                                                  \
+#define FOR_EACH_TRACER_EVENT_TYPES(_)                                      \
   /* Used to mark operator record */                                        \
-  X(Operator)                                                               \
+  _(Operator)                                                               \
   /* Used to mark dataloader record */                                      \
-  X(Dataloader)                                                             \
+  _(Dataloader)                                                             \
   /* Used to mark profile step record */                                    \
-  X(ProfileStep)                                                            \
+  _(ProfileStep)                                                            \
   /* Used to mark cuda runtime record returned by cupti */                  \
-  X(CudaRuntime)                                                            \
+  _(CudaRuntime)                                                            \
   /* Used to mark kernel computation record returned by cupti */            \
-  X(Kernel)                                                                 \
+  _(Kernel)                                                                 \
   /* Used to mark memcpy record returned by cupti */                        \
-  X(Memcpy)                                                                 \
+  _(Memcpy)                                                                 \
   /* Used to mark memset record returned by cupti */                        \
-  X(Memset)                                                                 \
+  _(Memset)                                                                 \
   /* Used to mark record defined by user */                                 \
-  X(UserDefined)                                                            \
+  _(UserDefined)                                                            \
   /* Used to mark operator detail, (such as infer shape, compute) */        \
-  X(OperatorInner)                                                          \
+  _(OperatorInner)                                                          \
   /* Used to mark model training or testing perspective, forward process */ \
-  X(Forward)                                                                \
+  _(Forward)                                                                \
   /* Used to mark model training perspective, backward process */           \
-  X(Backward)                                                               \
+  _(Backward)                                                               \
   /* Used to mark model training perspective, optimization process */       \
-  X(Optimization)                                                           \
+  _(Optimization)                                                           \
   /* Used to mark distributed training perspective */                       \
-  X(Communication)                                                          \
+  _(Communication)                                                          \
   /* Used to mark python api */                                             \
-  X(PythonOp)                                                               \
+  _(PythonOp)                                                               \
   /* Used to mark python level user-defined */                              \
-  X(PythonUserDefined)                                                      \
+  _(PythonUserDefined)                                                      \
   /* Used to mark kernel call in dynamic graph mode */                      \
-  X(DygraphKernelLaunch)                                                    \
+  _(DygraphKernelLaunch)                                                    \
   /* Used to mark kernel call in static graph mode */                       \
-  X(StaticKernelLaunch)
+  _(StaticKernelLaunch)
 
 enum class TracerEventType {
-#define X(name) name,
-  TRACER_EVENT_TYPES
-#undef X
+#define DEFINE_ENUM_ITEM(name) name,
+  FOR_EACH_TRACER_EVENT_TYPES(DEFINE_ENUM_ITEM)
+#undef DEFINE_ENUM_ITEM
       NumTypes
 };
 
-#define TRACER_MEM_EVENT_TYPES                                                \
+#define FOR_EACH_TRACER_MEM_EVENT_TYPES(_)                                    \
   /* Used to mark memory allocation which is managed by paddle */             \
-  X(Allocate)                                                                 \
+  _(Allocate)                                                                 \
   /* Used to mark memory free which is managed by paddle */                   \
-  X(Free)                                                                     \
+  _(Free)                                                                     \
   /* Used to mark reserved memory allocation which is applied from device. */ \
-  X(ReservedAllocate)                                                         \
+  _(ReservedAllocate)                                                         \
   /* Used to mark reserved memory free which is released to device. */        \
-  X(ReservedFree)
+  _(ReservedFree)
 
 enum class TracerMemEventType {
-#define X(name) name,
-  TRACER_MEM_EVENT_TYPES
-#undef X
+#define DEFINE_ENUM_ITEM(name) name,
+  FOR_EACH_TRACER_MEM_EVENT_TYPES(DEFINE_ENUM_ITEM)
+#undef DEFINE_ENUM_ITEM
       NumTypes
 };
 

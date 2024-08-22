@@ -55,7 +55,7 @@ class KernelInfo:
 
 # TODO(SigureMo): Split into multiple files by visitor type
 class KernelStatsVisitor(EventVisitor):
-    SKIP_KERNEL_NAMES = ["full", "full_int_array", "shadow_feed"]
+    SKIP_KERNEL_NAMES = {"full", "full_int_array", "shadow_feed"}
     KERNEL_NAME_REGEX = re.compile("(?P<kernel_name>.+) kernel launch")
 
     def __init__(self):
@@ -187,7 +187,7 @@ class SotStepProfilerGuard:
         if self.started:
             assert self.profiler is not None
             self.profiler.stop()
-            self.profiler = None
+            self.profiler = None  # Avoid to hold the profiler instance
         SotStepProfilerGuard.STEP_CNT += 1
 
     def __enter__(self):
