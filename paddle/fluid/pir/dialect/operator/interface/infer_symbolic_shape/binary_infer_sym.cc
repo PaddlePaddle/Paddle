@@ -470,11 +470,12 @@ bool convtransposefunction(pir::Operation *op,
                            ksize);
 
   std::vector<symbol::DimExpr> output_shape({x_shape[0]});
-
+  VLOG(3) << "filter_shape:!!!! " << filter_shape << "groups: !!!!" << groups
+          << "channel_last: !!!!" << channel_last;
   if (channel_last) {
     output_shape.push_back(filter_shape[1] * groups);
   }
-
+  VLOG(3) << "output_shape:!!!! " << output_shape;
   const int offset = (channel_last ? 2 : 1);
   for (int i = 0; i < static_cast<int>(strides.size()); ++i) {
     symbol::DimExpr filter_extent =
@@ -491,8 +492,8 @@ bool convtransposefunction(pir::Operation *op,
     } else {
       output_shape.push_back(infer_shape);
     }
+    VLOG(3) << "output_shape:!!!! " << output_shape;
   }
-
   if (!channel_last) {
     output_shape.push_back(filter_shape[1] * groups);
   }
