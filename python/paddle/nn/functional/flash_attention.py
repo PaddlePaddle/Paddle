@@ -1103,7 +1103,7 @@ def flashmask_attention(
     *,
     dropout: float = 0.0,
     causal: bool = False,
-    window_size: int | None = None,
+    window_size: int | tuple | None = None,
     return_softmax_lse: bool = False,
     return_seed_offset: bool = False,
     fixed_seed_offset: Tensor | None = None,
@@ -1332,6 +1332,9 @@ def flashmask_attention(
                 left lower triangular mask and the start and end row indices of the right upper triangular mask in the dense mask. The values r1, r2, r3, r4 in startend_row_indices indicate that elements in the lower left triangle of the Score matrix starting from the r1-th row downwards (inclusive) but above the r2-th row (exclusive) will be masked, and elements in the upper right triangle starting from the r3-th row downwards (inclusive) but above the r4-th row (exclusive) will be masked.
         - **dropout** (float) - The dropout ratio. Default is 0.0.
         - **causal** (bool) - Whether to enable causal mode. Default is False.
+        - **window_size** (int|tuple, optional) - Indicates the window size of sliding window local attention.
+                        If causal mode is enabled, Query at position i will only attend to keys between [i - window_size, i] or [i - window_size[0], i].
+                        If causal mode is disabled, Query at position i will only attend to keys between [i - window_size, i + window_size] or [i - window_size[0], i + window_size[1]].
         - **return_softmax_lse** (bool) - Whether to return the log-sum-exp of the softmax. Default is False.
         - **return_seed_offset** (bool) - Whether to return the random seed offset. Default is False.
         - **fixed_seed_offset** (Tensor, optional): With fixed seed, offset for dropout mask.
@@ -1392,6 +1395,8 @@ def flashmask_attention(
     """
 
     if window_size is not None:
+        if isinstance(window_size, int):
+            window_size = (window_size, window_size)
         sq = query.shape[1]
         bsz = query.shape[0]
         assert (
@@ -1399,7 +1404,7 @@ def flashmask_attention(
         ), "can't use window_size with startend_row_indices"
         if causal:
             startend_row_indices = paddle.arange(
-                window_size + 1, sq + window_size + 1, dtype="int32"
+                window_size[0] + 1, sq + window_size[0] + 1, dtype="int32"
             ).reshape((1, 1, sq, 1))
             startend_row_indices = paddle.clip(
                 startend_row_indices, max=sq
