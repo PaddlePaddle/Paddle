@@ -231,43 +231,12 @@ bool Binomial_OpInferSymbolicShape(
   return BinomialOpInferSymbolicShape(op, infer_context);
 }
 
-bool BincountOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
-
-  PADDLE_ENFORCE_EQ(x_dims.size(),
-                    1,
-                    common::errors::InvalidArgument(
-                        "The 'shape' of Input(X) must be 1-D tensor. But the "
-                        "dimension of Input(X) is [%d]",
-                        x_dims.size()));
-
-  if (op->operand_source(1)) {
-    const auto &weights_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    const std::vector<symbol::DimExpr> &weights_dims =
-        weights_shape_or_data.shape();
-
-    PADDLE_ENFORCE_EQ(weights_dims.size(),
-                      1,
-                      common::errors::InvalidArgument(
-                          "The 'shape' of Input(Weights) must be 1-D tensor. "
-                          "But the dimension of Input(Weights) is [%d]",
-                          weights_dims.size()));
-    infer_context->AddEqualCstr(weights_dims[0], x_dims[0]);
-  }
-
-  symbol::DimExpr out_unknown =
-      infer_context->GetNextSymName();  // unknown until runtime
-  const std::vector<symbol::DimExpr> out_dims = {out_unknown};
-  symbol::ShapeOrDataDimExprs output_dims{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
-  infer_context->SetShapeOrDataForValue(op->result(0), output_dims);
-
-  return true;
-}
+bool BincountOpInferSymbolicShape(pir::Operation *op,
+//                                pir::InferSymbolicShapeContext
+//                                *infer_context) {
+//   // pass
+//   return true;
+// }
 
 // bool BmmOpInferSymbolicShape(pir::Operation *op,
 //                              pir::InferSymbolicShapeContext *infer_context) {
