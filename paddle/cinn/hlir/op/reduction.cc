@@ -96,10 +96,27 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     }
     std::sort(reduce_axes.begin(), reduce_axes.end());
     // check reduce_axes
-    CHECK_LE(reduce_axes.size(), ndim);
-    CHECK_LT(reduce_axes.back(), ndim);
+    PADDLE_ENFORCE_LE(
+        reduce_axes.size(),
+        ndim,
+        phi::errors::InvalidArgument(
+            "The reduce axes size %d should be less than or equal "
+            "to the input tensor's dimension %d.",
+            reduce_axes.size(),
+            ndim));
+    PADDLE_ENFORCE_LE(
+        reduce_axes.back(),
+        ndim,
+        phi::errors::InvalidArgument(
+            "The reduce axes size %d should be less than or equal "
+            "to the input tensor's dimension %d.",
+            reduce_axes.back(),
+            ndim));
     for (int idx = 1; idx < reduce_axes.size(); ++idx) {
-      CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
+      PADDLE_ENFORCE_NE(reduce_axes[idx - 1],
+                        reduce_axes[idx],
+                        ::common::errors::InvalidArgument(
+                            "The reduce axes should be unique!"));
     }
   } else {
     PADDLE_THROW(
@@ -211,12 +228,21 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
 
   framework::CINNSchedule reduction_schedule([=](lang::Args args,
                                                  lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of " << op_name
-                         << " schedule is empty! Please check.";
+    PADDLE_ENFORCE_EQ(!args.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The input argument of schedule is empty! Please "
+                          "check."));
 
     CINNValuePack arg_pack = args[0];
-    CHECK_GE(arg_pack.size(), 2UL);
-    CHECK_LE(arg_pack.size(), 8UL);
+    PADDLE_ENFORCE_GE(arg_pack.size(),
+                      2UL,
+                      phi::errors::InvalidArgument(
+                          "The input tensor size should be greater than 2!"));
+    PADDLE_ENFORCE_LE(arg_pack.size(),
+                      8UL,
+                      phi::errors::InvalidArgument(
+                          "The input tensor size should be less than 8!"));
     std::vector<Expr> vec_ast;
     std::vector<Expr> vec_tensor;
     for (int i = 0; i < arg_pack.size(); i++) {
@@ -235,14 +261,21 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         vec_tensor.emplace_back(temp);
       }
     }
-    CHECK(!vec_ast.empty());
+    PADDLE_ENFORCE_EQ(!vec_ast.empty(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The input argument of schedule is empty! Please "
+                          "check."));
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
     const auto ReduceSchedule = [&]() {
       if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
         if (arg_pack.size() == 4) {
-          CHECK_EQ(vec_tensor.size(), 2);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            2,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 2!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
 
@@ -254,7 +287,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else if (arg_pack.size() == 6) {
-          CHECK_EQ(vec_tensor.size(), 3);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            3,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 3!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
           Expr reduce_tmp_out = vec_tensor[2];
@@ -270,7 +306,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else if (arg_pack.size() == 7) {
-          CHECK_EQ(vec_tensor.size(), 4);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            4,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 4!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
           Expr reduce_tmp_out = vec_tensor[2];
@@ -288,7 +327,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else if (arg_pack.size() == 5) {
-          CHECK_EQ(vec_tensor.size(), 3);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            3,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 3!"));
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
           Expr reduce_tmp_out = vec_tensor[2];
@@ -309,7 +351,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         }
       } else {
         if (arg_pack.size() == 2) {
-          CHECK_EQ(vec_tensor.size(), 1);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            1,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 1!"));
           Expr reduce_out = vec_tensor[0];
 
           VLOG(3) << "Do IRGpuScheduleReduce Schedule!";
@@ -323,7 +368,10 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
           *ret = CINNValuePack{res};
         } else if (arg_pack.size() == 6) {
-          CHECK_EQ(vec_tensor.size(), 3);
+          PADDLE_ENFORCE_EQ(vec_tensor.size(),
+                            3,
+                            phi::errors::InvalidArgument(
+                                "The input tensor size should be 3!"));
           Expr reduce_out = vec_tensor[0];
           Expr reduce_internal = vec_tensor[1];
           Expr reduce_reshape = vec_tensor[2];
@@ -421,10 +469,26 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
       });
     }
     std::sort(reduce_axes.begin(), reduce_axes.end());
-    CHECK_LE(reduce_axes.size(), ndim);
-    CHECK_LT(reduce_axes.back(), ndim);
+    PADDLE_ENFORCE_LE(
+        reduce_axes.size(),
+        ndim,
+        phi::errors::InvalidArgument(
+            "The reduce axes size %d should be less than or equal "
+            "to the input tensor's dimension %d.",
+            reduce_axes.size(),
+            ndim));
+    PADDLE_ENFORCE_LT(reduce_axes.back(),
+                      ndim,
+                      phi::errors::InvalidArgument(
+                          "The reduce axes back %d should be less than "
+                          "to the input tensor's dimension %d.",
+                          reduce_axes.back(),
+                          ndim));
     for (int idx = 1; idx < reduce_axes.size(); ++idx) {
-      CHECK_NE(reduce_axes[idx - 1], reduce_axes[idx]);
+      PADDLE_ENFORCE_NE(
+          reduce_axes[idx - 1],
+          reduce_axes[idx],
+          phi::errors::InvalidArgument("The reduce axes should be unique!"));
     }
   } else {
     PADDLE_THROW(
@@ -436,31 +500,44 @@ std::shared_ptr<OpStrategy> StrategyForReduceSymbolic(
     keepdim = absl::get<bool>(attrs.attr_store.at("keepdim"));
   }
 
-  framework::CINNCompute reduction_compute(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of " << op_name
-                             << " compute is empty! Please check.";
-        CINNValuePack arg_packs = args[0];
-        CHECK_EQ(arg_packs.size(), 2U)
-            << "There should be 2 input args for " << op_name << " compute";
-        CHECK(arg_packs[1].is_string());
-        std::string tensor_name = arg_packs[1].operator std::string();
-        Expr x_expr = arg_packs[0];
-        CHECK(x_expr.as_tensor());
-        ir::Tensor x = x_expr.as_tensor_ref();
+  framework::CINNCompute reduction_compute([=](lang::Args args,
+                                               lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The input argument of compute is empty! Please check."));
+    CINNValuePack arg_packs = args[0];
+    PADDLE_ENFORCE_EQ(arg_packs.size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "There should be 2 input args for compute"));
+    PADDLE_ENFORCE_EQ(arg_packs[1].is_string(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The arg_packs[1] is not empty! Please check."));
+    std::string tensor_name = arg_packs[1].operator std::string();
+    Expr x_expr = arg_packs[0];
+    PADDLE_ENFORCE_NOT_NULL(x_expr.as_tensor(),
+                            ::common::errors::InvalidArgument(
+                                "The x_expr can not as tensor! Please check."));
 
-        std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
-                                                          "reduce_any"};
-        CHECK(!bool_reduce_op.count(op_name) || x->type().is_bool())
-            << "The type of input argument " << x->name << " of " << op_name
-            << " should be bool, but get " << x->type() << "! Please check.";
+    ir::Tensor x = x_expr.as_tensor_ref();
 
-        VLOG(3) << "Do Reduce Compute!";
-        auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
+    std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
+                                                      "reduce_any"};
+    PADDLE_ENFORCE_EQ(!bool_reduce_op.count(op_name) || x->type().is_bool(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The type of input argument should be bool, "
+                          "Please check."));
 
-        std::vector<CINNValue> cinn_values{CINNValue(out)};
-        *ret = CINNValuePack{cinn_values};
-      });
+    VLOG(3) << "Do Reduce Compute!";
+    auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
+
+    std::vector<CINNValue> cinn_values{CINNValue(out)};
+    *ret = CINNValuePack{cinn_values};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   strategy->AddImpl(

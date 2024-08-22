@@ -364,9 +364,9 @@ class OpcodeExecutorBase:
         self.new_code: types.CodeType | None = self.empty_code
         self.guard_fn = None
         self._name = "Executor"
-        self._call_shape: tuple[
-            str, ...
-        ] | None = None  # store kwnames for Python 3.11+
+        self._call_shape: tuple[str, ...] | None = (
+            None  # store kwnames for Python 3.11+
+        )
         self._prepare_virtual_env()
         self.stop_state = None
 
@@ -406,7 +406,7 @@ class OpcodeExecutorBase:
             NotImplementedError: If the method is not implemented.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def transform(self):
         """
@@ -416,7 +416,7 @@ class OpcodeExecutorBase:
             NotImplementedError: If the method is not implemented.
 
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def find_space_of_var_name(self, name):
         code = self._graph.pycode_gen._origin_code
@@ -520,13 +520,13 @@ class OpcodeExecutorBase:
             file = inspect.getfile(code)
             if file.startswith("<") and file.endswith(">"):
                 message_lines.append(
-                    f"{indent}  File \"{file}\", line {current_line}"
+                    f'{indent}  File "{file}", line {current_line}'
                 )
                 continue
             lines, start = inspect.getsourcelines(code)
             real_name = code.co_name
             message_lines.append(
-                f"{indent}  File \"{code.co_filename}\", line {current_line}, in {real_name}"
+                f'{indent}  File "{code.co_filename}", line {current_line}, in {real_name}'
             )
             if current_line != -1:
                 message_lines.append(
@@ -1236,7 +1236,7 @@ class OpcodeExecutorBase:
         if isinstance(method, NullVariable):
             method = self_var
         else:
-            args = [self_var] + args
+            args = [self_var, *args]
         self.stack.push(method(*args))
 
     @call_break_graph_decorator(
@@ -2027,11 +2027,14 @@ class OpcodeExecutor(OpcodeExecutorBase):
         loop_body_read_names, loop_body_write_names = analysis_used_names(
             self._instructions, loop_body_start_idx, loop_body_end_idx
         )
-        loop_body_inputs = self._find_names_in_space(
-            loop_body_read_names | loop_body_write_names,
-            (Space.locals, Space.cells),
-        ) + ["_break_flag"]
-        loop_body_outputs = list(loop_body_write_names) + ["_break_flag"]
+        loop_body_inputs = [
+            *self._find_names_in_space(
+                loop_body_read_names | loop_body_write_names,
+                (Space.locals, Space.cells),
+            ),
+            "_break_flag",
+        ]
+        loop_body_outputs = [*list(loop_body_write_names), "_break_flag"]
 
         def create_loop_body():
             pycode_gen = PyCodeGen(self._frame)
@@ -2217,10 +2220,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # why add write_names as input? check case in test/sot/test_12_for_loop.py
         # test_for_without_zero_iter
-        input_var_names = self._find_names_in_space(
-            read_names | write_names, (Space.locals, Space.cells)
-        ) + [iterator.id]
-        output_var_names = list(write_names) + [iterator.id]
+        input_var_names = [
+            *self._find_names_in_space(
+                read_names | write_names, (Space.locals, Space.cells)
+            ),
+            iterator.id,
+        ]
+        output_var_names = [*list(write_names), iterator.id]
 
         # 2. create inline call loop fn
         def create_inline_call_fn():

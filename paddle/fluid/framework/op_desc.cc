@@ -152,7 +152,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
           in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
         VLOG(3) << "input " << in
-                << " is not phi::DenseTensor or LoDTensorArray.";
+                << " is not phi::DenseTensor or phi::TensorArray.";
         return;
       }
       out_var->SetLoDLevel(in_var->GetLoDLevel());
@@ -190,7 +190,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
         in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
       VLOG(3) << "input " << in
-              << " is not phi::DenseTensor or LoDTensorArray.";
+              << " is not phi::DenseTensor or phi::TensorArray.";
       return;
     }
     out_var->SetLoDLevel(in_var->GetLoDLevel());
@@ -1367,7 +1367,7 @@ std::vector<std::string> AttrVarNames(const Attribute &attr) {
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported Attribute value type `%s` for AttrVarNames",
-        platform::demangle(attr.type().name())));
+        common::demangle(attr.type().name())));
   }
   return vars_name;
 }

@@ -17,7 +17,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace custom_raw_op {

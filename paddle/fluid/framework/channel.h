@@ -71,7 +71,7 @@ class ChannelObject {
     PADDLE_ENFORCE_GE(
         x,
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The block size must be greater than or equal to 1, but got %d.",
             x));
     std::lock_guard<std::mutex> lock(mutex_);
@@ -269,7 +269,7 @@ class ChannelObject {
     PADDLE_ENFORCE_LE(
         n,
         MaxCapacity() - reading_count_,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Param n should be less than or equal to %d, but got %d.",
             MaxCapacity() - reading_count_,
             n));
@@ -331,7 +331,7 @@ Channel<T> MakeChannel(const Channel<U>& other) {
   PADDLE_ENFORCE_NE(
       other,
       nullptr,
-      phi::errors::InvalidArgument("The channel can not be NULL!"));
+      common::errors::InvalidArgument("The channel can not be NULL!"));
   Channel<T> chan = std::make_shared<ChannelObject<T>>();
   chan->InheritFrom(other);
   return chan;
@@ -356,7 +356,7 @@ class ChannelReader {
     PADDLE_ENFORCE_NE(
         channel,
         nullptr,
-        phi::errors::InvalidArgument("Channel can not be nullptr"));
+        common::errors::InvalidArgument("Channel can not be nullptr"));
     channel_ = channel;
     cursor_ = 0;
     failed_ = !channel;
@@ -410,7 +410,7 @@ class ChannelWriter {
   void Reset(ChannelObject<T>* channel) {
     PADDLE_ENFORCE_EQ(buffer_.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The buffer should be empty! Forgot to flush."));
     channel_ = channel;
     buffer_.clear();
@@ -469,7 +469,7 @@ struct ChannelIterator {
     PADDLE_ENFORCE_NE(
         reader_,
         nullptr,
-        phi::errors::InvalidArgument("The reader can not be NULL."));
+        common::errors::InvalidArgument("The reader can not be NULL."));
     if (!(*reader_ >> data_)) {
       reader_ = nullptr;
     }

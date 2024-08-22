@@ -198,7 +198,7 @@ bool CompatMetaTensor::is_dense() const {
 bool CompatMetaTensor::is_tensor_array() const {
   if (is_runtime_) {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
-    return var->IsType<framework::LoDTensorArray>();
+    return var->IsType<phi::TensorArray>();
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
     return var->GetType() == proto::VarType::LOD_TENSOR_ARRAY;
@@ -215,9 +215,9 @@ DDim CompatMetaTensor::dims() const {
       return var->Get<phi::SelectedRows>().GetCompleteDims();
     } else if (var->IsType<phi::SparseCooTensor>()) {
       return var->Get<phi::SparseCooTensor>().dims();
-    } else if (var->IsType<framework::LoDTensorArray>()) {
+    } else if (var->IsType<phi::TensorArray>()) {
       // use tensor array size as dims
-      auto& tensor_array = var->Get<framework::LoDTensorArray>();
+      auto& tensor_array = var->Get<phi::TensorArray>();
       return common::make_ddim({static_cast<int64_t>(tensor_array.size())});
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
@@ -243,9 +243,9 @@ phi::DataType CompatMetaTensor::dtype() const {
       return var->Get<phi::SelectedRows>().dtype();
     } else if (var->IsType<phi::SparseCooTensor>()) {
       return var->Get<phi::SparseCooTensor>().dtype();
-    } else if (var->IsType<framework::LoDTensorArray>()) {
+    } else if (var->IsType<phi::TensorArray>()) {
       // NOTE(chenweihang): do nothing
-      // Unsupported get dtype from LoDTensorArray now
+      // Unsupported get dtype from phi::TensorArray now
       return phi::DataType::UNDEFINED;
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
@@ -267,9 +267,9 @@ DataLayout CompatMetaTensor::layout() const {
       return var->Get<phi::SelectedRows>().layout();
     } else if (var->IsType<phi::SparseCooTensor>()) {
       return var->Get<phi::SparseCooTensor>().layout();
-    } else if (var->IsType<framework::LoDTensorArray>()) {
+    } else if (var->IsType<phi::TensorArray>()) {
       // NOTE(chenweihang): do nothing
-      // Unsupported get layout from LoDTensorArray now
+      // Unsupported get layout from phi::TensorArray now
       return phi::DataLayout::UNDEFINED;
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
@@ -298,16 +298,16 @@ void CompatMetaTensor::set_dims(const DDim& dims) {
     } else if (var->IsType<phi::SparseCooTensor>()) {
       auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dims = dims;
-    } else if (var->IsType<framework::LoDTensorArray>()) {
-      auto* tensor_array = var->GetMutable<framework::LoDTensorArray>();
+    } else if (var->IsType<phi::TensorArray>()) {
+      auto* tensor_array = var->GetMutable<phi::TensorArray>();
       // Note: Here I want enforce `tensor_array->size() == 0UL`, because
-      // inplace using on LoDTensorArray is dangerous, but the unittest
+      // inplace using on phi::TensorArray is dangerous, but the unittest
       // `test_list` contains this behavior
       PADDLE_ENFORCE_EQ(dims.size(),
                         1UL,
                         common::errors::InvalidArgument(
                             "LoDTensorArray can only have one dimension."));
-      // only set the array size for LoDTensorArray input
+      // only set the array size for phi::TensorArray input
       tensor_array->resize(dims[0]);
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
@@ -335,9 +335,9 @@ void CompatMetaTensor::set_dtype(phi::DataType dtype) {
     } else if (var->IsType<phi::SparseCooTensor>()) {
       auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->dtype = dtype;
-    } else if (var->IsType<framework::LoDTensorArray>()) {
+    } else if (var->IsType<phi::TensorArray>()) {
       // NOTE(chenweihang): do nothing
-      // Unsupported set dtype for LoDTensorArray now
+      // Unsupported set dtype for phi::TensorArray now
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Currently, only can set dtype from DenseTensor or SelectedRows."));
@@ -366,9 +366,9 @@ void CompatMetaTensor::set_layout(DataLayout layout) {
     } else if (var->IsType<phi::SparseCooTensor>()) {
       auto* tensor = var->GetMutable<phi::SparseCooTensor>();
       phi::DenseTensorUtils::GetMutableMeta(tensor)->layout = layout;
-    } else if (var->IsType<framework::LoDTensorArray>()) {
+    } else if (var->IsType<phi::TensorArray>()) {
       // NOTE(chenweihang): do nothing
-      // Unsupported set dtype for LoDTensorArray now
+      // Unsupported set dtype for phi::TensorArray now
     } else {
       PADDLE_THROW(common::errors::Unimplemented(
           "Currently, only can set layout from DenseTensor or "

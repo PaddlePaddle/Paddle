@@ -29,8 +29,8 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #elif defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 #endif
 
 namespace paddle {

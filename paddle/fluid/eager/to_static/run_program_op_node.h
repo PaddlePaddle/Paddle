@@ -50,7 +50,7 @@ static void Trans2ContiguousTensorsInplace(
     const std::vector<paddle::Tensor> &tensors) {
   std::vector<Tensor> res;
   for (auto &t : tensors) {
-    if (t.is_initialized() && t.is_dense_tensor() &&
+    if (t.initialized() && t.is_dense_tensor() &&
         !std::dynamic_pointer_cast<phi::DenseTensor>(t.impl())
              ->meta()
              .is_contiguous()) {
@@ -113,7 +113,7 @@ static void CheckInputVarStatus(const Tensor &tensor) {
       tensor.defined() &&
           (tensor.is_dense_tensor() || IsVariableRefArray(tensor)),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor %s of RunProgram(Grad)Op holds "
           "wrong type. Expect type is DenseTensor or VariableRefArray.",
           tensor.name()));
@@ -122,16 +122,16 @@ static void CheckInputVarStatus(const Tensor &tensor) {
 static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
                                  const Tensor &dst_tensor) {
   auto name = dst_tensor.name();
-  PADDLE_ENFORCE_EQ(
-      dst_tensor.defined(),
-      true,
-      phi::errors::InvalidArgument("dst_tensor `%s` shall be defined.", name));
+  PADDLE_ENFORCE_EQ(dst_tensor.defined(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "dst_tensor `%s` shall be defined.", name));
 
   if (dst_tensor.is_dense_tensor()) {
     auto &src_tensor = src_var.Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(phi::DenseTensor::classof(&src_tensor),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The output tensor %s get from "
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is DenseTensor",
@@ -140,7 +140,7 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
     auto &src_tensor = src_var.Get<phi::SelectedRows>();
     PADDLE_ENFORCE_EQ(phi::SelectedRows::classof(&src_tensor),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The output tensor %s get from "
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is SelectedRows",
@@ -149,13 +149,13 @@ static void CheckOutputVarStatus(const paddle::framework::Variable &src_var,
     auto &src_tensor = src_var.Get<paddle::framework::VariableRefArray>();
     PADDLE_ENFORCE_EQ(paddle::framework::VariableRefArray::classof(&src_tensor),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The output tensor %s get from "
                           "RunProgram(Grad)Op's internal scope holds "
                           "wrong type. Expect type is VariableRefArray",
                           name));
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The RunProgram(Grad)Op only support output "
         "variable of type DenseTensor, SelectedRows or VariableRefArray",
         name));
@@ -234,10 +234,10 @@ static void ShareTensorsFromScopeByValue(
     auto *var = scope->FindVar(name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        phi::errors::NotFound("The output tensor %s is not in "
-                              "RunProgram(Grad)Op'"
-                              "s internal scope.",
-                              name));
+        common::errors::NotFound("The output tensor %s is not in "
+                                 "RunProgram(Grad)Op'"
+                                 "s internal scope.",
+                                 name));
     CheckOutputVarStatus(*var, *tensors[i]);
     // share tensor
     if (var->IsType<phi::DenseTensor>()) {
@@ -258,7 +258,7 @@ static void ShareTensorsFromScopeByValue(
               tensors[i]->impl().get()));
       *dst_tensor = src_tensor;
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The RunProgram(Grad)Op only support output "
           "variable of type DenseTensor, SelectedRows or VariableRefArray",
           name));
@@ -299,7 +299,7 @@ static void ShareTensorsFromScopeWithPartialBlock(
               tensors[i]->impl().get()));
       *dst_tensor = src_tensor;
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The RunProgram(Grad)Op only support output "
           "variable of type DenseTensor, SelectedRows or VariableRefArray",
           name));
@@ -349,9 +349,8 @@ static void GcScope(paddle::framework::Scope *scope) {
                                    ->mutable_value()
                                    ->MoveMemoryHolder());
       }
-      if (var->IsType<paddle::framework::LoDTensorArray>()) {
-        auto *lod_tensor_arr =
-            var->GetMutable<paddle::framework::LoDTensorArray>();
+      if (var->IsType<phi::TensorArray>()) {
+        auto *lod_tensor_arr = var->GetMutable<phi::TensorArray>();
         for (auto &t : *lod_tensor_arr) {
           garbages->emplace_back(t.MoveMemoryHolder());
         }
@@ -398,7 +397,7 @@ inline void PirRunProgramAPI(
   PADDLE_ENFORCE_EQ(
       out_scope_vec->size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
 
   VLOG(2) << "RunProgramOp use interpretercore to execute program.";
@@ -444,10 +443,8 @@ inline void PirRunProgramAPI(
                  place_hash_key,
                  /*is_grad=*/false,
                  /*in_pir_mode=*/true)) {
-    paddle::platform::RecordEvent record_event(
-        "create_new_interpretercore",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "create_new_interpretercore", phi::TracerEventType::UserDefined, 1);
     VLOG(2) << "No interpretercore cache, so create a new interpretercore "
                "for program: "
             << program_id;
@@ -501,10 +498,8 @@ inline void PirRunProgramAPI(
     // cache.UpdateSkipEagerDeleteVars(
     // program_id, global_inner_scope, false, skip_eager_delete_vars);
   } else {
-    paddle::platform::RecordEvent record_event(
-        "get_interpretercore_cache",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "get_interpretercore_cache", phi::TracerEventType::UserDefined, 1);
     VLOG(2) << "Get interpretercore cache by program:" << program_id;
     // Step 1. get cache interpretercore
     auto &cached_value = cache.GetMutable(program_id,
@@ -529,16 +524,14 @@ inline void PirRunProgramAPI(
   paddle::framework::RunFeedHooks(*forward_program, *global_inner_scope);
   // interpretercore run
   if (!forward_program->block()->empty()) {
-    paddle::platform::RecordEvent record_event(
-        "interpreter_core_run",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "interpreter_core_run", phi::TracerEventType::UserDefined, 1);
     interpreter_core->Run({});
   }
 
   {
-    paddle::platform::RecordEvent record_event(
-        "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
+    phi::RecordEvent record_event(
+        "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
     // Get Output, and Middle Outputs
     details::ShareTensorsFromScopeByValue(
         out, output_values, global_inner_scope);
@@ -594,7 +587,7 @@ inline void RunProgramAPI(
   PADDLE_ENFORCE_EQ(
       out_scope_vec->size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
 
   VLOG(2) << "RunProgramOp use interpretercore to execute program.";
@@ -649,10 +642,8 @@ inline void RunProgramAPI(
                  place_hash_key,
                  /*is_grad=*/false,
                  /*in_pir_mode=*/in_pir_pt_mode)) {
-    paddle::platform::RecordEvent record_event(
-        "create_new_interpretercore",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "create_new_interpretercore", phi::TracerEventType::UserDefined, 1);
     VLOG(2) << "No interpretercore cache, so create a new interpretercore "
                "for program: "
             << program_id;
@@ -723,10 +714,8 @@ inline void RunProgramAPI(
                                     skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
-    paddle::platform::RecordEvent record_event(
-        "get_interpretercore_cache",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "get_interpretercore_cache", phi::TracerEventType::UserDefined, 1);
     VLOG(2) << "Get interpretercore cache by program:" << program_id;
     // Step 1. get cache interpretercore
     auto &cached_value = cache.GetMutable(program_id,
@@ -748,16 +737,14 @@ inline void RunProgramAPI(
 
   // interpretercore run
   if (forward_global_block->OpSize() > 0) {
-    paddle::platform::RecordEvent record_event(
-        "interpreter_core_run",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "interpreter_core_run", phi::TracerEventType::UserDefined, 1);
     interpreter_core->Run({});
   }
   VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
   {
-    paddle::platform::RecordEvent record_event(
-        "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
+    phi::RecordEvent record_event(
+        "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
     // Get Output
     details::ShareTensorsFromScopeWithPartialBlock(
         out, *forward_global_block, backward_global_block, global_inner_scope);
@@ -792,7 +779,7 @@ inline void RunProgramGradAPI(
   PADDLE_ENFORCE_EQ(
       out_scope_vec->size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
@@ -825,10 +812,8 @@ inline void RunProgramGradAPI(
                  place_hash_key,
                  /*is_grad=*/true,
                  /*in_pir_mode=*/in_pir_pt_mode)) {
-    paddle::platform::RecordEvent record_event(
-        "create_new_interpretercore",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "create_new_interpretercore", phi::TracerEventType::UserDefined, 1);
     VLOG(2) << "No interpretercore cache, so create a new interpretercore"
                "for program: "
             << program_id;
@@ -906,10 +891,8 @@ inline void RunProgramGradAPI(
                                     skip_eager_delete_vars);
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
   } else {
-    paddle::platform::RecordEvent record_event(
-        "get_interpretercore_cache",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "get_interpretercore_cache", phi::TracerEventType::UserDefined, 1);
     VLOG(2) << "Get interpretercore cache by program:" << program_id;
     auto &cached_value = cache.GetMutable(program_id,
                                           global_inner_scope,
@@ -929,18 +912,16 @@ inline void RunProgramGradAPI(
   }
 
   if (backward_global_block->OpSize() > 0) {
-    paddle::platform::RecordEvent record_event(
-        "interpreter_core_run",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "interpreter_core_run", phi::TracerEventType::UserDefined, 1);
     // Debug info: scope info when run end
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
     interpreter_core->Run({});
   }
 
   {
-    paddle::platform::RecordEvent record_event(
-        "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
+    phi::RecordEvent record_event(
+        "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
     // Step 4. get outputs
     details::ShareTensorsFromScopeWithPartialBlock(x_grad,
                                                    *forward_global_block,
@@ -969,7 +950,7 @@ inline void PirRunProgramGradAPI(
   PADDLE_ENFORCE_EQ(
       out_scope_vec->size(),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The OutScope of RunProgramGradOp should only hold one scope."));
   paddle::framework::Scope *global_inner_scope = out_scope_vec->front();
 
@@ -1012,10 +993,8 @@ inline void PirRunProgramGradAPI(
                  place_hash_key,
                  /*is_grad=*/true,
                  /*in_pir_mode=*/true)) {
-    paddle::platform::RecordEvent record_event(
-        "create_new_interpretercore",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "create_new_interpretercore", phi::TracerEventType::UserDefined, 1);
     VLOG(2) << "No interpretercore cache, so create a new interpretercore";
     // Step 1. share input_vars & parameters into scope
     auto passed_kernel_program =
@@ -1074,10 +1053,8 @@ inline void PirRunProgramGradAPI(
     VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();
     details::print_collection(skip_eager_delete_vars);
   } else {
-    paddle::platform::RecordEvent record_event(
-        "get_interpretercore_cache",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "get_interpretercore_cache", phi::TracerEventType::UserDefined, 1);
     VLOG(2) << "Get interpretercore cache by program:" << program_id;
     auto &cached_value = cache.GetMutable(program_id,
                                           global_inner_scope,
@@ -1097,18 +1074,16 @@ inline void PirRunProgramGradAPI(
 
   paddle::framework::RunFeedHooks(*backward_program, *global_inner_scope);
   if (!backward_program->block()->empty()) {
-    paddle::platform::RecordEvent record_event(
-        "interpreter_core_run",
-        paddle::platform::TracerEventType::UserDefined,
-        1);
+    phi::RecordEvent record_event(
+        "interpreter_core_run", phi::TracerEventType::UserDefined, 1);
     // Debug info: scope info when run end
     VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(out_scope_vec->front());
     interpreter_core->Run({});
   }
 
   {
-    paddle::platform::RecordEvent record_event(
-        "fetch_and_gc", paddle::platform::TracerEventType::UserDefined, 1);
+    phi::RecordEvent record_event(
+        "fetch_and_gc", phi::TracerEventType::UserDefined, 1);
     // Step 4. get outputs
     details::ShareTensorsFromScopeByValue(
         x_grad, x_grad_values, global_inner_scope);
@@ -1152,7 +1127,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
         hooked_grads = GradNodeRunProgram::ApplyGradientHooks(grads);
     PADDLE_ENFORCE_EQ(hooked_grads.size(),
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The hooked_grads.size() of RunProgramGradOp should "
                           "be equal to 1."));
 
@@ -1161,10 +1136,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     std::vector<paddle::Tensor *> x_grad_ptr;
     std::vector<paddle::Tensor *> params_grad_ptr;
     {
-      paddle::platform::RecordEvent record_event(
-          "construct_grad_tensor",
-          paddle::platform::TracerEventType::UserDefined,
-          1);
+      phi::RecordEvent record_event(
+          "construct_grad_tensor", phi::TracerEventType::UserDefined, 1);
 
       egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&hooked_grads[0],
                                                          this->InputMeta()[0]);
@@ -1183,11 +1156,11 @@ class GradNodeRunProgram : public egr::GradNodeBase {
 
     auto out_grad_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("out_grad_names"));
-    PADDLE_ENFORCE_EQ(
-        hooked_grads[0].size(),
-        out_grad_names.size(),
-        phi::errors::InvalidArgument("The hooked_grads[0].size() and "
-                                     "out_grad_names.size() should be equal."));
+    PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
+                      out_grad_names.size(),
+                      common::errors::InvalidArgument(
+                          "The hooked_grads[0].size() and "
+                          "out_grad_names.size() should be equal."));
     for (size_t i = 0; i < out_grad_names.size(); ++i) {
       hooked_grads[0][i].set_name(out_grad_names[i]);
     }
@@ -1240,7 +1213,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     PADDLE_ENFORCE_EQ(
         x.size(),
         x_grad_names.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The x.size() and x_grad_names.size() should be equal. "
             "But received x.size() = %d, x_grad_names.size() = %d",
             x.size(),
@@ -1264,7 +1237,7 @@ class GradNodeRunProgram : public egr::GradNodeBase {
                                              attrs_.at("param_grad_names"));
     PADDLE_ENFORCE_EQ(params.size(),
                       param_grad_names.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The param.size() and "
                           "param_grad_names.size() should be equal."));
 
@@ -1337,7 +1310,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
         hooked_grads = PirGradNodeRunProgram::ApplyGradientHooks(grads);
     PADDLE_ENFORCE_EQ(hooked_grads.size(),
                       1,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The hooked_grads.size() of RunProgramGradOp should "
                           "be equal to 1."));
 
@@ -1346,10 +1319,8 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
     std::vector<paddle::Tensor *> x_grad_ptr;
     std::vector<paddle::Tensor *> params_grad_ptr;
     {
-      paddle::platform::RecordEvent record_event(
-          "construct_grad_tensor",
-          paddle::platform::TracerEventType::UserDefined,
-          1);
+      phi::RecordEvent record_event(
+          "construct_grad_tensor", phi::TracerEventType::UserDefined, 1);
 
       egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&hooked_grads[0],
                                                          this->InputMeta()[0]);
@@ -1368,7 +1339,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
         PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bo_g"));
     PADDLE_ENFORCE_EQ(hooked_grads[0].size(),
                       out_grad_values.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The hooked_grads[0].size() and "
                           "out_grad_values.size() should be equal."));
 
@@ -1421,7 +1392,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
     PADDLE_ENFORCE_EQ(
         x.size(),
         x_grad_values.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The x.size() and x_grad_names.size() should be equal. "
             "But received x.size() = %d, x_grad_names.size() = %d",
             x.size(),
@@ -1439,7 +1410,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
         x_grad->emplace_back(
             std::make_shared<paddle::framework::VariableRefArray>());
       } else {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "The grad tensor type is not supported."));
       }
     }
@@ -1451,7 +1422,7 @@ class PirGradNodeRunProgram : public egr::GradNodeBase {
         PADDLE_GET_CONST(std::vector<::pir::Value>, attrs_.at("bp_g"));
     PADDLE_ENFORCE_EQ(params.size(),
                       p_grad_values.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The param.size() and "
                           "param_grad_names.size() should be equal."));
 

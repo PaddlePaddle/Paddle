@@ -15,6 +15,8 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/utils.h"
+#include "paddle/cinn/hlir/framework/pir/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/runtime/arch_device.h"
 #include "paddle/cinn/utils/multi_threading.h"
@@ -82,10 +84,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const auto device_id = runtime::GetArchDevice(target_);
     auto worker_fn = [&](int index) {
       runtime::SetArchDevice(target_, device_id);
-      CompilationTask task(&group_compilation_contexts[index]);
-      compilation_results[index] = task();
-      // Triggering llvm compilation in thread
-      compilation_results[index]->GetKernelInfo();
+      compilation_results[index] = Compile(&group_compilation_contexts[index]);
     };
     utils::parallel_run(worker_fn,
                         utils::SequenceDispatcher(0, task_size),
@@ -97,51 +96,47 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   return ctx_mapper.RecoverKernelInfos();
 }
 
-pir::CINNKernelInfo PirCompiler::BuildBroadcastTree(
-    const std::vector<pir::OpLoweringGroupPtr>& leaf_groups,
-    pir::OpLoweringGroupPtr origin_group) {
-  const auto& fusion_info = pir::FusionInfo(*origin_group);
-  if (CompilationCache::Instance().Has(fusion_info)) {
-    return CompilationCache::Instance().GetKernelInfo(fusion_info);
-  }
+std::shared_ptr<pir::CompilationResult> PirCompiler::Compile(
+    GroupCompilationContext* ctx) {
+  std::shared_ptr<pir::CompilationResult> compile_result;
+  CompilationTask task(ctx);
 
-  std::vector<GroupCompilationContext> group_compilation_contexts;
-  for (const auto& group : leaf_groups) {
-    group_compilation_contexts.emplace_back(target_, group);
-  }
-  const size_t task_size = group_compilation_contexts.size();
+  const auto& optional_broadcast_optimize_groups =
+      pir::GetBroadcastGroupListForOptimize(ctx->GetGroup());
 
-  const auto& ParallelLowering = [&]() {
-    cinn::ir::InitScheduleConfig();
-    auto worker_fn = [&](int index) {
-      CompilationTask task(&group_compilation_contexts[index]);
-      task.Lowering();
+  if (optional_broadcast_optimize_groups.has_value()) {
+    const auto& broadcast_switch_case_groups =
+        optional_broadcast_optimize_groups.value();
+    std::vector<GroupCompilationContext> switch_group_ctxs;
+    for (const auto& group : broadcast_switch_case_groups) {
+      switch_group_ctxs.emplace_back(target_, group);
+    }
+
+    const auto& ParallelLowering = [&]() {
+      const size_t task_size = switch_group_ctxs.size();
+      auto worker_fn = [&](int index) {
+        CompilationTask lowering_task(&switch_group_ctxs[index]);
+        lowering_task.Lowering();
+      };
+      const size_t thread_size = GetThreadNum(task_size);
+      utils::parallel_run(worker_fn,
+                          utils::SequenceDispatcher(0, task_size),
+                          /*thread_num=*/thread_size);
     };
-    const size_t thread_size = GetThreadNum(task_size);
-    utils::parallel_run(worker_fn,
-                        utils::SequenceDispatcher(0, task_size),
-                        /*thread_num=*/thread_size);
-  };
 
-  const auto& SerialBackendCompile =
-      [&](const std::unordered_map<int, ir::Var>& shape_idx)
-      -> pir::CINNKernelInfo {
-    GroupCompilationContext origin_group_ctx(target_, origin_group);
-    CompilationTask compilation_task(&origin_group_ctx);
-    const auto device_id = runtime::GetArchDevice(target_);
-    runtime::SetArchDevice(target_, device_id);
-    auto result = compilation_task.CompileBroadcastModules(
-        &group_compilation_contexts, shape_idx);
-    const auto kernel_info = result->GetKernelInfo();
-    CompilationCache::Instance().Insert(fusion_info, result);
-    return kernel_info;
-  };
+    ParallelLowering();
+    std::unordered_map<int, ir::Var> symbolic_shape_var_index;
+    UnifyBroadcastGroupFuncArgs(
+        &switch_group_ctxs, ctx->GetGroup(), &symbolic_shape_var_index);
+    compile_result = task.CompileBroadcastModules(&switch_group_ctxs,
+                                                  symbolic_shape_var_index);
+  } else {
+    compile_result = task();
+  }
 
-  ParallelLowering();
-  std::unordered_map<int, ir::Var> symbolic_shape_var_index;
-  UnifyBroadcastGroupFuncArgs(
-      &group_compilation_contexts, origin_group, &symbolic_shape_var_index);
-  return SerialBackendCompile(symbolic_shape_var_index);
+  // Triggering llvm compilation in thread
+  compile_result->GetKernelInfo();
+  return compile_result;
 }
 
 void CompilationContextMapper::Construct(
@@ -155,6 +150,7 @@ void CompilationContextMapper::Construct(
   };
 
   for (size_t i = 0; i < groups.size(); ++i) {
+    cinn::dialect::ir::details::UpdateGroupShapeOrDataExprs(groups[i]);
     fusion_infos_.emplace_back(*groups[i]);
     VLOG(4) << "Construct FusionInfo: " << fusion_infos_[i]
             << " for group: " << *groups[i];

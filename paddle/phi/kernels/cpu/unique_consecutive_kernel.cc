@@ -38,7 +38,7 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_LE(
         x.numel(),
         INT_MAX,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of elements in Input(X) should be less than or "
             "equal to INT_MAX, but received num is %d. Please set `dtype` to "
             "int64.",

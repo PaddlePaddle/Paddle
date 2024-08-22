@@ -16,10 +16,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
@@ -205,13 +205,13 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
     }
 
     auto* x_var = ctx.InputVar("X");
-    if (x_var->IsType<framework::LoDTensorArray>()) {
+    if (x_var->IsType<phi::TensorArray>()) {
       PADDLE_ENFORCE_EQ(
           dynamic_shape,
           false,
           common::errors::InvalidArgument("Dynamic shape for send/recv not "
-                                          "support LoDTensorArray for now."));
-      auto& x_array = x_var->Get<framework::LoDTensorArray>();
+                                          "support phi::TensorArray for now."));
+      auto& x_array = x_var->Get<phi::TensorArray>();
       for (size_t idx = 0; idx < x_array.size(); idx++) {
         VLOG(3) << "LodTensorArray: idx(" << idx << ")";
         auto& x = x_array.at(idx);
@@ -222,9 +222,9 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         } else {
           PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
               x.data<T>(), numel, dtype, peer, comm->comm(), stream));
+          VLOG(3) << "rank " << comm->rank() << " send "
+                  << common::product(x.dims()) << " to " << peer;
         }
-        VLOG(3) << "rank " << comm->rank() << " send "
-                << common::product(x.dims()) << " to " << peer;
       }
       return;
     }

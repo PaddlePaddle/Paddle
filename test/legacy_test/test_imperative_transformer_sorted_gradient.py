@@ -1337,9 +1337,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 static_token_num_value = out[3]
                 if i == batch_num - 1:
                     for k in range(4, len(out)):
-                        static_param_updated[
-                            static_param_name_list[k - 4]
-                        ] = out[k]
+                        static_param_updated[static_param_name_list[k - 4]] = (
+                            out[k]
+                        )
 
         # compare eager result with imperative result
         with guard():

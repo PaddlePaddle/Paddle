@@ -33,6 +33,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
 using paddle::dialect::DistDenseTensorType;
 
@@ -49,9 +50,10 @@ pir::Type CastToLocalType(pir::Type type) {
       local_types.push_back(CastToLocalType(vec_type[i]));
     }
     return pir::VectorType::get(vec_type.ir_context(), local_types);
-  } else if (!type) {
+  } else if (!type || type.isa<pir::StackType>() ||
+             type.isa<pir::InletType>() || type.isa<pir::OutletType>()) {
     // skip if <<NULL TYPE>>
-    return nullptr;
+    return type;
   } else {
     // TODO(2024-Q2) not all value are dist type
     PADDLE_THROW(common::errors::PreconditionNotMet(
@@ -93,7 +95,7 @@ void ProcessDistBlock(pir::Block* block) {
       auto array_attr = prev_op->attribute<pir::ArrayAttribute>("value");
       PADDLE_ENFORCE_EQ(array_attr.size(),
                         local_dims.size(),
-                        phi::errors::PreconditionNotMet(
+                        common::errors::PreconditionNotMet(
                             "The reshape's shape inputs element's size must "
                             "equal to result's dim size."));
       std::vector<pir::Attribute> new_dims;
@@ -134,7 +136,7 @@ void VerifyDenseBlock(pir::Block* block) {
       PADDLE_ENFORCE_EQ(
           IsDistType(result.type()),
           false,
-          phi::errors::PreconditionNotMet(
+          common::errors::PreconditionNotMet(
               "Block op [%s] still contain dist type.", op_item->name()));
     }
 

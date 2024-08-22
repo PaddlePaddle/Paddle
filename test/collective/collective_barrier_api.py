@@ -28,14 +28,7 @@ class TestCollectiveBarrierAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program, rank):
-        with base.program_guard(main_prog, startup_program):
-            paddle.distributed.barrier()
-            return []
-
-    def get_model_new_comm(
-        self, main_prog, startup_program, rank, dtype="float32"
-    ):
+    def get_model(self, main_prog, startup_program, rank, dtype="float32"):
         with base.program_guard(main_prog, startup_program):
             paddle.distributed.barrier()
             return []

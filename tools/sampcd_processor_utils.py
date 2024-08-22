@@ -343,7 +343,7 @@ def get_api_md5(path):
         return api_md5
 
     with open(API_spec) as f:
-        for line in f.readlines():
+        for line in f:
             mo = PAT_API_SPEC_MEMBER.search(line)
 
             if mo:
@@ -634,7 +634,7 @@ def get_docstring(
             get_incrementapi()
 
         with open(API_DIFF_SPEC_FN) as f:
-            apis = ((line, line.replace('\n', '')) for line in f.readlines())
+            apis = [(line, line.replace('\n', '')) for line in f]
 
     for line, api in apis:
         if filter_api is not None and filter_api(api.strip()):

@@ -91,7 +91,7 @@ TimeSchedule::TimeSchedule(const std::string &id,
   for (auto &dim : domain_dims) {
     PADDLE_ENFORCE_EQ(!dim.empty(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The dim should not be empty! Please check."));
     time_dims_.emplace_back(dim, 0);
   }
@@ -114,7 +114,7 @@ void TimeSchedule::OrderAfter(const TimeSchedule &other, int level) {
           "level should be greater than or equal to 0, but got %d", level));
   PADDLE_ENFORCE_EQ(!time_dims_.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The time dims should not be empty! Please check."));
 
   root_time_ = std::max(root_time_, other.root_time_);
@@ -140,7 +140,7 @@ isl::map TimeSchedule::to_isl(isl::ctx ctx) const {
 const std::string &TimeSchedule::id() const {
   PADDLE_ENFORCE_EQ(!id_.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The id should not be empty! Please check."));
   return id_;
 }
@@ -196,7 +196,8 @@ std::map<std::string, isl::map> CollectScheduleMapFromGroup(
   for (auto &node : group.nodes) {
     PADDLE_ENFORCE_NOT_NULL(
         node->stage,
-        phi::errors::NotFound("The stage is not exist in node! Please check."));
+        ::common::errors::NotFound(
+            "The stage is not exist in node! Please check."));
     stages.push_back(node->stage);
   }
 
@@ -207,10 +208,10 @@ std::map<std::string, isl::map> CollectScheduleMapFromGroup(
 }
 
 void SchedulerBase::AddStage(const Stage &x) {
-  PADDLE_ENFORCE_EQ(
-      !registration_finalized_,
-      true,
-      phi::errors::InvalidArgument("element registration has been finalized."));
+  PADDLE_ENFORCE_EQ(!registration_finalized_,
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "element registration has been finalized."));
   space_size_ =
       std::max(space_size_, isl_map_dim(x.transform().get(), isl_dim_out));
   VLOG(3) << "space_size: " << space_size_;
@@ -260,7 +261,7 @@ void SchedulerBase::FinishStageAdd() {
 
   PADDLE_ENFORCE_EQ(!schedule_graph_.nodes().empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "No node is registered to the graph, use "
                         "RegisterElement to collect some elements."));
   registration_finalized_ = true;
@@ -298,12 +299,12 @@ SchedulerBase &SchedulerBase::After(const Stage &a, const Stage &b, int level) {
       schedule_graph_.RetrieveNode(b.id())->safe_as<ScheduleGraphNode>();
   PADDLE_ENFORCE_NOT_NULL(
       a_node,
-      phi::errors::NotFound("no node called %s registered in the graph",
-                            a.id()));
+      ::common::errors::NotFound("no node called %s registered in the graph",
+                                 a.id()));
   PADDLE_ENFORCE_NOT_NULL(
       b_node,
-      phi::errors::NotFound("no node called %s registered in the graph",
-                            b.id()));
+      ::common::errors::NotFound("no node called %s registered in the graph",
+                                 b.id()));
 
   auto _a_edge_b_edge_ = a_node->LinkTo<ScheduleGraphEdge>(b_node);  // NOLINT
   auto &a_edge = std::get<0>(_a_edge_b_edge_);

@@ -87,10 +87,10 @@ class DatasetLoaderTestBase(unittest.TestCase):
         startup_prog = base.Program()
         with base.program_guard(main_prog, startup_prog):
             image = paddle.static.data(
-                name='image', shape=[-1] + IMAGE_SHAPE, dtype='float32'
+                name='image', shape=[-1, *IMAGE_SHAPE], dtype='float32'
             )
             label = paddle.static.data(
-                name='label', shape=[-1] + LABEL_SHAPE, dtype='int64'
+                name='label', shape=[-1, *LABEL_SHAPE], dtype='int64'
             )
 
             simple_fc_net_with_inputs(image, label)

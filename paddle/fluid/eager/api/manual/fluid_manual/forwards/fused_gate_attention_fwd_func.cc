@@ -42,10 +42,8 @@ fused_gate_attention_dygraph_function(
     const paddle::Tensor& OutLinearWeight,
     const paddle::Tensor& OutLinearBias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "fused_gate_attention dygraph",
-      paddle::platform::TracerEventType::Operator,
-      1);
+  phi::RecordEvent dygraph_entrance_record_event(
+      "fused_gate_attention dygraph", phi::TracerEventType::Operator, 1);
   VLOG(3) << "Running Eager Forward Op: fused_gate_attention";
   // Dygraph Forward Pass
 
@@ -270,9 +268,9 @@ fused_gate_attention_dygraph_function(
   egr::EagerUtils::GetOutput(outs["Out"][0], &Out);
 
   {
-    paddle::platform::RecordEvent node_creation_record_event(
+    phi::RecordEvent node_creation_record_event(
         "fused_gate_attention node_creation",
-        paddle::platform::TracerEventType::Operator,
+        phi::TracerEventType::Operator,
         1);
     egr::AutogradMeta* p_autograd_QueryTransposeOut =
         egr::EagerUtils::autograd_meta(&QueryTransposeOut);
