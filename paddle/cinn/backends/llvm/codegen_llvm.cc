@@ -127,7 +127,10 @@ llvm::Value *CodeGenLLVM::EmitVectorSlice(llvm::Value *vec,
       llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
   if (extent == numel && begin == 0) return vec;
 
-  CHECK(begin >= 0 && extent <= numel) << "Slicing out of bound!";
+  PADDLE_ENFORCE_GE(
+      begin, 0UL, phi::errors::InvalidArgument("Slicing out of bound!"));
+  PADDLE_ENFORCE_LE(
+      extent, numel, phi::errors::InvalidArgument("Slicing out of bound!"));
 
   std::vector<llvm::Constant *> indices(extent);
   for (int i = 0; i < extent; i++) {
@@ -152,7 +155,13 @@ llvm::Value *CodeGenLLVM::EmitVectorPad(llvm::Value *vec, int lanes) {
   int numel =
       llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
 
-  CHECK(numel <= lanes);
+  PADDLE_ENFORCE_LE(
+      numel,
+      lanes,
+      phi::errors::InvalidArgument("The element of vector %d is invalid. "
+                                   "Expect less than or equal to %d",
+                                   numel,
+                                   lanes));
   if (numel == lanes) return vec;
   for (int i = 0; i < numel; i++) {
     mask = InsertElement(mask,
@@ -399,11 +408,14 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Cast *op) {
 
   llvm::Type *source = CinnTypeToLLVMType(from, m_);
   llvm::Type *target = CinnTypeToLLVMType(to, m_);
-  CHECK(source) << "source ir type is null";
-  CHECK(target) << "target ir type is null";
+  PADDLE_ENFORCE_NOT_NULL(
+      source, phi::errors::InvalidArgument("source ir type is null"));
+  PADDLE_ENFORCE_NOT_NULL(
+      target, phi::errors::InvalidArgument("target ir type is null"));
 
   llvm::Value *value = Visit(&op->v());
-  CHECK(value) << "value is null";
+  PADDLE_ENFORCE_NOT_NULL(
+      value, phi::errors::InvalidArgument("value ir type is null"));
 
   // pod_value_t cast to a value.
   if (op->v().type().is_customized_type() &&
@@ -447,9 +459,12 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Cast *op) {
       CINN_NOT_IMPLEMENTED
     }
 
-    CHECK(callee);
-    CHECK(op->v().as_var()) << "argument to the intrinsic function "
-                               "cinn_pod_value_to_x should be a Var";
+    PADDLE_ENFORCE_NOT_NULL(
+        callee, phi::errors::InvalidArgument("callee ir type is null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        op->v().as_var(),
+        phi::errors::InvalidArgument("argument to the intrinsic function "
+                                     "cinn_pod_value_to_x should be a Var."));
     value = GetVar(op->v().as_var()->name);
     return Call(callee, std::vector<llvm::Value *>({value}), "pod_value_cast");
   }
@@ -501,7 +516,14 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Cast *op) {
       break;
     }
 
-    CHECK(from.is_float() && to.is_float());
+    PADDLE_ENFORCE_EQ(from.is_float(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Invalid type of from. Expect type float."));
+    PADDLE_ENFORCE_EQ(
+        to.is_float(),
+        true,
+        phi::errors::InvalidArgument("Invalid type of to. Expect type float."));
     value = FPCast(value, target);
   } while (false);
 
@@ -564,13 +586,19 @@ llvm::Value *CodeGenLLVM::CreateSerialFor(const ir::For *op, int stride) {
   llvm::BasicBlock::iterator insert_point = b_->GetInsertPoint();
 
   if (insert_point == preheader_bb->end()) {
-    CHECK(!preheader_bb->getTerminator());
+    PADDLE_ENFORCE_NOT_NULL(
+        preheader_bb->getTerminator(),
+        phi::errors::InvalidArgument(
+            "Block preheader_bb has terminator. Expect no terminator."));
     exit_bb = llvm::BasicBlock::Create(b_->getContext(),
                                        "loop_exit",
                                        b_->GetInsertBlock()->getParent(),
                                        nullptr);
   } else {
-    CHECK(preheader_bb->getTerminator());
+    PADDLE_ENFORCE_NOT_NULL(
+        preheader_bb->getTerminator(),
+        phi::errors::InvalidArgument(
+            "Block preheader_bb has no terminator. Expect has terminator."));
     exit_bb = preheader_bb->splitBasicBlock(insert_point, "loop_exit");
     preheader_bb->getTerminator()->eraseFromParent();
   }
@@ -601,7 +629,10 @@ llvm::Value *CodeGenLLVM::CreateSerialFor(const ir::For *op, int stride) {
   llvm::Value *start_index = Visit(&op->min);
   llvm::Value *end_index = Visit(&op->extent);
   Store(start_index, loop_var);
-  CHECK(!preheader_bb->getTerminator());
+  PADDLE_ENFORCE_NOT_NULL(
+      preheader_bb->getTerminator(),
+      phi::errors::InvalidArgument(
+          "Block preheader_bb has terminator. Expect no terminator."));
   Br(header_bb);
 
   // loop_header
@@ -772,17 +803,21 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Call *op) {
   }
 
   llvm::Function *callee = m_->getFunction(op->name);
-  CHECK(callee) << "Unknown function referenced. [" << op->name << "]";
+  PADDLE_ENFORCE_NOT_NULL(callee,
+                          phi::errors::InvalidArgument(
+                              "Unknown function referenced. %s", op->name));
 
   std::vector<llvm::Value *> args;
   for (const auto &e : op->read_args) {
     auto *arg = Visit(&e);
-    CHECK(arg) << "argument " << e << " is null";
+    PADDLE_ENFORCE_NOT_NULL(arg,
+                            phi::errors::InvalidArgument("argument e is null"));
     args.push_back(arg);
   }
   for (const auto &e : op->write_args) {
     auto *arg = Visit(&e);
-    CHECK(arg) << "argument " << e << " is null";
+    PADDLE_ENFORCE_NOT_NULL(arg,
+                            phi::errors::InvalidArgument("argument e is null"));
     args.push_back(arg);
   }
 
@@ -816,7 +851,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Module_ *op) {
 llvm::Value *CodeGenLLVM::Visit(const ir::_Var_ *op) {
   llvm::Value *value = GetVar(op->name, false);
   llvm::Value *result{};
-  CHECK(value) << "ir::_Var_[" << op->name << "]: value is null";
+  PADDLE_ENFORCE_NOT_NULL(
+      value,
+      phi::errors::InvalidArgument("ir::_Var_[%s]: value is null", op->name));
   // TODO(fc500110) hard coding
   if (LLVM_WillVarLowerAsPointer(op->name)) {
     result = value;
@@ -857,8 +894,10 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Load *op) {
   } else {
     array = Visit(&op->tensor);
   }
-  CHECK(array) << "fail to Visit Load node: "
-               << Expr(const_cast<ir::Load *>(op));
+  PADDLE_ENFORCE_NOT_NULL(
+      array,
+      phi::errors::InvalidArgument("fail to Visit Load node: %s",
+                                   Expr(const_cast<ir::Load *>(op))));
 
   ir::Expr index = op->index();
   if (index.type().lanes() <= 1) {
@@ -882,10 +921,10 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Load *op) {
     {
       int alignment = op->type().bits();
       alignment = 8;
-      PADDLE_ENFORCE_GT(alignment,
-                        0,
-                        ::common::errors::InvalidArgument(
-                            "alignment should be greater than 0"));
+      PADDLE_ENFORCE_GT(
+          alignment,
+          0,
+          phi::errors::InvalidArgument("alignment should be greater than 0"));
       load_inst->setAlignment(llvm::Align(std::min(alignment, 8)));
     }
 
@@ -900,7 +939,10 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Load *op) {
     Expr dense_strided_ramp = detail::StridedRampBase(op->index(), 1);
     llvm::Value *buffer = Visit(&op->tensor);
     if (dense_strided_ramp.defined()) {
-      CHECK(op->type().is_vector());
+      PADDLE_ENFORCE_EQ(op->type().is_vector(),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "The operation type is not a vector type."));
       return DenseVectorLoad(op);
     }
     // scalarize load
@@ -931,7 +973,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
     array = GetVar(var_op->name);
     is_alias = alias_vars_.count(const_cast<ir::_Var_ *>(var_op));
   }
-  CHECK(array) << "array is null";
+  PADDLE_ENFORCE_NOT_NULL(array, phi::errors::InvalidArgument("array is null"));
 
   ir::Expr index = op->index();
 
@@ -954,10 +996,10 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
     {
       int alignment = op->type().bits();
       alignment = 8;
-      PADDLE_ENFORCE_GT(alignment,
-                        0,
-                        ::common::errors::InvalidArgument(
-                            "alignment should be greater than 0"));
+      PADDLE_ENFORCE_GT(
+          alignment,
+          0,
+          phi::errors::InvalidArgument("alignment should be greater than 0"));
       store_inst->setAlignment(llvm::Align(std::min(alignment, 8)));
     }
     // TODO(fc500110): tbaa AliasAnalysis
@@ -1025,14 +1067,18 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
 llvm::Value *CodeGenLLVM::Visit(const ir::Alloc *op) {
   auto *buffer_op = op->destination.As<ir::_Buffer_>();
   auto *buffer = GetVar(buffer_op->name);
-  CHECK(buffer);
+  PADDLE_ENFORCE_NOT_NULL(buffer,
+                          phi::errors::InvalidArgument("Buffer is null."));
 
   return buffer;
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Free *op) {
   auto *buffer_op = op->destination.As<ir::_Buffer_>();
-  CHECK(symbol_table_->Lookup(buffer_op->name));
+  PADDLE_ENFORCE_NOT_NULL(
+      symbol_table_->Lookup(buffer_op->name),
+      phi::errors::InvalidArgument("Failed to lookup %s in the symbol table.",
+                                   buffer_op->name));
   symbol_table_->Erase(buffer_op->name);
   return nullptr;
 }
@@ -1097,8 +1143,10 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_LoweredFunc_ *op) {
       /*Result=*/b_->getVoidTy(),
       /*Params=*/std::move(arg_types),
       /*isVarArg=*/false);
-  CHECK(m_->getFunction(op->name) == nullptr)
-      << "function[" << op->name << "] exists";
+  PADDLE_ENFORCE_NOT_NULL(
+      m_->getFunction(op->name),
+      phi::errors::InvalidArgument(
+          "function[%s] exists, expected it to be null.", op->name));
 
   f_ = llvm::Function::Create(
       /*FunctionType=*/function_type,
@@ -1130,7 +1178,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_LoweredFunc_ *op) {
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Let *op) {
-  CHECK(op->type().valid());
+  PADDLE_ENFORCE_NE(op->type().valid(),
+                    true,
+                    phi::errors::InvalidArgument("invalid type for operator"));
   auto name = op->symbol.As<ir::_Var_>()->name;
   if (op->symbol.As<ir::_Var_>()->type().is_cpp_handle()) {
     alias_vars_.insert(const_cast<ir::_Var_ *>(op->symbol.As<ir::_Var_>()));
@@ -1254,14 +1304,16 @@ llvm::Value *CodeGenLLVM::EmitCall_debug_info(const ir::Call *op) {
 llvm::Value *CodeGenLLVM::GetVar(const std::string &name, bool lazy) {
   auto symbol = symbol_table_->Lookup(name);
   if (!lazy) {
-    CHECK(symbol) << "No var [" << name << "] found";
+    PADDLE_ENFORCE_NOT_NULL(symbol,
+                            phi::errors::InvalidArgument("No var name found"));
   }
   return symbol;
 }
 
 llvm::Value *CodeGenLLVM::SetVar(const std::string &name, llvm::Value *val) {
   symbol_table_->Insert(name, val);
-  CHECK(GetVar(name));
+  PADDLE_ENFORCE_NOT_NULL(
+      GetVar(name), phi::errors::InvalidArgument("GetVar(name) run failed."));
   return val;
 }
 
@@ -1290,7 +1342,10 @@ llvm::FunctionType *CodeGenLLVM::GenFunctionTypeFromCinnFunction(
 llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
   auto index = op->index();
   auto *ramp = index.As<ir::Ramp>();
-  CHECK(ramp);
+  PADDLE_ENFORCE_NOT_NULL(
+      ramp,
+      phi::errors::InvalidArgument("ramp is nullptr."
+                                   "ramp cannot be converted."));
 
   int load_lanes = op->type().lanes();
   int native_lanes = naive_vec_alignment_ / op->type().bits();
@@ -1330,10 +1385,9 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
     slices.push_back(load_inst);
   }
 
-  PADDLE_ENFORCE_EQ(
-      slices.size(),
-      1UL,
-      ::common::errors::InvalidArgument("slices size should be 1."));
+  PADDLE_ENFORCE_EQ(slices.size(),
+                    1UL,
+                    phi::errors::InvalidArgument("slices size should be 1."));
 
   return slices[0];
 }
@@ -1341,15 +1395,17 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
 llvm::Value *CodeGenLLVM::CreateBufferVecPtr(Type t,
                                              llvm::Value *buffer,
                                              llvm::Value *index) {
-  PADDLE_ENFORCE_GT(
-      t.lanes(),
-      1,
-      ::common::errors::InvalidArgument("type lanes should be greater "
-                                        "than 1, but received %d",
-                                        t.lanes()));
+  PADDLE_ENFORCE_GT(t.lanes(),
+                    1,
+                    phi::errors::InvalidArgument("type lanes should be greater "
+                                                 "than 1, but received %d",
+                                                 t.lanes()));
   llvm::PointerType *btype =
       llvm::dyn_cast<llvm::PointerType>(buffer->getType());
-  CHECK(btype);
+  PADDLE_ENFORCE_NOT_NULL(
+      btype,
+      phi::errors::InvalidArgument("btype type error."
+                                   "We hope btype as node."));
   llvm::PointerType *ptype =
       CinnTypeToLLVMType(t, m_)->getPointerTo(btype->getAddressSpace());
   if (btype != ptype) {
@@ -1361,17 +1417,22 @@ llvm::Value *CodeGenLLVM::CreateBufferVecPtr(Type t,
 llvm::Value *CodeGenLLVM::CreateBufferPtr(Type t,
                                           llvm::Value *buffer,
                                           llvm::Value *index) {
-  PADDLE_ENFORCE_EQ(
-      t.lanes(),
-      1,
-      ::common::errors::InvalidArgument("type lanes should be 1, but "
-                                        "received %d",
-                                        t.lanes()));
+  PADDLE_ENFORCE_EQ(t.lanes(),
+                    1,
+                    phi::errors::InvalidArgument("type lanes should be 1, but "
+                                                 "received %d",
+                                                 t.lanes()));
   auto *btype = llvm::dyn_cast<llvm::PointerType>(buffer->getType());
-  CHECK(btype);
+  PADDLE_ENFORCE_NOT_NULL(
+      btype,
+      phi::errors::InvalidArgument("btype type error."
+                                   "We hope btype as node."));
   auto *ptype =
       CinnTypeToLLVMType(t, m_)->getPointerTo(btype->getAddressSpace());
-  CHECK(ptype);
+  PADDLE_ENFORCE_NOT_NULL(
+      ptype,
+      phi::errors::InvalidArgument("ptype type error."
+                                   "We hope ptype as node."));
   if (btype != ptype) {
     buffer = b_->CreatePointerCast(buffer, ptype, "pointer_cast");
   }
@@ -1526,7 +1587,10 @@ llvm::Value *CodeGenLLVM::Visit(
 llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BufferCreate *op) {
   auto *callee = m_->getFunction(runtime::intrinsic::buffer_create_default);
   auto buffer_node = op->buffer.as_buffer();
-  CHECK(buffer_node);
+  PADDLE_ENFORCE_NOT_NULL(
+      buffer_node,
+      phi::errors::InvalidArgument(
+          "buffer type error. We hope buffer as buffer_node."));
   std::vector<llvm::Value *> args(
       {ll_const_int32(buffer_node->target.runtime_arch())});
   int64_t memory_size = (buffer_node->dtype.ElementOf().bits() + 7) / 8;
@@ -1696,11 +1760,12 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BuiltinIntrin *op) {
       arg_type.push_back(arg_value.back()->getType());
     }
   }
-  CHECK(!op->args.empty());
+  PADDLE_ENFORCE_EQ(
+      op->args.empty(), false, phi::errors::InvalidArgument("args are empty."));
   llvm::Type *return_type = CinnTypeToLLVMType(op->type(), m_, true);
   llvm::Function *fn = GetIntrinsicDecl(id, return_type, arg_type);
-  CHECK(fn) << "Cannot find intrinsic declaration, possible type mismatch: "
-            << llvm::Intrinsic::getName(id, {});
+  PADDLE_ENFORCE_NOT_NULL(
+      fn, phi::errors::InvalidArgument("Cannot find intrinsic declaration."));
   return b_->CreateCall(fn, arg_value);
 }
 
@@ -1744,9 +1809,11 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::PodValueToX *op) {
     PADDLE_THROW(::common::errors::InvalidArgument(ss.str()));
   }
 
-  CHECK(callee);
+  PADDLE_ENFORCE_NOT_NULL(
+      callee, phi::errors::InvalidArgument("callee ir type is null"));
   auto *value = Visit(&op->pod_value_ptr);
-  CHECK(value);
+  PADDLE_ENFORCE_NOT_NULL(
+      value, phi::errors::InvalidArgument("value ir type is null"));
   return Call(callee, std::vector<llvm::Value *>({value}), "pod_value_cast");
 }
 

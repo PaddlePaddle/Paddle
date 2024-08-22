@@ -47,7 +47,10 @@ int32_t SSDSparseTable::InitializeShard() { return 0; }
 void SSDSparseTable::SetDayId(int day_id) { _day_id = day_id; }
 
 int32_t SSDSparseTable::Pull(TableContext& context) {
-  CHECK(context.value_type == Sparse);
+  PADDLE_ENFORCE_EQ(context.value_type,
+                    Sparse,
+                    phi::errors::InvalidArgument(
+                        "The value type of context must be Sparse."));
   if (context.use_ptr) {
     char** pull_values = context.pull_context.ptr_values;
     const uint64_t* keys = context.pull_context.keys;
@@ -61,7 +64,10 @@ int32_t SSDSparseTable::Pull(TableContext& context) {
 }
 
 int32_t SSDSparseTable::Push(TableContext& context) {
-  CHECK(context.value_type == Sparse);
+  PADDLE_ENFORCE_EQ(context.value_type,
+                    Sparse,
+                    phi::errors::InvalidArgument(
+                        "The value type of context must be Sparse."));
   if (context.use_ptr) {
     return PushSparse(context.push_context.keys,
                       context.push_context.ptr_values,
@@ -1664,7 +1670,11 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           ss << "DownpourSparseSSDTable save failed, retry it! path:"
              << channel_config.path;
           PADDLE_THROW(common::errors::Fatal(ss.str()));
-          CHECK(false);
+          PADDLE_ENFORCE_EQ(
+              false,
+              true,
+              phi::errors::InvalidArgument(
+                  "The condition is false, but it must be true."));
         }
         region->reset();
         free_channel[shard_num]->Put(region);
@@ -1992,7 +2002,11 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           ss << "DownpourSparseSSDTable save failed, retry it! path:"
              << channel_config.path;
           PADDLE_THROW(common::errors::Fatal(ss.str()));
-          CHECK(false);
+          PADDLE_ENFORCE_EQ(
+              false,
+              true,
+              phi::errors::InvalidArgument(
+                  "The condition is false, but it must be true."));
         }
         region->reset();
         free_channel[shard_num]->Put(region);
@@ -2024,7 +2038,11 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           ss << "DownpourSparseSSDTable save feature failed, retry it! path:"
              << channel_config_for_slot_feature.path;
           PADDLE_THROW(common::errors::Fatal(ss.str()));
-          CHECK(false);
+          PADDLE_ENFORCE_EQ(
+              false,
+              true,
+              phi::errors::InvalidArgument(
+                  "The condition is false, but it must be true."));
         }
         region_for_slot_feature->reset();
         free_channel_for_slot_feature[shard_num]->Put(region_for_slot_feature);
