@@ -435,10 +435,8 @@ class BuildExtension(build_ext):
             self.compiler._cpp_extensions += ['.cu', '.cuh']
             original_compile = self.compiler.compile
             original_spawn = self.compiler.spawn
-        else:
-            original_compile = self.compiler.__class__._compile
 
-        def unix_custom_single_compiler(
+        def unix_custom_compile_single_file(
             self, obj, src, ext, cc_args, extra_postargs, pp_opts
         ):
             """
@@ -506,14 +504,14 @@ class BuildExtension(build_ext):
                 add_std_without_repeat(
                     cflags, self.compiler_type, use_std17=True
                 )
-                original_compile(self, obj, src, ext, cc_args, cflags, pp_opts)
+                self._compile(obj, src, ext, cc_args, cflags, pp_opts)
             except Exception as e:
                 print(f'{src} compile failed, {e}')
             finally:
                 # restore original_compiler
                 self.set_executable('compiler_so', original_compiler)
 
-        def single_extension_compile(
+        def unix_custom_single_compiler(
             self,
             sources,
             output_dir=None,
@@ -543,11 +541,7 @@ class BuildExtension(build_ext):
                 # Submit all compilation tasks to the thread pool.
                 futures = {
                     executor.submit(
-                        # partial(unix_custom_single_compiler, copy.deepcopy(self)),
-                        # copy.deepcopy(self)._compile,
-                        # partial(unix_custom_single_compiler, copy.deepcopy(self)),
-                        # copy.deepcopy(self)._compile,
-                        unix_custom_single_compiler,
+                        unix_custom_compile_single_file,
                         copy.copy(self),
                         obj,
                         build[obj][0],
@@ -710,10 +704,8 @@ class BuildExtension(build_ext):
             original_compile = self.compiler.compile
             self.compiler.compile = win_custom_single_compiler
         else:
-            # self.compiler._compile = unix_custom_single_compiler
-            original__compile = self.compiler.__class__._compile
-            self.compiler.__class__._compile = unix_custom_single_compiler
-            self.compiler.__class__.compile = single_extension_compile
+            original_compile = self.compiler.__class__.compile
+            self.compiler.__class__.compile = unix_custom_single_compiler
 
         self.compiler.object_filenames = object_filenames_with_cuda(
             self.compiler.object_filenames, self.build_lib
@@ -723,10 +715,10 @@ class BuildExtension(build_ext):
         print("Compiling user custom op, it will cost a few seconds.....")
         build_ext.build_extensions(self)
 
-        # if self.compiler.compiler_type == 'msvc':
-        #     self.compiler.compile = original_compile
-        # else:
-        #     self.compiler.__class__._compile = original_compile
+        if self.compiler.compiler_type == 'msvc':
+            self.compiler.compile = original_compile
+        else:
+            self.compiler.__class__.compile = original_compile
 
         # Reset runtime library path on MacOS platform
         so_path = self.get_ext_fullpath(self.extensions[0]._full_name)
