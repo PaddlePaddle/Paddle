@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import DygraphPirGuard, test_with_dygraph_pir
 
 
 def ref_view_as_real(x):
@@ -751,27 +752,95 @@ class TestStrideGPU(TestStride):
 
 
 class TestToStaticCheck(unittest.TestCase):
+    @test_with_dygraph_pir
     def test_error(self):
         @paddle.jit.to_static(full_graph=True)
-        def func():
+        def func1():
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)
             y = paddle.transpose(x, perm=[1, 0, 2])
-            x.add_(x)
+            z = paddle.ones([3, 2, 4])
+            y.add_(z)
 
-        if not paddle.framework.use_pir_api():
-            self.assertRaises(ValueError, func)
+        self.assertRaises(ValueError, func1)
 
-    def test_no_error(self):
         @paddle.jit.to_static(full_graph=True)
-        def func():
+        def func2():
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)
-            xx = paddle.assign(x)
-            y = paddle.transpose(xx, perm=[1, 0, 2])
-            x.add_(x)
+            y = paddle.transpose(x, perm=[1, 0, 2])
+            z = paddle.ones([2, 3, 4])
+            x.add_(z)
 
-        func()
+        self.assertRaises(ValueError, func2)
+
+    def test_error_with_program(self):
+        with DygraphPirGuard():
+
+            @paddle.jit.to_static(full_graph=True)
+            def func1():
+                x = paddle.ones((4, 3)) * 2
+                y = paddle.transpose(x, [1, 0])
+                z = paddle.ones((3,))
+                paddle.tensor.manipulation.fill_diagonal_tensor_(y, z)
+
+            self.assertRaises(ValueError, func1)
+
+            @paddle.jit.to_static(full_graph=True)
+            def func2():
+                x = paddle.ones((4, 3)) * 2
+                y = paddle.transpose(x, [1, 0])
+                z = paddle.ones((3,))
+                paddle.tensor.manipulation.fill_diagonal_tensor_(x, z)
+
+            self.assertRaises(ValueError, func2)
+
+    def test_no_error_with_program(self):
+        with DygraphPirGuard():
+
+            @paddle.jit.to_static(full_graph=True)
+            def func1():
+                x = paddle.ones((4, 3)) * 2
+                y = paddle.transpose(x, [1, 0])
+                yy = paddle.assign(y)
+                z = paddle.ones((3,))
+                paddle.tensor.manipulation.fill_diagonal_tensor_(yy, z)
+
+            func1()
+
+            @paddle.jit.to_static(full_graph=True)
+            def func2():
+                x = paddle.ones((4, 3)) * 2
+                y = paddle.transpose(x, [1, 0])
+                xx = paddle.assign(x)
+                z = paddle.ones((3,))
+                paddle.tensor.manipulation.fill_diagonal_tensor_(xx, z)
+
+            func2()
+
+    @test_with_dygraph_pir
+    def test_no_error(self):
+        @paddle.jit.to_static(full_graph=True)
+        def func1():
+            x_np = np.random.random(size=[2, 3, 4]).astype('float32')
+            x = paddle.to_tensor(x_np)
+            z = paddle.ones([3, 2, 4])
+            y = paddle.transpose(x, perm=[1, 0, 2])
+            yy = paddle.assign(y)
+            yy.add_(z)
+
+        func1()
+
+        @paddle.jit.to_static(full_graph=True)
+        def func2():
+            x_np = np.random.random(size=[2, 3, 4]).astype('float32')
+            x = paddle.to_tensor(x_np)
+            y = paddle.transpose(x, perm=[1, 0, 2])
+            xx = paddle.assign(x)
+            z = paddle.ones([2, 3, 4])
+            xx.add_(z)
+
+        func2()
 
 
 if __name__ == '__main__':
