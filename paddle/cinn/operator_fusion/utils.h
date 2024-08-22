@@ -67,90 +67,23 @@ static size_t GetCompitableRank(pir::Value value) {
   size_t rank = GetRank(value);
   return rank == 0 ? 1 : rank;
 }
-static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
-  const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
-  const auto& attr_val = reduce_op->attributes().at("axis");
-  PADDLE_ENFORCE_EQ(attr_val.isa<::pir::ArrayAttribute>(),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "The axis attribute should be an array."));
-  const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
-  if (axis_attr.empty()) {
-    // dim: [] means reduce_all.
-    std::vector<int64_t> all_axis;
-    for (int i = 0; i < input_rank; ++i) {
-      all_axis.push_back(i);
-    }
-    return all_axis;
-  }
-  std::vector<int64_t> reduce_axis_idx;
-  for (int i = 0; i < axis_attr.size(); ++i) {
-    int64_t axis = axis_attr.at(i).dyn_cast<::pir::Int64Attribute>().data();
-    if (axis < 0) {
-      axis += input_rank;
-    }
-    PADDLE_ENFORCE_GE(
-        axis,
-        0,
-        ::common::errors::InvalidArgument(
-            "The 'axis' must be greater than or equal to 0, but received %d.",
-            axis));
 
-    PADDLE_ENFORCE_LT(axis,
-                      input_rank,
-                      ::common::errors::InvalidArgument(
-                          "The 'axis' must be less than 'input_rank', but "
-                          "received axis = %d and input_rank = %d.",
-                          axis,
-                          input_rank));
+std::vector<int64_t> GetInt64ArrayAttributeData(
+    const ::pir::Attribute& attr_val);
 
-    reduce_axis_idx.push_back(axis);
-  }
-  VLOG(4) << "GetReduceAxisIdx: " << utils::Join(reduce_axis_idx, ",");
-  return reduce_axis_idx;
-}
+std::vector<int32_t> GetInt32ArrayAttributeData(
+    const ::pir::Attribute& attr_val);
 
-static bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
-  const auto& attr_val = reduce_op->attributes().at("keepdim");
-  PADDLE_ENFORCE_EQ(attr_val.isa<::pir::BoolAttribute>(),
-                    true,
-                    ::common::errors::InvalidArgument(
-                        "The keepdim attribute should be a bool."));
-  return attr_val.dyn_cast<::pir::BoolAttribute>().data();
-}
+std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op);
+
+std::pair<std::vector<int64_t>, bool> GetSliceAxis(pir::Operation* slice_op);
+
+bool GetReduceOpKeepDims(pir::Operation* reduce_op);
 
 std::optional<std::pair<pir::Value, pir::Value>> GetBroadcastOpInputOuputValue(
     pir::Operation* op);
 
-static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
-    pir::Operation* op) {
-  std::vector<std::pair<size_t, size_t>> res;
-  auto* shape_analysis =
-      &pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-
-  const auto& broad_cast_value = GetBroadcastOpInputOuputValue(op);
-  CHECK(broad_cast_value.has_value());
-
-  const auto& [input_value, output_value] = broad_cast_value.value();
-  const int input_rank = GetRank(input_value);
-  const int output_rank = GetRank(output_value);
-  CHECK_GE(output_rank, input_rank);
-
-  // Compare axis one by one, from back to front.
-  // The rule of broadcasting:
-  // https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/beginner/tensor_cn.html#id7
-  for (int i = 1; i <= input_rank; ++i) {
-    int input_axis = input_rank - i;
-    int output_axis = output_rank - i;
-    if (input_axis < 0 || output_axis < 0) break;
-    if (shape_analysis->IsProductEqual(
-            input_value, {input_axis}, output_value, {output_axis})) {
-      res.emplace_back(input_axis, output_axis);
-    }
-  }
-
-  return res;
-}
+std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(pir::Operation* op);
 
 static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
   std::stringstream ss;

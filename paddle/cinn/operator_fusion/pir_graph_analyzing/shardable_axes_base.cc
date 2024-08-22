@@ -49,6 +49,7 @@ ShardableAxesSignature ShardableAxesInfoManager::GetModifiedSignature(
   for (const auto& axes : origin_sig.outputs) {
     result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
   }
+  result.loop = ReplaceShardableAxesWithRootName(origin_sig.loop);
   return result;
 }
 
@@ -150,6 +151,7 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
 
   result.inputs.emplace_back(input_axes);
   result.outputs.emplace_back(output_axes);
+  result.loop = result.inputs.back();
 
   return result;
 }
@@ -176,6 +178,80 @@ ShardableAxesSignature CreateSignatureForElementWise(pir::Operation* op) {
                           "in elementwise op."));
     result.outputs.emplace_back(same_axes);
   }
+  result.loop = result.outputs.back();
+  return result;
+}
+
+ShardableAxesSignature CreateSignatureForTranspose(pir::Operation* op) {
+  PADDLE_ENFORCE_EQ(
+      op->num_operands(),
+      1,
+      ::common::errors::PreconditionNotMet(
+          "Required transpose_op->num_operands() shall be equal 1."));
+  PADDLE_ENFORCE_EQ(
+      op->num_results(),
+      1,
+      ::common::errors::PreconditionNotMet(
+          "Required transpose_op->num_results() shall be equal 1."));
+
+  const auto input_axes =
+      CreateNewNamesWithRank(GetCompitableRank(op->operand_source(0)));
+
+  std::vector<int32_t> perm =
+      GetInt32ArrayAttributeData(op->attributes().at("perm"));
+  PADDLE_ENFORCE_EQ(perm.size(),
+                    input_axes.size(),
+                    ::common::errors::PreconditionNotMet(
+                        "The size of perm shoud be equal input rank."));
+  std::vector<std::string> output_axes;
+  for (size_t i = 0; i < perm.size(); ++i) {
+    output_axes.emplace_back(input_axes[perm[i]]);
+  }
+
+  ShardableAxesSignature result = ShardableAxesSignature();
+  result.inputs.emplace_back(input_axes);
+  result.outputs.emplace_back(output_axes);
+  result.loop = result.outputs.back();
+  return result;
+}
+
+ShardableAxesSignature CreateSignatureForSlice(pir::Operation* op) {
+  PADDLE_ENFORCE_EQ(op->num_operands(),
+                    1,
+                    ::common::errors::PreconditionNotMet(
+                        "Required slice_op->num_operands() shall be equal 1."));
+  PADDLE_ENFORCE_EQ(op->num_results(),
+                    1,
+                    ::common::errors::PreconditionNotMet(
+                        "Required slice_op->num_results() shall be equal 1."));
+
+  const auto input_axes =
+      CreateNewNamesWithRank(GetCompitableRank(op->operand_source(0)));
+
+  const auto [slice_axis, keepdim] = GetSliceAxis(op);
+  const auto output_axes = [&]() -> decltype(auto) {
+    std::vector<std::string> axes;
+    if ((slice_axis.size() == input_axes.size()) && !keepdim) {
+      axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
+      return axes;
+    }
+    const auto slice_axis_set =
+        std::unordered_set<int64_t>(slice_axis.begin(), slice_axis.end());
+    for (int i = 0; i < input_axes.size(); ++i) {
+      if (!slice_axis_set.count(i)) {
+        axes.emplace_back(input_axes[i]);
+      } else if (keepdim) {
+        axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
+      }
+    }
+    return axes;
+  }();
+
+  ShardableAxesSignature result = ShardableAxesSignature();
+  result.inputs.emplace_back(input_axes);
+  result.outputs.emplace_back(output_axes);
+  result.loop = result.outputs.back();
+
   return result;
 }
 
@@ -223,7 +299,7 @@ ShardableAxesSignature CreateSignatureForBroadcast(
   }
   std::reverse(output_axis_names.begin(), output_axis_names.end());
   result.outputs.emplace_back(ShardableAxes(output_axis_names));
-
+  result.loop = result.outputs.back();
   return result;
 }
 
@@ -245,6 +321,10 @@ ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
     result = CreateSignatureForElementWise(op);
   } else if (kind == hlir::framework::kBroadcast) {
     result = CreateSignatureForBroadcast(op, shape_analysis_);
+  } else if (op->name() == "pd_op.transpose") {
+    result = CreateSignatureForTranspose(op);
+  } else if (op->name() == "cinn_op.slice") {
+    result = CreateSignatureForSlice(op);
   } else {
     result = CreateDefaultSignature(op);
   }
@@ -281,25 +361,42 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
         ::common::errors::PreconditionNotMet(
             "Required root and non_root shall have same size of axis_names."));
     for (int i = 0; i < non_root.axis_names.size(); i++) {
-      VLOG(4) << "Link " << non_root.axis_names[i] << " -> "
-              << FindRoot(root.axis_names[i]);
+      std::string non_root_str =
+          non_root.axis_names[i] == FindRoot(non_root.axis_names[i])
+              ? ""
+              : " -> " + FindRoot(non_root.axis_names[i]);
+      std::string root_str = root.axis_names[i] == FindRoot(root.axis_names[i])
+                                 ? ""
+                                 : " -> " + root.axis_names[i];
+      VLOG(4) << "Link " << non_root.axis_names[i] << non_root_str << root_str
+              << " -> " << FindRoot(root.axis_names[i]);
       name_union_[FindRoot(non_root.axis_names[i])] =
           FindRoot(root.axis_names[i]);
     }
   };
 
   // init the name_union_
-  for (const auto& [op, axes_signature] : op_signature_map_) {
+  for (const auto& op : ops_) {
+    auto axes_signature = op_signature_map_[op];
     for (int i = 0; i < op->num_operands(); ++i) {
-      auto value = op->operand_source(i);
       auto axes = axes_signature.inputs[i];
       for (auto& axis_name : axes.axis_names) {
         name_union_[axis_name] = axis_name;
       }
     }
+    for (int i = 0; i < op->num_results(); ++i) {
+      auto axes = axes_signature.outputs[i];
+      for (auto& axis_name : axes.axis_names) {
+        if (name_union_.count(axis_name) == 0) {
+          name_union_[axis_name] = axis_name;
+        }
+      }
+    }
   }
 
-  for (const auto& [op, axes_signature] : op_signature_map_) {
+  for (const auto& op : ops_) {
+    auto axes_signature = op_signature_map_[op];
+    VLOG(5) << "Analyzing op: " << op->name();
     for (int i = 0; i < op->num_operands(); ++i) {
       auto value = op->operand_source(i);
       auto axes = axes_signature.inputs[i];
@@ -347,6 +444,7 @@ std::string ShardableAxesSignature::DebugStr() const {
   for (int i = 0; i < outputs.size(); i++) {
     ss << "output " << i << ": " << outputs[i].DebugStr() << "\n";
   }
+  ss << "loop: " << loop.DebugStr() << "\n";
   return ss.str();
 }
 
