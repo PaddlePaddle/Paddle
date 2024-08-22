@@ -28,7 +28,7 @@ from paddle.tensorrt.util import (
 
 
 class TestConverterResNet50(unittest.TestCase):
-    def test_paddle_to_tensorrt_conversion_r50():
+    def test_paddle_to_tensorrt_conversion_r50(self):
         # Step1: get program and init fake inputs
         program, scope, param_dict = get_r50_program()
         input_data_min_shape = np.ones((1, 3, 224, 224), dtype='float32')

@@ -28,7 +28,7 @@ from paddle.tensorrt.util import (
 
 
 class TestConverterBert(unittest.TestCase):
-    def test_paddle_to_tensorrt_conversion_bert():
+    def test_paddle_to_tensorrt_conversion_bert(self):
         # Step1: get program and init fake inputs
         program, scope, param_dict = get_bert_program()
 

@@ -27,7 +27,7 @@ from paddle.tensorrt.util import (
 
 
 class TestConverterDummy(unittest.TestCase):
-    def test_paddle_to_tensorrt_conversion_dummy():
+    def test_paddle_to_tensorrt_conversion_dummy(self):
         program, scope, param_dict = get_dummy_program()
         input_data = np.random.randn(1, 64).astype('float32')
         input_data_max_shape = np.random.randn(8, 64).astype('float32')
