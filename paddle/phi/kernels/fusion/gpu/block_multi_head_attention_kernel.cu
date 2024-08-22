@@ -675,8 +675,7 @@ void DispatchWithDtype(
                                  q_num_head,
                                  kv_num_head,
                                  dim_head,
-                                 cache_k_quant_scales.get_ptr()->dims()[0],
-                                 block_tables.dims()[1],
+                                 max_block_per_seq,
                                  max_seq_len,
                                  bsz,
                                  dev_ctx.stream());
@@ -708,6 +707,28 @@ void DispatchWithDtype(
   VLOG(3) << "encoder done";
   VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time_data;
   if (max_dec_len_this_time_data > 0) {
+    phi::DenseTensor rope_sin_cos_v;
+    if (FLAGS_blha_use_tensorcore) {
+      float inv_compression_ratio = 1.0;
+      float rope_theta = 1000000.0;
+      rope_sin_cos_v.Resize({{bsz, dim_head}});
+      dev_ctx.template Alloc<float>(&rope_sin_cos_v,
+                                    rope_sin_cos_v.numel() * sizeof(float));
+      get_rope_sin_cos_kernel<<<bsz, 64, 0, dev_ctx.stream()>>>(
+          rope_sin_cos_v.data<float>(),
+          seq_lens_decoder.data<int>(),
+          inv_compression_ratio,
+          rope_theta,
+          dim_head);
+    }
+    // VLOGMatrix(rope_sin_cos_v.data<float>(),
+    //            rope_sin_cos_v.numel(),
+    //            "rope_sin_cos_v",
+    //            rope_sin_cos_v.numel());
+    // VLOGMatrix(rope_emb.get().data<float>(),
+    //            rope_emb.get().numel(),
+    //            "rope_emb",
+    //            rope_emb.get().numel());
     GetDecoderTensor<T>(dev_ctx,
                         qkv_buf,
                         nullptr,
@@ -732,7 +753,7 @@ void DispatchWithDtype(
           &block_tables,
           &cum_offsets,
           &seq_lens_decoder,
-          rope_emb ? &rope_emb.get() : nullptr,  // rope_emb
+          &rope_sin_cos_v,  // rope_emb
           key_cache_out,
           value_cache_out,
           &fmha_buf,
@@ -744,7 +765,6 @@ void DispatchWithDtype(
           kv_num_head,
           dim_head,
           max_dec_len_this_time_data,
-          rope_emb ? 1 : 0,
           use_neox_style,
           cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
           cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,
@@ -775,7 +795,6 @@ void DispatchWithDtype(
           kv_num_head,
           dim_head,
           max_dec_len_this_time_data,
-          rope_emb ? 1 : 0,
           use_neox_style,
           cache_k_quant_scales ? cache_k_quant_scales.get_ptr() : nullptr,
           cache_v_quant_scales ? cache_v_quant_scales.get_ptr() : nullptr,

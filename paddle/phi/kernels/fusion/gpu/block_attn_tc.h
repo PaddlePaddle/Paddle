@@ -20,6 +20,28 @@
 namespace phi {
 namespace fusion {
 
+template <typename T>
+__global__ void get_rope_sin_cos_kernel(T* input,
+                                        const int* seq_lens,
+                                        const float inv_compression_ratio,
+                                        const float rope_theta,
+                                        const int dim_head) {
+  int bi = blockIdx.x;
+  int t_step = seq_lens[bi];
+  float float_t_step = static_cast<float>(t_step);
+  float_t_step *= inv_compression_ratio;
+#pragma unroll
+  for (int i = 2 * threadIdx.x; i < dim_head; i += blockDim.x * 2) {
+    const float inv_freq =
+        float_t_step /
+        pow(rope_theta, static_cast<float>(i) / static_cast<float>(dim_head));
+    const float cos_inv_freq = cos(inv_freq);
+    const float sin_inv_freq = sin(inv_freq);
+    input[bi * dim_head + i] = cos_inv_freq;
+    input[bi * dim_head + i + 1] = sin_inv_freq;
+  }
+}
+
 template <typename CacheKV_traits, typename T, int kNThreads>
 __global__ __launch_bounds__(kNThreads) void write_encoder_cache_kv_kernel(
     const T* qkv_out,
@@ -224,7 +246,6 @@ class WriteEncoderCacheKvHdim128 {
                   const int num_head,
                   const int num_kv_head,
                   const int head_dim,
-                  const int cache_k_group_num,
                   const int max_blocks_per_seq,
                   const int max_seq_len,
                   const int bsz,
@@ -243,7 +264,6 @@ void WriteEncoderCacheKvHdim128<T>::operator()(const T* qkv_out,
                                                const int num_head,
                                                const int num_kv_head,
                                                const int head_dim,
-                                               const int cache_k_group_num,
                                                const int max_blocks_per_seq,
                                                const int max_seq_len,
                                                const int bsz,
@@ -1388,7 +1408,6 @@ void set_params(const phi::GPUContext& dev_ctx,
                 const int kv_num_head,
                 const int dim_head,
                 const int max_seq_len,
-                const int rotary_emb_dims,
                 const bool neox_rotary_style,
                 const phi::DenseTensor* cache_k_quant_scales,
                 const phi::DenseTensor* cache_v_quant_scales,
@@ -1417,7 +1436,6 @@ void set_params(const phi::GPUContext& dev_ctx,
   }
   params.inv_compression_ratio = 1.0f;  // Default as 1.0
   params.rope_theta = 10000.0;
-  params.rotary_emb_dims = rotary_emb_dims;
   params.max_input_length = max_input_length;
   params.head_num = q_num_head;
   params.kv_head_num = kv_num_head;
@@ -1506,7 +1524,6 @@ void blha_tc(const phi::GPUContext& dev_ctx,
              const int kv_num_head,
              const int dim_head,
              const int max_seq_len,
-             const int rotary_emb_dims,
              const bool neox_rotary_style = false,
              const phi::DenseTensor* cache_k_quant_scales = nullptr,
              const phi::DenseTensor* cache_v_quant_scales = nullptr,
@@ -1542,7 +1559,6 @@ void blha_tc(const phi::GPUContext& dev_ctx,
                   kv_num_head,
                   dim_head,
                   max_seq_len,
-                  rotary_emb_dims,
                   neox_rotary_style,
                   cache_k_quant_scales,
                   cache_v_quant_scales,

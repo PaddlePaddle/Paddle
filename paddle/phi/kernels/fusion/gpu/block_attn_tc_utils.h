@@ -74,7 +74,6 @@ struct Block_attn_params {
   int *cum_offsets;
   float inv_compression_ratio;
   float rope_theta;
-  int rotary_emb_dims;
   int max_input_length;
   int max_seq_len;
   int head_num;
