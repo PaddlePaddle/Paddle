@@ -1293,16 +1293,15 @@ bool FusedMultiTransformerOpInferSymbolicShape(
 
 bool GenerateProposalsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  symbol::DimExpr out_unknown_1 = infer_context->GetNextSymName();
-  symbol::DimExpr out_unknown_2 = infer_context->GetNextSymName();
-  std::vector<symbol::DimExpr> rpn_rois_shape = {out_unknown_1,
+  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
+  std::vector<symbol::DimExpr> rpn_rois_shape = {out_unknown,
                                                  symbol::DimExpr(4)};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(rpn_rois_shape)});
 
-  std::vector<symbol::DimExpr> rpn_roi_probs_shape = {out_unknown_2,
+  std::vector<symbol::DimExpr> rpn_roi_probs_shape = {out_unknown,
                                                       symbol::DimExpr(1)};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
@@ -1385,6 +1384,10 @@ bool GruOpInferSymbolicShape(pir::Operation *op,
     symbol::TensorShapeOrDataDimExprs batch_hidden_shape(
         {input_shape[0], frame_size});
     infer_context->SetShapeOrDataForValue(op->result(2), batch_hidden_shape);
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(0));
+    infer_context->SetSymbolForValueByStaticShape(op->result(1));
+    infer_context->SetSymbolForValueByStaticShape(op->result(2));
   }
 
   symbol::TensorShapeOrDataDimExprs hidden_shape({input_shape[0], frame_size});
