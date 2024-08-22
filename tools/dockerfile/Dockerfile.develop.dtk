@@ -7,8 +7,15 @@ RUN yum install -y bzip2-devel openssh-server elfutils-devel diffutils libtool i
         blas-devel lapack-devel make git patch unzip bison hostname yasm libsndfile-devel \
         automake which file net-tools zlib-devel libffi-devel vim tk-devel tkinter rpm-build \
         sqlite-devel xz-devel wget curl-devel initscripts mesa-libGL numactl-devel pcre-devel \
-        openssl-devel libjpeg-turbo-devel libpng-devel ninja-build pciutils libzstd-devel \
-        gcc gcc-c++ gcc-gfortran
+        openssl-devel libjpeg-turbo-devel libpng-devel ninja-build pciutils libzstd-devel
+
+RUN bash build_scripts/install_gcc.sh gcc82
+RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH
 
 # workdir
 WORKDIR /opt
@@ -23,7 +30,23 @@ RUN rm -rf /usr/bin/cmake /usr/bin/cmake3 && \
     ln -s /opt/cmake-3.27.7/bin/cmake /usr/bin/cmake3
 ENV PATH=/opt/cmake-3.27.7/bin:${PATH}
 
-# Python 3.10.14
+# Python 3.8\3.9\3.10
+RUN wget -q https://www.python.org/ftp/python/3.8.14/Python-3.8.14.tgz && \
+    tar xzf Python-3.8.14.tgz && cd Python-3.8.14 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j16 > /dev/null && make altinstall > /dev/null && ldconfig && \
+    cd ../ && rm -rf Python-3.8.14 && rm -rf Python-3.8.14.tgz
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+ENV CPLUS_INCLUDE_PATH=/usr/local/include/python3.8:${CPLUS_INCLUDE_PATH}
+
+RUN wget -q https://www.python.org/ftp/python/3.9.14/Python-3.9.14.tgz && \
+    tar xzf Python-3.9.14.tgz && cd Python-3.9.14 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j16 > /dev/null && make altinstall > /dev/null && ldconfig && \
+    cd ../ && rm -rf Python-3.9.14 && rm -rf Python-3.9.14.tgz
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+ENV CPLUS_INCLUDE_PATH=/usr/local/include/python3.9:${CPLUS_INCLUDE_PATH}
+
 RUN wget -q https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tgz && \
     tar xzf Python-3.10.14.tgz && cd Python-3.10.14 && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
@@ -33,22 +56,36 @@ ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 ENV CPLUS_INCLUDE_PATH=/usr/local/include/python3.10:${CPLUS_INCLUDE_PATH}
 
 # create venv and activate
-RUN /usr/local/bin/python3.10 -m venv /opt/py310
+RUN /usr/local/bin/python3.10 -m venv /opt/py310 && \
+    /usr/local/bin/python3.10 -m venv /opt/py310 && \
+    /usr/local/bin/python3.10 -m venv /opt/py310
 # update env
-ENV PATH=/opt/py310/bin:$PATH
+ENV PATH=/opt/py310/bin:/opt/py39/bin:/opt/py38/bin:$PATH
 RUN echo "source /opt/py310/bin/activate" >> /root/.bashrc
+RUN echo "source /opt/py39/bin/activate" >> /root/.bashrc
+RUN echo "source /opt/py38/bin/activate" >> /root/.bashrc
 # upgrade pip
 RUN pip install --upgrade pip setuptools wheel
 
 # install pylint and pre-commit
-RUN pip install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
-RUN pip install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub
+RUN pip3.10 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
+    pip3.9 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro && \
+    pip3.8 install pre-commit==2.17.0 pylint pytest astroid isort coverage qtconsole distro
+
+RUN pip3.10 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub && \
+    pip3.9 install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub  && \
+    pip3.8  install attrs pyyaml pathlib2 scipy requests psutil Cython clang-format==13.0.0 PyGithub
 
 # install Paddle requirement
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O requirements.txt && \
-    pip install -r requirements.txt && rm -rf requirements.txt
+    pip3.10 install -r requirements.txt && rm -rf requirements.txt && \
+    pip3.9 install -r requirements.txt && rm -rf requirements.txt  && \
+    pip3.8 install -r requirements.txt && rm -rf requirements.txt
+
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/unittest_py/requirements.txt -O requirements.txt && \
-    pip install -r requirements.txt && rm -rf requirements.txt
+    pip3.10 install -r requirements.txt && rm -rf requirements.txt && \
+    pip3.9 install -r requirements.txt && rm -rf requirements.txt && \
+    pip3.8 install -r requirements.txt && rm -rf requirements.txt
 
 # git credential to skip password typing
 RUN git config --global credential.helper store && \
