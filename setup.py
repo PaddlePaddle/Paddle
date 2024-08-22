@@ -1711,11 +1711,8 @@ def get_setup_parameters():
             'AMD64',
         )
     ):
-        paddle_cuda_requires, paddle_tensorrt_requires = (
-            get_paddle_extra_install_requirements()
-        )
+        paddle_cuda_requires = get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
-        setup_requires += paddle_tensorrt_requires
 
     packages = [
         'paddle',
