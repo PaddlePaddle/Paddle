@@ -62,18 +62,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
   explicit OpLowererImpl(const Target&);
 
   /**
-   * @brief Lower a group to CINN IR.
-   * @param group The group to be lowered.
-   * @param apply_op_schedule Whether to schedule at Op level.
-   * @param apply_group_schedule Whether to schedule at group level.
-   * @return The lowered funcs.
-   */
-  std::vector<ir::LoweredFunc> Lower(const OpLoweringGroupPtr& group,
-                                     bool apply_op_schedule = true,
-                                     bool apply_group_schedule = true,
-                                     bool apply_pass = true);
-
-  /**
    * @brief Lower a dynamic shape group to CINN IR.
    * @param group The group to be lowered.
    * @param apply_op_schedule Whether to schedule at Op level.
@@ -86,21 +74,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
                                         bool apply_pass = true);
 
  private:
-  /**
-   * @brief Lower a group to CINN IR.
-   * @param group The group to be lowered.
-   * @param apply_op_schedule Whether to schedule at Op level.
-   * @param apply_group_schedule Whether to schedule at group level.
-   * @param schedule_determine_func Function used to determine which Ops to
-   * schedule.
-   * @return The lowered funcs.
-   */
-  std::vector<ir::LoweredFunc> LowerGroup(
-      const OpLoweringGroupPtr& group,
-      bool apply_op_schedule,
-      bool apply_group_schedule,
-      ScheduleDetermineFunction schedule_determine_func);
-
   /**
    * @brief Lower a group composed of CustomCall Op.
    * @param group The group to be lowered.
@@ -131,44 +104,10 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
 
   /**
    * @brief Lower an Op set to CINN IR.
-   * Compute and Lower will be performed one by one for each Op.
-   * @param group The group to be lowered.
-   * @param ops The Op to be lowered.
-   * @param group_func_arg_tensors Tensors used as the group function arguments.
-   * @param tensor_map All tensors used for calculating the group.
-   * @return The lowered func bodies of Op set.
-   */
-  void LowerOpsForMapExpr(
-      const OpLoweringGroupPtr& group,
-      const std::vector<::pir::Operation*>& ops,
-      std::vector<ir::Tensor>* group_func_arg_tensors,
-      std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
-
-  /**
-   * @brief Generate MapExpr and Lower it to std::vector<ir::LoweredFunc>
-   * @param group The group to be lowered.
-   * @param ops The Op to be lowered.
-   * @param apply_op_schedule Whether to schedule at Op level.
-   * @param apply_group_schedule Whether to schedule at group level.
-   * @param group_func_arg_tensors Tensors used as the group function arguments.
-   * @param tensor_map All tensors used for calculating the group.
-   * @return The lowered funcs after the post processing.
-   */
-  std::vector<ir::LoweredFunc> LowerMapExpr(
-      const OpLoweringGroupPtr& group,
-      const std::vector<::pir::Operation*>& ops,
-      bool apply_op_schedule,
-      bool apply_group_schedule,
-      std::vector<ir::Tensor>* group_func_arg_tensors,
-      std::unordered_map<::pir::Value, ir::Tensor>* tensor_map);
-
-  /**
-   * @brief Lower an Op set to CINN IR.
    * Compute, Lower and optional Schedule will be performed one by one
    * for each Op.
    * @param ops The Op to be lowered.
    * @param apply_op_schedule Whether to schedule at Op level.
-   * @param schedule_determine_func Function used to determine which Ops to
    * schedule.
    * @param group_func_arg_tensors Tensors used as the group function arguments.
    * @param tensor_map All tensors used for calculating the group.
@@ -178,7 +117,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
       const OpLoweringGroupPtr& group,
       const std::vector<::pir::Operation*>& ops,
       bool apply_op_schedule,
-      ScheduleDetermineFunction schedule_determine_func,
       std::vector<ir::Tensor>* group_func_arg_tensors,
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
       std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info);
@@ -200,31 +138,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
       std::vector<ir::Tensor>* op_func_arg_tensors);
 
   /**
-   * @brief Apply schedule on an Op.
-   * @param op_impl The Op implementation defining Compute and Schedule.
-   * @param op_func_arg_tensors Tensors used as the Op function arguments.
-   * @param lowered_funcs The lowered funcs of an Op to be scheduled.
-   * @return The lowered func body after schedule of the Op.
-   */
-  ir::Expr DoOpSchedule(std::shared_ptr<hlir::framework::OpImpl> op_impl,
-                        const std::vector<ir::Tensor>& op_func_arg_tensors,
-                        const std::vector<ir::LoweredFunc>& lowered_funcs);
-
-  /**
-   * @brief Apply schedule on a group.
-   * @param ir_sch The IRSchedule containing the entire group's lowered func
-   * bodies.
-   * @param group The group to be scheduled.
-   * @param tensor_map All tensors used for calculating the group.
-   * @return The lowered func body after schedule of the group.
-   */
-  ir::Expr DoGroupSchedule(
-      ir::IRSchedule& ir_sch,  // NOLINT
-      const OpLoweringGroupPtr& group,
-      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-      const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info);
-
-  /**
    * @brief  Generates the output tensor infer shape function.
    * @param group The group to be lowered.
    * @param group_func_arg_tensors Tensors used as the group function arguments.
@@ -235,13 +148,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
       const OpLoweringGroupPtr& group,
       const std::vector<ir::Tensor> group_func_arg_tensors,
       const std::vector<ir::Argument> group_func_args);
-
-  // Functions used to determine which Ops to schedule at op level, define a
-  // policy for each type of group.
-  inline bool ReduceScheduleDetermineFunction(::pir::Operation* op);
-  inline bool ElementwiseScheduleDetermineFunction(::pir::Operation* op);
-  inline bool NonFusibleScheduleDetermineFunction(::pir::Operation* op);
-  inline bool DyShapeScheduleDetermineFunction(::pir::Operation* op);
 
  private:
   std::vector<ir::Tensor> CollectInputTensor(
@@ -254,10 +160,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
                        const ::pir::Value& value);
   ir::Tensor GetTensorSymbolic(const OpLoweringGroupPtr& group,
                                const ::pir::Value& value);
-
-  std::shared_ptr<GroupInfo> GetGroupInfo(
-      const OpLoweringGroupPtr& group,
-      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
 
   std::shared_ptr<GroupInfo> GetGroupInfo(
       const FusionGroupInfo& fusion_group_info,
@@ -276,18 +178,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
 
   std::string ValueName(::pir::Value value);
 
-  common::Type GetTensorDtype(
-      const std::string& name,
-      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
-
-  bool IsInTensorMap(
-      const std::string& name,
-      const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map);
-
-  common::Type GetTensorDtype(const ::pir::Value& value);
-
-  void BuildBroadcastInfo(const OpLoweringGroupPtr& group,
-                          std::shared_ptr<GroupInfo> group_info);
   Target target_;
   ir::Expr LowerX86(const OpLoweringGroupPtr& group,
                     const std::vector<::pir::Operation*>& ops,
