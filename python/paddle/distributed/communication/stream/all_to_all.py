@@ -319,7 +319,7 @@ def alltoall_single(
             >>> else:
             ...     data = paddle.to_tensor([2, 3])
             >>> task = dist.stream.alltoall_single(output, data, sync_op=False)
-            >>> task.wait()  # type: ignore[union-attr]
+            >>> task.wait()
             >>> out = output.numpy()
             >>> print(out)
             >>> # [0, 2] (2 GPUs, out for rank 0)
@@ -339,7 +339,7 @@ def alltoall_single(
             ...                                 out_split_sizes,
             ...                                 in_split_sizes,
             ...                                 sync_op=False)
-            >>> task.wait()  # type: ignore[union-attr]
+            >>> task.wait()
             >>> out = output.numpy()
             >>> print(out)
             >>> # [[0., 0.], [1., 1.]]                     (2 GPUs, out for rank 0)

@@ -126,10 +126,10 @@ class MoeHelper {
                   const DenseTensor *gate_weight,
                   const DenseTensor *ffn1_weight,
                   const paddle::optional<DenseTensor> &ffn1_scale,
-                  const DenseTensor *ffn1_bias,
+                  const paddle::optional<DenseTensor> &ffn1_bias,
                   const DenseTensor *ffn2_weight,
                   const paddle::optional<DenseTensor> &ffn2_scale,
-                  const DenseTensor *ffn2_bias,
+                  const paddle::optional<DenseTensor> &ffn2_bias,
                   const DenseTensor *moe_token_type_ids,
                   const int moe_topk,
                   const bool norm_topk_prob,
@@ -137,8 +137,8 @@ class MoeHelper {
                   DenseTensor *output) {
     auto *input_activations = X->data<T>();
     auto *gating_weights = gate_weight->data<float>();
-    auto *fc1_expert_biases = ffn1_bias->data<T>();
-    auto *fc2_expert_biases = ffn2_bias->data<T>();
+    auto *fc1_expert_biases = ffn1_bias.get_ptr()->data<T>();
+    auto *fc2_expert_biases = ffn2_bias.get_ptr()->data<T>();
 
     auto *output_ = output->data<T>();
     auto stream = ctx.stream();

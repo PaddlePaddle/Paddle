@@ -1447,7 +1447,7 @@ class ShardingStage3(_ShardingStageBase):
 
 def shard_optimizer(
     optimizer: Optimizer,
-    shard_fn: Callable[[str, Layer, ProcessMesh], None] | None = None,
+    shard_fn: Callable[[str, Tensor, Tensor], Tensor] | None = None,
 ) -> _ShardOptimizer:
     """
 

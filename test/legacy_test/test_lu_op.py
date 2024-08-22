@@ -139,7 +139,7 @@ class TestLUOp(OpTest):
         self.output = NLU
         self.Pivots = Pmat_to_perm(sP, min(ashape[-2], ashape[-1]))
         self.Infos = (
-            np.zeros(self.x_shape[:-2]) if len(X.shape) > 2 else np.array([0])
+            np.zeros(self.x_shape[:-2]) if len(X.shape) > 2 else np.array(0)
         )
 
     def setUp(self):

@@ -842,7 +842,7 @@ def parse_fake_shape(
             "length of shape and length of label must be the same, but received %d != %d"
             % (len(op.shape), len(label))
         )
-        fakes = [s for i, (l, s) in enumerate(zip(label, op.shape)) if l != '.']
+        fakes = [s for i, (l, s) in enumerate(zip(label, op.shape))]
         fakes = list(map(abs, fakes))  # make -1 -> 1
         if '.' in ori_label:
             fakes.insert(ori_label.index('.'), 1)

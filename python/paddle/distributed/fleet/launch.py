@@ -141,7 +141,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             default=None,
             help="It's for gpu training."
             "For example:"
-            "--gpus=\"0,1,2,3\" will launch four training processes each bound to one gpu.",
+            '--gpus="0,1,2,3" will launch four training processes each bound to one gpu.',
         )
         base_group.add_argument("--selected_gpus", dest="gpus")
 
@@ -151,7 +151,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
             type=str,
             default=None,
             help="It's for xpu training. For example: "
-            "--xpus=\"0,1,2,3\" will launch four training processes each bound to one xpu.",
+            '--xpus="0,1,2,3" will launch four training processes each bound to one xpu.',
         )
         base_group.add_argument("--selected_xpus", dest="xpus")
 
