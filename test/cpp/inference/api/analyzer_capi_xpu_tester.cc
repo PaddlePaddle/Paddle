@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
@@ -38,21 +39,23 @@ TEST(PD_AnalysisConfig, use_xpu) {
   LOG(INFO) << model_dir_;
   PD_EnableXpu(config, 0xfffc00);
   bool use_xpu = PD_UseXpu(config);
-  CHECK(use_xpu) << "NO";
+  PADDLE_ENFORCE_EQ(use_xpu, true, phi::errors::PreconditionNotMet("NO"));
   int device = PD_XpuDeviceId(config);
-  CHECK(0 == device) << "NO";
+  PADDLE_ENFORCE_EQ(device, 0, phi::errors::PreconditionNotMet("NO"));
   PD_SwitchIrOptim(config, true);
   bool ir_optim = PD_IrOptim(config);
-  CHECK(ir_optim) << "NO";
+  PADDLE_ENFORCE_EQ(ir_optim, true, phi::errors::PreconditionNotMet("NO"));
   PD_EnableMemoryOptim(config);
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
-  CHECK(memory_optim_enable) << "NO";
+  PADDLE_ENFORCE_EQ(
+      memory_optim_enable, true, phi::errors::PreconditionNotMet("NO"));
   PD_EnableProfile(config);
   bool profiler_enable = PD_ProfileEnabled(config);
-  CHECK(profiler_enable) << "NO";
+  PADDLE_ENFORCE_EQ(
+      profiler_enable, true, phi::errors::PreconditionNotMet("NO"));
   PD_SetInValid(config);
   bool is_valid = PD_IsValid(config);
-  CHECK(!is_valid) << "NO";
+  PADDLE_ENFORCE_EQ(is_valid, false, phi::errors::PreconditionNotMet("NO"));
   PD_DeleteAnalysisConfig(config);
 }
 #endif

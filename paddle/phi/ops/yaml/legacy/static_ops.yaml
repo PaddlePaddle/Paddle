@@ -111,6 +111,16 @@
     func : broadcast
     param: [x, root]
 
+- op : comm_init_all
+  args : (int[] devices={}, int ring_id=0)
+  output :
+  infer_meta :
+    func : CommInitAllInferMeta
+    param : [devices, ring_id]
+  kernel :
+    func : comm_init_all
+    data_type : DataType::FLOAT32
+
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, Tensor bias, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
   output : Tensor(out)
@@ -967,6 +977,21 @@
     data_type: x
     param : [x, indices, ksize, strides, paddings,output_size, data_format]
   backward: unpool_grad
+
+- op : unsqueeze
+  args : (Tensor x, IntArray axis = {})
+  output : Tensor(out), Tensor(xshape)
+  infer_meta :
+    func : UnsqueezeWithXShapeInferMeta
+    spmd_rule : UnsqueezeWithXShapeInferSpmd
+  kernel :
+    func : unsqueeze_with_xshape
+    data_type : x
+  inplace : (x -> out)
+  view: (x -> out)
+  intermediate : xshape
+  backward : unsqueeze_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op: multiclass_nms
   args: (Tensor bboxes, Tensor scores, float score_threshold,

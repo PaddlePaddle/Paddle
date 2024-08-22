@@ -1593,7 +1593,7 @@ TEST(SqueezeGradInferSpmd, Ctor) {
 }
 
 TEST(UnsqueezeGradInferSpmd, Ctor) {
-  std::vector<int64_t> xshape_shape = {-1, 32, 48};
+  std::vector<int64_t> x_shape = {32, 48};
   std::vector<int64_t> out_grad_shape = {1, 32, 1, 48};
 
   std::vector<int64_t> mesh_shape = {2, 3};
@@ -1601,10 +1601,10 @@ TEST(UnsqueezeGradInferSpmd, Ctor) {
   std::vector<std::string> dim_names = {"x", "y"};
   ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 
-  TensorDistAttr xshape_dist_attr = TensorDistAttr();
-  xshape_dist_attr.set_process_mesh(process_mesh);
-  xshape_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 1, -1}));
-  xshape_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({1, -1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
 
   TensorDistAttr out_grad_dist_attr = TensorDistAttr();
   out_grad_dist_attr.set_process_mesh(process_mesh);
@@ -1612,18 +1612,16 @@ TEST(UnsqueezeGradInferSpmd, Ctor) {
   out_grad_dist_attr.set_dynamic_dims(
       std::vector<bool>({false, false, false, false}));
 
-  phi::distributed::DistMetaTensor xshape(phi::make_ddim(xshape_shape),
-                                          xshape_dist_attr);
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
   phi::distributed::DistMetaTensor out_grad(phi::make_ddim(out_grad_shape),
                                             out_grad_dist_attr);
 
-  auto spmdinfo = UnsqueezeGradInferSpmd(xshape, out_grad);
+  auto spmdinfo = UnsqueezeGradInferSpmd(x, out_grad);
 
   EXPECT_EQ(spmdinfo.first.size(), 2UL);
   EXPECT_EQ(spmdinfo.second.size(), 1UL);
 
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
-            std::vector<int64_t>({-1, 1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
             std::vector<int64_t>({-1, 1, -1, -1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
@@ -1631,20 +1629,18 @@ TEST(UnsqueezeGradInferSpmd, Ctor) {
   EXPECT_DOUBLE_EQ(
       PADDLE_GET_CONST(TensorDistAttr, spmdinfo.second[0]).is_partial(), false);
 
-  xshape_dist_attr.set_dims_mapping({-1, 0, 1});
+  x_dist_attr.set_dims_mapping({0, 1});
   out_grad_dist_attr.set_dims_mapping({-1, 0, -1, 1});
-  xshape = phi::distributed::DistMetaTensor(phi::make_ddim(xshape_shape),
-                                            xshape_dist_attr);
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
   out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(out_grad_shape),
                                               out_grad_dist_attr);
 
-  spmdinfo = UnsqueezeGradInferSpmd(xshape, out_grad);
+  spmdinfo = UnsqueezeGradInferSpmd(x, out_grad);
 
   EXPECT_EQ(spmdinfo.first.size(), 2UL);
   EXPECT_EQ(spmdinfo.second.size(), 1UL);
 
-  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
-            std::vector<int64_t>({-1, 0, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({0, 1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
             std::vector<int64_t>({-1, 0, -1, 1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]), std::vector<int64_t>({0, 1}));

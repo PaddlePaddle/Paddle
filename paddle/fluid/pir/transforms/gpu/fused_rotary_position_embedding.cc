@@ -110,7 +110,7 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
               {&pat.Tensor("squeeze_out_sin")});
 
     unsqueeze({&pat.Tensor("position_ids"), &full_11()},
-              {&pat.Tensor("unsqueeze_s_out_cos"), &pat.Tensor("xshape")});
+              {&pat.Tensor("unsqueeze_s_out_cos")});
 
     if (with_transpose_) {
       const auto &transpose_1 = pat.Op(paddle::dialect::TransposeOp::name(),
@@ -136,13 +136,13 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
     }
 
     unsqueeze_1({&pat.Tensor("gather_nd_out_cos"), &full_10()},
-                {&pat.Tensor("unsqueeze_out_cos"), &pat.Tensor("xshape")});
+                {&pat.Tensor("unsqueeze_out_cos")});
 
     unsqueeze_4({&pat.Tensor("position_ids"), &full_8()},
-                {&pat.Tensor("unsqueeze_s_out_sin"), &pat.Tensor("xshape")});
+                {&pat.Tensor("unsqueeze_s_out_sin")});
 
     unsqueeze_2({&pat.Tensor("gather_nd_out_sin"), &full_9()},
-                {&pat.Tensor("unsqueeze_out_sin"), &pat.Tensor("xshape")});
+                {&pat.Tensor("unsqueeze_out_sin")});
 
     pat.Tensor("tmp_25") =
         multiply1(pat.Tensor("q"), pat.Tensor("unsqueeze_out_cos"));

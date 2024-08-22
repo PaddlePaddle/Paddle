@@ -2224,16 +2224,30 @@ class Layer:
                 t.set(ndarray, place)
 
             try:
-                executor = Executor(_get_device())._default_executor
                 # restore parameter states
-                core._create_loaded_parameter(
-                    [param for param, state in matched_param_state],
-                    global_scope(),
-                    executor,
-                )
+                if in_pir_mode():
+                    executor = Executor(
+                        paddle.base.framework._current_expected_place_()
+                    )._default_executor
+                    paddle.base.libpaddle.pir.create_loaded_parameter(
+                        [param for param, state in matched_param_state],
+                        global_scope(),
+                        executor,
+                    )
+                else:
+                    executor = Executor(_get_device())._default_executor
+                    core._create_loaded_parameter(
+                        [param for param, state in matched_param_state],
+                        global_scope(),
+                        executor,
+                    )
                 for param, state in matched_param_state:
                     _set_var(param, state)
             except ValueError as e:
+                raise ValueError(
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                )
+            except TypeError as e:
                 raise ValueError(
                     "This error might happens in dy2static, while calling 'set_state_dict' dynamically in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
                 )
