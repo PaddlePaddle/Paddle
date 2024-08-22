@@ -4096,12 +4096,6 @@
   outputs :
     out: Out
 
-- op: c_reducescatter
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
 - op: c_scatter
   inputs :
     x : X
