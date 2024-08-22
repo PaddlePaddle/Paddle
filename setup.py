@@ -1120,7 +1120,7 @@ def get_paddle_extra_install_requirements():
                 )
                 return paddle_cuda_requires, []
 
-    return paddle_cuda_requires, paddle_tensorrt_requires
+    return paddle_cuda_requires
 
 
 def get_package_data_and_package_dir():
