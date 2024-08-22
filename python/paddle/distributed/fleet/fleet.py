@@ -924,7 +924,7 @@ class Fleet:
     def all_reduce(
         self,
         input: Tensor,
-        mode: str = mode_Literal,
+        mode: mode_Literal = "sum",
     ) -> list[int] | int:
         """
         all reduce input between all workers, mode can be sum, mean or max, default is sum
