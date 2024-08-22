@@ -7,7 +7,7 @@
     param : [grad_out]
   kernel :
     func : add_double_grad
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x_grad, grad_y_grad,
   backward : add_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
   composite : add_double_grad(y, grad_out, grad_x_grad, grad_y_grad, axis, grad_out_grad)
