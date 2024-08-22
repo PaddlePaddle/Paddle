@@ -861,7 +861,7 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
   const symbol::ShapeOrDataDimExprs &y_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
   const auto &y_shape = y_shape_or_data.shape();
   size_t ndim_x = x_shape.size();
   size_t ndim_y = y_shape.size();

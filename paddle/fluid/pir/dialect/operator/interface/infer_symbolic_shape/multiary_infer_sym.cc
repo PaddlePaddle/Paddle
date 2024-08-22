@@ -1769,14 +1769,6 @@ bool SpectralNormOpInferSymbolicShape(
   return true;
 }
 
-// bool LstmOpInferSymbolicShape(pir::Operation *op,
-//                               pir::InferSymbolicShapeContext
-//                               *infer_context)
-//                               {
-//   // pass
-//   return true;
-// }
-
 // bool MergedAdamOpInferSymbolicShape(pir::Operation *op,
 //                                     pir::InferSymbolicShapeContext
 //                                     *infer_context) {
