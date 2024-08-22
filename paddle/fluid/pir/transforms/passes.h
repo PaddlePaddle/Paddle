@@ -80,6 +80,9 @@ USE_PIR_PASS(onednn_placement_pass);
 USE_PIR_PASS(conv2d_transpose_bn_fuse_pass);
 USE_PIR_PASS(conv2d_transpose_bias_bn_fuse_pass);
 USE_PIR_PASS(matmul_reshape_add_fuse_pass);
+USE_PIR_PASS(cpu_bfloat16_placement_pass);
+USE_PIR_PASS(cpu_bfloat16_type_placement_pass);
+USE_PIR_PASS(cpu_bfloat16_pass);
 #endif
 
 #ifdef PADDLE_WITH_XPU
