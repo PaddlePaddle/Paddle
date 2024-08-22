@@ -15,8 +15,9 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/kernels/concat_tensor_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 /**
@@ -83,14 +84,14 @@ void ConcatCase1(DeviceContext* context) {
   // check the dim of input_a, input_b
   PADDLE_ENFORCE_EQ(input_a.dims(),
                     dim_a,
-                    common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims of Input tensor should be the same as the "
                         "declared dims. Tensor dims: [%s], declared dims: [%s]",
                         input_a.dims(),
                         dim_a));
   PADDLE_ENFORCE_EQ(input_b.dims(),
                     dim_b,
-                    common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims of Input tensor should be the same as the "
                         "declared dims. Tensor dims: [%s], declared dims: [%s]",
                         input_b.dims(),
@@ -110,13 +111,13 @@ void ConcatCase1(DeviceContext* context) {
     if (j >= cols) {
       PADDLE_ENFORCE_EQ(out_ptr[j],
                         b_ptr[idx_b],
-                        common::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Concat test failed, the result should be equal."));
       ++idx_b;
     } else {
       PADDLE_ENFORCE_EQ(out_ptr[j],
                         a_ptr[idx_a],
-                        common::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Concat test failed, the result should be equal."));
       ++idx_a;
     }
@@ -187,14 +188,14 @@ void ConcatCase2(DeviceContext* context) {
   // check the dim of input_a, input_b
   PADDLE_ENFORCE_EQ(input_a.dims(),
                     dim_a,
-                    common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims of Input tensor should be the same as the "
                         "declared dims. Tensor dims: [%s], declared dims: [%s]",
                         input_a.dims(),
                         dim_a));
   PADDLE_ENFORCE_EQ(input_b.dims(),
                     dim_b,
-                    common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims of Input tensor should be the same as the "
                         "declared dims. Tensor dims: [%s], declared dims: [%s]",
                         input_b.dims(),
@@ -216,14 +217,14 @@ void ConcatCase2(DeviceContext* context) {
         PADDLE_ENFORCE_EQ(
             out_ptr[i * 28 + j],
             b_ptr[idx_b],
-            common::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Concat test failed, the result should be equal."));
         ++idx_b;
       } else {
         PADDLE_ENFORCE_EQ(
             out_ptr[i * 28 + j],
             a_ptr[idx_a],
-            common::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Concat test failed, the result should be equal."));
         ++idx_a;
       }
@@ -295,14 +296,14 @@ void ConcatCase3(DeviceContext* context) {
   // check the dim of input_a, input_b
   PADDLE_ENFORCE_EQ(input_a.dims(),
                     dim_a,
-                    common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims of Input tensor should be the same as the "
                         "declared dims. Tensor dims: [%s], declared dims: [%s]",
                         input_a.dims(),
                         dim_a));
   PADDLE_ENFORCE_EQ(input_b.dims(),
                     dim_b,
-                    common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims of Input tensor should be the same as the "
                         "declared dims. Tensor dims: [%s], declared dims: [%s]",
                         input_b.dims(),
@@ -325,14 +326,14 @@ void ConcatCase3(DeviceContext* context) {
         PADDLE_ENFORCE_EQ(
             out_ptr[i * 9 + j],
             b_ptr[idx_b],
-            common::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Concat test failed, the result should be equal."));
         ++idx_b;
       } else {
         PADDLE_ENFORCE_EQ(
             out_ptr[i * 9 + j],
             a_ptr[idx_a],
-            common::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Concat test failed, the result should be equal."));
         ++idx_a;
       }
@@ -406,14 +407,14 @@ void ConcatCase4(DeviceContext* context) {
   // check the dim of input_a, input_b
   PADDLE_ENFORCE_EQ(input_a.dims(),
                     dim_a,
-                    common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims of Input tensor should be the same as the "
                         "declared dims. Tensor dims: [%s], declared dims: [%s]",
                         input_a.dims(),
                         dim_a));
   PADDLE_ENFORCE_EQ(input_b.dims(),
                     dim_b,
-                    common::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dims of Input tensor should be the same as the "
                         "declared dims. Tensor dims: [%s], declared dims: [%s]",
                         input_b.dims(),
@@ -436,14 +437,14 @@ void ConcatCase4(DeviceContext* context) {
         PADDLE_ENFORCE_EQ(
             out_ptr[i * 24 + j],
             b_ptr[idx_b],
-            common::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Concat test failed, the result should be equal."));
         ++idx_b;
       } else {
         PADDLE_ENFORCE_EQ(
             out_ptr[i * 24 + j],
             a_ptr[idx_a],
-            common::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Concat test failed, the result should be equal."));
         ++idx_a;
       }
@@ -585,7 +586,6 @@ void TestConcatMain() {
                        .GetAllocator(cpu_place)
                        .get());
   ConcatCase5<phi::CPUContext, phi::CPUPlace>(&ctx);
-
   delete context;
 }
 
@@ -602,14 +602,7 @@ void TestConcatMain<phi::GPUContext, phi::GPUPlace>() {
   ConcatCase2<phi::GPUContext, phi::GPUPlace>(context);
   ConcatCase3<phi::GPUContext, phi::GPUPlace>(context);
   ConcatCase4<phi::GPUContext, phi::GPUPlace>(context);
-
-  phi::GPUPlace gpu_place;
-  phi::GPUContext ctx(gpu_place);
-  ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
-                       .GetAllocator(gpu_place)
-                       .get());
-  ConcatCase5<phi::GPUContext, phi::GPUPlace>(ctx);
-
+  ConcatCase5<phi::GPUContext, phi::GPUPlace>(context);
   delete context;
 }
 #endif
