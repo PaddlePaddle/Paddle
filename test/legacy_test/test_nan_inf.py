@@ -180,7 +180,7 @@ class TestNanInfStack(TestNanInfBase):
         self.check_stack(" check_nan_inf_backward_stack.py")
 
     def test_static_check_stack(self):
-        if not paddle.framework.in_pir_mode() and not os.environ.get(
+        if not paddle.framework.use_pir_api() and not os.environ.get(
             "FLAGS_enable_pir_api"
         ):
             self.check_stack(" check_nan_inf_backward_static_stack.py")

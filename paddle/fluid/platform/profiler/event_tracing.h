@@ -16,9 +16,9 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/platform/profiler/trace_event.h"
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/trace_event.h"
 
 namespace paddle {
 namespace platform {
@@ -36,7 +36,7 @@ struct RecordInstantEvent {
    * RecordEvent will works if HostTraceLevel >= level.
    */
   explicit RecordInstantEvent(const char* name,
-                              TracerEventType type,
+                              phi::TracerEventType type,
                               uint32_t level = phi::kDefaultTraceLevel);
 };
 

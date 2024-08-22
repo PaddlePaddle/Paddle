@@ -380,38 +380,39 @@ class TestVariable(unittest.TestCase):
         xx = b.create_var(name='xx', type=core.VarDesc.VarType.STEP_SCOPES)
         self.assertRaises(AssertionError, xx.detach)
 
-        startup = paddle.static.Program()
-        main = paddle.static.Program()
-        scope = base.core.Scope()
-        with paddle.static.scope_guard(scope):
-            with paddle.static.program_guard(main, startup):
-                x = paddle.static.data(
-                    name='x', shape=[3, 2, 1], dtype='float32'
-                )
-                x.persistable = True
-                feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
-                detach_x = x.detach()
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                exe.run(startup)
-                result = exe.run(
-                    main, feed={'x': feed_data}, fetch_list=[x, detach_x]
-                )
-                self.assertTrue((result[1] == feed_data).all())
-                self.assertTrue((result[0] == result[1]).all())
+        with paddle.pir_utils.OldIrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            scope = base.core.Scope()
+            with paddle.static.scope_guard(scope):
+                with paddle.static.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name='x', shape=[3, 2, 1], dtype='float32'
+                    )
+                    x.persistable = True
+                    feed_data = np.ones(shape=[3, 2, 1], dtype=np.float32)
+                    detach_x = x.detach()
+                    exe = paddle.static.Executor(paddle.CPUPlace())
+                    exe.run(startup)
+                    result = exe.run(
+                        main, feed={'x': feed_data}, fetch_list=[x, detach_x]
+                    )
+                    self.assertTrue((result[1] == feed_data).all())
+                    self.assertTrue((result[0] == result[1]).all())
 
-                modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
-                detach_x.set_value(modified_value, scope)
-                result = exe.run(main, fetch_list=[x, detach_x])
-                self.assertTrue((result[1] == modified_value).all())
-                self.assertTrue((result[0] == result[1]).all())
+                    modified_value = np.zeros(shape=[3, 2, 1], dtype=np.float32)
+                    detach_x.set_value(modified_value, scope)
+                    result = exe.run(main, fetch_list=[x, detach_x])
+                    self.assertTrue((result[1] == modified_value).all())
+                    self.assertTrue((result[0] == result[1]).all())
 
-                modified_value = np.random.uniform(
-                    -1, 1, size=[3, 2, 1]
-                ).astype('float32')
-                x.set_value(modified_value, scope)
-                result = exe.run(main, fetch_list=[x, detach_x])
-                self.assertTrue((result[1] == modified_value).all())
-                self.assertTrue((result[0] == result[1]).all())
+                    modified_value = np.random.uniform(
+                        -1, 1, size=[3, 2, 1]
+                    ).astype('float32')
+                    x.set_value(modified_value, scope)
+                    result = exe.run(main, fetch_list=[x, detach_x])
+                    self.assertTrue((result[1] == modified_value).all())
+                    self.assertTrue((result[0] == result[1]).all())
 
 
 class TestVariableSlice(unittest.TestCase):

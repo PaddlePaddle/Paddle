@@ -47,9 +47,7 @@ Conv2dGradNodeFinal::operator()(
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
   phi::RecordEvent node_execution_inner(
-      "Local_Conv2dGradNodeFinal",
-      paddle::platform::TracerEventType::OperatorInner,
-      1);
+      "Local_Conv2dGradNodeFinal", phi::TracerEventType::OperatorInner, 1);
 
   // Apply Gradient Hooks
   auto hooked_grads = ApplyGradientHooks(grads);
@@ -131,9 +129,7 @@ Conv2dGradNodeFinal::operator()(
   // Create Grad Node
   if (trace_backward) {
     phi::RecordEvent node_creation_record_event(
-        "conv2d_grad node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
+        "conv2d_grad node_creation", phi::TracerEventType::OperatorInner, 1);
 
     // Node Construction
     auto grad_node = std::shared_ptr<Conv2dDoubleGradNodeFinal>(  // NOLINT
@@ -229,10 +225,9 @@ Conv2dDoubleGradNodeFinal::operator()(
   //    accumulation when the output(s) of corresponding forward OP are shared
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
-  phi::RecordEvent node_execution_inner(
-      "Local_Conv2dDoubleGradNodeFinal",
-      paddle::platform::TracerEventType::OperatorInner,
-      1);
+  phi::RecordEvent node_execution_inner("Local_Conv2dDoubleGradNodeFinal",
+                                        phi::TracerEventType::OperatorInner,
+                                        1);
 
   // Fill Zero For GradIn Tensors
   const auto& input_metas = this->InputMeta();

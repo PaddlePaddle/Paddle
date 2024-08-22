@@ -908,6 +908,15 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
             pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
           }
         }
+        if (config_.mkldnn_bfloat16_enabled()) {
+          for (const auto &mkldnn_pass : kPirMkldnnBf16Passes) {
+            if (std::find(config_.deleted_passes_.begin(),
+                          config_.deleted_passes_.end(),
+                          mkldnn_pass) == config_.deleted_passes_.end()) {
+              pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
+            }
+          }
+        }
       }
 #endif
     } else {
@@ -3651,6 +3660,7 @@ USE_TRT_CONVERTER(cumsum)
 USE_TRT_CONVERTER(assign)
 USE_TRT_CONVERTER(p_norm)
 USE_TRT_CONVERTER(unbind)
+USE_TRT_CONVERTER(index_put)
 USE_TRT_CONVERTER(flip)
 USE_TRT_CONVERTER(isnan_v2)
 USE_TRT_CONVERTER(share_data)

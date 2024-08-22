@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/same_operands_result.h"
+#include <optional>
 
 #define OP_SAME_OPERANDS_AND_RESULT(name)                                     \
   bool name##OpInferSymbolicShape(                                            \
@@ -116,6 +117,7 @@ OP_SAME_OPERANDS_AND_RESULT(Logit)
 OP_SAME_OPERANDS_AND_RESULT(Logit_)
 OP_SAME_OPERANDS_AND_RESULT(Logsigmoid)
 OP_SAME_OPERANDS_AND_RESULT(Logsigmoid_)
+OP_SAME_OPERANDS_AND_RESULT(Memcpy)
 OP_SAME_OPERANDS_AND_RESULT(Mish)
 OP_SAME_OPERANDS_AND_RESULT(Pow)
 OP_SAME_OPERANDS_AND_RESULT(Poisson)
@@ -144,6 +146,7 @@ OP_SAME_OPERANDS_AND_RESULT(ScatterNdAdd)
 OP_SAME_OPERANDS_AND_RESULT(Scatter)
 OP_SAME_OPERANDS_AND_RESULT(Scatter_)
 OP_SAME_OPERANDS_AND_RESULT(Select)
+OP_SAME_OPERANDS_AND_RESULT(Selu)
 OP_SAME_OPERANDS_AND_RESULT(ShadowFeed)
 OP_SAME_OPERANDS_AND_RESULT(ShareData_)
 OP_SAME_OPERANDS_AND_RESULT(Sign)
@@ -193,10 +196,12 @@ OP_SAME_OPERANDS_AND_RESULT(GaussianInplace_)
 OP_SAME_OPERANDS_AND_RESULT(Hardshrink)
 OP_SAME_OPERANDS_AND_RESULT(HardSigmoid)
 OP_SAME_OPERANDS_AND_RESULT(MergeSelectedRows)
+OP_SAME_OPERANDS_AND_RESULT(NpuIdentity)
 OP_SAME_OPERANDS_AND_RESULT(Renorm)
 OP_SAME_OPERANDS_AND_RESULT(Renorm_)
 OP_SAME_OPERANDS_AND_RESULT(TanhShrink)
 OP_SAME_OPERANDS_AND_RESULT(YoloBoxHead)
+OP_SAME_OPERANDS_AND_RESULT(StandardGamma)
 
 bool ScaleOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
@@ -205,30 +210,55 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(operand_source);
   std::vector<symbol::DimExpr> shape(operand_shape_or_data.shape());
 
-  if (operand_shape_or_data.data()) {
-    const std::vector<symbol::DimExpr> data = [&] {
-      const symbol::DimExpr scale = [&]() -> symbol::DimExpr {
-        if (op->num_operands() == 2) {
-          return infer_context->GetShapeOrDataForValue(op->operand_source(1))
-              .data()
-              ->at(0);
-        }
-        return static_cast<int64_t>(
-            op->attribute("scale").dyn_cast<pir::FloatAttribute>().data());
-      }();
-      int bias = op->attribute("bias").dyn_cast<pir::FloatAttribute>().data();
+  const auto &SetOutputWithOnlyShape = [&]() {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs(shape));
+  };
 
+  const auto &SetOutputWithShapeAndData =
+      [&](const std::vector<symbol::DimExpr> &data) {
+        infer_context->SetShapeOrDataForValue(
+            op->result(0), symbol::TensorShapeOrDataDimExprs(shape, data));
+      };
+
+  const auto &GetOptionalAttributeData =
+      [&](const std::string &attr_name) -> std::optional<symbol::DimExpr> {
+    const auto &float_data =
+        op->attribute(attr_name).dyn_cast<pir::FloatAttribute>().data();
+    const int64_t &int_data = static_cast<int64_t>(float_data);
+    if (float_data - int_data > 1e-6 || float_data - int_data < -1e-6) {
+      return std::nullopt;
+    }
+    return symbol::DimExpr{int_data};
+  };
+
+  const auto &GetOptionalScaleData = [&]() -> std::optional<symbol::DimExpr> {
+    if (op->num_operands() == 2) {
+      const auto &scale_shape_or_data =
+          infer_context->GetShapeOrDataForValue(op->operand_source(1));
+      if (scale_shape_or_data.data())
+        return scale_shape_or_data.data()->at(0);
+      else
+        return std::nullopt;
+    }
+    return GetOptionalAttributeData("scale");
+  };
+
+  if (operand_shape_or_data.data()) {
+    const std::optional<symbol::DimExpr> &opt_scale = GetOptionalScaleData();
+    const std::optional<symbol::DimExpr> &opt_bias =
+        GetOptionalAttributeData("bias");
+    if (opt_scale && opt_bias) {
       std::vector<symbol::DimExpr> data;
       for (auto &val : *(operand_shape_or_data.data())) {
-        data.push_back(val * scale + bias);
+        data.push_back(val * (opt_scale.value()) + (opt_bias.value()));
       }
-      return data;
-    }();
-
-    infer_context->SetShapeOrDataForValue(
-        op->result(0), symbol::TensorShapeOrDataDimExprs(shape, data));
+      SetOutputWithShapeAndData(data);
+    } else {
+      SetOutputWithOnlyShape();
+    }
   } else {
-    infer_context->SetShapeOrDataForValue(op->result(0), operand_shape_or_data);
+    SetOutputWithOnlyShape();
   }
 
   return true;
