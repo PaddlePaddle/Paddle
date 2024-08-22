@@ -421,7 +421,7 @@ bool IsSupportInCinn(const ::pir::Operation& op) {
 }  // namespace
 
 bool CompatibleInfo::IsDeniedForCinn(const ::pir::Operation& op) {
-  bool flag = IsDeniedInCinn(op);
+  bool flag = IsDeniedInCinn(op) || CauseNewSymbolicShape(op);
   VLOG(4) << "CompatibleInfo::IsDeniedForCinn of " << op.name()
           << " is: " << flag;
   return flag;

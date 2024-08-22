@@ -270,7 +270,7 @@ def run_test_first(op_list_file):
     old_list = get_op_list(op_list_file)
     new_list = filter(lambda x: x not in black_list, old_list)
     op_test = transform_list_to_str(new_list)
-    os.system("ctest -R \"(" + op_test + ")\" >& test_op_log.txt")
+    os.system(f'ctest -R "({op_test})" >& test_op_log.txt')
 
 
 def run_test_second():
@@ -289,7 +289,7 @@ def run_test_second():
             + " op(s) need to rerun!!!-------"
         )
         for failed_op in rerun_list:
-            os.system("ctest -R \"(" + failed_op + ")\" ")
+            os.system(f'ctest -R "({failed_op})" ')
     else:
         print("-------all op passed successfully!!!-------")
 

@@ -113,6 +113,18 @@ def append_add_n(
                     return_map_value(item[0], bwd_value_to_block_argument_map)
                 )
 
+        from paddle.amp.auto_cast import amp_global_state
+
+        cast_op = []
+        if (
+            amp_global_state().use_master_grad
+            and amp_global_state().amp_dtype in ['float16', 'bfloat6']
+            and op.name() == 'builtin.parameter'
+            and value.dtype in [paddle.float16, paddle.bfloat16]
+        ):
+            add_n_list = [paddle.cast(v, 'float32') for v in add_n_list]
+            cast_op = [v.get_defining_op() for v in add_n_list]
+
         if len(add_n_list) == 0:
             for tmp in state.value_to_valuegrad[value]:
                 state.value_to_sumvaluegrad[value].append(tmp)
@@ -126,13 +138,14 @@ def append_add_n(
                 grad_op_list.append(grad_value.get_defining_op())
                 index += 1
             update_bwdop_structure(
-                backward_ops, state.op_to_opgrad[op], grad_op_list
+                backward_ops, state.op_to_opgrad[op], cast_op + grad_op_list
             )
             for tmp in state.value_to_valuegrad[value]:
                 state.value_to_sumvaluegrad[value].append(tmp)
             state.value_to_valuegrad[value] = [[grad_value]]
 
         else:
+
             if value.is_dense_tensor_array_type():
                 add_n_value = paddle._C_ops.add_n_array(add_n_list)
             else:
@@ -141,7 +154,9 @@ def append_add_n(
             add_n_op = add_n_value.get_defining_op()
             combine_op = add_n_op.operand_source(0).get_defining_op()
             update_bwdop_structure(
-                backward_ops, state.op_to_opgrad[op], [combine_op, add_n_op]
+                backward_ops,
+                state.op_to_opgrad[op],
+                [*cast_op, combine_op, add_n_op],
             )
 
             for tmp in state.value_to_valuegrad[value]:
