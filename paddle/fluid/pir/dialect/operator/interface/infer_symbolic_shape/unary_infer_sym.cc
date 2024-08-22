@@ -2592,12 +2592,65 @@ bool SumOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool SvdOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext
-//                              *infer_context) {
-//   // pass
-//   return true;
-// }
+bool SvdOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shapes = x_shape_or_data.shape();
+
+  bool full_matrices =
+      op->attribute<pir::BoolAttribute>("full_matrices").data();
+
+  int x_rank = x_shapes.size();
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      common::errors::InvalidArgument(
+          "the rank of input must be greater than or equal to 2"));
+
+  symbol::DimExpr m = x_shapes[x_rank - 2];
+  symbol::DimExpr n = x_shapes[x_rank - 1];
+  symbol::DimExpr k = std::min(m, n);
+
+  auto UDDim = [&](const std::vector<symbol::DimExpr> &x_shapes,
+                   const symbol::DimExpr &k) {
+    std::vector<symbol::DimExpr> x_vec = x_shapes;
+    x_vec[x_vec.size() - 1] = k;
+    return x_vec;
+  };
+
+  auto VHDDim = [&](const std::vector<symbol::DimExpr> &x_shapes,
+                    const symbol::DimExpr &k) {
+    std::vector<symbol::DimExpr> x_vec = x_shapes;
+    x_vec[x_vec.size() - 2] = k;
+    return x_vec;
+  };
+
+  auto SDDim = [&](const std::vector<symbol::DimExpr> &x_shapes,
+                   const symbol::DimExpr &k) {
+    std::vector<symbol::DimExpr> x_vec = x_shapes;
+    x_vec[x_vec.size() - 2] = k;
+    x_vec.erase(x_vec.end() - 1);  // rank - 1
+    return x_vec;
+  };
+
+  std::vector<symbol::DimExpr> u_shape =
+      !full_matrices ? UDDim(x_shapes, k) : UDDim(x_shapes, m);
+  std::vector<symbol::DimExpr> vh_shape =
+      !full_matrices ? VHDDim(x_shapes, k) : VHDDim(x_shapes, n);
+  std::vector<symbol::DimExpr> s_shape = SDDim(x_shapes, k);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(u_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(s_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(vh_shape)});
+  return true;
+}
 
 bool SetValueOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
