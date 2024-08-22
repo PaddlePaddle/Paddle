@@ -41,13 +41,13 @@ def apply_pass(use_vpp=False):
         pipeline.pp_degree = 2
         pipeline.vpp_degree = 2
         pipeline.vpp_seg_method = "LlamaDecoderLayerAuto"
-        pipeline.accumulate_steps = 2
+        pipeline.accumulate_steps = 4
     else:
         pipeline = strategy.pipeline
         pipeline.enable = True
         pipeline.schedule_mode = "1F1B"
         pipeline.pp_degree = 2
-        pipeline.accumulate_steps = 2
+        pipeline.accumulate_steps = 4
 
     return strategy
 
@@ -59,7 +59,7 @@ class Config:
     max_position_embeddings = 8
     seq_length = 8
 
-    num_hidden_layers = 2
+    num_hidden_layers = 8
     num_attention_heads = 2
     num_key_value_heads = 2
     initializer_range = 0.02
@@ -205,8 +205,7 @@ class TestLlamaAuto:
 
     def run_test_cases(self):
         self.init_dist_env()
-        dy_loss_md5 = self.run_llama(use_vpp=False)
-
+        dy_loss_md5 = self.run_llama(use_vpp=True)
         # self.init_dist_env()
         # st_loss_md5 = self.run_dy2static()
         # if int(dist.get_rank()) in [2, 3, 6, 7]:

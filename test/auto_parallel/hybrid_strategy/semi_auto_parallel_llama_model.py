@@ -191,6 +191,7 @@ class LlamaAttentionAuto(nn.Layer):
             self.head_dim,
         ]
 
+        print(999, hidden_states.shape, self.ipp, 'start')
         if self.config.sequence_parallel:
             hidden_states = dist.reshard(
                 hidden_states,
@@ -201,6 +202,8 @@ class LlamaAttentionAuto(nn.Layer):
         query_states = self.q_proj(hidden_states).reshape(
             shape=target_query_shape
         )
+        print(999, hidden_states.shape, self.ipp, 'end')
+
         key_states = self.k_proj(hidden_states).reshape(
             shape=target_key_value_shape
         )

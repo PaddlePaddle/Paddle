@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.distributed.passes.pass_utils import find_var_used_op_chunk_id
 
 from ..process_group import new_process_group
 from .base_reshard_func import ReshardFunction
@@ -70,23 +71,7 @@ class SameStatusReshardFunction(ReshardFunction):
                 break
 
             elif dst == cur_global_rank:
-                # infer the chunk_id of the recv op
-                chunk_id = -1
-                use_src_value_ops = src_value.all_used_ops()
-                while (
-                    len(use_src_value_ops) == 1
-                    and use_src_value_ops[0].name() == "dist_op.reshard"
-                ):
-                    use_src_value_ops = (
-                        use_src_value_ops[0].result(0).all_used_ops()
-                    )
-                for op in use_src_value_ops:
-                    if op.dist_attr is None:
-                        continue
-                    if op.dist_attr.chunk_id != -1:
-                        chunk_id = op.dist_attr.chunk_id
-                        break
-
+                chunk_id = find_var_used_op_chunk_id(src_value)
                 src_local_rank = all_process_ids.index(src)
                 assert (
                     -1 not in dst_type.shape

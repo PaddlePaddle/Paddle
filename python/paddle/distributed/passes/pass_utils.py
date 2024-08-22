@@ -24,6 +24,9 @@ from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
 )
+from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
+    dist_skip_op_list,
+)
 from paddle.distributed.auto_parallel.static.utils import (
     get_logger,
     is_backward_op,
@@ -770,6 +773,65 @@ def auto_complete_op_role(program, op_role, insert_point):
             paddle.pir.set_insertion_point(origin_insert_point)
 
 
+def infer_chunk_id(op_idx, ops, with_dist=True):
+    def get_chunk_id(op_idx):
+        if op_idx < 0 or op_idx >= len(ops):
+            return -1
+        op = ops[op_idx]
+        if with_dist:
+            if op.dist_attr is None:
+                return -1
+            else:
+                return op.dist_attr.chunk_id
+        else:
+            if op.has_attr("chunk_id"):
+                return op.attrs()["chunk_id"]
+            else:
+                return -1
+
+    prev_op_chunk_id = get_chunk_id(op_idx - 1)
+    next_op_chunk_id = get_chunk_id(op_idx + 1)
+    if prev_op_chunk_id == next_op_chunk_id:
+        return prev_op_chunk_id
+
+    next_next_op_chunk_id = get_chunk_id(op_idx + 2)
+    if next_op_chunk_id == next_next_op_chunk_id:
+        return next_op_chunk_id
+
+    if ops[op_idx].name() in ["builtin.combine", "builtin.split"]:
+        result_var = ops[op_idx].result(0)
+        all_used_ops = result_var.all_used_ops()
+        for used_op in all_used_ops:
+            if used_op.dist_attr and used_op.dist_attr.chunk_id != -1:
+                return used_op.dist_attr.chunk_id != -1
+            elif (
+                used_op.has_attr("chunk_id")
+                and used_op.attrs()["chunk_id"] != -1
+            ):
+                return used_op.attrs()["chunk_id"]
+
+    return -1
+
+
+def find_var_used_op_chunk_id(var):
+    all_used_ops = var.all_used_ops()
+    for used_op in all_used_ops:
+        if used_op.name() in dist_skip_op_list:
+            for operand_source in used_op.operand_sources():
+                chunk_id = find_var_used_op_chunk_id(operand_source)
+                if chunk_id != -1:
+                    return chunk_id
+        if used_op.dist_attr and used_op.dist_attr.chunk_id != -1:
+            return used_op.dist_attr.chunk_id
+
+    if var.get_defining_op().has_attr("replace_all_uses_with_reshard_var"):
+        reshard_op = all_used_ops[0]
+        reshard_var = reshard_op.result(0)
+        return find_var_used_op_chunk_id(reshard_var)
+
+    return -1
+
+
 def _split_program_into_forward_backward_optimize(
     main_program, enable_send_recv_overlap=False
 ):
@@ -974,6 +1036,12 @@ def _pir_program_for_vpp(
         op = all_ops[idx]
         op_role = op.op_role
         op_chunk_id = op.attrs()["chunk_id"]
+        if op_role != int(OpRole.Optimize) and op_chunk_id == -1:
+            op_chunk_id = infer_chunk_id(idx, all_ops, False)
+            if op_chunk_id == -1:
+                raise ValueError(
+                    f"Cannot infer chunk_id for op {op.name()} at index {idx}"
+                )
 
         if op_role == int(OpRole.Optimize):
             # in optimize program, both forward and backward ops should be removed
@@ -996,6 +1064,7 @@ def _pir_program_for_vpp(
             raise ValueError(
                 f"The op[{op.name()}]'s op role: {op_role} isn't one of Forward, Backward or Optimizer."
             )
+    # print(222, type_to_program)
 
     return list(type_to_program.keys()), list(type_to_program.values())
 

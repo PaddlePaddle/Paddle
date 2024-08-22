@@ -23,6 +23,7 @@
 #include "paddle/fluid/pybind/dist_static_op_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace py = pybind11;
 
@@ -131,8 +132,14 @@ OperationDistAttribute CreateOperationDistAttribute(
       pir::IrContext::Instance(), mesh, operands, results, chunk_id);
 }
 
+pir::ArrayAttribute CreateArrayAttribute(
+    const std::vector<pir::Attribute> &attrs) {
+  return pir::ArrayAttribute::get(pir::IrContext::Instance(), attrs);
+}
+
 void BindDistUtils(pybind11::module *m) {
   m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
+  m->def("create_array_dist_attribute", CreateArrayAttribute);
   m->def("create_op_dist_attribute", CreateOperationDistAttribute);
   m->def("create_op_dist_attribute",
          &CreateOperationDistAttribute,

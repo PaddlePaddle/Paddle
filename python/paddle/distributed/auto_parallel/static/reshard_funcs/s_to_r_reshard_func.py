@@ -16,7 +16,12 @@
 import paddle
 
 from ..process_group import new_process_group
-from .base_reshard_func import ReshardFunction, is_replicated, is_shard
+from .base_reshard_func import (
+    ReshardFunction,
+    copy_op_attr_with_new_member,
+    is_replicated,
+    is_shard,
+)
 from .same_status_reshard_func import SameStatusReshardFunction
 
 
@@ -159,6 +164,9 @@ class SToRReshardFunction(ReshardFunction):
             )
             builtin_split_op = split_values[0].get_defining_op()
             pd_splite_op = builtin_split_op.operand_source(0).get_defining_op()
+            pd_splite_op.dist_attr = copy_op_attr_with_new_member(
+                pd_splite_op.dist_attr, new_chunk_id=chunk_id
+            )
 
             # fix the split_with_num dist attribtue.
             new_inner_types = []
@@ -176,6 +184,10 @@ class SToRReshardFunction(ReshardFunction):
             concat_value = paddle._C_ops.concat(split_values, split_axis)
             # fold builtin.split op and builtin.combine op
             concat_op = concat_value.get_defining_op()
+            concat_op.dist_attr = copy_op_attr_with_new_member(
+                concat_op.dist_attr, new_chunk_id=chunk_id
+            )
+
             builtin_combine_op = concat_op.operand_source(0).get_defining_op()
             concat_op.operand(0).set_source(pd_splite_op.result(0))
             builtin_combine_op.erase()

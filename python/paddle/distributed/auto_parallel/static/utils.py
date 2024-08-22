@@ -2374,6 +2374,8 @@ def get_pp_stage_by_process_mesh(process_mesh, pp_degree):
     for rank in process_mesh.process_ids:
         pp_stage = get_pp_stage_by_rank(rank, pp_degree)
         if pp_stage_for_process_mesh is not None:
+            if pp_stage != pp_stage_for_process_mesh:
+                return None
             assert (
                 pp_stage == pp_stage_for_process_mesh
             ), f"Can't get pp_stage by process_mesh with different pp_stage {pp_stage} and {pp_stage_for_process_mesh}"

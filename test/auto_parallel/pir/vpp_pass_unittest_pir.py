@@ -88,6 +88,7 @@ class MyLinear(nn.Layer):
     def forward(self, input):
         out = self.linear0(input)
         out = F.gelu(out, approximate=True)
+        print(out.shape)
         out = self.linear1(out)
         out = self.dropout(out)
 

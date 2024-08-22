@@ -23,16 +23,15 @@ class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
 
     def test_llama_vpp(self):
         _default_envs = {
-            "dp": "1",
+            "dp": "2",
             "mp": "2",
-            "pp": "4",
+            "pp": "2",
+            "acc_step": "4",
             "FLAGS_embedding_deterministic": "1",
             "FLAGS_cudnn_deterministic": "1",
             "FLAGS_enable_pir_api": "1",
         }
-        _changeable_envs = {
-            "backend": ["gpu"],
-        }
+        _changeable_envs = {"backend": ["gpu"], "use_sp": ["false"]}
         envs_list = test_base.gen_product_envs_list(
             _default_envs, _changeable_envs
         )
