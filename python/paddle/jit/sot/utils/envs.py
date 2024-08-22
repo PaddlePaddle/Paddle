@@ -35,6 +35,7 @@ ENV_SOT_EXPORT = StringEnvironmentVariable("SOT_EXPORT", "")
 ENV_SOT_ALLOW_DYNAMIC_SHAPE = BooleanEnvironmentVariable(
     "SOT_ALLOW_DYNAMIC_SHAPE", False
 )
+ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
 ENV_ENABLE_SOT_STEP_PROFILER = BooleanEnvironmentVariable(
     "ENABLE_SOT_STEP_PROFILER", False
 )

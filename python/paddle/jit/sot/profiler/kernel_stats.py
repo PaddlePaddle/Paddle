@@ -124,13 +124,6 @@ class KernelStatsVisitor(EventVisitor):
         step_summary += f"dygraph kernel duration: {dygraph_kernel_duration / 1000000:.2f} ms\n"
         step_summary += f"static kernel duration: {static_kernel_duration / 1000000:.2f} ms\n"
         step_summary += f"percentage static kernel duration: {percentage_static_kernel_duration:.2%}\n"
-        # TODO: remove this
-        # print(
-        #     [
-        #         (kernel.name, kernel.run_mode, kernel.duration)
-        #         for kernel in self.kernels
-        #     ]
-        # )
         return step_summary
 
 
@@ -148,7 +141,6 @@ class SotStepProfilerGuard:
     def _kernel_stats(self, prof):
         kernel_stats_visitor = KernelStatsVisitor()
         kernel_stats_visitor(prof.profiler_result.get_data())
-        # breakpoint()
         return kernel_stats_visitor.summary()
 
     def collect_step_info_summary(self, prof):
@@ -156,8 +148,11 @@ class SotStepProfilerGuard:
         if self.enable_kernel_stats:
             summary += self._kernel_stats(prof)
         if self.enable_chrome_tracing:
+            # If you want to export chrome tracing, you can enable this flag
+            # and view the tracing result in https://ui.perfetto.dev/#!/viewer
             profiler.export_chrome_tracing(
-                SotStepProfilerGuard.EXPORT_CHROME_TRACING_PATH
+                SotStepProfilerGuard.EXPORT_CHROME_TRACING_PATH,
+                f"step_{SotStepProfilerGuard.STEP_CNT:03d}",
             )(prof)
         return summary
 
