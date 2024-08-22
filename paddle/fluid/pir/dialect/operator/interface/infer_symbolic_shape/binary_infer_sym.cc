@@ -513,7 +513,10 @@ bool Conv2dTransposeOpInferSymbolicShape(
     for (const auto &i : out_size) {
       output_size.push_back(symbol::DimExpr{i});
     }
-    VLOG(3) << "output_size: attribute" << output_size;
+    VLOG(3) << "output_size: "
+               "attribute------------------------------------------------------"
+               "--------------------"
+            << output_size;
     return convtransposefunction(op, infer_context, output_size);
   } else {
     const auto &output_shape_or_data =
@@ -522,7 +525,10 @@ bool Conv2dTransposeOpInferSymbolicShape(
         output_shape_or_data.data().has_value()
             ? output_shape_or_data.data().value()
             : output_shape_or_data.shape();
-    VLOG(3) << "output_size: operand" << output_size;
+    VLOG(3) << "output_size: "
+               "operand--------------------------------------------------------"
+               "------------------"
+            << output_size;
     return convtransposefunction(op, infer_context, output_size);
   }
 }
