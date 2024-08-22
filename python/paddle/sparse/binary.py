@@ -452,11 +452,6 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
 
-    if x.dtype in _int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
-    if x.dtype in _pir_int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.DataType.FLOAT32)
-
     if isinstance(y, (int, float)):
         return _C_ops.sparse_divide_scalar(x, float(y))
     else:
