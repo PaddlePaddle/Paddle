@@ -54,6 +54,6 @@ TEST(save_load_version_compat, op_patch_test) {
   const uint64_t pir_version = 0;
   pir::PatchBuilder builder(pir_version);
   builder.SetFileVersion(1);
-  std::filesystem::path patch_path("/patch") VLOG(8)
-      << "Patch path: " << patch_path;
+  std::filesystem::path patch_path("/patch");
+  VLOG(8) << "Patch path: " << patch_path;
   builder.BuildPatch(patch_path.string());
