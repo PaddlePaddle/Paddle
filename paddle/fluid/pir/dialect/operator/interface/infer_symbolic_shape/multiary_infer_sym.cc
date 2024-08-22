@@ -1044,7 +1044,7 @@ bool EditDistanceOpInferSymbolicShape(
 
 bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape =
+  auto &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
 
   // Validate the bit_length attribute
