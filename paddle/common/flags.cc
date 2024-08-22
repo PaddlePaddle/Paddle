@@ -1104,6 +1104,32 @@ PHI_DEFINE_EXPORTED_string(cinn_subgraph_graphviz_dir,
                            "Specify the directory path of dot file of "
                            "graph, which is used for debug.");
 
+/*
+ * CINN related FLAG
+ * Name: FLAGS_cinn_predefined_input_constraint
+ * Since Version: 3.0 Beta
+ * Value Range: bool, default=true
+ * Example: FLAGS_cinn_predefined_input_constraint=true would reuse cached
+ * Kernel function
+ */
+PHI_DEFINE_EXPORTED_bool(
+    cinn_predefined_input_constraint,
+    false,
+    "Whether to use predefined input constraint optimization in "
+    "dynamic shape mode.");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_cinn_predefined_input_constraint_file_path
+ * Since Version: 3.0 Beta
+ * Value Range: bool, default=true
+ * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
+ * function
+ */
+PHI_DEFINE_EXPORTED_string(cinn_predefined_input_constraint_file_path,
+                           "",
+                           "File path of predefined input constraint;");
+
 #endif
 
 /*

@@ -111,6 +111,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/set_input_shape_constraint_util.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #endif
 
@@ -848,6 +849,12 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     }
 
     if (config_.cinn_enabled()) {
+      if (config_.cinn_predefined_shape_constraints_enabled()) {
+        VLOG(4) << "[CINN] Set predefined shape constraints.";
+        cinn::dialect::ir::SetInputShapeConstraintFromFile(
+            pir_program_.get(),
+            config_.cinn_predefined_shape_constraints_file_path());
+      }
       VLOG(4) << "[CINN] Begin ApplyCinnPass";
       cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), CreatePassMgr);
     }

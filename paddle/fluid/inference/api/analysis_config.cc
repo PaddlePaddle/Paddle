@@ -39,6 +39,8 @@ COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 
 #ifdef PADDLE_WITH_CINN
 COMMON_DECLARE_bool(use_cinn);
+COMMON_DECLARE_bool(cinn_predefined_input_constraint);
+COMMON_DECLARE_string(cinn_predefined_input_constraint_file_path);
 #endif
 
 COMMON_DECLARE_bool(enable_pir_api);
@@ -557,6 +559,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // cinn compiler related.
   CP_MEMBER(use_cinn_);
+  CP_MEMBER(cinn_use_predefined_shape_constraint_);
+  CP_MEMBER(predefined_shape_constraint_file_path_);
 
   // glog related.
   CP_MEMBER(with_glog_info_);
@@ -1532,6 +1536,51 @@ bool AnalysisConfig::cinn_enabled() const {
   is_enabled = is_enabled || FLAGS_use_cinn;
 #endif
   return is_enabled;
+}
+
+void AnalysisConfig::EnableCINNPredefinedShapeConstraints(
+    const std::string &constraint_file_path) {
+#ifdef PADDLE_WITH_CINN
+  cinn_use_predefined_shape_constraint_ = true;
+  predefined_shape_constraint_file_path_ = constraint_file_path;
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "You tried to use CINN predefined shape constraints for dynamic shape "
+      "optimization, but Paddle was not compiled "
+      "with CINN."));
+#endif
+}
+
+bool AnalysisConfig::cinn_predefined_shape_constraints_enabled() const {
+  bool is_enabled = cinn_use_predefined_shape_constraint_ && use_cinn_;
+#ifdef PADDLE_WITH_CINN
+  is_enabled = is_enabled || FLAGS_cinn_predefined_input_constraint;
+#endif
+  return is_enabled;
+}
+
+const std::string &AnalysisConfig::cinn_predefined_shape_constraints_file_path()
+    const {
+  PADDLE_ENFORCE_EQ(
+      AnalysisConfig::cinn_predefined_shape_constraints_enabled(),
+      true,
+      common::errors::InvalidArgument(
+          "Cannot get the path of predefined shape constraint file, "
+          "cinn_predefined_shape_constraints_enabled is false."));
+#ifdef PADDLE_WITH_CINN
+  if (predefined_shape_constraint_file_path_ == "") {
+    PADDLE_ENFORCE_NE(
+        FLAGS_cinn_predefined_input_constraint_file_path,
+        "",
+        common::errors::Fatal(
+            "cinn_predefined_shape_constraints_file_path is empty, "
+            "please using FLAGS_cinn_predefined_input_constraint_file_path to "
+            "set."));
+    return FLAGS_cinn_predefined_input_constraint_file_path;
+  }
+#endif
+
+  return predefined_shape_constraint_file_path_;
 }
 
 void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,

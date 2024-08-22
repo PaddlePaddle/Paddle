@@ -32,7 +32,9 @@ static std::string GetValueId(Value val) {
 }
 
 void InferSymbolicShapeContext::Init(
-    const std::vector<ConstraintsForInputDimExpr>& input_shape_constraints) {
+    const std::vector<ConstraintsForInputDimName>& input_shape_constraints,
+    const std::unordered_map<std::string, symbol::DimExpr>&
+        dim_name_to_dim_expr_map) {
   value_id_to_shape_or_data_.clear();
   next_sym_idx_ = sym_idx_begin_;
   constraints_manager_.SetEqualCallbackFunc(
@@ -56,8 +58,9 @@ void InferSymbolicShapeContext::Init(
       };
 
   for (const auto& item : input_shape_constraints) {
-    InitBindInfoForInputDim(item.bind_info, item.dim_expr);
-    InitRangeForInputDim(item.range, item.dim_expr);
+    const auto& dim_expr = dim_name_to_dim_expr_map.at(item.dim_name);
+    InitBindInfoForInputDim(item.bind_info, dim_expr);
+    InitRangeForInputDim(item.range, dim_expr);
   }
 }
 
@@ -409,7 +412,7 @@ InferSymbolicShapeContext::GetPredefinedDimExprForInputName(
 }
 
 void ShapeConstraintIRAnalysis::InitInferContext() {
-  context_.Init(input_shape_constraints_);
+  context_.Init(input_shape_constraints_, dim_name_to_dim_expr_map_);
 }
 
 void ShapeConstraintIRAnalysis::RegisterSymbolConstraintFromShapeAnalysis(
@@ -743,6 +746,15 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() {
     printer.os << "\t(op_" << op->id() << ")";
   };
   return print_hook;
+}
+
+void ShapeConstraintIRAnalysis::SetInputShapeConstraints(
+    const std::vector<ConstraintsForInputDimName>& input_shape_constraints) {
+  input_shape_constraints_ = input_shape_constraints;
+  for (const auto& constraint : input_shape_constraints) {
+    dim_name_to_dim_expr_map_[constraint.dim_name] =
+        symbol::DimExpr{GetNextSymName()};
+  }
 }
 
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {

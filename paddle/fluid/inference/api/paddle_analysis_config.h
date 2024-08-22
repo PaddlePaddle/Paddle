@@ -1170,6 +1170,30 @@ struct PD_INFER_DECL AnalysisConfig {
   bool cinn_enabled() const;
 
   ///
+  /// \brief Enable cinn to use predefined shape constraints.
+  /// \param constraint_file_path The file path of the predefined shape
+  /// constraints.
+  ///
+  void EnableCINNPredefinedShapeConstraints(
+      const std::string& constraint_file_path);
+
+  ///
+  /// \brief A boolean state telling whether the CINN compiler will use
+  /// predefined shape constraints to optimie model.
+  ///
+  /// \return bool Whether the CINN compiler will use predefined shape
+  /// constraints.
+  ///
+  bool cinn_predefined_shape_constraints_enabled() const;
+
+  ///
+  /// \brief The path of predefined shape constraints file for CINN compiler.
+  ///
+  /// \return std::string of the predefined shape constraints file path.
+  ///
+  const std::string& cinn_predefined_shape_constraints_file_path() const;
+
+  ///
   /// \brief Set the custom passes list .
   ///
   /// \param passes The custom passes list.
@@ -1334,6 +1358,9 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // CINN compiler related.
   bool use_cinn_{false};
+  // predefined input shape constraint info.
+  bool cinn_use_predefined_shape_constraint_{false};
+  std::string predefined_shape_constraint_file_path_;
 
   // XPU related.
   bool use_xpu_{false};
