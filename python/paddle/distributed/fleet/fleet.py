@@ -13,12 +13,30 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable, Literal
 
 if TYPE_CHECKING:
     from fleet import AMPOptimizer
 
-    from paddle import core
+    from paddle import (
+        Tensor,
+    )
+    from paddle._typing import PlaceLike
+    from paddle.base.core import DistFleetWrapper
+    from paddle.optimizer import Optimizer
+    from paddle.static import (
+        BuildStrategy,
+        Executor,
+        Operator,
+        Parameter,
+        Program,
+        Scope,
+        Variable,
+    )
+
+    from .base.topology import CommunicateTopology, HybridCommunicateGroup
+
+    mode_Literal = Literal['sum', 'mean', 'max']
 
 import copy
 import os
@@ -43,10 +61,10 @@ __all__ = []
 
 
 def apply_ir_passes(
-    main_program: paddle.static.Program,
-    startup_program: paddle.static.Program,
-    config: paddle.static.BuildStrategy,
-) -> paddle.static.BuildStrategy:
+    main_program: Program,
+    startup_program: Program,
+    config: BuildStrategy,
+) -> BuildStrategy:
     build_strategy = config._user_defined_strategy.build_strategy._copy()
     if not _global_flags()['FLAGS_apply_pass_to_program']:
         return build_strategy
@@ -74,7 +92,7 @@ def apply_ir_passes(
     )
 
 
-def _inited_runtime_handler_(func: callable) -> callable:
+def _inited_runtime_handler_(func):
     def __impl__(*args, **kwargs):
         cls = args[0]
 
@@ -86,7 +104,7 @@ def _inited_runtime_handler_(func: callable) -> callable:
     return __impl__
 
 
-def _is_non_distributed_check_(func: callable) -> callable:
+def _is_non_distributed_check_(func):
     def __impl__(*args, **kwargs):
         cls = args[0]
 
@@ -168,12 +186,12 @@ class Fleet:
 
     def __init__(self) -> None:
         self._role_maker = None
-        self.strategy_compiler = None
+        self.strategy_compiler: StrategyCompiler = None
         self._is_collective = False
         self._runtime_handle = None
         self._util = None
         self._context = {}
-        self.user_defined_optimizer = paddle.optimizer.Optimizer(0.0)
+        self.user_defined_optimizer: Optimizer = paddle.optimizer.Optimizer(0.0)
 
     def init(
         self,
@@ -200,7 +218,7 @@ class Fleet:
             strategy (DistributedStrategy): Extra properties for distributed training.
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
             log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
-                the logging level is. Default is "INFO".
+                the logging level is. Default is "".
 
         Returns:
             None
@@ -374,8 +392,8 @@ class Fleet:
     def allreduce_perf(
         self,
         iteration: int,
-        x: paddle.Tensor,
-        group: tp.HybridCommunicateGroup,
+        x: Tensor,
+        group: HybridCommunicateGroup,
         perf_size: int,
         perf_threshold_time: float,
         warmup: bool = False,
@@ -405,8 +423,8 @@ class Fleet:
     def reduce_perf(
         self,
         iteration: int,
-        x: paddle.Tensor,
-        group: tp.HybridCommunicateGroup,
+        x: Tensor,
+        group: HybridCommunicateGroup,
         perf_size: int,
         perf_threshold_time: float,
     ) -> None:
@@ -433,8 +451,8 @@ class Fleet:
     def broadcast_perf(
         self,
         iteration: int,
-        x: paddle.Tensor,
-        group: tp.HybridCommunicateGroup,
+        x: Tensor,
+        group: HybridCommunicateGroup,
         perf_size: int,
         perf_threshold_time: float,
     ) -> None:
@@ -461,8 +479,8 @@ class Fleet:
     def allgather_perf(
         self,
         iteration: int,
-        x: paddle.Tensor,
-        group: tp.HybridCommunicateGroup,
+        x: Tensor,
+        group: HybridCommunicateGroup,
         perf_size: int,
         perf_threshold_time: float,
     ) -> None:
@@ -490,8 +508,8 @@ class Fleet:
     def reduce_scatter_perf(
         self,
         iteration: int,
-        x: paddle.Tensor,
-        group: tp.HybridCommunicateGroup,
+        x: Tensor,
+        group: HybridCommunicateGroup,
         perf_size: int,
         perf_threshold_time: float,
     ) -> None:
@@ -529,12 +547,7 @@ class Fleet:
                 f"[Perf Warning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
             )
 
-    def _collective_perf_impl(
-        self,
-        round: int = 50,
-        context: dict = {},
-        hcg: tp.HybridCommunicateGroup | None = None,
-    ) -> None:
+    def _collective_perf_impl(self, round, context, hcg=None):
         if hcg is None:
             hcg = self.get_hybrid_communicate_group()
 
@@ -598,7 +611,7 @@ class Fleet:
         self,
         comm_type: str,
         round: int = 50,
-        size_and_time: dict = {},
+        size_and_time: dict[int, float] = {},
     ) -> None:
         """
         Run performance test for given communication type
@@ -634,7 +647,7 @@ class Fleet:
             context = {comm_type: [size, time_threshold]}
             self._collective_perf_impl(round=round, context=context)
 
-    def _init_hybrid_parallel_env(self) -> None:
+    def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""
         self.hybrid_configs = self._user_defined_strategy.hybrid_configs
         self.dp_degree = self.hybrid_configs["dp_degree"]
@@ -699,11 +712,11 @@ class Fleet:
             else:
                 model_parallel_random_seed(tensor_init_seed)
 
-    def get_hybrid_communicate_group(self) -> tp.HybridCommunicateGroup:
+    def get_hybrid_communicate_group(self) -> HybridCommunicateGroup:
         assert self._hcg is not None
         return self._hcg
 
-    def get_hybrid_parallel_topology(self) -> tp.CommunicateTopology:
+    def get_hybrid_parallel_topology(self) -> CommunicateTopology:
         assert self._topology is not None
         return self._topology
 
@@ -794,7 +807,7 @@ class Fleet:
     def is_coordinator(self) -> bool:
         return self._role_maker._is_coordinator()
 
-    def worker_endpoints(self, to_string: bool = False) -> list | str:
+    def worker_endpoints(self, to_string: bool = False) -> list[str] | str:
         """
         Get current worker endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
@@ -850,7 +863,7 @@ class Fleet:
         """
         return self._role_maker._server_index()
 
-    def server_endpoints(self, to_string: bool = False) -> list | str:
+    def server_endpoints(self, to_string: bool = False) -> list[str] | str:
         """
         Get current server endpoints, such as ["127.0.0.1:1001", "127.0.0.1:1002"].
 
@@ -910,9 +923,9 @@ class Fleet:
 
     def all_reduce(
         self,
-        input: paddle.Tensor,
-        mode: str = "sum",
-    ) -> list | int:
+        input: Tensor,
+        mode: str = mode_Literal,
+    ) -> list[int] | int:
         """
         all reduce input between all workers, mode can be sum, mean or max, default is sum
 
@@ -932,7 +945,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def init_worker(self, scopes: paddle.static.Scope | None = None) -> None:
+    def init_worker(self, scopes: Scope | None = None) -> None:
         """
         initialize `Communicator` for parameter server training.
 
@@ -957,9 +970,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def init_coordinator(
-        self, scopes: paddle.static.Scope | None = None
-    ) -> None:
+    def init_coordinator(self, scopes: Scope | None = None) -> None:
         """
         initialize coordinator node
         """
@@ -970,7 +981,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def get_fl_client(self) -> core.DistFleetWrapper:
+    def get_fl_client(self) -> DistFleetWrapper:
         """
         get worker(training node) ptr
         """
@@ -1131,8 +1142,8 @@ class Fleet:
     def save(
         self,
         dirname: str,
-        feed: list = [],
-        fetch: list = [],
+        feed: list[str | Variable] = [],
+        fetch: list[str | Variable] = [],
         **configs,
     ) -> None:
         inference = True
@@ -1183,11 +1194,11 @@ class Fleet:
     @inited_runtime_handler
     def save_inference_model(
         self,
-        executor: paddle.static.Executor,
+        executor: Executor,
         dirname: str,
-        feeded_var_names: list,
-        target_vars: list,
-        main_program: paddle.static.Program | None = None,
+        feeded_var_names: list[str],
+        target_vars: list[Variable],
+        main_program: Program | None = None,
         export_for_deployment: bool = True,
         mode: int = 0,
     ) -> None:
@@ -1225,9 +1236,9 @@ class Fleet:
     @inited_runtime_handler
     def save_persistables(
         self,
-        executor: paddle.static.Executor,
+        executor: Executor,
         dirname: str,
-        main_program: paddle.static.Program | None = None,
+        main_program: Program | None = None,
         mode: int = 0,
     ) -> None:
         """
@@ -1325,11 +1336,11 @@ class Fleet:
     @inited_runtime_handler
     def save_dense_params(
         self,
-        executor: paddle.static.Executor,
+        executor: Executor,
         dirname: str,
-        scope: paddle.static.Scope,
-        program: paddle.static.Program,
-        var_names: list | None = None,
+        scope: Scope,
+        program: Program,
+        var_names: list[str] | None = None,
     ) -> None:
         """
         save fleet one table from path
@@ -1389,8 +1400,8 @@ class Fleet:
 
     def distributed_optimizer(
         self,
-        optimizer: paddle.optimizer.Optimizer,
-        strategy: tp.DistributedStrategy | None = None,
+        optimizer: Optimizer,
+        strategy: DistributedStrategy | None = None,
     ) -> Fleet:
         """
         Optimizer for distributed training.
@@ -1439,7 +1450,7 @@ class Fleet:
 
         return self
 
-    def _get_amp_optimizer(self) -> paddle.optimizer.Optimizer:
+    def _get_amp_optimizer(self):
         # imitate target optimizer retrieval
         amp_optimizer = None
         for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
@@ -1463,9 +1474,9 @@ class Fleet:
 
     def amp_init(
         self,
-        place: paddle.CUDAPlace,
-        scope: paddle.static.Scope | None = None,
-        test_program: paddle.static.Program | None = None,
+        place: PlaceLike,
+        scope: Scope | None = None,
+        test_program: Program | None = None,
         use_fp16_test: bool = False,
     ) -> AMPOptimizer:
         """
@@ -1525,7 +1536,7 @@ class Fleet:
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
 
-    def _get_qat_optimizer(self) -> paddle.optimizer.Optimizer:
+    def _get_qat_optimizer(self):
         # imitate target optimizer retrieval
         qat_optimizer = None
         for optimizer in self.strategy_compiler._get_applied_meta_optimizer():
@@ -1544,10 +1555,10 @@ class Fleet:
 
     def qat_init(
         self,
-        place: paddle.CUDAPlace,
-        scope: paddle.static.Scope | None = None,
-        test_program: paddle.static.Program | None = None,
-    ) -> paddle.optimizer.Optimizer:
+        place: PlaceLike,
+        scope: Scope | None = None,
+        test_program: Program | None = None,
+    ) -> Optimizer:
         """
         Init the qat training, such as insert qdq ops and scale variables.
 
@@ -1562,7 +1573,7 @@ class Fleet:
             place, scope=scope, test_program=test_program
         )
 
-    def _final_strategy(self) -> tp.DistributedStrategy:
+    def _final_strategy(self):
         if "valid_strategy" not in self._context:
             print(
                 "WARNING: You may need to call minimize function before this function is called"
@@ -1571,7 +1582,7 @@ class Fleet:
         else:
             return self._context["valid_strategy"]
 
-    def _get_applied_meta_list(self) -> list:
+    def _get_applied_meta_list(self):
         if "applied_meta_list" not in self._context:
             print(
                 "WARNING: You may need to call minimize function before _get_applied_meta_list called"
@@ -1580,7 +1591,7 @@ class Fleet:
         else:
             return self._context["applied_meta_list"]
 
-    def _get_applied_graph_list(self) -> list:
+    def _get_applied_graph_list(self):
         if "applied_graph_list" not in self._context:
             print(
                 "WARNING: You may need to call minimize function before _get_applied_graph_list called"
@@ -1591,13 +1602,13 @@ class Fleet:
 
     def minimize(
         self,
-        loss: paddle.Tensor,
-        startup_program: paddle.static.Program | None = None,
-        parameter_list: list | None = None,
-        no_grad_set: set | None = None,
+        loss: Tensor,
+        startup_program: Program | None = None,
+        parameter_list: list[Iterable[Tensor | str]] | None = None,
+        no_grad_set: set[Tensor | str] | None = None,
     ) -> tuple[
-        list[paddle.static.Operator],
-        list[tuple[paddle.static.Parameter, paddle.Tensor]],
+        list[Operator],
+        list[tuple[Parameter, Tensor]],
     ]:
         """
         Add distributed operations to minimize ``loss`` by updating ``parameter_list``.
@@ -1667,14 +1678,11 @@ class Fleet:
 
     def _minimize_impl(
         self,
-        loss: paddle.Tensor,
-        startup_program: paddle.static.Program | None = None,
-        parameter_list: list | None = None,
-        no_grad_set: set | None = None,
-    ) -> tuple[
-        list[paddle.static.Operator],
-        list[tuple[paddle.static.Parameter, paddle.Tensor]],
-    ]:
+        loss,
+        startup_program,
+        parameter_list,
+        no_grad_set,
+    ):
         context = {}
         context["user_defined_strategy"] = copy.deepcopy(
             self._user_defined_strategy
@@ -1972,10 +1980,10 @@ class Fleet:
 
     def _minimize_losses_impl(
         self,
-        losses: list[paddle.Tensor],
-        startup_programs: list[paddle.static.Program] | None = None,
-        parameter_list: list[paddle.static.Parameter] | None = None,
-        no_grad_set: set[str] | None = None,
+        losses,
+        startup_programs,
+        parameter_list,
+        no_grad_set,
     ):
         context = {}
 
