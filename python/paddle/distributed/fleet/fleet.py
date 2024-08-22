@@ -922,7 +922,7 @@ class Fleet:
 
     def all_reduce(
         self,
-        input: Tensor,
+        input: int,
         mode: Literal['sum', 'mean', 'max'] = "sum",
     ) -> list[int] | int:
         """
