@@ -95,6 +95,12 @@
   composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_format, is_test, use_global_stats, trainable_statistics, x_grad, scale_grad, bias_grad)
   backward : batch_norm_double_grad
 
+- backward_op : c_concat_grad
+  forward : c_concat(Tensor x, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true) -> Tensor(out)
+  args : (Tensor out_grad, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true)
+  output : Tensor(x_grad)
+  invoke : c_split(out_grad, rank, nranks, ring_id, use_calc_stream, use_model_parallel)
+
 - backward_op : c_embedding_grad
   forward : c_embedding (Tensor weight, Tensor x, int64_t start_index=0) -> Tensor(out)
   args : (Tensor weight, Tensor x, Tensor out_grad, int64_t start_index=0)

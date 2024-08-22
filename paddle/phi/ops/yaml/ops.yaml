@@ -737,15 +737,6 @@
     func : c_broadcast
   inplace : (x -> out)
 
-- op : c_concat
-  args : (Tensor x, int rank, int nranks, int ring_id, bool use_calc_stream, bool use_model_parallel)
-  output : Tensor(out)
-  infer_meta :
-    func : CConcatInferMeta
-    param : [x, nranks]
-  kernel :
-    func : c_concat
-
 - op : c_identity
   args : (Tensor x, int ring_id, bool use_calc_stream, bool use_model_parallel)
   output : Tensor(out)
