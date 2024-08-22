@@ -299,17 +299,6 @@ std::vector<Value> Operation::operands_source() const {
   return res;
 }
 
-uint32_t Operation::operands_source_index(const Value &target_value) const {
-  std::vector<Value> sources = operands_source();
-  auto it = std::find(sources.begin(), sources.end(), target_value);
-
-  if (it != sources.end()) {
-    return std::distance(sources.begin(), it);
-  } else {
-    return static_cast<uint32_t>(-1);  // use -1 to indicate not found
-  }
-}
-
 ///
 /// \brief op successor related public interfaces
 ///

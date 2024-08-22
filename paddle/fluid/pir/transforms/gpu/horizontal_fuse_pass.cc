@@ -64,10 +64,22 @@ class HorizontalFusePattern : public pir::RewritePattern {
   }
 
  private:
+  uint32_t operands_source_index(pir::Operation* op,
+                                 const pir::Value& target_value) const {
+    std::vector<pir::Value> sources = op->operands_source();
+    auto it = std::find(sources.begin(), sources.end(), target_value);
+
+    if (it != sources.end()) {
+      return std::distance(sources.begin(), it);
+    } else {
+      return static_cast<uint32_t>(-1);  // use -1 to indicate not found
+    }
+  }
+
   bool IsValidOp(pir::Operation* curr_op, const pir::Value& val) const {
     // judge prev_op is a ParameterOp\ConstantTensorOp\DataOp
-    auto areOperandsValid = [curr_op, val]() -> bool {
-      uint32_t curr_op_input_index = curr_op->operands_source_index(val);
+    auto areOperandsValid = [this, curr_op, val]() -> bool {
+      uint32_t curr_op_input_index = operands_source_index(curr_op, val);
       for (uint32_t i = 0; i < curr_op->num_operands(); i++) {
         auto* prev_op = pir::GetDefiningOpForInput(curr_op, i);
         if (i != curr_op_input_index) {
@@ -141,7 +153,7 @@ class HorizontalFusePattern : public pir::RewritePattern {
       if (op_example == nullptr) {
         op_example = curr_op;
         op_cnt_use_x++;
-        w_from_source_index = curr_op->operands_source_index(val) == 0 ? 1 : 0;
+        w_from_source_index = operands_source_index(curr_op, val) == 0 ? 1 : 0;
       } else {
         if (AreOperationsEqual(op_example, curr_op)) {
           op_cnt_use_x++;
