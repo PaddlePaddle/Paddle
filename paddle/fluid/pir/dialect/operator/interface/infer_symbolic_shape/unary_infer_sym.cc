@@ -229,17 +229,22 @@ bool AffineGridOpInferSymbolicShape(
 
   const auto &attributes = op->attributes();
   int output_shape_size;
+  std::vector<symbol::DimExpr>output_shape_data;
   if (attributes.find("output_shape") != attributes.end()) {
-    output_shape_size =
+    std::vector<int64_t> output_shape =
         op->attribute<paddle::dialect::IntArrayAttribute>("output_shape")
             .data()
-            .GetData()
-            .size();
+            .GetData();
+    output_shape_size = output_shape.size();
+    for(const auto &i : output_shape){
+      output_shape_data.push_back(symbol::DimExpr{i});
+    }
   } else if (op->operand_source(1)) {
     const auto &output_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-    output_shape_size = output_shape_or_data.shape().size();
+    output_shape_data = output_shape_or_data.shape();
+    output_shape_size = output_shape_data.size();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The input arguments must have the shape of output, please check!"));
@@ -250,14 +255,14 @@ bool AffineGridOpInferSymbolicShape(
 
   if (output_shape_size == 4) {
     // N * H * W * 2
-    output_dims.push_back(infer_context->GetNextSymName());  // H
-    output_dims.push_back(infer_context->GetNextSymName());  // W
+    output_dims.push_back(output_shape_data[2]);  // H
+    output_dims.push_back(output_shape_data[3]);  // W
     output_dims.push_back(symbol::DimExpr(2));               // 2
   } else {
     // N * D * H * W * 3
-    output_dims.push_back(infer_context->GetNextSymName());  // D
-    output_dims.push_back(infer_context->GetNextSymName());  // H
-    output_dims.push_back(infer_context->GetNextSymName());  // W
+    output_dims.push_back(output_shape_data[2]);  // D
+    output_dims.push_back(output_shape_data[3]);  // H
+    output_dims.push_back(output_shape_data[4]);  // W
     output_dims.push_back(symbol::DimExpr(3));               // 3
   }
 
