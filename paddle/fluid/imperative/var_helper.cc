@@ -58,7 +58,7 @@ void InitializeVariable(paddle::framework::Variable *var,
   } else if (var_type == paddle::framework::proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<paddle::framework::LoDRankTable>();
   } else if (var_type == paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
-    var->GetMutable<paddle::framework::LoDTensorArray>();
+    var->GetMutable<phi::TensorArray>();
   } else if (var_type == paddle::framework::proto::VarType::STRINGS) {
     var->GetMutable<paddle::framework::Strings>();
   } else if (var_type == paddle::framework::proto::VarType::VOCAB) {

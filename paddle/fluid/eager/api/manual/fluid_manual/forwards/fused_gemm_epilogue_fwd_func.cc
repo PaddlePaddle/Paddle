@@ -26,9 +26,7 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
     const paddle::Tensor& Bias,
     const paddle::framework::AttributeMap& attr_map) {
   phi::RecordEvent dygraph_entrance_record_event(
-      "fused_gemm_epilogue dygraph",
-      paddle::platform::TracerEventType::Operator,
-      1);
+      "fused_gemm_epilogue dygraph", phi::TracerEventType::Operator, 1);
   VLOG(3) << "Running Eager Forward Op: fused_gemm_epilogue";
   // Dygraph Forward Pass
 
@@ -95,7 +93,7 @@ paddle::Tensor fused_gemm_epilogue_dygraph_function(
   {
     phi::RecordEvent node_creation_record_event(
         "fused_gemm_epilogue node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
+        phi::TracerEventType::OperatorInner,
         1);
     egr::AutogradMeta* p_autograd_Out = egr::EagerUtils::autograd_meta(&Out);
     if (require_any_grad) {

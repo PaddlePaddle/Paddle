@@ -15,7 +15,7 @@
 #include "paddle/fluid/eager/backward.h"
 
 #include "paddle/fluid/eager/general_grad.h"
-#include "paddle/fluid/memory/stats.h"
+#include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace egr {
@@ -288,7 +288,7 @@ std::vector<paddle::Tensor> RunBackward(
     // function.
     phi::RecordEvent grad_node_record_event(
         "Global_" + std::string((*node).name()),
-        paddle::platform::TracerEventType::Operator,
+        phi::TracerEventType::Operator,
         1);
 
     // Run Pre Backward Node and get outputs
@@ -441,7 +441,7 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               bool retain_graph) {
   VLOG(3) << "Run in Backward";
   phi::RecordEvent backward_record_event(
-      "backward", paddle::platform::TracerEventType::UserDefined, 1);
+      "backward", phi::TracerEventType::UserDefined, 1);
   RunBackward(tensors, grad_tensors, retain_graph);
   egr::Controller::Instance().ClearForceSequentialNodes();
   phi::autotune::AutoTuneStatus::Instance().Update();

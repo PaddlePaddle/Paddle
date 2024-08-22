@@ -15,13 +15,16 @@
 from __future__ import annotations
 
 import typing
-from typing import TYPE_CHECKING, Callable, Sequence, Tuple, TypeVar, overload
+from typing import TYPE_CHECKING, Callable, TypeVar, overload
 
 import paddle
 from paddle.base import framework
 from paddle.incubate.autograd import primapi, utils
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from typing import Tuple
+
     from paddle import Tensor
     from paddle._typing import TensorOrTensors
 
@@ -33,8 +36,7 @@ def vjp(
     func: Callable[..., _OutputT],
     xs: Tensor,
     v: TensorOrTensors | None = None,
-) -> tuple[_OutputT, Tensor]:
-    ...
+) -> tuple[_OutputT, Tensor]: ...
 
 
 @overload
@@ -42,8 +44,7 @@ def vjp(
     func: Callable[..., _OutputT],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
-) -> tuple[_OutputT, tuple[Tensor, ...]]:
-    ...
+) -> tuple[_OutputT, tuple[Tensor, ...]]: ...
 
 
 def vjp(func, xs, v=None):
@@ -109,8 +110,7 @@ def jvp(
     func: Callable[..., _OutputT],
     xs: Tensor,
     v: TensorOrTensors | None = None,
-) -> tuple[_OutputT, Tensor]:
-    ...
+) -> tuple[_OutputT, Tensor]: ...
 
 
 @overload
@@ -118,8 +118,7 @@ def jvp(
     func: Callable[..., _OutputT],
     xs: Sequence[Tensor],
     v: TensorOrTensors | None = None,
-) -> tuple[_OutputT, tuple[Tensor, ...]]:
-    ...
+) -> tuple[_OutputT, tuple[Tensor, ...]]: ...
 
 
 def jvp(func, xs, v=None):

@@ -39,9 +39,7 @@ ReshardGradNode::operator()(
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
   phi::RecordEvent node_execution_inner(
-      "Local_ReshardGradNode",
-      paddle::platform::TracerEventType::OperatorInner,
-      1);
+      "Local_ReshardGradNode", phi::TracerEventType::OperatorInner, 1);
 
   // Apply Gradient Hooks
   auto hooked_grad = ApplyGradientHooks(grads);

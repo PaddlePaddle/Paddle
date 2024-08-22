@@ -39,8 +39,14 @@ struct DataReader {
     tensor.lod.front().push_back(data.size());
 
     tensor.data.Resize(data.size() * sizeof(int64_t));
-    CHECK(tensor.data.data() != nullptr);
-    CHECK(data.data() != nullptr);
+    PADDLE_ENFORCE_NE(
+        tensor.data.data(),
+        nullptr,
+        common::errors::Fatal("Variable `tensor.data.data()` is nullptr"));
+    PADDLE_ENFORCE_NE(
+        data.data(),
+        nullptr,
+        common::errors::Fatal("Variable `data.data()` is nullptr"));
     memcpy(tensor.data.data(), data.data(), data.size() * sizeof(int64_t));
     tensor.shape.push_back(data.size());
     tensor.shape.push_back(1);
@@ -97,7 +103,7 @@ TEST(Analyzer_Text_Classification, profile) {
       PADDLE_ENFORCE_EQ(
           output.lod.size(),
           0UL,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The 'lod' size of 'output' should be 0, but received size %d.",
               output.lod.size()));
       LOG(INFO) << "output.dtype: " << output.dtype;

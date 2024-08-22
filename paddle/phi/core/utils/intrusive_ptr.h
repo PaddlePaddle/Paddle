@@ -63,7 +63,7 @@ class intrusive_ptr {
   T& operator*() const {
     PADDLE_ENFORCE_NOT_NULL(
         px,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The pointer must be non-null before the dereference operation."));
     return *px;
   }
@@ -71,7 +71,7 @@ class intrusive_ptr {
   T* operator->() const {
     PADDLE_ENFORCE_NOT_NULL(
         px,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The pointer must be non-null before the dereference operation."));
     return px;
   }

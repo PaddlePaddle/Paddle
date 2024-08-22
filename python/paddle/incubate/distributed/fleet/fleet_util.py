@@ -74,7 +74,7 @@ class FleetUtil:
             from paddle.distributed import fleet
         else:
             raise ValueError(
-                "Please choose one mode from [\"pslib\", \"transpiler\"]"
+                'Please choose one mode from ["pslib", "transpiler"]'
             )
 
     def rank0_print(self, s):

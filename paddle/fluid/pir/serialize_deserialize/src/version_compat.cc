@@ -13,23 +13,57 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
+#include <filesystem>
 #include <fstream>
 #include "paddle/fluid/pir/serialize_deserialize/include/patch_util.h"
-
 namespace pir {
 
 void PatchBuilder::BuildPatch(const std::string& path) {
-  patch_json = YamlParser(path);
-  VLOG(6) << "patch: " << patch_json;
-  for (auto patch_info : patch_json["op_patches"]) {
-    op_patches_[patch_info["op_name"]] = patch_info["patch"];
+  VLOG(6) << "Begin building patches... ";
+  // Set max_version to the max version number of release pir plus 1.
+  auto max_version = GetMaxReleasePirVersion() + 1;
+  // If pir_version_ is not 0, we will build patch from file_version_ to
+  // pir_version_; If pir_version_ is 0, we will first build patch from
+  // file_version_ to max_version, and then add 0.yaml to the end.
+  auto pir_version = pir_version_ == 0 ? max_version : pir_version_;
+  VLOG(6) << "file_version_: " << file_version_
+          << ", pir_version: " << pir_version;
+  for (auto v = file_version_; v <= pir_version; v++) {
+    std::filesystem::path p(path.c_str());
+    std::filesystem::path patch_path = p / std::to_string(v % max_version);
+    patch_path += ".yaml";
+    VLOG(8) << "Patch file: " << patch_path;
+    patch_json = YamlParser(patch_path.string());
+    VLOG(8) << "Build version " << v << " patch: " << patch_json;
+    for (auto patch_info : patch_json["op_patches"]) {
+      if (op_patches_.count(patch_info["op_name"])) {
+        Json op_patch_orig = op_patches_[patch_info["op_name"]];
+        Json op_patch_new = patch_info["patch"];
+        for (auto item : op_patch_new.items()) {
+          std::string key = item.key();
+          Json value = item.value();
+          if (op_patch_orig.count(key) == 0) {
+            op_patch_orig[key] = value;
+          } else {
+            Json value_orig = op_patch_orig[key];
+            value_orig.insert(value_orig.end(), value.begin(), value.end());
+          }
+        }
+      } else {
+        op_patches_[patch_info["op_name"]] = patch_info["patch"];
+      }
+    }
+    for (auto patch_info : patch_json["type_patches"]) {
+      type_patches_[patch_info["type_name"]].update(patch_info["patch"], true);
+    }
+    for (auto patch_info : patch_json["attr_patches"]) {
+      attr_patches_[patch_info["attr_name"]].update(patch_info["patch"], true);
+    }
   }
-  for (auto patch_info : patch_json["type_patches"]) {
-    type_patches_[patch_info["type_name"]] = patch_info["patch"];
-  }
-  for (auto patch_info : patch_json["attr_patches"]) {
-    attr_patches_[patch_info["attr_name"]] = patch_info["patch"];
-  }
+  VLOG(8) << "Finish build op_patches_: " << op_patches_;
+  VLOG(8) << "Finish build type_patches_: " << type_patches_;
+  VLOG(8) << "Finish build attr_patches_: " << attr_patches_;
+  VLOG(6) << "Finish building patches... ";
 }
 
 std::unordered_map<std::string, Json> PatchBuilder::GetOpAttrPatchMap(
@@ -86,11 +120,28 @@ void PatchBuilder::ApplyOpPatches(const std::string& op_name,
     }
     return;
   }
-  // TODO(czy): Deal with io patches
-  // Json* json_in = &json->at(OPOPERANDS);
-  // json_in->merge_patch(patch[OPOPERANDS]);
-  // Json* json_out = &json->at(OPRESULTS);
-  // json_out->merge_patch(patch[OPRESULTS]);
+  // Deal with io patches
+  if (patch.contains(OPOPERANDS)) {
+    Json* json_in = &json->at(OPOPERANDS);
+    Json in_patch = patch[OPOPERANDS];
+    for (auto item : in_patch["DELETE"]) {
+      int id = item.get<int>();
+      json_in->erase(id);
+    }
+  }
+  if (patch.contains(OPRESULTS)) {
+    Json* json_out = &json->at(OPRESULTS);
+    Json out_patch = patch[OPRESULTS];
+    VLOG(8) << "out patch: " << out_patch;
+    for (auto item : out_patch["ADD"]) {
+      int id = item[VALUE_ID].get<int>();
+      auto index = json_out->begin() + id;
+      VLOG(8) << "Add index: " << id;
+      item.erase(VALUE_ID);
+      json_out->insert(index, item);
+      VLOG(8) << "ADD output: " << json_out;
+    }
+  }
 }
 
 void PatchBuilder::ApplyTypePatches(const std::string& type_name,

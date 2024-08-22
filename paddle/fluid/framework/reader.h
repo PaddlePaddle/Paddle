@@ -48,7 +48,7 @@ class ReaderBase {
             "and need_check_feed"));
   }
 
-  TEST_API virtual void ReadNext(paddle::framework::LoDTensorArray* out);
+  TEST_API virtual void ReadNext(phi::TensorArray* out);
 
   TEST_API virtual void Shutdown();
 
@@ -73,7 +73,7 @@ class ReaderBase {
   TEST_API virtual ~ReaderBase();
 
  protected:
-  virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out UNUSED) {}
+  virtual void ReadNextImpl(phi::TensorArray* out UNUSED) {}
 
   virtual void ShutdownImpl() {}
 
@@ -165,7 +165,7 @@ class ReaderHolder {
 
   const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
-  void ReadNext(paddle::framework::LoDTensorArray* out) {
+  void ReadNext(phi::TensorArray* out) {
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
         common::errors::InvalidArgument(

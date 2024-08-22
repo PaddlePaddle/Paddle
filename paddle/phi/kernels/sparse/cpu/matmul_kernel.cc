@@ -25,7 +25,7 @@ void MatmulCsrDenseKernel(const Context& dev_ctx UNUSED,
                           const SparseCsrTensor& x UNUSED,
                           const DenseTensor& y UNUSED,
                           DenseTensor* out UNUSED) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.matmul' now."));
 }
 
@@ -36,7 +36,7 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx UNUSED,
                            const DenseTensor& y UNUSED,
                            const SparseCsrTensor& mask UNUSED,
                            SparseCsrTensor* out UNUSED) {
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.masked_matmul' now."));
 }
 

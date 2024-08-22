@@ -29,7 +29,7 @@ struct Mutator : public ir::IRMutator<> {
     auto* node = expr->As<ir::Store>();
     PADDLE_ENFORCE_NOT_NULL(
         node,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Expected 'node' to be non-null, but got null."));
 
     auto value = node->value;

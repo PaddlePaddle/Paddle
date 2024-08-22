@@ -48,9 +48,11 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             lod_level=0,
             name="mul.x",
             optimize_attr={'learning_rate': 1.1},
-            regularizer=None
-            if regularization is not None
-            else regularizer.L2Decay(2e-4),
+            regularizer=(
+                None
+                if regularization is not None
+                else regularizer.L2Decay(2e-4)
+            ),
         )
         mul_y = block.create_var(
             dtype="float32", shape=[dims[1], dims[2]], lod_level=0, name="mul.y"

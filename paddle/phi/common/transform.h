@@ -145,7 +145,7 @@ struct Transform<phi::GPUContext> {
     auto place = context.GetPlace();
     PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The CUDA Transform must be used in GPU place."));
 #ifdef __HIPCC__
     thrust::transform(thrust::hip::par.on(context.stream()),
@@ -175,7 +175,7 @@ struct Transform<phi::GPUContext> {
     auto place = context.GetPlace();
     PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The CUDA Transform must be used in GPU place."));
 #ifdef __HIPCC__
     thrust::transform(thrust::hip::par.on(context.stream()),

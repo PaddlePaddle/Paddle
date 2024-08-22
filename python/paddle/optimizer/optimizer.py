@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -54,6 +54,8 @@ from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from typing_extensions import NotRequired, TypedDict
 
     from paddle import Tensor
@@ -365,9 +367,13 @@ class Optimizer:
                     state_dict[var_tmp.name] = var_tmp
                     # save scale value for xpu
                     if core.is_compiled_with_xpu():
-                        state_dict[
-                            var_tmp.name + ".SCALE_VALUE"
-                        ] = var_tmp.get_tensor().get_xpu_scale_value()
+                        xpu_adamw_moment_dtype = os.getenv(
+                            "xpu_adamw_moment_dtype", default="fp32"
+                        )
+                        if xpu_adamw_moment_dtype == "fp16":
+                            state_dict[var_tmp.name + ".SCALE_VALUE"] = (
+                                var_tmp.get_tensor().get_xpu_scale_value()
+                            )
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:
@@ -433,9 +439,13 @@ class Optimizer:
                 tensor = var.get_tensor()
                 # load scale value for xpu
                 if core.is_compiled_with_xpu():
-                    tensor.set_xpu_scale_value(
-                        state_dict.get(var_tmp.name + ".SCALE_VALUE", -1.0)
+                    xpu_adamw_moment_dtype = os.getenv(
+                        "xpu_adamw_moment_dtype", default="fp32"
                     )
+                    if xpu_adamw_moment_dtype == "fp16":
+                        tensor.set_xpu_scale_value(
+                            state_dict.get(var_tmp.name + ".SCALE_VALUE", -1.0)
+                        )
                 var.set_value(state_dict[var_tmp.name])
 
     def get_opti_var_name_list(self) -> list[str]:
@@ -791,7 +801,7 @@ class Optimizer:
     def _append_optimize_op(self, block, param_and_grad):
         """append optimize operator to block and return all the added optimize_op"""
         raise NotImplementedError(
-            "Class \"Optimizer\" connot be used directly as an optimizer, please use its subclasses such as \"Adam\""
+            'Class "Optimizer" connot be used directly as an optimizer, please use its subclasses such as "Adam"'
         )
 
     def _create_param_lr(self, param_and_grad):
@@ -985,6 +995,8 @@ class Optimizer:
                 ),
             )
         else:
+            if self.helper is None:
+                self.helper = LayerHelper(self.__class__.__name__)
             assert isinstance(self.helper, LayerHelper)
             var = self.helper.create_global_variable(
                 name=var_name,
@@ -1023,11 +1035,15 @@ class Optimizer:
 
                     # load scale value for xpu
                     if core.is_compiled_with_xpu():
-                        var.get_tensor().set_xpu_scale_value(
-                            self._accumulators_holder.get(
-                                var_name + ".SCALE_VALUE", -1.0
-                            )
+                        xpu_adamw_moment_dtype = os.getenv(
+                            "xpu_adamw_moment_dtype", default="fp32"
                         )
+                        if xpu_adamw_moment_dtype == "fp16":
+                            var.get_tensor().set_xpu_scale_value(
+                                self._accumulators_holder.get(
+                                    var_name + ".SCALE_VALUE", -1.0
+                                )
+                            )
 
         self._accumulators[name][param.name] = var
         return var

@@ -60,7 +60,7 @@ class CommTask {
     const char* global_rank = std::getenv("PADDLE_TRAINER_ID");
     PADDLE_ENFORCE_NOT_NULL(
         global_rank,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
     global_rank_ = std::atoi(global_rank);
   }
@@ -94,59 +94,59 @@ class CommTask {
 
   virtual std::string GetTraceMsg() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return "";
   }
   virtual void StartRecord() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return;
   }
   virtual void EndRecord() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return;
   }
 
   virtual void ClearRecord() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return;
   }
 
   virtual std::string GetCommErrors() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return "";
   }
   virtual bool IsStarted() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return false;
   }
   virtual bool IsTimeout() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return false;
   }
   virtual bool IsCompleted() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return false;
   }
   virtual void SetUpdated(bool updated) {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return;
   }
   virtual bool IsUpdated() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return false;
   }
   virtual void AbortComm() {
     PADDLE_THROW(
-        phi::errors::Unimplemented("%s is not implemented.", __func__));
+        common::errors::Unimplemented("%s is not implemented.", __func__));
     return;
   }
 

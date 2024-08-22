@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -54,10 +56,10 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
             else:
                 return np.random.randn(33, 1).astype(np.float32)
 
-        def generate_input1(attrs: List[Dict[str, Any]], shape_input):
+        def generate_input1(attrs: list[dict[str, Any]], shape_input):
             return np.random.random(shape_input).astype(np.float32)
 
-        def generate_input2(attrs: List[Dict[str, Any]], shape_input):
+        def generate_input2(attrs: list[dict[str, Any]], shape_input):
             begin = attrs[0]["begin_norm_axis"]
             sum = 1
             for x in range(begin, len(shape_input)):
@@ -176,7 +178,7 @@ class TestTrtFp32MixPrecision(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "conv2d_input": [1, 3, 64, 64],

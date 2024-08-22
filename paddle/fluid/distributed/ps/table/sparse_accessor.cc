@@ -303,7 +303,7 @@ int SparseAccessor::ParseFromString(const std::string& str, float* value) {
   PADDLE_ENFORCE_GE(
       ret,
       6UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid return value. Expect more than 6. But recieved %d.", ret));
   return ret;
 }

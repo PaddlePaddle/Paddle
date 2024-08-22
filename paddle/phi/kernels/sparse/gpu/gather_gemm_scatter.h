@@ -49,9 +49,9 @@ void GatherGemmScatterDriver(
     Output alpha,
     Output beta,
     cutlass::device_memory::allocation<uint8_t>* const workspace_ptr) {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("gather_gemm_scatter fusion only supports "
-                                 "fp16_nn, fp32_nn, fp32_nt and fp32_tn now."));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "gather_gemm_scatter fusion only supports "
+      "fp16_nn, fp32_nn, fp32_nt and fp32_tn now."));
 }
 
 #define EXPLICIT_SPECIALIZE_GATHER_GEMM_SCATTER_DRIVER(                       \

@@ -139,7 +139,7 @@ void SliceKernel(const Context& ctx,
           ctx, input, axes, starts, ends, infer_flags, decrease_axis, out);
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "The rank of input should be less than 7, but received %d.", rank));
   }
 }
@@ -164,7 +164,7 @@ void SliceArrayKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_GT(end,
                     start,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Attr(ends) should be greater than attr(starts) in "
                         "slice op. But received end = %d, start = %d.",
                         ends[0],

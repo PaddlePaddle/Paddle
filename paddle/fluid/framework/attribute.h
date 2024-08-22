@@ -53,8 +53,8 @@ struct ExtractAttribute {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type %s, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(typeid(T).name()),
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(typeid(T).name()),
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -88,7 +88,7 @@ struct ExtractAttribute<bool> {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type bool, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -116,7 +116,7 @@ struct ExtractAttribute<int64_t> {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type int64_t, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -147,7 +147,7 @@ struct ExtractAttribute<std::vector<int64_t>> {
           "Cannot get attribute (%s) by type std::vector<int64_t>, its type is "
           "%s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -175,7 +175,7 @@ struct ExtractAttribute<float> {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type float, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -206,7 +206,7 @@ struct ExtractAttribute<double> {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Cannot get attribute (%s) by type double, its type is %s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -237,7 +237,7 @@ struct ExtractAttribute<std::vector<double>> {
           "Cannot get attribute (%s) by type std::vector<double>, its type is "
           "%s.",
           attr_name_,
-          paddle::platform::demangle(attr.type().name())));
+          common::demangle(attr.type().name())));
     }
     return attr_value;
   }
@@ -259,7 +259,7 @@ struct ExtractAttribute<paddle::experimental::Scalar> {
           "Cannot get attribute (%s) by type Scalar, its type is %s, index is "
           "%d",
           attr_name_,
-          paddle::platform::demangle(attr.type().name()),
+          common::demangle(attr.type().name()),
           attr.index()));
     }
     return attr_value;

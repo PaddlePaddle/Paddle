@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 def gather(
     tensor: Tensor,
-    gather_list: list[Tensor] = None,
+    gather_list: list[Tensor] | None = None,
     dst: int = 0,
     group: Group | None = None,
     sync_op: bool = True,

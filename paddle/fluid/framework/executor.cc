@@ -21,9 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/profiler.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
@@ -181,8 +181,8 @@ void Executor::Run(const ProgramDesc& pdesc,
                    bool force_disable_gc,
                    bool keep_kid_scopes) {
   LOG_FIRST_N(INFO, 1) << "Old Executor is Running.";
-  platform::RecordEvent record_run(
-      "Executor::Run", platform::TracerEventType::UserDefined, 1);
+  phi::RecordEvent record_run(
+      "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
@@ -327,8 +327,8 @@ void Executor::Run(const ProgramDesc& program,
                    bool create_vars,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
-  platform::RecordEvent record_run(
-      "Executor::Run", platform::TracerEventType::UserDefined, 1);
+  phi::RecordEvent record_run(
+      "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
 #ifdef PADDLE_WITH_DNNL
@@ -470,9 +470,9 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
                                          bool create_local_scope,
                                          bool create_vars,
                                          bool keep_kids) {
-  platform::RecordEvent record_run("Executor::RunPartialPreparedContext",
-                                   platform::TracerEventType::UserDefined,
-                                   1);
+  phi::RecordEvent record_run("Executor::RunPartialPreparedContext",
+                              phi::TracerEventType::UserDefined,
+                              1);
   platform::RecordBlock b(kProgramId);
   PADDLE_ENFORCE_NOT_NULL(
       scope, common::errors::InvalidArgument("Scope shouldn't be null"));
@@ -494,8 +494,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     auto& op = ctx->ops_[i];
     op->Run(*local_scope, place_);
     if (gc) {
-      platform::RecordEvent record(
-          "CheckGC", platform::TracerEventType::UserDefined, 10);
+      phi::RecordEvent record("CheckGC", phi::TracerEventType::UserDefined, 10);
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }
   }
