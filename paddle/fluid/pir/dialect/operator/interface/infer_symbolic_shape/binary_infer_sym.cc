@@ -712,7 +712,10 @@ bool GatherTreeOpInferSymbolicShape(
     infer_context->AddEqualCstr(ids_shape[i], parents_shape[i]);
   }
 
-  infer_context->SetShapeOrDataForValue(op->result(0), ids_shape);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(ids_shape)});
 
   return true;
 }
