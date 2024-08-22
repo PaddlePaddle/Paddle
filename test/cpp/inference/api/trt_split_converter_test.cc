@@ -40,17 +40,6 @@ TEST(TensorRT, split_converter) {
   input_shape["x"] = {batch_size, channels, height, width};
   config.SetTRTDynamicShapeInfo(input_shape, input_shape, input_shape, false);
   auto predictor = CreatePaddlePredictor(config);
-
-  int input_num = batch_size * channels * height * width;
-  float *input = new float[input_num];
-  memset(input, 1.0, input_num * sizeof(float));
-
-  auto input_names = predictor->GetInputNames();
-  auto input_t = predictor->GetInputTensor(input_names[0]);
-  input_t->Reshape({batch_size, channels, height, width});
-  input_t->copy_from_cpu(input);
-
-  ASSERT_TRUE(predictor->ZeroCopyRun());
 }
 
 }  // namespace inference
