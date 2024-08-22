@@ -234,9 +234,9 @@ bool Binomial_OpInferSymbolicShape(
   return BinomialOpInferSymbolicShape(op, infer_context);
 }
 
-bool BincountOpInferSymbolicShape(pir::Operation *op,
-//                                pir::InferSymbolicShapeContext
-//                                *infer_context) {
+// bool BincountOpInferSymbolicShape(pir::Operation *op,
+//                                   pir::InferSymbolicShapeContext
+//                                   *infer_context) {
 //   // pass
 //   return true;
 // }
