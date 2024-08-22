@@ -188,14 +188,15 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
         << "The shape data type currently supports only int32 or int64, but "
            "the current data type of shape["
         << i << "] is " << shape[i].type();
-
-    optim::SimplifyCast(&indices[i]);
-    res = RampRelatedAdd(RampRelatedMul(res, shape[i]), indices[i]);
+    Expr indice_cast = indices[i];
+    optim::SimplifyCast(&indices_cast);
+    res = RampRelatedAdd(RampRelatedMul(res, shape[i]), indice_cast);
 
     if (i > 0) {
       res = cinn::common::AutoSimplify(res);
     }
   }
+
   return cinn::common::AutoSimplify(res);
 }
 
