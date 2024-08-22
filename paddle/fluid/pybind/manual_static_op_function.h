@@ -775,7 +775,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   if(dialect::HasDistInput(argument_inputs, &op_mesh)) {
     VLOG(7) << "Custom Op: " << op_type << " InferSPMD";
     run_auto_parallel = true;
-    spmd_info = paddle::framework::RunInferSpmd(vec_map[0], op_mesh, argument_inputs, custom_attrs);
+    spmd_info = paddle::framework::RunInferSpmd(vec_map[0], op_type, op_mesh, argument_inputs, custom_attrs);
   }
 
   size_t all_values_num = 0;
@@ -859,7 +859,6 @@ static PyObject *static_api_run_custom_op(PyObject *self,
         auto dtype = output_dtypes[value_index];
         phi::DataLayout layout{DataLayout::NCHW};
         phi::LoD lod;
-        pir::Type out_type;
         auto type = paddle::dialect::DenseTensorType::get(
             pir::IrContext::Instance(),
             paddle::dialect::TransToIrDataType(dtype),

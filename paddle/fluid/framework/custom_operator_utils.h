@@ -570,6 +570,7 @@ static std::vector<DataType> RunInferDtype(
 #ifdef PADDLE_WITH_DISTRIBUTE
 static phi::distributed::SpmdInfo RunInferSpmd(
     const paddle::OpMetaInfo& op_info,
+    const std::string& op_type,
     const dialect::ProcessMeshAttribute& op_mesh,
     const std::vector<pir::Value>& argument_inputs,
     const std::vector<paddle::any>& custom_attrs) {  // NOLINT
@@ -578,7 +579,7 @@ static phi::distributed::SpmdInfo RunInferSpmd(
   if (infer_spmd_func == nullptr) {
     // TODO support replicated rule for custom op
       PADDLE_THROW(common::errors::Unavailable(
-          "We only allow a custom operator with specific SPMD rule in auto parallel mode, please register a SPMD for this Op first. "));
+          "We only allow a custom operator with specific SPMD rule in auto parallel mode, please register a SPMD for [%s] Op first.", op_type));
   }
 
   std::vector<paddle::CustomSpmdInferTensorArg> dist_meta_tensors;
