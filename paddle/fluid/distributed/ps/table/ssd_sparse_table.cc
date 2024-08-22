@@ -1739,8 +1739,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
     _afs_wrapper.CloseWriter(afs_writer);
 #endif
     // write_channel->close();
-  }
-  for (size_t i = 0; i < threads.size(); i++) {
+  } for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(save_func, i);
   }
 
