@@ -192,19 +192,19 @@ static bool NeedFallBackCpu(const pir::Operation* op,
     return true;
   }
   if (UnchangeOutputOps.count(op->name()) || kernel == "" ||
-      phi::KernelFactory::Instance().HasKernel(kernel, kernel_key)) {
+      phi::KernelFactory::Instance().HasKernel(kernel, kernel_key, true)) {
     return false;
   }
 
   phi::KernelKey copy_key = kernel_key;
   if (copy_key.backend() == phi::Backend::GPUDNN) {
     copy_key.set_backend(phi::Backend::GPU);
-    if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key)) {
+    if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key, true)) {
       return false;
     }
   }
   copy_key.set_backend(phi::Backend::CPU);
-  if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key)) {
+  if (phi::KernelFactory::Instance().HasKernel(kernel, copy_key, true)) {
     return true;
   }
 

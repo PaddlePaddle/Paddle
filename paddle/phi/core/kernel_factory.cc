@@ -168,7 +168,8 @@ KernelKeyMap KernelFactory::SelectKernelMap(
 }
 
 bool KernelFactory::HasKernel(const std::string& kernel_name,
-                              const KernelKey& kernel_key) const {
+                              const KernelKey& kernel_key,
+                              bool return_false_if_xpu_not_support) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(iter,
                     kernels_.end(),
@@ -196,7 +197,7 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
     return false;
   }
 
-  if (kernel_key.backend() == Backend::XPU) {
+  if (kernel_key.backend() == Backend::XPU && return_false_if_xpu_not_support) {
 #if defined(PADDLE_WITH_XPU_KP)
     auto fluid_op_name = TransToFluidOpName(kernel_name);
     bool has_kp_kernel = false;
