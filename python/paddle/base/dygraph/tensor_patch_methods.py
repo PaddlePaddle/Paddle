@@ -857,6 +857,11 @@ def monkey_patch_tensor():
                 3.299999952316284
 
         """
+        # resolve the error issue in scenario of pipeline parallel
+        # where some devices do not have self data, return None does not affect
+        # the execution result in those devices, so currently we return None
+        if self.is_dist() and not self._is_initialized():
+            return None
         scalar = self._getitem_from_offset(*args)
         if scalar.dtype == np.uint16:
             return convert_uint16_to_float(scalar).item()

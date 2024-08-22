@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -22,8 +21,6 @@ import paddle
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
-
-os.environ["FLAGS_dynamic_static_unified_comm"] = "true"
 
 
 def stable_softmax_comm(x):

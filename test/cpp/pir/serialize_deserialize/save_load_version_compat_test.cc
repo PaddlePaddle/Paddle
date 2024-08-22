@@ -13,23 +13,35 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
+#include <filesystem>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/version_compat.h"
+#include "paddle/phi/core/tensor_meta.h"
 #include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/region.h"
 #include "paddle/pir/include/core/utils.h"
+#include "test/cpp/pir/tools/test_dialect.h"
+#include "test/cpp/pir/tools/test_op.h"
+#include "test/cpp/pir/tools/test_pir_utils.h"
 
 TEST(save_load_version_compat, op_patch_test) {
   // (1) Init environment.
@@ -39,10 +51,21 @@ TEST(save_load_version_compat, op_patch_test) {
   pir::Program program(ctx);
   //   pir::Program *program = new pir::Program();
   EXPECT_EQ(program.block()->empty(), true);
-  const uint64_t pir_version = 2;
+  const uint64_t pir_version = 0;
   pir::PatchBuilder builder(pir_version);
-  std::string cur_file = std::string(__FILE__);
-  std::string yaml_file =
-      cur_file.substr(0, cur_file.rfind('/')) + "/patch.yaml";
-  builder.BuildPatch(yaml_file);
+  builder.SetFileVersion(1);
+  std::string current_path = std::filesystem::current_path().string();
+  std::string paddle_root = "";
+  // For coverage CI
+  if (current_path.find("Paddle") == std::string::npos) {
+    paddle_root = current_path.substr(0, current_path.find("build") + 5);
+  } else {
+    paddle_root = current_path.substr(0, current_path.find("Paddle") + 6);
+  }
+  VLOG(8) << "Paddle path: " << paddle_root;
+  std::filesystem::path patch_path =
+      std::filesystem::path(paddle_root.c_str()) / "test" / "cpp" / "pir" /
+      "serialize_deserialize" / "patch";
+  VLOG(8) << "Patch path: " << patch_path;
+  builder.BuildPatch(patch_path.string());
 }

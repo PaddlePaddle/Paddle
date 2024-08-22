@@ -958,10 +958,12 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/pir/include', recursive=True)) +  # pir init headers
     # init headers
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/drr/include')) +  # drr init headers
-    # init headers
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/ir')) +  # operator init headers
     list(find_files('general_functions.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/utils'))+
-    list(find_files('interface.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/serialize_deserialize/include')))  # pass utils init headers
-
+    list(find_files('interface.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/pir/serialize_deserialize/include'))+
+    list(find_files('dense_tensor.inl','@PADDLE_SOURCE_DIR@/paddle/phi/core'))+
+    list(find_files('op_yaml_info.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/interface'))+
+    list(find_files('op_yaml_info_util.h','@PADDLE_SOURCE_DIR@/paddle/fluid/pir/dialect/operator/utils/')))
 jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'function.h']
 for f in jit_layer_headers:
     headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True))

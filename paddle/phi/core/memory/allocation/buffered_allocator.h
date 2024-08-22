@@ -19,8 +19,8 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/platform/lock_guard_ptr.h"
 
 namespace paddle {
 namespace memory {

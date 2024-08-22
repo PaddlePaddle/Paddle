@@ -55,8 +55,7 @@ PD_DEFINE_string(cinn_kernel_execution_label,
                  "Label used to measure kernel execution time");
 
 PD_DEFINE_string(cinn_tile_config_filename_label,
-                 StringFromEnv("FLAGS_cinn_tile_config_filename_label",
-                               "./tile_file/"),
+                 StringFromEnv("FLAGS_cinn_tile_config_filename_label", ""),
                  "Label used to name file of tile config database");
 
 PD_DEFINE_string(
