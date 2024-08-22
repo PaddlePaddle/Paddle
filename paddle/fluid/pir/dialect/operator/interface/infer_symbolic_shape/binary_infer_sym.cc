@@ -693,16 +693,24 @@ bool GatherNdOpInferSymbolicShape(
 
 bool GatherTreeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &ids_shape =
+  const symbol::ShapeOrDataDimExprs &ids_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const symbol::ShapeOrDataDimExprs &parents_shape =
+  const symbol::ShapeOrDataDimExprs &parents_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-  PADDLE_ENFORCE_EQ(ids_shape.shape() == parents_shape.shape(),
+  const std::vector<symbol::DimExpr> &ids_shape = ids_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &parents_shape =
+      parents_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(len(ids_shape) == len(parents_shape),
                     true,
                     common::errors::InvalidArgument(
                         "The shape of Input(Parents) must be same with the "
                         "shape of Input(Ids)."));
+
+  for (size_t i = 0, int length = len(ids_shape); i < length; ++i) {
+    infer_context->AddEqualCstr(ids_shape[i], parents_shape[i]);
+  }
 
   infer_context->SetShapeOrDataForValue(op->result(0), ids_shape);
 
