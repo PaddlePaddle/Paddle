@@ -1661,36 +1661,28 @@ bool MatrixPowerOpInferSymbolicShape(
 
 bool MultinomialOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  ExprVec x_dims = [&] {
-    ExprVec dims;
-    const auto &x_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(0));
-    dims = x_shape_or_data.shape();
-    return dims;
-  }();
-  const auto &int_num_samples =
-      op->attribute<paddle::dialect::ScalarAttribute>("num_samples").data();
-  size_t x_rank = x_dims.size();
-  PADDLE_ENFORCE_GT(x_rank,
-                    0,
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  ExprVec x_shape = x_shape_or_data.shape();
+  size_t x_rank = x_shape.size();
+  PADDLE_ENFORCE_EQ(x_rank > 0 && x_rank <= 2,
+                    true,
                     common::errors::InvalidArgument(
                         "The number of dimensions of the input probability "
-                        "distribution should be > 0, but got %d.",
-                        x_rank));
-  PADDLE_ENFORCE_LE(x_rank,
-                    2,
-                    common::errors::InvalidArgument(
-                        "The number of dimensions of the input probability "
-                        "distribution should be <= 2, but got %d.",
+                        "distribution should be > 0 and <= 2, but got %d.",
                         x_rank));
   ExprVec out_dims(x_rank);
   for (size_t i = 0; i < x_rank - 1; i++) {
-    out_dims[i] = x_dims[i];
+    out_dims[i] = x_shape[i];
   }
-
-  if (!int_num_samples.FromTensor()) {
+  if (op->HasAttribute("num_samples")) {
+    const auto &int_num_samples =
+        op->attribute<paddle::dialect::ScalarAttribute>("num_samples").data();
     out_dims[x_rank - 1] = symbol::DimExpr(int_num_samples.to<int64_t>());
-  } else {
+  } else if (op->operand_source(1)) {
+    const auto &int_num_samples_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    const auto &int_num_samples = int_num_samples_shape_or_data.data();
     out_dims[x_rank - 1] = symbol::DimExpr(infer_context->GetNextSymName());
   }
 
@@ -1704,31 +1696,35 @@ bool MultinomialOpInferSymbolicShape(
 bool NanmedianOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   std::vector<int64_t> axis_list;
-  const auto &attributes = op->attributes();
-  if (attributes.find("axes") != attributes.end()) {
-    axis_list = attributes.at("axes")
-                    .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                    .data()
-                    .GetData();
+  bool keep_dim = false;
+  std::string mode;
+  if (op->HasAttribute("axes")) {
+    axis_list = paddle::dialect::details::GetVectorAttr<int>(op, "axes");
+  }
+  if (op->HasAttribute("keep_dim")) {
+    keep_dim = op->attribute<pir::BoolAttribute>("keep_dim").data();
+  }
+  if (op->HasAttribute("mode")) {
+    mode = op->attribute<pir::StrAttribute>("mode").AsString();
   }
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  auto &x_dim = x_shape_or_data.shape();
-  int64_t x_rank = x_dim.size();
-  ExprVec out_dim;
-  bool keep_dim = false;
-  if (attributes.find("keep_dim") != attributes.end()) {
-    keep_dim = op->attribute<pir::BoolAttribute>("keep_dim").data();
-  }
+  const auto &x_shape = x_shape_or_data.shape();
+  int64_t x_rank = x_shape.size();
+  ExprVec out_shape;
   if (axis_list.empty()) {
     if (keep_dim) {
       for (int64_t i = 0; i < x_rank; i++) {
-        out_dim.emplace_back(1);
+        out_shape.emplace_back(1);
       }
     }
   } else {
     std::vector<int64_t> formatted_axis;
     for (size_t i = 0; i < axis_list.size(); i++) {
+      if (axis_list[i] < 0) {
+        axis_list[i] += x_rank;
+        infer_context->AddequalCstr(axis_list[i], DimExpr(0))
+      }
       if (x_rank == 0) {
         infer_context->AddGreatThanOneCstr(axis_list[i]);
       } else {
@@ -1740,16 +1736,7 @@ bool NanmedianOpInferSymbolicShape(
                               "which dimension = %d. But received axis = %d.",
                               x_rank,
                               axis_list[i]));
-        PADDLE_ENFORCE_GE(axis_list[i],
-                          -x_rank,
-                          common::errors::InvalidArgument(
-                              "each element of the axis should be in the "
-                              "range [ -dimension(X), dimension(X) ) "
-                              "which dimension = %d. But received axis = %d.",
-                              x_rank,
-                              axis_list[i]));
       }
-      if (axis_list[i] < 0) axis_list[i] += x_rank;
       PADDLE_ENFORCE_EQ(
           std::find(formatted_axis.begin(), formatted_axis.end(), axis_list[i]),
           formatted_axis.end(),
@@ -1761,28 +1748,26 @@ bool NanmedianOpInferSymbolicShape(
     for (int64_t i = 0; i < x_rank; i++) {
       if (std::find(formatted_axis.begin(), formatted_axis.end(), i) ==
           formatted_axis.end()) {
-        out_dim.emplace_back(x_dim[i]);
+        out_shape.emplace_back(x_shape[i]);
       } else if (keep_dim) {
-        out_dim.emplace_back(1);
+        out_shape.emplace_back(1);
       }
     }
   }
 
-  auto median_dim = out_dim;
-  std::string mode;
-  if (attributes.find("mode") != attributes.end()) {
-    mode = attributes.at("mode").dyn_cast<pir::StrAttribute>().AsString();
-  }
+  auto median_shape = out_shape;
+
   if (mode == "avg") {
-    median_dim.emplace_back(2);
+    median_shape.emplace_back(2);
   }
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dim)});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(median_dim)});
+          symbol::TensorShapeOrDataDimExprs(median_shape)});
 
   return true;
 }
