@@ -31,18 +31,19 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
         self.enable_mkldnn = True
 
     def make_network(self):
-        with base.program_guard(self.main_program, self.startup_program):
-            x = paddle.static.data(
-                name='x', shape=[-1, *self.shape_x], dtype=self.d_type
-            )
-            y = paddle.static.data(
-                name='y', shape=[-1, *self.shape_y], dtype=self.d_type
-            )
-            out = paddle.matmul(x, y)
-            out = paddle.transpose(out, perm=[0, 2, 1, 3])
-            out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(self.main_program, self.startup_program):
+                x = paddle.static.data(
+                    name='x', shape=[-1, *self.shape_x], dtype=self.d_type
+                )
+                y = paddle.static.data(
+                    name='y', shape=[-1, *self.shape_y], dtype=self.d_type
+                )
+                out = paddle.matmul(x, y)
+                out = paddle.transpose(out, perm=[0, 2, 1, 3])
+                out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
 
-            out = F.relu(out)
+                out = F.relu(out)
         return out
 
     def setUp(self):
@@ -73,17 +74,18 @@ class TestMKLDNNMatmulOtherDimsFuseOp(TestMKLDNNMatmulFuseOp):
 
 class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
     def make_network(self):
-        with base.program_guard(self.main_program, self.startup_program):
-            x = paddle.static.data(
-                name='x', shape=[-1, *self.shape_x], dtype=self.d_type
-            )
-            y = paddle.static.data(
-                name='y', shape=[-1, *self.shape_y], dtype=self.d_type
-            )
-            out = paddle.matmul(x, y)
-            out = paddle.transpose(out, perm=[0, 1, 2, 3])
-            out = paddle.reshape(out, [0, 0, 0, 0])
-            out = paddle.static.nn.fc(out, size=1)
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(self.main_program, self.startup_program):
+                x = paddle.static.data(
+                    name='x', shape=[-1, *self.shape_x], dtype=self.d_type
+                )
+                y = paddle.static.data(
+                    name='y', shape=[-1, *self.shape_y], dtype=self.d_type
+                )
+                out = paddle.matmul(x, y)
+                out = paddle.transpose(out, perm=[0, 1, 2, 3])
+                out = paddle.reshape(out, [0, 0, 0, 0])
+                out = paddle.static.nn.fc(out, size=1)
         return out
 
 
@@ -96,19 +98,20 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
         self.enable_mkldnn = True
 
     def make_network(self):
-        with base.program_guard(self.main_program, self.startup_program):
-            x = paddle.static.data(
-                name='x', shape=[-1, *self.shape_x], dtype=self.d_type
-            )
-            y = paddle.static.data(
-                name='y', shape=[-1, *self.shape_y], dtype=self.d_type
-            )
-            out = paddle.matmul(x, y)
-            out = paddle.transpose(out, perm=[0, 2, 1, 3])
-            out = paddle.transpose(out, perm=[0, 1, 2, 3])  # breaks pattern
-            out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
+        with paddle.pir_utils.OldIrGuard():
+            with base.program_guard(self.main_program, self.startup_program):
+                x = paddle.static.data(
+                    name='x', shape=[-1, *self.shape_x], dtype=self.d_type
+                )
+                y = paddle.static.data(
+                    name='y', shape=[-1, *self.shape_y], dtype=self.d_type
+                )
+                out = paddle.matmul(x, y)
+                out = paddle.transpose(out, perm=[0, 2, 1, 3])
+                out = paddle.transpose(out, perm=[0, 1, 2, 3])  # breaks pattern
+                out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
 
-            out = F.relu(out)
+                out = F.relu(out)
         return out
 
 
