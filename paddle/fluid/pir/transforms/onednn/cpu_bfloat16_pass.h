@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,4 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#pragma once
+
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
+
+namespace pir {
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateCpuBf16PatternPass();
+
+}  // namespace pir

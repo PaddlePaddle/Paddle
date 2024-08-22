@@ -183,7 +183,7 @@ void PhiKernelInstruction::Run() {
   VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     phi::RecordEvent record_event("PhiKernelInstruction::infermeta",
-                                  platform::TracerEventType::UserDefined,
+                                  phi::TracerEventType::UserDefined,
                                   1);
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
@@ -194,7 +194,7 @@ void PhiKernelInstruction::Run() {
   VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
   {
     phi::RecordEvent record_event(kernel_name_ + " kernel launch",
-                                  platform::TracerEventType::StaticKernelLaunch,
+                                  phi::TracerEventType::StaticKernelLaunch,
                                   1);
     (*(phi_kernel_))(&(kernel_context_));
   }

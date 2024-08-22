@@ -118,9 +118,8 @@ void HeterClient::SendAndRecvAsync(
     const std::vector<std::string>& send_var_name,
     const std::vector<std::string>& recv_var_name,
     const std::string& mode) {
-  phi::RecordEvent record_event("HeterClient->SendAndRecvAsync",
-                                platform::TracerEventType::Communication,
-                                1);
+  phi::RecordEvent record_event(
+      "HeterClient->SendAndRecvAsync", phi::TracerEventType::Communication, 1);
   const phi::DeviceContext* p_ctx = &ctx;
   const framework::Scope* p_scope = &scope;
   const std::vector<std::string> send_var_name_val = send_var_name;

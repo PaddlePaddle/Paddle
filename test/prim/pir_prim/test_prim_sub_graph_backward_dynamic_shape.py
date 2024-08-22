@@ -203,6 +203,20 @@ def expand_net(x):
     return paddle.expand(x, [30, 200, 40])
 
 
+def stack_net1(x):
+    y = x + 1
+    return paddle.stack([x, y], axis=-1)
+
+
+def stack_net2(x):
+    y = x + 1
+    return paddle.stack([x, y], axis=1)
+
+
+def stack_net3(x):
+    return paddle.stack(x, axis=0)
+
+
 def apply_to_static(net, use_cinn, input_spec=None):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
@@ -2122,6 +2136,80 @@ class TestPrimExpandWithGrad4(TestPrimBaseWithGrad):
         self.init_x_shape = [None, None, 1]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = expand_net
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimStackWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = stack_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimStackWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = stack_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimStackWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = stack_net2
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimStackWithGrad4(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, 200, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = stack_net2
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimStackWithGrad5(TestPrimConcatWithGrad5):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, None, 40]
+        x = np.random.random(self.x_shape).astype(self.dtype)
+        self.x = [x + i for i in range(4)]
+        self.net = stack_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimStackWithGrad6(TestPrimConcatWithGrad5):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 200, 40]
+        self.init_x_shape = [None, 200, None]
+        x = np.random.random(self.x_shape).astype(self.dtype)
+        self.x = [x + i for i in range(4)]
+        self.net = stack_net3
         self.enable_cinn = False
         self.tol = 1e-6
 

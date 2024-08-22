@@ -32,11 +32,25 @@ class TestItemApiForSemiAutoParallel(SemiAutoParallelTestBase):
         np.testing.assert_equal(b.item(0, 0), a[0][0].item())
         np.testing.assert_equal(b.item(3, 5), a[3][5].item())
 
+    def test_item_api_with_pp(self):
+        mesh0 = dist.ProcessMesh([0], dim_names=["x"])
+        mesh1 = dist.ProcessMesh([1], dim_names=["y"])
+        a = paddle.rand(shape=[6, 8])
+        b = dist.shard_tensor(a, mesh0, [dist.Replicate()])
+        c = dist.reshard(b, mesh1, [dist.Replicate()])
+        if c.item(0, 0):  # in device 1
+            np.testing.assert_equal(c.item(0, 0), a[0][0].item())
+            np.testing.assert_equal(c.item(3, 5), a[3][5].item())
+        else:  # in device 0
+            np.testing.assert_equal(c.item(3, 5), None)
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
         elif self._backend == "gpu":
             paddle.set_device("gpu:" + str(dist.get_rank()))
+            # only gpu can run pipeline
+            self.test_item_api_with_pp()
         else:
             raise ValueError("Only support cpu or gpu backend.")
 

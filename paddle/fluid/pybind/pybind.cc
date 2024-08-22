@@ -1173,22 +1173,23 @@ PYBIND11_MODULE(libpaddle, m) {
         &paddle::prim::PrimCommonUtils::SetTargetGradName);
   m.def("set_num_threads", &platform::SetNumThreads);
 
-  m.def("need_type_promotion",
+  m.def("need_type_promotion_old_ir",
         [](const std::string &op_name,
            framework::proto::VarType::Type type_x,
            framework::proto::VarType::Type type_y) {
-          return phi::NeedTypePromotion(op_name,
-                                        framework::TransToPhiDataType(type_x),
-                                        framework::TransToPhiDataType(type_y));
+          return phi::NeedTypePromotionOldIr(
+              op_name,
+              framework::TransToPhiDataType(type_x),
+              framework::TransToPhiDataType(type_y));
         });
-  m.def("get_promote_dtype",
+  m.def("get_promote_dtype_old_ir",
         [](const std::string &op_name,
            framework::proto::VarType::Type type_x,
            framework::proto::VarType::Type type_y) {
           return framework::TransToProtoVarType(
-              phi::GetPromoteDtype(op_name,
-                                   framework::TransToPhiDataType(type_x),
-                                   framework::TransToPhiDataType(type_y)));
+              phi::GetPromoteDtypeOldIr(op_name,
+                                        framework::TransToPhiDataType(type_x),
+                                        framework::TransToPhiDataType(type_y)));
         });
   m.def("is_common_dtype_for_scalar",
         [](framework::proto::VarType::Type type_x,
@@ -2951,20 +2952,20 @@ All parameter, weight, gradient are variables in Paddle.
                      &paddle::platform::ProfilerOptions::trace_switch);
 
   py::class_<phi::RecordEvent>(m, "_RecordEvent")
-      .def(py::init([](std::string name, platform::TracerEventType type) {
+      .def(py::init([](std::string name, phi::TracerEventType type) {
         return std::make_unique<phi::RecordEvent>(
             name, type, 1, phi::EventRole::kOrdinary);
       }))
       .def("end", [](phi::RecordEvent *event) { event->End(); });
 
   py::enum_<paddle::platform::TracerMemEventType>(m, "TracerMemEventType")
-#define X(name) .value(#name, paddle::platform::TracerMemEventType::name)
+#define X(name) .value(#name, phi::TracerMemEventType::name)
       TRACER_MEM_EVENT_TYPES
 #undef X
       ;  // NOLINT
 
   py::enum_<paddle::platform::TracerEventType>(m, "TracerEventType")
-#define X(name) .value(#name, paddle::platform::TracerEventType::name)
+#define X(name) .value(#name, phi::TracerEventType::name)
       TRACER_EVENT_TYPES
 #undef X
       ;  // NOLINT

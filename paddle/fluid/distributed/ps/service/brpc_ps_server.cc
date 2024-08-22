@@ -304,7 +304,7 @@ int32_t BrpcPsService::PullDense(Table *table,
                                  PsResponseMessage &response,
                                  brpc::Controller *cntl) {
   phi::RecordEvent record_event(
-      "PsService->PullDense", platform::TracerEventType::Communication, 1);
+      "PsService->PullDense", phi::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   if (request.params_size() < 1) {
     set_response_code(
@@ -339,7 +339,7 @@ int32_t BrpcPsService::PushDenseParam(Table *table,
                                       PsResponseMessage &response,
                                       brpc::Controller *cntl) {
   phi::RecordEvent record_event(
-      "PsService->PushDenseParam", platform::TracerEventType::Communication, 1);
+      "PsService->PushDenseParam", phi::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   thread_local std::string push_buffer;
   auto &req_io_buffer = cntl->request_attachment();
@@ -373,7 +373,7 @@ int32_t BrpcPsService::PushDense(Table *table,
                                  PsResponseMessage &response,
                                  brpc::Controller *cntl) {
   phi::RecordEvent record_event(
-      "PsService->PushDense", platform::TracerEventType::Communication, 1);
+      "PsService->PushDense", phi::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   auto req_buffer_size = request.data().size();
   if (req_buffer_size < 1) {
@@ -427,9 +427,8 @@ int32_t BrpcPsService::PushSparseParam(Table *table,
                                        const PsRequestMessage &request,
                                        PsResponseMessage &response,
                                        brpc::Controller *cntl) {
-  phi::RecordEvent record_event("PsService->PushSparseParam",
-                                platform::TracerEventType::Communication,
-                                1);
+  phi::RecordEvent record_event(
+      "PsService->PushSparseParam", phi::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
   if (push_data.empty()) {
@@ -472,7 +471,7 @@ int32_t BrpcPsService::PullGeoParam(Table *table,
                                     PsResponseMessage &response,
                                     brpc::Controller *cntl) {
   phi::RecordEvent record_event(
-      "PsService->pull_geo_param", platform::TracerEventType::Communication, 1);
+      "PsService->pull_geo_param", phi::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   thread_local std::string push_sparse_request_buffer;
 
@@ -504,7 +503,7 @@ int32_t BrpcPsService::PullSparse(Table *table,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
   phi::RecordEvent record_event(
-      "PsService->PullSparse", platform::TracerEventType::Communication, 1);
+      "PsService->PullSparse", phi::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
 
   auto &req_io_buffer = cntl->request_attachment();
@@ -558,7 +557,7 @@ int32_t BrpcPsService::PushSparse(Table *table,
                                   PsResponseMessage &response,
                                   brpc::Controller *cntl) {
   phi::RecordEvent record_event(
-      "PsService->PushSparse", platform::TracerEventType::Communication, 1);
+      "PsService->PushSparse", phi::TracerEventType::Communication, 1);
   CHECK_TABLE_EXIST(table, request, response)
   auto &push_data = request.data();
   if (push_data.empty()) {

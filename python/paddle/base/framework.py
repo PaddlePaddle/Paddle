@@ -103,6 +103,27 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "atan2_grad": ['X1', 'X2'],
 }
 
+stride_ops = [
+    "pd_op.slice",
+    "pd_op.strided_slice",
+    "pd_op.index_select",
+    "pd_op.split",
+    "pd_op.unsqueeze",
+    "pd_op.unsqueeze2",
+    "pd_op.squeeze",
+    "pd_op.squeeze2",
+    "pd_op.transpose",
+    "pd_op.transpose2",
+    "pd_op.unbind",
+    "pd_op.diagonal",
+    "pd_op.flatten",
+    "pd_op.imag",
+    "pd_op.real",
+    "pd_op.reshape",
+    "pd_op.reshape2",
+    "pd_op.as_real",
+]
+
 
 def _global_flags():
     return _global_flags_
@@ -8369,10 +8390,12 @@ def process_type_promotion(program):
                     all_input_name_need_cast.append(input_arg_name)
 
             # only support promote between float
-            if len(all_dtypes) == 2 and core.need_type_promotion(
+            if len(all_dtypes) == 2 and core.need_type_promotion_old_ir(
                 op.type, *all_dtypes
             ):
-                common_dtype = core.get_promote_dtype(op.type, *all_dtypes)
+                common_dtype = core.get_promote_dtype_old_ir(
+                    op.type, *all_dtypes
+                )
                 for input_name_need_cast in all_input_name_need_cast:
                     var_name = op.block._var_recursive(input_name_need_cast)
                     if var_name.dtype != common_dtype:
