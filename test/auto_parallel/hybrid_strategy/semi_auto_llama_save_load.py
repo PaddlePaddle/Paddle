@@ -220,7 +220,7 @@ class TestLlamaAuto:
             if step >= 9:
                 break
 
-        # # check pir dist_model save&load
+        # check pir dist_model save&load
         # paddle.enable_static()
         # model_file_path = os.path.join(
         #     tmp_ckpt_path,
