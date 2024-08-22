@@ -702,13 +702,13 @@ bool GatherTreeOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &parents_shape =
       parents_shape_or_data.shape();
 
-  PADDLE_ENFORCE_EQ(len(ids_shape) == len(parents_shape),
+  PADDLE_ENFORCE_EQ(ids_shape.size() == parents_shape.size(),
                     true,
                     common::errors::InvalidArgument(
                         "The shape of Input(Parents) must be same with the "
                         "shape of Input(Ids)."));
-
-  for (size_t i = 0, int length = len(ids_shape); i < length; ++i) {
+  int rank = ids_shape.size();
+  for (size_t i = 0; i < rank; ++i) {
     infer_context->AddEqualCstr(ids_shape[i], parents_shape[i]);
   }
 
