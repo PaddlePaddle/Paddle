@@ -2317,12 +2317,25 @@ bool ViterbiDecodeOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool WarprnntOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+bool WarprnntOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &input_shape = input_shape_or_data.shape();
+
+  std::vector<symbol::DimExpr> loss_shape = {input_shape[0]};
+  std::vector<symbol::DimExpr> warpctcgrad_shape = input_shape;
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(loss_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(warpctcgrad_shape)});
+  return true;
+}
 
 // bool WeightOnlyLinearOpInferSymbolicShape(pir::Operation *op,
 //                                   pir::InferSymbolicShapeContext
