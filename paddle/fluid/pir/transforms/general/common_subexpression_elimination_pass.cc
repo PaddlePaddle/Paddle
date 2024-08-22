@@ -32,6 +32,9 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 COMMON_DECLARE_int32(cse_max_count);
+#ifdef PADDLE_WITH_CINN
+COMMON_DECLARE_bool(use_cinn);
+#endif
 
 namespace {
 
@@ -138,8 +141,16 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation* op) {
 }
 
 bool IsTerminateOp(pir::Operation* op) {
-  return op->isa<paddle::dialect::DataOp>() || op->isa<pir::ParameterOp>() ||
-         op->isa<pir::ConstantTensorOp>();
+  bool res = op->isa<paddle::dialect::DataOp>() ||
+             op->isa<pir::ParameterOp>() || op->isa<pir::ConstantTensorOp>();
+#ifdef PADDLE_WITH_CINN
+  // In CINN mode, if an OP has no inputs, it can usually be fused with
+  // neighboring OPs, such as the FullOp.
+  // Eliminating it would make fusion impossible, so we make it a terminate
+  // node to avoid eliminating it.
+  res = res || (FLAGS_use_cinn && op->num_operands() == 0);
+#endif
+  return res;
 }
 bool IsTerminateValue(const pir::Value& value) {
   return !value.defining_op() || IsTerminateOp(value.defining_op());

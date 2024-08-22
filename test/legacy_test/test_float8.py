@@ -88,9 +88,11 @@ class TestFP8CastOp(unittest.TestCase):
                     # test fp32 to fp8 (value clip)
                     expect = paddle.full(
                         self.shape,
-                        E4M3_MAX_POS
-                        if self.dtype == "float8_e4m3fn"
-                        else E5M2_MAX_POS,
+                        (
+                            E4M3_MAX_POS
+                            if self.dtype == "float8_e4m3fn"
+                            else E5M2_MAX_POS
+                        ),
                     )
                     self.assertTrue(paddle.equal_all(input2, expect))
         else:
@@ -110,9 +112,11 @@ class TestFP8CastOp(unittest.TestCase):
                 # test fp32 to fp8 (value clip)
                 expect = paddle.full(
                     self.shape,
-                    E4M3_MAX_POS
-                    if self.dtype == "float8_e4m3fn"
-                    else E5M2_MAX_POS,
+                    (
+                        E4M3_MAX_POS
+                        if self.dtype == "float8_e4m3fn"
+                        else E5M2_MAX_POS
+                    ),
                 )
                 self.assertTrue(paddle.equal_all(input2, expect))
 

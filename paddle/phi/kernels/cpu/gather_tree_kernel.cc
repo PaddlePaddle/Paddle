@@ -35,12 +35,12 @@ void GatherTreeKernel(const Context &dev_ctx,
   auto beam_size = ids_dims[2];
 
   PADDLE_ENFORCE_NOT_NULL(ids_data,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Input(Ids) of gather_tree should not be null."));
 
   PADDLE_ENFORCE_NOT_NULL(
       parents_data,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(Parents) of gather_tree should not be null."));
 
   for (int batch = 0; batch < batch_size; batch++) {
@@ -53,7 +53,7 @@ void GatherTreeKernel(const Context &dev_ctx,
         PADDLE_ENFORCE_LT(
             parent,
             beam_size,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The parents must be less than beam size, but received "
                 "parents %d is greater than or equal to beam size %d. ",
                 parent,
@@ -62,7 +62,7 @@ void GatherTreeKernel(const Context &dev_ctx,
         PADDLE_ENFORCE_GE(
             parent,
             0,
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The parents must be greater than or equal to 0, but received "
                 "parents %d is less than 0. ",
                 parent));

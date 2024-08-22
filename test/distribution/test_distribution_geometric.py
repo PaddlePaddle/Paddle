@@ -102,13 +102,15 @@ class TestGeometric(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': ()
-                + tuple(paddle.squeeze(self._paddle_geom.probs).shape),
+                'expect': tuple(paddle.squeeze(self._paddle_geom.probs).shape),
             },
             {
                 'input': (4, 2),
-                'expect': (4, 2)
-                + tuple(paddle.squeeze(self._paddle_geom.probs).shape),
+                'expect': (
+                    4,
+                    2,
+                    *paddle.squeeze(self._paddle_geom.probs).shape,
+                ),
             },
         ]
         for case in cases:
@@ -140,13 +142,15 @@ class TestGeometric(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': ()
-                + tuple(paddle.squeeze(self._paddle_geom.probs).shape),
+                'expect': tuple(paddle.squeeze(self._paddle_geom.probs).shape),
             },
             {
                 'input': (2, 5),
-                'expect': (2, 5)
-                + tuple(paddle.squeeze(self._paddle_geom.probs).shape),
+                'expect': (
+                    2,
+                    5,
+                    *paddle.squeeze(self._paddle_geom.probs).shape,
+                ),
             },
         ]
         for case in cases:

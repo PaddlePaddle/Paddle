@@ -38,7 +38,7 @@ void CrossKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         dim < input_x_dims.size() && dim >= (0 - input_x_dims.size()),
         true,
-        phi::errors::OutOfRange(
+        common::errors::OutOfRange(
             "Attr(dim) is out of range, It's expected "
             "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
             input_x_dims.size(),
@@ -51,7 +51,7 @@ void CrossKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         input_x_dims[dim] == 3,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(X/Y).dims[dim] must be equal to 3. But received: "
             "Input(X/Y).dims[dim] = [%d].",
             input_x_dims[dim]));
@@ -64,7 +64,7 @@ void CrossKernel(const Context& dev_ctx,
     }
     PADDLE_ENFORCE_EQ(dim == DDim::kMaxRank,
                       false,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "There must be at least one dimension 'd' so that "
                           "Input(X/Y).dims()[d] is equal to 3. "
                           "But received: Input(X/Y).dims() == [%s].",

@@ -46,7 +46,7 @@ void FakeChannelWiseDequantizeMaxAbsKernel(
     PADDLE_ENFORCE_EQ(
         scales[0]->numel(),
         x.dims()[quant_axis],
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of first scale values must be the same with "
             "quant_axis dimension value of Input(X) when the `Scales` has "
             "only one element, but %ld != %ld here.",
@@ -57,7 +57,7 @@ void FakeChannelWiseDequantizeMaxAbsKernel(
     PADDLE_ENFORCE_EQ(
         scales[0]->numel(),
         x.dims()[x_num_col_dims],
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The number of first scale values must be the same with "
             "corresponding dimension value of Input(X) when the `Scales` "
             "has two elements, but %ld != %ld here.",
@@ -65,7 +65,7 @@ void FakeChannelWiseDequantizeMaxAbsKernel(
             x.dims()[1]));
     PADDLE_ENFORCE_EQ(scales[1]->numel(),
                       1,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "The second scale tensor should only have one "
                           "value at now, but it has %ld values here.",
                           scales[1]->numel()));

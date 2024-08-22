@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/memory/allocation/buffered_allocator.h"
+#include "paddle/phi/core/memory/allocation/buffered_allocator.h"
 
 #include <gtest/gtest.h>
 
 #include <utility>
 
-#include "paddle/fluid/memory/allocation/best_fit_allocator.h"
-#include "paddle/fluid/memory/allocation/cpu_allocator.h"
+#include "paddle/phi/core/memory/allocation/best_fit_allocator.h"
+#include "paddle/phi/core/memory/allocation/cpu_allocator.h"
 
 namespace paddle {
 namespace memory {

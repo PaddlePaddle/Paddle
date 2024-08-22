@@ -193,7 +193,8 @@ if(WITH_CUTLASS)
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
     "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*.cu"
-    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu"
+    "fusion/cutlass/cutlass_kernels/moe_gemm/*.cu")
 
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
@@ -216,8 +217,14 @@ if(WITH_ROCM)
     REMOVE_ITEM
     kernel_cu
     "gpudnn/mha_cudnn_frontend.cu"
+    "fusion/gpu/fused_attention_kernel.cu"
+    "fusion/gpu/fused_attention_grad_kernel.cu"
     "fusion/gpu/fused_bn_add_activation_grad_kernel.cu"
     "fusion/gpu/fused_bn_add_activation_kernel.cu"
+    "fusion/gpu/fused_feedforward_kernel.cu"
+    "fusion/gpu/fused_feedforward_grad_kernel.cu"
+    "fusion/gpu/fused_multi_transformer_int8_kernel.cu"
+    "fusion/gpu/fused_multi_transformer_kernel.cu"
     "fusion/gpu/fusion_transpose_flatten_concat_kernel.cu")
   list(
     REMOVE_ITEM

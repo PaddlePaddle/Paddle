@@ -17,9 +17,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
+#include "paddle/phi/core/platform/collective_helper.h"
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
@@ -36,8 +36,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<phi::DenseTensor>("Out");
     size_t numel = x->numel();
 
-    BKCLDataType dtype =
-        platform::ToBKCLDataType(framework::TransToProtoVarType(x->dtype()));
+    BKCLDataType dtype = phi::ToBKCLDataType(x->dtype());
     int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
     int root = ctx.Attr<int>("root");

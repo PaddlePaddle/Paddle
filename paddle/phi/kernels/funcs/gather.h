@@ -42,7 +42,7 @@ void CPUGather(const phi::CPUContext& ctx UNUSED,
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "index.dims()[1] should be 1 when index.dims().size() = 2"
             "in gather_op, but received value is [%d].",
             index.dims()[1]));
@@ -50,7 +50,7 @@ void CPUGather(const phi::CPUContext& ctx UNUSED,
     PADDLE_ENFORCE_EQ(
         index.dims().size() == 1 || index.dims().size() == 0,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The index should be 0D or 1D, when it is not 2D, but we get %d",
             index.dims().size()));
   }
@@ -75,7 +75,7 @@ void CPUGather(const phi::CPUContext& ctx UNUSED,
     IndexT index_ = p_index[i];
     PADDLE_ENFORCE_LT(p_index[i],
                       input_size,
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The element of Index must be less than the size of "
                           "input dim size of axis which is %d, but received "
                           "index element which is %d in the %d index.",
@@ -84,7 +84,7 @@ void CPUGather(const phi::CPUContext& ctx UNUSED,
                           i));
     PADDLE_ENFORCE_GE(p_index[i],
                       0,
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The element of Index must be greater than or equal "
                           "to 0, but received index element which is %d in the "
                           "%d index.",
@@ -128,12 +128,12 @@ void CPUGatherNd(const phi::CPUContext& ctx UNUSED,
       PADDLE_ENFORCE_LT(
           index_value,
           input_dims[j],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Input(index[-1)] has wrong value, it is [%d]", index_value));
       PADDLE_ENFORCE_GE(
           index_value,
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The value of Input(index) must be no less than 0"));
 
       index_ += (index_value * temp);
@@ -163,7 +163,7 @@ void GatherV2Function(const phi::CPUContext& ctx,
   for (int64_t i = 0; i < index_size; i++) {
     PADDLE_ENFORCE_LT(index_data[i],
                       input_index_dim_size,
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The element of Index must be less than the size of "
                           "input dim size of axis which is %d, but received "
                           "index element which is %d in the %d index.",
@@ -172,7 +172,7 @@ void GatherV2Function(const phi::CPUContext& ctx,
                           i));
     PADDLE_ENFORCE_GE(index_data[i],
                       0,
-                      phi::errors::OutOfRange(
+                      common::errors::OutOfRange(
                           "The element of Index must be greater than or equal "
                           "to 0, but received index element which is %d in the "
                           "%d index.",

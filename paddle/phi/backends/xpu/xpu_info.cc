@@ -104,7 +104,7 @@ void SetXPUDeviceId(int id) {
   PADDLE_ENFORCE_LT(
       id,
       GetXPUDeviceCount(),
-      phi::errors::InvalidArgument("id must less than XPU count"));
+      common::errors::InvalidArgument("id must less than XPU count"));
   PADDLE_ENFORCE_XPU_SUCCESS(xpu_set_device(id));
 }
 
@@ -227,7 +227,7 @@ int get_xpu_max_ptr_size(int dev_id) {
       max_ptr_size = 12;
       break;
     default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "Only support get max ptr size of XPU1, XPU2 or XPU3."));
       break;
   }

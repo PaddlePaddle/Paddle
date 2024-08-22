@@ -63,13 +63,13 @@ TEST(string_tensor, ctor) {
   data[1] = pshort_str;
   PADDLE_ENFORCE_EQ(tensor_0.data()[0],
                     plong_str,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The tensor_0 should be equal to '%s', but got '%s'.",
                         plong_str,
                         tensor_0.data()[0]));
   PADDLE_ENFORCE_EQ(tensor_0.data()[1],
                     pshort_str,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The tensor_0 should be equal to '%s', but got '%s'.",
                         pshort_str,
                         tensor_0.data()[1]));
@@ -78,13 +78,13 @@ TEST(string_tensor, ctor) {
   StringTensor tensor_1(tensor_0);
   PADDLE_ENFORCE_EQ(tensor_1.data()[0],
                     plong_str,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The tensor_1 should be equal to '%s', but got '%s'.",
                         plong_str,
                         tensor_1.data()[0]));
   PADDLE_ENFORCE_EQ(tensor_1.data()[1],
                     pshort_str,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The tensor_1 should be equal to '%s', but got '%s'.",
                         pshort_str,
                         tensor_1.data()[1]));
@@ -94,13 +94,13 @@ TEST(string_tensor, ctor) {
   tensor_2 = tensor_1;
   PADDLE_ENFORCE_EQ(tensor_2.data()[0],
                     plong_str,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The tensor_2 should be equal to '%s', but got '%s'.",
                         plong_str,
                         tensor_2.data()[0]));
   PADDLE_ENFORCE_EQ(tensor_2.data()[1],
                     pshort_str,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The tensor_2 should be equal to '%s', but got '%s'.",
                         pshort_str,
                         tensor_2.data()[1]));
@@ -110,13 +110,13 @@ TEST(string_tensor, ctor) {
   tensor_3 = std::move(tensor_1);
   PADDLE_ENFORCE_EQ(tensor_3.data()[0],
                     plong_str,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The tensor_3 should be equal to '%s', but got '%s'.",
                         plong_str,
                         tensor_3.data()[0]));
   PADDLE_ENFORCE_EQ(tensor_3.data()[1],
                     pshort_str,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The tensor_3 should be equal to '%s', but got '%s'.",
                         pshort_str,
                         tensor_3.data()[1]));
@@ -132,16 +132,16 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       empty_str,
       "",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The empty_str should be empty, but got '%s'.", empty_str));
   PADDLE_ENFORCE_EQ(
       nchar_str,
       "AAAAA",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The nchar_str should be 'AAAAA', but got '%s'.", nchar_str));
   PADDLE_ENFORCE_EQ(copy_nchar_str,
                     "AAAAA",
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The copy_nchar_str should be 'AAAAA', but got '%s'.",
                         copy_nchar_str));
 
@@ -149,14 +149,14 @@ TEST(pstring, func) {
   pstring move_nchar_str(nchar_str);
   PADDLE_ENFORCE_EQ(move_nchar_str,
                     "AAAAA",
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The move_nchar_str should be 'AAAAA', but got '%s'.",
                         move_nchar_str));
   pstring std_str(std::string("BBBB"));
   PADDLE_ENFORCE_EQ(
       std_str,
       "BBBB",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The std_str should be 'BBBB', but got '%s'.", std_str));
 
   pstring long_str = "A large pstring whose length is longer than 22.";
@@ -167,7 +167,7 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       plus_str,
       "AAAAABBBB",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The plus_str should be 'AAAAABBBB', but got '%s'.", plus_str));
 
   // Test insert
@@ -175,13 +175,13 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       plus_str,
       "AAAAACBBBB",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The plus_str should be 'AAAAABBBB', but got '%s'.", plus_str));
   plus_str.insert(5, "DDD", 0, 2);
   PADDLE_ENFORCE_EQ(
       plus_str,
       "AAAAADDCBBBB",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The plus_str should be 'AAAAABBBB', but got '%s'.", plus_str));
 
   // Test pushback
@@ -189,7 +189,7 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       plus_str,
       "AAAAADDCBBBBE",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The plus_str should be 'AAAAADDCBBBBE', but got '%s'.", plus_str));
 
   // Test append
@@ -197,13 +197,13 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       plus_str,
       "AAAAADDCBBBBEFF",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The plus_str should be 'AAAAADDCBBBBEFF', but got '%s'.", plus_str));
   plus_str.append(2, 'G');
   PADDLE_ENFORCE_EQ(
       plus_str,
       "AAAAADDCBBBBEFFGG",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The plus_str should be 'AAAAADDCBBBBEFFGG', but got '%s'.",
           plus_str));
 
@@ -211,18 +211,18 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       long_str[0],
       'A',
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The long_str[0] should be 'A', but got '%s'.", long_str[0]));
   PADDLE_ENFORCE_EQ(
       short_str[0],
       'A',
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The short_str[0] should be 'A', but got '%s'.", short_str[0]));
 
   // Test capacity
   PADDLE_ENFORCE_EQ(short_str.capacity(),
                     22UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The short_str's capacity should be 22, but got %d.",
                         short_str.capacity()));
 
@@ -230,21 +230,21 @@ TEST(pstring, func) {
   pstring reserve_str;
   PADDLE_ENFORCE_EQ(reserve_str.capacity(),
                     22UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The reserve_str's capacity should be 22, but got %d.",
                         reserve_str.capacity()));
   // small -> large
   reserve_str.reserve(100);
   PADDLE_ENFORCE_EQ(reserve_str.capacity(),
                     111UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The reserve_str's capacity should be 111, but got %d.",
                         reserve_str.capacity()));  // align(100) - 1 = 111
   // reserve more memory
   reserve_str.reserve(200);
   PADDLE_ENFORCE_EQ(reserve_str.capacity(),
                     207UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The reserve_str's capacity should be 207, but got %d.",
                         reserve_str.capacity()));  // align(200) - 1 = 207
 
@@ -254,7 +254,7 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       oss1.str(),
       long_str,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The oss1 should be '%s', but got '%s'.", long_str, oss1.str()));
 
   // Test iterator
@@ -264,56 +264,56 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       oss2.str(),
       long_str,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The oss2 should be '%s', but got '%s'.", long_str, oss2.str()));
 
   // Test comparision operators
   PADDLE_ENFORCE_EQ((long_str < short_str),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The long_str should be less than short_str."));
 
   PADDLE_ENFORCE_EQ((long_str > short_str),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The long_str should not be greater than short_str."));
   PADDLE_ENFORCE_EQ((long_str == short_str),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The long_str should not be equal to short_str."));
   PADDLE_ENFORCE_EQ((long_str != short_str),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The long_str should not be equal to short_str."));
   PADDLE_ENFORCE_EQ((short_str < long_str),
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The short_str should not be less than long_str."));
   PADDLE_ENFORCE_EQ((short_str > long_str),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The short_str should be greater than long_str."));
   PADDLE_ENFORCE_EQ((move_nchar_str < plus_str),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The move_nchar_str should be less than plus_str."));
   PADDLE_ENFORCE_EQ((plus_str > move_nchar_str),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The plus_str should be greater than move_nchar_str."));
 
   // Test empty
   PADDLE_ENFORCE_EQ(
       empty_str.empty(),
       true,
-      phi::errors::InvalidArgument("The empty_str should be empty."));
+      common::errors::InvalidArgument("The empty_str should be empty."));
   PADDLE_ENFORCE_EQ(
       nchar_str.empty(),
       false,
-      phi::errors::InvalidArgument("The nchar_str should not be empty."));
+      common::errors::InvalidArgument("The nchar_str should not be empty."));
   PADDLE_ENFORCE_EQ(empty_str.length(),
                     0UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The empty_str's length should be 0, but got %d.",
                         empty_str.length()));
 
@@ -322,7 +322,7 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       nchar_str,
       "AAAAAB",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The nchar_str should be 'AAAAAB', but got '%s'.", nchar_str));
 
   // Test operator =
@@ -330,25 +330,25 @@ TEST(pstring, func) {
   PADDLE_ENFORCE_EQ(
       long_str,
       "AAAAAB",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The long_str should be 'AAAAAB', but got '%s'.", long_str));
   long_str = short_str;
   PADDLE_ENFORCE_EQ(
       short_str,
       long_str,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The short_str should be '%s', but got '%s'.", long_str, short_str));
   short_str = 'A';
   PADDLE_ENFORCE_EQ(
       short_str,
       "A",
-      phi::errors::InvalidArgument("The short_str should be 'A', but got '%s'.",
-                                   short_str));
+      common::errors::InvalidArgument(
+          "The short_str should be 'A', but got '%s'.", short_str));
   short_str = std::move(copy_nchar_str);
   PADDLE_ENFORCE_EQ(
       short_str,
       "AAAAA",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The short_str should be 'AAAAA', but got '%s'.", short_str));
 }
 

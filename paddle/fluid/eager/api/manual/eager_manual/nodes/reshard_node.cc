@@ -38,10 +38,8 @@ ReshardGradNode::operator()(
   //    accumulation when the output(s) of corresponding forward OP are shared
   //    by other OP(s), which may have extra accumulation overhead than
   //    'Local_XXXGradNode'.
-  paddle::platform::RecordEvent node_execution_inner(
-      "Local_ReshardGradNode",
-      paddle::platform::TracerEventType::OperatorInner,
-      1);
+  phi::RecordEvent node_execution_inner(
+      "Local_ReshardGradNode", phi::TracerEventType::OperatorInner, 1);
 
   // Apply Gradient Hooks
   auto hooked_grad = ApplyGradientHooks(grads);
@@ -110,7 +108,7 @@ ReshardGradNode::operator()(
 
   return returns;
 #else
-  PADDLE_THROW(phi::errors::Unavailable(
+  PADDLE_THROW(common::errors::Unavailable(
       "ReshardGrad is not supported in this version of Paddle. Try to "
       "recompile it with WITH_DISTRIBUTE=ON and reinstall this package."));
   return paddle::small_vector<std::vector<paddle::Tensor>,

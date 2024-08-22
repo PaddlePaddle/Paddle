@@ -43,7 +43,7 @@ static std::vector<std::vector<phi::DDim>> RunDefaultInferShapeFunc(
     PADDLE_ENFORCE_EQ(
         inputs.size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple inputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferShapeFn. "
@@ -54,7 +54,7 @@ static std::vector<std::vector<phi::DDim>> RunDefaultInferShapeFunc(
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple outputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferShapeFn. "
@@ -69,7 +69,7 @@ static std::vector<std::vector<phi::DDim>> RunDefaultInferShapeFunc(
     PADDLE_ENFORCE_EQ(
         inplace_map.size(),
         outputs.size(),
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator uses `SetInplaceMap` without setting the "
             "InferShapeFn. However, `Outputs` size = %d does not match the "
             "`InplaceMap` size = %d. Please check `SetInplaceMap` again or set "
@@ -117,12 +117,12 @@ static std::vector<std::vector<phi::DDim>> RunDefaultGradInferShapeFunc(
       // Duplicable forward var must as backward input
       auto iter =
           std::find(grad_op_inputs.begin(), grad_op_inputs.end(), fwd_name);
-      PADDLE_ENFORCE_NE(
-          iter,
-          grad_op_inputs.end(),
-          phi::errors::NotFound("Custom grad operator should have the forward "
-                                "input(%s) as backward input",
-                                fwd_name));
+      PADDLE_ENFORCE_NE(iter,
+                        grad_op_inputs.end(),
+                        common::errors::NotFound(
+                            "Custom grad operator should have the forward "
+                            "input(%s) as backward input",
+                            fwd_name));
       auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
       std::vector<phi::DDim> tmp;
       for (size_t i = pair.first; i < pair.second; ++i) {
@@ -138,9 +138,9 @@ static std::vector<std::vector<phi::DDim>> RunDefaultGradInferShapeFunc(
         PADDLE_ENFORCE_NE(
             iter,
             grad_op_inputs.end(),
-            phi::errors::NotFound("Custom grad operator should have the "
-                                  "forward input(%s) as backward input",
-                                  fwd_name));
+            common::errors::NotFound("Custom grad operator should have the "
+                                     "forward input(%s) as backward input",
+                                     fwd_name));
         auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
         result.push_back({ctx.InputAt(pair.first).dims()});
       }
@@ -178,7 +178,7 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
   if (inplace_map.empty()) {
     PADDLE_ENFORCE_EQ(outputs.size(),
                       output_shapes.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Your custom operator has set the InferShapeFn. "
                           "However, `Outputs` size = %d does not match the "
                           "returned vector size of InferShapeFn = %d. Please "
@@ -189,7 +189,7 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         output_shapes.size() + inplace_map.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Your custom operator uses `SetInplaceMap` and sets the "
             "InferShapeFn. However, `Outputs` size = %d does not match the "
             "`InplaceMap size + InferShapeFn output size` = %d. Please check "
@@ -208,7 +208,7 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
     if (paddle::framework::detail::IsDuplicableVar(outputs[i])) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(i) != inplace_reverse_map.end(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
@@ -244,7 +244,7 @@ static std::vector<std::vector<phi::DataType>> RunDefaultInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         inputs.size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple inputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferDtypeFn. "
@@ -255,7 +255,7 @@ static std::vector<std::vector<phi::DataType>> RunDefaultInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         1UL,
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator contains multiple outputs. "
             "We only allow a custom operator that contains only one input "
             "and only one output without setting the InferDtypeFn. "
@@ -270,7 +270,7 @@ static std::vector<std::vector<phi::DataType>> RunDefaultInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         inplace_map.size(),
         outputs.size(),
-        phi::errors::Unavailable(
+        common::errors::Unavailable(
             "Your custom operator uses `SetInplaceMap` without setting the "
             "InferDtypeFn. However, `Outputs` size = %d does not match the "
             "`InplaceMap` size = %d. Please check `SetInplaceMap` again or set "
@@ -309,12 +309,12 @@ static std::vector<std::vector<phi::DataType>> RunDefaultGradInferDtypeFunc(
       // Duplicable forward var must as backward input
       auto iter =
           std::find(grad_op_inputs.begin(), grad_op_inputs.end(), fwd_name);
-      PADDLE_ENFORCE_NE(
-          iter,
-          grad_op_inputs.end(),
-          phi::errors::NotFound("Custom grad operator should have the forward "
-                                "input(%s) as backward input",
-                                fwd_name));
+      PADDLE_ENFORCE_NE(iter,
+                        grad_op_inputs.end(),
+                        common::errors::NotFound(
+                            "Custom grad operator should have the forward "
+                            "input(%s) as backward input",
+                            fwd_name));
       auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
       std::vector<phi::DataType> tmp;
       for (size_t i = pair.first; i < pair.second; ++i) {
@@ -330,9 +330,9 @@ static std::vector<std::vector<phi::DataType>> RunDefaultGradInferDtypeFunc(
         PADDLE_ENFORCE_NE(
             iter,
             grad_op_inputs.end(),
-            phi::errors::NotFound("Custom grad operator should have the "
-                                  "forward input(%s) as backward input",
-                                  fwd_name));
+            common::errors::NotFound("Custom grad operator should have the "
+                                     "forward input(%s) as backward input",
+                                     fwd_name));
         auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
         result.push_back({ctx.InputAt(pair.first).dtype()});
       }
@@ -371,7 +371,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
   if (inplace_map.empty()) {
     PADDLE_ENFORCE_EQ(outputs.size(),
                       output_dtypes.size(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Your custom operator has set the InferDtypeFn. "
                           "However, `Outputs` size = %d does not match the "
                           "returned vector size of InferDtypeFn = %d. Please "
@@ -382,7 +382,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
     PADDLE_ENFORCE_EQ(
         outputs.size(),
         output_dtypes.size() + inplace_map.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Your custom operator uses `SetInplaceMap` and sets the "
             "InferDtypeFn. However, `Outputs` size = %d does not match the "
             "`InplaceMap size + InferDtypeFn output size` = %d. Please check "
@@ -401,7 +401,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
     if (paddle::framework::detail::IsDuplicableVar(outputs[i])) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(i) != inplace_reverse_map.end(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
@@ -566,7 +566,7 @@ std::vector<std::vector<phi::DDim>> RunInferShapeFn(
   PADDLE_ENFORCE_EQ(
       out_dims.size(),
       ctx.OutputRange().size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Custom op infer_shape return size should be %d, but got %d.",
           ctx.OutputRange().size(),
           out_dims.size()));
@@ -599,7 +599,7 @@ std::vector<std::vector<phi::DataType>> RunInferDtypeFn(
   PADDLE_ENFORCE_EQ(
       out_dtypes.size(),
       ctx.OutputRange().size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Custom op infer_dtype return size should be %d, but got %d.",
           ctx.OutputRange().size(),
           out_dtypes.size()));
@@ -674,19 +674,19 @@ std::
       PADDLE_ENFORCE_EQ(
           out_dim.size(),
           pair.second - pair.first,
-          phi::errors::InvalidArgument("custom op infer_shape result[%d]'s "
-                                       "size should be %d, but got %d.",
-                                       i,
-                                       pair.second - pair.first,
-                                       out_dim.size()));
+          common::errors::InvalidArgument("custom op infer_shape result[%d]'s "
+                                          "size should be %d, but got %d.",
+                                          i,
+                                          pair.second - pair.first,
+                                          out_dim.size()));
       PADDLE_ENFORCE_EQ(
           out_dtype.size(),
           pair.second - pair.first,
-          phi::errors::InvalidArgument("custom op infer_shape result[%d]'s "
-                                       "size should be %d, but got %d.",
-                                       i,
-                                       pair.second - pair.first,
-                                       out_dtype.size()));
+          common::errors::InvalidArgument("custom op infer_shape result[%d]'s "
+                                          "size should be %d, but got %d.",
+                                          i,
+                                          pair.second - pair.first,
+                                          out_dtype.size()));
 
       if (out_dim.size() == 1) {
         output_dims.emplace_back(out_dim[0]);

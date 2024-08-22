@@ -506,7 +506,7 @@ void HeterCommKernel::dy_mf_fill_shard_grads(KeyType* d_shard_keys,
 
   PADDLE_ENFORCE_EQ(grad_value_size % sizeof(float),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of 'grad_value_size' must be a multiple of "
                         "sizeof(float), but received size %d.",
                         grad_value_size));
@@ -567,12 +567,12 @@ void HeterCommKernel::dy_mf_fill_dvals(float* d_shard_vals,
                                        size_t val_size,
                                        const StreamType& stream) {
   const size_t val_size_float = val_size / sizeof(float);
-  PADDLE_ENFORCE_EQ(
-      val_size % sizeof(float),
-      0,
-      phi::errors::InvalidArgument("The size of 'val_size' must be a multiple "
-                                   "of sizeof(float), but received size %d.",
-                                   val_size));
+  PADDLE_ENFORCE_EQ(val_size % sizeof(float),
+                    0,
+                    common::errors::InvalidArgument(
+                        "The size of 'val_size' must be a multiple "
+                        "of sizeof(float), but received size %d.",
+                        val_size));
 
   size_t N = len * val_size_float;
   const int grid_size = (N - 1) / block_size_ + 1;
@@ -779,7 +779,7 @@ void HeterCommKernel::scatter_vals(const ValType* d_shard_vals,
   const size_t val_size_unit = size_t(value_bytes / sizeof(ValType));
   PADDLE_ENFORCE_EQ(value_bytes % sizeof(ValType),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of 'value_bytes' must be a multiple of "
                         "sizeof(ValType), but received size %d.",
                         value_bytes));
@@ -919,7 +919,7 @@ void HeterCommKernel::check_valid_values(const int& type,
                                          bool debug) {
   PADDLE_ENFORCE_EQ(value_bytes % sizeof(float),
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The size of 'value_bytes' must be a multiple of "
                         "sizeof(float), but received size %d.",
                         value_bytes));

@@ -30,7 +30,7 @@ ProcessGroup::ProcessGroup(int rank, int size, int gid)
   const char* global_rank = std::getenv("PADDLE_TRAINER_ID");
   PADDLE_ENFORCE_NOT_NULL(
       global_rank,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The environment variable 'PADDLE_TRAINER_ID' cannot be found."));
   global_rank_ = std::atoi(global_rank);
 }

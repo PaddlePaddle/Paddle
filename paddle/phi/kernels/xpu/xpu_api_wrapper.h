@@ -173,7 +173,7 @@ static void GetFCInfo(const phi::DDim& x_dims,
 
   PADDLE_ENFORCE_EQ(mat_dim_a.width_,
                     mat_dim_b.height_,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Shape mistake in matmul_op xdims = %s ydims = %s "
                         "x_trans = %d y_trans = %d",
                         x_dims.to_str(),

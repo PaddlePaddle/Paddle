@@ -15,6 +15,7 @@
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
@@ -56,7 +57,10 @@ void DyScheduleImpl::MutateForType(const Expr& loop,
 
   auto loop_copy = ir::ir_utils::IRCopy(loop, /* copy_buffer_node = */ false);
   auto* new_for_node = loop_copy.As<ir::For>();
-  CHECK(new_for_node);
+  PADDLE_ENFORCE_NOT_NULL(new_for_node,
+                          ::common::errors::InvalidArgument(
+                              "The newly created For node is null. "
+                              "Please ensure the loop_copy is valid."));
   new_for_node->set_for_type(for_type);
   if (new_for_node->is_vectorized()) {
     VectorizeInfo vec_info(0, factor);
@@ -162,11 +166,12 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       },
       [&](common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
-        auto cur_dev_info =
-            common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);
+        using cinn::runtime::BackendAPI;
+        auto HipBackendAPI = BackendAPI::get_backend(common::HygonDCUArchHIP{});
+        const std::array<int, 3> kMaxGridDims =
+            HipBackendAPI->get_max_grid_dims();
         const std::array<int, 3> kMaxBlockDims =
-            cur_dev_info->GetMaxBlockDims();
-        const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+            HipBackendAPI->get_max_block_dims();
         bindNvHygon(kMaxBlockDims, kMaxGridDims);
 #endif
       });

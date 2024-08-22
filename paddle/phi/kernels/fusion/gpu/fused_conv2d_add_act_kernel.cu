@@ -105,12 +105,12 @@ class CudnnConvDescManager {
     // std::hash takes about 5us, xxhash can optimize to 2.5us.
     XXH64_state_t* const state = XXH64_createState();
     if (state == nullptr) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "xxhash create state failed, maybe a environment error."));
     }
     XXH64_hash_t const seed = 0;
     if (XXH64_reset(state, seed) == XXH_ERROR) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "xxhash reset state failed, maybe a environment error."));
     }
     XXH64_update(state, input_dims.data(), input_dims.size() * sizeof(int));
@@ -177,12 +177,12 @@ class CudnnConvDescManager {
                                  cudnnTensorFormat_t format) {
     XXH64_state_t* const state = XXH64_createState();
     if (state == nullptr) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "xxhash create state failed, maybe a environment error."));
     }
     XXH64_hash_t const seed = 0;
     if (XXH64_reset(state, seed) == XXH_ERROR) {
-      PADDLE_THROW(phi::errors::PreconditionNotMet(
+      PADDLE_THROW(common::errors::PreconditionNotMet(
           "xxhash create state failed, maybe a environment error."));
     }
     XXH64_update(state, paddings_t.data(), paddings_t.size() * sizeof(int));
@@ -336,7 +336,7 @@ class CudnnConvDescManager {
     } else if (act == "tanh") {
       mode = CUDNN_ACTIVATION_TANH;
     } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unknown CUDNN activation string: %s.", act));
     }
     desc->set(mode, relu_ceiling);
@@ -378,7 +378,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
   bool deterministic = FLAGS_cudnn_deterministic;
   PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
                         "FLAGS_cudnn_deterministic True at same time."));
 
@@ -425,7 +425,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
             ctx, input_pad, input, pad_value, &transformed_input);
       } break;
       default:
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "ConvOp only support tensors with 4 or 5 dimensions."));
     }
   };
@@ -640,7 +640,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
       }
     } else {
       // TODO(qingiqng): do copy when batch size large than 1
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Input with batch size greater than 1 is unsupported. The received "
           "batch size is %d, Input's shape is [%s].",
           transformed_input.dims()[0],

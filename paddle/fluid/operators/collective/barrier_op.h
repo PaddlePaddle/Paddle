@@ -22,11 +22,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_GLOO)
 #include <gloo/barrier.h>
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#include "paddle/phi/core/distributed/gloo_comm_context.h"
 #endif
 
 namespace paddle {
@@ -37,14 +39,23 @@ class BarrierOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_GLOO)
-    auto gloo = paddle::framework::GlooWrapper::GetInstance();
-    PADDLE_ENFORCE_EQ(
-        gloo->IsInitialized(),
-        true,
-        common::errors::PreconditionNotMet(
-            "You must initialize the gloo environment first to use it."));
-    gloo::BarrierOptions opts(gloo->GetContext());
-    gloo::barrier(opts);
+    int rid = ctx.Attr<int>("ring_id");
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+    if (comm_context_manager.Has(std::to_string(rid))) {
+      auto* comm_context = static_cast<phi::distributed::GlooCommContext*>(
+          comm_context_manager.Get(std::to_string(rid)));
+      comm_context->Barrier();
+    } else {
+      auto gloo = paddle::framework::GlooWrapper::GetInstance();
+      PADDLE_ENFORCE_EQ(
+          gloo->IsInitialized(),
+          true,
+          common::errors::PreconditionNotMet(
+              "You must initialize the gloo environment first to use it."));
+      gloo::BarrierOptions opts(gloo->GetContext());
+      gloo::barrier(opts);
+    }
 #else
     PADDLE_THROW(common::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
