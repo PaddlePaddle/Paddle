@@ -522,20 +522,20 @@ void ConcatCase5(DeviceContext* context) {
 
   PADDLE_ENFORCE_EQ(output[1]->data<int>(),
                     output[0]->data<int>() + 4,
-                    paddle::platform::errors::PreconditionNotMet(
+                    phi::errors:: ::PreconditionNotMet(
                         "splited_out[0] and splited_out[1] should logically be "
                         "stored side by side."));
 
   PADDLE_ENFORCE_EQ(
       output[0]->dims(),
       common::make_ddim({2, 2}),
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors:: ::PreconditionNotMet(
           "output[0] and output[1]'s dims should be the same as input"));
 
   PADDLE_ENFORCE_EQ(
       output[1]->dims(),
       common::make_ddim({2, 2}),
-      paddle::platform::errors::PreconditionNotMet(
+      phi::errors:: ::PreconditionNotMet(
           "output[0] and output[1]'s dims should be the same as input"));
 
   std::vector<const phi::DenseTensor*> second_input;
@@ -559,14 +559,14 @@ void ConcatCase5(DeviceContext* context) {
 
   PADDLE_ENFORCE_EQ(concated_out2.data<int>(),
                     output[0]->data<int>(),
-                    paddle::platform::errors::PreconditionNotMet(
+                    phi::errors:: ::PreconditionNotMet(
                         "If the input tensors are already stored side by side "
                         "in memory, then the ConcatTensorKernel will not "
                         "reallocate memory for the concatenation."));
 
   PADDLE_ENFORCE_EQ(concated_out2.dims(),
                     common::make_ddim({2, 4}),
-                    paddle::platform::errors::PreconditionNotMet(
+                    phi::errors:: ::PreconditionNotMet(
                         "For the same inputs, multiple executions of the "
                         "ConcatTensorKernel should produce the same results."));
 }

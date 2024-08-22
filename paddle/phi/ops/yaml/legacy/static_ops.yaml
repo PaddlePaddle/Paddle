@@ -993,7 +993,7 @@
   backward : unsqueeze_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op: concat_tensor
+- op: concat_tensor_
   args: (Tensor[] input)
   output: Tensor[](output){input.size()}, Tensor(concated_output)
   infer_meta:
@@ -1001,6 +1001,7 @@
   kernel:
     func: concat_tensor
     data_type: input
+  inplace: (input -> output)
 
 - op: multiclass_nms
   args: (Tensor bboxes, Tensor scores, float score_threshold,
