@@ -1032,7 +1032,7 @@
     func : conv3d_transpose
     data_type : x
   backward : conv3d_transpose_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : copy_to
   args : (Tensor x, Place place, bool blocking)

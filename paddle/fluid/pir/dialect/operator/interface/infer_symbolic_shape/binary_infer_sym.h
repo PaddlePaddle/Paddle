@@ -33,6 +33,7 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(CtcAlign)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Conv2d)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(Conv2dTranspose)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Conv3d)
+OP_DECLARE_INFER_SYMBOLIC_SHAPE(Conv3dTranspose)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(ConvTranspose)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(Cross)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(Correlation)
@@ -94,6 +95,10 @@ OP_DECLARE_INFER_SYMBOLIC_SHAPE(Unpool3d)
 // OP_DECLARE_INFER_SYMBOLIC_SHAPE(WeightDequantize)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(YoloBox)
 OP_DECLARE_INFER_SYMBOLIC_SHAPE(YoloBoxHead)
+
+bool convtransposefunction(pir::Operation *op,
+                           pir::InferSymbolicShapeContext *infer_context,
+                           std::vector<symbol::DimExpr> output_size);
 
 }  // namespace paddle::dialect
 
