@@ -2080,10 +2080,6 @@ bool SparseAttentionOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
   const auto &columns_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(4));
-  const auto &key_padding_mask_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(5));
-  const auto &attn_mask_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(6));
 
   std::vector<symbol::DimExpr> q_dims = q_shape_or_data.shape();
   std::vector<symbol::DimExpr> k_dims = k_shape_or_data.shape();
