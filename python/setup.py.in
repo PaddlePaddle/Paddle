@@ -10,6 +10,7 @@ import errno
 import platform
 import glob
 import shlex
+import ctypes
 
 from contextlib import contextmanager
 from setuptools import Command
@@ -389,7 +390,6 @@ def cinn() -> str:
             'with_mkl': '@WITH_MKL@',
             'cinn': get_cinn_version(),
             'with_pip_cuda_libraries': '@WITH_PIP_CUDA_LIBRARIES@'})
-
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version/__init__.py')
 
 def write_cuda_env_config_py(filename='paddle/cuda_env.py'):
@@ -436,8 +436,51 @@ def is_transpiler():
 write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/incubate/distributed/fleet/parameter_server/version.py')
 
 
+def find_libnvinfer():
+    """Search for libnvinfer.so file in LD_LIBRARY_PATH."""
+
+    tensorrt_library_path='@TENSORRT_LIBRARY_DIR@'
+    trt_infer_rt_path='@TR_INFER_RT@'
+
+    libnvinfer_file =os.path.join(tensorrt_library_path,trt_infer_rt_path)
+
+    if os.path.exists(libnvinfer_file):
+        return libnvinfer_file
+    else:
+        print(f"{libnvinfer_file} not found.")
+    return None
+
+
+def get_tensorrt_version():
+    try:
+        libnvinfer_path = find_libnvinfer()
+
+        if not libnvinfer_path:
+            return None
+
+        trt = ctypes.CDLL(libnvinfer_path)
+        get_version =trt.getInferLibVersion
+        get_version.restype = ctypes.c_int
+        version = get_version()
+        version_str = str(version)
+        major = version_str[:1] if len(version_str) > 1 else version_str
+        minor = version_str[1:2] if len(version_str) > 3 else version_str[1:]
+        patch = version_str[3:] if len(version_str) > 3 else ''
+
+        minor = minor if minor else '0'
+        patch = patch if patch else '0'
+        version_str = f"{major}.{minor}.{patch}"
+
+        return version_str
+
+    except Exception as e:
+        print(f"Error while getting TensorRT version: {e}")
+        return None
+
 def get_paddle_extra_install_requirements():
-    #(Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
+    #(Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas. Additionally, it now supports the installation of TensorRT, further enhancing its functionality. This integration simplifies the process as the operation of 'pip install paddle' is no longer dependent on the separate installation of cuda, cudnn, or TensorRT.
+    paddle_cuda_requires = []
+    paddle_tensorrt_requires = []
     if '@WITH_PIP_CUDA_LIBRARIES@' == 'ON':
         if platform.system() == 'Linux':
             PADDLE_CUDA_INSTALL_REQUIREMENTS = {
@@ -489,6 +532,8 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusparse-cu12==12.3.1.170 "
                 ),
             }
+
+
         try:
             output = subprocess.check_output(['nvcc', '--version']).decode('utf-8')
             version_line = [line for line in output.split('\n') if 'release' in line][0]
@@ -499,9 +544,44 @@ def get_paddle_extra_install_requirements():
 
         paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[cuda_major_version].split("|")
 
-        return paddle_cuda_requires
-    else:
-        return []
+    if '@TENSORRT_FOUND@' == 'ON':
+        version_str = get_tensorrt_version()
+        version_default = int(version_str.split(".")[0])
+        if platform.system() =='Linux' or (platform.system()=='Windows' and version_default>=10):
+
+            PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
+                "tensorrt==8.5.3.1",
+                "tensorrt==8.6.0",
+                "tensorrt==8.6.1.post1",
+                "tensorrt==10.3.0",
+            ]
+
+            if not version_str:
+                return paddle_cuda_requires,[]
+
+            version_main = ".".join(version_str.split(".")[:3])
+
+            matched_package = None
+            for paddle_tensorrt_requires in PADDLE_TENSORRT_INSTALL_REQUIREMENTS:
+                paddle_tensorrt_version = paddle_tensorrt_requires.split("==")[1]
+                paddle_tensorrt_main = ".".join(paddle_tensorrt_version.split(".")[:3])
+
+                if version_main == paddle_tensorrt_main:
+                    matched_package = paddle_tensorrt_requires
+                    break
+
+            if matched_package:
+                paddle_tensorrt_requires = [matched_package]
+            else:
+                print(
+                    f"No exact match found for TensorRT Version: {version_str}. We currently support TensorRT versions 8.5.3.1, 8.6.0, and 8.6.1."
+                )
+                return paddle_cuda_requires, []
+
+    return paddle_cuda_requires, paddle_tensorrt_requires
+
+
+
 
 packages=['paddle',
           'paddle.libs',
@@ -694,8 +774,9 @@ if sys.version_info >= (3,8):
         setup_requires_tmp+=[setup_requires_i]
     setup_requires = setup_requires_tmp
     if '@WITH_GPU@' == 'ON' and platform.system() in ('Linux', 'Windows') and platform.machine() in ('x86_64', 'AMD64'):
-        paddle_cuda_requires = get_paddle_extra_install_requirements()
+        paddle_cuda_requires, paddle_tensorrt_requires = get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
+        setup_requires += paddle_tensorrt_requires
 
 
 # the prefix is sys.prefix which should always be usr

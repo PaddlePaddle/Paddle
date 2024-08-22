@@ -99,6 +99,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
                 .train_program.block(0)
                 .ops
             ]
+
             # Ensure that batch_norm is splitted into small ops
             self.assertTrue('batch_norm' not in fwd_ops)
 
