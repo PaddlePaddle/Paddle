@@ -720,8 +720,15 @@ class DygraphShardingOptimizerV2:
             and os.getenv("XPU_PADDLE_FUSE_SHARDING_BUFFER") is not None
         ):
             group_size = 2**62
+
+        # NOTE(shenliang03): If comm_overlap is not used, the parameter list is sorted by data type to
+        # to reduce communication overhead.
+        all_params = self._parameter_list
+        if not self.comm_overlap:
+            all_params = sorted(all_params, key=lambda x: str(x.dtype))
+
         comm_group = self._hcg.get_sharding_parallel_group()
-        var_groups = assign_group_by_size(self._parameter_list, group_size)
+        var_groups = assign_group_by_size(all_params, group_size)
         for group_idx, parameters in var_groups.items():
             buffer = FusedCommBuffer(
                 group_idx,
