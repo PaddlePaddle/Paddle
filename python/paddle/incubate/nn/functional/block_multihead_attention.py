@@ -56,7 +56,7 @@ def block_multihead_attention(
     use_dynamic_cachekv_quant: bool = False,
     quant_round_type: int = 1,
     quant_max_bound: float = 127.0,
-    quant_min_bound=float - 127.0,
+    quant_min_bound: float = -127.0,
     out_scale: float = -1,
     compute_dtype: str = "default",
 ) -> tuple(Tensor, Tensor, Tensor, Tensor):
