@@ -7,7 +7,7 @@
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
+// distributed under the License is distributed on an "AS IS" BASIS,affine
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
@@ -84,13 +84,6 @@ std::vector<symbol::DimExpr> GetRealPadding(
   UpdataPadding();
   return real_padding;
 }
-
-// bool AffineGridOpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   // pass
-//   return true;
-// }
 
 symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
     pir::Operation *op,
@@ -227,6 +220,60 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
 
 namespace paddle::dialect {
 using paddle::dialect::details::CreateShapeOrDataForXShape;
+
+bool AffineGridOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> input_dims = input_shape_or_data.shape();
+
+  const auto &attributes = op->attributes();
+  int output_shape_size;
+  std::vector<symbol::DimExpr> output_shape_data;
+  if (attributes.find("output_shape") != attributes.end()) {
+    std::vector<int64_t> output_shape =
+        op->attribute<paddle::dialect::IntArrayAttribute>("output_shape")
+            .data()
+            .GetData();
+    output_shape_size = output_shape.size();
+    for (const auto &i : output_shape) {
+      output_shape_data.push_back(symbol::DimExpr{i});
+    }
+  } else if (op->operand_source(1)) {
+    const auto &output_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+    output_shape_data = details::GetOrCreateExprVecFromData(
+        output_shape_or_data, infer_context);
+    output_shape_size = output_shape_data.size();
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The input arguments must have the shape of output, please check!"));
+  }
+
+  std::vector<symbol::DimExpr> output_dims;
+  output_dims.push_back(input_dims[0]);  // N
+
+  if (output_shape_size == 4) {
+    // N * H * W * 2
+    output_dims.push_back(output_shape_data[2]);  // H
+    output_dims.push_back(output_shape_data[3]);  // W
+    output_dims.push_back(symbol::DimExpr(2));    // 2
+  } else {
+    // N * D * H * W * 3
+    output_dims.push_back(output_shape_data[2]);  // D
+    output_dims.push_back(output_shape_data[3]);  // H
+    output_dims.push_back(output_shape_data[4]);  // W
+    output_dims.push_back(symbol::DimExpr(3));    // 3
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+
+  return true;
+}
 
 bool AllOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
