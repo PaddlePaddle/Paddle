@@ -59,7 +59,7 @@ namespace platform {
 MemEventRecorder MemEventRecorder::recorder;
 
 RecordInstantEvent::RecordInstantEvent(const char *name,
-                                       TracerEventType type,
+                                       phi::TracerEventType type,
                                        uint32_t level) {
   if (UNLIKELY(HostTraceLevel::GetInstance().NeedTrace(level) == false)) {
     return;
@@ -128,7 +128,7 @@ std::map<const char *, std::map<uint64_t, bool>>
 RecordMemEvent::RecordMemEvent(const void *ptr,
                                const phi::Place &place,
                                size_t size,
-                               const TracerMemEventType type) {
+                               const phi::TracerMemEventType type) {
   if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled &&
       FLAGS_enable_host_event_recorder_hook == false) {
     return;
@@ -138,7 +138,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
     return;
   }
 
-  if (type == TracerMemEventType::Allocate) {
+  if (type == phi::TracerMemEventType::Allocate) {
     uint64_t current_allocated = 0;
     uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
@@ -221,7 +221,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
                                                          current_reserved,
                                                          peak_allocated,
                                                          peak_reserved);
-  } else if (type == TracerMemEventType::ReservedAllocate) {
+  } else if (type == phi::TracerMemEventType::ReservedAllocate) {
     uint64_t current_reserved = 0;
     uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
@@ -303,7 +303,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
                                                          current_reserved,
                                                          peak_allocated,
                                                          peak_reserved);
-  } else if (type == TracerMemEventType::Free) {
+  } else if (type == phi::TracerMemEventType::Free) {
     uint64_t current_allocated = 0;
     uint64_t peak_allocated = 0;
     uint64_t current_reserved = 0;  // 0 means keep the same as before
@@ -385,7 +385,7 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
                                                         current_reserved,
                                                         peak_allocated,
                                                         peak_reserved);
-  } else if (type == TracerMemEventType::ReservedFree) {
+  } else if (type == phi::TracerMemEventType::ReservedFree) {
     uint64_t current_reserved = 0;
     uint64_t peak_reserved = 0;
     uint64_t current_allocated = 0;  // 0 means keep the same as before
@@ -489,7 +489,7 @@ void MemEventRecorder::PushMemRecord(const void *ptr,
 void MemEventRecorder::PushMemRecord(const void *ptr,
                                      const Place &place,
                                      size_t size,
-                                     TracerMemEventType type,
+                                     phi::TracerMemEventType type,
                                      uint64_t current_allocated,
                                      uint64_t current_reserved,
                                      uint64_t peak_allocated,
@@ -508,7 +508,7 @@ void MemEventRecorder::PushMemRecord(const void *ptr,
         peak_reserved);
     return;
   }
-  if (type == TracerMemEventType::ReservedAllocate) {
+  if (type == phi::TracerMemEventType::ReservedAllocate) {
     // old profiler only analyse memory managed by paddle.
     return;
   }
@@ -538,7 +538,7 @@ void MemEventRecorder::PopMemRecord(const void *ptr, const Place &place) {
 void MemEventRecorder::PopMemRecord(const void *ptr,
                                     const Place &place,
                                     size_t size,
-                                    TracerMemEventType type,
+                                    phi::TracerMemEventType type,
                                     uint64_t current_allocated,
                                     uint64_t current_reserved,
                                     uint64_t peak_allocated,
@@ -557,7 +557,7 @@ void MemEventRecorder::PopMemRecord(const void *ptr,
         peak_reserved);
     return;
   }
-  if (type == TracerMemEventType::ReservedFree) {
+  if (type == phi::TracerMemEventType::ReservedFree) {
     // old profiler only analyse memory managed by paddle.
     return;
   }
@@ -659,7 +659,7 @@ void PopMemEvent(uint64_t start_ns,
 void Mark(const std::string &name) {
   if (FLAGS_enable_host_event_recorder_hook) {
     HostEventRecorder<CommonEvent>::GetInstance().RecordEvent(
-        name, 0, 0, EventRole::kOrdinary, TracerEventType::UserDefined);
+        name, 0, 0, EventRole::kOrdinary, phi::TracerEventType::UserDefined);
     return;
   }
   GetEventList().Record(

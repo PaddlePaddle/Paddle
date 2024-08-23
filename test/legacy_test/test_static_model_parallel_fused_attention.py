@@ -31,7 +31,7 @@ class TestStaticModelParallel(TestDistBase):
         self._nccl_comm_num = 1
         self._pipeline_mode = True
 
-    def test_dist_static_model_parallel_fused_feedforward(self):
+    def test_dist_static_model_parallel_fused_attention(self):
         from paddle import base
 
         if base.core.is_compiled_with_cuda():

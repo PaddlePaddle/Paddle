@@ -62,6 +62,7 @@ BACKENDS_BLACK_LIST = [
     "full",
     "partial_send",
     "push_dense",
+    "comm_init_all",
 ]
 
 # prim op with one input and one output, with no attribute

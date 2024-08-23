@@ -1210,6 +1210,7 @@ def decorate(
     if paddle.framework.in_pir_mode():
         assert not isinstance(models, (list, tuple))
         assert not isinstance(optimizers, (list, tuple))
+        amp_global_state().use_master_grad = master_grad
         if level in ['O0', 'OD', 'O1']:
             if optimizers is None:
                 return models
