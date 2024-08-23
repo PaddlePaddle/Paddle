@@ -419,10 +419,13 @@ TEST(PluginTest, test_generic_plugin) {
   engine->FreezeNetwork();
   ASSERT_EQ(engine->engine()->getNbBindings(), 2);
   nvinfer1::IHostMemory *serialized_engine_data = engine->Serialize();
-  auto trt_engine_serialized_data =
-      std::string((const char *)serialized_engine_data->data(),
-                  serialized_engine_data->size());
-  params.engine_serialized_data = trt_engine_serialized_data;
+  std::ofstream outFile("engine_serialized_data.bin", std::ios::binary);
+  outFile.write(static_cast<const char *>(serialized_engine_data->data()),
+                serialized_engine_data->size());
+  outFile.close();
+
+  auto trt_engine_serialized_path = "engine_serialized_data.bin";
+  params.engine_serialized_data = trt_engine_serialized_path;
 
   // 3. Build PIR Program
   // x ------> trt_op(argsort) -> pd_op.assign -> output value
