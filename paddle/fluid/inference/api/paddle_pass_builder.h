@@ -351,5 +351,6 @@ PD_INFER_DECL extern const std::vector<std::string> kPirGpuPasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirCpuPasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirXpuPasses;
 PD_INFER_DECL extern const std::vector<std::string> kPirMkldnnPasses;
+PD_INFER_DECL extern const std::vector<std::string> kPirMkldnnBf16Passes;
 
 }  // namespace paddle

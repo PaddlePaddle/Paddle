@@ -117,6 +117,7 @@ if(NOT WITH_NCCL)
 endif()
 
 if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
   list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
@@ -801,6 +802,8 @@ if(NOT WIN32)
   endif()
   py_test_modules(test_layers MODULES test_layers ENVS
                   FLAGS_cudnn_deterministic=1)
+  set_tests_properties(test_multiprocess_reader_exception
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_buffer_shared_memory_reuse_pass PROPERTIES TIMEOUT
