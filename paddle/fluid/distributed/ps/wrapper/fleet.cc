@@ -371,7 +371,7 @@ void FleetWrapper::PullSparseToTensorSync(
         PADDLE_ENFORCE_NOT_NULL(
             output_data,
             phi::errors::InvalidArgument(
-                "output_data is null. It must not be null.", name));
+                "output_data is null. It must not be null."));
       }
       uint64_t real_id = static_cast<uint64_t>(ids[i]);
       if (real_id == padding_id) {
