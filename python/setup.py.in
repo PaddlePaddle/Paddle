@@ -578,7 +578,7 @@ def get_paddle_extra_install_requirements():
                 )
                 return paddle_cuda_requires, []
 
-    return paddle_cuda_requires, paddle_tensorrt_requires
+    return paddle_cuda_requires
 
 
 
@@ -774,9 +774,8 @@ if sys.version_info >= (3,8):
         setup_requires_tmp+=[setup_requires_i]
     setup_requires = setup_requires_tmp
     if '@WITH_GPU@' == 'ON' and platform.system() in ('Linux', 'Windows') and platform.machine() in ('x86_64', 'AMD64'):
-        paddle_cuda_requires, paddle_tensorrt_requires = get_paddle_extra_install_requirements()
+        paddle_cuda_requires= get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
-        setup_requires += paddle_tensorrt_requires
 
 
 # the prefix is sys.prefix which should always be usr
