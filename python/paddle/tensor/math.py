@@ -152,9 +152,8 @@ def _get_reduce_axis_with_tensor(axis, x):
     return reduce_all, axis
 
 
-def log(x: str, name: str | None = None) -> Tensor:
+def log(x: Tensor, name: str | None = None) -> Tensor:
     r"""
-    TODO(megemini): TEST
     Calculates the natural log of the given input Tensor, element-wise.
 
     .. math::
@@ -174,7 +173,6 @@ def log(x: str, name: str | None = None) -> Tensor:
         .. code-block:: python
 
             >>> import paddle
-            >>> adfasdf
 
             >>> x = [[2, 3, 4], [7, 8, 9]]
             >>> x = paddle.to_tensor(x, dtype='float32')
