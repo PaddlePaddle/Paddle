@@ -625,12 +625,53 @@ bool DecodeJpegOpInferSymbolicShape(
   return true;
 }
 
-// bool DiagOpInferSymbolicShape(pir::Operation *op,
-//                               pir::InferSymbolicShapeContext *infer_context)
-//                               {
-//   // pass
-//   return true;
-// }
+bool DiagOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto x_shape = x_shape_or_data.shape();
+  const int offset_data = op->attribute<pir::Int32Attribute>("offset").data();
+  auto offset = symbol::DimExpr(offset_data);
+
+  if (x_shape.size() <= 1) {
+    symbol::DimExpr size_ =
+        (x_shape.size() == 1UL ? x_shape[0] : symbol::DimExpr(1)) +
+        symbol::DimExpr(std::abs(offset_data));
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs({size_, size_}));
+  } else if (x_shape.size() == 2UL) {
+    if (x_shape[0].isa<int64_t>() && x_shape[1].isa<int64_t>()) {
+      int64_t size_ = 0;
+      if (offset_data >= 0) {
+        if (x_shape[0].dyn_cast<int64_t>() >
+            x_shape[1].dyn_cast<int64_t>() - offset_data) {
+          size_ = x_shape[0].dyn_cast<int64_t>();
+        } else {
+          size_ = x_shape[1].dyn_cast<int64_t>() - offset_data;
+        }
+      } else {
+        if (x_shape[0].dyn_cast<int64_t>() + offset_data <
+            x_shape[1].dyn_cast<int64_t>()) {
+          size_ = x_shape[0].dyn_cast<int64_t>() + offset_data;
+        } else {
+          size_ = x_shape[1].dyn_cast<int64_t>();
+        }
+      }
+      infer_context->SetShapeOrDataForValue(
+          op->result(0), symbol::TensorShapeOrDataDimExprs({size_}));
+    } else {
+      symbol::DimExpr out_unknown =
+          infer_context->GetNextSymName();  // unknown until runtime
+      infer_context->SetShapeOrDataForValue(
+          op->result(0), symbol::TensorShapeOrDataDimExprs({out_unknown}));
+    }
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "diag only support 1D/2D matrix, but input has %u dims",
+        x_shape.size()));
+  }
+  return true;
+}
 
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
