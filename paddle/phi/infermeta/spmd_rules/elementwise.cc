@@ -123,6 +123,10 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   return {{x_dst_dist_attr}, {out_dist_attr}};
 }
 
+SpmdInfo AssignInferSpmd(const DistMetaTensor& x) {
+  return {{x.dist_attr()}, {x.dist_attr()}};
+}
+
 // NOTE(lizhiyu): This function is only for `cast` right now to support partial
 // propagation
 SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {

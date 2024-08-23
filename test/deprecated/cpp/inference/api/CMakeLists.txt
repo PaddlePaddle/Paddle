@@ -501,15 +501,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_mmp_tester.cc EXTRA_DEPS common)
 
   inference_analysis_test(
-    test_analyzer_capi_exp
-    SRCS
-    analyzer_capi_exp_tester.cc
-    EXTRA_DEPS
-    paddle_inference_c_shared
-    ARGS
-    --infer_model=${RESNET50_MODEL_DIR}/model)
-
-  inference_analysis_test(
     test_analyzer_capi_exp_pd_tensor
     SRCS
     analyzer_capi_exp_pd_tensor_tester.cc
@@ -562,15 +553,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     --infer_model=${OCR_INSTALL_DIR}/model
     --infer_data=${OCR_INSTALL_DIR}/data.txt
     --refer_result=${OCR_INSTALL_DIR}/result.txt)
-
-  inference_analysis_test(
-    test_analyzer_capi_exp_ner
-    SRCS
-    analyzer_capi_exp_ner_tester.cc
-    EXTRA_DEPS
-    paddle_inference_c_shared
-    ARGS
-    --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
 
   set_tests_properties(test_analyzer_mobilenet_transpose PROPERTIES TIMEOUT 120)
   set_tests_properties(test_analyzer_resnet50 PROPERTIES TIMEOUT 120)

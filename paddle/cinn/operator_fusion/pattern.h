@@ -121,15 +121,7 @@ struct ReduceTreePattern {
 
   mutable std::string cur_id_;
   std::string cur_id() const { return cur_id_; }
-  std::string new_tmp_id() const {
-    if (cur_id_ == id_) {
-      cur_id_ = id_ + "_tmp_0";
-    } else {
-      int ith = std::stoi(cur_id_.substr(cur_id_.size() - 1));
-      cur_id_ = id_ + "_tmp_" + std::to_string(ith + 1);
-    }
-    return cur_id_;
-  }
+  void reset_cur_id(std::string id) const { cur_id_ = id; }
 
   FusionTrackerPtr tracker_;
 
@@ -150,7 +142,8 @@ struct ReduceTreePattern {
     // names and trackers collect all the needed fusion nodes.
     for (const auto& child : root.childs()) {
       auto origin_child_id = child.cur_id();
-      auto new_child_id = child.new_tmp_id();
+      auto new_child_id = GetNewTmpId(origin_child_id);
+      child.reset_cur_id(new_child_id);
       tracker->append(
           std::make_shared<TmpTransformInstr>(origin_child_id,
                                               root_name,
@@ -197,7 +190,8 @@ struct ReduceTreePlusTrivialPattern {
   void update_tracker() const {
     const std::string& root_name = id();
     const std::string& origin_tree_id = tree.cur_id();
-    const std::string& new_tree_id = tree.new_tmp_id();
+    const std::string& new_tree_id = GetNewTmpId(origin_tree_id);
+    tree.reset_cur_id(new_tree_id);
     std::vector<std::string> names;
     tracker_->append(std::make_shared<TmpTransformInstr>(origin_tree_id,
                                                          sink_trivial.id(),

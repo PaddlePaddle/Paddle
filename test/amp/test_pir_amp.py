@@ -39,8 +39,8 @@ class TestAmpAttrs(unittest.TestCase):
 
 @unittest.skipIf(
     not paddle.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "only support device's compute capability is at least 8.0",
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "only support device's compute capability is at least 7.0",
 )
 class TestPirAMPProgram(unittest.TestCase):
     def test_linear_amp_o1(self):
@@ -222,6 +222,66 @@ class TestPirAMPProgram(unittest.TestCase):
                 feed={'x': np.random.rand(3, 4).astype('float32')},
                 fetch_list=[loss],
             )
+
+
+class Net(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.linear = lienar = paddle.nn.Linear(2, 2)
+
+    def forward(self, x):
+        out1 = self.linear(x)
+        out2 = self.linear.weight + 1
+        return out1 + out2
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda()
+    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    "only support device's compute capability is at least 7.0",
+)
+class TestPirAMPMasterGrad(unittest.TestCase):
+    def test_multi_param_grad(self):
+        with paddle.pir_utils.IrGuard():
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data('x', [2, 2])
+                net = Net()
+                opt = paddle.optimizer.Adam(
+                    learning_rate=0.0001, parameters=net.parameters()
+                )
+                linear, opt = paddle.amp.decorate(
+                    models=net,
+                    optimizers=opt,
+                    level='O2',
+                    dtype='float16',
+                    master_weight=False,
+                    master_grad=True,
+                )
+                with paddle.amp.auto_cast(level='O2', dtype='float16'):
+                    out = net(x)
+                    loss = paddle.mean(out)
+                opt.minimize(loss)
+
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                exe.run(startup)
+                result = exe.run(
+                    main,
+                    feed={'x': np.random.rand(2, 2).astype('float32')},
+                    fetch_list=[loss],
+                )
+                for op in main.global_block().ops:
+                    if op.name() == 'builtin.combine':
+                        for input in [
+                            op.operand_source(0),
+                            op.operand_source(1),
+                        ]:
+                            np.testing.assert_equal(input.dtype, paddle.float32)
+                            np.testing.assert_equal(
+                                input.get_defining_op().name(), 'pd_op.cast'
+                            )
 
 
 if __name__ == '__main__':
