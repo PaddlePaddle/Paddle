@@ -1601,11 +1601,11 @@ bool NumelOpInferSymbolicShape(pir::Operation *op,
 
 bool PixelUnshuffleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const auto x_shape_or_data =
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
 
-  const auto attributes = op->attributes();
+  const pir::AttributeMap attributes = op->attributes();
   const int downscale_factor =
       attributes.at("downscale_factor").dyn_cast<pir::Int32Attribute>().data();
   const std::string &data_format =
@@ -1636,8 +1636,8 @@ bool PixelUnshuffleOpInferSymbolicShape(
 
   const bool channel_last = (data_format == "NHWC");
 
-  auto output_shape = x_shape;
-  const auto downscale_factor_ = symbol::DimExpr(downscale_factor);
+  std::vector<symbol::DimExpr> output_shape = x_shape;
+  const symbol::DimExpr downscale_factor_(downscale_factor);
   output_shape[0] = x_shape[0];
   if (!channel_last) {
     output_shape[1] = x_shape[1] * (downscale_factor_ * downscale_factor_);
