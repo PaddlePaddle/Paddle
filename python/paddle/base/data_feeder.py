@@ -331,7 +331,8 @@ class BatchedTensorProvider:
         self.drop_last = drop_last
 
         for var in feed_list:
-            assert var.lod_level == 0, "lod_level must be 0"
+            if not in_pir_mode():
+                assert var.lod_level == 0, "lod_level must be 0"
             self.converters.append(
                 DataToLoDTensorConverter(
                     place=self.place,
