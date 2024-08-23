@@ -1314,20 +1314,19 @@ bool GraphKhopSamplerOpInferSymbolicShape(
   auto x_shape = x_shape_or_data.shape();
   auto eids_shape = eids_shape_or_data.shape();
 
-  auto GKSShapeCheck =
-      [&](const symbol::ShapeOrDataDimExprs &shape,
-          const std::string &tensor_name) {
-        if (shape.size() == 2)
-          infer_context->AddEqualCstr(shape[1], symbol::DimExpr(1));
-        else
-          PADDLE_ENFORCE_EQ(
-              shape.size(),
-              1,
-              common::errors::InvalidArgument(
-                  "The %s should be 1D, when it is not 2D, but we get %d",
-                  tensor_name,
-                  shape.size()));
-      }
+  auto GKSShapeCheck = [&](const symbol::ShapeOrDataDimExprs &shape,
+                           const std::string &tensor_name) {
+    if (shape.size() == 2)
+      infer_context->AddEqualCstr(shape[1], symbol::DimExpr(1));
+    else
+      PADDLE_ENFORCE_EQ(
+          shape.size(),
+          1,
+          common::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              shape.size()));
+  };
 
   GKSShapeCheck(row_shape, "row");
   GKSShapeCheck(col_ptr_shape, "col_ptr");
