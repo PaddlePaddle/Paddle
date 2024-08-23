@@ -443,8 +443,7 @@ bool CastOpInferSymbolicShape(pir::Operation *op,
 
   if (x_shape_or_data.data().has_value()) {
     const auto &x_data_value = x_shape_or_data.data().value();
-    if (x_data_value.at(0).isa<int64_t>() ||
-        x_data_value.at(0).isa<int32_t>()) {
+    if (x_data_value.at(0).isa<int64_t>()) {
       infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
     } else {
       infer_context->SetShapeOrDataForValue(
