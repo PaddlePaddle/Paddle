@@ -1679,6 +1679,8 @@ bool MultinomialOpInferSymbolicShape(
     const auto &int_num_samples =
         op->attribute<paddle::dialect::ScalarAttribute>("num_samples").data();
     out_dims[x_rank - 1] = symbol::DimExpr(int_num_samples.to<int64_t>());
+  } else if (op->operand_source(1)) {
+    out_dims[x_rank - 1] = symbol::DimExpr(infer_context->GetNextSymName());
   }
 
   infer_context->SetShapeOrDataForValue(
