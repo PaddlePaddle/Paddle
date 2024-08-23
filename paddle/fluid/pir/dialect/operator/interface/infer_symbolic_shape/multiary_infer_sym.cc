@@ -2110,7 +2110,6 @@ bool SequenceConvOpInferSymbolicShape(
     int down_pad = std::max(0, context_start + context_length - 1);
     int total_pad = up_pad + down_pad;
     const auto &input_width = x_dims[1];
-    infer_context->AddEqualCstr(padding_dims[1], input_width);
     bool start_equals_zero = context_start == 0;
     bool length_equals_one = context_length == 1;
     bool start_length = start_equals_zero && length_equals_one;
@@ -2130,6 +2129,7 @@ bool SequenceConvOpInferSymbolicShape(
             padding_dims.size(),
             padding_dims));
     infer_context->AddEqualCstr(padding_dims[0], symbol::DimExpr(total_pad));
+    infer_context->AddEqualCstr(padding_dims[1], input_width);
   }
 
   std::vector<symbol::DimExpr> out_dims = x_dims;
