@@ -110,7 +110,7 @@ class ReadOp : public framework::OperatorBase {
 
     // For profiling
     phi::RecordEvent record_event(
-        Type().c_str(), platform::TracerEventType::UserDefined, 1);
+        Type().c_str(), phi::TracerEventType::UserDefined, 1);
 
     reader->ReadNext(&ins);
     if (ins.empty()) {

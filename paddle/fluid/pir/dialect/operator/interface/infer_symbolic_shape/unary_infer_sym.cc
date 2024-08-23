@@ -1867,12 +1867,62 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-// bool PixelShuffleOpInferSymbolicShape(pir::Operation *op,
-//                                       pir::InferSymbolicShapeContext
-//                                       *infer_context) {
-//   // pass
-//   return true;
-// }
+bool PixelShuffleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto x_shape = x_shape_or_data.shape();
+
+  const auto attributes = op->attributes();
+  const int upscale_factor =
+      attributes.at("upscale_factor").dyn_cast<pir::Int32Attribute>().data();
+  const std::string &data_format =
+      op->attribute<pir::StrAttribute>("data_format").AsString();
+
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        x_shape.size()));
+
+  PADDLE_ENFORCE_NE(
+      upscale_factor,
+      0,
+      common::errors::InvalidArgument("upscale_factor should not be 0."));
+
+  PADDLE_ENFORCE_EQ(
+      data_format == "NCHW" || data_format == "NHWC",
+      true,
+      common::errors::InvalidArgument("data_format must be one of NCHW and "
+                                      "NHWC. But received data_format: %s",
+                                      data_format));
+
+  const bool channel_last = (data_format == "NHWC");
+
+  // the number of channles shoule be able to be divided by the upscale_factor
+  // ^ 2.
+  // TODO(Lans1ot, Buaa): add constrain for the channel number and
+  // upscale_factor
+
+  auto output_shape = x_shape;
+  output_shape[0] = x_shape[0];
+
+  const auto upscale_factor_ = symbol::DimExpr(upscale_factor);
+
+  if (!channel_last) {
+    output_shape[1] = x_shape[1] / (upscale_factor_ * upscale_factor_);
+    output_shape[2] = x_shape[2] * upscale_factor_;
+    output_shape[3] = x_shape[3] * upscale_factor_;
+  } else {
+    output_shape[1] = x_shape[1] * upscale_factor_;
+    output_shape[2] = x_shape[2] * upscale_factor_;
+    output_shape[3] = x_shape[3] / (upscale_factor_ * upscale_factor_);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_shape));
+  return true;
+}
 
 // bool PixelUnshuffleOpInferSymbolicShape(pir::Operation *op,
 //                                         pir::InferSymbolicShapeContext
@@ -2601,14 +2651,16 @@ bool SetValueOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &input_shape = input_shape_or_data.shape();
   PADDLE_ENFORCE_LT(
-      input_shape_or_data.shape().size(),
+      input_shape.size(),
       7,
       common::errors::InvalidArgument("The SetValueOp's rank of input should "
                                       "be less than 7, but received %d.",
-                                      input_shape_or_data.shape().size()));
+                                      input_shape.size()));
 
-  infer_context->SetShapeOrDataForValue(op->result(0), input_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(input_shape));
   return true;
 }
 
@@ -2933,17 +2985,51 @@ bool UnbindOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool UniformRandomInplaceOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UniformInplaceOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  float min = op->attribute<pir::FloatAttribute>("min").data();
+  float max = op->attribute<pir::FloatAttribute>("max").data();
+  int diag_num = op->attribute<pir::Int32Attribute>("diag_num").data();
+  int diag_step = op->attribute<pir::Int32Attribute>("diag_step").data();
 
-// bool UniformRandomInplace_OpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return UniformRandomInplaceOpInferSymbolicShape(op, infer_context);
-// }
+  PADDLE_ENFORCE_LT(
+      min,
+      max,
+      common::errors::InvalidArgument(
+          "The uniform_random's min must less then max. But received min = "
+          "%f great than or equal max = %f.",
+          min,
+          max));
+  PADDLE_ENFORCE_GE(diag_num,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The uniform_random's diag_num must greater than or "
+                        "equal 0. But received diag_num (%d) < 0.",
+                        diag_num));
+  PADDLE_ENFORCE_GE(diag_step,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The uniform_random's diag_step must greater than or "
+                        "equal 0. But received diag_step (%d) < 0.",
+                        diag_step));
+  PADDLE_ENFORCE_NE(op->result(0),
+                    nullptr,
+                    common::errors::InvalidArgument(
+                        "uniform_random should have output tensor out."));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  return true;
+}
+
+bool UniformInplace_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return UniformInplaceOpInferSymbolicShape(op, infer_context);
+}
 
 // bool UniformRandomBatchSizeLikeOpInferSymbolicShape(
 //     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -3180,12 +3266,45 @@ bool Unsqueeze_OpInferSymbolicShape(
 //   return true;
 // }
 
-// bool UnstackOpInferSymbolicShape(pir::Operation *op,
-//                                  pir::InferSymbolicShapeContext
-//                                  *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UnstackOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  int rank = x_shape.size();
+
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  int num = op->attribute<pir::Int32Attribute>("num").data();
+
+  PADDLE_ENFORCE_GE(axis,
+                    -rank,
+                    common::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be inside "
+                        "[-rank, rank), where rank = %d",
+                        rank));
+  PADDLE_ENFORCE_LT(axis,
+                    rank,
+                    common::errors::InvalidArgument(
+                        "The attribute axis is out of range, it must be inside "
+                        "[-rank, rank), where rank = %d",
+                        rank));
+  if (axis < 0) axis += rank;
+
+  infer_context->AddEqualCstr(x_shape[axis], num);
+
+  symbol::TensorListShapeOrDataDimExprs out_list_shape_or_data;
+
+  std::vector<symbol::DimExpr> out_shape = x_shape;
+  out_shape.erase(out_shape.begin() + axis);
+
+  symbol::TensorShapeOrDataDimExprs out_shape_or_data =
+      symbol::TensorShapeOrDataDimExprs(out_shape);
+  for (int i = 0; i < num; i++) {
+    out_list_shape_or_data.push_back(out_shape_or_data);
+  }
+  infer_context->SetShapeOrDataForValue(op->result(0), out_list_shape_or_data);
+  return true;
+}
 
 // bool WeightQuantizeOpInferSymbolicShape(
 //     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
