@@ -1314,7 +1314,6 @@ bool FusedMultiTransformerOpInferSymbolicShape(
 
 bool GraphSampleNeighborsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-
   const symbol::ShapeOrDataDimExprs &row_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const symbol::ShapeOrDataDimExprs &col_ptr_shape_or_data =
@@ -1334,17 +1333,16 @@ bool GraphSampleNeighborsOpInferSymbolicShape(
 
   auto GSNShapeCheck = [&](const symbol::ShapeOrDataDimExprs &shape,
                            const std::string &tensor_name) {
-    if (shape.size() == 2) {
-      infer_context->AddEqualCstr(shape.shape()[1], symbol::DimExpr{1});
-    } else {
+    if (shape.size() == 2)
+      infer_context->AddEqualCstr(shape[1], symbol::DimExpr{1});
+    else
       PADDLE_ENFORCE_EQ(
           shape.size(),
           1,
           common::errors::InvalidArgument(
               "The %s should be 1D, when it is not 2D, but we get %d",
               tensor_name,
-              shape.rank()));
-    }
+              shape.size()));
   };
 
   GSNShapeCheck(row_shape, "Row");
@@ -1357,25 +1355,28 @@ bool GraphSampleNeighborsOpInferSymbolicShape(
 
   if (return_eids) {
     GSNShapeCheck(eids_shape, "Eids");
+    symbol::DimExpr out_unknown_1 = infer_context->GetNextSymName();
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(-1)})});
+            symbol::TensorShapeOrDataDimExprs({out_unknown_1})});
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(2));
   }
 
   if (flag_perm_buffer) {
     GSNShapeCheck(perm_buffer_shape, "Perm_Buffer");
   }
 
-  // Set shapes for the outputs
+  symbol::DimExpr out_unknown_0 = infer_context->GetNextSymName();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(-1)})});
+          symbol::TensorShapeOrDataDimExprs({out_unknown_0})});
   infer_context->SetShapeOrDataForValue(
-      op->result(1),
+      op->result(0),
       symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(-1)})});
+          symbol::TensorShapeOrDataDimExprs({x_shape[0]})});
 
   return true;
 }
