@@ -2745,7 +2745,6 @@ bool TransposeOpInferSymbolicShape(
         infer_context->GetShapeOrDataForValue(op->operand_source(0)));
     return true;
   }
-
   const std::vector<symbol::DimExpr> &x_dims = [&] {
     std::vector<symbol::DimExpr> dims;
     const auto &x_shape_or_data =
