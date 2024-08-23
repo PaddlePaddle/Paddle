@@ -1314,12 +1314,24 @@ bool GraphKhopSamplerOpInferSymbolicShape(
   auto x_shape = x_shape_or_data.shape();
   auto eids_shape = eids_shape_or_data.shape();
 
-  if (row_shape.size() == 2)
-    infer_context->AddEqualCstr(row_shape[1], symbol::DimExpr(1));
-  if (col_ptr_shape.size() == 2)
-    infer_context->AddEqualCstr(col_ptr_shape[1], symbol::DimExpr(1));
-  if (x_shape.size() == 2)
-    infer_context->AddEqualCstr(x_shape[1], symbol::DimExpr(1));
+  auto GKSShapeCheck =
+      [&](const symbol::ShapeOrDataDimExprs &shape,
+          const std::string &tensor_name) {
+        if (shape.size() == 2)
+          infer_context->AddEqualCstr(shape[1], symbol::DimExpr(1));
+        else
+          PADDLE_ENFORCE_EQ(
+              shape.size(),
+              1,
+              common::errors::InvalidArgument(
+                  "The %s should be 1D, when it is not 2D, but we get %d",
+                  tensor_name,
+                  shape.size()));
+      }
+
+  GKSShapeCheck(row_shape, "row");
+  GKSShapeCheck(col_ptr_shape, "col_ptr");
+  GKSShapeCheck(x_shape, "x");
 
   std::vector<int> sample_sizes =
       paddle::dialect::details::GetVectorAttr<int>(op, "sample_sizes");
@@ -1332,8 +1344,7 @@ bool GraphKhopSamplerOpInferSymbolicShape(
 
   bool return_eids = op->attribute<pir::BoolAttribute>("return_eids").data();
   if (return_eids) {
-    if (eids_shape.size() == 2)
-      infer_context->AddEqualCstr(eids_shape[1], symbol::DimExpr(1));
+    GKSShapeCheck(eids_shape, "eids");
     symbol::DimExpr out_unknown_4 = infer_context->GetNextSymName();
     infer_context->SetShapeOrDataForValue(
         op->result(4),
