@@ -37,15 +37,11 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #endif
-#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
-
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/infermeta/spmd_rules/rules.h"
-#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
 #include "paddle/pir/include/core/attribute.h"
-#endif
-
 
 namespace paddle::dialect {
 
@@ -823,12 +819,16 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     bool run_auto_parallel = false;
     std::vector<pir::Attribute> dist_result_attrs;
     phi::distributed::SpmdInfo spmd_info;
-    if(dialect::HasDistInput(argument_inputs, &op_mesh)) {
+    if (dialect::HasDistInput(argument_inputs, &op_mesh)) {
       VLOG(7) << "Custom Grad Op: " << pir_op_name << " InferSPMD";
       run_auto_parallel = true;
-      spmd_info = paddle::framework::RunInferSpmd(bwd_op_meta_info, pir_op_name, op_mesh, argument_inputs, custom_attrs);
-    }    
-      
+      spmd_info = paddle::framework::RunInferSpmd(bwd_op_meta_info,
+                                                  pir_op_name,
+                                                  op_mesh,
+                                                  argument_inputs,
+                                                  custom_attrs);
+    }
+
     size_t all_values_num = 0;
     // output name -> value num (that output should hold)
     std::unordered_map<std::string, size_t> output_name2value_num;
@@ -879,7 +879,8 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
           common::errors::InvalidArgument(
               "The number of output dist_attr after running custom operator's "
               "InferSPMD is wrong, "
-              "expected contains %d Tensors' dist_attr, but actually contains %d "
+              "expected contains %d Tensors' dist_attr, but actually contains "
+              "%d "
               "Tensors' dist_attr",
               all_values_num,
               spmd_info.second.size()));
@@ -910,11 +911,12 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
               layout,
               lod,
               0);
-          if (run_auto_parallel){
-            auto dist_attr = dialect::CvtToPirAttr(spmd_info.second[value_index]);
+          if (run_auto_parallel) {
+            auto dist_attr =
+                dialect::CvtToPirAttr(spmd_info.second[value_index]);
             out_types.push_back(dialect::CvtToPirDistType(type, dist_attr));
             dist_attrs.push_back(dist_attr);
-          } else{
+          } else {
             out_types.push_back(std::move(type));
           }
           value_index++;
@@ -922,8 +924,9 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
         pir::Type out_vector_type =
             pir::VectorType::get(pir::IrContext::Instance(), out_types);
         argument_outputs.push_back(out_vector_type);
-        if (run_auto_parallel){
-          dist_result_attrs.push_back(pir::ArrayAttribute::get(pir::IrContext::Instance(), dist_attrs));
+        if (run_auto_parallel) {
+          dist_result_attrs.push_back(
+              pir::ArrayAttribute::get(pir::IrContext::Instance(), dist_attrs));
         }
       } else {
         auto ddims = phi::make_ddim(output_shapes[value_index]);
@@ -937,39 +940,35 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
             layout,
             lod,
             0);
-        if (run_auto_parallel){
+        if (run_auto_parallel) {
           auto dist_attr = dialect::CvtToPirAttr(spmd_info.second[value_index]);
-          argument_outputs.push_back(dialect::CvtToPirDistType(out_type, dist_attr));
+          argument_outputs.push_back(
+              dialect::CvtToPirDistType(out_type, dist_attr));
           dist_result_attrs.push_back(dist_attr);
-        } else{
+        } else {
           argument_outputs.push_back(out_type);
-        }   
+        }
         value_index++;
       }
     }
     argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 
     // construct operator_dist_attr
-    if (run_auto_parallel){
+    if (run_auto_parallel) {
       std::vector<pir::Attribute> dist_operand_attrs;
-      for(auto& arg_dist : spmd_info.first) {
-          dist_operand_attrs.push_back(dialect::CvtToPirAttr(arg_dist));
+      for (auto& arg_dist : spmd_info.first) {
+        dist_operand_attrs.push_back(dialect::CvtToPirAttr(arg_dist));
       }
       auto op_dist_attr = dialect::OperationDistAttribute::get(
-          ctx,
-          op_mesh,
-          dist_operand_attrs,
-          dist_result_attrs
-      );
+          ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
       std::ostringstream print_stream;
-      print_stream << op_dist_attr; 
-      VLOG(7) << "Custom Op: " << pir_op_name << " InferSPMD Operator dist attr: " << print_stream.str();
-      argument.AddAttribute(kAttrOpDistAttr, dialect::OperationDistAttribute::get(
-          ctx,
-          op_mesh,
-          dist_operand_attrs,
-          dist_result_attrs
-      ));
+      print_stream << op_dist_attr;
+      VLOG(7) << "Custom Op: " << pir_op_name
+              << " InferSPMD Operator dist attr: " << print_stream.str();
+      argument.AddAttribute(
+          kAttrOpDistAttr,
+          dialect::OperationDistAttribute::get(
+              ctx, op_mesh, dist_operand_attrs, dist_result_attrs));
     }
     // Build Operation
     std::vector<pir::Value> op_results;
