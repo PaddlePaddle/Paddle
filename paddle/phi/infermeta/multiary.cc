@@ -5444,8 +5444,8 @@ void WarprnntInferMeta(const MetaTensor& input,
                        float fastemit_lambda,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad) {
-  auto acts_dims = input.dims();
-  int D = static_cast<int>(acts_dims[3]);
+  auto input_dims = input.dims();
+  int D = static_cast<int>(input_dims[3]);
 
   PADDLE_ENFORCE_GE(
       blank,
@@ -5462,8 +5462,10 @@ void WarprnntInferMeta(const MetaTensor& input,
           "but received %d",
           blank));
 
-  loss->set_dims({-1});
+  loss->set_dims({input_dims[0]});
   loss->set_dtype(input.dtype());
+  warpctcgrad->set_dims(input_dims);
+  warpctcgrad->set_dtype(input.dtype());
 }
 
 void WeightOnlyLinearInferMeta(const MetaTensor& x,
