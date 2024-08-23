@@ -169,6 +169,7 @@
     param : [input, output_shape, align_corners]
     data_type : input
   backward : affine_grid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -548,6 +549,7 @@
   kernel:
     func: bincount
   optional: weights
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : binomial
   args : (Tensor count, Tensor prob)
@@ -1257,7 +1259,7 @@
     data_type : x
   optional : mask
   backward : deformable_conv_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depend
   args: (Tensor x, Tensor[] dep)
@@ -1384,6 +1386,7 @@
   kernel :
     func : diag
   backward : diag_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : diag_embed
   args : (Tensor input, int offset = 0, int dim1 = -2, int dim2 = -1)
@@ -1455,6 +1458,7 @@
     func : dot
     data_type : x
   backward : dot_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dpsgd
   args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
@@ -4427,7 +4431,7 @@
   optional: key_padding_mask, attn_mask
   intermediate: sparse_dot_sdd, softmax
   backward: sparse_attention_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : spectral_norm
   args : (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps = 1e-12f)
@@ -5059,7 +5063,7 @@
   optional : logits_length, labels_length
   intermediate : warpctcgrad
   backward : warpctc_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : warprnnt
   args : (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0)

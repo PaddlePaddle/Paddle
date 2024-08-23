@@ -7,7 +7,7 @@
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
+// distributed under the License is distributed on an "AS IS" BASIS,affine
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
@@ -84,13 +84,6 @@ std::vector<symbol::DimExpr> GetRealPadding(
   UpdataPadding();
   return real_padding;
 }
-
-// bool AffineGridOpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   // pass
-//   return true;
-// }
 
 symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
     pir::Operation *op,
@@ -227,6 +220,60 @@ symbol::ShapeOrDataDimExprs Pool2dRawInferSymbolicShape(
 
 namespace paddle::dialect {
 using paddle::dialect::details::CreateShapeOrDataForXShape;
+
+bool AffineGridOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> input_dims = input_shape_or_data.shape();
+
+  const auto &attributes = op->attributes();
+  int output_shape_size;
+  std::vector<symbol::DimExpr> output_shape_data;
+  if (attributes.find("output_shape") != attributes.end()) {
+    std::vector<int64_t> output_shape =
+        op->attribute<paddle::dialect::IntArrayAttribute>("output_shape")
+            .data()
+            .GetData();
+    output_shape_size = output_shape.size();
+    for (const auto &i : output_shape) {
+      output_shape_data.push_back(symbol::DimExpr{i});
+    }
+  } else if (op->operand_source(1)) {
+    const auto &output_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+    output_shape_data = details::GetOrCreateExprVecFromData(
+        output_shape_or_data, infer_context);
+    output_shape_size = output_shape_data.size();
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The input arguments must have the shape of output, please check!"));
+  }
+
+  std::vector<symbol::DimExpr> output_dims;
+  output_dims.push_back(input_dims[0]);  // N
+
+  if (output_shape_size == 4) {
+    // N * H * W * 2
+    output_dims.push_back(output_shape_data[2]);  // H
+    output_dims.push_back(output_shape_data[3]);  // W
+    output_dims.push_back(symbol::DimExpr(2));    // 2
+  } else {
+    // N * D * H * W * 3
+    output_dims.push_back(output_shape_data[2]);  // D
+    output_dims.push_back(output_shape_data[3]);  // H
+    output_dims.push_back(output_shape_data[4]);  // W
+    output_dims.push_back(symbol::DimExpr(3));    // 3
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_dims)});
+
+  return true;
+}
 
 bool AllOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
@@ -625,12 +672,53 @@ bool DecodeJpegOpInferSymbolicShape(
   return true;
 }
 
-// bool DiagOpInferSymbolicShape(pir::Operation *op,
-//                               pir::InferSymbolicShapeContext *infer_context)
-//                               {
-//   // pass
-//   return true;
-// }
+bool DiagOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto x_shape = x_shape_or_data.shape();
+  const int offset_data = op->attribute<pir::Int32Attribute>("offset").data();
+  auto offset = symbol::DimExpr(offset_data);
+
+  if (x_shape.size() <= 1) {
+    symbol::DimExpr size_ =
+        (x_shape.size() == 1UL ? x_shape[0] : symbol::DimExpr(1)) +
+        symbol::DimExpr(std::abs(offset_data));
+    infer_context->SetShapeOrDataForValue(
+        op->result(0), symbol::TensorShapeOrDataDimExprs({size_, size_}));
+  } else if (x_shape.size() == 2UL) {
+    if (x_shape[0].isa<int64_t>() && x_shape[1].isa<int64_t>()) {
+      int64_t size_ = 0;
+      if (offset_data >= 0) {
+        if (x_shape[0].dyn_cast<int64_t>() >
+            x_shape[1].dyn_cast<int64_t>() - offset_data) {
+          size_ = x_shape[0].dyn_cast<int64_t>();
+        } else {
+          size_ = x_shape[1].dyn_cast<int64_t>() - offset_data;
+        }
+      } else {
+        if (x_shape[0].dyn_cast<int64_t>() + offset_data <
+            x_shape[1].dyn_cast<int64_t>()) {
+          size_ = x_shape[0].dyn_cast<int64_t>() + offset_data;
+        } else {
+          size_ = x_shape[1].dyn_cast<int64_t>();
+        }
+      }
+      infer_context->SetShapeOrDataForValue(
+          op->result(0), symbol::TensorShapeOrDataDimExprs({size_}));
+    } else {
+      symbol::DimExpr out_unknown =
+          infer_context->GetNextSymName();  // unknown until runtime
+      infer_context->SetShapeOrDataForValue(
+          op->result(0), symbol::TensorShapeOrDataDimExprs({out_unknown}));
+    }
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "diag only support 1D/2D matrix, but input has %u dims",
+        x_shape.size()));
+  }
+  return true;
+}
 
 bool DiagEmbedOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -1827,28 +1915,25 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const auto &num_classes_shape_or_date =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   const auto &attributes = op->attributes();
   int64_t num_classes;
-  if (op->operand_source(1)) {
-    const auto &num_classes_shape_or_date =
-        infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    if (attributes.find("num_classes") != attributes.end()) {
-      num_classes = op->attribute<pir::Int64Attribute>("num_classes").data();
-    } else if (num_classes_shape_or_date.data().has_value()) {
-      num_classes =
-          num_classes_shape_or_date.data().value().at(0).Get<int64_t>();
-    } else {
-      PADDLE_ENFORCE_EQ(!num_classes_shape_or_date.data().has_value(),
-                        true,
-                        common::errors::InvalidArgument(
-                            "The depth should have data! Please check."));
-    }
+  symbol::DimExpr num_classes_expr;
+
+  if (attributes.find("num_classes") != attributes.end()) {
+    num_classes = op->attribute<pir::Int64Attribute>("num_classes").data();
+    num_classes_expr = symbol::DimExpr(num_classes);
+  } else if (num_classes_shape_or_date.data().has_value()) {
+    num_classes_expr = num_classes_shape_or_date.data().value().at(0);
+  } else {
+    num_classes_expr = infer_context->GetNextSymName();
   }
 
   const std::vector<symbol::DimExpr> &out_shape = [&] {
     std::vector<symbol::DimExpr> out_shape = x_shape;
-    out_shape.push_back(symbol::DimExpr(num_classes));
+    out_shape.push_back(num_classes_expr);
     return out_shape;
   }();
 

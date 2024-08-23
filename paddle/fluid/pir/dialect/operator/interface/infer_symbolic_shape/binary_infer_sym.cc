@@ -234,12 +234,42 @@ bool Binomial_OpInferSymbolicShape(
   return BinomialOpInferSymbolicShape(op, infer_context);
 }
 
-// bool BincountOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+bool BincountOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The 'shape' of Input(X) must be 1-D tensor. But the "
+                        "dimension of Input(X) is [%d]",
+                        x_dims.size()));
+
+  if (op->operand_source(1)) {
+    const auto &weights_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    const std::vector<symbol::DimExpr> &weights_dims =
+        weights_shape_or_data.shape();
+
+    PADDLE_ENFORCE_EQ(weights_dims.size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "The 'shape' of Input(Weights) must be 1-D tensor. "
+                          "But the dimension of Input(Weights) is [%d]",
+                          weights_dims.size()));
+    infer_context->AddEqualCstr(weights_dims[0], x_dims[0]);
+  }
+
+  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
+  const std::vector<symbol::DimExpr> out_dims = {out_unknown};
+  symbol::ShapeOrDataDimExprs output_dims{
+      symbol::TensorShapeOrDataDimExprs(out_dims)};
+  infer_context->SetShapeOrDataForValue(op->result(0), output_dims);
+
+  return true;
+}
 
 // bool BmmOpInferSymbolicShape(pir::Operation *op,
 //                              pir::InferSymbolicShapeContext *infer_context) {
@@ -428,11 +458,41 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-// bool DotOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool DotOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  auto x_shape = x_shape_or_data.shape();
+  const size_t x_rank = x_shape.size();
+  PADDLE_ENFORCE_EQ(
+      1 == x_rank || 2 == x_rank,
+      true,
+      common::errors::InvalidArgument(
+          "ShapeError: The dimensions of input tensor X (%u) should be 1 or 2",
+          x_rank));
+
+  const auto y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto y_shape = y_shape_or_data.shape();
+  auto y_rank = y_shape.size();
+  PADDLE_ENFORCE_EQ(x_rank == y_rank,
+                    true,
+                    common::errors::InvalidArgument(
+                        "ShapeError: The rank of input tensor Y (%u) must "
+                        "match that of input tensor X(%u).",
+                        y_rank,
+                        x_rank));
+  for (size_t i = 0; i < x_rank; ++i) {
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+  }
+  // Dot OP require both inputs should have the same shape
+
+  x_shape.erase(x_shape.end() - 1);
+  auto output_shape =
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
+  return true;
+}
 
 bool DropoutOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -1444,7 +1504,7 @@ bool Unpool3dOpInferSymbolicShape(
       details::GetVectorAttr<int>(op, "output_size");
 
   std::vector<symbol::DimExpr> output_shape = {x_shape[0], x_shape[1]};
-  for (int i = 0; i < static_cast<int>(ksize.size()); ++i) {
+  for (size_t i = 0; i < ksize.size(); ++i) {
     output_shape.emplace_back(symbol::DimExpr(output_size[i]));
   }
 
