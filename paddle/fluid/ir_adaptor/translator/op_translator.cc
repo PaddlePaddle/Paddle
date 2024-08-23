@@ -1052,7 +1052,7 @@ struct BatchNormOpTranscriber : public OpTranscriber {
 
 struct CastOpTranscriber : public OpTranscriber {
   pir::AttributeMap TranslateOpAttribute(
-      pir::IrContext*,
+      pir::IrContext* ctx,
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
@@ -1071,6 +1071,12 @@ struct CastOpTranscriber : public OpTranscriber {
     pir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
     attribute_map[info.name] = new_attr;
 
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.HasAttr("mkldnn_data_type")) {  // NOLINT
+      attribute_map["mkldnn_data_type"] = pir::StrAttribute::get(
+          ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"));
+    }
+#endif
     return attribute_map;
   }
 };
