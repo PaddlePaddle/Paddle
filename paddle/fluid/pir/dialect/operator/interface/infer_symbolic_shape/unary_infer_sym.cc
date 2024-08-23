@@ -1680,7 +1680,11 @@ bool MultinomialOpInferSymbolicShape(
         op->attribute<paddle::dialect::ScalarAttribute>("num_samples").data();
     out_dims[x_rank - 1] = symbol::DimExpr(int_num_samples.to<int64_t>());
   } else if (op->operand_source(1)) {
-    out_dims[x_rank - 1] = symbol::DimExpr(infer_context->GetNextSymName());
+    const auto &num_samples_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    const auto &data_vec = details::GetOrCreateExprVecFromData(
+        num_samples_shape_or_data, infer_context);
+    out_dims[x_rank - 1] = data_vec[0];
   }
 
   infer_context->SetShapeOrDataForValue(
