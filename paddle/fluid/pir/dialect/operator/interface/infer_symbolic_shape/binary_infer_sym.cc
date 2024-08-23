@@ -865,10 +865,6 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
   const auto &y_shape = y_shape_or_data.shape();
   size_t ndim_x = x_shape.size();
   size_t ndim_y = y_shape.size();
-  const symbol::DimExpr m = x_shape[ndim_x - 2];
-  const symbol::DimExpr n = x_shape[ndim_x - 1];
-  const symbol::DimExpr nrhs = y_shape[ndim_x - 1];
-
   PADDLE_ENFORCE_GE(ndim_x,
                     2,
                     common::errors::InvalidArgument(
@@ -881,6 +877,9 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
                         "Expects input tensor y to be not less than "
                         "2 dimensions, but got dimension %d",
                         ndim_y));
+  const symbol::DimExpr m = x_shape[ndim_x - 2];
+  const symbol::DimExpr n = x_shape[ndim_x - 1];
+  const symbol::DimExpr nrhs = y_shape[ndim_x - 1];
 
   PADDLE_ENFORCE_EQ(
       ndim_x,
@@ -920,6 +919,13 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
       infer_context->SetShapeOrDataForValue(op->result(1),
                                             residuals_batch_shape_or_data);
     }
+  } else {
+      symbol::DimExpr out_shape =
+        infer_context->GetNextSymName();
+      symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
+          symbol::TensorShapeOrDataDimExprs({out_shape})};
+      infer_context->SetShapeOrDataForValue(op->result(1),
+                                            residuals_batch_shape_or_data);
   }
 
   batch_dims.emplace_back(builder.Min(m, n));
