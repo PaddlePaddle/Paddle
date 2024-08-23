@@ -86,6 +86,7 @@ USE_PIR_PASS(cpu_bfloat16_pass);
 #endif
 
 #ifdef PADDLE_WITH_XPU
+USE_PIR_PASS(add_activation_xpu_fuse_pass);
 USE_PIR_PASS(add_layernorm_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_bn_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_add_xpu_fuse_pass);
