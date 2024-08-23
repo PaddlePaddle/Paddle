@@ -2449,12 +2449,43 @@ bool ViterbiDecodeOpInferSymbolicShape(
   return true;
 }
 
-// bool WarpctcOpInferSymbolicShape(pir::Operation *op,
-//                                  pir::InferSymbolicShapeContext
-//                                  *infer_context) {
-//   // pass
-//   return true;
-// }
+bool WarpctcOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &logits_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &logits_shape =
+      logits_shape_or_data.shape();
+
+  symbol::DimExpr max_sequence_length, num_sequences;
+  symbol::DimExpr sequence_width = symbol::DimExpr(1);
+
+  if (op->operand_source(2) && op->operand_source(3)) {
+    max_sequence_length = logits_shape[0];
+    num_sequences = logits_shape[1];
+    sequence_width = logits_shape[2];
+  } else {
+    max_sequence_length = infer_context->GetNextSymName();
+    num_sequences = infer_context->GetNextSymName();
+    for (size_t i = 1; i < logits_shape.size(); ++i) {
+      sequence_width = sequence_width * logits_shape[i];
+    }
+  }
+
+  std::vector<symbol::DimExpr> loss_shape = {num_sequences, symbol::DimExpr(1)};
+  std::vector<symbol::DimExpr> warpctcgrad_shape = {
+      max_sequence_length, num_sequences, sequence_width};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(loss_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(warpctcgrad_shape)});
+
+  return true;
+}
 
 bool WarprnntOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

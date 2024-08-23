@@ -1474,7 +1474,7 @@ bool Unpool3dOpInferSymbolicShape(
       details::GetVectorAttr<int>(op, "output_size");
 
   std::vector<symbol::DimExpr> output_shape = {x_shape[0], x_shape[1]};
-  for (int i = 0; i < static_cast<int>(ksize.size()); ++i) {
+  for (size_t i = 0; i < ksize.size(); ++i) {
     output_shape.emplace_back(symbol::DimExpr(output_size[i]));
   }
 
