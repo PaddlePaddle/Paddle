@@ -1369,7 +1369,9 @@ bool GraphKhopSamplerOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs({out_unknown_2})});
   infer_context->SetShapeOrDataForValue(
-      op->result(3), symbol::TensorShapeOrDataDimExprs{x_shape});
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({x_shape[0]})});
 
   return true;
 }
