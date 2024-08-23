@@ -174,6 +174,7 @@ def log(x: str, name: str | None = None) -> Tensor:
         .. code-block:: python
 
             >>> import paddle
+            >>> adfasdf
 
             >>> x = [[2, 3, 4], [7, 8, 9]]
             >>> x = paddle.to_tensor(x, dtype='float32')
