@@ -27,6 +27,9 @@ from .impls.core import *  # noqa: F403
 from .register import converter_registry
 from .util import map_dtype
 
+version = trt.__version__
+version_list = list(map(int, version.split('.')))
+
 
 def get_cache_path():
     home_path = os.path.expanduser("~")
@@ -232,7 +235,11 @@ class PaddleToTensorRTConverter:
 
         config = builder.create_builder_config()
         config.add_optimization_profile(profile)
-        config.builder_optimization_level = 5
+
+        if version_list[0] > 8 or (
+            version_list[0] == 8 and version_list[1] >= 6
+        ):
+            config.builder_optimization_level = 5
         config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
         trt_engine = builder.build_engine(network, config)
         trt_params = paddle.base.libpaddle.TRTEngineParams()

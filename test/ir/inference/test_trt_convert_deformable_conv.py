@@ -64,7 +64,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             kernel_sizes: list[int],
             attrs: list[dict[str, Any]],
         ):
-            return np.random.random([batch, 3] + input_size).astype(np.float32)
+            return np.random.random([batch, 3, *input_size]).astype(np.float32)
 
         def generate_offset1(
             batch: int,
@@ -74,7 +74,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         ):
             output_size = compute_output_size(input_size, kernel_sizes, attrs)
             return np.random.random(
-                [batch, 2 * np.prod(kernel_sizes)] + output_size
+                [batch, 2 * np.prod(kernel_sizes), *output_size]
             ).astype(np.float32)
 
         def generate_mask1(
@@ -85,7 +85,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         ):
             output_size = compute_output_size(input_size, kernel_sizes, attrs)
             return np.random.random(
-                [batch, np.prod(kernel_sizes)] + output_size
+                [batch, np.prod(kernel_sizes), *output_size]
             ).astype(np.float32)
 
         def generate_filter1(
@@ -94,7 +94,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             kernel_sizes: list[int],
             attrs: list[dict[str, Any]],
         ):
-            filter = np.random.random([6, 3] + kernel_sizes)
+            filter = np.random.random([6, 3, *kernel_sizes])
             filter[0][0][0][0] = 8.8978638e-08
             return filter.astype(np.float32)
 

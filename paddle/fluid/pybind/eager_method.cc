@@ -141,11 +141,11 @@ Examples:
     .. code-block:: python
 
         >>> import paddle
-
-        >>> data = paddle.uniform([30, 10, 32], dtype="float32", min=-1, max=1)
-        >>> linear = paddle.nn.Linear(32, 64)
-        >>> data = paddle.to_tensor(data)
-        >>> x = linear(data)
+        >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
+                                  [4.0, 5.0, 6.0]])
+        >>> x.numpy()
+        array([[1., 2., 3.],
+               [4., 5., 6.]], dtype=float32)
 )DOC");
 
 static PyObject* tensor_method_numpy(TensorObject* self,

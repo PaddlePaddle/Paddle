@@ -1129,6 +1129,7 @@ void EmbeddingGradSparseInferMeta(const MetaTensor& x,
       out->set_dtype(x.dtype());
     } else {
       out->share_dims(weight);
+      out->set_dtype(weight.dtype());
     }
   }
 }
@@ -2474,8 +2475,7 @@ void LUInferMeta(const MetaTensor& x,
       infos,
       common::errors::InvalidArgument("Output(Infos) should not be nullptr."));
   if (x_rank == 2) {
-    auto Infos_dim = std::vector<int>(1);
-    infos->set_dims(common::make_ddim(Infos_dim));
+    infos->set_dims(common::make_ddim({}));
   } else {
     auto Infos_dim =
         std::vector<int>(dims_vec.begin(), dims_vec.begin() + x_rank - 2);
