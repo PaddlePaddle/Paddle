@@ -1315,11 +1315,11 @@ bool GraphKhopSamplerOpInferSymbolicShape(
   auto eids_shape = eids_shape_or_data.shape();
 
   if (row_shape.size() == 2)
-    context->AddEqualCstr(row_shape[1], symbol::DimExpr(1));
+    infer_context->AddEqualCstr(row_shape[1], symbol::DimExpr(1));
   if (col_ptr_shape.size() == 2)
-    context->AddEqualCstr(col_ptr_shape[1], symbol::DimExpr(1));
+    infer_context->AddEqualCstr(col_ptr_shape[1], symbol::DimExpr(1));
   if (x_shape.size() == 2)
-    context->AddEqualCstr(x_shape[1], symbol::DimExpr(1));
+    infer_context->AddEqualCstr(x_shape[1], symbol::DimExpr(1));
 
   std::vector<int> sample_sizes =
       paddle::dialect::details::GetVectorAttr<int>(op, "sample_sizes");
@@ -1333,7 +1333,7 @@ bool GraphKhopSamplerOpInferSymbolicShape(
   bool return_eids = op->attribute<pir::BoolAttribute>("return_eids").data();
   if (return_eids) {
     if (eids_shape.size() == 2)
-      context->AddEqualCstr(eids_shape[1], symbol::DimExpr(1));
+      infer_context->AddEqualCstr(eids_shape[1], symbol::DimExpr(1));
     symbol::DimExpr out_unknown_4 = infer_context->GetNextSymName();
     infer_context->SetShapeOrDataForValue(
         op->result(4),
@@ -1358,7 +1358,7 @@ bool GraphKhopSamplerOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs({out_unknown_2})});
   infer_context->SetShapeOrDataForValue(
-      op->result(3), symbol::TensorShapeOrDataDimExprs{x_shape.shape()});
+      op->result(3), symbol::TensorShapeOrDataDimExprs{x_shape});
 
   return true;
 }
