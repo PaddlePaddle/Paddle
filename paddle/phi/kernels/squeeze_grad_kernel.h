@@ -22,14 +22,14 @@ namespace phi {
 
 template <typename T, typename Context>
 void SqueezeGradKernel(const Context& dev_ctx,
-                       const DenseTensor& xshape,
+                       const DenseTensor& x,
                        const DenseTensor& dout,
                        const IntArray& axes,
                        DenseTensor* dx);
 
 template <typename Context>
 void SqueezeGradStridedKernel(const Context& dev_ctx,
-                              const DenseTensor& xshape,
+                              const DenseTensor& x,
                               const DenseTensor& dout,
                               const IntArray& axes,
                               DenseTensor* dx);
