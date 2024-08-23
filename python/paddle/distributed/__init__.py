@@ -35,7 +35,7 @@ from .auto_parallel.api import (
     ShardingStage3,
     Strategy,
     dtensor_from_fn,
-    in_auto_parallel_align_mode,
+    in_auto_parallel_align_mode,  # noqa: F401
     reshard,
     shard_dataloader,
     shard_layer,
@@ -113,7 +113,6 @@ from .spawn import spawn
 
 __all__ = [
     "io",
-    "in_auto_parallel_align_mode",
     "spawn",
     "launch",
     "scatter",
