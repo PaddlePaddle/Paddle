@@ -428,11 +428,41 @@ bool CrossOpInferSymbolicShape(pir::Operation *op,
 //   return true;
 // }
 
-// bool DotOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool DotOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  auto x_shape = x_shape_or_data.shape();
+  const size_t x_rank = x_shape.size();
+  PADDLE_ENFORCE_EQ(
+      1 == x_rank || 2 == x_rank,
+      true,
+      common::errors::InvalidArgument(
+          "ShapeError: The dimensions of input tensor X (%u) should be 1 or 2",
+          x_rank));
+
+  const auto y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto y_shape = y_shape_or_data.shape();
+  auto y_rank = y_shape.size();
+  PADDLE_ENFORCE_EQ(x_rank == y_rank,
+                    true,
+                    common::errors::InvalidArgument(
+                        "ShapeError: The rank of input tensor Y (%u) must "
+                        "match that of input tensor X(%u).",
+                        y_rank,
+                        x_rank));
+  for (size_t i = 0; i < x_rank; ++i) {
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+  }
+  // Dot OP require both inputs should have the same shape
+
+  x_shape.erase(x_shape.end() - 1);
+  auto output_shape =
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)};
+  infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
+  return true;
+}
 
 bool DropoutOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
