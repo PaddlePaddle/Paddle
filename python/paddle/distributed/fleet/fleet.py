@@ -18,9 +18,9 @@ from typing import (
     Any,
     Iterable,
     Literal,
-    Self,
     Sequence,
     TypedDict,
+    TypeVar,
 )
 
 if TYPE_CHECKING:
@@ -54,6 +54,7 @@ if TYPE_CHECKING:
         mode: int
         table_id: int
 
+    Self = TypeVar("Self", bound="Fleet")
 
 import copy
 import os
