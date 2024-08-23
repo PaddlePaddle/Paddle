@@ -112,8 +112,9 @@ def magic_method_builtin_dispatch(fn: BinaryOp | UnaryOp) -> list[MagicMethod]:
             fn
         ]
         return [
-            MagicMethod(inplace_magic_name, is_inplace=True)
-        ] + magic_method_builtin_dispatch(non_inplace_op)
+            MagicMethod(inplace_magic_name, is_inplace=True),
+            *magic_method_builtin_dispatch(non_inplace_op),
+        ]
     elif fn in NON_INPLACE_BINARY_OPS:
         magic_name, reverse_magic_name = NON_INPLACE_BINARY_OPS_TO_MAGIC_NAMES[
             fn

@@ -28,17 +28,17 @@ limitations under the License. */
 #endif
 
 #include "paddle/common/flags.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
-#include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/profiler/mem_tracing.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
+#include "paddle/phi/core/platform/profiler/mem_tracing.h"
 
 COMMON_DECLARE_bool(use_pinned_memory);
 COMMON_DECLARE_bool(custom_device_mem_record);
@@ -95,7 +95,7 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
 
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
   platform::RecordMemEvent(
-      p, CPUPlace(), size, platform::TracerMemEventType::ReservedAllocate);
+      p, CPUPlace(), size, phi::TracerMemEventType::ReservedAllocate);
   return p;
 }
 
@@ -109,7 +109,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
   }
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
   platform::RecordMemEvent(
-      p, CPUPlace(), size, platform::TracerMemEventType::ReservedFree);
+      p, CPUPlace(), size, phi::TracerMemEventType::ReservedFree);
 #ifdef _WIN32
   _aligned_free(p);
 #else
@@ -225,7 +225,7 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
     cuda_pinnd_alloc_size_ += size;
     HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
     platform::RecordMemEvent(
-        p, CPUPlace(), size, platform::TracerMemEventType::ReservedAllocate);
+        p, CPUPlace(), size, phi::TracerMemEventType::ReservedAllocate);
     return p;
   } else {
     LOG(WARNING) << "cudaHostAlloc failed.";
@@ -278,7 +278,7 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
 #endif
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, -size);
   platform::RecordMemEvent(
-      p, CPUPlace(), size, platform::TracerMemEventType::ReservedFree);
+      p, CPUPlace(), size, phi::TracerMemEventType::ReservedFree);
 }
 
 bool CUDAPinnedAllocator::UseGpu() const { return false; }
@@ -300,7 +300,7 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
     if (FLAGS_custom_device_mem_record) {
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
       platform::RecordMemEvent(
-          p, place, size, platform::TracerMemEventType::ReservedAllocate);
+          p, place, size, phi::TracerMemEventType::ReservedAllocate);
     }
   } else {
     size_t avail, total;
@@ -339,7 +339,7 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
   if (FLAGS_custom_device_mem_record) {
     DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
     platform::RecordMemEvent(
-        p, place, size, platform::TracerMemEventType::ReservedFree);
+        p, place, size, phi::TracerMemEventType::ReservedFree);
   }
 }
 

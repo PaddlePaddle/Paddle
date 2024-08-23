@@ -124,12 +124,12 @@ void ThrowWarnInternal(const std::string& message);
     }                                                              \
   } while (0)
 #else
-#define PADDLE_ENFORCE(COND, ...)                               \
-  do {                                                          \
-    auto __cond__ = (COND);                                     \
-    if (UNLIKELY(::phi::is_error(__cond__))) {                  \
-      __THROW_ERROR_INTERNAL__(phi::ErrorSummary(__VA_ARGS__)); \
-    }                                                           \
+#define PADDLE_ENFORCE(COND, ...)                                    \
+  do {                                                               \
+    auto __cond__ = (COND);                                          \
+    if (UNLIKELY(::phi::is_error(__cond__))) {                       \
+      __THROW_ERROR_INTERNAL__(::common::ErrorSummary(__VA_ARGS__)); \
+    }                                                                \
   } while (0)
 #endif
 
@@ -150,7 +150,7 @@ void ThrowWarnInternal(const std::string& message);
 #define PADDLE_WARN_NOT_NULL(__VAL, ...)                         \
   do {                                                           \
     if (UNLIKELY(nullptr == (__VAL))) {                          \
-      auto __summary__ = phi::ErrorSummary(__VA_ARGS__);         \
+      auto __summary__ = ::common::ErrorSummary(__VA_ARGS__);    \
       auto __message__ = ::paddle::string::Sprintf(              \
           "%s\n  [Hint: " #__VAL " should not be null.]",        \
           __summary__.error_message());                          \
@@ -208,7 +208,7 @@ void ThrowWarnInternal(const std::string& message);
           "%s\n  [Hint: pointer " #__PTR " should not be null.]",       \
           __summary__.error_message());                                 \
       __THROW_ERROR_INTERNAL__(                                         \
-          phi::ErrorSummary(__summary__.code(), __message__));          \
+          ::common::ErrorSummary(__summary__.code(), __message__));     \
     }                                                                   \
     return *__ptr;                                                      \
   })())

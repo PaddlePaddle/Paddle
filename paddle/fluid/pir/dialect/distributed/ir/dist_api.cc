@@ -63,7 +63,7 @@ pir::Value reshard(const pir::Value& x,
   return reshard_op.result(0);
 }
 
-std::vector<pir::Value> local_tensors_from_dist(
+std::vector<pir::Value> moe_sub_mesh_tensors(
     const pir::Value& input,
     const std::vector<phi::distributed::ProcessMesh>& local_mesh_list,
     const std::vector<int64_t>& local_dims_mapping,
@@ -80,12 +80,12 @@ std::vector<pir::Value> local_tensors_from_dist(
   TensorDistAttribute global_dist_attr = TensorDistAttribute::get(
       ctx, global_mesh, global_dims_mapping, global_partial_status);
 
-  auto op = ApiBuilder::Instance().GetBuilder()->Build<LocalTensorsFromDistOp>(
+  auto op = ApiBuilder::Instance().GetBuilder()->Build<MoESubMeshTensorsOp>(
       input, local_dist_attrs, global_dist_attr);
   return op.results();
 }
 
-pir::Value dist_tensor_from_locals(
+pir::Value moe_global_mesh_tensor(
     const std::vector<pir::Value>& inputs,
     const std::vector<phi::distributed::ProcessMesh>& local_mesh_list,
     const std::vector<int64_t>& local_dims_mapping,
@@ -107,7 +107,7 @@ pir::Value dist_tensor_from_locals(
 
   phi::DDim global_ddim = phi::make_ddim(global_shape);
 
-  auto op = ApiBuilder::Instance().GetBuilder()->Build<DistTensorFromLocalsOp>(
+  auto op = ApiBuilder::Instance().GetBuilder()->Build<MoEGlobalMeshTensorOp>(
       inputs, local_dist_attrs, global_dist_attr, global_ddim);
   return op.result(0);
 }

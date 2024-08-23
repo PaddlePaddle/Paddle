@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import numbers
 import warnings
-from typing import OrderedDict, Sequence
+from collections import OrderedDict
+from typing import TYPE_CHECKING
 
 import numpy as np
 from typing_extensions import TypedDict
@@ -25,6 +26,9 @@ import paddle
 from paddle import Tensor, nn
 from paddle.autograd import no_grad
 from paddle.static import InputSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 __all__ = []
 

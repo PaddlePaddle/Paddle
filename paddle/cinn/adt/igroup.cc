@@ -32,7 +32,7 @@ std::shared_ptr<IndexExprInferContext> MakeIndexExprInferContext(
             .emplace(anchor_iterators->at(i), anchor_iterators->at(i))
             .second,
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The element in anchor iterators failed to insert in anchor "
             "iterator2value! Please check."));
   }

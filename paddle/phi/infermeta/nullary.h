@@ -42,6 +42,8 @@ void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out);
 
+void CommInitAllInferMeta(const std::vector<int>& devices, int ring_id);
+
 void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
                              DataType dtype,
                              MetaTensor* out);
@@ -85,7 +87,6 @@ void PartialRecvInferMeta(int ring_id,
                           int peer,
                           DataType dtype,
                           const std::vector<int>& out_shape,
-                          bool use_calc_stream,
                           int num,
                           int id,
                           MetaTensor* out);

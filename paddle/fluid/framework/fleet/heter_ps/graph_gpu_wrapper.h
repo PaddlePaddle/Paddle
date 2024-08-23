@@ -29,8 +29,8 @@
 #include <thrust/shuffle.h>
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/dynload/nccl.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_GLOO

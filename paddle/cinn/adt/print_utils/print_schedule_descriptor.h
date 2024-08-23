@@ -15,7 +15,7 @@
 #pragma once
 
 #include <string>
-
+#include "paddle/common/enforce.h"
 namespace cinn::adt {
 
 class LoopDescriptor;

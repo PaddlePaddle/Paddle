@@ -113,7 +113,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
     paddle.seed(123)
     with base.program_guard(train_program, startup_prog):
         images = paddle.static.data(
-            name='pixel', shape=[-1] + data_shape, dtype='float32'
+            name='pixel', shape=[-1, *data_shape], dtype='float32'
         )
         label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
         net = resnet_cifar10(images)

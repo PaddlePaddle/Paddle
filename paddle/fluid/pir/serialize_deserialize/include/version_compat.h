@@ -21,6 +21,7 @@
 #include "paddle/pir/include/core/dll_decl.h"
 
 namespace pir {
+/* PatchBuilder is used to build patch for IR. */
 class PatchBuilder {
  public:
   PatchBuilder() {}
@@ -33,10 +34,14 @@ class PatchBuilder {
   PatchBuilder& operator=(PatchBuilder&&);
 
   void IR_API BuildPatch(const std::string& path);
+  /* If file_version != pir_vefrsion, set file_version for finding patch yamls.
+   */
+  void SetFileVersion(const uint64_t version) { file_version_ = version; }
   bool HasOpPatch(const std::string& name) const {
     return op_patches_.count(name) != 0;
   }
   bool HasTypePatch(const std::string& name) const {
+    VLOG(8) << "Type patches: " << type_patches_;
     return type_patches_.count(name) != 0;
   }
   bool HasAttrPatch(const std::string& name) const {

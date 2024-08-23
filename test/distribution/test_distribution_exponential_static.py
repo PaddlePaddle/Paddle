@@ -230,11 +230,11 @@ class TestExponentialSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': () + np.squeeze(self.rate).shape,
+                'expect': tuple(np.squeeze(self.rate).shape),
             },
             {
                 'input': (4, 2),
-                'expect': (4, 2) + np.squeeze(self.rate).shape,
+                'expect': (4, 2, *np.squeeze(self.rate).shape),
             },
         ]
         for case in cases:
@@ -251,11 +251,11 @@ class TestExponentialSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': () + np.squeeze(self.rate).shape,
+                'expect': tuple(np.squeeze(self.rate).shape),
             },
             {
                 'input': (3, 2),
-                'expect': (3, 2) + np.squeeze(self.rate).shape,
+                'expect': (3, 2, *np.squeeze(self.rate).shape),
             },
         ]
         for case in cases:

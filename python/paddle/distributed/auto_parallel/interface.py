@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from functools import reduce
-from typing import List, Tuple
 
 import numpy as np
 
@@ -322,7 +322,7 @@ def set_mesh(mesh):
     _g_mesh = mesh
 
 
-def create_mesh(mesh_dims: List[Tuple[str, int]]):
+def create_mesh(mesh_dims: list[tuple[str, int]]):
     """
     Create a global process_mesh for auto parallel.
 

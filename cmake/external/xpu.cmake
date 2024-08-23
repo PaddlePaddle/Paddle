@@ -37,9 +37,12 @@ if(NOT DEFINED XPU_XRE_BASE_VERSION)
   set(XPU_XRE_BASE_VERSION "4.32.0.1")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "20240804")
+  set(XPU_XHPC_BASE_DATE "20240818")
 endif()
-set(XPU_XCCL_BASE_VERSION "1.2.5")
+set(XPU_XCCL_BASE_VERSION "1.2.9")
+if(NOT DEFINED XPU_XFT_BASE_VERSION)
+  set(XPU_XFT_BASE_VERSION "20230602")
+endif()
 set(XPU_XPTI_BASE_VERSION "0.0.1")
 
 set(XPU_XRE_BASE_URL
@@ -58,7 +61,7 @@ if(WITH_XPTI)
 endif()
 
 if(WITH_XPU_XRE5)
-  set(XPU_XRE_BASE_VERSION "5.0.11.1")
+  set(XPU_XRE_BASE_VERSION "5.0.15.1")
   set(XPU_XRE_BASE_URL
       "https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XPU_XRE_BASE_VERSION}"
   )

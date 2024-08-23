@@ -28,14 +28,14 @@ namespace ir {
 using attr_t = absl::variant<int, float, bool, std::string>;
 
 Expr operator<<(Expr a, Expr b) {
-  PADDLE_ENFORCE_EQ(
-      a.type().is_int() || a.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
-  PADDLE_ENFORCE_EQ(
-      b.type().is_int() || b.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(a.type().is_int() || a.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(b.type().is_int() || b.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
@@ -45,7 +45,7 @@ Expr operator<<(Expr a, Expr b) {
       PADDLE_ENFORCE_EQ(
           int_b->value >= 0 && int_b->value < t_a.bits(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "Shift amount must be non-negative and less than %d for type %s.",
               t_a.bits(),
               t_a));
@@ -59,14 +59,14 @@ Expr operator<<(Expr a, Expr b) {
 }
 
 Expr operator>>(Expr a, Expr b) {
-  PADDLE_ENFORCE_EQ(
-      a.type().is_int() || a.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
-  PADDLE_ENFORCE_EQ(
-      b.type().is_int() || b.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(a.type().is_int() || a.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(b.type().is_int() || b.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
@@ -76,7 +76,7 @@ Expr operator>>(Expr a, Expr b) {
       PADDLE_ENFORCE_EQ(
           int_b->value >= 0 && int_b->value < t_a.bits(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "Shift amount must be non-negative and less than %d for type %s.",
               t_a.bits(),
               t_a));
@@ -133,14 +133,14 @@ Expr BitwiseOrCall(const Target& target, Expr a, Expr b) {
 }
 
 Expr operator|(Expr a, Expr b) {
-  PADDLE_ENFORCE_EQ(
-      a.type().is_int() || a.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
-  PADDLE_ENFORCE_EQ(
-      b.type().is_int() || b.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(a.type().is_int() || a.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(b.type().is_int() || b.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
@@ -198,14 +198,14 @@ Expr BitwiseAndCall(const Target& target, Expr a, Expr b) {
 }
 
 Expr operator&(Expr a, Expr b) {
-  PADDLE_ENFORCE_EQ(
-      a.type().is_int() || a.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
-  PADDLE_ENFORCE_EQ(
-      b.type().is_int() || b.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(a.type().is_int() || a.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(b.type().is_int() || b.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
@@ -263,14 +263,14 @@ Expr BitwiseXorCall(const Target& target, Expr a, Expr b) {
 }
 
 Expr operator^(Expr a, Expr b) {
-  PADDLE_ENFORCE_EQ(
-      a.type().is_int() || a.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
-  PADDLE_ENFORCE_EQ(
-      b.type().is_int() || b.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(a.type().is_int() || a.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(b.type().is_int() || b.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
   auto int_a = a.As<IntImm>();
   auto int_b = b.As<IntImm>();
   Type t_a = a.type();
@@ -317,10 +317,10 @@ Expr BitwiseNotCall(const Target& target, Expr a) {
 }
 
 Expr operator~(Expr a) {
-  PADDLE_ENFORCE_EQ(
-      a.type().is_int() || a.type().is_uint(),
-      true,
-      phi::errors::InvalidArgument("The input's type should be int or uint."));
+  PADDLE_ENFORCE_EQ(a.type().is_int() || a.type().is_uint(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The input's type should be int or uint."));
   auto target = cinn::runtime::CurrentTarget::GetCurrentTarget();
   return BitwiseNotCall(target, a);
 }

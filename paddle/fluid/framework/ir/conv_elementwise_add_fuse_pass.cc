@@ -16,7 +16,7 @@
 #include "paddle/fluid/framework/ir/cutlass_teller.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
 namespace paddle {
