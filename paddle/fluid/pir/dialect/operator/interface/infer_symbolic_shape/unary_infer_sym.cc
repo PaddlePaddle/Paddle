@@ -357,11 +357,9 @@ bool AsRealOpInferSymbolicShape(pir::Operation *op,
 
 bool AssignOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
   return true;
 }
 
@@ -439,11 +437,19 @@ bool BipartiteMatchOpInferSymbolicShape(
 
 bool CastOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
+
+  if (x_shape_or_data.data().isa<int32_t> ||
+      x_shape_or_data.data().isa<int64_t>) {
+    infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  } else {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs(
+            symbol::TensorShapeOrDataDimExprs(x_shape)));
+  }
   return true;
 }
 
