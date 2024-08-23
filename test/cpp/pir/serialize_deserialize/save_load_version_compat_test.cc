@@ -57,3 +57,4 @@ TEST(save_load_version_compat, op_patch_test) {
   std::filesystem::path patch_path("/patch");
   VLOG(8) << "Patch path: " << patch_path;
   builder.BuildPatch(patch_path.string());
+}
