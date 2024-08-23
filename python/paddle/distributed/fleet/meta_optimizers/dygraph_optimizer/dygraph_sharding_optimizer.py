@@ -36,6 +36,10 @@ from ...utils.tensor_fusion_helper import (
     fused_parameters,
 )
 
+g_sharding_v2_check_zero_padding = int(
+    os.getenv("FLAGS_sharding_v2_check_zero_padding", "0")
+)
+
 
 def _is_trainable(param):
     return not param.stop_gradient
@@ -792,10 +796,23 @@ class DygraphShardingOptimizerV2:
                     for param in comm_buffer.params:
                         comm_buffer._copy_grad_to_buffer(param)
 
+            if g_sharding_v2_check_zero_padding:
+                self._check_padding_zero()
+
+            for comm_buffer in self._comm_buffer_list:
                 if not self.comm_overlap:
                     comm_buffer._comm_grads()
 
                 comm_buffer.scale_grads()
+
+    def _check_padding_zero(self):
+        for comm_buffer in self._comm_buffer_list:
+            for k, v in comm_buffer._sharding_param_grad_view.items():
+                pad_tensor = v._get_padding()
+                if pad_tensor is not None:
+                    assert paddle.all(
+                        pad_tensor == 0
+                    ).item(), f"The padding of Tensor {k} is not zero"
 
     def _forward_pre_hook_function(self, tasks):
         def __impl__(x, y):

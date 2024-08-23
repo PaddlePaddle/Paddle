@@ -799,7 +799,7 @@ class PipelineParallel(MetaParallelBase):
         return self.train_loss
 
     def _forward_step(self, input_tensor, micro_dataset, chunk_id=None):
-        sync_rotate_logger.info("Before forward_step")
+        sync_rotate_logger().info("Before forward_step")
         if self._enable_timer:
             self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
@@ -847,7 +847,7 @@ class PipelineParallel(MetaParallelBase):
             self.micro_batch_id += 1
         if self._enable_timer:
             self.timers("forward_step").stop()
-        sync_rotate_logger.info("After forward_step")
+        sync_rotate_logger().info("After forward_step")
         if self.is_pipeline_last_stage() and self._compute_loss:
             return backward_loss_tensor
         return output_tensor
@@ -855,7 +855,7 @@ class PipelineParallel(MetaParallelBase):
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
         if self._enable_timer:
             self.timers("backward_step").start()
-        sync_rotate_logger.info("Before backward_step")
+        sync_rotate_logger().info("Before backward_step")
         with paddle.amp.auto_cast(enable=False):
             if self.is_pipeline_last_stage():
                 assert output_tensor_grad is None
@@ -888,7 +888,7 @@ class PipelineParallel(MetaParallelBase):
             if self._enable_timer:
                 self.timers("backward_step").stop()
 
-            sync_rotate_logger.info("After backward_step")
+            sync_rotate_logger().info("After backward_step")
             return input_tensor_grad
 
     def _check_micro_batch_data_valid(self, micro_batch_data):
@@ -1232,7 +1232,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         static_scheduler=False,
         return_micro_batch_loss=False,
     ):
-        sync_rotate_logger.info("start forward_backward_pipeline")
+        sync_rotate_logger().info("start forward_backward_pipeline")
         # use interleave scheduling strategy.
         # this strategy is inspired by:
         # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
@@ -1781,7 +1781,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._p2p_helper.clear_meta_cache()
 
         self.timer_printer()
-        sync_rotate_logger.info("end forward_backward_pipeline")
+        sync_rotate_logger().info("end forward_backward_pipeline")
 
         return train_loss
 
