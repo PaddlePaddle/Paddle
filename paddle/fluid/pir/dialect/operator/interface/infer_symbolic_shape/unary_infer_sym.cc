@@ -442,17 +442,18 @@ bool CholeskyOpInferSymbolicShape(
 
 bool ClassCenterSampleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &label_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &label_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
 
-  PADDLE_ENFORCE_EQ(label_shape_or_data.shape().size(),
+  PADDLE_ENFORCE_EQ(label_shape.size(),
                     1,
                     common::errors::InvalidArgument(
                         "Rank of Input(Label) should be equal to 1, "
                         "but the value given is %d.",
-                        label_shape_or_data.shape().size()));
+                        label_shape.size()));
 
-  infer_context->SetShapeOrDataForValue(op->result(0), label_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(label_shape));
 
   symbol::DimExpr out_unknown = infer_context->GetNextSymName();
   const std::vector<symbol::DimExpr> out_dims = {out_unknown};
