@@ -643,7 +643,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.trt_param = self.TensorRTParam(
-            workspace_size=1024,
+            workspace_size=8192,
             max_batch_size=4,
             min_subgraph_size=0,
             precision=paddle_infer.PrecisionType.Float32,
