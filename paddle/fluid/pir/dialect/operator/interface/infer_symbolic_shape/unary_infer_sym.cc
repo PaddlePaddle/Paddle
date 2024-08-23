@@ -441,15 +441,18 @@ bool CastOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
 
-  if (x_shape_or_data.data().isa<int32_t> ||
-      x_shape_or_data.data().isa<int64_t>) {
-    infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
-  } else {
-    infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs(
-            symbol::TensorShapeOrDataDimExprs(x_shape)));
+  if (x_shape_or_data.data().has_value()) {
+    const auto &x_data_value = x_shape_or_data.data().value();
+    if (x_data_value.at(0).isa<int64_t> || x_data_value.at(0).isa<int32_t>) {
+      infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+    } else {
+      infer_context->SetShapeOrDataForValue(
+          op->result(0),
+          symbol::ShapeOrDataDimExprs(
+              symbol::TensorShapeOrDataDimExprs(x_shape)));
+    }
   }
+
   return true;
 }
 
