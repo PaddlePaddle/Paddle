@@ -18,12 +18,56 @@
 #include <vector>
 
 #include "paddle/pir/include/core/type.h"
+#include "paddle/pir/include/pass/pass.h"
+
+namespace paddle {
+namespace framework {
+class Scope;
+class Variable;
+}  // namespace framework
+}  // namespace paddle
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace pir {
 
 class Operation;
 class Block;
 class Value;
+class PatternRewriter;
+class Parameter;
+class Type;
+
+using Variable = paddle::framework::Variable;
+using Scope = paddle::framework::Scope;
+
+pir::Type TranslateToIrDataType(phi::DenseTensor* tensor);
+
+Parameter* GetParameter(Operation* op, const std::string& name);
+
+pir::Operation* CreateOpeartionByName(const std::string& op_name,
+                                      const std::vector<pir::Value>& inputs,
+                                      const pir::AttributeMap& attrs,
+                                      const pir::PatternRewriter& rewriter);
+
+// IsType  GetMutable
+template <typename T>
+T* VarGetMutable(Variable* var);
+
+template <typename T>
+bool VarIsType(Variable* var);
+
+Variable* ScopeFindVar(Scope* scope_, const std::string& name);
+
+Variable* ScopeGetVar(Scope* scope_, const std::string& name);
+
+Variable* ScopeVar(Scope* scope_, const std::string& name);
+
+std::vector<std::string> ScopeGetVarNames(Scope* scope_);
+
+Scope* GetScopeImpl(pir::Pass* pass);
 
 /**
  * @brief Get the name of parameter from a value.

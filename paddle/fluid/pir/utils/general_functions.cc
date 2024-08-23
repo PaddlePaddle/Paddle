@@ -20,14 +20,25 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/op_operand.h"
 #include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/operation_utils.h"
+#include "paddle/pir/include/core/parameter.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+
+#include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace {
 
@@ -61,10 +72,68 @@ void GetUsedExternalValueImpl(
     defined_values.insert(op.result(index));
   }
 }
-
 }  // namespace
 
 namespace pir {
+
+pir::Type TranslateToIrDataType(phi::DenseTensor* tensor) {
+  // Get Meta
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::Type data_type =
+      paddle::dialect::TransToIrDataType(tensor->dtype(), ctx);
+  return data_type;
+}
+
+Parameter* GetParameter(Operation* op, const std::string& name) {
+  Parameter* param = op->GetParentProgram()->GetParameter(name);
+  if (param == nullptr) {
+    VLOG(1) << "ch -- Parameter %s not found.";
+    PADDLE_THROW(common::errors::NotFound("Parameter %s not found.", name));
+  }
+  return param;
+}
+
+pir::Operation* CreateOpeartionByName(const std::string& op_name,
+                                      const std::vector<pir::Value>& inputs,
+                                      const pir::AttributeMap& attrs,
+                                      const pir::PatternRewriter& rewriter) {
+  return paddle::drr::OperationFactory::Instance().CreateOperation(
+      op_name, inputs, attrs, rewriter);
+}
+
+template <typename T>
+T* VarGetMutable(Variable* var) {
+  return var->GetMutable<T>();
+}
+
+template <typename T>
+bool VarIsType(Variable* var) {
+  return var->IsType<T>();
+}
+
+template phi::DenseTensor* VarGetMutable<phi::DenseTensor>(Variable*);
+template bool VarIsType<phi::DenseTensor>(Variable*);
+
+Variable* ScopeFindVar(Scope* scope_, const std::string& name) {
+  return scope_->FindVar(name);
+}
+
+Variable* ScopeGetVar(Scope* scope_, const std::string& name) {
+  return scope_->GetVar(name);
+}
+
+Variable* ScopeVar(Scope* scope_, const std::string& name) {
+  return scope_->Var(name);
+}
+
+std::vector<std::string> ScopeGetVarNames(Scope* scope_) {
+  return scope_->LocalVarNames();
+}
+
+// get scope
+Scope* GetScopeImpl(pir::Pass* pass) {
+  return &pass->Get<Scope>(pir::Pass::kParamScopeAttr);
+}
 
 std::string GetParameterNameFromValue(const pir::Value& value) {
   pir::Operation* owner = value.defining_op();
