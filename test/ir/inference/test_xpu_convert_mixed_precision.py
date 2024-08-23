@@ -30,6 +30,7 @@ from paddle.vision.models import resnet50
 class ConvertMixedPrecision(unittest.TestCase):
     def test(self):
         with paddle.pir_utils.OldIrGuard():
+            paddle.disable_static()
             self.temp_dir = tempfile.TemporaryDirectory()
             model = resnet50(True)
             net = to_static(
