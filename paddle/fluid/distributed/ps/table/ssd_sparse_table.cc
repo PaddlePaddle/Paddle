@@ -1618,8 +1618,13 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
                     &table_path,
                     &file_start_idx,
                     &free_channel,
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
                     &busy_channel,
                     ps_gpu_ptr](int file_num) {
+#else
+                    &busy_channel](int file_num) {
+#endif
+                    
     int err_no = 0;
     int shard_num = file_num;
     int part_num = 0;
@@ -1744,7 +1749,9 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
     _afs_wrapper.CloseWriter(afs_writer);
 #endif
     // write_channel->close();
-  } for (size_t i = 0; i < threads.size(); i++) {
+  }
+  
+  for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(save_func, i);
   }
 
