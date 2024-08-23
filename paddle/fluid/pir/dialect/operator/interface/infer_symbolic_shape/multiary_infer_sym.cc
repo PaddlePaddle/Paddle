@@ -1298,12 +1298,70 @@ bool FusedMultiTransformerOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool GraphKhopSamplerOpInferSymbolicShape(pir::Operation *op,
-//                                           pir::InferSymbolicShapeContext
-//                                           *infer_context) {
-//   // pass
-//   return true;
-// }
+bool GraphKhopSamplerOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &row_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &col_ptr_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const symbol::ShapeOrDataDimExprs &eids_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+
+  auto row_shape = row_shape_or_data.shape();
+  auto col_ptr_shape = col_ptr_shape_or_data.shape();
+  auto x_shape = x_shape_or_data.shape();
+  auto eids_shape = eids_shape_or_data.shape();
+
+  if (row_shape.size() == 2)
+    context->AddEqualCstr(row_shape[1], symbol::DimExpr(1));
+  if (col_ptr_shape.size() == 2)
+    context->AddEqualCstr(col_ptr_shape[1], symbol::DimExpr(1));
+  if (x_shape.size() == 2)
+    context->AddEqualCstr(x_shape[1], symbol::DimExpr(1));
+
+  std::vector<int> sample_sizes =
+      paddle::dialect::details::GetVectorAttr<int>(op, "sample_sizes");
+  PADDLE_ENFORCE_EQ(
+      !sample_sizes.empty(),
+      true,
+      common::errors::InvalidArgument(
+          "The parameter 'sample_sizes' in GraphSampleOp must be set. "
+          "But received 'sample_sizes' is empty."));
+
+  bool return_eids = op->attribute<pir::BoolAttribute>("return_eids").data();
+  if (return_eids) {
+    if (eids_shape.size() == 2)
+      context->AddEqualCstr(eids_shape[1], symbol::DimExpr(1));
+    symbol::DimExpr out_unknown_4 = infer_context->GetNextSymName();
+    infer_context->SetShapeOrDataForValue(
+        op->result(4),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs({out_unknown_4})});
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(4));
+  }
+
+  symbol::DimExpr out_unknown_0_1 = infer_context->GetNextSymName();
+  symbol::DimExpr out_unknown_2 = infer_context->GetNextSymName();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({out_unknown_0_1, 1})});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({out_unknown_0_1, 1})});
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({out_unknown_2})});
+  infer_context->SetShapeOrDataForValue(
+      op->result(3), symbol::TensorShapeOrDataDimExprs{x_shape.shape()});
+
+  return true;
+}
 
 // bool GraphReindexOpInferSymbolicShape(pir::Operation *op,
 //                                           pir::InferSymbolicShapeContext

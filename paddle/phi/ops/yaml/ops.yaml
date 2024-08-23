@@ -2281,7 +2281,7 @@
     func : graph_khop_sampler
     data_type : row
   optional : eids
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : graph_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, Tensor perm_buffer, int sample_size, bool return_eids, bool flag_perm_buffer)
