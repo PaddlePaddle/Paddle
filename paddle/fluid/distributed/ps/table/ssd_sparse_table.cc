@@ -1613,144 +1613,147 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
   }
   threads.resize(_real_local_shard_num);
 
-  auto save_func = [this,
-                    &save_param,
-                    &table_path,
-                    &file_start_idx,
-                    &free_channel,
+  auto save_func =
+      [this,
+       &save_param,
+       &table_path,
+       &file_start_idx,
+       &free_channel,
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-                    &busy_channel,
-                    ps_gpu_ptr](int file_num) {
+       &busy_channel,
+       ps_gpu_ptr](int file_num) {
 #else
-                    &busy_channel](int file_num) {
+       &busy_channel](int file_num) {
 #endif
-                    
-    int err_no = 0;
-    int shard_num = file_num;
-    int part_num = 0;
-    shard_num = file_num;
-    part_num = 0;
-    FsChannelConfig channel_config;
-    channel_config.converter = _value_accessor->Converter(save_param).converter;
-    channel_config.deconverter =
-        _value_accessor->Converter(save_param).deconverter;
+        int err_no = 0;
+        int shard_num = file_num;
+        int part_num = 0;
+        shard_num = file_num;
+        part_num = 0;
+        FsChannelConfig channel_config;
+        channel_config.converter =
+            _value_accessor->Converter(save_param).converter;
+        channel_config.deconverter =
+            _value_accessor->Converter(save_param).deconverter;
 
-    auto get_filename = [](int compress,
-                           int save_param,
-                           const char* table_path,
-                           int node_num,
-                           int shard_num,
-                           int part_num,
-                           int split_num) {
-      if (compress && (save_param == 0 || save_param == 3)) {
-        return paddle::string::format_string("%s/part-%03d-%05d-%03d-%03d.gz",
-                                             table_path,
-                                             node_num,
-                                             shard_num,
-                                             part_num,
-                                             split_num);
-      } else {
-        return paddle::string::format_string("%s/part-%03d-%05d-%03d-%03d",
-                                             table_path,
-                                             node_num,
-                                             shard_num,
-                                             part_num,
-                                             split_num);
-      }
-    };
-    std::shared_ptr<MemRegion> region = nullptr;
-    std::string filename;
-    int last_file_idx = -1;
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-    AfsWriterHandle afs_writer = nullptr;
-#endif
-    std::shared_ptr<FsWriteChannel> write_channel = nullptr;
-    if (save_param != 1 && save_param != 2) {
-      while (busy_channel[shard_num]->Get(region)) {
-        if (region->_file_idx != last_file_idx) {
-          filename = get_filename(_config.compress_in_save(),
-                                  save_param,
-                                  table_path.c_str(),
-                                  _shard_idx,
-                                  file_start_idx + shard_num,
-                                  part_num,
-                                  region->_file_idx);
-          channel_config.path = filename;
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-          afs_writer = _afs_wrapper.OpenWriter(channel_config.path);
-#else
-          write_channel =
-              _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
-#endif
-          last_file_idx = region->_file_idx;
-        }
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-        if (0 != ps_gpu_ptr->AfsWrite(
-                     afs_writer, region->_buf, region->_cur, true)) {
-#else
-        if (0 != write_channel->write(region->_buf, region->_cur)) {
-#endif
-          std::stringstream ss;
-          ss << "DownpourSparseSSDTable save failed, retry it! path:"
-             << channel_config.path;
-          PADDLE_THROW(common::errors::Fatal(ss.str()));
-          CHECK(false);
-        }
-        region->reset();
-        free_channel[shard_num]->Put(region);
-      }
-    } else {
-      while (busy_channel[shard_num]->Get(region)) {
-        if (region->_file_idx != last_file_idx) {
-          filename = get_filename(_config.compress_in_save(),
-                                  save_param,
-                                  table_path.c_str(),
-                                  _shard_idx,
-                                  file_start_idx + shard_num,
-                                  part_num,
-                                  region->_file_idx);
-          channel_config.path = filename;
-          write_channel =
-              _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
-          last_file_idx = region->_file_idx;
-        }
-        char* cursor = region->_buf;
-        int remain = region->_cur;
-        while (remain) {
-          uint32_t len = *reinterpret_cast<uint32_t*>(cursor);
-          len -= sizeof(uint32_t);
-          remain -= sizeof(uint32_t);
-          cursor += sizeof(uint32_t);
-
-          uint64_t k = *reinterpret_cast<uint64_t*>(cursor);
-          cursor += sizeof(uint64_t);
-          len -= sizeof(uint64_t);
-          remain -= sizeof(uint64_t);
-
-          float* value = reinterpret_cast<float*>(cursor);
-          int dim = len / sizeof(float);
-
-          std::string format_value = _value_accessor->ParseToString(value, dim);
-          if (0 != write_channel->write_line(paddle::string::format_string(
-                       "%lu %s", k, format_value.c_str()))) {
-            std::stringstream ss;
-            ss << "SSDSparseTable save failed, retry it! path:"
-               << channel_config.path;
-            PADDLE_THROW(common::errors::Fatal(ss.str()));
+        auto get_filename = [](int compress,
+                               int save_param,
+                               const char* table_path,
+                               int node_num,
+                               int shard_num,
+                               int part_num,
+                               int split_num) {
+          if (compress && (save_param == 0 || save_param == 3)) {
+            return paddle::string::format_string(
+                "%s/part-%03d-%05d-%03d-%03d.gz",
+                table_path,
+                node_num,
+                shard_num,
+                part_num,
+                split_num);
+          } else {
+            return paddle::string::format_string("%s/part-%03d-%05d-%03d-%03d",
+                                                 table_path,
+                                                 node_num,
+                                                 shard_num,
+                                                 part_num,
+                                                 split_num);
           }
-          remain -= len;
-          cursor += len;
-        }
-        region->reset();
-        free_channel[shard_num]->Put(region);
-      }
-    }
+        };
+        std::shared_ptr<MemRegion> region = nullptr;
+        std::string filename;
+        int last_file_idx = -1;
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
-    _afs_wrapper.CloseWriter(afs_writer);
+        AfsWriterHandle afs_writer = nullptr;
 #endif
-    // write_channel->close();
-  }
-  
+        std::shared_ptr<FsWriteChannel> write_channel = nullptr;
+        if (save_param != 1 && save_param != 2) {
+          while (busy_channel[shard_num]->Get(region)) {
+            if (region->_file_idx != last_file_idx) {
+              filename = get_filename(_config.compress_in_save(),
+                                      save_param,
+                                      table_path.c_str(),
+                                      _shard_idx,
+                                      file_start_idx + shard_num,
+                                      part_num,
+                                      region->_file_idx);
+              channel_config.path = filename;
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+              afs_writer = _afs_wrapper.OpenWriter(channel_config.path);
+#else
+              write_channel =
+                  _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+#endif
+              last_file_idx = region->_file_idx;
+            }
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+            if (0 != ps_gpu_ptr->AfsWrite(
+                         afs_writer, region->_buf, region->_cur, true)) {
+#else
+            if (0 != write_channel->write(region->_buf, region->_cur)) {
+#endif
+              std::stringstream ss;
+              ss << "DownpourSparseSSDTable save failed, retry it! path:"
+                 << channel_config.path;
+              PADDLE_THROW(common::errors::Fatal(ss.str()));
+              CHECK(false);
+            }
+            region->reset();
+            free_channel[shard_num]->Put(region);
+          }
+        } else {
+          while (busy_channel[shard_num]->Get(region)) {
+            if (region->_file_idx != last_file_idx) {
+              filename = get_filename(_config.compress_in_save(),
+                                      save_param,
+                                      table_path.c_str(),
+                                      _shard_idx,
+                                      file_start_idx + shard_num,
+                                      part_num,
+                                      region->_file_idx);
+              channel_config.path = filename;
+              write_channel =
+                  _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+              last_file_idx = region->_file_idx;
+            }
+            char* cursor = region->_buf;
+            int remain = region->_cur;
+            while (remain) {
+              uint32_t len = *reinterpret_cast<uint32_t*>(cursor);
+              len -= sizeof(uint32_t);
+              remain -= sizeof(uint32_t);
+              cursor += sizeof(uint32_t);
+
+              uint64_t k = *reinterpret_cast<uint64_t*>(cursor);
+              cursor += sizeof(uint64_t);
+              len -= sizeof(uint64_t);
+              remain -= sizeof(uint64_t);
+
+              float* value = reinterpret_cast<float*>(cursor);
+              int dim = len / sizeof(float);
+
+              std::string format_value =
+                  _value_accessor->ParseToString(value, dim);
+              if (0 != write_channel->write_line(paddle::string::format_string(
+                           "%lu %s", k, format_value.c_str()))) {
+                std::stringstream ss;
+                ss << "SSDSparseTable save failed, retry it! path:"
+                   << channel_config.path;
+                PADDLE_THROW(common::errors::Fatal(ss.str()));
+              }
+              remain -= len;
+              cursor += len;
+            }
+            region->reset();
+            free_channel[shard_num]->Put(region);
+          }
+        }
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+        _afs_wrapper.CloseWriter(afs_writer);
+#endif
+        // write_channel->close();
+      };
+
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(save_func, i);
   }
@@ -2783,8 +2786,12 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                                         filename,
                                         file_split_idx,
                                         &feasign_size_all,
-                                        ps_gpu_ptr,
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+                                        param,
+                                        ps_gpu_ptr]() -> int {
+#else
                                         param]() -> int {
+#endif
         // &channel_config]() -> int {
         FsChannelConfig channel_config;
         channel_config.converter = _value_accessor->Converter(param).converter;
