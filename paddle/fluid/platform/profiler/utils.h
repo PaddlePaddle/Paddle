@@ -19,9 +19,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/trace_event.h"
 #include "paddle/phi/backends/dynload/cupti.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/os_info.h"
 
 namespace paddle {
