@@ -1901,9 +1901,11 @@ PHI_DEFINE_EXPORTED_int32(
 
 /**
  * Enable align mode for auto parallel. If True, the loss results will aligned
- * with dynamic manual-parallel. Name: enable_auto_parallel_align_mode Since
- * Version: 3.0.0 Value Range: bool, default=false Note: Just used for testing.
- * Do not use in model trainning.
+ * with dynamic manual-parallel.
+ * Name: enable_auto_parallel_align_mode
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Note: Just used for testing. Do not use in model trainning.
  */
 PHI_DEFINE_EXPORTED_bool(enable_auto_parallel_align_mode,
                          false,
