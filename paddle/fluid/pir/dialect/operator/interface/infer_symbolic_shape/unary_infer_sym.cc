@@ -243,7 +243,8 @@ bool AffineGridOpInferSymbolicShape(
     const auto &output_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
-    output_shape_data = details::GetOrCreateExprVecFromData(output_shape_or_data, infer_context);
+    output_shape_data = details::GetOrCreateExprVecFromData(
+        output_shape_or_data, infer_context);
     output_shape_size = output_shape_data.size();
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
