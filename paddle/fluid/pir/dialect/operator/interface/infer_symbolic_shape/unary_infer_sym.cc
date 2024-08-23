@@ -1829,7 +1829,6 @@ bool NumelOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-
 bool OverlapAddOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
