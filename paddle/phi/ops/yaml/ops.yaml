@@ -1258,7 +1258,7 @@
     data_type : x
   optional : mask
   backward : deformable_conv_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depend
   args: (Tensor x, Tensor[] dep)
