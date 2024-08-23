@@ -1827,21 +1827,20 @@ bool OneHotOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const auto &num_classes_shape_or_date =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   const auto &attributes = op->attributes();
   int64_t num_classes;
   symbol::DimExpr num_classes_expr;
-  if (op->operand_source(1)) {
-    const auto &num_classes_shape_or_date =
-        infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    if (attributes.find("num_classes") != attributes.end()) {
-      num_classes = op->attribute<pir::Int64Attribute>("num_classes").data();
-      num_classes_expr = symbol::DimExpr(num_classes);
-    } else if (num_classes_shape_or_date.data().has_value()) {
-      num_classes_expr = num_classes_shape_or_date.data().value().at(0);
-    } else {
-      num_classes_expr = infer_context->GetNextSymName();
-    }
+
+  if (attributes.find("num_classes") != attributes.end()) {
+    num_classes = op->attribute<pir::Int64Attribute>("num_classes").data();
+    num_classes_expr = symbol::DimExpr(num_classes);
+  } else if (num_classes_shape_or_date.data().has_value()) {
+    num_classes_expr = num_classes_shape_or_date.data().value().at(0);
+  } else {
+    num_classes_expr = infer_context->GetNextSymName();
   }
 
   const std::vector<symbol::DimExpr> &out_shape = [&] {
