@@ -5408,11 +5408,15 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       MetaTensor* loss,
                       MetaTensor* warpctcgrad) {
   auto logits_dims = logits.dims();
-  int sequence_width = 0;
+  int num_sequences, sequence_width, max_sequence_length;
 
-  if (logits_length) {
+  if (logits_length && labels_length) {
+    max_sequence_length = static_cast<int>(logits_dims[0]);
+    num_sequences = static_cast<int>(logits_dims[1]);
     sequence_width = static_cast<int>(logits_dims[2]);
   } else {
+    max_sequence_length = -1;
+    num_sequences = -1;
     sequence_width =
         static_cast<int>(common::product(logits_dims) / logits_dims[0]);
   }
@@ -5432,8 +5436,10 @@ void WarpctcInferMeta(const MetaTensor& logits,
           "but received %d",
           blank));
 
-  loss->set_dims({-1, 1});
+  loss->set_dims({num_sequences, 1});
   loss->set_dtype(logits.dtype());
+  warpctcgrad->set_dims({max_sequence_length, num_sequences, sequence_width});
+  warpctcgrad->set_dtype(logits.dtype());
 }
 
 void WarprnntInferMeta(const MetaTensor& input,

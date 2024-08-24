@@ -169,6 +169,7 @@
     param : [input, output_shape, align_corners]
     data_type : input
   backward : affine_grid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -548,6 +549,7 @@
   kernel:
     func: bincount
   optional: weights
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : binomial
   args : (Tensor count, Tensor prob)
@@ -1257,7 +1259,7 @@
     data_type : x
   optional : mask
   backward : deformable_conv_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depend
   args: (Tensor x, Tensor[] dep)
@@ -5061,7 +5063,7 @@
   optional : logits_length, labels_length
   intermediate : warpctcgrad
   backward : warpctc_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : warprnnt
   args : (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0)
