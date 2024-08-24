@@ -4180,7 +4180,7 @@
     data_type: x
   optional: padding_data
   backward: sequence_conv_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sequence_mask
   args: (Tensor x, Scalar(int) max_len, DataType out_dtype)
