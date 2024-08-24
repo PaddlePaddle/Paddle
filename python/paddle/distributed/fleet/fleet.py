@@ -24,8 +24,10 @@ from typing import (
 
 if TYPE_CHECKING:
 
+    from collections.abc import Callable
+
     import numpy.typing as npt
-    from typing_extensions import Self, Unpack
+    from typing_extensions import ParamSpec, Self, TypeVar, Unpack
 
     from paddle import (
         Tensor,
@@ -52,6 +54,9 @@ if TYPE_CHECKING:
     class _SaveCacheConfigs(TypedDict, total=False):
         mode: int
         table_id: int
+
+    _InputT = ParamSpec('_InputT')
+    _RetT = TypeVar('_RetT')
 
 
 import copy
@@ -108,8 +113,10 @@ def apply_ir_passes(
     )
 
 
-def _inited_runtime_handler_(func):
-    def __impl__(*args, **kwargs):
+def _inited_runtime_handler_(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         cls = args[0]
 
         if cls._runtime_handle is None:
@@ -120,8 +127,10 @@ def _inited_runtime_handler_(func):
     return __impl__
 
 
-def _is_non_distributed_check_(func):
-    def __impl__(*args, **kwargs):
+def _is_non_distributed_check_(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         cls = args[0]
 
         if (
