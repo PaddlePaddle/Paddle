@@ -79,11 +79,14 @@ void VerifyOperationOrder(const pir::Block& block) {
           op->GetParentOp()->isa<cinn::dialect::GroupOp>()) {
         current_op = op->GetParentOp();
       }
-      CHECK(order_info.at(defining_op) < order_info.at(current_op))
-          << "The order of operations is not correct!"
-          << " Received defining_op(" << defining_op->id() << " "
+      std::stringstream error_msg;
+          error_msg << "The order of operations is not correct! "
+          << "Received defining_op(" << defining_op->id() << " "
           << order_info.at(defining_op) << ") is behind current_op("
           << current_op->id() << " " << order_info.at(current_op) << ")";
+      PADDLE_ENFORCE_LT(order_info.at(defining_op),
+                        order_info.at(current_op),
+                        common::errors::Fatal(error_msg.str()));
     }
   };
   const auto& CheckGroupOpOrder = [&](pir::Operation* op) -> void {
