@@ -36,8 +36,8 @@ class TestCReduceMinOpTranslator(test_op_translator.TestOpTranslator):
         helper = LayerHelper(self.op_type)
         helper.append_op(
             type=self.op_type,
-            inputs={"X": x},
-            outputs={"Out": y},
+            inputs={"x": x},
+            outputs={"out": y},
             attrs=attrs,
         )
 
