@@ -20,13 +20,12 @@ from typing import (
     Literal,
     Sequence,
     TypedDict,
-    TypeVar,
 )
 
 if TYPE_CHECKING:
 
     import numpy.typing as npt
-    from typing_extensions import Unpack
+    from typing_extensions import Self, Unpack
 
     from paddle import (
         Tensor,
@@ -54,7 +53,6 @@ if TYPE_CHECKING:
         mode: int
         table_id: int
 
-    Self = TypeVar("Self", bound="Fleet")
 
 import copy
 import os
