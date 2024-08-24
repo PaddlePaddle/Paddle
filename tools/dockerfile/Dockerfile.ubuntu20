@@ -149,10 +149,6 @@ RUN pip3.8 --no-cache-dir install pre-commit==2.17.0 && \
     pip3.11 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.12 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0
 
-RUN pip3.8 --no-cache-dir install tensorrt==8.6.1.post1 && \
-    pip3.9 --no-cache-dir install tensorrt==8.6.1.post1 && \
-    pip3.10 --no-cache-dir install tensorrt==8.6.1.post1
-
 COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
 
