@@ -13,12 +13,30 @@
 # limitations under the License.
 from __future__ import annotations
 
+import copy
+import os
+import time
 from typing import (
     TYPE_CHECKING,
     Any,
     Literal,
     TypedDict,
 )
+
+import paddle
+from paddle.base import compiler
+from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.framework import _global_flags, in_dynamic_mode
+from paddle.framework.ir import apply_build_strategy
+
+from .base import topology as tp
+from .base.distributed_strategy import DistributedStrategy
+from .base.meta_optimizer_factory import MetaOptimizerFactory
+from .base.role_maker import PaddleCloudRoleMaker, RoleMakerBase
+from .base.runtime_factory import RuntimeFactory
+from .base.strategy_compiler import StrategyCompiler
+from .meta_parallel import model_parallel_random_seed
+from .utils.log_util import logger, set_log_level
 
 if TYPE_CHECKING:
 
@@ -56,26 +74,6 @@ if TYPE_CHECKING:
 
     _InputT = ParamSpec('_InputT')
     _RetT = TypeVar('_RetT')
-
-
-import copy
-import os
-import time
-
-import paddle
-from paddle.base import compiler
-from paddle.base.wrapped_decorator import wrap_decorator
-from paddle.framework import _global_flags, in_dynamic_mode
-from paddle.framework.ir import apply_build_strategy
-
-from .base import topology as tp
-from .base.distributed_strategy import DistributedStrategy
-from .base.meta_optimizer_factory import MetaOptimizerFactory
-from .base.role_maker import PaddleCloudRoleMaker, RoleMakerBase
-from .base.runtime_factory import RuntimeFactory
-from .base.strategy_compiler import StrategyCompiler
-from .meta_parallel import model_parallel_random_seed
-from .utils.log_util import logger, set_log_level
 
 __all__ = []
 
