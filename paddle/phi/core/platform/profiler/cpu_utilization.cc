@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/platform/profiler/cpu_utilization.h"
 #include <array>
+#include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
