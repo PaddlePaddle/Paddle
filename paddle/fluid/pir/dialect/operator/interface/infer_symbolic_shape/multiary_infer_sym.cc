@@ -1314,7 +1314,7 @@ bool GraphKhopSamplerOpInferSymbolicShape(
   auto x_shape = x_shape_or_data.shape();
   auto eids_shape = eids_shape_or_data.shape();
 
-  auto GKSShapeCheck = [&](const symbol::ShapeOrDataDimExprs &shape,
+  auto GKSShapeCheck = [&](const std::vector<symbol::DimExpr> &shape,
                            const std::string &tensor_name) {
     if (shape.size() == 2)
       infer_context->AddEqualCstr(shape[1], symbol::DimExpr(1));
