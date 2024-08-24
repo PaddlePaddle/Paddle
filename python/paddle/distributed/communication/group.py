@@ -15,13 +15,14 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import paddle
 import paddle.distributed as dist
 from paddle import framework
 
 if TYPE_CHECKING:
+    from paddle import Tensor
     from paddle.base.core import ProcessGroup
 
 
@@ -84,7 +85,7 @@ class Group:
             return False
         return True
 
-    def get_group_rank(self, rank) -> int:
+    def get_group_rank(self, rank: int) -> int | Literal[-1]:
         if self.is_member():
             return self.ranks.index(rank)
         else:
@@ -167,7 +168,7 @@ def is_initialized() -> bool:
     return _GroupManager.global_group_id in _GroupManager.group_map_by_id
 
 
-def destroy_process_group(group=None) -> None:
+def destroy_process_group(group: Group | None = None) -> None:
     """
     Destroy a given group for communication
 
@@ -209,7 +210,7 @@ def destroy_process_group(group=None) -> None:
         del _GroupManager.group_map_by_id[group.id]
 
 
-def get_group(id=0) -> Group:
+def get_group(id: int = 0) -> Group:
     """
 
     Get group instance by group id.
@@ -268,7 +269,9 @@ def _sync_comm_stream(tensor, ring_id=0):
         )
 
 
-def wait(tensor, group=None, use_calc_stream=True) -> None:
+def wait(
+    tensor: Tensor, group: Group | None = None, use_calc_stream: bool = True
+) -> None:
     """
 
     wait to sync stream for group.
@@ -304,7 +307,7 @@ def wait(tensor, group=None, use_calc_stream=True) -> None:
         _sync_comm_stream(tensor, ring_id)
 
 
-def barrier(group=None) -> None:
+def barrier(group: Group | None = None) -> None:
     """
 
     Barrier among all participators in the group.
@@ -360,7 +363,7 @@ def barrier(group=None) -> None:
         )
 
 
-def get_backend(group=None) -> str:
+def get_backend(group: Group | None = None) -> str:
     """
     Get the backend of given group.
 

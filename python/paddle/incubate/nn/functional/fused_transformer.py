@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Literal, Sequence, overload
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
@@ -30,9 +30,7 @@ from paddle.framework import (
 if TYPE_CHECKING:
     from paddle import Tensor
 
-    _activation_function = Literal["relu", "gelu"]
-    _mode = Literal["upscale_in_train", "downscale_in_infer"]
-    _norm_type = Literal["layernorm"]
+    _Mode = Literal["upscale_in_train", "downscale_in_infer"]
 
 __all__ = []
 
@@ -56,12 +54,12 @@ def fused_feedforward(
     ln2_bias: Tensor | None = None,
     dropout1_rate: float = 0.5,
     dropout2_rate: float = 0.5,
-    activation: _activation_function = "relu",
+    activation: str = "relu",
     ln1_epsilon: float = 1e-5,
     ln2_epsilon: float = 1e-5,
     pre_layer_norm: bool = False,
     training: bool = True,
-    mode: _mode = 'upscale_in_train',
+    mode: _Mode = 'upscale_in_train',
     ring_id: int = -1,
     add_residual: bool = True,
     name: str | None = None,
@@ -340,7 +338,7 @@ def fused_bias_dropout_residual_layer_norm(
     dropout_rate: float = 0.5,
     ln_epsilon: float = 1e-5,
     training: bool = True,
-    mode: _mode = 'upscale_in_train',
+    mode: _Mode = 'upscale_in_train',
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -528,7 +526,7 @@ def fused_multi_head_attention(
     attn_dropout_rate: float = 0.5,
     ln_epsilon: float = 1e-05,
     training: bool = True,
-    mode: _mode = 'upscale_in_train',
+    mode: _Mode = 'upscale_in_train',
     ring_id: int = -1,
     add_residual: bool = True,
     num_heads: int = -1,
@@ -972,6 +970,7 @@ def fused_multi_head_attention(
         return (final_out, cache_kv_out) if cache_kv else final_out
 
 
+@overload
 def fused_multi_transformer(
     x: Tensor,
     ln_scales: Sequence[Tensor],
@@ -988,8 +987,8 @@ def fused_multi_transformer(
     ffn2_biases: Sequence[Tensor],
     pre_layer_norm: bool = True,
     epsilon: float = 1e-05,
-    residual_alpha: int = 1.0,
-    cache_kvs: Sequence[Tensor] | None = None,
+    residual_alpha: float = 1.0,
+    cache_kvs: None = None,
     beam_offset: Sequence[Tensor] | None = None,
     pre_caches: Sequence[Tensor] | None = None,
     seq_lens: Tensor | None = None,
@@ -998,16 +997,93 @@ def fused_multi_transformer(
     attn_mask: Tensor | None = None,
     dropout_rate: float = 0.0,
     rotary_emb_dims: int = 0,
-    activation: _activation_function = "gelu",
+    activation: str = "gelu",
     training: bool = False,
-    mode: _mode = 'upscale_in_train',
+    mode: _Mode = 'upscale_in_train',
     trans_qkvw: bool = True,
     ring_id: int = -1,
-    norm_type: _norm_type = "layernorm",
+    norm_type: str = "layernorm",
     use_neox_rotary_style: bool = False,
     gqa_group_size: int = -1,
     name: str | None = None,
-) -> Tensor | tuple(Tensor, Tensor):
+) -> Tensor: ...
+
+
+@overload
+def fused_multi_transformer(
+    x: Tensor,
+    ln_scales: Sequence[Tensor],
+    ln_biases: Sequence[Tensor],
+    qkv_weights: Sequence[Tensor],
+    qkv_biases: Sequence[Tensor],
+    linear_weights: Sequence[Tensor],
+    linear_biases: Sequence[Tensor],
+    ffn_ln_scales: Sequence[Tensor],
+    ffn_ln_biases: Sequence[Tensor],
+    ffn1_weights: Sequence[Tensor],
+    ffn1_biases: Sequence[Tensor],
+    ffn2_weights: Sequence[Tensor],
+    ffn2_biases: Sequence[Tensor],
+    cache_kvs: Sequence[Tensor],
+    pre_layer_norm: bool = True,
+    epsilon: float = 1e-05,
+    residual_alpha: float = 1.0,
+    beam_offset: Sequence[Tensor] | None = None,
+    pre_caches: Sequence[Tensor] | None = None,
+    seq_lens: Tensor | None = None,
+    rotary_embs: Tensor | None = None,
+    time_step: Tensor | None = None,
+    attn_mask: Tensor | None = None,
+    dropout_rate: float = 0.0,
+    rotary_emb_dims: int = 0,
+    activation: str = "gelu",
+    training: bool = False,
+    mode: _Mode = 'upscale_in_train',
+    trans_qkvw: bool = True,
+    ring_id: int = -1,
+    norm_type: str = "layernorm",
+    use_neox_rotary_style: bool = False,
+    gqa_group_size: int = -1,
+    name: str | None = None,
+) -> tuple(Tensor, Sequence[Tensor]): ...
+
+
+def fused_multi_transformer(
+    x,
+    ln_scales,
+    ln_biases,
+    qkv_weights,
+    qkv_biases,
+    linear_weights,
+    linear_biases,
+    ffn_ln_scales,
+    ffn_ln_biases,
+    ffn1_weights,
+    ffn1_biases,
+    ffn2_weights,
+    ffn2_biases,
+    pre_layer_norm,
+    epsilon,
+    residual_alpha,
+    cache_kvs,
+    beam_offset,
+    pre_caches,
+    seq_lens,
+    rotary_embs,
+    time_step,
+    attn_mask,
+    dropout_rate,
+    rotary_emb_dims,
+    activation,
+    training,
+    mode,
+    trans_qkvw,
+    ring_id,
+    norm_type,
+    use_neox_rotary_style,
+    gqa_group_size,
+    name,
+):
     r"""
     This is a fusion operator to compute multi transformer layers in transformer model architecture.
     This operator only supports running on GPU. The function of the transformer layer is consistent
