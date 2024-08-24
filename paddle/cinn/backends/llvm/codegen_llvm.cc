@@ -1143,8 +1143,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_LoweredFunc_ *op) {
       /*Result=*/b_->getVoidTy(),
       /*Params=*/std::move(arg_types),
       /*isVarArg=*/false);
-  PADDLE_ENFORCE_NOT_NULL(
-      m_->getFunction(op->name),
+  PADDLE_ENFORCE_EQ(
+      m_->getFunction(op->name) == nullptr,
+      true,
       phi::errors::InvalidArgument(
           "function[%s] exists, expected it to be null.", op->name));
 
