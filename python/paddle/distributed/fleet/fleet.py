@@ -16,24 +16,24 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Any,
-    Iterable,
     Literal,
-    Sequence,
     TypedDict,
 )
 
 if TYPE_CHECKING:
 
-    from collections.abc import Callable
+    from collections.abc import (
+        Callable,
+        Iterable,
+        Sequence,
+    )
 
     import numpy.typing as npt
     from typing_extensions import ParamSpec, Self, TypeVar, Unpack
 
-    from paddle import (
-        Tensor,
-    )
+    from paddle import Tensor
     from paddle._typing import PlaceLike
-    from paddle.base.core import DistFleetWrapper
+    from paddle.base.core import DistFleetWrapper, _Scope
     from paddle.distributed.collective import Group
     from paddle.optimizer import Optimizer
     from paddle.static import (
@@ -42,7 +42,6 @@ if TYPE_CHECKING:
         Operator,
         Parameter,
         Program,
-        Scope,
         Variable,
     )
 
@@ -950,7 +949,7 @@ class Fleet:
 
     def all_reduce(
         self,
-        input: int,
+        input: Any,
         mode: Literal['sum', 'mean', 'max'] = "sum",
     ) -> npt.NDArray[Any]:
         """
@@ -972,7 +971,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def init_worker(self, scopes: Sequence[Scope] | None = None) -> None:
+    def init_worker(self, scopes: Sequence[_Scope] | None = None) -> None:
         """
         initialize `Communicator` for parameter server training.
 
@@ -997,7 +996,7 @@ class Fleet:
 
     @is_non_distributed_check
     @inited_runtime_handler
-    def init_coordinator(self, scopes: Sequence[Scope] | None = None) -> None:
+    def init_coordinator(self, scopes: Sequence[_Scope] | None = None) -> None:
         """
         initialize coordinator node
         """
@@ -1367,7 +1366,7 @@ class Fleet:
         self,
         executor: Executor,
         dirname: str,
-        scope: Scope,
+        scope: _Scope,
         program: Program,
         var_names: list[str] | None = None,
     ) -> None:
@@ -1504,7 +1503,7 @@ class Fleet:
     def amp_init(
         self,
         place: PlaceLike,
-        scope: Scope | None = None,
+        scope: _Scope | None = None,
         test_program: Program | None = None,
         use_fp16_test: bool = False,
     ) -> None:
@@ -1585,7 +1584,7 @@ class Fleet:
     def qat_init(
         self,
         place: PlaceLike,
-        scope: Scope | None = None,
+        scope: _Scope | None = None,
         test_program: Program | None = None,
     ) -> None:
         """
