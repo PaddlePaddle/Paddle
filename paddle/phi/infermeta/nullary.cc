@@ -41,6 +41,8 @@ void AssignValueInferMeta(const std::vector<int>& shape,
   out->set_dtype(dtype);
 }
 
+void CommInitAllInferMeta(const std::vector<int>& devices, int ring_id) {}
+
 void CreateArrayInferMeta(DataType dtype, MetaTensor* out) {
   out->set_dtype(dtype);
 }

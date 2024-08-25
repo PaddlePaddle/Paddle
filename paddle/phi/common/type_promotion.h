@@ -13,6 +13,8 @@
 // limitations under the License.
 #pragma once
 
+#include "paddle/fluid/imperative/amp_utils.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/common/data_type.h"
 namespace phi {
 
@@ -83,6 +85,15 @@ inline static DataType promoteTypes(DataType x, DataType y) {
   return _promoteTypesLookup[DataTypeToNum(x)][DataTypeToNum(y)];
 }
 
+// Migrated from operator overloading
+static std::unordered_set<std::string> support_promotion_ops = {
+    "add",       "elementwise_add", "subtract",        "elementwise_sub",
+    "multiply",  "elementwise_mul", "elementwise_mod", "remainder",
+    "divide",    "elementwise_div", "truediv",         "floor_divide",
+    "pow",       "elementwise_pow", "equal",           "not_equal",
+    "less_than", "less_equal",      "greater_than",    "greater_equal",
+};
+
 inline bool is_support_float(DataType dtype) {
   if (dtype == DataType::FLOAT16 || dtype == DataType::FLOAT32 ||
       dtype == DataType::FLOAT64 || dtype == DataType::BFLOAT16) {
@@ -121,9 +132,39 @@ inline bool is_common_dtype_for_scalar(DataType x, DataType y) {
   }
 }
 
-inline phi::DataType GetPromoteDtype(const std::string& op_name,
-                                     const DataType x,
-                                     const DataType y) {
+inline phi::DataType GetPromoteDtype(
+    const std::string& op_name,
+    const DataType& x_dtype,
+    const DataType& y_dtype,
+    const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
+    const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
+  if (op_name == "divide" || op_name == "divide_" ||
+      op_name == "elementwise_div") {
+    if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
+      return DataType::FLOAT32;
+    }
+  }
+  // Tensor + 0-d Tensor
+  if (support_promotion_ops.find(op_name) != support_promotion_ops.end() &&
+      (x_shape.size() == 0 || y_shape.size() == 0)) {
+    if (!is_common_dtype_for_scalar(x_dtype, y_dtype) ||
+        (x_shape.size() == 0 && y_shape.size() == 0)) {
+      return phi::promoteTypes(x_dtype, y_dtype);
+    } else {
+      if (x_shape.size() == 0) {
+        return y_dtype;
+      } else {
+        return x_dtype;
+      }
+    }
+  }
+
+  return phi::promoteTypes(x_dtype, y_dtype);
+}
+
+inline phi::DataType GetPromoteDtypeOldIr(const std::string& op_name,
+                                          const DataType x,
+                                          const DataType y) {
   if (op_name == "divide" || op_name == "divide_") {
     // only T+S can run into this branch
     if (is_support_int(x) && is_support_int(y)) {
@@ -133,9 +174,64 @@ inline phi::DataType GetPromoteDtype(const std::string& op_name,
   return phi::promoteTypes(x, y);
 }
 
-inline bool NeedTypePromotion(const std::string& op_name,
-                              const DataType x,
-                              const DataType y) {
+inline bool NeedTypePromotion(
+    const std::string& op_name,
+    const DataType& x_dtype,
+    const DataType& y_dtype,
+    const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
+    const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
+  if (x_dtype == y_dtype) {
+    if (op_name == "divide" || op_name == "divide_") {
+      if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  // Tensor + 0-d Tensor
+  if (support_promotion_ops.find(op_name) != support_promotion_ops.end() &&
+      (x_shape.size() == 0 || y_shape.size() == 0)) {
+    return true;
+  }
+  // Tensor + Tensor type promotion only support calculations between
+  // floating-point numbers and between complex and real numbers.
+  if (x_dtype != y_dtype) {
+// TODO(Xi Zhao): we got special case for add now, should remove it in furture.
+#ifdef PADDLE_WITH_CUDA
+    if ((op_name == "add" || op_name == "add_") &&
+        x_dtype == DataType::FLOAT32 &&
+        (y_dtype == phi::DataType::BFLOAT16 ||
+         y_dtype == phi::DataType::FLOAT16)) {
+      return false;
+    }
+#elif defined(PADDLE_WITH_XPU)
+    if ((op_name == "add" || op_name == "add_") &&
+        x_dtype == DataType::FLOAT32 &&
+        (y_dtype == phi::DataType::BFLOAT16 ||
+         y_dtype == phi::DataType::FLOAT16)) {
+      return false;
+    }
+#endif
+
+    if ((is_support_float(x_dtype) && is_support_float(y_dtype)) ||
+        (is_support_complex(x_dtype) || is_support_complex(y_dtype))) {
+      return true;
+    } else {
+      PADDLE_THROW(common::errors::InvalidType(
+          "Type promotion only support calculations between floating-point "
+          "numbers and between complex and real numbers. But got different "
+          "data type x: %s, y: %s.",
+          x_dtype,
+          y_dtype));
+    }
+  } else {
+    return false;
+  }
+}
+
+inline bool NeedTypePromotionOldIr(const std::string& op_name,
+                                   const DataType x,
+                                   const DataType y) {
   // Tensor + Tensor type promotion only support calculations between
   // floating-point numbers and between complex and real numbers.
   if (x != y) {
