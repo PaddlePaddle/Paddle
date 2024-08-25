@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import collections
 import inspect
+import os
 import threading
 import warnings
 import weakref
@@ -97,6 +98,54 @@ def synchronized(func):
             return func(*args, **kwargs)
 
     return lock_func
+
+
+def show_op_callstack(op):
+    op_callstack = op.callstack
+    index = op_callstack.index("    outputs = static_func(*inputs)")
+    op_callstack_result = '\n'.join(op_callstack[index + 1 :])
+    raise ValueError(
+        f'In transformed code:\n\n{op_callstack_result}\n\nSorry about what\'s happened. In to_static mode, {op.name()}\'s output variable is a viewed Tensor in dygraph. This will result in inconsistent calculation behavior between dynamic and static graphs. You must find the location of the strided ops be called, and call paddle.assign() before inplace input.If you certainly make sure it\'s safe, you can set env stride_in_no_check_dy2st_diff to 1.'
+    )
+
+
+def check_view_api_used_by_inplace(program: paddle.pir.Program) -> None:
+    """
+    check viewed value used by inplace op in pir mode.
+
+    Two scenarios will raise ValueError:
+        # one
+        a = transpose(b)
+        a.add_(c)
+        # two
+        a = transpose(b)
+        b.add_(c)
+    """
+    all_vars_list = program.list_vars()
+    for value in all_vars_list:
+        if len(value.all_used_ops()) == 0:
+            return
+        uesd_by_stride_ops = []
+        for op in value.all_used_ops()[::-1]:
+            inplace_info = paddle.core.pir.get_op_inplace_info(op)
+            if op.name() in framework.stride_ops and op.operand_source(
+                0
+            ).is_same(value):
+                uesd_by_stride_ops.append(op)
+            if op.name().endswith("_") and any(
+                op.operand_source(index).is_same(value)
+                for index in inplace_info.keys()
+            ):
+                if value.get_defining_op().name() in framework.stride_ops:
+                    show_op_callstack(op)
+                if len(uesd_by_stride_ops) == 0:
+                    continue
+                if (
+                    op.name() == "pd_op.set_value_"
+                    or op.name() == "pd_op.set_value_with_tensor_"
+                ):
+                    continue
+                show_op_callstack(op)
 
 
 class FunctionCache:
@@ -1260,6 +1309,8 @@ class ConcreteProgram:
                         outputs = [outputs]
 
         main_program = update_op_callstack_with_origin_info(main_program)
+        if not os.environ.get("stride_in_no_check_dy2st_diff", "0") == "1":
+            check_view_api_used_by_inplace(main_program)
 
         return ConcreteProgram(
             inputs=static_inputs,

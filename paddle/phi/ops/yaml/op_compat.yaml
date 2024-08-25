@@ -441,7 +441,7 @@
   attrs:
     data_format: data_layout
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : bincount
   inputs :
@@ -541,7 +541,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : ceil
   backward : ceil_grad
@@ -668,7 +668,7 @@
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
              bool force_fp32_output = false,
-             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false]
+             int workspace_size_MB = phi::backends::gpu::GetDefaultConvWorkspaceSizeLimitMB(), bool exhaustive_search = false, str mkldnn_data_type = "float32"]
   get_expected_kernel_type :
     conv2d : GetConvExpectedKernelType
 
@@ -3042,7 +3042,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false, str mkldnn_data_type = "float32"]
 
 - op : relu6
   backward : relu6_grad
@@ -3229,7 +3229,7 @@
       data_type : float
       support_tensor : false
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
 - op : scatter
   backward : scatter_grad
@@ -3398,7 +3398,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, bool use_cudnn = false]
+    attrs : [bool use_mkldnn = false, bool use_cudnn = false, str mkldnn_data_type = "float32"]
 
 - op : sign
   backward : sign_grad
@@ -3675,7 +3675,7 @@
   attrs:
     { axis : dim,  keepdim : keep_dim, dtype : out_dtype}
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
   int_array:
       axis :
         data_type : int

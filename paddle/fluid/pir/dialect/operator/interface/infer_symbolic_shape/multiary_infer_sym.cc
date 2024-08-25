@@ -1224,12 +1224,72 @@ bool FusedBnAddActivation_OpInferSymbolicShape(
   return BatchNormOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FusedMultiTransformerOpInferSymbolicShape(pir::Operation *op,
-//                                                pir::InferSymbolicShapeContext
-//                                                *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FusedMultiTransformerOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  const auto &qkv_weight_data_list =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+  const std::vector<symbol::DimExpr> &y_shape =
+      qkv_weight_data_list.at(0).shape();
+
+  PADDLE_ENFORCE_EQ(
+      x_shape.size(),
+      3,
+      common::errors::InvalidArgument("The dimensions of x must be 3"
+                                      "(batch_size, seq_len, dim_embed),"
+                                      "but received dimensions of"
+                                      "Input is [%d]",
+                                      x_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      y_shape.size(),
+      4,
+      common::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
+                                      "(3, num_head, dim_head, dim_embed),"
+                                      "but received dimensions of"
+                                      "Input is [%d]",
+                                      y_shape.size()));
+
+  bool trans_qkvw = op->attribute<pir::BoolAttribute>("trans_qkvw").data();
+
+  if (trans_qkvw) {
+    infer_context->AddEqualCstr(x_shape[2], y_shape[3]);
+  } else {
+    infer_context->AddEqualCstr(x_shape[2], y_shape[0]);
+  }
+  const auto &cache_kv_data_list =
+      infer_context->GetShapeOrDataForValue(op->operand_source(5))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+  if (cache_kv_data_list.size() > 0) {
+    const std::vector<symbol::DimExpr> &c_shape =
+        cache_kv_data_list.at(0).shape();
+
+    PADDLE_ENFORCE_EQ(
+        c_shape.size(),
+        5,
+        common::errors::InvalidArgument(
+            "The CacheKV must be 5 dims, but got %d", c_shape.size()));
+    infer_context->AddEqualCstr(c_shape[0], symbol::DimExpr{2});
+    infer_context->AddEqualCstr(c_shape[1], x_shape[0]);
+
+    if (trans_qkvw) {
+      infer_context->AddEqualCstr(c_shape[2], y_shape[1]);
+      infer_context->AddEqualCstr(c_shape[4], y_shape[2]);
+    } else {
+      infer_context->AddEqualCstr(c_shape[2], y_shape[2]);
+      infer_context->AddEqualCstr(c_shape[4], y_shape[3]);
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(x_shape));
+  return true;
+}
 
 // bool GenerateProposalsOpInferSymbolicShape(pir::Operation *op,
 //                                            pir::InferSymbolicShapeContext
@@ -2257,12 +2317,25 @@ bool ViterbiDecodeOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool WarprnntOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+bool WarprnntOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &input_shape = input_shape_or_data.shape();
+
+  std::vector<symbol::DimExpr> loss_shape = {input_shape[0]};
+  std::vector<symbol::DimExpr> warpctcgrad_shape = input_shape;
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(loss_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(warpctcgrad_shape)});
+  return true;
+}
 
 // bool WeightOnlyLinearOpInferSymbolicShape(pir::Operation *op,
 //                                   pir::InferSymbolicShapeContext
