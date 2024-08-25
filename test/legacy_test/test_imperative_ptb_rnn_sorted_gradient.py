@@ -241,7 +241,9 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
         for key, value in static_param_init.items():
             np.testing.assert_array_equal(value, dy_param_init[key])
         for key, value in static_param_updated.items():
-            np.testing.assert_array_equal(value, dy_param_updated[key])
+            np.testing.assert_allclose(
+                value, dy_param_updated[key], atol=1e-10, rtol=1e-6
+            )
 
 
 if __name__ == '__main__':

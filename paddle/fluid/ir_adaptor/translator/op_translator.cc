@@ -1052,7 +1052,7 @@ struct BatchNormOpTranscriber : public OpTranscriber {
 
 struct CastOpTranscriber : public OpTranscriber {
   pir::AttributeMap TranslateOpAttribute(
-      pir::IrContext*,
+      pir::IrContext* ctx,
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
@@ -1071,6 +1071,12 @@ struct CastOpTranscriber : public OpTranscriber {
     pir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
     attribute_map[info.name] = new_attr;
 
+#ifdef PADDLE_WITH_DNNL
+    if (op_desc.HasAttr("mkldnn_data_type")) {  // NOLINT
+      attribute_map["mkldnn_data_type"] = pir::StrAttribute::get(
+          ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"));
+    }
+#endif
     return attribute_map;
   }
 };
@@ -1085,7 +1091,105 @@ struct Conv2dOpTranscriber : public OpTranscriber {
   }
 };
 
+using ValueInfo =
+    std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::Value>;
+
+ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
+                                 const std::vector<std::string>& names,
+                                 TranslationContext* param_map,
+                                 const std::string& var_name) {
+  PADDLE_ENFORCE_EQ(
+      names.size(),
+      1UL,
+      common::errors::InvalidArgument(
+          "Expected op[%s]'s input %s has only 1 variable, but got %d",
+          op_desc.Type(),
+          var_name,
+          names.size()));
+  const auto& name = names[0];
+  PADDLE_ENFORCE_GT(
+      param_map->count(name),
+      0UL,
+      common::errors::InvalidArgument(
+          "Expected op[%s]'s input %s has been parsed", op_desc.Type(), name));
+  const auto& defining_info = param_map->at(name);
+
+  pir::Value value = defining_info.value;
+  PADDLE_ENFORCE_NE(
+      value,
+      nullptr,
+      common::errors::PreconditionNotMet(
+          "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
+  const pir::Type& type = value.type();
+  PADDLE_ENFORCE_EQ(type.isa<dialect::DenseTensorType>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Expected op[%s]'s input %s is DenseTensor but got %s",
+                        op_desc.Type(),
+                        name,
+                        type));
+  dialect::DenseTensorType tensor_type =
+      type.dyn_cast<dialect::DenseTensorType>();
+
+  std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
+
+  return std::make_tuple(shape, tensor_type, value);
+}
+
 struct EmbeddingOpTranscriber : public OpTranscriber {
+  void RecordOpResultMapping(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Operation* operation,
+                             const OpOutputMapping& arg_to_idx) override {
+    OpTranscriber::RecordOpResultMapping(
+        ctx, param_map, op_desc, operation, arg_to_idx);
+    if (op_desc.Type() == "lookup_table") {
+      ValueInfo out_info = GetTensorInfoByVarName(
+          op_desc, op_desc.Output("Out"), param_map, "Out");
+      const auto& output_vars = op_desc.Output("Out");
+      const auto& output_name = output_vars[0];
+
+      const dialect::DenseTensorType& out_tensor_type = std::get<1>(out_info);
+      pir::Value& out_value = std::get<2>(out_info);
+
+      ValueInfo ids_info = GetTensorInfoByVarName(
+          op_desc, op_desc.Input("Ids", true), param_map, "Ids");
+      const std::vector<int64_t>& ids_shape = std::get<0>(ids_info);
+
+      ValueInfo w_info = GetTensorInfoByVarName(
+          op_desc, op_desc.Input("W", true), param_map, "W");
+
+      const std::vector<int64_t>& w_shape = std::get<0>(w_info);
+
+      std::vector<int64_t> out_new_shape(
+          ids_shape.begin(), ids_shape.begin() + ids_shape.size() - 1);
+      out_new_shape.insert(out_new_shape.end(), w_shape[1]);
+
+      pir::Builder builder(ctx, operation->GetParent());
+      dialect::ReshapeOp reshape_op_out =
+          builder.Build<dialect::ReshapeOp>(out_value, out_new_shape);
+      pir::Value out_new = reshape_op_out.out();
+      VLOG(6) << "[" << op_desc.Type() << "] out_shape change from "
+              << out_tensor_type.dims() << " to "
+              << common::make_ddim(out_new_shape);
+
+      param_map->PushValue(output_name,
+                           VariableDefiningInfo(out_new, false, -1));
+    }
+  }
+
+  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
+                           const OpDesc& op_desc) override {
+    auto op_info = ctx->GetRegisteredOpInfo("pd_op.embedding");
+    if (!op_info) {
+      IR_THROW("Op %d should have corresponding OpInfo %d",
+               op_desc.Type(),
+               "pd_op.embedding");
+    }
+    return op_info;
+  }
+
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
                                   const OpAttributeInfo& info) override {
@@ -1393,6 +1497,20 @@ struct CrossEntropyWithSoftmaxOpTranscriber : public OpTranscriber {
   }
 };
 
+struct BoxCoderOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "axis") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, 0);
+    }
+    if (info.name == "variance") {
+      std::vector<pir::Attribute> variance;
+      (*attribute_map)[info.name] = pir::ArrayAttribute::get(ctx, variance);
+    }
+  }
+};
+
 struct DepthwiseConv2dOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -1656,51 +1774,6 @@ struct TrilAndTriuGradOpTranscriber : public OpTranscriber {
     return op_info;
   }
 };
-
-using ValueInfo =
-    std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::Value>;
-
-ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
-                                 const std::vector<std::string>& names,
-                                 TranslationContext* param_map,
-                                 const std::string& var_name) {
-  PADDLE_ENFORCE_EQ(
-      names.size(),
-      1UL,
-      common::errors::InvalidArgument(
-          "Expected op[%s]'s input %s has only 1 variable, but got %d",
-          op_desc.Type(),
-          var_name,
-          names.size()));
-  const auto& name = names[0];
-  PADDLE_ENFORCE_GT(
-      param_map->count(name),
-      0UL,
-      common::errors::InvalidArgument(
-          "Expected op[%s]'s input %s has been parsed", op_desc.Type(), name));
-  const auto& defining_info = param_map->at(name);
-
-  pir::Value value = defining_info.value;
-  PADDLE_ENFORCE_NE(
-      value,
-      nullptr,
-      common::errors::PreconditionNotMet(
-          "Expected op[%s]'s input %s is not null", op_desc.Type(), name));
-  const pir::Type& type = value.type();
-  PADDLE_ENFORCE_EQ(type.isa<dialect::DenseTensorType>(),
-                    true,
-                    common::errors::InvalidArgument(
-                        "Expected op[%s]'s input %s is DenseTensor but got %s",
-                        op_desc.Type(),
-                        name,
-                        type));
-  dialect::DenseTensorType tensor_type =
-      type.dyn_cast<dialect::DenseTensorType>();
-
-  std::vector<int64_t> shape = common::vectorize(tensor_type.dims());
-
-  return std::make_tuple(shape, tensor_type, value);
-}
 
 struct MulOpTranscriber : public OpTranscriber {
   pir::Operation* operator()(pir::IrContext* ctx,
@@ -3566,6 +3639,37 @@ struct CEmbeddingOpTranscriber : public OpTranscriber {
   }
 };
 
+struct GatherOpTranscriber : public OpTranscriber {
+  pir::Value GetAttributeAsInput(pir::IrContext* ctx,
+                                 pir::Block* block,
+                                 const OpDesc& op_desc,
+                                 const OpInputInfo& input_info) override {
+    auto& attribute_translator = AttributeTranslator::instance();
+    auto& op_normalizer = OpNameNormalizer::instance();
+
+    auto legacy_attr_name =
+        op_normalizer.GetLegacyAttrName(op_desc.Type(), input_info.name);
+
+    if (!op_desc.HasAttr(legacy_attr_name)) {
+      VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+               << " name: " << legacy_attr_name << " not found and fill 0.";
+      pir::Attribute new_attr = pir::Int64Attribute::get(ctx, 0);
+      pir::Operation* defining_op =
+          InsertFullOperationForAttributeInput(ctx, block, new_attr);
+      return defining_op->result(0);
+    } else {
+      paddle::framework::Attribute legacy_attr =
+          op_desc.GetAttr(legacy_attr_name);
+      VLOG(10) << "[" << op_desc.Type() << "][attribute]"
+               << " name: " << legacy_attr_name << " " << legacy_attr.index();
+      pir::Attribute new_attr = attribute_translator(legacy_attr);
+      pir::Operation* defining_op =
+          InsertFullOperationForAttributeInput(ctx, block, new_attr);
+      return defining_op->result(0);
+    }
+  }
+};
+
 struct QuantizeLinearOpTranscriber : public OpTranscriber {
   void HandleNonexistentAttribute(pir::IrContext* ctx,
                                   pir::AttributeMap* attribute_map,
@@ -3591,6 +3695,92 @@ struct QuantizeLinearOpTranscriber : public OpTranscriber {
   }
 };
 
+// NOTE(Dev): heleper funtions for WithXShapeGradOpTranscriber
+static std::pair<pir::Value, pir::Value> ParseXAndOutGradValue(
+    const OpDesc& op_desc,
+    pir::IrContext* ctx,
+    pir::Builder* builder,
+    TranslationContext* param_map,
+    pir::Block* block) {
+  auto& input_xshape_name = op_desc.Input("XShape")[0];
+  auto& input_outgrad_name = op_desc.Input("Out@GRAD")[0];
+  pir::Value xshape_value;
+  VLOG(10) << "create data op for " << input_xshape_name;
+  auto var_desc = op_desc.Block()->FindVarRecursive(input_xshape_name);
+  auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
+  auto shape_vec = var_desc->GetShape();
+  // NOTE(dev): GrapOp depends on X instead of XShape, so we need
+  // earse fisrt element in xshape.
+  shape_vec.erase(shape_vec.begin());
+  xshape_value = builder
+                     ->Build<paddle::dialect::DataOp>(
+                         input_xshape_name, shape_vec, dtype, phi::Place())
+                     .result(0);
+
+  VLOG(10) << "create data op for " << input_xshape_name << " done";
+
+  if (param_map->Has(input_xshape_name)) {
+    auto value =
+        param_map->at(input_xshape_name).value.dyn_cast<pir::OpResult>();
+    auto* defining_op = value.owner();
+    value.ReplaceAllUsesWith(xshape_value);
+    param_map->PopValue(input_xshape_name);
+    defining_op->Erase();
+  }
+
+  param_map->PushValue(input_xshape_name, xshape_value);
+  PADDLE_ENFORCE_EQ(param_map->Has(input_outgrad_name),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Reshape2_Grad op does not have input Out@GRAD"));
+  auto input_outgrad_value_info = param_map->at(input_outgrad_name);
+  if (input_outgrad_value_info.generated_by_vector) {
+    InsertSliceOperationForTarget(
+        ctx, param_map, block, input_outgrad_value_info, input_outgrad_name);
+    input_outgrad_value_info = param_map->at(input_outgrad_name);
+  }
+  pir::Value input_outgrad_value = input_outgrad_value_info.value;
+
+  PADDLE_ENFORCE_EQ(
+      input_outgrad_value.type().isa<paddle::dialect::DenseTensorType>(),
+      true,
+      ::common::errors::InvalidArgument(
+          "input type must be DenseTensorType, but received: %s.",
+          input_outgrad_value.type()));
+
+  return std::make_pair(xshape_value, input_outgrad_value);
+}
+
+static pir::Value ParseAxis(const OpDesc& op_desc,
+                            TranslationContext* param_map,
+                            pir::IrContext* ctx,
+                            pir::Block* block) {
+  // process axes
+  if (op_desc.HasInput("AxesTensor") && !op_desc.Input("AxesTensor").empty()) {
+    // get axis from input
+    auto axis_var_list = op_desc.Input("AxesTensor");
+    PADDLE_ENFORCE_EQ(
+        axis_var_list.size(),
+        1UL,
+        common::errors::InvalidArgument(
+            "axis tensor input of %s MUST be a tensor", op_desc.Type()));
+    auto axis_defining_info = (*param_map)[axis_var_list[0]];
+    return axis_defining_info.value;
+  } else if (op_desc.HasInput("AxesTensorList") &&
+             !op_desc.Input("AxesTensorList").empty()) {
+    auto* combine_op = InsertCombineOperationForTarget(
+        ctx, param_map, block, op_desc.Input("AxesTensorList"));
+    return combine_op->result(0);
+  } else {
+    auto& attribute_translator = AttributeTranslator::instance();
+    pir::Attribute new_attr = attribute_translator(
+        "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("axes"));
+    auto full_array_op =
+        InsertFullArrayOperationForAttributeInput(ctx, block, new_attr);
+    return full_array_op->result(0);
+  }
+}
+
 template <typename OpT>
 struct WithXShapeGradOpTranscriber : public OpTranscriber {
   pir::Operation* operator()(pir::IrContext* ctx,
@@ -3599,56 +3789,34 @@ struct WithXShapeGradOpTranscriber : public OpTranscriber {
                              pir::Block* block) override {
     VLOG(4) << "Translate " << op_desc.Type() << ".....";
     pir::Builder builder(ctx, block);
-    auto& input_xshape_name = op_desc.Input("XShape")[0];
-    auto& input_outgrad_name = op_desc.Input("Out@GRAD")[0];
+    auto [xshape_value, input_outgrad_value] =
+        ParseXAndOutGradValue(op_desc, ctx, &builder, param_map, block);
     auto& out_name = op_desc.Output("X@GRAD")[0];
-    pir::Value xshape_value;
-    VLOG(10) << "create data op for " << input_xshape_name;
-    auto var_desc = op_desc.Block()->FindVarRecursive(input_xshape_name);
-    auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
-    auto shape_vec = var_desc->GetShape();
-    shape_vec.erase(shape_vec.begin());
-    xshape_value = builder
-                       .Build<paddle::dialect::DataOp>(
-                           input_xshape_name, shape_vec, dtype, phi::Place())
-                       .result(0);
-
-    VLOG(10) << "create data op for " << input_xshape_name << " done";
-
-    if (param_map->Has(input_xshape_name)) {
-      auto value =
-          param_map->at(input_xshape_name).value.dyn_cast<pir::OpResult>();
-      auto* defining_op = value.owner();
-      value.ReplaceAllUsesWith(xshape_value);
-      param_map->PopValue(input_xshape_name);
-      defining_op->Erase();
-    }
-
-    param_map->PushValue(input_xshape_name, xshape_value);
-    auto* defining_op = xshape_value.dyn_cast<pir::OpResult>().owner();
-    auto attr_map = defining_op->attributes();
-
-    PADDLE_ENFORCE_EQ(param_map->Has(input_outgrad_name),
-                      true,
-                      common::errors::InvalidArgument(
-                          "Reshape2_Grad op does not have input Out@GRAD"));
-    auto input_outgrad_value_info = param_map->at(input_outgrad_name);
-    if (input_outgrad_value_info.generated_by_vector) {
-      InsertSliceOperationForTarget(
-          ctx, param_map, block, input_outgrad_value_info, input_outgrad_name);
-      input_outgrad_value_info = param_map->at(input_outgrad_name);
-    }
-    pir::Value input_outgrad_value = input_outgrad_value_info.value;
-
-    PADDLE_ENFORCE_EQ(
-        input_outgrad_value.type().isa<paddle::dialect::DenseTensorType>(),
-        true,
-        ::common::errors::InvalidArgument(
-            "input type must be DenseTensorType, but received: %s.",
-            input_outgrad_value.type()));
     // NOTE(Aurelius84): Even though we use xshape to construct grad op,
     // but in GradKernel we still use dx->dims by default.
     OpT grad_op = builder.Build<OpT>(xshape_value, input_outgrad_value);
+    param_map->PushValue(out_name, grad_op.result(0));
+
+    return grad_op.operation();
+  }
+};
+
+// NOTE(dev): In case of squeeze_grad and unsqueeze_grad
+template <typename OpT>
+struct WithXShapeAndAxisGradOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    VLOG(4) << "Translate " << op_desc.Type() << ".....";
+    pir::Builder builder(ctx, block);
+    auto [x_value, input_outgrad_value] =
+        ParseXAndOutGradValue(op_desc, ctx, &builder, param_map, block);
+    auto& out_name = op_desc.Output("X@GRAD")[0];
+    // NOTE(Aurelius84): Even though we use xshape to construct grad op,
+    // but in GradKernel we still use dx->dims by default.
+    pir::Value axis = ParseAxis(op_desc, param_map, ctx, block);
+    OpT grad_op = builder.Build<OpT>(x_value, input_outgrad_value, axis);
     param_map->PushValue(out_name, grad_op.result(0));
 
     return grad_op.operation();
@@ -3692,6 +3860,7 @@ OpTranslator::OpTranslator() {
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
+  special_handlers["lookup_table"] = EmbeddingOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["pool2d"] = Pool2dOpTranscriber();
   special_handlers["randint"] = RandIntOpTranscriber();
@@ -3720,6 +3889,8 @@ OpTranslator::OpTranslator() {
   special_handlers["softmax"] = SoftmaxOpTranscriber();
   special_handlers["softmax_with_cross_entropy"] =
       SoftmaxWithCrossEntropyOpTranscriber();
+  special_handlers["gather"] = GatherOpTranscriber();
+  special_handlers["box_coder"] = BoxCoderOpTranscriber();
 
   // To adapt LodTensorArray
   special_handlers["lod_array_length"] = LodArrayLengthOpTranscriber();
@@ -3752,7 +3923,10 @@ OpTranslator::OpTranslator() {
       WithXShapeGradOpTranscriber<dialect::ReshapeGradOp>();
   special_handlers["flatten_contiguous_range_grad"] =
       WithXShapeGradOpTranscriber<dialect::FlattenGradOp>();
+  special_handlers["squeeze2_grad"] =
+      WithXShapeAndAxisGradOpTranscriber<dialect::SqueezeGradOp>();
+  special_handlers["unsqueeze2_grad"] =
+      WithXShapeAndAxisGradOpTranscriber<dialect::UnsqueezeGradOp>();
 }
-
 }  // namespace translator
 }  // namespace paddle

@@ -29,13 +29,13 @@ limitations under the License. */
 #include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/phi/backends/dynload/cublas.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/dynload/cusparse.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_helper.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/phi/backends/dynload/nccl.h"
 #endif
@@ -43,10 +43,10 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/device/gpu/gpu_helper.h"  // NOLINT
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/dynload/rocblas.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"  // NOLINT
+#include "paddle/phi/backends/gpu/gpu_helper.h"   // NOLINT
 #if !defined(__APPLE__) && defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/backends/dynload/rccl.h"
 #endif
@@ -66,8 +66,8 @@ limitations under the License. */
 #include <map>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 
 #include "paddle/phi/backends/device_ext.h"
 #include "paddle/phi/backends/stream.h"

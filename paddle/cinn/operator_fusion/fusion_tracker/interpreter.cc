@@ -33,6 +33,8 @@ void RunCombineInstr(const std::shared_ptr<CombineInstr>& instr,
     const auto& to_insert = interpreter->scope.at(name);
     new_pattern->Extend(to_insert->fusion_ops);
   }
+  VLOG(4) << "After CombineInstr Pattern: \n"
+          << GetFusibleOpsExpr(new_pattern->fusion_ops);
   interpreter->scope[instr->result_] = new_pattern;
 }
 
@@ -69,13 +71,22 @@ void RunTrivialInlineInstr(const std::shared_ptr<TrivialInlineInstr>& instr,
 
 void RunTmpTransformInstr(const std::shared_ptr<TmpTransformInstr>& instr,
                           FusionInterpreter* interpreter) {
-  VLOG(4) << interpreter->scope[instr->upstream_]->fusion_ops.size();
-  PADDLE_ENFORCE_EQ(interpreter->scope[instr->downstream_]->fusion_ops.size(),
-                    1,
-                    ::common::errors::InvalidArgument(
-                        "Downstream op must have only one fusion_op."));
+  PADDLE_ENFORCE_GT(
+      interpreter->scope.count(instr->upstream_),
+      0,
+      ::common::errors::NotFound("Can not find TmpTransformInstr uptream."));
+  PADDLE_ENFORCE_GT(
+      interpreter->scope.count(instr->downstream_),
+      0,
+      ::common::errors::NotFound("Can not find TmpTransformInstr downstream."));
+
+  PADDLE_ENFORCE_EQ(
+      interpreter->scope[instr->downstream_]->fusion_ops.size(),
+      1,
+      ::common::errors::InvalidArgument(
+          "Downstream %s must have only one fusion_op.", instr->downstream_));
   auto upstream_op = std::get<ReduceOp>(
-      interpreter->scope[instr->upstream_]->fusion_ops.front());
+      interpreter->scope[instr->upstream_]->fusion_ops.back());
   auto downstream_op =
       interpreter->scope[instr->downstream_]->fusion_ops.front();
   // inplace set the upstream
