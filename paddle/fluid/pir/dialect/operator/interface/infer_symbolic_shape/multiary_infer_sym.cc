@@ -1044,7 +1044,7 @@ bool EditDistanceOpInferSymbolicShape(
 
 bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  auto &x_shape =
+  const auto &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
 
   // Validate the bit_length attribute
@@ -2352,7 +2352,7 @@ bool ViterbiDecodeOpInferSymbolicShape(
 
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
-  auto &x_shape =
+  consst auto &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
