@@ -636,38 +636,21 @@ bool BroadcastTensorsOpInferSymbolicShape(
         target_rank, static_cast<int>(input_shape_or_data.shape().size()));
   }
 
-  std::vector<symbol::DimExpr> target_dims(target_rank, symbol::DimExpr(0));
+  symbol::DimExprBuilder builder;
 
-  // 2. Output dim(axis=x) = max(Inputs dim(axis=x))
-  for (int index = 0; index < target_rank; ++index) {
-    symbol::DimExpr target_dim_size(1);
-    for (const auto &input_shape_or_data : input_shape_or_data_list) {
-      int axis =
-          static_cast<int>(input_shape_or_data.shape().size()) - index - 1;
-      symbol::DimExpr dim_size(1);
-      if (axis >= 0) {
-        dim_size = input_shape_or_data.shape()[axis];
-      }
-
-      if (target_dim_size != dim_size && dim_size != 1 &&
-          target_dim_size != 1) {
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "BroadcastTensorsOp inputs do not satisfy broadcast semantics, "
-            "please check axis = %d in reverse order",
-            index));
-      }
-      if (dim_size != 1) {
-        target_dim_size = dim_size;
-      }
+  for (int i = 0; i < target_rank; i++) {
+    symbol::DimExpr tmp_dim = shape_or_data_list[0].shape()[i];
+    for (int j = 1; j < shape_or_data_list.size(); j++) {
+      tmp_dim = builder.Broadcast(shape_or_data_list[j].shape()[i], tmp_dim);
     }
-    target_dims[target_rank - index - 1] = target_dim_size;
+    out_shape.emblace_back(tmp_dim);
   }
-  // 3. Set Output Dim
+
   for (size_t i = 0; i < op->num_results(); ++i) {
     infer_context->SetShapeOrDataForValue(
         op->result(i),
         symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(target_dims)});
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
   }
 
   return true;
