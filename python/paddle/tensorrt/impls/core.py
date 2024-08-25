@@ -193,7 +193,9 @@ def softmax_converter(network, paddle_op, inputs):
     return softmax_layer
 
 
-@converter_registry.register("pd_op.layer_norm", trt_version="8.x")
+@converter_registry.register(
+    "pd_op.layer_norm", trt_version="trt_version_gt=8.6"
+)
 def layernorm_converter(network, paddle_op, inputs):
     input_a, scale, bias = inputs
 
