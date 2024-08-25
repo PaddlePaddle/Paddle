@@ -9,3 +9,7 @@ if(NOT WIN32 AND TENSORRT_FOUND)
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
   endforeach()
 endif()
+
+set_tests_properties(test_converter_model_bert PROPERTIES TIMEOUT "500")
+set_tests_properties(test_converter_model_dummy PROPERTIES TIMEOUT "500")
+set_tests_properties(test_converter_model_resnet50 PROPERTIES TIMEOUT "500")
