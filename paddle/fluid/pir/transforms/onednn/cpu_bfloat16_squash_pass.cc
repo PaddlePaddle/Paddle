@@ -44,23 +44,23 @@ static pir::Type create_type(pir::Type type,
 // add quantize/dequantize with scale=1.0f & shift=0.0f, hence only deal with
 // such situation for simplicity
 class DequantQuantBf16SquashPattern
-    : public pir::OpRewritePattern<paddle::onednn::dialect::QuantizeOp> {
+    : public pir::OpRewritePattern<paddle::onednn::dialect::DequantizeOp> {
  public:
   using pir::OpRewritePattern<
-      paddle::onednn::dialect::QuantizeOp>::OpRewritePattern;
+      paddle::onednn::dialect::DequantizeOp>::OpRewritePattern;
   bool MatchAndRewrite(
-      paddle::onednn::dialect::QuantizeOp op,
+      paddle::onednn::dialect::DequantizeOp op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
-    // The prev op should be dequant op.
-    paddle::onednn::dialect::DequantizeOp dequant_op =
-        pir::GetDefiningOpForInput(op, 0)
-            ->dyn_cast<paddle::onednn::dialect::DequantizeOp>();
-    if (!dequant_op) return false;
-    auto *pre_op = pir::GetDefiningOpForInput(dequant_op, 0);
+    // The next op should be quant op.
+    if (!op.output().HasOneUse()) return false;
+    paddle::onednn::dialect::QuantizeOp quant_op =
+        pir::GetUseOpsForOutput(op, 0)[0]
+            .first->dyn_cast<paddle::onednn::dialect::QuantizeOp>();
+    if (!quant_op) return false;
+    auto *pre_op = pir::GetDefiningOpForInput(op, 0);
     if (!pre_op) return false;
-
-    auto quant_attributes = op->attributes();
-    auto dequant_attributes = dequant_op->attributes();
+    auto quant_attributes = quant_op->attributes();
+    auto dequant_attributes = op->attributes();
     auto q_scale =
         quant_attributes.at("scale").dyn_cast<pir::FloatAttribute>().data();
     auto dq_scale =
@@ -70,10 +70,9 @@ class DequantQuantBf16SquashPattern
     auto dq_shift =
         dequant_attributes.at("shift").dyn_cast<pir::FloatAttribute>().data();
 
-    if (!dequant_op.output().HasOneUse()) return false;
     uint32_t idx = pre_op->num_results();
     for (uint32_t i = 0; i < pre_op->num_results(); i++) {
-      if (pre_op->result(i) == dequant_op.input()) {
+      if (pre_op->result(i) == op.input()) {
         idx = i;
         break;
       }
@@ -82,10 +81,10 @@ class DequantQuantBf16SquashPattern
     if (q_scale != 1.0f || q_shift != 0.0f) return false;
 
     if (q_scale == dq_scale && q_shift == dq_shift) {
-      rewriter.ReplaceAllUsesWith(op.output(), pre_op->result(idx));
+      rewriter.ReplaceAllUsesWith(quant_op.output(), pre_op->result(idx));
 
+      rewriter.EraseOp(quant_op);
       rewriter.EraseOp(op);
-      rewriter.EraseOp(dequant_op);
     } else {
       return false;
     }
@@ -103,6 +102,7 @@ class DequantQuantBf16MultiUserPattern
       pir::PatternRewriter &rewriter) const override {  // NOLINT
     // The user_ops should include quant op.
     auto user_ops = pir::GetUseOpsForOutput(op, 0);
+    if (user_ops.size() <= 1) return false;
     // indicate pre_op for future process
     auto *pre_op = pir::GetDefiningOpForInput(op, 0);
     if (!pre_op) return false;
