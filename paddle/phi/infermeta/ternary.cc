@@ -462,6 +462,12 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset) {
   auto out_dims = q.dims();
+  // Size of q, k, v for flash_attn_unpadded : [total_seq_len, num_heads, head_dim]
+  // Size of q, k, v for flash_attn: [batch_size, seq_len, num_heads, head_dim]
+  PADDLE_ENFORCE(q.size() == 3 || q.size() == 4,
+                 common::errors::InvalidArgument(
+                     "q,k,v dims must be 3 (flash_attn_unpadded) or 4 (flash_attn)"));
+  
   if (out_dims.size() == 4) {
     out_dims[3] = v.dims()[3];
   }
@@ -484,6 +490,7 @@ void FlashAttnInferMeta(const MetaTensor& q,
       softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
     }
   }
+  // for flash_attn_unpadded, do not infer softmax output size
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);
     seed_offset->set_dims({2});
