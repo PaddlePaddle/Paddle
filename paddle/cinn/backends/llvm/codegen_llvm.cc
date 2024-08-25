@@ -1179,7 +1179,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_LoweredFunc_ *op) {
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Let *op) {
-  PADDLE_ENFORCE_NE(op->type().valid(),
+  PADDLE_ENFORCE_EQ(op->type().valid(),
                     true,
                     phi::errors::InvalidArgument("invalid type for operator"));
   auto name = op->symbol.As<ir::_Var_>()->name;
