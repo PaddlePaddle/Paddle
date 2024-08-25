@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_mode
@@ -22,7 +22,7 @@ from paddle.framework import LayerHelper, in_dynamic_mode
 if TYPE_CHECKING:
     from paddle import Tensor
 
-    _quant_round_type = Literal[0, 1]
+    _QuantRoundType: TypeAlias = Literal[0, 1]
 
 
 def block_multihead_attention(
@@ -56,7 +56,7 @@ def block_multihead_attention(
     block_size: int = 64,
     use_neox_style: bool = False,
     use_dynamic_cachekv_quant: bool = False,
-    quant_round_type: _quant_round_type = 1,
+    quant_round_type: _QuantRoundType = 1,
     quant_max_bound: float = 127.0,
     quant_min_bound: float = -127.0,
     out_scale: float = -1,
@@ -434,7 +434,7 @@ def block_multihead_attention_xpu(
     block_size: int = 64,
     use_neox_style: bool = False,
     use_dynamic_cachekv_quant: bool = False,
-    quant_round_type: _quant_round_type = 1,
+    quant_round_type: _QuantRoundType = 1,
     quant_max_bound: float = 127.0,
     quant_min_bound: float = -127.0,
     out_scale: float = -1,
