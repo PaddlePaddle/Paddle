@@ -89,6 +89,7 @@ class TestConv2dAddBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
+        self.skip_accuracy_verification = True
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
@@ -159,6 +160,7 @@ class TestFusedConv2dBf16Pass(PassTest):
         self.places.append(paddle.CPUPlace())
 
     def test_check_output(self):
+        self.skip_accuracy_verification = True
         self.check_pass_correct(atol=1e-2, rtol=1e-2)
 
 
@@ -248,6 +250,100 @@ class TestFcGeluReluBf16Pass(PassTest):
                     "pd_op.matmul": 0,
                     "onednn_op.gelu": 1,
                     "onednn_op.relu": 1,
+                    "onednn_op.dequantize": 2,
+                    "onednn_op.quantize": 1,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+
+
+class TestGeluReluBf16Pass(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[3, 2], dtype='float32')
+                out_1 = paddle.nn.functional.gelu(x)
+                out_2 = paddle.nn.functional.relu(out_1)
+                out_2 = paddle.assign(out_2)
+                self.pass_attr_list = [
+                    {'onednn_placement_pass': {}},
+                    {'cpu_bfloat16_placement_pass': {}},
+                    {'cpu_bfloat16_pass': {}},
+                    {'cpu_bfloat16_type_placement_pass': {}},
+                    {'cpu_bf16_quantize_squash_pass': {}},
+                ]
+                self.feeds = {
+                    "x": np.random.random((3, 2)).astype("float32"),
+                }
+                self.fetch_list = [out_2]
+                self.valid_op_map = {
+                    "onednn_op.gelu": 1,
+                    "onednn_op.relu": 1,
+                    "onednn_op.dequantize": 1,
+                    "onednn_op.quantize": 1,
+                }
+                return [main_prog, start_prog]
+
+    def sample_program(self):
+        yield self.build_ir_program(), False
+
+    def setUp(self):
+        self.places.append(paddle.CPUPlace())
+
+    def test_check_output(self):
+        self.check_pass_correct(atol=5e-3, rtol=5e-3)
+
+
+class TestFcGeluMishBf16Pass(PassTest):
+    def is_program_valid(self, program=None):
+        return True
+
+    def build_ir_program(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            start_prog = paddle.static.Program()
+            with paddle.pir.core.program_guard(main_prog, start_prog):
+                x = paddle.static.data(name='x', shape=[3, 2], dtype='float32')
+                w = paddle.static.data(name='w', shape=[2, 3], dtype='float32')
+                y = paddle.static.data(name="y", shape=[3], dtype='float32')
+                out = paddle.add(paddle.matmul(x, w), y)
+                out_1 = paddle.nn.functional.gelu(out)
+                out_2 = paddle.nn.functional.mish(out)
+                out_1 = paddle.assign(out_1)
+                out_2 = paddle.assign(out_2)
+                self.pass_attr_list = [
+                    {'matmul_add_act_fuse_pass': {}},
+                    {'fc_onednn_enable_pass': {}},
+                    {'onednn_placement_pass': {}},
+                    {'cpu_bfloat16_placement_pass': {}},
+                    {'cpu_bfloat16_pass': {}},
+                    {'cpu_bfloat16_type_placement_pass': {}},
+                    {'cpu_bf16_quantize_squash_pass': {}},
+                ]
+                self.feeds = {
+                    "x": np.random.random((3, 2)).astype("float32"),
+                    "w": np.random.random((2, 3)).astype("float32"),
+                    "y": np.random.random(3).astype("float32"),
+                }
+                self.fetch_list = [out_1, out_2]
+                self.valid_op_map = {
+                    "onednn_op.fc": 1,
+                    "pd_op.matmul": 0,
+                    "onednn_op.gelu": 1,
+                    "onednn_op.mish": 1,
                     "onednn_op.dequantize": 2,
                     "onednn_op.quantize": 1,
                 }

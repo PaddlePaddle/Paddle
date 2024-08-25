@@ -84,8 +84,8 @@ class DequantQuantBf16SquashPattern
     if (q_scale == dq_scale && q_shift == dq_shift) {
       rewriter.ReplaceAllUsesWith(op.output(), pre_op->result(idx));
 
-      rewriter.EraseOp(dequant_op);
       rewriter.EraseOp(op);
+      rewriter.EraseOp(dequant_op);
     } else {
       return false;
     }
@@ -209,8 +209,6 @@ class QuantConvBf16SquashPattern
 
     op_attributes["force_fp32_output"] = rewriter.bool_attr(false);
     op_attributes["fuse_residual_connection"] = rewriter.bool_attr(false);
-    // op_attributes["mkldnn_data_type"] =
-    //     rewriter.str_attr("bfloat16");  // delete when lirong merge
     op_attributes["fuse_activation"] = rewriter.str_attr("");
     op_attributes["fuse_alpha"] = rewriter.float_attr(0.0f);
     op_attributes["fuse_beta"] = rewriter.float_attr(0.0f);
@@ -428,9 +426,9 @@ class CPUBf16QuantizeSquashPass : public pir::PatternRewritePass {
             });
     ps.Add(std::move(q_fusedconv_onednn_pattern));
 
-    auto dq_op_onednn_pattern = std::make_unique<OpDequantBf16SquashPattern>(
+    auto op_dq_onednn_pattern = std::make_unique<OpDequantBf16SquashPattern>(
         context, benfit--, std::vector<std::string>{});
-    ps.Add(std::move(dq_op_onednn_pattern));
+    ps.Add(std::move(op_dq_onednn_pattern));
 
     return ps;
   }
