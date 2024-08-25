@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "paddle/phi/core/platform/profiler/cpu_utilization.h"
 #include <array>
 #include "glog/logging.h"
