@@ -108,7 +108,6 @@ type_dict_str_to_numpy = {
     'complex128': np.complex128,
 }
 
-
 xpu_test_op_white_list = []
 xpu_test_device_type_white_list = ['xpu1_float64']
 xpu_test_op_type_white_list = [
