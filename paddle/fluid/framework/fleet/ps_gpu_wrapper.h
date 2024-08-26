@@ -106,10 +106,7 @@ class AfsWrapper {
 #ifdef PADDLE_WITH_PSCORE
 class AfsWrapper {
  public:
-  AfsWrapper() {
-    VLOG(1) << "INTO AfsWrapper Constructor";
-    handle_ = phi::dynload::createAfsAPIWrapper();
-  }
+  AfsWrapper() {}
   const AfsAPIWrapperHandle& GetAfsWrapper() const { return handle_; }
 
   ~AfsWrapper() {
@@ -122,6 +119,9 @@ class AfsWrapper {
            const std::string& fs_user,
            const std::string& pass_wd,
            const std::string& conf) {
+    if (handle_ == nullptr) {
+      handle_ = phi::dynload::createAfsAPIWrapper();
+    }
     int ret = phi::dynload::afs_init(handle_,
                                      fs_name.c_str(),
                                      fs_user.c_str(),
@@ -202,7 +202,7 @@ class AfsWrapper {
   }
 
  private:
-  AfsAPIWrapperHandle handle_;
+  AfsAPIWrapperHandle handle_ = nullptr;
 };
 #endif
 
