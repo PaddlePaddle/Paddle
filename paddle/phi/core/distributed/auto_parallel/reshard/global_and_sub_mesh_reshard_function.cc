@@ -93,7 +93,7 @@ void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   std::unordered_map<int64_t, int64_t> recv2send_map;
 
   for (const ProcessMesh& sub_mesh : sub_process_meshes) {
-    if (sub_mesh == in_process_mesh) {
+    if (mesh_equal_ignore_shape1(sub_mesh, in_process_mesh, sub_mesh_dim)) {
       continue;
     }
     const std::vector<int64_t>& sub_process_ids = sub_mesh.process_ids();

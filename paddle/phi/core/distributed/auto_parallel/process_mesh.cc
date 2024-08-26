@@ -123,25 +123,28 @@ void ProcessMesh::to_proto(ProcessMeshProto *proto) const {
 }
 
 bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {
-  if (lhs.shape() == rhs.shape() && lhs.process_ids() == rhs.process_ids()) {
-    return true;
-  }
-  if (lhs.process_ids() != rhs.process_ids()) {
+  if (lhs.shape() != rhs.shape() || lhs.process_ids() != rhs.process_ids()) {
     return false;
   }
+  return true;
+}
 
-  // if the process ids are the same, and the shapes after
-  // removing all `1` are the same, then they are equal.
-  std::vector<int64_t> new_lhs_shape = lhs.shape();
-  std::vector<int64_t> new_rhs_shape = rhs.shape();
-  new_lhs_shape.erase(
-      std::remove(new_lhs_shape.begin(), new_lhs_shape.end(), 1),
-      new_lhs_shape.end());
-  new_rhs_shape.erase(
-      std::remove(new_rhs_shape.begin(), new_rhs_shape.end(), 1),
-      new_rhs_shape.end());
-
-  return new_lhs_shape == new_rhs_shape;
+bool mesh_equal_ignore_shape1(const ProcessMesh &a,
+                              const ProcessMesh &b,
+                              int split_dim) {
+  if (a == b) {
+    return true;
+  }
+  if (a.process_ids() != b.process_ids()) {
+    return false;
+  }
+  std::vector<int64_t> a_shape = a.shape();
+  std::vector<int64_t> b_shape = b.shape();
+  if (a_shape[split_dim] != 1) {
+    return false;
+  }
+  a_shape.erase(a_shape.begin() + split_dim);
+  return a_shape == b_shape;
 }
 
 std::vector<ProcessMesh> SplitMesh(const ProcessMesh &mesh, int axis) {
@@ -197,16 +200,17 @@ int SubMeshDim(const ProcessMesh &global_mesh, const ProcessMesh &sub_mesh) {
 
   if (global_mesh.ndim() == sub_mesh.ndim() + 1) {
     // for the case that the `1` is not explicitly specified in the shape
-    // only supports the case that the sub_mesh is splitted from the 0-th
-    // from global_mesh now.
     // e.g.
     //  global_mesh: shape = [2,3], process_ids = [0,1,2,3,4,5]
     //  sub_mesh: shape = [3], process_ids = [0,1,2]
-    if (std::equal(global_shape.begin() + 1,
-                   global_shape.end(),
-                   sub_shape.begin(),
-                   sub_shape.end())) {
-      sub_dim = 0;
+    int global_ndim = global_mesh.ndim();
+    for (int i = 0; i < global_ndim - 1; ++i) {
+      std::vector<ProcessMesh> sub_meshes = SplitMesh(global_mesh, i);
+      for (const ProcessMesh &mesh : sub_meshes) {
+        if (mesh_equal_ignore_shape1(mesh, sub_mesh, i)) {
+          return i;
+        }
+      }
     }
     return sub_dim;
   } else if (global_mesh.ndim() != sub_mesh.ndim()) {

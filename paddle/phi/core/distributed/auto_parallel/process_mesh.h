@@ -99,5 +99,14 @@ std::vector<ProcessMesh> SplitMesh(const ProcessMesh& mesh, int axis);
 // if sub_mesh is not a subset of global_mesh, return -1
 int SubMeshDim(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh);
 
+// when the shapes of two meshes are different and their process_ids
+// are the same, check whether the only difference is that mesh 'a'
+// has an additional '1' on the splitted dim of its shape.
+// e.g. a.shape = [2], b.shape = [2, 1], and the process_ids are the
+// same, then they are equal.
+bool mesh_equal_ignore_shape1(const ProcessMesh& a,
+                              const ProcessMesh& b,
+                              int split_dim);
+
 }  // namespace distributed
 }  // namespace phi
