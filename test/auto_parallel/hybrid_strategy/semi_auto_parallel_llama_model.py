@@ -777,25 +777,15 @@ class LlamaPretrainingCriterionAuto(paddle.nn.Layer):
 
     def forward(self, prediction_scores, masked_lm_labels):
         # Force Replicated to match dy & st
-        prediction_scores1 = dist.reshard(
-            prediction_scores,
-            get_mesh(-1),
-            [dist.Replicate(), dist.Replicate()],
-        )
-        masked_lm_labels1 = dist.reshard(
-            masked_lm_labels, get_mesh(-1), [dist.Replicate(), dist.Replicate()]
-        )
-
-        # Force entropy same kernel
-        if isinstance(prediction_scores1, paddle.Tensor):
+        if isinstance(prediction_scores, paddle.Tensor):
             masked_lm_loss = self.loss_func(
-                prediction_scores1.astype("float32")._use_gpudnn(False),
-                masked_lm_labels1.unsqueeze(2),
+                prediction_scores.astype("float32")._use_gpudnn(False),
+                masked_lm_labels.unsqueeze(2),
             )
         else:
             masked_lm_loss = self.loss_func(
-                prediction_scores1.astype("float32"),
-                masked_lm_labels1.unsqueeze(2),
+                prediction_scores.astype("float32"),
+                masked_lm_labels.unsqueeze(2),
             )
 
         masked_lm_loss = paddle.masked_select(
