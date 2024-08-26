@@ -2395,11 +2395,7 @@ bool MultiplexOpInferSymbolicShape(
                     common::errors::PreconditionNotMet(
                         "The index tensor must be a vector with 2 dimensions"));
 
-  PADDLE_ENFORCE_EQ(
-      ids_shape_or_data.shape()[1],
-      symbol::DimExpr(1),
-      common::errors::PreconditionNotMet(
-          "The index tensor must be a vector with batchSize x 1."));
+  infer_context->AddEqualCstr(ids_shape_or_data.shape()[1], symbol::DimExpr(1));
 
   PADDLE_ENFORCE_GT(
       inputs_shape_or_data_list.size(),
