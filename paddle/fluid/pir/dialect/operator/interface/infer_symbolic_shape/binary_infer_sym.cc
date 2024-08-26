@@ -764,12 +764,34 @@ bool GatherNdOpInferSymbolicShape(
   return true;
 }
 
-// bool GatherTreeOpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   // pass
-//   return true;
-// }
+bool GatherTreeOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &ids_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &parents_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const std::vector<symbol::DimExpr> &ids_shape = ids_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &parents_shape =
+      parents_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(ids_shape.size() == parents_shape.size(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "The shape of Input(Parents) must be same with the "
+                        "shape of Input(Ids)."));
+  size_t rank = ids_shape.size();
+  for (size_t i = 0; i < rank; ++i) {
+    infer_context->AddEqualCstr(ids_shape[i], parents_shape[i]);
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(ids_shape)});
+
+  return true;
+}
 
 bool HuberLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
