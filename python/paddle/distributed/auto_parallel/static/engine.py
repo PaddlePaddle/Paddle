@@ -842,13 +842,8 @@ class Engine:
         #     'after remove_other_rank_input_output_pass', dist_program, flush=1
         # )
 
-        remove_other_rank_op_pass(dist_program, params_grads)
-
-        # print('after remove_other_rank_op_pass', dist_program, flush=1)
-
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
-
         # TODO(xxxx) Step 4.1 DP Optimization Pass
         if self._strategy.dp_optimization.enable:
             from paddle.distributed.passes import apply_dp_optimization_pir_pass
@@ -879,7 +874,7 @@ class Engine:
             # if self._strategy.sharding_optimization.enable:
             # dist_program = apply_sharding_optimization_pass(dist_program)
             pass
-
+        remove_other_rank_op_pass(dist_program, params_grads)
         if mode == "train" and self._strategy.pipeline.enable:
             self._strategy.gradient_merge.enable = True
             self._strategy.gradient_merge.k_steps = (

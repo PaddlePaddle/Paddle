@@ -781,6 +781,7 @@ def apply_dp_delay_loss_scale(program, loss):
     def _update_program(program):
         pass
 
+    analyze_program(program, loss)
     if dp_world_size > 1:
         logger.warning(
             "Apply the dp_delay_loss_scale Pass, the loss might be numerical different compared with AutoParallel in Dygraph mode!"
@@ -788,9 +789,9 @@ def apply_dp_delay_loss_scale(program, loss):
         _update_program(program)
 
 
-def apply_dp_optimization_pir_pass(program):
+def apply_dp_optimization_pir_pass(program, loss):
     """
     Apply Optimizations that specialized for data parallelism in Auto Parallel PIR mode.
     """
 
-    apply_dp_delay_loss_scale(program)
+    apply_dp_delay_loss_scale(program, loss)
