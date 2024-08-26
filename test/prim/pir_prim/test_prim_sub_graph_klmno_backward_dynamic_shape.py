@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 import numpy as np
 from test_prim_sub_graph_backward_dynamic_shape import (
     TestPrimBaseWithGrad,
@@ -627,3 +629,7 @@ class TestPrimMultiplyWithGrad11(TestPrimTwoWithGrad):
         self.net = multiply_net
         self.enable_cinn = False
         self.tol = 1e-5
+
+
+if __name__ == "__main__":
+    unittest.main()

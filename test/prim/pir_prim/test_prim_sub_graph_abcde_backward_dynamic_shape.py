@@ -730,3 +730,7 @@ class TestPrimExpandWithGrad4(TestPrimBaseWithGrad):
         self.net = expand_net
         self.enable_cinn = False
         self.tol = 1e-6
+
+
+if __name__ == "__main__":
+    unittest.main()

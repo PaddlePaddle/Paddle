@@ -756,3 +756,7 @@ class TestPrimTransposeWithGrad(TestPrimBaseWithGrad):
         self.net = transpose_net
         self.enable_cinn = False
         self.tol = 1e-6
+
+
+if __name__ == "__main__":
+    unittest.main()

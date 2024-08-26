@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
 import numpy as np
 from test_prim_sub_graph_backward_dynamic_shape import TestPrimBaseWithGrad
@@ -144,3 +145,7 @@ class TestPrimHardswishWithGrad(TestPrimBaseWithGrad):
         self.net = hardswish_net
         self.enable_cinn = False
         self.tol = 1e-6
+
+
+if __name__ == "__main__":
+    unittest.main()
