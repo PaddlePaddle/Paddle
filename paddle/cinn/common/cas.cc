@@ -40,9 +40,7 @@ Expr AutoSimplify(
   if (u.type().is_float()) {
     return u;
   }
-  VLOG(1) << "11111111";
   u = detail::ConvertCinnToCAS(u);
-  VLOG(1) << "11111111";
   absl::flat_hash_map<std::string, CasInterval> s_var_intervals;
   for (auto& item : var_intervals) {
     if (item.second.e_l.defined() && item.second.e_r.defined()) {
@@ -54,11 +52,9 @@ Expr AutoSimplify(
                               CasInterval(item.second.l, item.second.r));
     }
   }
-  VLOG(1) << "11111111";
   u = CasSimplify(u, s_var_intervals);
-  VLOG(1) << "11111111";
   u = detail::ConvertCasToCinn(u);
-  VLOG(6) << "End AutoSimplify " << u;
+  VLOG(6) << "Begin AutoSimplify: " << u;
   return u;
 }
 
