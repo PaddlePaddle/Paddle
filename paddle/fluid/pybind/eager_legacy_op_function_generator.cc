@@ -503,6 +503,7 @@ int run_legacy_generator(int argc, char* argv[]) {
   auto op_funcs = GenerateOpFunctions();
   auto core_ops_infos = GenerateCoreOpsInfoMap();
   std::string core_ops_infos_registry =
+      "  {\"get_core_ops_args_info\", "
       "(PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, "
       "\"C++ interface function for eager_get_core_ops_args_info.\"},\n"
       "  {\"get_core_ops_args_type_info\", "
