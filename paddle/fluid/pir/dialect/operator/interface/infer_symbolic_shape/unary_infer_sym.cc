@@ -2258,30 +2258,29 @@ bool QrOpInferSymbolicShape(pir::Operation *op,
   symbol::DimExpr n = x_shape[x_rank - 1];
   symbol::DimExpr min_mn = builder.Min(m, n);
 
-    if (compute_q) {
-      symbol::DimExpr k = reduced ? min_mn : m;
-      std::vector<symbol::DimExpr> q_shape = x_shape;
-      q_shape[-1] = k;
-      infer_context->SetShapeOrDataForValue(
-          op->result(0),
-          symbol::ShapeOrDataDimExprs{
-              symbol::TensorShapeOrDataDimExprs(q_shape)});
-    } else {
-      std::vector<symbol::DimExpr> q_shape = {0};
-      infer_context->SetShapeOrDataForValue(
-          op->result(0),
-          symbol::ShapeOrDataDimExprs{
-              symbol::TensorShapeOrDataDimExprs(q_shape)});
-    }
-
+  if (compute_q) {
     symbol::DimExpr k = reduced ? min_mn : m;
-    std::vector<symbol::DimExpr> r_shape = x_shape;
-    r_shape[-2] = k;
-    r_shape[-1] = n;
+    std::vector<symbol::DimExpr> q_shape = x_shape;
+    q_shape[-1] = k;
     infer_context->SetShapeOrDataForValue(
-        op->result(1),
+        op->result(0),
         symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(r_shape)});
+            symbol::TensorShapeOrDataDimExprs(q_shape)});
+  } else {
+    std::vector<symbol::DimExpr> q_shape = {0};
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(q_shape)});
+  }
+
+  symbol::DimExpr k = reduced ? min_mn : m;
+  std::vector<symbol::DimExpr> r_shape = x_shape;
+  r_shape[-2] = k;
+  r_shape[-1] = n;
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(r_shape)});
 
   return true;
 }
