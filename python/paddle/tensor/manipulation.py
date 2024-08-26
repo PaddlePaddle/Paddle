@@ -1374,6 +1374,17 @@ def concat(
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     elif in_pir_mode():
+
+        def is_in_amp_mode():
+            amp_attrs = core._get_amp_attrs()
+            amp_level = amp_attrs._amp_level
+            apply_amp_level_list = [
+                core.AmpLevel.O1,
+                core.AmpLevel.O2,
+            ]
+            return amp_level in apply_amp_level_list
+
+        is_in_amp = is_in_amp_mode()
         check_type(input, 'input', (list, tuple, paddle.pir.Value), 'concat')
         if not isinstance(input, paddle.pir.Value):
             for id, x in enumerate(input):
@@ -1397,7 +1408,7 @@ def concat(
                     ],
                     'concat',
                 )
-                if x.dtype != input[0].dtype:
+                if (not is_in_amp) and x.dtype != input[0].dtype:
                     raise TypeError(
                         "All the Tensors in the input must have the same data type."
                     )
