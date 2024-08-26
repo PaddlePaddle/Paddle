@@ -21,9 +21,9 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/string_helper.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/infermeta/spmd_rules/rules.h"
-#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
 namespace paddle {
@@ -566,7 +566,6 @@ static std::vector<DataType> RunInferDtype(
   }
 }
 
-
 #ifdef PADDLE_WITH_DISTRIBUTE
 static phi::distributed::SpmdInfo RunInferSpmd(
     const paddle::OpMetaInfo& op_info,
@@ -577,41 +576,48 @@ static phi::distributed::SpmdInfo RunInferSpmd(
 
   auto& infer_spmd_func = paddle::OpMetaInfoHelper::GetInferSpmdFn(op_info);
   if (infer_spmd_func == nullptr) {
-    // TODO support replicated rule for custom op
-      PADDLE_THROW(common::errors::Unavailable(
-          "We only allow a custom operator with specific SPMD rule in auto parallel mode, please register a SPMD for [%s] Op first.", op_type));
+    // TODO(Q4): support replicated rule for custom op
+    PADDLE_THROW(common::errors::Unavailable(
+        "We only allow a custom operator with specific SPMD rule in auto "
+        "parallel mode, please register a SPMD for [%s] Op first.",
+        op_type));
   }
 
   std::vector<paddle::CustomSpmdInferTensorArg> dist_meta_tensors;
   dialect::CvtAllInputsToDist(argument_inputs, op_mesh);
   for (auto& value : argument_inputs) {
     // optional value
-    if (!value || !value.type()){
+    if (!value || !value.type()) {
       phi::distributed::DistMetaTensor meta_tensor;
       dist_meta_tensors.emplace_back(std::move(meta_tensor));
-    // single value
-    } else if (auto dist_type = value.type().dyn_cast<dialect::DistTypeInterface>()){
-      auto meta_tensor = dialect::CvtToDistMetaTensor(value.type().dyn_cast<dialect::DistDenseTensorType>());
+      // single value
+    } else if (auto dist_type =
+                   value.type().dyn_cast<dialect::DistTypeInterface>()) {
+      auto meta_tensor = dialect::CvtToDistMetaTensor(
+          value.type().dyn_cast<dialect::DistDenseTensorType>());
       dist_meta_tensors.emplace_back(std::move(meta_tensor));
-    // vector values
-    } else if(auto vec_type = value.type().dyn_cast<pir::VectorType>()){
+      // vector values
+    } else if (auto vec_type = value.type().dyn_cast<pir::VectorType>()) {
       std::vector<phi::distributed::DistMetaTensor> meta_tensors;
-        for (size_t idx = 0; idx < vec_type.size(); ++idx) {
-          auto meta_tensor = dialect::CvtToDistMetaTensor(vec_type[idx].dyn_cast<dialect::DistDenseTensorType>());
-          meta_tensors.emplace_back(std::move(meta_tensor)); 
-        }
+      for (size_t idx = 0; idx < vec_type.size(); ++idx) {
+        auto meta_tensor = dialect::CvtToDistMetaTensor(
+            vec_type[idx].dyn_cast<dialect::DistDenseTensorType>());
+        meta_tensors.emplace_back(std::move(meta_tensor));
+      }
       dist_meta_tensors.emplace_back(std::move(meta_tensors));
-    } else{
+    } else {
       std::ostringstream print_stream;
       print_stream << value.type();
       PADDLE_THROW(common::errors::Unavailable(
-          "We only allow a custom operator with optional/single/vector inputs in auto parallel mode. %s", print_stream.str()));      
+          "We only allow a custom operator with optional/single/vector inputs "
+          "in auto parallel mode. %s",
+          print_stream.str()));
     }
   }
 
   auto spmd_info_tmp = infer_spmd_func(dist_meta_tensors, custom_attrs);
   phi::distributed::SpmdInfo spmd_info;
-  
+
   // NOTE not need to flatten input
   spmd_info.first = spmd_info_tmp.first;
   // for (auto& e : spmd_info_tmp.first) {
@@ -625,7 +631,7 @@ static phi::distributed::SpmdInfo RunInferSpmd(
   //     }
   //   }
   // }
-  
+
   // flatten output
   for (auto& e : spmd_info_tmp.second) {
     if (paddle::holds_alternative<phi::distributed::TensorDistAttr>(e)) {

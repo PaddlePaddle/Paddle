@@ -1227,5 +1227,4 @@ static PyMethodDef ManualOpsAPI[] = {
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind
-
 }  // namespace paddle
