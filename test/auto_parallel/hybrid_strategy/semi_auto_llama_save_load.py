@@ -231,8 +231,6 @@ class TestLlamaAuto:
         )
         loaded_model = paddle.load(model_file_path)
         paddle.disable_static()
-
-        print(f"model {model_file_path}: {loaded_model}", flush=1)
         self.check_program_equal(
             dist_model._engine._pir_dist_main_progs["train"], loaded_model
         )
