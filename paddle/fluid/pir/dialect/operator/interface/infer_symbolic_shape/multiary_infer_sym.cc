@@ -1342,9 +1342,12 @@ bool GruOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const symbol::ShapeOrDataDimExprs &weight_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const symbol::ShapeOrDataDimExprs &hidden_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->result(3));
 
   std::vector<symbol::DimExpr> input_shape = input_shape_or_data.shape();
   std::vector<symbol::DimExpr> weight_shape = weight_shape_or_data.shape();
+  std::vector<symbol::DimExpr> hidden_shape = hidden_shape_or_data.shape();
 
   bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
 
@@ -1372,7 +1375,18 @@ bool GruOpInferSymbolicShape(pir::Operation *op,
     infer_context->AddEqualCstr(bias_shape[1], frame_size * 3);
   }
 
-  if (!is_test) {
+  if (is_test) {
+    symbol::TensorShapeOrDataDimExprs batch_gate_shape(input_shape);
+    infer_context->SetShapeOrDataForValue(op->result(0), batch_gate_shape);
+
+    symbol::TensorShapeOrDataDimExprs batch_reset_hidden_prev_shape(
+        {hidden_shape});
+    infer_context->SetShapeOrDataForValue(op->result(1),
+                                          batch_reset_hidden_prev_shape);
+
+    symbol::TensorShapeOrDataDimExprs batch_hidden_shape({hidden_shape});
+    infer_context->SetShapeOrDataForValue(op->result(2), batch_hidden_shape);
+  } else {
     symbol::TensorShapeOrDataDimExprs batch_gate_shape(input_shape);
     infer_context->SetShapeOrDataForValue(op->result(0), batch_gate_shape);
 
@@ -1384,10 +1398,6 @@ bool GruOpInferSymbolicShape(pir::Operation *op,
     symbol::TensorShapeOrDataDimExprs batch_hidden_shape(
         {input_shape[0], frame_size});
     infer_context->SetShapeOrDataForValue(op->result(2), batch_hidden_shape);
-  } else {
-    infer_context->SetSymbolForValueByStaticShape(op->result(0));
-    infer_context->SetSymbolForValueByStaticShape(op->result(1));
-    infer_context->SetSymbolForValueByStaticShape(op->result(2));
   }
 
   symbol::TensorShapeOrDataDimExprs hidden_shape({input_shape[0], frame_size});
