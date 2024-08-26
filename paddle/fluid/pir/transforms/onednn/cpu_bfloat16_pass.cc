@@ -59,10 +59,12 @@ class CpuBfloat16Pattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("is_test", pat.Attr("is_test"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
     } else if (bfloat16_ops_ == "onednn_op.matmul") {
       op_attrs.emplace("transpose_x", pat.Attr("transpose_x"));
       op_attrs.emplace("transpose_y", pat.Attr("transpose_y"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
 
     } else if (bfloat16_ops_ == "onednn_op.pool2d") {
       // op_attrs.emplace("kernel_size", pat.Attr("kernel_size"));
@@ -233,10 +235,12 @@ class CpuBfloat16DequantPattern : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("data_format", pat.Attr("data_format"));
       op_attrs.emplace("is_test", pat.Attr("is_test"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
     } else if (bfloat16_ops_ == "onednn_op.matmul") {
       op_attrs.emplace("transpose_x", pat.Attr("transpose_x"));
       op_attrs.emplace("transpose_y", pat.Attr("transpose_y"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
 
     } else if (bfloat16_ops_ == "onednn_op.pool2d") {
       // op_attrs.emplace("kernel_size", pat.Attr("kernel_size"));
@@ -875,6 +879,7 @@ class CpuBfloat16PatternThree_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("output_padding", pat.Attr("output_padding"));
       op_attrs.emplace("paddings", pat.Attr("paddings"));
       op_attrs.emplace("strides", pat.Attr("strides"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
     }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);
@@ -1046,6 +1051,7 @@ class CpuBfloat16DequantPatternThree_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("output_padding", pat.Attr("output_padding"));
       op_attrs.emplace("paddings", pat.Attr("paddings"));
       op_attrs.emplace("strides", pat.Attr("strides"));
+      op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
     }
 
     const auto &op = pat.Op(bfloat16_ops_, op_attrs);

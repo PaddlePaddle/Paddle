@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/platform/profiler/utils.h"
 
 #include <sstream>
 #include <vector>
@@ -147,7 +147,7 @@ float CalculateEstOccupancy(uint32_t DeviceId,
 
 #endif  // PADDLE_WITH_CUPTI
 
-const char* StringTracerMemEventType(TracerMemEventType type) {
+const char* StringTracerMemEventType(phi::TracerMemEventType type) {
   switch (type) {
 #define CASE_NAME(name)          \
   case TracerMemEventType::name: \
@@ -159,7 +159,7 @@ const char* StringTracerMemEventType(TracerMemEventType type) {
   }
 }
 
-const char* StringTracerEventType(TracerEventType type) {
+const char* StringTracerEventType(phi::TracerEventType type) {
   switch (type) {
 #define CASE_NAME(name)       \
   case TracerEventType::name: \

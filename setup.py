@@ -1120,7 +1120,7 @@ def get_paddle_extra_install_requirements():
                 )
                 return paddle_cuda_requires, []
 
-    return paddle_cuda_requires, paddle_tensorrt_requires
+    return paddle_cuda_requires
 
 
 def get_cinn_config_jsons():
@@ -1711,11 +1711,8 @@ def get_setup_parameters():
             'AMD64',
         )
     ):
-        paddle_cuda_requires, paddle_tensorrt_requires = (
-            get_paddle_extra_install_requirements()
-        )
+        paddle_cuda_requires = get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
-        setup_requires += paddle_tensorrt_requires
 
     packages = [
         'paddle',

@@ -165,15 +165,6 @@
     func : c_reduce_prod
   inplace : (x -> out)
 
-- op : c_reducescatter
-  args : (Tensor x, int ring_id = 0, int nranks = 1, bool use_calc_stream = false)
-  output : Tensor(out)
-  infer_meta :
-    func : ReduceScatterInferMeta
-    param: [x, nranks]
-  kernel :
-    func : c_reducescatter
-
 - op : c_split
   args : (Tensor x, int rank = 0, int nranks = 1, int ring_id = 0, bool use_calc_stream = false, bool use_model_parallel = true)
   output : Tensor(out)

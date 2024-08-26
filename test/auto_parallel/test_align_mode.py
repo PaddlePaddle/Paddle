@@ -14,30 +14,22 @@
 
 import unittest
 
-import test_op_translator
-
 import paddle
-from paddle.base.layer_helper import LayerHelper
-
-paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestCAllReduceMinOpTranslator(test_op_translator.TestOpTranslator):
-    def append_op(self):
-        self.op_type = "all_reduce"
-        x = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        y = paddle.ones(shape=(100, 2, 3), dtype='float32')
-        attrs = {'ring_id': 0, 'reduce_type': paddle.distributed.ReduceOp.MIN}
-        helper = LayerHelper(self.op_type)
-        helper.append_op(
-            type=self.op_type,
-            inputs={"x": x},
-            outputs={"out": y},
-            attrs=attrs,
+class TestAlignModeFLAGS(unittest.TestCase):
+    def _set_and_check_align_mode(self, enable_align_mode):
+        paddle.set_flags(
+            {'FLAGS_enable_auto_parallel_align_mode': enable_align_mode}
         )
+        assert (
+            paddle.distributed.in_auto_parallel_align_mode()
+            == enable_align_mode
+        ), "align mode not set correctly"
 
-    def test_translator(self):
-        self.check()
+    def test_align_mode_flags(self):
+        self._set_and_check_align_mode(True)
+        self._set_and_check_align_mode(False)
 
 
 if __name__ == "__main__":
