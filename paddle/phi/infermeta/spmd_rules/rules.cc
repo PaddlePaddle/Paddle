@@ -352,8 +352,8 @@ PD_REGISTER_SPMD_RULE(
 
 PD_REGISTER_SPMD_RULE(
     fused_dropout_add,
-    PD_INFER_SPMD(phi::distributed::FusedDropoutAddSpmd),
-    PD_INFER_SPMD(phi::distributed::FusedDropoutAddSpmdReverse));
+    PD_INFER_SPMD(phi::distributed::FusedDropoutAddSpmdBase),
+    PD_INFER_SPMD(phi::distributed::FusedDropoutAddSpmdReverseBase));
 
 // elementwise binary rule
 PD_REGISTER_SPMD_RULE(

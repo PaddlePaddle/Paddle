@@ -14,22 +14,47 @@ limitations under the License. */
 
 #pragma once
 
-#include <vector>
-
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
 namespace phi {
 namespace distributed {
-SpmdInfo FusedDropoutAddSpmd(const DistMetaTensor& x, const DistMetaTensor& y);
+SpmdInfo FusedDropoutAddSpmdBase(const DistMetaTensor& x,
+                                 const DistMetaTensor& y);
+
+SpmdInfo FusedDropoutAddSpmdReverseBase(const DistMetaTensor& x,
+                                        const DistMetaTensor& y,
+                                        const DistMetaTensor& out);
+
+SpmdInfo FusedDropoutAddGradInferSpmdBase(const DistMetaTensor& seed_offset,
+                                          const DistMetaTensor& out_grad);
+
+SpmdInfo FusedDropoutAddSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& y,
+                             const DistMetaTensor& seed_tensor,
+                             const Scalar& p,
+                             bool is_test,
+                             const std::string& mode,
+                             int seed,
+                             bool fix_seed);
 
 SpmdInfo FusedDropoutAddSpmdReverse(const DistMetaTensor& x,
                                     const DistMetaTensor& y,
+                                    const DistMetaTensor& seed_tensor,
                                     const DistMetaTensor& out,
-                                    const DistMetaTensor& seed_offset);
+                                    const DistMetaTensor& seed_offset,
+                                    const Scalar& p,
+                                    bool is_test,
+                                    const std::string& mode,
+                                    int seed,
+                                    bool fix_seed);
 
 SpmdInfo FusedDropoutAddGradInferSpmd(const DistMetaTensor& seed_offset,
-                                      const DistMetaTensor& out_grad);
-
+                                      const DistMetaTensor& out_grad,
+                                      const Scalar& p,
+                                      bool is_test,
+                                      std::string mode,
+                                      bool fix_seed);
 }  // namespace distributed
 }  // namespace phi

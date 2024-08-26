@@ -20,47 +20,85 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
-#include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
 namespace phi::distributed {
-
-SpmdInfo FusedDropoutAddSpmd(const DistMetaTensor& x, const DistMetaTensor& y) {
+SpmdInfo FusedDropoutAddSpmdBase(const DistMetaTensor& x,
+                                 const DistMetaTensor& y) {
   SpmdInfo out_info = ElementwiseBinaryInferSpmd(x, y);
 
   TensorDistAttr seed_offset_dist_attr({2});
   seed_offset_dist_attr.set_dims_mapping({-1});
 
-  LOG_SPMD_INPUT(x);
-  LOG_SPMD_INPUT(y);
-  VLOG(4) << "out dist_attr: [" << out_info.second[0].to_string() << "]";
+  VLOG(4) << "x dist_attr: [" << x.dist_attr().to_string() << "]";
+  VLOG(4) << "y dist_attr: [" << y.dist_attr().to_string() << "]";
+  VLOG(4) << "out dist_attr: ["
+          << paddle::get<0>(out_info.second[0]).to_string() << "]";
   VLOG(4) << "seed_offset dist_attr: [" << seed_offset_dist_attr.to_string()
           << "]";
-  return {{x_dist_attr_dst.dist_attr(), y_dist_attr_dst.dist_attr()},
+  return {{x.dist_attr(), y.dist_attr()},
           {out_info.second[0], seed_offset_dist_attr}};
 }
 
-SpmdInfo FusedDropoutAddSpmdReverse(const DistMetaTensor& x,
-                                    const DistMetaTensor& y,
-                                    const DistMetaTensor& out,
-                                    const DistMetaTensor& seed_offset) {
+SpmdInfo FusedDropoutAddSpmdReverseBase(const DistMetaTensor& x,
+                                        const DistMetaTensor& y,
+                                        const DistMetaTensor& out,
+                                        const DistMetaTensor& seed_offset) {
   SpmdInfo reverse_info = ElementwiseBinaryInferSpmdReverse(x, y, out);
-  LOG_SPMD_INPUT(out);
-  LOG_SPMD_INPUT(seed_offset);
-  VLOG(4) << "x dist_attr: [" << reverse_info.first[0].to_string() << "]";
-  VLOG(4) << "y dist_attr: [" << reverse_info.first[1].to_string() << "]";
+
+  VLOG(4) << "out dist_attr: [" << out.dist_attr().to_string() << "]";
+  VLOG(4) << "x dist_attr: ["
+          << paddle::get<0>(reverse_info.first[0]).to_string() << "]";
+  VLOG(4) << "y dist_attr: ["
+          << paddle::get<0>(reverse_info.first[1]).to_string() << "]";
   return {reverse_info.first,
           {reverse_info.second[0], seed_offset.dist_attr()}};
 }
 
-SpmdInfo FusedDropoutAddGradInferSpmd(const DistMetaTensor& seed_offset,
-                                      const DistMetaTensor& out_grad) {
-  LOG_SPMD_INPUT(seed_offset);
-  LOG_SPMD_INPUT(out_grad);
+SpmdInfo FusedDropoutAddGradInferSpmdBase(const DistMetaTensor& seed_offset,
+                                          const DistMetaTensor& out_grad) {
+  VLOG(4) << "seed_offset dist_attr: [" << seed_offset.dist_attr().to_string()
+          << "]";
+  VLOG(4) << "out_grad dist_attr: [" << out_grad.dist_attr().to_string() << "]";
   VLOG(4) << "x_grad dist_attr: [" << out_grad.dist_attr().to_string() << "]";
   VLOG(4) << "y_grad dist_attr: [" << out_grad.dist_attr().to_string() << "]";
   return {{seed_offset.dist_attr(), out_grad.dist_attr()},
           {out_grad.dist_attr(), out_grad.dist_attr()}};
+}
+
+SpmdInfo FusedDropoutAddSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& y,
+                             const DistMetaTensor& seed_tensor,
+                             const Scalar& p,
+                             bool is_test,
+                             const std::string& mode,
+                             int seed,
+                             bool fix_seed) {
+  return FusedDropoutAddSpmdBase(x, y);
+}
+
+SpmdInfo FusedDropoutAddSpmdReverse(const DistMetaTensor& x,
+                                    const DistMetaTensor& y,
+                                    const DistMetaTensor& seed_tensor,
+                                    const DistMetaTensor& out,
+                                    const DistMetaTensor& seed_offset,
+                                    const Scalar& p,
+                                    bool is_test,
+                                    const std::string& mode,
+                                    int seed,
+                                    bool fix_seed) {
+  return FusedDropoutAddSpmdReverseBase(x, y, out, seed_offset);
+}
+
+SpmdInfo FusedDropoutAddGradInferSpmd(const DistMetaTensor& seed_offset,
+                                      const DistMetaTensor& out_grad,
+                                      const Scalar& p,
+                                      bool is_test,
+                                      std::string mode,
+                                      bool fix_seed) {
+  return FusedDropoutAddGradInferSpmdBase(seed_offset, out_grad);
 }
 
 }  // namespace phi::distributed
