@@ -149,8 +149,8 @@ float CalculateEstOccupancy(uint32_t DeviceId,
 
 const char* StringTracerMemEventType(phi::TracerMemEventType type) {
   switch (type) {
-#define CASE_NAME(name)          \
-  case TracerMemEventType::name: \
+#define CASE_NAME(name)               \
+  case phi::TracerMemEventType::name: \
     return #name;
     FOR_EACH_TRACER_MEM_EVENT_TYPES(CASE_NAME)
 #undef CASE_NAME
@@ -161,8 +161,8 @@ const char* StringTracerMemEventType(phi::TracerMemEventType type) {
 
 const char* StringTracerEventType(phi::TracerEventType type) {
   switch (type) {
-#define CASE_NAME(name)       \
-  case TracerEventType::name: \
+#define CASE_NAME(name)            \
+  case phi::TracerEventType::name: \
     return #name;
     FOR_EACH_TRACER_EVENT_TYPES(CASE_NAME)
 #undef CASE_NAME
