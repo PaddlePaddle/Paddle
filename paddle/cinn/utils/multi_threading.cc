@@ -61,7 +61,12 @@ void parallel_run(const WorkerFuncType& fn,
     int index = -1, counter = 0;
     while ((index = dispatcher.Next()) != -1) {
       VLOG(5) << "Thread-" << tid << " process at index: " << index;
-      fn(index);
+      try {
+        fn(index);
+      } catch (...) {
+        std::cerr << "inner error" << std::endl;
+        PADDLE_THROW(::common::errors::PermissionDenied("22"));
+      }
       ++counter;
     }
     return counter;
@@ -87,20 +92,26 @@ void parallel_run(const WorkerFuncType& fn,
     int counter = worker(tid);
     VLOG(4) << "Thread-0  process " << counter << " tasks.";
 
-    for (auto&& future : futures) {
+    for (auto& future : futures) {
       counter = future.get();
       ++tid;
       VLOG(4) << "Thread-" << tid << " process " << counter << " tasks.";
     }
+
+    // join threads
+    for (auto&& thread : threads) {
+      thread.join();
+    }
   } catch (const std::exception& e) {
     std::stringstream ss;
     ss << "parallel_run incurs error: " << e.what();
-    PADDLE_THROW(::common::errors::Fatal(ss.str()));
-  }
-
-  // join threads
-  for (auto&& thread : threads) {
-    thread.join();
+    std::cerr << "error " << ss.str() << std::endl;
+    // PADDLE_THROW(::common::errors::Fatal(ss.str()));
+    PADDLE_THROW(::common::errors::PermissionDenied("11"));
+  } catch (...) {
+    std::cerr << "catch exception ...\n";
+    // PADDLE_THROW(::common::errors::Fatal(ss.str()));
+    PADDLE_THROW(::common::errors::PermissionDenied("22"));
   }
 }
 
