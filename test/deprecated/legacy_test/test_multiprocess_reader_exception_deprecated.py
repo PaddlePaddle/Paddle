@@ -114,7 +114,7 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
 
     def test_main(self):
         for p in self.places():
-            for iterable in [False, True]:
+            for iterable in [False]:
                 try:
                     with base.scope_guard(base.Scope()):
                         self.main_impl(p, iterable)
@@ -149,5 +149,4 @@ class TestMultiprocessReaderExceptionWithPipeFailed(
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

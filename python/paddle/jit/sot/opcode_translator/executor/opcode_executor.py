@@ -82,6 +82,7 @@ from .variables import (
     ContainerVariable,
     DictVariable,
     GlobalVariable,
+    IterVariable,
     ListVariable,
     MethodVariable,
     NullVariable,
@@ -1748,7 +1749,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return Stop(state="Return")
 
     def get_compute_fn_and_update_changed_vars(
-        self, restore_names, stack, end_idx
+        self, restore_names, stack, end_idx, extra_store_vars
     ):
         """
         this function will:
@@ -1763,8 +1764,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
             restore_names: the names used in resume functions.
             end_idx: instruction index where simulation get break.
             stack: current stack
+            extra_store_vars: for iterator, we need store the holder if it is a Tensor
         """
-        store_vars = list(OrderedSet(stack))
+        store_vars = list(OrderedSet(list(stack) + extra_store_vars))
         store_var_info = {var.id: None for var in stack}
 
         for name in restore_names:
@@ -1864,7 +1866,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         # 4. compile codes before if
         update_var_names = list(true_fn_read_names | false_fn_read_names)
         var_loader = self.get_compute_fn_and_update_changed_vars(
-            update_var_names, self.stack, cur_index
+            update_var_names, self.stack, cur_index, []
         )
 
         # 5. create if sturcture and call true_fn and false_fn
@@ -1964,7 +1966,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 3. compile sub graph before call
         var_loader = self.get_compute_fn_and_update_changed_vars(
-            read_names, self.stack, cur_index
+            read_names, self.stack, cur_index, []
         )
 
         # 4. recover stack
@@ -2130,8 +2132,17 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 5. compile sub graph before for-loop
         update_names = list(loop_body_read_names | after_loop_read_names)
+        extra_store_vars = (
+            [iterator]
+            if isinstance(iterator, IterVariable)
+            and isinstance(iterator.hold, TensorVariable)
+            else []
+        )
         var_loader = self.get_compute_fn_and_update_changed_vars(
-            update_names, self.stack, self.indexof(for_iter)
+            update_names,
+            self.stack,
+            self.indexof(for_iter),
+            extra_store_vars,
         )
 
         # 6. prepare a new loop and call loop body
