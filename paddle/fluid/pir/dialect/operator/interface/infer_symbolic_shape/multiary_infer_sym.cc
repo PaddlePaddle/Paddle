@@ -1325,13 +1325,14 @@ bool GraphSampleNeighborsOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &perm_buffer_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(4));
 
-  auto row_shape = row_shape_or_data.shape();
-  auto col_ptr_shape = col_ptr_shape_or_data.shape();
-  auto x_shape = x_shape_or_data.shape();
-  auto eids_shape = eids_shape_or_data.shape();
-  auto perm_buffer_shape = perm_buffer_shape_or_data.shape();
+  std::vector<symbol::DimExpr> row_shape = row_shape_or_data.shape();
+  std::vector<symbol::DimExpr> col_ptr_shape = col_ptr_shape_or_data.shape();
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> eids_shape = eids_shape_or_data.shape();
+  std::vector<symbol::DimExpr> perm_buffer_shape =
+      perm_buffer_shape_or_data.shape();
 
-  auto GSNShapeCheck = [&](const symbol::ShapeOrDataDimExprs &shape,
+  auto GSNShapeCheck = [&](const std::vector<symbol::DimExpr> &shape,
                            const std::string &tensor_name) {
     if (shape.size() == 2)
       infer_context->AddEqualCstr(shape[1], symbol::DimExpr{1});
@@ -1355,11 +1356,11 @@ bool GraphSampleNeighborsOpInferSymbolicShape(
 
   if (return_eids) {
     GSNShapeCheck(eids_shape, "Eids");
-    symbol::DimExpr out_unknown_1 = infer_context->GetNextSymName();
+    symbol::DimExpr out_unknown_2 = infer_context->GetNextSymName();
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs({out_unknown_1})});
+            symbol::TensorShapeOrDataDimExprs({out_unknown_2})});
   } else {
     infer_context->SetSymbolForValueByStaticShape(op->result(2));
   }
@@ -1374,7 +1375,7 @@ bool GraphSampleNeighborsOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs({out_unknown_0})});
   infer_context->SetShapeOrDataForValue(
-      op->result(0),
+      op->result(1),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs({x_shape[0]})});
 
