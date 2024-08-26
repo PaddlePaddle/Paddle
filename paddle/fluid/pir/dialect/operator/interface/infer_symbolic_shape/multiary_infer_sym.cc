@@ -1400,8 +1400,9 @@ bool GruOpInferSymbolicShape(pir::Operation *op,
     infer_context->SetShapeOrDataForValue(op->result(2), batch_hidden_shape);
   }
 
-  symbol::TensorShapeOrDataDimExprs hidden_shape({input_shape[0], frame_size});
-  infer_context->SetShapeOrDataForValue(op->result(3), hidden_shape);
+  symbol::TensorShapeOrDataDimExprs hidden_shape_output(
+      {input_shape[0], frame_size});
+  infer_context->SetShapeOrDataForValue(op->result(3), hidden_shape_output);
 
   return true;
 }
