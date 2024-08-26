@@ -41,7 +41,6 @@ def map_dtype(pd_dtype):
 def run_pir_pass(program, partition_mode=False):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
-    pm.enable_ir_printing()
     paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
     passes = [
         {'multihead_matmul_fuse_pass': {}},
