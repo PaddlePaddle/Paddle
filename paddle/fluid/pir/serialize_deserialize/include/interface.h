@@ -63,7 +63,7 @@ void IR_API WriteModule(const pir::Program& program,
  */
 bool IR_API ReadModule(const std::string& file_path,
                        pir::Program* program,
-                       uint64_t pir_version);
+                       int64_t pir_version = -1);
 
 /**
  * @brief Save the given tensor into a single file at the specified file path
