@@ -205,6 +205,13 @@ def cast(x: Tensor, dtype: DTypeLike) -> Tensor:
     to the output with :attr:`dtype`. It's meaningless if the output dtype
     equals the input dtype, but it's fine if you do so.
 
+    The following picture shows an example where a tensor of type float64 is cast to a tensor of type uint8.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/cast.png
+        :width: 800
+        :alt: legend of reshape API
+        :align: center
+
     Args:
         x (Tensor): An input N-D Tensor with data type bool, float16,
             float32, float64, int32, int64, uint8.
@@ -1374,6 +1381,17 @@ def concat(
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     elif in_pir_mode():
+
+        def is_in_amp_mode():
+            amp_attrs = core._get_amp_attrs()
+            amp_level = amp_attrs._amp_level
+            apply_amp_level_list = [
+                core.AmpLevel.O1,
+                core.AmpLevel.O2,
+            ]
+            return amp_level in apply_amp_level_list
+
+        is_in_amp = is_in_amp_mode()
         check_type(input, 'input', (list, tuple, paddle.pir.Value), 'concat')
         if not isinstance(input, paddle.pir.Value):
             for id, x in enumerate(input):
@@ -1397,7 +1415,7 @@ def concat(
                     ],
                     'concat',
                 )
-                if x.dtype != input[0].dtype:
+                if (not is_in_amp) and x.dtype != input[0].dtype:
                     raise TypeError(
                         "All the Tensors in the input must have the same data type."
                     )
