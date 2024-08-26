@@ -17,14 +17,12 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/phi/api/ext/op_meta_info.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/utils/string/string_helper.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
-#endif
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -569,7 +567,7 @@ static std::vector<DataType> RunInferDtype(
 static phi::distributed::SpmdInfo RunInferSpmd(
     const paddle::OpMetaInfo& op_info,
     const std::string& op_type,
-    const dialect::ProcessMeshAttribute& op_mesh,
+    const paddle::dialect::ProcessMeshAttribute& op_mesh,
     const std::vector<pir::Value>& argument_inputs,
     const std::vector<paddle::any>& custom_attrs) {  // NOLINT
 #ifdef PADDLE_WITH_DISTRIBUTE
