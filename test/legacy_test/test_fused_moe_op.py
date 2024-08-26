@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
-from test_sparse_attention_op import get_cuda_version
 
 import paddle
 import paddle.nn.functional as F
@@ -45,12 +44,6 @@ class Expert(nn.Layer):
         return x
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
 class TestFusedMoEOp(OpTest):
     def setUp(self):
         self.config()
@@ -136,6 +129,8 @@ class TestFusedMoEOp(OpTest):
             fc0_expert_weights_for_ref_list.append(
                 fc0_expert_weights_for_ref_i.reshape(
                     [self.d_model, self.d_feedforward * 2]
+                    if self.quant_method == "weight_only_int8"
+                    else [self.d_model, self.d_feedforward]
                 )
             )
             scale0.append(fc0_expert_weights_scale_for_ref_i)
@@ -151,6 +146,8 @@ class TestFusedMoEOp(OpTest):
             fc1_expert_weights_for_ref_list.append(
                 fc1_expert_weights_for_ref_i.reshape(
                     [self.d_feedforward, self.d_model]
+                    if self.quant_method == "weight_only_int8"
+                    else [self.d_feedforward, self.d_model // 2]
                 )
             )
             scale1.append(fc1_expert_weights_scale_for_ref_i)
@@ -239,12 +236,6 @@ class TestFusedMoEOp(OpTest):
         )
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
 class TestFusedMoEOpBf16(TestFusedMoEOp):
     def config(self):
         super().config()
@@ -253,12 +244,6 @@ class TestFusedMoEOpBf16(TestFusedMoEOp):
         self.atol = 1e-2
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
 class TestFusedMoEOpWint8(TestFusedMoEOp):
     def config(self):
         super().config()
@@ -267,12 +252,14 @@ class TestFusedMoEOpWint8(TestFusedMoEOp):
         self.quant_method = "weight_only_int8"
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
+class TestFusedMoEOpWint4(TestFusedMoEOp):
+    def config(self):
+        super().config()
+        self.rtol = 1e-2
+        self.atol = 1e-2
+        self.quant_method = "weight_only_int4"
+
+
 class TestFusedMoEOpNonNorm(TestFusedMoEOp):
     def config(self):
         super().config()
@@ -281,12 +268,6 @@ class TestFusedMoEOpNonNorm(TestFusedMoEOp):
         self.norm_topk_prob = False
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
 class TestFusedMoEOpStatic(OpTest):
     def setUp(self):
         self.config()
@@ -493,12 +474,6 @@ class TestFusedMoEOpStatic(OpTest):
         )
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda()
-    or get_cuda_version() < 11030
-    or paddle.device.cuda.get_device_capability()[0] < 8,
-    "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
-)
 class TestFusedMoEOpStaticWint8(TestFusedMoEOpStatic):
     def config(self):
         super().config()

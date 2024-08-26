@@ -161,6 +161,10 @@ class MoeHelper {
       inter_dim = ffn1_dims[2];
     }
 
+    if (gemm_method_ == "weight_only_int4") {
+      inter_dim = inter_dim * 2;
+    }
+
     const int inter_size = inter_dim;
     const int num_experts = ffn1_dims[0];
     const int k = moe_topk;
@@ -376,7 +380,7 @@ class MoeHelper {
             inter_size / 2,
             num_experts,
             ctx.stream());
-      } else if (gemm_method_ == "weight_onlyint4") {
+      } else if (gemm_method_ == "weight_only_int4") {
         int4_moe_gemm_runner_->moe_gemm(
             reinterpret_cast<NvType *>(act_out),
             reinterpret_cast<const cutlass::uint4b_t *>(
