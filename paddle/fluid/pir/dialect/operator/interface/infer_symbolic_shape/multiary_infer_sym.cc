@@ -792,18 +792,67 @@ bool CrfDecodingOpInferSymbolicShape(
   return true;
 }
 
-// bool CoalesceTensorOpInferSymbolicShape(pir::Operation *op,
-//                                         pir::InferSymbolicShapeContext
-//                                         *infer_context) {
-//   // pass
-//   return true;
-// }
+bool CoalesceTensorOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  pir::Value operand_source = op->operand_source(0);
+  const symbol::TensorListShapeOrDataDimExprs &input_shapes =
+      infer_context->GetShapeOrDataForValue(operand_source)
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
 
-// bool CoalesceTensor_OpInferSymbolicShape(pir::Operation *op,
-//                                          pir::InferSymbolicShapeContext
-//                                          *infer_context) {
-//   return CoalesceTensorOpInferSymbolicShape(op, infer_context);
-// }
+  auto dtype = op->attribute("dtype")
+                   .dyn_cast<paddle::dialect::DataTypeAttribute>()
+                   .data();
+  const auto &attributes = op->attributes();
+  bool use_align =
+      attributes.at("use_align").dyn_cast<pir::BoolAttribute>().data();
+  int align_size =
+      attributes.at("align_size").dyn_cast<pir::Int32Attribute>().data();
+  int size_of_dtype =
+      attributes.at("size_of_dtype").dyn_cast<pir::Int32Attribute>().data();
+
+  if (size_of_dtype == -1) {
+    size_of_dtype = static_cast<int>(phi::SizeOf(dtype));
+  }
+
+  auto alignment = [](size_t size, size_t align_size) {
+    size_t remaining = size % align_size;
+    auto aligned_size = remaining == 0 ? size : size + (align_size - remaining);
+    return aligned_size;
+  };
+
+  if (use_align && align_size > 0) {
+    int64_t numel = 0;
+    for (const auto &item_shape : input_shapes) {
+      const std::vector<symbol::DimExpr> dims = item_shape.shape();
+      auto size = dims.size();
+      auto len = use_align
+                     ? alignment(static_cast<size_t>(size) * size_of_dtype,
+                                 align_size) /
+                           size_of_dtype
+                     : static_cast<size_t>(size);
+      numel += static_cast<int64_t>(len);
+    }
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs({numel})});
+  }
+
+  symbol::TensorListShapeOrDataDimExprs outs_shapes;
+  outs_shapes.reserve(input_shapes.size());
+  for (const auto &input_shape : input_shapes) {
+    outs_shapes.emplace_back(input_shape.shape());
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorListShapeOrDataDimExprs(outs_shapes));
+
+  return true;
+}
+
+bool CoalesceTensor_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return CoalesceTensorOpInferSymbolicShape(op, infer_context);
+}
 
 bool CrossEntropyWithSoftmaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
