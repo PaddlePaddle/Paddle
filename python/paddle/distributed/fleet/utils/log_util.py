@@ -109,4 +109,11 @@ def get_rotate_file_logger(log_level, name='root'):
     return distributed_logger
 
 
-sync_rotate_logger = get_rotate_file_logger("INFO", __name__)
+g_sync_rotate_logger = None
+
+
+def sync_rotate_logger():
+    global g_sync_rotate_logger
+    if g_sync_rotate_logger is None:
+        g_sync_rotate_logger = get_rotate_file_logger("INFO", __name__)
+    return g_sync_rotate_logger
