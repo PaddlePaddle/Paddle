@@ -124,11 +124,6 @@ class TestLlamaAuto:
             )
             self.strategy.gradient_merge.avg = False
 
-        # dp config
-        dp = self.strategy.dp_optimization
-        dp.enable = True
-        dp.dp_delay_loss_scale = True
-
         self.config.recompute = False
         self.config.sep_parallel_degree = 1
 
