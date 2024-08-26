@@ -566,14 +566,13 @@ static std::vector<DataType> RunInferDtype(
   }
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 static phi::distributed::SpmdInfo RunInferSpmd(
     const paddle::OpMetaInfo& op_info,
     const std::string& op_type,
     const dialect::ProcessMeshAttribute& op_mesh,
     const std::vector<pir::Value>& argument_inputs,
     const std::vector<paddle::any>& custom_attrs) {  // NOLINT
-
+#ifdef PADDLE_WITH_DISTRIBUTE
   auto& infer_spmd_func = paddle::OpMetaInfoHelper::GetInferSpmdFn(op_info);
   if (infer_spmd_func == nullptr) {
     // TODO(Q4): support replicated rule for custom op
@@ -646,8 +645,13 @@ static phi::distributed::SpmdInfo RunInferSpmd(
   }
 
   return spmd_info;
-}
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "The parsing of `RunInferSpmd` is not supported in the current "
+      "PaddlePaddle, please recompile and installPaddlePaddle with the option "
+      "of `WITH_DISTRIBUTE=ON`."));
 #endif
+}
 
 }  // namespace framework
 }  // namespace paddle
