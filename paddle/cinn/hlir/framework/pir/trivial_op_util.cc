@@ -188,9 +188,10 @@ ExprSet ExprSetFinder::operator()(const ir::Expr& x) const { return f_(x); }
 ir::Expr ExprSetFinder::GetSingle(const ir::Expr& x) const {
   ExprSetFinder call = (*this) * ExprSetFinder::GetIdentity();
   const auto& o = call.operator()(x);
-  if (o.size() != 1) {
-    PADDLE_THROW("Try to get single result, but we get %d.", o.size());
-  }
+  PADDLE_ENFORCE_EQ(o.size(),
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "Try to get single result, but we get %d.", o.size()));
   return *o.begin();
 }
 
@@ -544,9 +545,10 @@ ExprTransformer SubstitudeByScheduleBlockRealize(const ir::Expr& realize) {
 ExprTransformer WrapScheduleRealizer(const std::vector<ir::Var>& block_vars,
                                      const std::string& tensor_name) {
   const auto& f = [=](const ir::Expr& e) -> ir::Expr {
-    if (e.As<ir::ScheduleBlock>()) {
-      PADDLE_THROW("please input a non-schedule block expr.");
-    }
+    PADDLE_ENFORCE_EQ(e.As<ir::ScheduleBlock>(),
+                      nullptr,
+                      ::common::errors::InvalidArgument(
+                          "please input a non-schedule block expr."));
     const auto& inner_block_var = CreateInnerBlockVars(block_vars);
     const auto& replaced_e =
         ChangeVarTransformer(block_vars, inner_block_var)(e);

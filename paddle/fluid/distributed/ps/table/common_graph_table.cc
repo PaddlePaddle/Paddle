@@ -1233,7 +1233,7 @@ void GraphTable::fennel_graph_edge_partition() {
     PADDLE_ENFORCE_GT(
         max_score,
         0,
-        phi::errors::InvalidArgument("max_score should be greater than 0"));
+        common::errors::InvalidArgument("max_score should be greater than 0"));
     return index;
   };
   // 查找关系最远点作为起点
@@ -1274,10 +1274,10 @@ void GraphTable::fennel_graph_edge_partition() {
         break;
       }
     }
-    PADDLE_ENFORCE_NE(
-        key,
-        0xffffffffffffffffL,
-        phi::errors::InvalidArgument("key should not be 0xffffffffffffffffL"));
+    PADDLE_ENFORCE_NE(key,
+                      0xffffffffffffffffL,
+                      common::errors::InvalidArgument(
+                          "key should not be 0xffffffffffffffffL"));
     return key;
   };
   // 其它结点都添加完成，剩余的点就直接放到这个机器上面
@@ -3524,10 +3524,17 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
   nodeid_to_edgeids_.resize(node_type_str_to_node_types_idx.size());
   for (auto &obj : edge_to_id) {
     size_t pos = obj.first.find("2");
-    CHECK(pos != std::string::npos);
+    PADDLE_ENFORCE_EQ((pos != std::string::npos),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The string does not contain the character '2'."));
     std::string nodetype = obj.first.substr(0, pos);
     auto it = node_type_str_to_node_types_idx.find(nodetype);
-    CHECK(it != node_type_str_to_node_types_idx.end());
+    PADDLE_ENFORCE_EQ(
+        (it != node_type_str_to_node_types_idx.end()),
+        true,
+        common::errors::InvalidArgument(
+            "Node type not found in node_type_str_to_node_types_idx."));
     nodeid_to_edgeids_[it->second].push_back(obj.second);
     VLOG(0) << "add edge [" << obj.first << "=" << obj.second << "] to ["
             << nodetype << "=" << it->second << "]";

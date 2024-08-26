@@ -284,7 +284,7 @@ TEST(Analyzer_lexical_test, Analyzer_lexical_analysis) {
       PADDLE_ENFORCE_LE(
           std::abs(acc_ref[i] - acc_analysis[i]),
           FLAGS_quantized_accuracy,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Required abs(acc_ref[i] - acc_analysis[i]) should be less than "
               "or euqal to FLAGS_quantized_accuracy. "));
     }

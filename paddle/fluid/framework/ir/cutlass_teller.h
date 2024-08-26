@@ -14,7 +14,7 @@
 
 #pragma once
 #include <unordered_set>
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 namespace paddle {
 namespace framework {
 namespace ir {

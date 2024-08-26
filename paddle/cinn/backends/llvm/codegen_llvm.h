@@ -75,7 +75,7 @@ class SymbolTable {
     PADDLE_ENFORCE_EQ(
         !scopes_.empty(),
         true,
-        phi::errors::InvalidArgument("sorry, scopes_ can't be empty"));
+        ::common::errors::InvalidArgument("sorry, scopes_ can't be empty"));
     scopes_.back().emplace(id, value);
   }
 
@@ -83,7 +83,7 @@ class SymbolTable {
     PADDLE_ENFORCE_EQ(
         !scopes_.empty(),
         true,
-        phi::errors::InvalidArgument("sorry, scopes_ can't be empty"));
+        ::common::errors::InvalidArgument("sorry, scopes_ can't be empty"));
     scopes_.back().erase(id);
   }
 
@@ -91,7 +91,7 @@ class SymbolTable {
     PADDLE_ENFORCE_EQ(
         !scopes_.empty(),
         true,
-        phi::errors::InvalidArgument("sorry, scopes_ can't be empty"));
+        ::common::errors::InvalidArgument("sorry, scopes_ can't be empty"));
     scopes_.pop_back();
   }
 

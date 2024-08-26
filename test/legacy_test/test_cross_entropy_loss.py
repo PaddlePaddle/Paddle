@@ -263,9 +263,11 @@ class CrossEntropyLoss(unittest.TestCase):
             paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
-            weight=paddle.to_tensor(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
 
@@ -320,9 +322,11 @@ class CrossEntropyLoss(unittest.TestCase):
             paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
-            weight=paddle.to_tensor(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -696,9 +700,11 @@ class CrossEntropyLoss(unittest.TestCase):
                 paddle.to_tensor(self.labels),
                 soft_label=True,
                 axis=self.axis,
-                weight=paddle.to_tensor(self.weight)
-                if self.weight is not None
-                else None,
+                weight=(
+                    paddle.to_tensor(self.weight)
+                    if self.weight is not None
+                    else None
+                ),
                 reduction=self.reduction,
             )
             dy_ret_value = paddle_loss_none_weight.numpy()
@@ -900,9 +906,11 @@ class CrossEntropyLoss(unittest.TestCase):
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=paddle.to_tensor(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1076,9 +1084,9 @@ class CrossEntropyLoss(unittest.TestCase):
         self.labels = np.zeros(self.shape, dtype=self.dtype)
         indices = np.random.randint(0, self.C, self.shape[:-1])
         for i in range(self.N):
-            self.labels[
-                i, np.arange(self.H), np.arange(self.W), indices[i]
-            ] = 1.0
+            self.labels[i, np.arange(self.H), np.arange(self.W), indices[i]] = (
+                1.0
+            )
         self.soft_labels = label_smooth(
             self.labels, self.C, epsilon=self.label_smoothing
         )
@@ -1106,9 +1114,11 @@ class CrossEntropyLoss(unittest.TestCase):
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=paddle.to_tensor(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1184,9 +1194,9 @@ class CrossEntropyLoss(unittest.TestCase):
         self.labels = np.zeros(self.shape, dtype=self.dtype)
         indices = np.random.randint(0, self.C, self.shape[:-1])
         for i in range(self.N):
-            self.labels[
-                i, np.arange(self.H), np.arange(self.W), indices[i]
-            ] = 1.0
+            self.labels[i, np.arange(self.H), np.arange(self.W), indices[i]] = (
+                1.0
+            )
         self.soft_labels = label_smooth(
             self.labels, self.C, epsilon=self.label_smoothing
         )
@@ -1318,9 +1328,11 @@ class CrossEntropyLoss(unittest.TestCase):
             soft_label=self.soft_label,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=paddle.to_tensor(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1416,9 +1428,11 @@ class CrossEntropyLoss(unittest.TestCase):
             soft_label=self.soft_label,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=paddle.to_tensor(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1524,9 +1538,11 @@ class CrossEntropyLoss(unittest.TestCase):
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=paddle.to_tensor(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()
@@ -1630,9 +1646,11 @@ class CrossEntropyLoss(unittest.TestCase):
             soft_label=True,
             label_smoothing=self.label_smoothing,
             axis=self.axis,
-            weight=paddle.to_tensor(self.weight)
-            if self.weight is not None
-            else None,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
             reduction=self.reduction,
         )
         dy_ret_value = paddle_loss_none_weight.numpy()

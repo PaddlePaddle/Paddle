@@ -75,7 +75,6 @@ class TestAnchorFusion(unittest.TestCase):
             x = paddle.rand((32, 32, 128))
             return (x,)
 
-        print("feifeifei")
         self.compare_result(func, None, init)
 
     def test_anchor_fusion_2(self):

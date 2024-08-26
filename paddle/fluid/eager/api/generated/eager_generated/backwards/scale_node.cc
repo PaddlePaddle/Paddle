@@ -18,8 +18,8 @@
 #include "paddle/common/errors.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_tensor.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
 namespace egr {

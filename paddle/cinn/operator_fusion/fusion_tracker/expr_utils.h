@@ -43,20 +43,24 @@ struct GetSplitedExprFromFusionOp {
 struct ApplyTransform {
   explicit ApplyTransform(const ir::Expr& expr) : expr_(expr) {}
   ir::Expr operator()(const UnsupportTransformPtr& transform) {
-    PADDLE_THROW("Can not do UnsupportTransform");
+    PADDLE_THROW(
+        ::common::errors::Unavailable("Can not do UnsupportTransform"));
   }
   ir::Expr operator()(const IdentityTransformPtr& transform) { return expr_; }
   ir::Expr operator()(const AppendDimTransformPtr& transform) {
-    PADDLE_THROW("AppendDimTransform not implemented");
+    PADDLE_THROW(
+        ::common::errors::Unimplemented("AppendDimTransform not implemented"));
   }
   ir::Expr operator()(const DeleteDimTransformPtr& transform) {
-    PADDLE_THROW("DeleteDimTransform not implemented");
+    PADDLE_THROW(
+        ::common::errors::Unimplemented("DeleteDimTransform not implemented"));
   }
 
  private:
   ir::Expr expr_;
 };
 
+std::vector<ir::Expr> GetFusibleOpsExpr(std::vector<FusibleOp> fusion_ops);
 std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs);
 std::vector<FusibleOp> DoPadding(const FusibleOp& fusion_op,
                                  const std::vector<int>& padding_pos);

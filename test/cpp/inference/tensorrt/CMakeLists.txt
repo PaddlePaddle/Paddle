@@ -1,7 +1,13 @@
 nv_test(
   test_tensorrt_engine_instruction
   SRCS test_tensorrt_engine_instruction.cc
-  DEPS pir trt_engine naive_executor phi common)
+  DEPS pir
+       trt_engine
+       naive_executor
+       phi
+       common
+       pir_save_load
+       pir_tensorrt_plugin)
 set_tests_properties(test_tensorrt_engine_instruction PROPERTIES TIMEOUT 120)
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

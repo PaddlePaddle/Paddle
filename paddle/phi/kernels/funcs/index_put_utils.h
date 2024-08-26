@@ -59,7 +59,7 @@ phi::DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
 
   phi::DenseTensor mid_tensor(tensor.dtype());
   mid_tensor.Resize(common::make_ddim(mid_dims));
-  ReshapeInferKernel<Context>(dev_ctx, tensor, IntArray(mid_dims), &mid_tensor);
+  ReshapeKernel<Context>(dev_ctx, tensor, IntArray(mid_dims), &mid_tensor);
 
   phi::DenseTensor res_tensor(tensor.dtype());
   res_tensor.Resize(res_dim);

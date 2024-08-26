@@ -15,7 +15,7 @@
 #include "paddle/phi/core/memory/allocation/stream_safe_custom_device_allocator.h"
 #include <thread>
 
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/context_pool.h"
 
 namespace paddle {
@@ -119,9 +119,9 @@ void StreamSafeCustomDeviceAllocator::SetDefaultStream(
 }
 
 phi::Allocation* StreamSafeCustomDeviceAllocator::AllocateImpl(size_t size) {
-  platform::RecordEvent record("StreamSafeCustomDeviceAllocator::Allocate",
-                               platform::TracerEventType::UserDefined,
-                               9 /*level*/);
+  phi::RecordEvent record("StreamSafeCustomDeviceAllocator::Allocate",
+                          phi::TracerEventType::UserDefined,
+                          9 /*level*/);
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
   AllocationPtr underlying_allocation;
@@ -152,9 +152,9 @@ phi::Allocation* StreamSafeCustomDeviceAllocator::AllocateImpl(size_t size) {
 }
 
 void StreamSafeCustomDeviceAllocator::FreeImpl(phi::Allocation* allocation) {
-  platform::RecordEvent record("StreamSafeCustomDeviceAllocator::Free",
-                               platform::TracerEventType::UserDefined,
-                               9 /*level*/);
+  phi::RecordEvent record("StreamSafeCustomDeviceAllocator::Free",
+                          phi::TracerEventType::UserDefined,
+                          9 /*level*/);
   StreamSafeCustomDeviceAllocation* stream_safe_cuda_allocation =
       static_cast<StreamSafeCustomDeviceAllocation*>(allocation);
 

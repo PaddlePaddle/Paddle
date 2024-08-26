@@ -130,7 +130,7 @@ void OpLoweringGroup::SetShapeOrDataExprs(
 }
 
 std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
-    const std::string name_suffix) const {
+    const std::string& name_suffix) const {
   const auto new_fn_name = this->fn_name_ + "_cloned_" + name_suffix;
   // Construct Base information for new Group
   auto new_group = std::make_shared<OpLoweringGroup>(
@@ -140,7 +140,7 @@ std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
   new_group->output_values_ = this->output_values_;
   new_group->input_names_ = this->input_names_;
   new_group->output_names_ = this->output_names_;
-  new_group->int_args_map_ = this->int_args_map_;
+  new_group->symbol_args_map_ = this->symbol_args_map_;
   new_group->alignment_schedule_info_ = this->alignment_schedule_info_;
   new_group->reduce_axis_ = this->reduce_axis_;
   new_group->loop_ranges_ = this->loop_ranges_;

@@ -67,7 +67,7 @@ std::optional<bool> IsSubCudaAxisSpace(const CudaAxisSpace& lhs,
   PADDLE_ENFORCE_EQ(
       lhs.type,
       rhs.type,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type of 'lhs' must be equal to the type of 'rhs'. "));
   std::optional<bool> prove_sub_x = lhs.x.ProveSubSet(rhs.x);
   std::optional<bool> prove_sub_y = lhs.y.ProveSubSet(rhs.y);
@@ -164,12 +164,12 @@ IntSet Evaluate(Expr expr,
       PADDLE_ENFORCE_EQ(
           var->lower_bound.defined(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The 'lower_bound' of the variable must be defined."));
       PADDLE_ENFORCE_EQ(
           var->upper_bound.defined(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The 'upper_bound' of the variable must be defined."));
       optim::ReplaceVarWithExpr(&copy_for_lower_bound, var, var->lower_bound);
       optim::ReplaceVarWithExpr(&copy_for_upper_bound, var, var->upper_bound);
@@ -275,11 +275,11 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
                                              Expr load_block) {
   PADDLE_ENFORCE_NOT_NULL(
       store_block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The 'store_block' must be of type 'ir::ScheduleBlockRealize'."));
   PADDLE_ENFORCE_NOT_NULL(
       load_block.As<ir::ScheduleBlockRealize>(),
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The 'load_block' must be of type 'ir::ScheduleBlockRealize'."));
   std::string store_block_name = store_block.As<ir::ScheduleBlockRealize>()
                                      ->schedule_block.As<ir::ScheduleBlock>()
