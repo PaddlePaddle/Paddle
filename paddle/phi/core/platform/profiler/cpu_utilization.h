@@ -19,7 +19,6 @@
 #include <cinttypes>
 #include <cstdint>
 
-#include "glog/logging.h"
 #ifdef _MSC_VER
 #include <windows.h>
 #else

@@ -1612,6 +1612,56 @@ Tensor softsign_decomp(const Tensor& x) {
   return x / (one + x_abs);
 }
 
+template <typename T>
+std::vector<Tensor> unstack_decomp(const Tensor& x, int axis, const int num) {
+  if (axis < 0) {
+    axis += x.dims().size();
+  }
+  std::vector<int64_t> x_shape = x.shape();
+  if (x_shape[axis] < 0) {
+    PADDLE_THROW(
+        common::errors::Unimplemented("unstack axis must not be dynamic."));
+  }
+  PADDLE_ENFORCE_EQ(
+      num,
+      x_shape[axis],
+      common::errors::InvalidArgument(
+          "The number of unstacks should be equal to the value of "
+          "x.shape[axis], but received num is %d and x.shape[axis] is %d.",
+          num,
+          x_shape[axis]));
+
+  std::vector<int> sections(num, 1);
+  std::vector<Tensor> res = backend::split<T>(x, sections, axis);
+  if (has_dynamic_shape(x_shape)) {
+    const Tensor x_shape_tensor = shape<T>(x);
+
+    // find new shape of each tensor.
+    std::vector<Tensor> new_shape_vec;
+    for (size_t i = 0; i < x_shape.size(); ++i) {
+      if (static_cast<int>(i) != axis) {
+        new_shape_vec.push_back(get_slice<T>(x_shape_tensor, i));
+      }
+    }
+    const Tensor new_shape = concat<T>(new_shape_vec);
+    std::transform(res.begin(), res.end(), res.begin(), [&](Tensor& x) {
+      return backend::reshape_with_tensor<T>(x, new_shape);
+    });
+  } else {
+    std::vector<int64_t> new_shape;
+    // find new shape of each tensor.
+    for (size_t i = 0; i < x_shape.size(); ++i) {
+      if (static_cast<int>(i) != axis) {
+        new_shape.push_back(x_shape[i]);
+      }
+    }
+    std::transform(res.begin(), res.end(), res.begin(), [&](Tensor& x) {
+      return reshape<T>(x, new_shape);
+    });
+  }
+  return res;
+}
+
 }  // namespace details
 
 }  // namespace primitive
