@@ -112,6 +112,7 @@ list(
   temporal_shift_op.cc
   einsum_op.cc
   unbind_op.cc
+  index_put_op.cc
   isnan_v2_op.cc
   assign_op.cc
   p_norm_op.cc
