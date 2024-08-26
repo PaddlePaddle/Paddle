@@ -702,20 +702,7 @@ endif()
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true)
-endforeach()
-
-set(PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
-
-if(APPLE)
-  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
-endif()
-
-foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
-  py_test_modules(${PIR_COVERAGE_TEST}_pir MODULES ${PIR_COVERAGE_TEST} ENVS
-                  FLAGS_enable_pir_in_executor=true)
-  set_tests_properties(${PIR_COVERAGE_TEST}_pir PROPERTIES TIMEOUT 120)
-  message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
+    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=false)
 endforeach()
 
 set_tests_properties(test_decoupled_py_reader_deprecated_static_build

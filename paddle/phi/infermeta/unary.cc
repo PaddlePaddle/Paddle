@@ -2914,7 +2914,7 @@ void OneHotRawInferMeta(const MetaTensor& x,
 }
 
 void OneHotInferMeta(const MetaTensor& x,
-                     const Scalar& depth_t,
+                     const Scalar& num_classes,
                      MetaTensor* out) {
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -2922,13 +2922,13 @@ void OneHotInferMeta(const MetaTensor& x,
                     common::errors::InvalidArgument(
                         "Rank of Input(X) should be at least 0."));
 
-  int depth = depth_t.to<int>();
+  int num_classes_int = num_classes.to<int>();
   auto out_dims_vec = common::vectorize(x_dims);
-  out_dims_vec.push_back(depth);
+  out_dims_vec.push_back(num_classes_int);
   auto out_dims = common::make_ddim(out_dims_vec);
+
   out->set_dims(out_dims);
   out->share_lod(x);
-
   out->set_dtype(phi::DataType::FLOAT32);
 }
 
