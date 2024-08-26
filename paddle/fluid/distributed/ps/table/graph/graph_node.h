@@ -141,8 +141,10 @@ class FeatureNode : public Node {
     for (auto &feature_item : feature) {
       const uint64_t *feas = (const uint64_t *)(feature_item.c_str());
       size_t num = feature_item.length() / sizeof(uint64_t);
-      CHECK((feature_item.length() % sizeof(uint64_t)) == 0)
-          << "bad feature_item: [" << feature_item << "]";
+      PADDLE_ENFORCE_EQ((feature_item.length() % sizeof(uint64_t)),
+                        0,
+                        phi::errors::PreconditionNotMet(
+                            "bad feature_item: [%s]", feature_item.c_str()));
       size_t n = res->size();
       res->resize(n + num);
       for (size_t i = 0; i < num; ++i) {
@@ -168,8 +170,10 @@ class FeatureNode : public Node {
       const uint64_t *feas = (const uint64_t *)(s.c_str());
 
       size_t num = s.length() / sizeof(uint64_t);
-      CHECK((s.length() % sizeof(uint64_t)) == 0)
-          << "bad feature_item: [" << s << "]";
+      PADDLE_ENFORCE_EQ(
+          (s.length() % sizeof(uint64_t)),
+          0,
+          phi::errors::PreconditionNotMet("bad feature_item: [%s]", s.c_str()));
       res->resize(num);
       for (size_t i = 0; i < num; ++i) {
         (*res)[i] = feas[i];
@@ -192,8 +196,10 @@ class FeatureNode : public Node {
       const std::string &s = this->feature[slot_idx];
       const uint64_t *feas = (const uint64_t *)(s.c_str());
       num = s.length() / sizeof(uint64_t);
-      CHECK((s.length() % sizeof(uint64_t)) == 0)
-          << "bad feature_item: [" << s << "]";
+      PADDLE_ENFORCE_EQ(
+          (s.length() % sizeof(uint64_t)),
+          0,
+          phi::errors::PreconditionNotMet("bad feature_item: [%s]", s.c_str()));
       for (size_t i = 0; i < num; ++i) {
         feature_id.push_back(feas[i]);
         slot_id.push_back(slot_idx);
@@ -339,8 +345,10 @@ class FloatFeatureNode : public FeatureNode {
       // for (auto &feature_item : feature) {
       const uint64_t *feas = (const uint64_t *)(feature_item.c_str());
       size_t num = feature_item.length() / sizeof(uint64_t);
-      CHECK((feature_item.length() % sizeof(uint64_t)) == 0)
-          << "bad feature_item: [" << feature_item << "]";
+      PADDLE_ENFORCE_EQ((feature_item.length() % sizeof(uint64_t)),
+                        0,
+                        phi::errors::PreconditionNotMet(
+                            "bad feature_item: [%s]", feature_item.c_str()));
       size_t n = res->size();
       res->resize(n + num);
       for (size_t i = 0; i < num; ++i) {
@@ -366,8 +374,10 @@ class FloatFeatureNode : public FeatureNode {
       const uint64_t *feas = (const uint64_t *)(s.c_str());
 
       size_t num = s.length() / sizeof(uint64_t);
-      CHECK((s.length() % sizeof(uint64_t)) == 0)
-          << "bad feature_item: [" << s << "]";
+      PADDLE_ENFORCE_EQ(
+          (s.length() % sizeof(uint64_t)),
+          0,
+          phi::errors::PreconditionNotMet("bad feature_item: [%s]", s.c_str()));
       res->resize(num);
       for (size_t i = 0; i < num; ++i) {
         (*res)[i] = feas[i];
@@ -390,8 +400,10 @@ class FloatFeatureNode : public FeatureNode {
       const std::string &s = this->feature[slot_idx];
       const uint64_t *feas = (const uint64_t *)(s.c_str());
       num = s.length() / sizeof(uint64_t);
-      CHECK((s.length() % sizeof(uint64_t)) == 0)
-          << "bad feature_item: [" << s << "]";
+      PADDLE_ENFORCE_EQ(
+          (s.length() % sizeof(uint64_t)),
+          0,
+          phi::errors::PreconditionNotMet("bad feature_item: [%s]", s.c_str()));
       for (size_t i = 0; i < num; ++i) {
         feature_id.push_back(feas[i]);
         slot_id.push_back(slot_idx);
@@ -416,8 +428,10 @@ class FloatFeatureNode : public FeatureNode {
       const std::string &s = this->feature[float_feature_start_idx + slot_idx];
       const float *feas = (const float *)(s.c_str());
       num = s.length() / sizeof(float);
-      CHECK((s.length() % sizeof(float)) == 0)
-          << "bad feature_item: [" << s << "]";
+      PADDLE_ENFORCE_EQ(
+          (s.length() % sizeof(float)),
+          0,
+          phi::errors::PreconditionNotMet("bad feature_item: [%s]", s.c_str()));
       for (size_t i = 0; i < num; ++i) {
         float_feature.push_back(feas[i]);
         slot_id.push_back(slot_idx);

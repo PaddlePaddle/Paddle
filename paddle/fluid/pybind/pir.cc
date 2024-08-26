@@ -800,7 +800,7 @@ void BindOperation(py::module *m) {
       .def("num_operands", &Operation::num_operands)
       .def("num_results", &Operation::num_results)
       .def("num_regions", &Operation::num_regions)
-
+      .def("id", &Operation::id)
       .def("operand", &Operation::operand)
       .def("result",
            [](Operation &self, uint32_t index) {
@@ -852,6 +852,11 @@ void BindOperation(py::module *m) {
              auto attr = IntArrayAttribute::get(pir::IrContext::Instance(),
                                                 phi::IntArray(val));
              self.set_attribute(attr_name, attr);
+           })
+      .def("set_str_attr",
+           [](Operation &self, std::string &attr_name, std::string &val) {
+             self.set_attribute(
+                 attr_name, StrAttribute::get(pir::IrContext::Instance(), val));
            })
       .def("attrs",
            [](Operation &self) -> py::dict {

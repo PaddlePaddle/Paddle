@@ -84,11 +84,21 @@ class SuperCallWithArgument(BaseLayer):
         return z
 
 
+def recursive_call(x):
+    if x == 1:
+        return 1
+    return x * recursive_call(x - 1)
+
+
 class CheckDy2StWithDygraphMixin:
     def check_fn(self, fn, *inputs):
         dyres = fn(*inputs)
         stres = paddle.jit.to_static(fn)(*inputs)
-        np.testing.assert_allclose(dyres.numpy(), stres.numpy())
+        if isinstance(dyres, paddle.Tensor):
+            assert isinstance(stres, paddle.Tensor)
+            np.testing.assert_allclose(dyres.numpy(), stres.numpy())
+        else:
+            self.assertEqual(dyres, stres)
 
 
 class TestClosure(Dy2StTestBase, CheckDy2StWithDygraphMixin):
@@ -123,6 +133,13 @@ class TestSuperCall(Dy2StTestBase, CheckDy2StWithDygraphMixin):
         model = SuperCallWithArgument()
         x = paddle.to_tensor(1.0)
         self.check_fn(model, x)
+
+
+class TestRecursiveCall(Dy2StTestBase, CheckDy2StWithDygraphMixin):
+    @test_legacy_and_pt_and_pir
+    def test_recursive_call(self):
+        x = 5
+        self.check_fn(recursive_call, x)
 
 
 if __name__ == '__main__':

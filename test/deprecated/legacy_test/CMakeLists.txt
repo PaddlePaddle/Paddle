@@ -97,7 +97,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
 endif()
 
 if(WIN32)
-  list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception_deprecated)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
   list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
@@ -439,7 +439,7 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_slice_op test_slice_op_deprecated)
+set(TEST_OPS_WITH_GC test_slice_op_deprecated)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -456,7 +456,6 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
-list(REMOVE_ITEM TEST_OPS "test_stride")
 list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
@@ -597,7 +596,7 @@ set_tests_properties(
   test_dataloader_unkeep_order_deprecated PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32)
-  set_tests_properties(test_multiprocess_reader_exception
+  set_tests_properties(test_multiprocess_reader_exception_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_layers_deprecated PROPERTIES TIMEOUT 120)
 endif()
@@ -628,11 +627,7 @@ else()
   set_tests_properties(test_layer_norm_op_deprecated PROPERTIES TIMEOUT 250)
 endif()
 
-set_tests_properties(test_imperative_selected_rows_to_lod_tensor
-                     PROPERTIES TIMEOUT 200)
 set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
@@ -642,13 +637,12 @@ set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_regularizer_deprecated PROPERTIES TIMEOUT 150)
-set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_slice_op_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader_keep_order_deprecated PROPERTIES TIMEOUT
                                                                       120)
 set_tests_properties(test_dataloader_unkeep_order_deprecated PROPERTIES TIMEOUT
                                                                         120)
-set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
+set_tests_properties(test_reader_reset_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
@@ -664,13 +658,8 @@ set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
                                                                        120)
 
 set(TEST_CINN_OPS
-    test_softmax_op
-    test_slice_op
-    test_slice_op_deprecated
-    test_layer_norm_op_deprecated
-    test_where_op
-    test_arg_min_max_op
-    test_instance_norm_op_deprecated)
+    test_slice_op_deprecated test_layer_norm_op_deprecated
+    test_instance_norm_op_deprecated test_group_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -690,8 +679,6 @@ set_tests_properties(test_conditional_block_deprecated
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
-    test_adamw_op_deprecated
-    test_arg_min_max_op
     test_batch_norm_op_deprecated
     test_decoupled_py_reader_deprecated
     test_fuse_bn_act_pass_deprecated
@@ -700,7 +687,6 @@ set(STATIC_BUILD_TESTS
     test_momentum_op_deprecated
     test_nce_deprecated
     test_sparse_conv_op
-    test_sparse_norm_op
     test_tensor_array_to_tensor_deprecated
     test_unique
     test_one_hot_v2_op)
@@ -716,20 +702,7 @@ endif()
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true)
-endforeach()
-
-set(PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
-
-if(APPLE)
-  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
-endif()
-
-foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
-  py_test_modules(${PIR_COVERAGE_TEST}_pir MODULES ${PIR_COVERAGE_TEST} ENVS
-                  FLAGS_enable_pir_in_executor=true)
-  set_tests_properties(${PIR_COVERAGE_TEST}_pir PROPERTIES TIMEOUT 120)
-  message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
+    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=false)
 endforeach()
 
 set_tests_properties(test_decoupled_py_reader_deprecated_static_build
@@ -745,9 +718,6 @@ set_tests_properties(
 set_tests_properties(test_layer_norm_op_deprecated_static_build
                      PROPERTIES TIMEOUT 1500)
 
-py_test_modules(test_stride MODULES test_stride ENVS
-                FLAGS_use_stride_kernel=true)
-
 set_pir_tests_properties()
 
 set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
@@ -755,3 +725,5 @@ set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)
+set_tests_properties(test_lbfgs_deprecated PROPERTIES TIMEOUT 100)
+set_tests_properties(test_group_norm_op_deprecated PROPERTIES TIMEOUT 1000)

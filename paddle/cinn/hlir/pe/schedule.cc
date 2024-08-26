@@ -264,17 +264,17 @@ void GetConv2dFactors(absl::flat_hash_map<std::string, int> *factors,
       PADDLE_ENFORCE_EQ(
           !params[key]["oc_bn"].empty(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The parameter 'oc_bn' for key '%s' must not be empty.", key));
       PADDLE_ENFORCE_EQ(
           !params[key]["ic_bn"].empty(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The parameter 'ic_bn' for key '%s' must not be empty.", key));
       PADDLE_ENFORCE_EQ(
           !params[key]["ow_bn"].empty(),
           true,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The parameter 'ow_bn' for key '%s' must not be empty.", key));
       (*factors)["oc_bn"] = params[key]["oc_bn"].back();
       (*factors)["ic_bn"] = params[key]["ic_bn"].back();
@@ -509,7 +509,7 @@ inline void InputDirectConvCudaParam(
   schedule_data["x"] = int_data[5];
   PADDLE_ENFORCE_EQ(model_data.count(key),
                     0,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Key '%s' in conv CUDA param already exists.", key));
   model_data[key] = schedule_data;
 }

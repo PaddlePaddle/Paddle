@@ -763,7 +763,7 @@ def monkey_patch_tensor():
         if len(invalid_keys) != 0:
             raise TypeError(
                 "to() got an unexpected keyword argument "
-                + list(invalid_keys)[0]
+                + next(iter(invalid_keys))
             )
         if size_args > 0:
             if isinstance(args[0], paddle.Tensor):
@@ -857,6 +857,11 @@ def monkey_patch_tensor():
                 3.299999952316284
 
         """
+        # resolve the error issue in scenario of pipeline parallel
+        # where some devices do not have self data, return None does not affect
+        # the execution result in those devices, so currently we return None
+        if self.is_dist() and not self._is_initialized():
+            return None
         scalar = self._getitem_from_offset(*args)
         if scalar.dtype == np.uint16:
             return convert_uint16_to_float(scalar).item()
@@ -942,6 +947,11 @@ def monkey_patch_tensor():
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
+        # resolve the error issue in scenario of pipeline parallel
+        # where some devices do not have this data, return True or False does not affect
+        # the execution result in those devices, so currently we return False
+        if self.is_dist() and not self._is_initialized():
+            return False
         assert self._is_initialized(), "tensor not initialized"
         return bool(np.array(self) > 0)
 

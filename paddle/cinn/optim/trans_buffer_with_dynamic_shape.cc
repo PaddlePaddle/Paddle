@@ -25,6 +25,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/utils/string.h"
 
 namespace cinn::optim {
@@ -137,19 +138,17 @@ void CudaTransBufferWithDynamicShape(ir::Expr* e) {
 #endif
       },
       [&](common::HygonDCUArchHIP) {
-#ifdef CINN_WITH_HIP
-        auto cur_dev_info =
-            common::DevInfoMgr<common::HygonDCUArchHIP>::GetDevInfo(0);
-        if (cur_dev_info->IsValid()) {
-          size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
-          PADDLE_ENFORCE_LE(
-              mutator.shared_mem_size_used_,
-              max_shm_per_block,
-              ::common::errors::InvalidArgument(
-                  "The shared memory size used by current kernel is greater "
-                  "than the max shared memory per block"));
-        }
-#endif
+        using cinn::runtime::BackendAPI;
+        size_t max_shm_per_block =
+            BackendAPI::get_backend(common::HygonDCUArchHIP{})
+                ->get_device_property(
+                    BackendAPI::DeviceProperty::MaxSharedMemoryPerBlock);
+        PADDLE_ENFORCE_LE(
+            mutator.shared_mem_size_used_,
+            max_shm_per_block,
+            ::common::errors::InvalidArgument(
+                "The shared memory size used by current kernel is greater "
+                "than the max shared memory per block"));
       });
 }
 }  // namespace cinn::optim

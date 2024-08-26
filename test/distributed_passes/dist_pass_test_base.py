@@ -211,30 +211,26 @@ class DistPassTestBase(unittest.TestCase):
                 with open(model_dump_file, 'wb') as f:
                     pickle.dump(model, f)
 
-            cmd = (
-                [
-                    sys.executable,
-                    "-u",
-                ]
-                + coverage_args
-                + [
-                    "-m",
-                    "launch",
-                    "--log_dir",
-                    output_dir,
-                    "--gpus",
-                    gpus,
-                    os.path.join(file_dir, "pass_run_main.py"),
-                    "--file_path",
-                    inspect.getfile(type(self)),
-                    "--class_name",
-                    type(self).__name__,
-                    "--input_file",
-                    input_dump_file,
-                    "--output_dir",
-                    output_dir,
-                ]
-            )
+            cmd = [
+                sys.executable,
+                "-u",
+                *coverage_args,
+                "-m",
+                "launch",
+                "--log_dir",
+                output_dir,
+                "--gpus",
+                gpus,
+                os.path.join(file_dir, "pass_run_main.py"),
+                "--file_path",
+                inspect.getfile(type(self)),
+                "--class_name",
+                type(self).__name__,
+                "--input_file",
+                input_dump_file,
+                "--output_dir",
+                output_dir,
+            ]
             if apply_pass:
                 cmd += ["--apply_pass"]
             if model is not None:

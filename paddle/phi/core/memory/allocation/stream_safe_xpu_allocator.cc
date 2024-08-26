@@ -15,7 +15,7 @@
 #include "paddle/phi/core/memory/allocation/stream_safe_xpu_allocator.h"
 #include <thread>
 
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 
@@ -115,7 +115,7 @@ void StreamSafeXPUAllocator::SetDefaultStream(XPUStream stream) {
 
 phi::Allocation* StreamSafeXPUAllocator::AllocateImpl(size_t size) {
   phi::RecordEvent record("StreamSafeXPUAllocator::Allocate",
-                          platform::TracerEventType::UserDefined,
+                          phi::TracerEventType::UserDefined,
                           9 /*level*/);
   ProcessUnfreedAllocations();
   VLOG(8) << "Try allocate " << size << " bytes";
@@ -147,7 +147,7 @@ phi::Allocation* StreamSafeXPUAllocator::AllocateImpl(size_t size) {
 
 void StreamSafeXPUAllocator::FreeImpl(phi::Allocation* allocation) {
   phi::RecordEvent record("StreamSafeXPUAllocator::Free",
-                          platform::TracerEventType::UserDefined,
+                          phi::TracerEventType::UserDefined,
                           9 /*level*/);
   StreamSafeXPUAllocation* stream_safe_xpu_allocation =
       static_cast<StreamSafeXPUAllocation*>(allocation);

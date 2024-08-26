@@ -78,7 +78,6 @@ class TestCollectiveReduceAPI(TestDistBase):
                         "nccl",
                         dtype=dtype,
                         reduce_type=red_type,
-                        need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
                     )
 
     def test_reduce_bkcl(self):

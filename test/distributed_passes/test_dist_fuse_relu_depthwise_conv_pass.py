@@ -49,7 +49,7 @@ class TestFuseReluDepthwiseConvPass(DistPassTestBase):
 
     def get_model(self, place, batch_size=32, image_shape=[3, 224, 224]):
         image = paddle.static.data(
-            shape=[batch_size] + image_shape, dtype='float32', name='image'
+            shape=[batch_size, *image_shape], dtype='float32', name='image'
         )
 
         model = ReluDepthwiseConvNet()
