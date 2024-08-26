@@ -26,8 +26,6 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper import LayerHelper
 
-from .unary import cast
-
 if TYPE_CHECKING:
     from paddle import Tensor
 
@@ -303,8 +301,6 @@ def add(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                 [ 6.,  8.,  4.,  8.]])
 
     """
-    if y.dtype != x.dtype:
-        y = cast(y, None, x.dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.sparse_add(x, y)
@@ -357,8 +353,6 @@ def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
 
-    if y.dtype != x.dtype:
-        y = _C_ops.sparse_cast(y, None, x.dtype)
     if in_dygraph_mode():
         return _C_ops.sparse_subtract(x, y)
     elif in_pir_mode():
@@ -410,8 +404,6 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if isinstance(y, (int, float)):
         return _C_ops.sparse_scale(x, float(y), 0.0, True)
     else:
-        if y.dtype != x.dtype:
-            y = _C_ops.sparse_cast(y, None, x.dtype)
         if in_dygraph_mode():
             return _C_ops.sparse_multiply(x, y)
         elif in_pir_mode():
@@ -460,16 +452,9 @@ def divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
 
-    if x.dtype in _int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.VarDesc.VarType.FP32)
-    if x.dtype in _pir_int_dtype_:
-        x = _C_ops.sparse_cast(x, None, core.DataType.FLOAT32)
-
     if isinstance(y, (int, float)):
         return _C_ops.sparse_divide_scalar(x, float(y))
     else:
-        if y.dtype != x.dtype:
-            y = _C_ops.sparse_cast(y, None, x.dtype)
         if in_dygraph_mode():
             return _C_ops.sparse_divide(x, y)
         elif in_pir_mode():
