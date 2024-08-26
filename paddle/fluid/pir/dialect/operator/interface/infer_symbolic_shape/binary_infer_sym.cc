@@ -1269,25 +1269,12 @@ bool StftOpInferSymbolicShape(pir::Operation *op,
           "Attribute(hop_length) should be greater than 0, but got %s.",
           hop_length));
 
-  PADDLE_ENFORCE_EQ(
-      window_shapes[0],
-      n_fft,
-      common::errors::InvalidArgument(
-          "Input(Window) of StftOp should be equal with n_fft %s, "
-          "but got %s.",
-          n_fft,
-          window_shapes[0]));
+  infer_context->AddEqualCstr(window_shapes[0], symbol::DimExpr{n_fft});
 
   symbol::DimExpr seq_length = x_shapes[1];
   symbol::DimExpr n_frames = 1 + (seq_length - n_fft) / hop_length;
 
-  PADDLE_ENFORCE_LE(n_fft,
-                    seq_length,
-                    common::errors::InvalidArgument(
-                        "Attribute(frame_length) should be less equal than "
-                        "sequence length, but got (%s) > (%s).",
-                        n_fft,
-                        seq_length));
+  infer_context->AddEqualCstr(seq_length, symbol::DimExpr{n_fft});
 
   std::vector<symbol::DimExpr> output_shape;
   output_shape.push_back(x_shapes[0]);
