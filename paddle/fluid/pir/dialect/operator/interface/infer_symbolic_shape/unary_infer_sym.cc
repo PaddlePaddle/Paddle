@@ -448,8 +448,8 @@ bool CastOpInferSymbolicShape(pir::Operation *op,
   const auto &attributes = op->attributes();
 
   if (attributes.find("dtype") != attributes.end()) {
-    if (attributes.at("dtype").isa<int64_t>() ||
-        attributes.at("dtype").isa<int>()) {
+    if (attributes.at("dtype").isa<paddle::dialect::Int32Attribute>() ||
+        attributes.at("dtype").isa<paddle::dialect::Int64Attribute>()) {
       infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
     } else {
       SetOutputWithOnlyShape();
