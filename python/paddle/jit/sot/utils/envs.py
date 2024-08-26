@@ -75,3 +75,9 @@ def with_export_guard(value: str):
 def with_allow_dynamic_shape_guard(value: bool):
     with EnvironmentVariableGuard(ENV_SOT_ALLOW_DYNAMIC_SHAPE, value):
         yield
+
+
+@contextmanager
+def sot_step_profiler_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_ENABLE_SOT_STEP_PROFILER, value):
+        yield

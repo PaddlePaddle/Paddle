@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import atexit
 import re
 from dataclasses import dataclass
@@ -46,10 +48,22 @@ class KernelRunMode(Enum):
     Static = 2
 
 
+def safe_divide(a, b):
+    # Avoid division by zero
+    return a / b if b != 0 else 0
+
+
 @dataclass
 class KernelInfo:
     name: str
     run_mode: KernelRunMode
+    duration: float
+    cuda_kernels: list[CudaKernelInfo]
+
+
+@dataclass
+class CudaKernelInfo:
+    name: str
     duration: float
 
 
@@ -71,8 +85,10 @@ class KernelStatsVisitor(EventVisitor):
             [
                 kernel
                 for kernel in self.kernels
-                if kernel.run_mode == mode
-                and kernel.name not in KernelStatsVisitor.SKIP_KERNEL_NAMES
+                if (
+                    kernel.run_mode == mode
+                    and kernel.name not in KernelStatsVisitor.SKIP_KERNEL_NAMES
+                )
             ]
         )
 
@@ -81,24 +97,42 @@ class KernelStatsVisitor(EventVisitor):
             [
                 kernel.duration
                 for kernel in self.kernels
-                if kernel.run_mode == mode
-                and kernel.name not in KernelStatsVisitor.SKIP_KERNEL_NAMES
+                if (
+                    kernel.run_mode == mode
+                    and kernel.name not in KernelStatsVisitor.SKIP_KERNEL_NAMES
+                )
             ]
         )
+
+    def find_all_cuda_kernels(self, host_event):
+        # TODO(SigureMo): Find a better way to find all CUDA kernels
+        return [
+            CudaKernelInfo(
+                device_event.name, device_event.end_ns - device_event.start_ns
+            )
+            for runtime_event in host_event.runtime_node
+            for device_event in runtime_event.device_node
+        ]
 
     def visit_DygraphKernelLaunch(self, event_node):
         duration = event_node.end_ns - event_node.start_ns
         kernel_name = self.get_kernel_name(event_node.name)
+        all_cuda_kernels = self.find_all_cuda_kernels(event_node)
         self.kernels.append(
-            KernelInfo(kernel_name, KernelRunMode.Dygraph, duration)
+            KernelInfo(
+                kernel_name, KernelRunMode.Dygraph, duration, all_cuda_kernels
+            )
         )
         self.generic_visit(event_node)
 
     def visit_StaticKernelLaunch(self, event_node):
         duration = event_node.end_ns - event_node.start_ns
         kernel_name = self.get_kernel_name(event_node.name)
+        all_cuda_kernels = self.find_all_cuda_kernels(event_node)
         self.kernels.append(
-            KernelInfo(kernel_name, KernelRunMode.Static, duration)
+            KernelInfo(
+                kernel_name, KernelRunMode.Static, duration, all_cuda_kernels
+            )
         )
         self.generic_visit(event_node)
 
@@ -110,11 +144,12 @@ class KernelStatsVisitor(EventVisitor):
         static_kernel_count = self.calc_kernel_count(KernelRunMode.Static)
         dygraph_kernel_count = self.calc_kernel_count(KernelRunMode.Dygraph)
 
-        percentage_static_kernel_count = static_kernel_count / (
-            static_kernel_count + dygraph_kernel_count
+        percentage_static_kernel_count = safe_divide(
+            static_kernel_count, static_kernel_count + dygraph_kernel_count
         )
-        percentage_static_kernel_duration = static_kernel_duration / (
-            static_kernel_duration + dygraph_kernel_duration
+        percentage_static_kernel_duration = safe_divide(
+            static_kernel_duration,
+            static_kernel_duration + dygraph_kernel_duration,
         )
         step_summary = ""
         step_summary += f"dygraph kernel count: {dygraph_kernel_count}\n"
@@ -137,13 +172,14 @@ class SotStepProfilerGuard:
         self.enable_chrome_tracing = enable_chrome_tracing
         self.started = False
         self.record_event = None
+        self.summary = None
 
-    def _kernel_stats(self, prof):
+    def _kernel_stats(self, prof) -> str:
         kernel_stats_visitor = KernelStatsVisitor()
         kernel_stats_visitor(prof.profiler_result.get_data())
         return kernel_stats_visitor.summary()
 
-    def collect_step_info_summary(self, prof):
+    def collect_step_info_summary(self, prof) -> str:
         summary = ""
         if self.enable_kernel_stats:
             summary += self._kernel_stats(prof)
@@ -162,6 +198,7 @@ class SotStepProfilerGuard:
             coldstart_title = f"SOT step profiler info summary (ColdStart, step#{SotStepProfilerGuard.STEP_CNT}):"
             coldstart_report = f"{coldstart_title}\n{summary}"
             print(coldstart_report)
+            self.summary = coldstart_report
         else:
             warmup_title = f"SOT step profiler info summary (Warmup, step#{SotStepProfilerGuard.STEP_CNT}):"
             warmup_report = f"{warmup_title}\n{summary}"
@@ -170,6 +207,7 @@ class SotStepProfilerGuard:
                     lambda: print(SotStepProfilerGuard.LAST_INFO_SUMMARY)
                 )
             SotStepProfilerGuard.LAST_INFO_SUMMARY = warmup_report
+            self.summary = warmup_report
 
     def start(self):
         if ENV_ENABLE_SOT_STEP_PROFILER.get():
@@ -192,6 +230,7 @@ class SotStepProfilerGuard:
 
     def __enter__(self):
         self.start()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
