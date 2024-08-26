@@ -15,29 +15,25 @@
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 
 #include "glog/logging.h"  // For VLOG()
-#include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
+
+#ifdef PADDLE_WITH_FLASHATTN_MUSA
+#include "paddle/common/macros.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/tril_triu_kernel_impl.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 #include "paddle/phi/kernels/funcs/tensor_formatter.h"
 #include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
-#include <chrono>
+#endif
 
 namespace phi {
-
-static void InternalMemFree_flash_attn_fwd(void* ptr) {
-
-}
-
-
 
 inline bool is_pad_mask(const DenseTensor& mask, const DenseTensor& query) {
   return mask.dims().size() == 2 && mask.dims()[0] == query.dims()[0] &&
@@ -48,11 +44,13 @@ template <typename T, typename Context>
 void ContiguousKernel(const Context& dev_ctx,
                       const DenseTensor& input,
                       DenseTensor* out);
+
 using ScaledDotProductAttention =
     phi::backends::gpu::ScaledDotProductAttention;
 using ScopedTensorDescriptor =
     phi::backends::gpu::ScopedTensorDescriptor;
 using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+
 template <typename T, typename Context>
 void FlashAttnUnpaddedKernel(
     const Context& ctx,
@@ -149,8 +147,6 @@ void FlashAttnUnpaddedKernel(
       params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
       params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
   CheckFlashAttnStatus(succ);
-#elif defined(PADDLE_WITH_FLASHATTN_MUSA)
-  RaiseNotSupportedError();
 #else
   RaiseNotSupportedError();
 #endif
@@ -172,7 +168,92 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
-#if defined(PADDLE_WITH_FLASHATTN_MUSA)
+#ifdef PADDLE_WITH_FLASHATTN
+  // q, k, v [batch_size, seq_len, num_heads, head_dim]
+  const auto& dims = q.dims();
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
+
+  const int64_t batch_size = dims[0];
+  const int64_t seqlen_q = dims[1];
+  const int64_t num_heads = dims[2];
+  const int64_t head_size = dims[3];
+  const int64_t seqlen_k = k.dims()[1];
+  const int64_t num_heads_k = k.dims()[2];
+
+  // TODO(umiswing): Add check shape
+
+  const float softmax_scale = 1.0f / std::sqrt(head_size);
+  const float softmax_unscale = std::sqrt(head_size);
+
+  FlashAttnFwdParamsV2<T> params = FlashAttnFwdParamsV2<T>(ctx,
+                                                           batch_size,
+                                                           seqlen_q,
+                                                           seqlen_k,
+                                                           num_heads,
+                                                           num_heads_k,
+                                                           head_size,
+                                                           dropout,
+                                                           softmax_scale,
+                                                           causal,
+                                                           return_softmax,
+                                                           q.dtype(),
+                                                           is_test,
+                                                           rng_name,
+                                                           fixed_seed_offset,
+                                                           attn_mask,
+                                                           softmax,
+                                                           softmax_lse,
+                                                           seed_offset);
+
+  VLOG(10) << "[FlashAttn Forward] q.shape=[" << q.dims() << "], k.shape=["
+           << k.dims() << "], v.shape=[" << v.dims() << "]";
+  VLOG(10) << "[FlashAttn Forward] dropout=" << dropout
+           << ", seed=" << params.seed << ", offset=" << params.offset;
+  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << softmax_scale
+           << ", softmax_unscale=" << softmax_unscale;
+  if (attn_mask.get_ptr()) {
+    VLOG(10) << "[FlashAttn Forward] attn_mask.shape=["
+             << (attn_mask.get_ptr())->dims() << "]";
+  }
+
+  ctx.template Alloc<T>(out);
+
+  cudaStream_t stream = ctx.stream();
+
+  bool succ = phi::dynload::flash_attn_fwd(
+      q.data(),
+      k.data(),
+      v.data(),
+      params.rng_state.data(),
+      out->data(),
+      params.return_softmax ? params.softmax->data() : nullptr,
+      params.softmax_lse->data(),
+      params.batch_size,
+      params.max_seqlen_q,
+      params.max_seqlen_k,
+      params.seqlen_q_rounded,
+      params.seqlen_k_rounded,
+      params.num_heads,
+      params.num_heads_k,
+      params.head_size,
+      params.head_size_rounded,
+      params.dropout,
+      params.softmax_scale,
+      softmax_unscale,
+      params.causal,
+      params.return_softmax,
+      params.is_bf16,
+      stream,
+      params.seed,
+      params.offset,
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.mask_dims.data());
+  CheckFlashAttnStatus(succ);
+#elif defined(PADDLE_WITH_FLASHATTN_MUSA)
   if(UNLIKELY(return_softmax)){
     PADDLE_ENFORCE_EQ((dropout>0.0f),true,"return_softmax is only supported when dropout > 0.0");
     PADDLE_ENFORCE_EQ(0,1,"not support");

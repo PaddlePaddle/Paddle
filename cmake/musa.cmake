@@ -121,7 +121,7 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
   list(APPEND MUSA_MCC_FLAGS -O0)
 else()
   list(APPEND MUSA_MCC_FLAGS -DRELEASE_MUSA)
-  list(APPEND MUSA_MCC_FLAGS -O3)
+  list(APPEND MUSA_MCC_FLAGS -O2)
 endif()
 
 set(musa_runtime_library_name musart)
