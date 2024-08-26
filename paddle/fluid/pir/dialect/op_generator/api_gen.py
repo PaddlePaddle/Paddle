@@ -349,8 +349,12 @@ class CodeGen:
     def _is_optional_output(self, op_info, output_name):
         output_optional_list = op_info.output_optional_list
         output_name_list = op_info.output_name_list
+        intermediate_list = op_info.output_intermediate_list
         output_index = output_name_list.index(output_name)
-        if op_info.output_optional_list[output_index] == 'true':
+        if (
+            intermediate_list[output_index] == 'false'
+            and op_info.output_optional_list[output_index] == 'true'
+        ):
             return True
         else:
             return False
