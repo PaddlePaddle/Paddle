@@ -126,6 +126,10 @@ class FusedLinearGradSinglePattern
                        pir::PatternRewriter &rewriter) const override {
     auto dout = matmul_grad->operand_source(2);
 
+    if (pir::GetShapeFromValue(matmul_grad->operand_source(1)).size() != 2) {
+      return false;
+    }
+
     if (auto assign_op =
             dout.defining_op()->dyn_cast<paddle::dialect::AssignOp>()) {
       dout = assign_op->operand_source(0);
