@@ -674,7 +674,14 @@ const std::vector<std::string> kPirMkldnnPasses {
       "operator_scale_onednn_fuse_pass",      //
       "operator_unsqueeze_onednn_fuse_pass",  //
       "operator_reshape_onednn_fuse_pass",    //
-      "onednn_placement_pass"                 //
+      "onednn_placement_pass",                //
+};
+
+const std::vector<std::string> kPirMkldnnBf16Passes{
+    "cpu_bfloat16_placement_pass",
+    "cpu_bfloat16_pass",
+    "cpu_bfloat16_type_placement_pass",
+    "cpu_bf16_quantize_squash_pass",
 };
 
 const std::vector<std::string> kPirCpuPasses{
