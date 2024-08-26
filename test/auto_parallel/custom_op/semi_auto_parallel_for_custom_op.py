@@ -92,7 +92,6 @@ class TestCustomOpSemiAutoParallel(SemiAutoParallelTestBase):
 class TestBuildFakeProgramWithCustomOp(unittest.TestCase):
     def test_build_with_custom_relu(self):
         shapes = [16, 4, 4]
-        print(shapes)
         paddle.enable_static()
         with paddle.pir_utils.IrGuard():
             main_program = paddle.base.Program()
