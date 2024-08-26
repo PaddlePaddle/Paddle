@@ -1374,13 +1374,53 @@ def concat(
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)
     elif in_pir_mode():
-        if isinstance(input, paddle.pir.Value):
-            assert input.is_dense_tensor_array_type(), (
-                "If the element of concat op is Value, "
-                "dtype of the element must be Tensorarray"
-            )
+
+        def is_in_amp_mode():
+            amp_attrs = core._get_amp_attrs()
+            amp_level = amp_attrs._amp_level
+            apply_amp_level_list = [
+                core.AmpLevel.O1,
+                core.AmpLevel.O2,
+            ]
+            return amp_level in apply_amp_level_list
+
+        is_in_amp = is_in_amp_mode()
+        check_type(input, 'input', (list, tuple, paddle.pir.Value), 'concat')
+        if not isinstance(input, paddle.pir.Value):
+            for id, x in enumerate(input):
+                check_variable_and_dtype(
+                    x,
+                    'input[' + str(id) + ']',
+                    [
+                        'bool',
+                        'float16',
+                        'bfloat16',
+                        'float32',
+                        'float64',
+                        'int16',
+                        'int32',
+                        'int64',
+                        'int8',
+                        'unit8',
+                        'uint16',
+                        'complex64',
+                        'complex128',
+                    ],
+                    'concat',
+                )
+                if (not is_in_amp) and x.dtype != input[0].dtype:
+                    raise TypeError(
+                        "All the Tensors in the input must have the same data type."
+                    )
+        elif (
+            isinstance(input, paddle.pir.Value)
+            and input.is_dense_tensor_array_type()
+        ):
             out, _ = _C_ops.array_to_tensor(input, axis, False)
             return out
+        else:
+            input = [input]
+
         if not isinstance(input, paddle.pir.Value):
             input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, axis)

@@ -447,7 +447,6 @@ void SyncBatchNormGradFunctor(
                         C,
                         scale.dims()[0]));
 
-  ctx.template Alloc<T>(d_x);
   if (d_scale && d_bias) {
     ctx.template Alloc<BatchNormParamType<T>>(d_scale);
     ctx.template Alloc<BatchNormParamType<T>>(d_bias);
@@ -592,6 +591,7 @@ void SyncBatchNormGradFunctor(
                                          d_bias->data<BatchNormParamType<T>>());
     }
     if (d_x) {
+      ctx.template Alloc<T>(d_x);
       KeBNBackwardData<T, DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
           dy_d,
           x_d,
@@ -663,6 +663,7 @@ void SyncBatchNormGradFunctor(
       }
     }
     if (d_x) {
+      ctx.template Alloc<T>(d_x);
       KeBNBackwardData<T, DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
           dy_d,
           x_d,
