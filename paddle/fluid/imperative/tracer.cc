@@ -237,7 +237,7 @@ void Tracer::TraceOpImpl(const std::string& type,
                          paddle::framework::AttributeMap* passed_default_attrs_,
                          bool use_default_attr_map) {
   phi::RecordEvent op_type_record_event(
-      type, platform::TracerEventType::Operator, 1);
+      type, phi::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(4) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
@@ -366,7 +366,7 @@ void Tracer::TraceOpImpl(const std::string& type,
 
   {
     phi::RecordEvent node_creation_record_event(
-        "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
+        "grad_node_creation", phi::TracerEventType::OperatorInner, 1);
 
     if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
       PADDLE_ENFORCE_EQ(

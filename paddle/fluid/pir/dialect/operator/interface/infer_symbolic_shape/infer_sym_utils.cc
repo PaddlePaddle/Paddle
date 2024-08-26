@@ -197,4 +197,63 @@ void BuildCstrEqForTensorListAlongAxis(
   }
 }
 
+std::vector<symbol::DimExpr> GetSymShapeForInputValue(
+    const std::string &input_name,
+    const pir::Value &value,
+    pir::InferSymbolicShapeContext *infer_context) {
+  const common::DDim &result_dims =
+      value.type().dyn_cast<pir::DenseTensorType>().dims();
+  const auto &predefined_dim_index_to_expr = [&]() {
+    std::unordered_map<int, symbol::DimExpr> index_to_expr;
+    if (infer_context->HasPredefinedDimExprForInputName(input_name)) {
+      const auto &dim_index_and_exprs =
+          infer_context->GetPredefinedDimExprForInputName(input_name);
+      for (const auto &item : dim_index_and_exprs) {
+        index_to_expr[item.index] = item.dim_expr;
+      }
+    }
+    return index_to_expr;
+  }();
+
+  const auto &CheckStaticDimMatchConstraints =
+      [&](const symbol::DimExpr &predefined_dim_expr,
+          const int64_t &static_dim,
+          const int &dim_index) {
+        if (static_dim == -1) {
+          // no need to check
+          return;
+        }
+        PADDLE_ENFORCE_EQ(
+            infer_context->HasPredefinedRange(predefined_dim_expr),
+            false,
+            common::errors::InvalidArgument(
+                "Dim with static shape can not set range. The input value name "
+                "is %s, dim index is %d, static value is %d.",
+                input_name,
+                dim_index,
+                static_dim));
+        infer_context->AddEqualCstr(predefined_dim_expr,
+                                    symbol::DimExpr{static_dim});
+      };
+
+  const auto &GetDimExpr = [&](const int64_t &static_dim,
+                               const int &dim_index) -> symbol::DimExpr {
+    if (predefined_dim_index_to_expr.find(dim_index) !=
+        predefined_dim_index_to_expr.end()) {
+      symbol::DimExpr dim_expr = predefined_dim_index_to_expr.at(dim_index);
+      CheckStaticDimMatchConstraints(dim_expr, static_dim, dim_index);
+      return dim_expr;
+    }
+    if (static_dim != -1) {
+      return symbol::DimExpr{static_dim};
+    }
+    return symbol::DimExpr{infer_context->GetNextSymName()};
+  };
+
+  std::vector<symbol::DimExpr> result_dim_exprs;
+  for (int i = 0; i < result_dims.size(); ++i) {
+    result_dim_exprs.emplace_back(GetDimExpr(result_dims[i], i));
+  }
+  return result_dim_exprs;
+}
 }  // namespace paddle::dialect::details

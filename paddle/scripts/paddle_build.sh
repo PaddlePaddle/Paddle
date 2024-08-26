@@ -2720,6 +2720,7 @@ parallel_list="^test_block_multihead_attention$|\
 ^test_fused_multi_transformer_int8_op$|\
 ^test_flash_attention$|\
 ^test_flash_attention_deterministic$|\
+^test_flashmask$|\
 ^test_fused_gate_attention_op$"
 get_quickly_disable_ut||disable_ut_quickly='disable_ut'
 
@@ -2979,7 +2980,7 @@ set +x
                         if [[ "$retry_cases" != "" ]]; then
 			    # re-run test run 1 job
 			    export CTEST_PARALLEL_LEVEL=1
-                            card_test "$retry_cases" -1 2
+                            card_test "$retry_cases" -1 1
                         fi
                         exec_times=$[$exec_times+1]
                         failed_test_lists=''

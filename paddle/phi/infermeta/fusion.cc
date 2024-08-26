@@ -2140,6 +2140,148 @@ void FusedMultiTransformerInt8XpuInferMeta(
   out->set_layout(x.layout());
 }
 
+void FusedMultiTransformerInt8InferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& ln_scale,
+    const std::vector<const MetaTensor*>& ln_bias,
+    const std::vector<const MetaTensor*>& qkv_w,
+    const paddle::optional<std::vector<const MetaTensor*>>& qkv_bias,
+    const paddle::optional<std::vector<const MetaTensor*>>& cache_kv,
+    const MetaTensor& time_step,
+    const MetaTensor& src_mask,
+    const std::vector<const MetaTensor*>& out_linear_w,
+    const paddle::optional<std::vector<const MetaTensor*>>& out_linear_bias,
+    const std::vector<const MetaTensor*>& ffn_ln_scale,
+    const std::vector<const MetaTensor*>& ffn_ln_bias,
+    const std::vector<const MetaTensor*>& ffn1_weight,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn1_bias,
+    const std::vector<const MetaTensor*>& ffn2_weight,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn2_bias,
+    const paddle::optional<std::vector<const MetaTensor*>>& qkv_out_scale,
+    const paddle::optional<std::vector<const MetaTensor*>>&
+        out_linear_out_scale,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn1_out_scale,
+    const paddle::optional<std::vector<const MetaTensor*>>& ffn2_out_scale,
+    bool pre_layer_norm,
+    float epsilon,
+    float dropout_rate,
+    bool is_test,
+    const std::string& dropout_implementation,
+    const std::string& act_method,
+    bool trans_qkvw,
+    int ring_id,
+    int num_head,
+    int dim_head,
+    int dim_ffn,
+    const std::vector<float>& qkv_in_scale,
+    const std::vector<float>& out_linear_in_scale,
+    const std::vector<float>& ffn1_in_scale,
+    const std::vector<float>& ffn2_in_scale,
+    int quant_round_type,
+    float quant_max_bound,
+    float quant_min_bound,
+    std::vector<MetaTensor*> cache_kv_out,
+    MetaTensor* out) {
+  // x: qkv's input [batch_size, seq_len, dim_embed]
+  // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+  const auto& x_dim = x.dims();
+  const auto& y_dim = qkv_w[0]->dims();
+  PADDLE_ENFORCE_EQ(
+      x_dim.size(),
+      3,
+      common::errors::InvalidArgument("The dimensions of x must be 3"
+                                      "(batch_size, seq_len, dim_embed),"
+                                      "but received dimensions of"
+                                      "Input is [%d]",
+                                      x_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dim.size(),
+      4,
+      common::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
+                                      "(3, num_head, dim_head, dim_embed),"
+                                      "but received dimensions of"
+                                      "Input is [%d]",
+                                      y_dim.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dim[2],
+      trans_qkvw ? y_dim[3] : y_dim[0],
+      common::errors::InvalidArgument(
+          "ShapeError: the dimension of x_dim[2] and y_dim[3](trans_qkvw is "
+          "true) or y_dim[0](trans_qkvw is false)"
+          "must be equal. But received: the shape "
+          "of input x = [%s], and the shape of "
+          "input qkv_weight = [%s]",
+          x_dim,
+          y_dim));
+
+  if (ring_id == -1) {
+    if (trans_qkvw) {
+      PADDLE_ENFORCE_EQ(y_dim[1] * y_dim[2],
+                        y_dim[3],
+                        common::errors::InvalidArgument(
+                            "The dimensions of qkv_weight must be 4"
+                            "(3, num_head, dim_head, dim_embed),"
+                            "and must satisfy the limitations: "
+                            "(num_head * dim_head == dim_embed)"));
+
+    } else {
+      PADDLE_ENFORCE_EQ(y_dim[2] * y_dim[3],
+                        y_dim[0],
+                        common::errors::InvalidArgument(
+                            "The dimensions of qkv_weight must be 4"
+                            "(dim_embed, 3, num_head, dim_head),"
+                            "and must satisfy the limitations: "
+                            "(num_head * dim_head == dim_embed)"));
+    }
+  }
+
+  if (cache_kv && cache_kv.get().size() > 0) {
+    // [2, batch_size, num_head, max_seq_len, head_size]
+    const auto& c_dim = cache_kv.get()[0]->dims();
+
+    PADDLE_ENFORCE_EQ(
+        c_dim.size(),
+        5,
+        common::errors::InvalidArgument(
+            "The CacheKV must be 5 dims, but got %d", c_dim.size()));
+    PADDLE_ENFORCE_EQ(c_dim[0],
+                      2,
+                      common::errors::InvalidArgument(
+                          "The first dim of CacheKV must be 2, but got %d",
+                          c_dim[0]));  // 2
+    PADDLE_ENFORCE_EQ(c_dim[1],
+                      x_dim[0],
+                      common::errors::InvalidArgument(
+                          "The second dim of CacheKV must be equal with "
+                          "batch size %d, but got %d",
+                          x_dim[0],
+                          c_dim[1]));  // batch_size
+    PADDLE_ENFORCE_EQ(c_dim[2],
+                      trans_qkvw ? y_dim[1] : y_dim[2],
+                      common::errors::InvalidArgument(
+                          "The third dim of CacheKV must be equal with num "
+                          "head %d, but got %d",
+                          trans_qkvw ? y_dim[1] : y_dim[2],
+                          c_dim[2]));  // num_head
+    PADDLE_ENFORCE_GT(
+        c_dim[3],
+        0,
+        common::errors::InvalidArgument(
+            "The forth dim of CacheKV must be greater than 0, but got %d",
+            c_dim[3]));  // cache_seq_len
+    PADDLE_ENFORCE_EQ(c_dim[4],
+                      trans_qkvw ? y_dim[2] : y_dim[3],
+                      common::errors::InvalidArgument(
+                          "The fifth dim of CacheKV must be equal with head "
+                          "size %d, but got %d",
+                          trans_qkvw ? y_dim[2] : y_dim[3],
+                          c_dim[4]));  // head_size
+  }
+
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
 void YoloBoxXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& x_max,
                          const MetaTensor& grid,
