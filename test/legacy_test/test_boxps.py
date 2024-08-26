@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import paddle
@@ -19,6 +20,8 @@ from paddle import base
 from paddle.base import core
 from paddle.distributed.transpiler import collective
 from paddle.incubate.layers.nn import _pull_box_sparse
+
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 
 class TestTranspile(unittest.TestCase):
