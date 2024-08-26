@@ -12,47 +12,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
+from typing_extensions import TypeAlias
+
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_mode
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+    _QuantRoundType: TypeAlias = Literal[0, 1]
+
 
 def block_multihead_attention(
-    qkv,
-    key_cache,
-    value_cache,
-    seq_lens_encoder,
-    seq_lens_decoder,
-    seq_lens_this_time,
-    padding_offsets,
-    cum_offsets,
-    cu_seqlens_q,
-    cu_seqlens_k,
-    block_tables,
-    pre_key_cache=None,
-    pre_value_cache=None,
-    cache_k_quant_scales=None,
-    cache_v_quant_scales=None,
-    cache_k_dequant_scales=None,
-    cache_v_dequant_scales=None,
-    qkv_out_scale=None,
-    qkv_bias=None,
-    out_shift=None,
-    out_smooth=None,
-    max_enc_len_this_time=None,
-    max_dec_len_this_time=None,
-    rope_emb=None,
-    mask=None,
-    tgt_mask=None,
-    max_seq_len=-1,
-    block_size=64,
-    use_neox_style=False,
-    use_dynamic_cachekv_quant=False,
-    quant_round_type=1,
-    quant_max_bound=127.0,
-    quant_min_bound=-127.0,
-    out_scale=-1,
-    compute_dtype="default",
-):
+    qkv: Tensor,
+    key_cache: Tensor,
+    value_cache: Tensor,
+    seq_lens_encoder: Tensor,
+    seq_lens_decoder: Tensor,
+    seq_lens_this_time: Tensor,
+    padding_offsets: Tensor,
+    cum_offsets: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    block_tables: Tensor,
+    pre_key_cache: Tensor | None = None,
+    pre_value_cache: Tensor | None = None,
+    cache_k_quant_scales: Tensor | None = None,
+    cache_v_quant_scales: Tensor | None = None,
+    cache_k_dequant_scales: Tensor | None = None,
+    cache_v_dequant_scales: Tensor | None = None,
+    qkv_out_scale: Tensor | None = None,
+    qkv_bias: Tensor | None = None,
+    out_shift: Tensor | None = None,
+    out_smooth: Tensor | None = None,
+    max_enc_len_this_time: Tensor | None = None,
+    max_dec_len_this_time: Tensor | None = None,
+    rope_emb: Tensor | None = None,
+    mask: Tensor | None = None,
+    tgt_mask: Tensor | None = None,
+    max_seq_len: int = -1,
+    block_size: int = 64,
+    use_neox_style: bool = False,
+    use_dynamic_cachekv_quant: bool = False,
+    quant_round_type: _QuantRoundType = 1,
+    quant_max_bound: float = 127.0,
+    quant_min_bound: float = -127.0,
+    out_scale: float = -1,
+    compute_dtype: str = "default",
+) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     """
     Block Multi-head attention for text summarization.
 
@@ -99,6 +110,7 @@ def block_multihead_attention(
     Examples:
         .. code-block:: python
 
+            >>> # doctest: +SKIP('Need compile flash attention')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import numpy as np
             >>> import paddle
@@ -392,44 +404,44 @@ def block_multihead_attention(
 
 
 def block_multihead_attention_xpu(
-    qkv,
-    key_cache,
-    value_cache,
-    seq_lens_encoder,
-    seq_lens_decoder,
-    seq_lens_this_time,
-    padding_offsets,
-    cum_offsets,
-    cu_seqlens_q,
-    cu_seqlens_k,
-    block_tables,
-    cache_k_per_batch_maxs,
-    cache_v_per_batch_maxs,
-    pre_key_cache=None,
-    pre_value_cache=None,
-    cache_k_quant_scales=None,
-    cache_v_quant_scales=None,
-    cache_k_dequant_scales=None,
-    cache_v_dequant_scales=None,
-    qkv_out_scale=None,
-    qkv_bias=None,
-    out_shift=None,
-    out_smooth=None,
-    max_enc_len_this_time=None,
-    max_dec_len_this_time=None,
-    rope_emb=None,
-    mask=None,
-    tgt_mask=None,
-    max_seq_len=-1,
-    block_size=64,
-    use_neox_style=False,
-    use_dynamic_cachekv_quant=False,
-    quant_round_type=1,
-    quant_max_bound=127.0,
-    quant_min_bound=-127.0,
-    out_scale=-1,
-    compute_dtype="default",
-):
+    qkv: Tensor,
+    key_cache: Tensor,
+    value_cache: Tensor,
+    seq_lens_encoder: Tensor,
+    seq_lens_decoder: Tensor,
+    seq_lens_this_time: Tensor,
+    padding_offsets: Tensor,
+    cum_offsets: Tensor,
+    cu_seqlens_q: Tensor,
+    cu_seqlens_k: Tensor,
+    block_tables: Tensor,
+    cache_k_per_batch_maxs: Tensor,
+    cache_v_per_batch_maxs: Tensor,
+    pre_key_cache: Tensor | None = None,
+    pre_value_cache: Tensor | None = None,
+    cache_k_quant_scales: Tensor | None = None,
+    cache_v_quant_scales: Tensor | None = None,
+    cache_k_dequant_scales: Tensor | None = None,
+    cache_v_dequant_scales: Tensor | None = None,
+    qkv_out_scale: Tensor | None = None,
+    qkv_bias: Tensor | None = None,
+    out_shift: Tensor | None = None,
+    out_smooth: Tensor | None = None,
+    max_enc_len_this_time: Tensor | None = None,
+    max_dec_len_this_time: Tensor | None = None,
+    rope_emb: Tensor | None = None,
+    mask: Tensor | None = None,
+    tgt_mask: Tensor | None = None,
+    max_seq_len: int = -1,
+    block_size: int = 64,
+    use_neox_style: bool = False,
+    use_dynamic_cachekv_quant: bool = False,
+    quant_round_type: _QuantRoundType = 1,
+    quant_max_bound: float = 127.0,
+    quant_min_bound: float = -127.0,
+    out_scale: float = -1,
+    compute_dtype: str = "default",
+) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     if in_dynamic_mode():
         return _C_ops.block_multihead_attention_xpu(
             qkv,
