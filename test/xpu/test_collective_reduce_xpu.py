@@ -33,13 +33,14 @@ class TestCollectiveReduceAPI(TestDistBase):
         "run test when having at least 2 XPUs.",
     )
     def test_reduce(self):
-        support_types = get_xpu_op_support_types('c_reduce_sum')
-        for dtype in support_types:
-            self.check_with_place(
-                "collective_reduce_api.py",
-                "reduce",
-                dtype=dtype,
-            )
+        with paddle.pir_utils.OldIrGuard():
+            support_types = get_xpu_op_support_types('c_reduce_sum')
+            for dtype in support_types:
+                self.check_with_place(
+                    "collective_reduce_api.py",
+                    "reduce",
+                    dtype=dtype,
+                )
 
     @unittest.skipIf(
         not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
