@@ -14,7 +14,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal
+
+from typing_extensions import TypeAlias
 
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_mode
