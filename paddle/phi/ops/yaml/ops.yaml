@@ -1904,17 +1904,17 @@
   backward : flash_attn_varlen_qkvpacked_grad
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : flash_attn_with_sparse_mask
-  args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "")
+- op : flashmask_attention
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices,  Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   optional : fixed_seed_offset
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
   kernel :
-    func : flash_attn_with_sparse_mask
+    func : flashmask_attention
     data_type : q
-  backward : flash_attn_with_sparse_mask_grad
+  backward : flashmask_attention_grad
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flatten
@@ -3317,6 +3317,7 @@
   kernel :
     func : multi_dot
   backward : multi_dot_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multiclass_nms3
   args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
@@ -4771,7 +4772,7 @@
   kernel :
     func : transpose
   backward : trans_layout_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : transpose
   args : (Tensor x, int[] perm)

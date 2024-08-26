@@ -1757,9 +1757,10 @@ bool RoiAlignOpInferSymbolicShape(
   int32_t out_h = op->attribute<pir::Int32Attribute>("pooled_height").data();
   int32_t out_w = op->attribute<pir::Int32Attribute>("pooled_width").data();
 
-  std::vector<symbol::DimExpr> out_dim = {num_boxes, channel_num, out_h, out_w};
+  std::vector<symbol::DimExpr> output_shape = {
+      num_boxes, channel_num, out_h, out_w};
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::TensorShapeOrDataDimExprs(out_dim));
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_shape));
   return true;
 }
 
@@ -2649,6 +2650,77 @@ bool FakeChannelWiseDequantizeMaxAbsOpInferSymbolicShape(
   return true;
 }
 
+bool MultiDotOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::TensorListShapeOrDataDimExprs &input_values =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+  const size_t input_num = input_values.size();
+  PADDLE_ENFORCE_GT(
+      input_num,
+      1,
+      common::errors::InvalidArgument(
+          "The number of input tensors in multi_dot op should > 1"));
+
+  bool is_vector = false;
+  std::vector<symbol::DimExpr> output_shape;
+
+  auto first_value_shape = input_values[0].shape();
+  PADDLE_ENFORCE_LT(
+      first_value_shape.size(),
+      3,
+      common::errors::InvalidArgument(
+          "multi_dot: the first input tensor must be 1D or 2D but got[%d]!",
+          static_cast<int>(first_value_shape.size())));
+  // If the first tensor is 1D of size n view it as a row vector (1, n)
+
+  if (first_value_shape.size() == 1) {
+    first_value_shape =
+        std::vector<symbol::DimExpr>{symbol::DimExpr(1), first_value_shape[0]};
+    is_vector = true;
+  }
+
+  auto last_value_shape = input_values[input_num - 1].shape();
+  PADDLE_ENFORCE_LT(
+      last_value_shape.size(),
+      3,
+      common::errors::InvalidArgument(
+          "the last input tensor of multi_dot must be 1D or 2D but got[%d]!",
+          static_cast<int>(first_value_shape.size())));
+
+  // If the last tensor is 1D of size n view it as a column vector (n, 1)
+  if (last_value_shape.size() == 1) {
+    last_value_shape =
+        std::vector<symbol::DimExpr>{last_value_shape[0], symbol::DimExpr(1)};
+    output_shape = is_vector
+                       ? std::vector<symbol::DimExpr>{}
+                       : std::vector<symbol::DimExpr>{first_value_shape[0]};
+  } else {
+    output_shape = is_vector ? std::vector<symbol::DimExpr>{last_value_shape[1]}
+                             : std::vector<symbol::DimExpr>{
+                                   first_value_shape[0], last_value_shape[1]};
+  }
+
+  auto width = first_value_shape[1];
+  for (size_t i = 1; i < input_num - 1; ++i) {
+    auto &input_dim = input_values[i].shape();
+    PADDLE_ENFORCE_EQ(input_dim.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "the input tensor of multi_dot op must be 2D."));
+
+    infer_context->AddEqualCstr(input_dim[0], width);
+    width = input_dim[1];
+  }
+
+  infer_context->AddEqualCstr(last_value_shape[0], width);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+  return true;
+}
 bool UpdateLossScaling_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::TensorListShapeOrDataDimExprs &shape_data_list =
