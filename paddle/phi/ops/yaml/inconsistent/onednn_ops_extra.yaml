@@ -47,7 +47,7 @@
   extra_args : bool use_quantizer=false, str mkldnn_data_type="float32"
 
 - op : conv2d
-  extra_args : str mkldnn_data_type="float32", bool is_test=false
+  extra_args : str mkldnn_data_type="float32", bool is_test=false, bool force_fp32_output=false
   data_format_tensors : input
 
 - op : conv2d_grad
@@ -55,7 +55,7 @@
   data_format_tensors : input, out_grad
 
 - op : conv2d_transpose
-  extra_args : str mkldnn_data_type="float32", bool is_test=false
+  extra_args : str mkldnn_data_type="float32", bool is_test=false, bool force_fp32_output=false
   data_format_tensors : x
 
 - op : conv2d_transpose_bias
@@ -168,7 +168,7 @@
   data_format_tensors : x, out, mid_out, out_grad
 
 - op : matmul
-  extra_args : str mkldnn_data_type="float32"
+  extra_args : str mkldnn_data_type="float32", bool force_fp32_output=false
   data_format_tensors : x, y
 
 - op : matmul_grad

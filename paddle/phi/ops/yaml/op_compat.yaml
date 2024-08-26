@@ -2380,7 +2380,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool force_fp32_output = false]
   complex_promote : [X, Y]
 
 - op : matmul_with_flatten (mul)
