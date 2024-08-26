@@ -392,7 +392,7 @@ void BindCudaStream(py::module *m_ptr) {
                   >>> # doctest: +REQUIRES(env:GPU)
                   >>> import paddle
 
-                  >>> paddle.set_device('custom_cpu')
+                  >>> paddle.set_device('gpu')
                   >>> e1 = paddle.device.Event()
                   >>> e1.record()
 
