@@ -851,8 +851,24 @@ class Engine:
 
         # TODO(xxxx) Step 4.1 DP Optimization Pass
         if self._strategy.dp_optimization.enable:
-            # dist_program = apply_dp_optimization_pass(dist_program)
-            pass
+            from paddle.distributed.passes import apply_dp_optimization_pir_pass
+
+            print(
+                "============before apply_dp_optimization_pir_pass ============="
+            )
+            loss = dist_program.get_output_value_by_name(self._loss_names[0])
+            with open(
+                f"./program_before.txt.{paddle.distributed.get_rank()}",
+                "w+",
+            ) as f:
+                f.write(str(dist_program))
+            if self._strategy.dp_optimization.dp_delay_loss_scale:
+                apply_dp_optimization_pir_pass(dist_program, loss)
+            with open(
+                f"./program_after.txt.{paddle.distributed.get_rank()}",
+                "w+",
+            ) as f:
+                f.write(str(dist_program))
 
         # TODO(xxxx) Step 4.2 SP Optimization Pass
         if self._strategy.sp_optimization.enable:
