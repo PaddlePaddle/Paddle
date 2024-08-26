@@ -603,7 +603,9 @@ def _load_state_dict(
             if v.place.is_cpu_place():
                 state_dict_in_cpu[k] = v
                 target_state_dict[k] = v.cuda()
+
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
+
         local_load_files = list(source_state_dict.keys())
         # load_infos: {LocalTensorIndex: (rank, file_name)}, which local tensor located in which file, and the file is load in which rank.
         load_infos = get_load_infos(
@@ -614,11 +616,12 @@ def _load_state_dict(
         read_items = get_read_items(
             metadata_list, target_state_dict, process_group, use_dist
         )
-
         for item in read_items:
             assert (
                 item.local_tensor_index in load_infos
-            ), f"item:{item}, load_infos:{load_infos}"
+            ), f"read item:{item}, load_infos:{load_infos}"
+
+            logger.debug(f"read item: {item}")
             src_rank, file_name = load_infos[item.local_tensor_index]
             storage_chunk_tensor = None
             cur_chunk_tensor = None
@@ -718,3 +721,6 @@ def _load_state_dict(
             if k in state_dict_in_cpu:
                 value = state_dict_in_cpu[k]
                 paddle.assign(v.cpu(), value)
+
+        if use_dist:
+            paddle.distributed.barrier(process_group)
