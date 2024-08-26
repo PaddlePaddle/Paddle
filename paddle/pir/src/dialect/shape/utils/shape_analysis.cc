@@ -31,13 +31,34 @@ static std::string GetValueId(Value val) {
          std::to_string(val_idx);
 }
 
-void InferSymbolicShapeContext::Init() {
+void InferSymbolicShapeContext::Init(
+    const std::vector<ConstraintsForInputDimExpr>& input_shape_constraints) {
   value_id_to_shape_or_data_.clear();
   next_sym_idx_ = sym_idx_begin_;
   constraints_manager_.SetEqualCallbackFunc(
       [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
         return SubstituteDimExpr(lhs, rhs);
       });
+
+  const auto& InitBindInfoForInputDim =
+      [&](const std::vector<std::pair<std::string, int>>& bind_info,
+          const symbol::DimExpr& dim_expr) {
+        for (const auto& item : bind_info) {
+          predefined_dimexpr_map_for_inputs_[item.first].emplace_back(
+              DimIndexAndExpr(item.second, dim_expr));
+        }
+      };
+
+  const auto& InitRangeForInputDim =
+      [&](const symbol::ConstraintsManager::Range& range,
+          const symbol::DimExpr& dim_expr) {
+        constraints_manager_.AddInputRangeCstr(dim_expr, range);
+      };
+
+  for (const auto& item : input_shape_constraints) {
+    InitBindInfoForInputDim(item.bind_info, item.dim_expr);
+    InitRangeForInputDim(item.range, item.dim_expr);
+  }
 }
 
 void InferSymbolicShapeContext::RegisterSymbolConstraintFromContext(
@@ -205,6 +226,11 @@ bool InferSymbolicShapeContext::IsBroadcastable(
   return constraints_manager_.IsBroadcastable(lhs, rhs);
 }
 
+bool InferSymbolicShapeContext::HasPredefinedRange(
+    const symbol::DimExpr& dim_expr) const {
+  return constraints_manager_.IsBoundedInput(dim_expr);
+}
+
 symbol::ShapeOrDataDimExprs
 InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
     const symbol::ShapeOrDataDimExprs& shape_or_data) {
@@ -367,7 +393,24 @@ InferSymbolicShapeContext::GetOpInferSymbolicShapeCache(
   return std::nullopt;
 }
 
-void ShapeConstraintIRAnalysis::Init() { context_.Init(); }
+bool InferSymbolicShapeContext::HasPredefinedDimExprForInputName(
+    const std::string& input_name) const {
+  return predefined_dimexpr_map_for_inputs_.count(input_name) != 0;
+}
+
+const std::vector<InferSymbolicShapeContext::DimIndexAndExpr>
+InferSymbolicShapeContext::GetPredefinedDimExprForInputName(
+    const std::string& input_name) const {
+  if (!HasPredefinedDimExprForInputName(input_name)) {
+    PADDLE_THROW(common::errors::Fatal(
+        input_name + "Not in predefined_dimexpr_map_for_inputs!"));
+  }
+  return predefined_dimexpr_map_for_inputs_.at(input_name);
+}
+
+void ShapeConstraintIRAnalysis::InitInferContext() {
+  context_.Init(input_shape_constraints_);
+}
 
 void ShapeConstraintIRAnalysis::RegisterSymbolConstraintFromShapeAnalysis(
     const ShapeConstraintIRAnalysis& other) {

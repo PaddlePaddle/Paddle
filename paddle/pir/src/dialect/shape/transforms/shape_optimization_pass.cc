@@ -399,7 +399,7 @@ void InferSymExprForAllValues(ModuleOp module_op) {
         return symbol_shape_map;
       }();
 
-  shape_analysis.Init();
+  shape_analysis.InitInferContext();
   // init the kwarg symbol shape info
   for (const auto& kv : symbol_shape_map) {
     infer_context->SetShapeOrDataForValue(kv.first, kv.second);

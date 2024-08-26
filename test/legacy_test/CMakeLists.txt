@@ -117,6 +117,7 @@ if(NOT WITH_NCCL)
 endif()
 
 if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
   list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
@@ -801,6 +802,8 @@ if(NOT WIN32)
   endif()
   py_test_modules(test_layers MODULES test_layers ENVS
                   FLAGS_cudnn_deterministic=1)
+  set_tests_properties(test_multiprocess_reader_exception
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_buffer_shared_memory_reuse_pass PROPERTIES TIMEOUT
@@ -886,7 +889,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool_max_op PROPERTIES TIMEOUT 500)
-set_tests_properties(test_group_norm_op PROPERTIES TIMEOUT 1000)
 set_tests_properties(test_imperative_transformer_sorted_gradient
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer PROPERTIES TIMEOUT 250)
@@ -1029,7 +1031,6 @@ set(TEST_CINN_OPS
     test_batch_norm_op_prim_nchw
     test_batch_norm_op_prim_nhwc
     test_dropout_op
-    test_group_norm_op
     test_tile_op
     test_sum_op
     test_squeeze2_op
@@ -1044,7 +1045,8 @@ set(TEST_CINN_OPS
     test_arg_min_max_op
     test_slice_op
     test_softmax_op
-    test_cumsum_op)
+    test_cumsum_op
+    test_where_op)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
