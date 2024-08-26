@@ -651,6 +651,7 @@
   kernel :
     func : bmm
   backward : bmm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : box_clip
   args: (Tensor input, Tensor im_info)
