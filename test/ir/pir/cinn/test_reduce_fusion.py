@@ -105,7 +105,7 @@ class TestReduceFusion(unittest.TestCase):
 
         self.compare_result(func, None, init)
 
-    def test_reduce_tree_grown(self):
+    def test_reduce_fusion_without_axis_reuse(self):
         #     R
         #    / \
         #   T   T
@@ -120,7 +120,7 @@ class TestReduceFusion(unittest.TestCase):
             c = b * 2
             d = b / 2
             e = c + d
-            f = paddle.expand(e, [128, 32, 32])
+            f = paddle.expand(e, [96, 32, 32])
             g = paddle.sum(f, axis=0)
             return g
 
