@@ -3556,19 +3556,23 @@ bool UnfoldOpInferSymbolicShape(pir::Operation *op,
 
   int output_height = 0;
   int output_width = 0;
-  if(in_shapes[2].dyn_cast<int64_t>() == -1){
+  if (in_shapes[2].dyn_cast<int64_t>() == -1) {
     output_height = -1;
-  }else{
+  } else {
     const int dkernel_height = dilations[0] * (kernel_sizes[0] - 1) + 1;
-    output_height = (in_shapes[2].dyn_cast<int64_t>() + paddings[0] + paddings[2] - dkernel_height)
-                    / strides[0] + 1;
+    output_height = (in_shapes[2].dyn_cast<int64_t>() + paddings[0] +
+                     paddings[2] - dkernel_height) /
+                        strides[0] +
+                    1;
   }
-  if(in_shapes[3].dyn_cast<int64_t>() == -1){
+  if (in_shapes[3].dyn_cast<int64_t>() == -1) {
     output_width = -1;
-  }else{
-    const int dkernel_width =  dilations[1] * (kernel_sizes[1] - 1) + 1;
-    output_width = (in_shapes[3].dyn_cast<int64_t>() + paddings[1] + paddings[3] - dkernel_width)
-                    / strides[1] + 1;
+  } else {
+    const int dkernel_width = dilations[1] * (kernel_sizes[1] - 1) + 1;
+    output_width = (in_shapes[3].dyn_cast<int64_t>() + paddings[1] +
+                    paddings[3] - dkernel_width) /
+                       strides[1] +
+                   1;
   }
   int output_col_length = output_height * output_width;
 
