@@ -26,10 +26,10 @@ from paddle.base import core
 from paddle.nn.functional.flash_attention import (
     calc_reduced_attention_scores,
     flash_attention,
-    flash_attention_with_sparse_mask,
     flash_attn_qkvpacked,
     flash_attn_unpadded,
     flash_attn_varlen_qkvpacked,
+    flashmask_attention,
     scaled_dot_product_attention,
 )
 from paddle.pir_utils import test_with_pir_api
@@ -921,15 +921,15 @@ class TestFlashAttentionWithSparseMaskAPI(unittest.TestCase):
         attn_mask_start_row_indices = paddle.to_tensor(
             start_row_indices, dtype=paddle.int32
         )
+        startend_row_indices = paddle.unsqueeze(attn_mask_start_row_indices, -1)
 
-        out = flash_attention_with_sparse_mask(
+        out = flashmask_attention(
             q,
             k,
             v,
-            attn_mask_start_row_indices=attn_mask_start_row_indices,
-            attn_mask_start_row=attn_mask_start_row,
-            dropout_p=self.dropout,
-            is_causal=self.causal,
+            startend_row_indices=startend_row_indices,
+            dropout=self.dropout,
+            causal=self.causal,
         )
         out_ = attention_naive_with_mask(q_, k_, v_, m)
         out.backward()

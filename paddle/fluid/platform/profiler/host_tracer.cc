@@ -18,7 +18,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/platform/profiler/common_event.h"
-#include "paddle/fluid/platform/profiler/host_event_recorder.h"
+#include "paddle/phi/core/platform/profiler/host_event_recorder.h"
 
 namespace paddle::platform {
 

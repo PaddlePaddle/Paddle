@@ -1552,21 +1552,40 @@ void pad_grad(const Tensor& input,
               const Scalar& pad_value,
               Tensor* input_grad) {
   if (input_grad) {
+    Tensor out_tmp;
     size_t rank = input.dims().size();
-    auto out_dims = out_grad.dims();
-
-    std::vector<int64_t> starts(rank, 0);
-    std::vector<int64_t> ends(rank, 0);
     std::vector<int64_t> axes(rank, 0);
     std::vector<int64_t> infer_flags(rank, 1);
     std::vector<int64_t> decrease_axis({});
-    for (size_t i = 0; i < rank; ++i) {
-      starts[i] = static_cast<int64_t>(paddings[2 * i]);
-      ends[i] = static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]);
-      axes[i] = i;
+    if (has_dynamic_shape(out_grad.shape())) {
+      auto out_shape = shape<T>(out_grad);
+      std::vector<Tensor> starts, ends;
+      for (size_t i = 0; i < rank; ++i) {
+        starts.push_back(full<T>({1}, paddings[2 * i], out_shape.dtype()));
+        ends.push_back(get_slice<T>(out_shape, i) -
+                       full<T>({1}, paddings[2 * i + 1], out_shape.dtype()));
+        axes[i] = i;
+      }
+      out_tmp = backend::slice<T>(out_grad,
+                                  concat<T>(starts),
+                                  concat<T>(ends),
+                                  axes,
+                                  infer_flags,
+                                  decrease_axis);
+    } else {
+      auto out_dims = out_grad.dims();
+
+      std::vector<int64_t> starts(rank, 0);
+      std::vector<int64_t> ends(rank, 0);
+
+      for (size_t i = 0; i < rank; ++i) {
+        starts[i] = static_cast<int64_t>(paddings[2 * i]);
+        ends[i] = static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]);
+        axes[i] = i;
+      }
+      out_tmp =
+          slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);
     }
-    auto out_tmp =
-        slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);
     set_output<T>(out_tmp, input_grad);
   }
 }

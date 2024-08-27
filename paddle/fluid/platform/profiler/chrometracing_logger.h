@@ -19,8 +19,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 
-#include "paddle/fluid/platform/profiler/output_logger.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler/output_logger.h"
 
 namespace paddle {
 namespace platform {
