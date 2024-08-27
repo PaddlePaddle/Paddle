@@ -3845,20 +3845,6 @@ void LogspaceInferMeta(const MetaTensor& start,
   out->set_dtype(dtype);
 }
 
-void MatrixRankAtolRtolInferMeta(const MetaTensor& x,
-                                 const MetaTensor& tol,
-                                 const MetaTensor& atol,
-                                 const MetaTensor& rtol,
-                                 bool use_default_tol,
-                                 bool hermitian,
-                                 MetaTensor* out) {
-  if (tol) {
-    MatrixRankTolInferMeta(x, tol, use_default_tol, hermitian, out);
-  } else {
-    MatrixRankTolInferMeta(x, atol, use_default_tol, hermitian, out);
-  }
-}
-
 void MergedAdamInferMeta(
     const std::vector<const MetaTensor*>& param,
     const std::vector<const MetaTensor*>& grad,

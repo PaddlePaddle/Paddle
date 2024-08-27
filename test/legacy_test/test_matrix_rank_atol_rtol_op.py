@@ -49,10 +49,8 @@ def np_matrix_rank_atol_rtol(x, atol=None, rtol=None, hermitian=False):
     return np.linalg.matrix_rank(x, tol, hermitian=hermitian)
 
 
-def matrix_rank_atol_rtol_wraper(
-    x, tol=None, atol=None, rtol=None, use_default_tol=True, hermitian=False
-):
-    return paddle.linalg.matrix_rank(x, tol, hermitian, atol, rtol)
+def matrix_rank_atol_rtol_wraper(x, atol=None, rtol=None, hermitian=False):
+    return paddle.linalg.matrix_rank(x, None, hermitian, atol, rtol)
 
 
 class TestMatrixRankAtolRtolOP(OpTest):
@@ -62,13 +60,9 @@ class TestMatrixRankAtolRtolOP(OpTest):
         self.init_data()
         self.process_data()
         self.inputs = {'x': self.x}
-        if self.use_atol_rtol:
-            self.inputs['atol'] = self.atol
-            self.inputs['rtol'] = self.rtol
-        else:
-            self.inputs['tol'] = self.tol
+        self.inputs['atol'] = self.atol
+        self.inputs['rtol'] = self.rtol
         self.attrs = {'hermitian': self.hermitian}
-        self.attrs["use_default_tol"] = self.use_default_tol
         self.outputs = {'out': self.out}
 
     def test_check_output(self):
@@ -76,170 +70,80 @@ class TestMatrixRankAtolRtolOP(OpTest):
 
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)
-        self.tol = 0.1
-        self.atol = None
+        self.atol = 0.05
         self.rtol = None
-        self.use_default_tol = False
         self.hermitian = True
-        self.use_atol_rtol = False
 
     def process_data(self):
-        if self.use_atol_rtol:
-            self.out = np_matrix_rank_atol_rtol(
-                self.x, self.atol, self.rtol, self.hermitian
-            )
+        self.out = np_matrix_rank_atol_rtol(
+            self.x, self.atol, self.rtol, self.hermitian
+        )
+        if self.atol is None:
+            self.atol = np.full([], 0.0, self.x.dtype)
+        if isinstance(self.atol, (float, int)):
+            self.atol = np.full([], self.atol, self.x.dtype)
 
-            if self.rtol is None:
-                self.rtol = np.full([], 0.0, self.x.dtype)
-                self.use_default_tol = True
-            if self.atol is None:
-                self.atol = np.full([], 0.0, self.x.dtype)
-
-            if isinstance(self.atol, (float, int)):
-                self.atol = np.full([], self.atol, self.x.dtype)
-            if isinstance(self.rtol, (float, int)):
-                self.rtol = np.full([], self.rtol, self.x.dtype)
-            self.atol, self.rtol = np.broadcast_arrays(self.atol, self.rtol)
-        else:
-            self.out = np.linalg.matrix_rank(self.x, self.tol, self.hermitian)
-
-            if self.tol is None:
-                self.tol = np.full([], 0.0, self.x.dtype)
-                self.use_default_tol = True
-            if isinstance(self.tol, (float, int)):
-                self.tol = np.full([], self.tol, self.x.dtype)
+        if self.rtol is None:
+            self.rtol = np.full([], 0.0, self.x.dtype)
+        if isinstance(self.rtol, (float, int)):
+            self.rtol = np.full([], self.rtol, self.x.dtype)
+        self.atol, self.rtol = np.broadcast_arrays(self.atol, self.rtol)
 
 
 class TestMatrixRankAtolRtolOP1(TestMatrixRankAtolRtolOP):
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)
-        self.tol = None
         self.atol = None
-        self.rtol = None
-        self.use_default_tol = False
+        self.rtol = 0.05
         self.hermitian = True
-        self.use_atol_rtol = False
 
 
 class TestMatrixRankAtolRtolOP2(TestMatrixRankAtolRtolOP):
     def init_data(self):
         self.x = np.random.rand(3, 4, 5, 6).astype(np.float32)
-        self.tol = np.random.random([3, 4]).astype(self.x.dtype)
-        self.atol = None
+        self.atol = np.random.random([3, 4]).astype(self.x.dtype)
         self.rtol = None
-        self.use_default_tol = False
         self.hermitian = False
-        self.use_atol_rtol = False
 
 
 class TestMatrixRankAtolRtolOP3(TestMatrixRankAtolRtolOP):
     def init_data(self):
-        self.x = np.random.rand(1, 10).astype(np.float32)
-        self.tol = None
+        self.x = np.random.rand(3, 4, 5, 6).astype(np.float32)
         self.atol = None
-        self.rtol = None
-        self.use_default_tol = False
+        self.rtol = np.random.random([3, 4]).astype(self.x.dtype)
         self.hermitian = False
-        self.use_atol_rtol = False
 
 
 class TestMatrixRankAtolRtolOP4(TestMatrixRankAtolRtolOP):
     def init_data(self):
-        self.x = np.random.rand(5, 1).astype(np.float64)
-        self.tol = np.random.random([1, 4]).astype(self.x.dtype)
-        self.atol = None
-        self.rtol = None
-        self.use_default_tol = False
+        self.x = np.random.rand(1, 10).astype(np.float32)
+        self.atol = 0.2
+        self.rtol = 1.1
         self.hermitian = False
-        self.use_atol_rtol = False
 
 
 class TestMatrixRankAtolRtolOP5(TestMatrixRankAtolRtolOP):
     def init_data(self):
-        self.x = np.eye(200, dtype=np.float64)
-        self.tol = np.random.random([200, 200]).astype(self.x.dtype)
-        self.atol = None
-        self.rtol = None
-        self.use_default_tol = False
-        self.hermitian = True
-        self.use_atol_rtol = False
+        self.x = np.random.rand(5, 1).astype(np.float64)
+        self.atol = np.random.random([1, 4]).astype(self.x.dtype)
+        self.rtol = np.random.random([1, 4]).astype(self.x.dtype)
+        self.hermitian = False
 
 
 class TestMatrixRankAtolRtolOP6(TestMatrixRankAtolRtolOP):
     def init_data(self):
-        self.x = np.eye(3, dtype=np.float32)
-        self.tol = None
-        self.atol = 0.05
-        self.rtol = None
-        self.use_default_tol = False
+        self.x = np.eye(200, dtype=np.float64)
+        self.atol = np.random.random([200, 200]).astype(self.x.dtype)
+        self.rtol = 0.8
         self.hermitian = True
-        self.use_atol_rtol = True
 
 
 class TestMatrixRankAtolRtolOP7(TestMatrixRankAtolRtolOP):
     def init_data(self):
-        self.x = np.random.rand(3, 4, 5, 6).astype(np.float32)
-        self.tol = None
-        self.atol = np.random.random([3, 4]).astype(self.x.dtype)
-        self.rtol = None
-        self.use_default_tol = False
-        self.hermitian = False
-        self.use_atol_rtol = True
-
-
-class TestMatrixRankAtolRtolOP8(TestMatrixRankAtolRtolOP):
-    def init_data(self):
-        self.x = np.random.rand(3, 4, 5, 6).astype(np.float32)
-        self.tol = None
-        self.atol = None
-        self.rtol = np.random.random([3, 4]).astype(self.x.dtype)
-        self.use_default_tol = False
-        self.hermitian = False
-        self.use_atol_rtol = True
-
-
-class TestMatrixRankAtolRtolOP9(TestMatrixRankAtolRtolOP):
-    def init_data(self):
-        self.x = np.random.rand(1, 10).astype(np.float32)
-        self.tol = None
-        self.atol = 0.2
-        self.rtol = 1.1
-        self.use_default_tol = False
-        self.hermitian = False
-        self.use_atol_rtol = True
-
-
-class TestMatrixRankAtolRtolOP10(TestMatrixRankAtolRtolOP):
-    def init_data(self):
-        self.x = np.random.rand(5, 1).astype(np.float64)
-        self.tol = None
-        self.atol = np.random.random([1, 4]).astype(self.x.dtype)
-        self.rtol = np.random.random([1, 4]).astype(self.x.dtype)
-        self.use_default_tol = False
-        self.hermitian = False
-        self.use_atol_rtol = True
-
-
-class TestMatrixRankAtolRtolOP11(TestMatrixRankAtolRtolOP):
-    def init_data(self):
         self.x = np.eye(200, dtype=np.float64)
-        self.tol = None
-        self.atol = np.random.random([200, 200]).astype(self.x.dtype)
-        self.rtol = 0.8
-        self.use_default_tol = False
-        self.hermitian = True
-        self.use_atol_rtol = True
-
-
-class TestMatrixRankAtolRtolOP12(TestMatrixRankAtolRtolOP):
-    def init_data(self):
-        self.x = np.eye(200, dtype=np.float64)
-        self.tol = None
         self.atol = np.random.random([200, 1]).astype(self.x.dtype)
         self.rtol = np.random.random([200, 200]).astype(self.x.dtype)
-        self.use_default_tol = False
         self.hermitian = True
-        self.use_atol_rtol = True
 
 
 class TestMatrixRankAtolRtolAPI(unittest.TestCase):

@@ -19,13 +19,9 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
-from paddle import _C_ops, base, static
+from paddle import base, static
 from paddle.base import core
-from paddle.base.data_feeder import check_type, check_variable_and_dtype
-from paddle.common_ops_import import Variable
-from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 from paddle.pir_utils import test_with_pir_api
-from paddle.tensor.manipulation import cast
 
 paddle.enable_static()
 SEED = 2049
@@ -33,50 +29,7 @@ np.random.seed(SEED)
 
 
 def matrix_rank_wraper(x, tol=None, use_default_tol=True, hermitian=False):
-    if in_dynamic_or_pir_mode():
-        if isinstance(tol, (Variable, paddle.pir.Value)):
-            if tol.dtype != x.dtype:
-                tol_tensor = cast(tol, x.dtype)
-            else:
-                tol_tensor = tol
-            use_default_tol = False
-            return _C_ops.matrix_rank_tol(
-                x, tol_tensor, use_default_tol, hermitian
-            )
-
-        if tol is None:
-            tol_attr = 0.0
-            use_default_tol = True
-        else:
-            tol_attr = float(tol)
-            use_default_tol = False
-        return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
-    else:
-        inputs = {}
-        attrs = {}
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'matrix_rank')
-        inputs['X'] = x
-        if tol is None:
-            attrs['use_default_tol'] = True
-        elif isinstance(tol, Variable):
-            attrs['use_default_tol'] = False
-            if tol.dtype != x.dtype:
-                inputs['TolTensor'] = cast(tol, x.dtype)
-            else:
-                inputs['TolTensor'] = tol
-        else:
-            check_type(tol, 'tol', float, 'matrix_rank')
-            attrs['use_default_tol'] = False
-            attrs['tol'] = tol
-        check_type(hermitian, 'hermitian', bool, 'matrix_rank')
-        attrs['hermitian'] = hermitian
-
-        helper = LayerHelper('matrix_rank', **locals())
-        out = helper.create_variable_for_type_inference(dtype='int32')
-        helper.append_op(
-            type='matrix_rank', inputs=inputs, outputs={'Out': out}, attrs=attrs
-        )
-        return out
+    return paddle.linalg.matrix_rank(x, tol, hermitian)
 
 
 class TestMatrixRankOP(OpTest):
