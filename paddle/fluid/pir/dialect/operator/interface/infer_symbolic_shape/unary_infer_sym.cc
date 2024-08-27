@@ -1530,11 +1530,21 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
   const auto &attributes = op->attributes();
   std::vector<int64_t> axis;
   if (attributes.find("axis") != attributes.end()) {
-    axis = op->attribute<paddle::dialect::IntArrayAttribute>("axis")
-               .data()
-               .GetData();
-  } else {
     axis = details::GetVectorAttr<int64_t>(op, "axis");
+  } else if (op->operand_source(1)) {
+    const auto &shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    std::vector<symbol::DimExpr> axis_expr;
+    if (shape_or_data.data().has_value()) {
+      axis_expr = shape_or_data.data().value();
+    } else {
+      axis_expr = shape_or_data.shape();
+    }
+    for (const auto &axis_i : axis_expr) {
+      if (axis_i.isa<int64_t>) {
+        axis.emplace_back(axis_i.dyn_cast<int64_t>());
+      }
+    }
   }
 
   bool reduce_all = axis.size() == 0 ? true : false;
