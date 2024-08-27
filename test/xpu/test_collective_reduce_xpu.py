@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import unittest
 
 from get_test_cover_info import get_xpu_op_support_types
@@ -33,15 +37,13 @@ class TestCollectiveReduceAPI(TestDistBase):
         "run test when having at least 2 XPUs.",
     )
     def test_reduce(self):
-        with paddle.pir_utils.OldIrGuard():
-            paddle.disable_static()
-            support_types = get_xpu_op_support_types('c_reduce_sum')
-            for dtype in support_types:
-                self.check_with_place(
-                    "collective_reduce_api.py",
-                    "reduce",
-                    dtype=dtype,
-                )
+        support_types = get_xpu_op_support_types('c_reduce_sum')
+        for dtype in support_types:
+            self.check_with_place(
+                "collective_reduce_api.py",
+                "reduce",
+                dtype=dtype,
+            )
 
     @unittest.skipIf(
         not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,

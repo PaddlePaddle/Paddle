@@ -174,25 +174,23 @@ class TestCollectiveAPIRunnerBase:
 
 
 def runtime_main(test_class, col_type):
-    with paddle.pir_utils.OldIrGuard():
-        args = {}
-        model = test_class()
-        args["trainerid"] = int(os.getenv("PADDLE_TRAINER_ID"))
-        args["trainernum"] = int(os.getenv("PADDLE_TRAINERS_NUM"))
-        args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
-        args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
-        args["col_type"] = col_type
-        args["backend"] = os.getenv("BACKEND")
-        args["path_id"] = int(os.getenv("PATH_ID"))
-        args["static_mode"] = int(os.getenv("STATIC_MODE"))
-        args["dtype"] = os.getenv("DTYPE")
-        args["reduce_type"] = os.getenv("REDUCE_TYPE")
-        args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
-        args["dynamic_static_unified_comm"] = bool(
-            os.getenv("FLAGS_dynamic_static_unified_comm", "true").lower()
-            == "true"
-        )
-        model.run_trainer(args)
+    args = {}
+    model = test_class()
+    args["trainerid"] = int(os.getenv("PADDLE_TRAINER_ID"))
+    args["trainernum"] = int(os.getenv("PADDLE_TRAINERS_NUM"))
+    args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
+    args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
+    args["col_type"] = col_type
+    args["backend"] = os.getenv("BACKEND")
+    args["path_id"] = int(os.getenv("PATH_ID"))
+    args["static_mode"] = int(os.getenv("STATIC_MODE"))
+    args["dtype"] = os.getenv("DTYPE")
+    args["reduce_type"] = os.getenv("REDUCE_TYPE")
+    args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
+    args["dynamic_static_unified_comm"] = bool(
+        os.getenv("FLAGS_dynamic_static_unified_comm", "true").lower() == "true"
+    )
+    model.run_trainer(args)
 
 
 class TestDistBase(unittest.TestCase):
