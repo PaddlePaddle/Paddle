@@ -172,29 +172,31 @@ class TestModelCastBF16(unittest.TestCase):
         )
 
     def test_graph_rewrite(self):
-        self._graph_common(
-            lambda prog: amp.bf16.rewrite_program_bf16(
-                prog,
-                amp.bf16.AutoMixedPrecisionListsBF16(
-                    custom_bf16_list={'elementwise_add'},
-                    custom_fp32_varnames={'elementwise_add_0.tmp_0'},
-                ),
+        with paddle.pir_utils.OldIrGuard():
+            self._graph_common(
+                lambda prog: amp.bf16.rewrite_program_bf16(
+                    prog,
+                    amp.bf16.AutoMixedPrecisionListsBF16(
+                        custom_bf16_list={'elementwise_add'},
+                        custom_fp32_varnames={'elementwise_add_0.tmp_0'},
+                    ),
+                )
             )
-        )
 
     def test_graph_cast(self):
-        self._graph_common(
-            lambda prog, startup_prog: amp.bf16.cast_model_to_bf16(
-                prog,
-                startup_prog,
-                amp.bf16.AutoMixedPrecisionListsBF16(
-                    custom_bf16_list={'elementwise_add'},
-                    custom_fp32_list={'elementwise_mul'},
+        with paddle.pir_utils.OldIrGuard():
+            self._graph_common(
+                lambda prog, startup_prog: amp.bf16.cast_model_to_bf16(
+                    prog,
+                    startup_prog,
+                    amp.bf16.AutoMixedPrecisionListsBF16(
+                        custom_bf16_list={'elementwise_add'},
+                        custom_fp32_list={'elementwise_mul'},
+                    ),
+                    use_bf16_guard=True,
                 ),
-                use_bf16_guard=True,
-            ),
-            startup_prog=base.default_startup_program(),
-        )
+                startup_prog=base.default_startup_program(),
+            )
 
 
 @unittest.skipIf(
@@ -221,48 +223,50 @@ class TestProgramBF16(AmpTestBase):
         )
 
     def test_amp_bf16_o1(self):
-        main_program, startup_program, _, _, _ = build_embedding_model(
-            True, "bfloat16", "O1"
-        )
-        self.assertEqual(main_program.num_blocks, 1)
-        self._check_optimizer(main_program, 0)
+        with paddle.pir_utils.OldIrGuard():
+            main_program, startup_program, _, _, _ = build_embedding_model(
+                True, "bfloat16", "O1"
+            )
+            self.assertEqual(main_program.num_blocks, 1)
+            self._check_optimizer(main_program, 0)
 
-        amp.debugging.collect_operator_stats(main_program)
-        op_stats_list = amp.debugging._get_op_stats_list(main_program)
-        expected_bf16_calls = {
-            "matmul_v2": 1,
-            "elementwise_add": 1,
-            "dropout": 1,
-            "lookup_table_v2": 0,
-            "squared_l2_norm": 0,
-            "adamw": 0,
-        }
-        self._check_op_calls(op_stats_list[0], expected_bf16_calls)
+            amp.debugging.collect_operator_stats(main_program)
+            op_stats_list = amp.debugging._get_op_stats_list(main_program)
+            expected_bf16_calls = {
+                "matmul_v2": 1,
+                "elementwise_add": 1,
+                "dropout": 1,
+                "lookup_table_v2": 0,
+                "squared_l2_norm": 0,
+                "adamw": 0,
+            }
+            self._check_op_calls(op_stats_list[0], expected_bf16_calls)
 
     def test_amp_bf16_o2(self):
-        main_program, startup_program, _, _, _ = build_embedding_model(
-            True, "bfloat16", "O2"
-        )
-        self.assertEqual(main_program.num_blocks, 1)
+        with paddle.pir_utils.OldIrGuard():
+            main_program, startup_program, _, _, _ = build_embedding_model(
+                True, "bfloat16", "O2"
+            )
+            self.assertEqual(main_program.num_blocks, 1)
 
-        amp.debugging.collect_operator_stats(main_program)
-        op_stats_list = amp.debugging._get_op_stats_list(main_program)
-        expected_fp32_calls = {"lookup_table_v2": 1}
-        expected_bf16_calls = {
-            "matmul_v2": 1,
-            "elementwise_add": 1,
-            "dropout": 1,
-            "lookup_table_v2": 0,
-            "squared_l2_norm": 3,
-            "adamw": 3,
-        }
-        self._check_optimizer(
-            main_program,
-            expected_bf16_calls["matmul_v2"]
-            + expected_bf16_calls["elementwise_add"]
-            + expected_fp32_calls["lookup_table_v2"],
-        )
-        self._check_op_calls(op_stats_list[0], expected_bf16_calls)
+            amp.debugging.collect_operator_stats(main_program)
+            op_stats_list = amp.debugging._get_op_stats_list(main_program)
+            expected_fp32_calls = {"lookup_table_v2": 1}
+            expected_bf16_calls = {
+                "matmul_v2": 1,
+                "elementwise_add": 1,
+                "dropout": 1,
+                "lookup_table_v2": 0,
+                "squared_l2_norm": 3,
+                "adamw": 3,
+            }
+            self._check_optimizer(
+                main_program,
+                expected_bf16_calls["matmul_v2"]
+                + expected_bf16_calls["elementwise_add"]
+                + expected_fp32_calls["lookup_table_v2"],
+            )
+            self._check_op_calls(op_stats_list[0], expected_bf16_calls)
 
 
 @unittest.skipIf(
@@ -278,45 +282,49 @@ class TestStaticBF16(AmpTestBase):
         return x_fp32, x_bf16
 
     def test_compare_o1_o2(self):
-        def _run(place, exe, x_np, max_iters, level):
-            (
-                main_program,
-                startup_program,
-                optimizer,
-                feed_vars,
-                fetch_vars,
-            ) = build_add_model(True, "bfloat16", level)
+        with paddle.pir_utils.OldIrGuard():
 
-            losses = self.run_program(
-                main_program,
-                startup_program,
-                optimizer,
-                feed_vars,
-                fetch_vars,
-                place,
-                exe,
-                x_np,
-                max_iters,
-                "bfloat16",
-                level,
+            def _run(place, exe, x_np, max_iters, level):
+                (
+                    main_program,
+                    startup_program,
+                    optimizer,
+                    feed_vars,
+                    fetch_vars,
+                ) = build_add_model(True, "bfloat16", level)
+
+                losses = self.run_program(
+                    main_program,
+                    startup_program,
+                    optimizer,
+                    feed_vars,
+                    fetch_vars,
+                    place,
+                    exe,
+                    x_np,
+                    max_iters,
+                    "bfloat16",
+                    level,
+                )
+                return losses
+
+            max_iters = 2
+            x_fp32, x_bf16 = self._generate_feed_x()
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif paddle.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
+            exe = paddle.static.Executor(place)
+            losses_o1 = _run(place, exe, x_fp32, max_iters, 'O1')
+            losses_o2 = _run(place, exe, x_bf16, max_iters, 'O2')
+
+            self.assertEqual(
+                losses_o1,
+                losses_o2,
+                f"loss of o1 and o2 should be equal, but received loss o1: {losses_o1}, loss o2: {losses_o2}",
             )
-            return losses
-
-        max_iters = 2
-        x_fp32, x_bf16 = self._generate_feed_x()
-        if paddle.is_compiled_with_xpu():
-            place = paddle.device.XPUPlace(0)
-        else:
-            raise ValueError("Only support XPU Place.")
-        exe = paddle.static.Executor(place)
-        losses_o1 = _run(place, exe, x_fp32, max_iters, 'O1')
-        losses_o2 = _run(place, exe, x_bf16, max_iters, 'O2')
-
-        self.assertEqual(
-            losses_o1,
-            losses_o2,
-            f"loss of o1 and o2 should be equal, but received loss o1: {losses_o1}, loss o2: {losses_o2}",
-        )
 
 
 if __name__ == '__main__':

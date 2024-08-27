@@ -105,6 +105,31 @@ class TestReduceFusion(unittest.TestCase):
 
         self.compare_result(func, None, init)
 
+    def test_reduce_fusion_without_axis_reuse(self):
+        #     R
+        #    / \
+        #   T   T
+        #    \ /
+        #     T
+        #     |
+        #     B
+        #     |
+        #     R
+        def func(x):
+            b = paddle.max(x, axis=-1)
+            c = b * 2
+            d = b / 2
+            e = c + d
+            f = paddle.expand(e, [96, 32, 32])
+            g = paddle.sum(f, axis=0)
+            return g
+
+        def init():
+            x = paddle.rand((32, 32, 128))
+            return (x,)
+
+        self.compare_result(func, None, init)
+
 
 if __name__ == "__main__":
     unittest.main()

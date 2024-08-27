@@ -43,7 +43,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
           << "multiply";
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
-      "multiply dygraph", paddle::platform::TracerEventType::Operator, 1);
+      "multiply dygraph", phi::TracerEventType::Operator, 1);
 
   // AMP Logic
   if (egr::Controller::Instance().GetAMPLevel() !=
@@ -156,9 +156,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   // Node Creation
   if (require_any_grad) {
     phi::RecordEvent node_creation_record_event(
-        "multiply node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
+        "multiply node_creation", phi::TracerEventType::OperatorInner, 1);
 
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 
@@ -243,7 +241,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
           << "multiply_";
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
-      "multiply_ dygraph", paddle::platform::TracerEventType::Operator, 1);
+      "multiply_ dygraph", phi::TracerEventType::Operator, 1);
 
   // AMP Logic
 
@@ -324,9 +322,7 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
   // Set grad_node before API Call
   if (require_any_grad) {
     phi::RecordEvent node_creation_record_event(
-        "multiply node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
+        "multiply node_creation", phi::TracerEventType::OperatorInner, 1);
 
     grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
         new MultiplyGradNode(1, 2));
@@ -417,7 +413,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
           << "multiply";
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
-      "multiply dygraph", paddle::platform::TracerEventType::Operator, 1);
+      "multiply dygraph", phi::TracerEventType::Operator, 1);
 
   // AMP Logic
   if (egr::Controller::Instance().GetAMPLevel() !=
@@ -529,9 +525,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   // Node Creation
   if (require_any_grad) {
     phi::RecordEvent node_creation_record_event(
-        "multiply node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
-        1);
+        "multiply node_creation", phi::TracerEventType::OperatorInner, 1);
 
     egr::EagerUtils::PassStopGradient(false, out_autograd_meta);
 

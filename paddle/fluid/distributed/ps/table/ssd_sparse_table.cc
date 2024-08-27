@@ -39,6 +39,15 @@ int32_t SSDSparseTable::Initialize() {
   VLOG(0) << "initialize SSDSparseTable succ";
   VLOG(0) << "SSD FLAGS_pserver_print_missed_key_num_every_push:"
           << FLAGS_pserver_print_missed_key_num_every_push;
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  int ret = _afs_wrapper.Init(_fs_name.c_str(),
+                              _fs_user.c_str(),
+                              _pass_wd.c_str(),
+                              "./conf/client.conf");
+  if (ret != 0) {
+    LOG(ERROR) << "AFS Init Error";
+  }
+#endif
   return 0;
 }
 
@@ -47,7 +56,10 @@ int32_t SSDSparseTable::InitializeShard() { return 0; }
 void SSDSparseTable::SetDayId(int day_id) { _day_id = day_id; }
 
 int32_t SSDSparseTable::Pull(TableContext& context) {
-  CHECK(context.value_type == Sparse);
+  PADDLE_ENFORCE_EQ(context.value_type,
+                    Sparse,
+                    phi::errors::InvalidArgument(
+                        "The value type of context must be Sparse."));
   if (context.use_ptr) {
     char** pull_values = context.pull_context.ptr_values;
     const uint64_t* keys = context.pull_context.keys;
@@ -61,7 +73,10 @@ int32_t SSDSparseTable::Pull(TableContext& context) {
 }
 
 int32_t SSDSparseTable::Push(TableContext& context) {
-  CHECK(context.value_type == Sparse);
+  PADDLE_ENFORCE_EQ(context.value_type,
+                    Sparse,
+                    phi::errors::InvalidArgument(
+                        "The value type of context must be Sparse."));
   if (context.use_ptr) {
     return PushSparse(context.push_context.keys,
                       context.push_context.ptr_values,
@@ -1585,6 +1600,9 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
 #else
   int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
 #endif
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  auto ps_gpu_ptr = paddle::framework::PSGPUWrapper::GetInstance();
+#endif
 
   std::atomic<uint32_t> feasign_size_all{0};
   std::vector<::paddle::framework::Channel<std::shared_ptr<MemRegion>>>
@@ -1606,7 +1624,12 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
                     &table_path,
                     &file_start_idx,
                     &free_channel,
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+                    &busy_channel,
+                    ps_gpu_ptr](int file_num) {
+#else
                     &busy_channel](int file_num) {
+#endif
     int err_no = 0;
     int shard_num = file_num;
     int part_num = 0;
@@ -1643,6 +1666,9 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
     std::shared_ptr<MemRegion> region = nullptr;
     std::string filename;
     int last_file_idx = -1;
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+    AfsWriterHandle afs_writer = nullptr;
+#endif
     std::shared_ptr<FsWriteChannel> write_channel = nullptr;
     if (save_param != 1 && save_param != 2) {
       while (busy_channel[shard_num]->Get(region)) {
@@ -1655,16 +1681,29 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
                                   part_num,
                                   region->_file_idx);
           channel_config.path = filename;
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+          afs_writer = _afs_wrapper.OpenWriter(channel_config.path);
+#else
           write_channel =
               _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+#endif
           last_file_idx = region->_file_idx;
         }
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+        if (0 != ps_gpu_ptr->AfsWrite(
+                     afs_writer, region->_buf, region->_cur, true)) {
+#else
         if (0 != write_channel->write(region->_buf, region->_cur)) {
+#endif
           std::stringstream ss;
           ss << "DownpourSparseSSDTable save failed, retry it! path:"
              << channel_config.path;
           PADDLE_THROW(common::errors::Fatal(ss.str()));
-          CHECK(false);
+          PADDLE_ENFORCE_EQ(
+              false,
+              true,
+              phi::errors::InvalidArgument(
+                  "The condition is false, but it must be true."));
         }
         region->reset();
         free_channel[shard_num]->Put(region);
@@ -1715,8 +1754,12 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
         free_channel[shard_num]->Put(region);
       }
     }
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+    _afs_wrapper.CloseWriter(afs_writer);
+#endif
     // write_channel->close();
   };
+
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(save_func, i);
   }
@@ -1992,7 +2035,11 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           ss << "DownpourSparseSSDTable save failed, retry it! path:"
              << channel_config.path;
           PADDLE_THROW(common::errors::Fatal(ss.str()));
-          CHECK(false);
+          PADDLE_ENFORCE_EQ(
+              false,
+              true,
+              phi::errors::InvalidArgument(
+                  "The condition is false, but it must be true."));
         }
         region->reset();
         free_channel[shard_num]->Put(region);
@@ -2024,7 +2071,11 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           ss << "DownpourSparseSSDTable save feature failed, retry it! path:"
              << channel_config_for_slot_feature.path;
           PADDLE_THROW(common::errors::Fatal(ss.str()));
-          CHECK(false);
+          PADDLE_ENFORCE_EQ(
+              false,
+              true,
+              phi::errors::InvalidArgument(
+                  "The condition is false, but it must be true."));
         }
         region_for_slot_feature->reset();
         free_channel_for_slot_feature[shard_num]->Put(region_for_slot_feature);
@@ -2723,6 +2774,10 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
   // #pragma omp parallel for schedule(dynamic)
   std::vector<std::future<int>> tasks;
 
+  std::atomic<uint64_t> feasign_size_all{0};
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+  auto ps_gpu_ptr = paddle::framework::PSGPUWrapper::GetInstance();
+#endif
   for (int shard_idx = 0; shard_idx < _real_local_shard_num; shard_idx++) {
     // FsChannelConfig channel_config;
     // channel_config.converter = _value_accessor->Converter(param).converter;
@@ -2744,21 +2799,30 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                                         shard_idx,
                                         filename,
                                         file_split_idx,
+                                        &feasign_size_all,
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+                                        param,
+                                        ps_gpu_ptr]() -> int {
+#else
                                         param]() -> int {
+#endif
         // &channel_config]() -> int {
         FsChannelConfig channel_config;
         channel_config.converter = _value_accessor->Converter(param).converter;
         channel_config.deconverter =
             _value_accessor->Converter(param).deconverter;
-        int err_no = 0;
         uint64_t mem_count = 0;
         uint64_t mem_mf_count = 0;
         uint64_t ssd_count = 0;
         uint64_t ssd_mf_count = 0;
 
         channel_config.path = filename;
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+        auto reader = _afs_wrapper.OpenReader(filename);
+#else
+        int err_no = 0;
         auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-        // auto reader = _api_wrapper.open_reader(filename);
+#endif
         auto& shard = _local_shards[shard_idx];
         rocksdb::Options options;
         options.comparator = _db->get_comparator();
@@ -2815,8 +2879,11 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
         while (1) {
           remain = ret;
           cursor = buf + remain;
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+          ret = ps_gpu_ptr->AfsRead(reader, cursor, buf_len - remain);
+#else
           ret = read_channel->read(cursor, buf_len - remain);
-          // ret = reader->read(cursor, buf_len - remain);
+#endif
           if (ret <= 0) {
             break;
           }
@@ -2905,7 +2972,13 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
         }
         free(buf);
         free(convert_buf);
-        // read_channel->close();
+        auto tmp_count = ssd_count + mem_count;
+        feasign_size_all += tmp_count;
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+        ps_gpu_ptr->CloseReader(reader);
+#else
+        read_channel->close();
+#endif
         // VLOG(0) << "[last_k: " << last_k << "][remain: " << remain
         //         << "][shard_idx: " << shard_idx
         //         << "][file_split_idx: " << file_split_idx << "]";
@@ -2937,6 +3010,7 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
   _db->get_estimate_key_num(ssd_key_num);
   _cache_tk_size =
       (LocalSize() + ssd_key_num) * _config.sparse_table_cache_rate();
+  VLOG(0) << " Load Binary Succeess. all feasign: " << feasign_size_all;
   return 0;
 }
 

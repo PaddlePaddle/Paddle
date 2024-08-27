@@ -21,9 +21,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/output_logger.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/profiler/output_logger.h"
 
 namespace paddle {
 namespace platform {

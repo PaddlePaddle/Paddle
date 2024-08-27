@@ -589,6 +589,11 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
+    import pkg_resources
+
+    data_file_path = pkg_resources.resource_filename('paddle.cinn_config', '')
+    os.environ['CINN_CONFIG_PATH'] = data_file_path
+
 if __is_metainfo_generated and is_compiled_with_cuda():
     import os
     import platform
