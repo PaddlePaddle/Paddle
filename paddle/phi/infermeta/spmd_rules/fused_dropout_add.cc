@@ -30,6 +30,7 @@ SpmdInfo FusedDropoutAddSpmdBase(const DistMetaTensor& x,
   SpmdInfo out_info = ElementwiseBinaryInferSpmd(x, y);
 
   TensorDistAttr seed_offset_dist_attr({2});
+  seed_offset_dist_attr.set_process_mesh(x.dist_attr().process_mesh());
   seed_offset_dist_attr.set_dims_mapping({-1});
 
   VLOG(4) << "x dist_attr: [" << x.dist_attr().to_string() << "]";
