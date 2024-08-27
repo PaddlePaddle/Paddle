@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import os
+
 import numpy as np
 
 import paddle
@@ -181,3 +183,42 @@ class SimpleGatherNet(nn.Layer):
         map_vector_features = map_vector_features[polyline_mask]
 
         return map_vector_features
+
+
+def get_program(model_dir, prefix, use_pir=False):
+    """
+    Load a PaddlePaddle inference model with optional PIR API support.
+
+    Args:
+        model_dir (str): The directory where the model and parameters are stored.
+        prefix (str): The prefix of the model files without file extension.
+        use_pir (bool, optional): Flag to determine if PIR API should be used. Default is False.
+
+    Returns:
+        tuple: A tuple containing the loaded program, scope, feed target names, fetch targets, and model filename.
+    """
+    scope = paddle.static.global_scope()
+    place = paddle.CUDAPlace(0)
+    exe = static.Executor(place)
+
+    # Check if we should use PIR API
+    if use_pir:
+        # Use PIR API context manager if required
+        model_filename = os.path.join(model_dir, prefix + ".json")
+        params_filename = os.path.join(model_dir, prefix + ".pdiparams")
+    else:
+        model_filename = os.path.join(model_dir, prefix + ".pdmodel")
+        params_filename = os.path.join(model_dir, prefix + ".pdiparams")
+
+    with paddle.pir_utils.IrGuard():
+        # Load the model
+        [program, feed_target_names, fetch_targets] = (
+            paddle.static.io.load_inference_model(
+                model_dir,
+                executor=exe,
+                model_filename=model_filename,
+                params_filename=params_filename,
+            )
+        )
+
+    return program, scope, feed_target_names, fetch_targets
