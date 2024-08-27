@@ -86,7 +86,6 @@ from .variables import (
     ListVariable,
     MethodVariable,
     NullVariable,
-    RangeVariable,
     SequenceIterVariable,
     SliceVariable,
     SymbolicVariable,
@@ -1057,10 +1056,6 @@ class OpcodeExecutorBase:
 
         retval = []
         for item in unpack_values:
-            if isinstance(item, RangeVariable):
-                raise BreakGraphError(
-                    "list is not implemented unpack RangeVariable"
-                )
             assert isinstance(item, (TupleVariable, ListVariable))
             retval.extend(item.get_wrapped_items())
 
@@ -1566,6 +1561,7 @@ class OpcodeExecutorBase:
             self.stack.peek[instr.arg], key, value
         )
 
+    @call_break_graph_decorator(push_n=1)
     def LIST_EXTEND(self, instr: Instruction):
         list_value = self.stack.pop()
         assert isinstance(instr.arg, int)
