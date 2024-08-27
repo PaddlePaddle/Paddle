@@ -709,11 +709,9 @@ bool ChunkEvalOpInferSymbolicShape(
           inference_shape,
           label_shape));
 
-  bool use_padding = false;
   if (op->operand_source(2)) {
     const symbol::ShapeOrDataDimExprs &seq_length_shape =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
-    use_padding = true;
 
     PADDLE_ENFORCE_EQ((inference_shape.shape().size() == 3 &&
                        inference_shape.shape()[2] == symbol::DimExpr(1)) ||
