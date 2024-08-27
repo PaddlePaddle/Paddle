@@ -583,6 +583,18 @@ Dispatcher.register(
     ),
 )
 
+# bool
+Dispatcher.register(
+    bool,
+    ("ContainerVariable | SymbolicVariable",),
+    lambda var: var.bool(),
+)
+Dispatcher.register(
+    operator.truth,
+    ("ConstantVariable | SymbolicVariable",),
+    lambda var: var.bool(),
+)
+
 # str
 Dispatcher.register(
     str,
