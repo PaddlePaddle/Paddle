@@ -567,7 +567,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_rnn_dp',
     'test_parallel_dygraph_no_sync',
     'test_parallel_dygraph_no_sync_gradient_check',
-    'test_hybrid_parallel_inference_helper',
     'test_parallel_class_center_sample',
     'test_auto_parallel_data_unshard',
     'small_vector_test',

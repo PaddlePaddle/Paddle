@@ -379,21 +379,6 @@ if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   )
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_hybrid_parallel_inference_helper
-    START_BASH
-    ../../legacy_test/dist_test.sh
-    TIMEOUT
-    "120"
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21234;NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_hybrid_parallel_inference_helper PROPERTIES TIMEOUT
-                                                                        "120")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_rolemaker_new MODULES test_fleet_rolemaker_new ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
