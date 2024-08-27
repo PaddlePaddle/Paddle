@@ -5200,6 +5200,7 @@
     func: chunk_eval
     data_type: DataType::FLOAT32
   optional: seq_length
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
