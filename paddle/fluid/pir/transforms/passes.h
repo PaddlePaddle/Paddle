@@ -47,6 +47,7 @@ USE_PIR_PASS(delete_quant_dequant_linear_op_pass);
 USE_PIR_PASS(transfer_layout_pass);
 USE_PIR_PASS(fused_rotary_position_embedding_pass);
 USE_PIR_PASS(horizontal_fuse_pass);
+USE_PIR_PASS(tensor_fusion_pass);
 
 #ifdef PADDLE_WITH_DNNL
 USE_PIR_PASS(depthwise_conv_onednn_pass);
