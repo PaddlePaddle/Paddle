@@ -25,7 +25,8 @@ SpmdInfo FusedDropoutAddSpmdBase(const DistMetaTensor& x,
 
 SpmdInfo FusedDropoutAddSpmdReverseBase(const DistMetaTensor& x,
                                         const DistMetaTensor& y,
-                                        const DistMetaTensor& out);
+                                        const DistMetaTensor& out,
+                                        const DistMetaTensor& seed_offset);
 
 SpmdInfo FusedDropoutAddGradInferSpmdBase(const DistMetaTensor& seed_offset,
                                           const DistMetaTensor& out_grad);
