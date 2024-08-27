@@ -22,8 +22,8 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler/event_node.h"
-#include "paddle/fluid/platform/profiler/utils.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler/utils.h"
 
 namespace paddle::platform {
 

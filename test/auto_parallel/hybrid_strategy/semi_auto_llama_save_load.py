@@ -221,19 +221,21 @@ class TestLlamaAuto:
                 break
 
         # check pir dist_model save&load
-        # paddle.enable_static()
-        # model_file_path = os.path.join(
-        #    tmp_ckpt_path,
-        #    "rank_" + str(paddle.distributed.get_rank()) + ".pd_dist_model",
-        # )
-        # paddle.save(
-        #    dist_model._engine._pir_dist_main_progs["train"], model_file_path
-        # )
-        # loaded_model = paddle.load(model_file_path)
-        # paddle.disable_static()
-        # self.check_program_equal(
-        #    dist_model._engine._pir_dist_main_progs["train"], loaded_model
-        # )
+        paddle.enable_static()
+        model_file_path = os.path.join(
+            tmp_ckpt_path,
+            "rank_" + str(paddle.distributed.get_rank()) + ".pd_dist_model",
+        )
+        paddle.save(
+            dist_model._engine._pir_dist_main_progs["train"], model_file_path
+        )
+        loaded_model = paddle.load(model_file_path)
+        self.check_program_equal(
+            dist_model._engine._pir_dist_main_progs["train"], loaded_model
+        )
+        paddle.disable_static()
+        paddle.distributed.barrier()
+
         time.sleep(10)
 
         loss_after_load = []

@@ -251,9 +251,7 @@ class NdMeshReshardFunction(ReshardFunction):
                 )
                 out_one_dim_dist_attr = (
                     paddle.base.libpaddle.pir.create_tensor_dist_attribute(
-                        sub_mesh,
-                        [-1] * tensor_ndim,
-                        {partial_dim: partial_type},
+                        sub_mesh, [-1] * tensor_ndim, {0: partial_type}
                     )
                 )
 
