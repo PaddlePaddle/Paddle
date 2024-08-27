@@ -615,7 +615,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_auto_parallel_reshard',
     'test_auto_parallel_reshard_mppp',
     'test_auto_parallel_partitioner_gpt',
-    'test_fleet_hybrid_meta_optimizer',
     'test_auto_parallel_reshard_serial',
     'test_auto_parallel_reshard_dpmppp',
     'test_clip_mkldnn_op',

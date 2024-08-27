@@ -43,7 +43,6 @@ test_fleet_dgc_meta_optimizer,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYT
 test_parallel_dygraph_unused_variables,,,350,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dgc_momentum_op,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_DGC
 test_parallel_dygraph_no_sync_gradient_check,,,60,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
-test_fleet_hybrid_meta_optimizer,LINUX;WIN32,GPU;XPU,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_qat,,,120,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_sparse_embedding,,GPU,200,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL;${NCCL_VERSION} VERSION_GREATER_EQUAL 2212
 test_parallel_dygraph_sparse_embedding,,ROCM,200,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
