@@ -19,6 +19,7 @@ import unittest
 import paddle
 from paddle.jit import sot
 from paddle.jit.sot.utils import sot_step_profiler_guard, strict_mode_guard
+from paddle.pir_utils import DygraphPirGuard
 
 
 class SimpleModel(paddle.nn.Layer):
@@ -45,11 +46,12 @@ class TestStepProfilerSmokeTest(unittest.TestCase):
     @sot_step_profiler_guard(True)
     @strict_mode_guard(False)
     def test_step_profiler_smoke(self):
-        model = SimpleModel()
-        model = paddle.jit.to_static(model, full_graph=False)
-        x = paddle.randn([1, 3, 32, 32])
+        with DygraphPirGuard():
+            model = SimpleModel()
+            model = paddle.jit.to_static(model, full_graph=False)
+            x = paddle.randn([1, 3, 32, 32])
 
-        model(x)
+            model(x)
 
 
 if __name__ == "__main__":
