@@ -405,7 +405,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
                           "BKCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
 
-    stream = comm_ctx->GetStream();
+    stream = dev_ctx.stream();
 
     // allocate memory on device.
     dev_ctx.template Alloc(softmax, logits->dtype());
