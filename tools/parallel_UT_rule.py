@@ -541,7 +541,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_dist_fleet_raw_program_optimizer',
     'test_parallel_dygraph_mp_layers',
     'test_dist_fleet_geo',
-    'test_fleet_raw_program_meta_optimizer',
     'test_sync_batch_norm_op',
     'test_dist_mnist_batch_merge',
     'test_fleet_launch_ps',
