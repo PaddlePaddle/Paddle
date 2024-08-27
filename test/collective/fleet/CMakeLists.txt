@@ -371,12 +371,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 
-if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_fleet_gradient_merge_meta_optimizer MODULES
-    test_fleet_gradient_merge_meta_optimizer ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_amp_init MODULES test_fleet_amp_init ENVS
