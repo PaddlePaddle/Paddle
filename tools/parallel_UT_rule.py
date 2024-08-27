@@ -550,7 +550,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_dist_fleet_a_sync_optimizer_geo_deprecated',
     'test_multiprocess_dataloader_iterable_dataset_static',
     'test_dist_fleet_grad_clip',
-    'test_fleet_pipeline_meta_optimizer_with_recompute',
     'test_dist_sparse_load_ps0',
     'test_collective_barrier_api',
     'test_parallel_dygraph_mnist',

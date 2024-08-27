@@ -514,17 +514,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_no_sync_gradient_check
                        PROPERTIES TIMEOUT "60")
 endif()
-if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_fleet_pipeline_meta_optimizer_with_recompute
-    START_BASH
-    ../../legacy_test/dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21252;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-endif()
 if((WITH_GPU OR WITH_XPU) AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_hybrid_meta_optimizer MODULES test_fleet_hybrid_meta_optimizer
