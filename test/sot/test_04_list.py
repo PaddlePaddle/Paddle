@@ -222,6 +222,15 @@ def list_no_arguments():
     return l1[0] + l2[0]
 
 
+@check_no_breakgraph
+def list_compare():
+    # TODO(SigureMo): support gt, ge, lt, le
+    l1 = [1, 2, 3]
+    l2 = [1, 2, 3]
+    l3 = [1, 2, 4]
+    return l1 == l2, l1 == l3, l1 != l2, l1 != l3
+
+
 class TestListBasic(TestCaseBase):
     def test_list_basic(self):
         self.assert_results(list_getitem_int, 1, paddle.to_tensor(2))
@@ -321,6 +330,9 @@ class TestListMethods(TestCaseBase):
 
     def test_list_noargs(self):
         self.assert_results(list_no_arguments)
+
+    def test_list_compare(self):
+        self.assert_results(list_compare)
 
 
 if __name__ == "__main__":
