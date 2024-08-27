@@ -48,6 +48,10 @@ def cumsum_net(x):
     return paddle.cumsum(x, axis=1)
 
 
+def divide_net(x, y):
+    return x / y
+
+
 def dropout_net1(x):
     return paddle.nn.functional.dropout(
         x, training=False, mode='downscale_in_infer'
@@ -60,10 +64,6 @@ def dropout_net2(x):
 
 def dropout_net3(x):
     return paddle.nn.functional.dropout(x, 1.0)
-
-
-def divide_net(x, y):
-    return x / y
 
 
 def elementwise_pow_net(x, y):
