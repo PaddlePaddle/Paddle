@@ -1541,7 +1541,7 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
       axis_expr = shape_or_data.shape();
     }
     for (const auto &axis_i : axis_expr) {
-      if (axis_i.isa<int64_t>) {
+      if (axis_i.isa<int64_t>()) {
         axis.emplace_back(axis_i.dyn_cast<int64_t>());
       }
     }
