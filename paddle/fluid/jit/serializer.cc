@@ -32,30 +32,54 @@ COMMON_DECLARE_bool(enable_pir_api);
 namespace paddle {
 namespace jit {
 
-using FunctionInfoMap =
-    std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
-
+using BaseFunctionInfoMap =
+    std::unordered_map<std::string, std::shared_ptr<BaseFunctionInfo>>;
 Layer Deserializer::operator()(const std::string& path,
                                const phi::Place& place) {
   const auto& pdmodel_paths = utils::ModelFilePaths(path);
   // set is ordered
   std::set<std::string> param_names_set;
-  FunctionInfoMap info_map;
+  BaseFunctionInfoMap info_map;
+  // PirFunctionInfo pir_info_map;
   for (auto& it : pdmodel_paths) {
     auto& func_name = it.first;
-    auto program_desc = LoadProgram(it.second);
-
     std::vector<std::string> persist_var_names;
-    auto all_var_desc = program_desc.Block(0).AllVars();
-    for (auto* desc_ptr : all_var_desc) {
-      if (utils::IsPersistable(desc_ptr)) {
-        persist_var_names.emplace_back(desc_ptr->Name());
+    if(FLAGS_enable_pir_api){
+      auto pir_program = LoadPirProgram(it.second);
+      auto params = pir_program->parameters();
+      for(auto& pair : params){
+        LOG(INFO) << "key: " << pair.first << ", Value: " << pair.second;
       }
+      auto module_op = pir_program->module_op();
+      auto& block = module_op.block();
+      const auto& ops = block.ops();
+      for(auto *op : ops){
+        auto values = op->results();
+        for(auto& value : values){
+          if(utils::IsPersistable(&value) && value.defining_op()->attributes().count("parameter_name")){
+            const auto& value_name = value.defining_op()->attributes().at("parameter_name").dyn_cast<pir::StrAttribute>();
+            LOG(INFO) << "value name: " << value_name;
+            persist_var_names.emplace_back(value_name.AsString());
+          }
+        }
+      }
+      info_map[func_name] = std::make_shared<PirFunctionInfo>(
+        func_name, persist_var_names, pir_program.get());
+    }else{
+      auto program_desc = LoadProgram(it.second);
+
+      auto all_var_desc = program_desc.Block(0).AllVars();
+      for (auto* desc_ptr : all_var_desc) {
+        if (utils::IsPersistable(desc_ptr)) {
+          persist_var_names.emplace_back(desc_ptr->Name());
+        }
+      }
+      info_map[func_name] = std::make_shared<FunctionInfo>(
+        func_name, persist_var_names, program_desc);
     }
 
     param_names_set.insert(persist_var_names.begin(), persist_var_names.end());
-    info_map[func_name] = std::make_shared<FunctionInfo>(
-        func_name, persist_var_names, program_desc);
+    
     info_map[func_name]->SetProgramFilePath(it.second);
   }
 
@@ -75,17 +99,22 @@ Layer Deserializer::operator()(const std::string& path,
     auto& info = map_item.second;
     VLOG(3) << "Add function type: " << FLAGS_jit_engine_type
             << " Function name: " << func_name;
-    if (FLAGS_jit_engine_type == "New") {
-      layer.SetEngine(
-          func_name,
-          utils::MakeEngine<InterpreterEngine>(info, params_dict, place));
-    } else if (FLAGS_jit_engine_type == "Predictor") {
-      layer.SetEngine(
-          info->FunctionName(),
-          utils::MakeEngine<PredictorEngine>(info, params_dict, place));
-    } else {
-      PD_THROW("Invalid JitLayer engine type.");
-    }
+    // if(FLAGS_enable_pir_api){
+    auto info_ir = std::dynamic_pointer_cast<FunctionInfo>(info);
+      if (FLAGS_jit_engine_type == "New") {
+        layer.SetEngine(
+            func_name,
+            utils::MakeEngine<InterpreterEngine>(info_ir, params_dict, place));
+      } else if (FLAGS_jit_engine_type == "Predictor") {
+        layer.SetEngine(
+            info_ir->FunctionName(),
+            utils::MakeEngine<PredictorEngine>(info_ir, params_dict, place));
+      } else {
+        PD_THROW("Invalid JitLayer engine type.");
+      }
+    // }else{
+
+    // }
   }
 
   return layer;
@@ -133,12 +162,11 @@ framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   return framework::ProgramDesc(buffer);
 }
 
-pir::Program Deserializer::LoadPirProgram(const std::string& file_name) {
+std::shared_ptr<pir::Program> Deserializer::LoadPirProgram(const std::string& file_name) {
   VLOG(3) << "LoadPirProgram from: " << file_name;
-  std::shared_ptr<pir::Program> pir_program_;
-  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+  auto pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
   pir::ReadModule(file_name, pir_program_.get(), 1 /*pir_version*/);
-  return *pir_program_;
+  return pir_program_;
 }
 
 Layer Load(const std::string& file_path, const phi::Place& place) {
