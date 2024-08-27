@@ -19,9 +19,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ConcatTensorKernel(const Context& dev_ctx,
-                        const std::vector<const DenseTensor*>& input,
-                        std::vector<DenseTensor*> output,
-                        DenseTensor* concated_out);
+void ConcatAndRelocateKernel(const Context& dev_ctx,
+                             const std::vector<const DenseTensor*>& input,
+                             std::vector<DenseTensor*> output,
+                             DenseTensor* concated_out);
 
 }  // namespace phi

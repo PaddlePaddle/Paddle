@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/platform/device_context.h"
-#include "paddle/phi/kernels/concat_tensor_kernel.h"
+#include "paddle/phi/kernels/concat_and_relocate_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 /**
@@ -505,7 +505,7 @@ void ConcatCase5(DeviceContext* context) {
   output.push_back(&output1);
   output.push_back(&output2);
 
-  phi::ConcatTensorKernel<int, DeviceContext>(
+  phi::ConcatAndRelocateKernel<int, DeviceContext>(
       *context, input, output, &concated_out);
 
   /**
@@ -554,21 +554,22 @@ void ConcatCase5(DeviceContext* context) {
   phi::DenseTensor concated_out2;
   concated_out2.mutable_data<int>(dim_out, Place());
 
-  phi::ConcatTensorKernel<int, DeviceContext>(
+  phi::ConcatAndRelocateKernel<int, DeviceContext>(
       *context, second_input, tmp, &concated_out2);
 
   PADDLE_ENFORCE_EQ(concated_out2.data<int>(),
                     output[0]->data<int>(),
                     phi::errors::PreconditionNotMet(
                         "If the input tensors are already stored side by side "
-                        "in memory, then the ConcatTensorKernel will not "
+                        "in memory, then the ConcatAndRelocateKernel will not "
                         "reallocate memory for the concatenation."));
 
-  PADDLE_ENFORCE_EQ(concated_out2.dims(),
-                    common::make_ddim({2, 4}),
-                    phi::errors::PreconditionNotMet(
-                        "For the same inputs, multiple executions of the "
-                        "ConcatTensorKernel should produce the same results."));
+  PADDLE_ENFORCE_EQ(
+      concated_out2.dims(),
+      common::make_ddim({2, 4}),
+      phi::errors::PreconditionNotMet(
+          "For the same inputs, multiple executions of the "
+          "ConcatAndRelocateKernel should produce the same results."));
 }
 
 template <typename DeviceContext, typename Place>

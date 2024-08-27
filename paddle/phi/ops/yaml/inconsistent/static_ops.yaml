@@ -947,13 +947,13 @@
     data_type : logits
   backward: c_softmax_with_cross_entropy_grad
 
-- op: concat_tensor_
+- op: concat_and_relocate_
   args: (Tensor[] input)
   output: Tensor[](output){input.size()}, Tensor(concated_output)
   infer_meta:
-    func: ConcatTensorInferMeta
+    func: ConcatAndRelocateInferMeta
   kernel:
-    func: concat_tensor
+    func: concat_and_relocate
     data_type: input
   inplace: (input -> output)
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/concat_tensor_kernel.h"
+#include "paddle/phi/kernels/concat_and_relocate_kernel.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -47,22 +47,22 @@ bool IsConcated(const std::vector<const DenseTensor*>& tensors) {
 }
 
 template <typename T, typename Context>
-void ConcatTensorKernel(const Context& dev_ctx,
-                        const std::vector<const DenseTensor*>& input,
-                        std::vector<DenseTensor*> output,
-                        DenseTensor* concated_out) {
+void ConcatAndRelocateKernel(const Context& dev_ctx,
+                             const std::vector<const DenseTensor*>& input,
+                             std::vector<DenseTensor*> output,
+                             DenseTensor* concated_out) {
   PADDLE_ENFORCE_GT(
       input.size(),
       static_cast<size_t>(0),
-      errors::InvalidArgument("The ConcatTensor operator has no input."));
-  PADDLE_ENFORCE_EQ(
-      input.size(),
-      output.size(),
-      errors::InvalidArgument("The number of ConcatTensor operator's input and "
-                              "output is not match, "
-                              "input number is %u, output number is %u.",
-                              input.size(),
-                              output.size()));
+      errors::InvalidArgument("The ConcatAndRelocate operator has no input."));
+  PADDLE_ENFORCE_EQ(input.size(),
+                    output.size(),
+                    errors::InvalidArgument(
+                        "The number of ConcatAndRelocate operator's input and "
+                        "output is not match, "
+                        "input number is %u, output number is %u.",
+                        input.size(),
+                        output.size()));
 
   bool is_concated = IsConcated<T>(input);
   if (is_concated) {
@@ -103,10 +103,10 @@ void ConcatTensorKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(concat_tensor,
-                   GPU,
+PD_REGISTER_KERNEL(concat_and_relocate,
+                   CPU,
                    ALL_LAYOUT,
-                   phi::ConcatTensorKernel,
+                   phi::ConcatAndRelocateKernel,
                    float,
                    double,
                    bool,

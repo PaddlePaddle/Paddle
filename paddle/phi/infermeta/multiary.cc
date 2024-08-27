@@ -1344,9 +1344,9 @@ void ChunkEvalInferMeta(const MetaTensor& inference,
   num_label_chunks->set_dtype(phi::DataType::INT64);
   num_correct_chunks->set_dtype(phi::DataType::INT64);
 }
-void ConcatTensorInferMeta(const std::vector<const MetaTensor*>& input,
-                           std::vector<MetaTensor*> output,
-                           MetaTensor* concated_out) {
+void ConcatAndRelocateInferMeta(const std::vector<const MetaTensor*>& input,
+                                std::vector<MetaTensor*> output,
+                                MetaTensor* concated_out) {
   ConcatInferMeta(input, -1, concated_out);
   for (size_t i = 0; i < output.size(); ++i) {
     output[i]->set_dims(input[i]->dims());
