@@ -672,21 +672,6 @@ if(WITH_NCCL OR WITH_RCCL)
   if(WITH_DGC)
     if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
       bash_test_modules(
-        test_dist_mnist_dgc_nccl
-        START_BASH
-        ../../legacy_test/dist_test.sh
-        LABELS
-        "RUN_TYPE=DIST"
-        ENVS
-        "PADDLE_DIST_UT_PORT=21278;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-      )
-    endif()
-  endif()
-endif()
-if(WITH_NCCL OR WITH_RCCL)
-  if(WITH_DGC)
-    if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-      bash_test_modules(
         test_dist_se_resnext_dgc
         START_BASH
         ../../legacy_test/dist_test.sh
