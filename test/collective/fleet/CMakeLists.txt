@@ -442,13 +442,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if(WITH_DGC)
-  if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-    py_test_modules(
-      test_fleet_dgc_meta_optimizer MODULES test_fleet_dgc_meta_optimizer ENVS
-      "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  endif()
-endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_parallel_dygraph_unused_variables
