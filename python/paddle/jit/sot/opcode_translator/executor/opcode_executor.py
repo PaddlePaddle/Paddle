@@ -1056,9 +1056,8 @@ class OpcodeExecutorBase:
 
         retval = []
         for item in unpack_values:
-            assert isinstance(
-                item, (TupleVariable, ListVariable)
-            ), BreakGraphError(f"{type(item)} not support unpack")
+            if isinstance(item, (TupleVariable, ListVariable)):
+                BreakGraphError(f"{type(item)} not support unpack")
             retval.extend(item.get_wrapped_items())
 
         if instr.opname in {
