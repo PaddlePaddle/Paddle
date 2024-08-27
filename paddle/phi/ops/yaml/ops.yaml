@@ -169,6 +169,7 @@
     param : [input, output_shape, align_corners]
     data_type : input
   backward : affine_grid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
@@ -548,6 +549,7 @@
   kernel:
     func: bincount
   optional: weights
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : binomial
   args : (Tensor count, Tensor prob)
@@ -628,6 +630,7 @@
     backend : x
   inplace: (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bitwise_xor
   args : (Tensor x, Tensor y)
@@ -649,6 +652,7 @@
   kernel :
     func : bmm
   backward : bmm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : box_clip
   args: (Tensor input, Tensor im_info)
@@ -932,7 +936,7 @@
   kernel :
     func : coalesce_tensor
     data_type : dtype
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : collect_fpn_proposals
   args: (Tensor[] multi_level_rois, Tensor[] multi_level_scores, Tensor[] multi_level_rois_num,
@@ -1154,7 +1158,7 @@
   optional: w, weight_list, sequence_length
   intermediate: reserve
   backward: cudnn_lstm_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cummax
   args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)
@@ -1257,7 +1261,7 @@
     data_type : x
   optional : mask
   backward : deformable_conv_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depend
   args: (Tensor x, Tensor[] dep)
@@ -1384,6 +1388,7 @@
   kernel :
     func : diag
   backward : diag_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : diag_embed
   args : (Tensor input, int offset = 0, int dim1 = -2, int dim2 = -1)
@@ -1455,6 +1460,7 @@
     func : dot
     data_type : x
   backward : dot_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : dpsgd
   args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
@@ -1638,7 +1644,7 @@
   output : Tensor(out)
   infer_meta :
     func : ExpandAsInferMeta
-    local_shape: target_shape
+    local_shape: out
   kernel :
     func : expand_as
     data_type : x
@@ -1900,17 +1906,17 @@
   backward : flash_attn_varlen_qkvpacked_grad
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : flash_attn_with_sparse_mask
-  args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "")
+- op : flashmask_attention
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices,  Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   optional : fixed_seed_offset
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
   kernel :
-    func : flash_attn_with_sparse_mask
+    func : flashmask_attention
     data_type : q
-  backward : flash_attn_with_sparse_mask_grad
+  backward : flashmask_attention_grad
   # interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : flatten
@@ -2144,7 +2150,7 @@
   kernel :
     func : fused_multi_transformer
     data_type : x
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : fused_softmax_mask
   args : (Tensor x, Tensor mask)
@@ -2221,7 +2227,7 @@
   kernel :
     func : gather_tree
     data_type : ids
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
@@ -2281,7 +2287,7 @@
     func : graph_khop_sampler
     data_type : row
   optional : eids
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : graph_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, Tensor perm_buffer, int sample_size, bool return_eids, bool flag_perm_buffer)
@@ -2531,6 +2537,7 @@
     data_type : x
   inplace : (x -> out)
   backward : index_add_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_put
   args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
@@ -2542,6 +2549,7 @@
     data_type : x
   inplace : (x -> out)
   backward : index_put_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_sample
   args : (Tensor x, Tensor index)
@@ -2567,6 +2575,7 @@
   backward : index_select_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : index_select_strided
   args : (Tensor x, int64_t index, int axis = 0)
@@ -3310,6 +3319,7 @@
   kernel :
     func : multi_dot
   backward : multi_dot_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multiclass_nms3
   args : (Tensor bboxes, Tensor scores, Tensor rois_num, float score_threshold, int nms_top_k, int keep_top_k, float nms_threshold=0.3, bool normalized=true, float nms_eta=1.0, int background_label=0)
@@ -3331,6 +3341,7 @@
     func : multinomial
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multiplex
   args : (Tensor[] inputs, Tensor index)
@@ -3374,6 +3385,7 @@
   kernel :
     func : nanmedian
   backward : nanmedian_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : nearest_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
@@ -3450,7 +3462,7 @@
     param : [x]
   kernel :
     func : npu_identity
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : numel
   args : (Tensor x)
@@ -3555,7 +3567,7 @@
   kernel :
     func : pixel_shuffle
   backward : pixel_shuffle_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : pixel_unshuffle
   args : (Tensor x, int downscale_factor=1, str data_format="NCHW")
@@ -3910,7 +3922,7 @@
   infer_meta :
     func : ReshapeInferMeta
     spmd_rule : ReshapeInferSpmd
-    local_shape: shape
+    local_shape: out
     global_shape: out
   kernel :
     func : reshape
@@ -4128,7 +4140,7 @@
   kernel :
     func : selu
   backward : selu_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : send_u_recv
   args : (Tensor x, Tensor src_index, Tensor dst_index, str reduce_op = "SUM", IntArray out_size = {0})
@@ -4173,7 +4185,7 @@
     data_type: x
   optional: padding_data
   backward: sequence_conv_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sequence_mask
   args: (Tensor x, Scalar(int) max_len, DataType out_dtype)
@@ -4183,6 +4195,7 @@
   kernel:
     func: sequence_mask_scalar
     data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sequence_pool
   args: (Tensor x, bool is_test=false, str pooltype = "AVERAGE", float pad_value = 0.0)
@@ -4423,7 +4436,7 @@
   optional: key_padding_mask, attn_mask
   intermediate: sparse_dot_sdd, softmax
   backward: sparse_attention_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : spectral_norm
   args : (Tensor weight, Tensor u, Tensor v, int dim = 0, int power_iters = 1, float eps = 1e-12f)
@@ -4434,7 +4447,7 @@
     func : spectral_norm
     data_type : weight
   backward : spectral_norm_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : split
   args : (Tensor x, IntArray sections, Scalar(int) axis)
@@ -4524,7 +4537,7 @@
     func : UnchangedInferMeta
   kernel :
     func : standard_gamma
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stanh
   args : (Tensor x, float scale_a=0.67f, float scale_b=1.7159f)
@@ -4688,7 +4701,7 @@
     func : tdm_sampler
     data_type : x
   optional : labels
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : temporal_shift
   args : (Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW")
@@ -4763,7 +4776,7 @@
   kernel :
     func : transpose
   backward : trans_layout_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : transpose
   args : (Tensor x, int[] perm)
@@ -4875,7 +4888,7 @@
     backend : place
     data_type : dtype
   traits : pir::SideEffectTrait
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : unbind
   args : (Tensor input, int axis = 0)
@@ -4922,7 +4935,7 @@
   inplace: (x -> out)
   backward: uniform_inplace_grad
   traits : pir::SideEffectTrait
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : uniform_random_batch_size_like
   args: (Tensor input, int[] shape, int input_dim_idx = 0, int output_dim_idx = 0,
@@ -4992,6 +5005,7 @@
   kernel :
     func : unstack
   backward : unstack_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : update_loss_scaling_
   args : (Tensor[] x, Tensor found_infinite, Tensor prev_loss_scaling, Tensor in_good_steps, Tensor in_bad_steps, int incr_every_n_steps, int decr_every_n_nan_or_inf, float incr_ratio, float decr_ratio, Scalar stop_update=false)
@@ -5041,7 +5055,7 @@
   kernel :
     func : viterbi_decode
     data_type : potentials
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : warpctc
   args : (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false)
@@ -5054,7 +5068,7 @@
   optional : logits_length, labels_length
   intermediate : warpctcgrad
   backward : warpctc_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : warprnnt
   args : (Tensor input, Tensor label, Tensor input_lengths, Tensor label_lengths, int blank = 0, float fastemit_lambda = 0.0)
@@ -5066,7 +5080,7 @@
     data_type : input
   intermediate : warprnntgrad
   backward : warprnnt_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : weight_dequantize
   args : (Tensor x, Tensor scale, str algo = "weight_only_int8", DataType out_dtype = DataType::FLOAT16, int group_size = -1)

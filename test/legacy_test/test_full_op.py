@@ -66,15 +66,25 @@ class TestFullAPI(unittest.TestCase):
             out_7 = paddle.full(
                 shape=shape_tensor_int64, dtype=np.float32, fill_value=val
             )
+            out_8 = paddle.full(shape=10, dtype=np.float32, fill_value=val)
 
             exe = base.Executor(place=base.CPUPlace())
-            res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
+            res_1, res_2, res_3, res_4, res_5, res_6, res_7, res_8 = exe.run(
                 paddle.static.default_main_program(),
                 feed={
                     "shape_tensor_int32": np.array([1, 2]).astype("int32"),
                     "shape_tensor_int64": np.array([1, 2]).astype("int64"),
                 },
-                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
+                fetch_list=[
+                    out_1,
+                    out_2,
+                    out_3,
+                    out_4,
+                    out_5,
+                    out_6,
+                    out_7,
+                    out_8,
+                ],
             )
 
         np.testing.assert_array_equal(
@@ -97,6 +107,9 @@ class TestFullAPI(unittest.TestCase):
         )
         np.testing.assert_array_equal(
             res_7, np.full([1, 2], 1.1, dtype="float32")
+        )
+        np.testing.assert_array_equal(
+            res_8, np.full([10], 1.1, dtype="float32")
         )
         paddle.disable_static()
 
@@ -152,6 +165,8 @@ class TestFullAPI(unittest.TestCase):
                 out_7, dtype=np.float32, fill_value=np.abs(1.1)
             )
 
+            out_11 = paddle.full(shape=10, dtype="float32", fill_value=1.1)
+
             np.testing.assert_array_equal(
                 out_1, np.full([1, 2], 1.1, dtype="float32")
             )
@@ -182,6 +197,9 @@ class TestFullAPI(unittest.TestCase):
             np.testing.assert_array_equal(
                 out_10, np.full([1, 2], 1.1, dtype="float32")
             )
+            np.testing.assert_array_equal(
+                out_11, np.full([10], 1.1, dtype="float32")
+            )
 
 
 class TestFullOpError(unittest.TestCase):
@@ -192,18 +210,11 @@ class TestFullOpError(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             # for ci coverage
+            # The argument dtype of full must be one of bool, float16,
+            # float32, float64, uint8, int16, int32 or int64
             self.assertRaises(
                 TypeError, paddle.full, shape=[1], fill_value=5, dtype='uint4'
             )
-
-            # The argument dtype of full must be one of bool, float16,
-            # float32, float64, uint8, int16, int32 or int64
-
-            # The argument shape's type of full_op  must be list, tuple or Variable.
-            def test_shape_type():
-                paddle.full(shape=1, dtype="float32", fill_value=1)
-
-            self.assertRaises(TypeError, test_shape_type)
 
             # The shape dtype of full op must be int32 or int64.
             def test_shape_tensor_dtype():

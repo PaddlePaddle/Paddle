@@ -223,10 +223,9 @@ void TypePromotionForZeroDimTensor(std::string func,
 static PyObject* tensor__add__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
-  phi::RecordEvent pythonc_record_event(
-      "__add__ or __radd_ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+  phi::RecordEvent pythonc_record_event("__add__ or __radd_ pybind_patch_func",
+                                        phi::TracerEventType::UserDefined,
+                                        1);
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__add__method";
@@ -320,9 +319,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__sub__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__sub__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__sub__method";
@@ -416,9 +413,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__rsub__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__rsub__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__rsub__method";
@@ -511,9 +506,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__mul__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__mul__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__mul__method";
@@ -615,9 +608,7 @@ static PyObject* tensor__div__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__div__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__div__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
 
@@ -710,9 +701,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__rdiv__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__rdiv__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
   EAGER_TRY
 
   VLOG(6) << "Running Eager tensor__rdiv__method";
@@ -798,9 +787,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__gt__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__gt__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__gt__method";
@@ -891,9 +878,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__ge__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__ge__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__ge__method";
@@ -984,9 +969,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__mod__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__mod__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
   EAGER_TRY
 
   VLOG(6) << "Running Eager tensor__mod__method";
@@ -1077,9 +1060,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
                                         PyObject* args,
                                         PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__matmul__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__matmul__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
   EAGER_TRY
 
   VLOG(6) << "Running Eager tensor__matmul__method";
@@ -1204,9 +1185,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__lt__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__lt__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__lt__method";
@@ -1297,9 +1276,7 @@ static PyObject* tensor__le__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__le__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__le__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(4) << "Running Eager tensor__le__method";
@@ -1390,9 +1367,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
                                           PyObject* args,
                                           PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "floordiv pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "floordiv pybind_patch_func", phi::TracerEventType::UserDefined, 1);
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__floordiv__method";
 
@@ -1482,9 +1457,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "pow pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "pow pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__pow__method";
@@ -1579,9 +1552,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
                                       PyObject* args,
                                       PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__rpow__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__rpow__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__rpow__method";
@@ -1674,9 +1645,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__ne__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__ne__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__ne__method";
@@ -1767,9 +1736,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   phi::RecordEvent pythonc_record_event(
-      "__eq__ pybind_patch_func",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
+      "__eq__ pybind_patch_func", phi::TracerEventType::UserDefined, 1);
 
   EAGER_TRY
   VLOG(6) << "Running Eager tensor__eq__method";

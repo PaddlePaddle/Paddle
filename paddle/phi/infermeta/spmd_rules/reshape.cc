@@ -336,12 +336,6 @@ SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x,
   const auto& x_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
   const auto& out_grad_dist_dst =
       PADDLE_GET_CONST(TensorDistAttr, tmp.second[0]);
-  PADDLE_ENFORCE_EQ(
-      x_dist_tmp.dims_mapping(),
-      x_dist_dst.dims_mapping(),
-      common::errors::InvalidArgument("x should not be re shared: [%s] => [%s]",
-                                      x_dist_tmp.to_string(),
-                                      x_dist_dst.to_string()));
   return {{x_dist_tmp, out_grad_dist_dst}, {x_dist_dst}};
 }
 
