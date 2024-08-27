@@ -2349,9 +2349,11 @@ bool ViterbiDecodeOpInferSymbolicShape(
 
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
-  consst auto &x_shape =
+  const auto &x_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   const std::vector<pir::Value> &operands = {op->operand_source(0),
                                              op->operand_source(1)};
