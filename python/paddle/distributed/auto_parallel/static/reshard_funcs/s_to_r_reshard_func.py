@@ -96,10 +96,8 @@ class SToRReshardFunction(ReshardFunction):
         for k, v in split_axis_map.items():
             split_axis = k
             break
-
-        num_of_padding = (
-            src_value.shape[split_axis] % src_dist_attr.process_mesh.size
-        )
+        num_of_process = src_dist_attr.process_mesh.size
+        num_of_padding = src_value.shape[split_axis] % num_of_process
         is_balanced_split = num_of_padding == 0
 
         if is_balanced_split:
@@ -113,8 +111,52 @@ class SToRReshardFunction(ReshardFunction):
             )
             return new_value
         else:
-            # TODO(ywt01) support unbalanced split
-            raise NotImplementedError("unbalanced split is not implemented")
+            # print("Unbalanced reshard from shard to replicated")
+            avg_size_on_split_axis = int(
+                (src_value.shape[split_axis] + num_of_process - 1)
+                / num_of_process
+            )
+            padding_num = (
+                avg_size_on_split_axis * num_of_process
+                - src_value.shape[split_axis]
+            )
+            need_padding = (
+                src_value._local_value.shape[split_axis]
+                != avg_size_on_split_axis
+            )
+            if need_padding:
+                padding_shape = src_value._local_value.shape
+                padding_shape[split_axis] = padding_num
+                padding_tensor = paddle._C_ops.full(
+                    padding_shape,
+                    0.0,
+                    src_value.dtype(),
+                    src_value._local_value.place(),
+                )
+                concat_value = paddle._C_ops.concat(
+                    [src_value._local_value, padding_tensor], split_axis
+                )
+                src_value._local_value = concat_value  # need to modify src_value and src_dist_attr in every device
+
+                new_value = self.reshard_s_to_r_with_padding(
+                    src_value,
+                    split_axis,
+                    src_dist_attr,
+                    dst_dist_attr,
+                    dst_type,
+                    padding_num,
+                )
+                return new_value
+            else:
+                new_value = self.reshard_s_to_r_with_padding(
+                    src_value,
+                    split_axis,
+                    src_dist_attr,
+                    dst_dist_attr,
+                    dst_type,
+                    padding_num,
+                )
+                return new_value
 
     def reshard_s_to_r_with_padding(
         self,
@@ -168,14 +210,31 @@ class SToRReshardFunction(ReshardFunction):
             )
             pd_splite_op.result(0).set_type(vec_type)
 
-            concat_value = paddle._C_ops.concat(split_values, split_axis)
-            # fold builtin.split op and builtin.combine op
-            concat_op = concat_value.get_defining_op()
-            builtin_combine_op = concat_op.operand_source(0).get_defining_op()
-            concat_op.operand(0).set_source(pd_splite_op.result(0))
-            builtin_combine_op.erase()
-            builtin_split_op.erase()
-            return concat_value
+            if padding_num != 0:
+                tmp_split_values = paddle._C_ops.split(
+                    split_values[-1],
+                    [
+                        src_value._local_value.shape[split_axis] - padding_num,
+                        padding_num,
+                    ],
+                    split_axis,
+                )
+                split_values[-1] = tmp_split_values[0]
+                # may be set some op_dist_attr
+                # ......
+                concat_value = paddle._C_ops.concat(split_values, split_axis)
+                return concat_value
+            else:
+                concat_value = paddle._C_ops.concat(split_values, split_axis)
+                # fold builtin.split op and builtin.combine op
+                concat_op = concat_value.get_defining_op()
+                builtin_combine_op = concat_op.operand_source(
+                    0
+                ).get_defining_op()
+                concat_op.operand(0).set_source(pd_splite_op.result(0))
+                builtin_combine_op.erase()
+                builtin_split_op.erase()
+                return concat_value
         return allgather_value
 
 

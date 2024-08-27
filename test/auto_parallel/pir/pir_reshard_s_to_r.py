@@ -149,7 +149,8 @@ class TestReshardSToR:
                 assert operand_1_dist_attr.dims_mapping == [-1, -1]
                 assert operand_2_dist_attr.dims_mapping == [-1]
 
-                assert operand_dist_attr.partial_status == {}
+                assert operand_1_dist_attr.partial_status == {}
+                assert operand_2_dist_attr.partial_status == {}
 
                 result_dist_attrs = op.dist_attr.result(0).as_array_attr()
                 assert len(result_dist_attrs) == 2
