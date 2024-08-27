@@ -175,7 +175,6 @@ class TestCollectiveAPIRunnerBase:
 
 def runtime_main(test_class, col_type):
     with paddle.pir_utils.OldIrGuard():
-        paddle.disable_static()
         args = {}
         model = test_class()
         args["trainerid"] = int(os.getenv("PADDLE_TRAINER_ID"))
