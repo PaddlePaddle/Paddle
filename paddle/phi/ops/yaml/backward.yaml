@@ -2561,6 +2561,7 @@
     func : GradSameWithXInferMeta
     param : [x, out_grad]
     spmd_rule: ReshapeGradInferSpmd
+    local_shape : x_grad
   kernel :
     func : reshape_grad
     param : [x, out_grad]
