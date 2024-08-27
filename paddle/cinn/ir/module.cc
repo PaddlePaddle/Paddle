@@ -106,7 +106,6 @@ Module Module::Builder::Build() {
   auto res = ir::Module(module_.get());
 
   res = optim::Optimize(res, module_->target);
-  std::cerr << "after optimize " << res << std::endl;
   return res;
 }
 
