@@ -484,26 +484,9 @@ bool BipartiteMatchOpInferSymbolicShape(
 
 bool CastOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &x_shape = x_shape_or_data.shape();
-
-  const auto &SetOutputWithOnlyShape = [&]() {
-    infer_context->SetShapeOrDataForValue(
-        op->result(0), symbol::TensorShapeOrDataDimExprs(x_shape));
-  };
-  const auto &attributes = op->attributes();
-
-  if (attributes.find("dtype") != attributes.end()) {
-    if (attributes.at("dtype").isa<pir::Int32Attribute>() ||
-        attributes.at("dtype").isa<pir::Int64Attribute>()) {
-      infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
-    } else {
-      SetOutputWithOnlyShape();
-    }
-  } else {
-    SetOutputWithOnlyShape();
-  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
 
   return true;
 }
