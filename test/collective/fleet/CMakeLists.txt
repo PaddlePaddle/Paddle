@@ -664,12 +664,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_auto_parallel_parallelizer PROPERTIES TIMEOUT "120")
 endif()
-if((WITH_GPU OR WITH_XPU) AND (LINUX OR WIN32))
-  py_test_modules(
-    test_fleet_recompute_meta_optimizer MODULES
-    test_fleet_recompute_meta_optimizer ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_new_group

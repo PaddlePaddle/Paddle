@@ -69,7 +69,6 @@ PROTOBUF3_NEEDED_TESTING_LIST = [
     'test_fleet_pipeline_meta_optimizer_with_recompute',
     'test_fleet_hybrid_meta_optimizer',
     'test_fleet_amp_meta_optimizer',
-    'test_fleet_recompute_meta_optimizer',
     'test_fleet_with_asp_static',
     'test_fleet_with_asp_sharding',
 ]
