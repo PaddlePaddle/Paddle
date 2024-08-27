@@ -2478,6 +2478,7 @@ set +x
 
         fi
         if [[ "$IF_KUNLUN3" == "ON" ]]; then
+            export FLAGS_enable_pir_api=0
             #install paddlex
             git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
             cd PaddleX
@@ -2511,6 +2512,7 @@ set +x
                 -o Global.device="xpu:${DEVICES[0]}"
             echo "Predicting Resnet50 completed!"
             cd ..
+            export FLAGS_enable_pir_api=1
         fi
 set -x
         ut_endTime_s=`date +%s`
