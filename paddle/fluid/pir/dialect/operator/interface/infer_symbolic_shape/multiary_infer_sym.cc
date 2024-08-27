@@ -1414,10 +1414,11 @@ bool GraphKhopSamplerOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &eids_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
 
-  auto row_shape = row_shape_or_data.shape();
-  auto col_ptr_shape = col_ptr_shape_or_data.shape();
-  auto x_shape = x_shape_or_data.shape();
-  auto eids_shape = eids_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &row_shape = row_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &col_ptr_shape =
+      col_ptr_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &eids_shape = eids_shape_or_data.shape();
 
   auto GKSShapeCheck = [&](const std::vector<symbol::DimExpr> &shape,
                            const std::string &tensor_name) {
@@ -1500,11 +1501,12 @@ bool GraphSampleNeighborsOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &perm_buffer_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(4));
 
-  std::vector<symbol::DimExpr> row_shape = row_shape_or_data.shape();
-  std::vector<symbol::DimExpr> col_ptr_shape = col_ptr_shape_or_data.shape();
-  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
-  std::vector<symbol::DimExpr> eids_shape = eids_shape_or_data.shape();
-  std::vector<symbol::DimExpr> perm_buffer_shape =
+  const std::vector<symbol::DimExpr> &row_shape = row_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &col_ptr_shape =
+      col_ptr_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &eids_shape = eids_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &perm_buffer_shape =
       perm_buffer_shape_or_data.shape();
 
   auto GSNShapeCheck = [&](const std::vector<symbol::DimExpr> &shape,
