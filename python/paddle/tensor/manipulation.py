@@ -1800,6 +1800,15 @@ def flatten(
         The output Tensor will share data with origin Tensor and doesn't have a Tensor copy in ``dygraph`` mode.
         If you want to use the Tensor copy version, please use `Tensor.clone` like ``flatten_clone_x = x.flatten().clone()``.
 
+        The image shows a [2, 2, 2] Tensor with values from 0 to 7 after applying different parameters of Flatten.
+
+        As observed, after applying different Flatten parameters, the Tensor's elements are rearranged in ascending order between the start_axis and stop_axis dimensions.
+
+        .. image:: https://raw.githubusercontent.com/PaddlePaddle/docs/develop/docs/images/api_legend/flatten.png
+            :width: 800
+            :alt: legend of reshape API
+            :align: center
+
     For Example:
 
     .. code-block:: text
