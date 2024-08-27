@@ -23,6 +23,7 @@ from .auto_parallel_amp import (  # noqa: F401
 from .auto_parallel_data_parallel_optimization import (  # noqa: F401
     DataParallelOptimizationPass,
     GradientsGroup,
+    apply_dp_optimization_pir_pass,
 )
 from .auto_parallel_fp16 import (  # noqa: F401
     FP16Pass,

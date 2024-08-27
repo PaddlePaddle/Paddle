@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from collections import OrderedDict
 
 import paddle
@@ -37,7 +38,10 @@ from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.static import default_main_program
 from paddle.utils import unique_name
 
+from ..utils.log_utils import get_logger
 from .pass_base import PassBase, PassType, register_pass
+
+logger = get_logger(logging.INFO, "DataParallelOptimizationPass")
 
 # add new optimizers supporting rescale_grad here
 __rescale_grad_supported_opts__ = [
@@ -761,3 +765,33 @@ class GradientsGroup:
             self.remove_wait_op_indices.pop()
         if len(self.remove_scale_op_indices) > 1:
             self.scale_op_idx = self.remove_scale_op_indices.pop()
+
+
+def apply_dp_delay_loss_scale(program, loss):
+    """
+    delay the scaling of param grad by dp_world_size from mean_grad to optimizer.
+    """
+
+    dp_world_size = 1
+
+    def analyze_program(program, loss):
+        print("loss: ", loss)
+        print(loss.get_defining_op())
+
+    def _update_program(program):
+        pass
+
+    analyze_program(program, loss)
+    if dp_world_size > 1:
+        logger.warning(
+            "Apply the dp_delay_loss_scale Pass, the loss might be numerical different compared with AutoParallel in Dygraph mode!"
+        )
+        _update_program(program)
+
+
+def apply_dp_optimization_pir_pass(program, loss):
+    """
+    Apply Optimizations that specialized for data parallelism in Auto Parallel PIR mode.
+    """
+
+    apply_dp_delay_loss_scale(program, loss)

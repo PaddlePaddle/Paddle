@@ -322,7 +322,7 @@ set_field_default_config(DP_OPTIMIZATION, "overlap_comm_cacl", True)
 set_field_default_config(
     DP_OPTIMIZATION, "gradient_sync_after_accumulate", False
 )
-
+set_field_default_config(DP_OPTIMIZATION, "dp_delay_loss_scale", False)
 if TYPE_CHECKING:
 
     class _DPOptimizationConfig(TypedDict, total=False):  # noqa: PYI049
@@ -331,6 +331,7 @@ if TYPE_CHECKING:
         fuse_grad_size_in_MB: int
         overlap_comm_cacl: bool
         gradient_sync_after_accumulate: bool
+        dp_delay_loss_scale: bool
 
 
 #########################################
