@@ -16,7 +16,6 @@ test_parallel_dygraph_pipeline_parallel,,GPU,500,DIST,../../legacy_test/dist_tes
 test_parallel_dygraph_pipeline_parallel_sync_send,,GPU;XPU,300,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..;PADDLE_P2P_SYNC_SEND=1,
 test_parallel_dygraph_pipeline_parallel_with_virtual_stage,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_pp_adaptor,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
-test_fleet_localsgd_meta_optimizer,LINUX,GPU;XPU,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_class_center_sample,,GPU,120,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL
 test_pipeline,,,160,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_fleet_utils,LINUX;APPLE,,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,

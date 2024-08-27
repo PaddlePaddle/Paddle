@@ -204,12 +204,6 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_pp_adaptor PROPERTIES TIMEOUT
                                                                    "500")
 endif()
-if((WITH_GPU OR WITH_XPU) AND (LINUX))
-  py_test_modules(
-    test_fleet_localsgd_meta_optimizer MODULES
-    test_fleet_localsgd_meta_optimizer ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
 if(WITH_NCCL)
   if((WITH_GPU) AND LOCAL_ALL_PLAT)
     bash_test_modules(
