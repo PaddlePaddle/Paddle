@@ -3696,21 +3696,6 @@ function exec_samplecode_test() {
     fi
 }
 
-function need_type_checking() {
-    set +x
-
-    # check pr title
-    TITLE_CHECK=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "typing" || true`
-
-    if [[ ${TITLE_CHECK} ]]; then
-        set -x
-        return 0
-    else
-        set -x
-        return 1
-    fi
-}
-
 function exec_type_checking() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
         pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
@@ -3724,7 +3709,7 @@ function exec_type_checking() {
     cd ${PADDLE_ROOT}/tools
 
     # check all sample code
-    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "typing all" || true`
+    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "[typing]" || true`
     DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "[debug]" || true`
 
     if [[ ${TITLE_CHECK_ALL} ]]; then
@@ -3749,6 +3734,7 @@ function exec_type_checking() {
 
 
 function exec_samplecode_checking() {
+    # check sample code with doctest
     example_info_gpu=""
     example_code_gpu=0
     if [ "${WITH_GPU}" == "ON" ] ; then
@@ -3758,20 +3744,22 @@ function exec_samplecode_checking() {
     { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
     example_code=$?
 
-    # TODO(megemini): type_checkding should be default after type annotation been done.
-    need_type_checking
-    type_checking_status=$?
+    # check sample typing with mypy
+    { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
+    type_checking_code=$?
 
-    if [[ ${type_checking_status} -eq 0 ]]; then
-        { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
-        type_checking_code=$?
-    fi
-
+    # summary
     summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
+    summary_type_checking_problems $type_checking_code "$type_checking_info"
 
-    if [[ ${type_checking_status} -eq 0 ]]; then
-        summary_type_checking_problems $type_checking_code "$type_checking_info"
+    # exit with error code
+    if [ $example_code -ne 0 ];then
+        exit $example_code
     fi
+    if [ $type_checking_code -ne 0 ];then
+        exit $type_checking_code
+    fi
+
 }
 
 
@@ -3827,7 +3815,6 @@ function summary_check_example_code_problems() {
         echo "==============================================================================="
         echo "*****Example code FAIL*****"
         echo "==============================================================================="
-        exit $example_code
     else
         echo "==============================================================================="
         echo "*****Example code info*****"
@@ -3854,7 +3841,6 @@ function summary_type_checking_problems() {
         echo "==============================================================================="
         echo "*****Example code type checking FAIL*****"
         echo "==============================================================================="
-        exit $type_checking_code
     else
         echo "==============================================================================="
         echo "*****Example code type checking info*****"

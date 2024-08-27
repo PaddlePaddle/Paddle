@@ -457,6 +457,7 @@ commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
+with_pip_tensorrt ='%(with_pip_tensorrt)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
@@ -713,6 +714,7 @@ def cinn() -> str:
                 'with_pip_cuda_libraries': env_dict.get(
                     "WITH_PIP_CUDA_LIBRARIES"
                 ),
+                'with_pip_tensorrt': env_dict.get("WITH_PIP_TENSORRT"),
             }
         )
 
@@ -1079,7 +1081,7 @@ def get_paddle_extra_install_requirements():
             cuda_major_version
         ].split("|")
 
-    if env_dict.get("TENSORRT_FOUND") == "ON":
+    if env_dict.get("WITH_PIP_TENSORRT") == "ON":
         version_str = get_tensorrt_version()
         version_default = int(version_str.split(".")[0])
         if platform.system() == 'Linux' or (
@@ -1120,7 +1122,7 @@ def get_paddle_extra_install_requirements():
                 )
                 return paddle_cuda_requires, []
 
-    return paddle_cuda_requires
+    return paddle_cuda_requires, paddle_tensorrt_requires
 
 
 def get_cinn_config_jsons():
@@ -1711,8 +1713,11 @@ def get_setup_parameters():
             'AMD64',
         )
     ):
-        paddle_cuda_requires = get_paddle_extra_install_requirements()
+        paddle_cuda_requires, paddle_tensorrt_requires = (
+            get_paddle_extra_install_requirements()
+        )
         setup_requires += paddle_cuda_requires
+        setup_requires += paddle_tensorrt_requires
 
     packages = [
         'paddle',

@@ -136,14 +136,14 @@ def check_view_api_used_by_inplace(program: paddle.pir.Program) -> None:
                 op.operand_source(index).is_same(value)
                 for index in inplace_info.keys()
             ):
-                if value.get_defining_op().name() in framework.stride_ops:
-                    show_op_callstack(op)
-                if len(uesd_by_stride_ops) == 0:
-                    continue
                 if (
                     op.name() == "pd_op.set_value_"
                     or op.name() == "pd_op.set_value_with_tensor_"
                 ):
+                    continue
+                if value.get_defining_op().name() in framework.stride_ops:
+                    show_op_callstack(op)
+                if len(uesd_by_stride_ops) == 0:
                     continue
                 show_op_callstack(op)
 
