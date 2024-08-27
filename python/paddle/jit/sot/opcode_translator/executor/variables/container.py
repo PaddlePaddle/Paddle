@@ -20,7 +20,7 @@ from functools import reduce
 from typing import TYPE_CHECKING, Any
 
 from ....utils import ConstTypes
-from ....utils.exceptions import FallbackError, InnerError
+from ....utils.exceptions import BreakGraphError, FallbackError, InnerError
 from ..dispatcher import Dispatcher
 from ..guard import StringifiedExpression, check_guard
 from ..mutable_data import MutableDictLikeData, MutableListLikeData
@@ -254,7 +254,9 @@ class ListVariable(ContainerVariable):
 
     def extend(self, data):
         if isinstance(data, RangeVariable):
-            raise FallbackError("list is not implemented unpack RangeVariable")
+            raise BreakGraphError(
+                "list is not implemented unpack RangeVariable"
+            )
         for item in data.proxy.get_all():
             self.append(item)
         self.graph.side_effects.record_proxy_variable(self)

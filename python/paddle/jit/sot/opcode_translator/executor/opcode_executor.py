@@ -1058,7 +1058,7 @@ class OpcodeExecutorBase:
         retval = []
         for item in unpack_values:
             if isinstance(item, RangeVariable):
-                raise FallbackError(
+                raise BreakGraphError(
                     "list is not implemented unpack RangeVariable"
                 )
             assert isinstance(item, (TupleVariable, ListVariable))
