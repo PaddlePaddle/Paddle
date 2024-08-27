@@ -19,9 +19,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/trace_event.h"
+#include "paddle/phi/api/profiler/trace_event.h"
 #include "paddle/phi/backends/dynload/cupti.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/os_info.h"
 
 namespace paddle {
@@ -113,9 +113,9 @@ static int64_t nsToUs(uint64_t end_ns, uint64_t start_ns = 0) {
   return (end_ns - start_ns) / 1000;
 }
 
-const char* StringTracerMemEventType(TracerMemEventType type);
+const char* StringTracerMemEventType(phi::TracerMemEventType type);
 
-const char* StringTracerEventType(TracerEventType type);
+const char* StringTracerEventType(phi::TracerEventType type);
 
 static float nsToUsFloat(uint64_t end_ns, uint64_t start_ns = 0) {
   return static_cast<float>(end_ns - start_ns) / 1000;
