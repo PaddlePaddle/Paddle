@@ -87,7 +87,7 @@ class MemcpyKernel {
     PADDLE_ENFORCE_EQ(
         ctx.HasOutput("Out"),
         true,
-        phi::errors::NotFound("Output(Out) of memcpy_op is not found."));
+        common::errors::NotFound("Output(Out) of memcpy_op is not found."));
     auto *out = ctx.OutputVar("Out");
     phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());

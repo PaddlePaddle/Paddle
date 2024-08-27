@@ -19,21 +19,21 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/cupti.h"
+#include "paddle/phi/backends/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/fluid/platform/os_info.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/os_info.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -52,17 +52,17 @@ limitations under the License. */
 #endif
 
 #include "paddle/common/enforce.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/memory.h"
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_resource_pool.h"
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
-#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_resource_pool.h"
 #endif
 
 COMMON_DECLARE_int32(paddle_num_threads);
@@ -115,20 +115,20 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                 \
-  {                                                               \
-    PADDLE_ENFORCE_EQ(                                            \
-        !platform::dynload::cuptiActivityGetAttribute(            \
-            attr, &attrValueSize, &attrValue),                    \
-        true,                                                     \
-        phi::errors::Unavailable("Get cupti attribute failed.")); \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;             \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";     \
-    PADDLE_ENFORCE_EQ(                                            \
-        !platform::dynload::cuptiActivitySetAttribute(            \
-            attr, &attrValueSize, &attrValue),                    \
-        true,                                                     \
-        phi::errors::Unavailable("Set cupti attribute failed.")); \
+#define MULTIPLY_ATTR_VALUE(attr)                                    \
+  {                                                                  \
+    PADDLE_ENFORCE_EQ(                                               \
+        !phi::dynload::cuptiActivityGetAttribute(                    \
+            attr, &attrValueSize, &attrValue),                       \
+        true,                                                        \
+        common::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";        \
+    PADDLE_ENFORCE_EQ(                                               \
+        !phi::dynload::cuptiActivitySetAttribute(                    \
+            attr, &attrValueSize, &attrValue),                       \
+        true,                                                        \
+        common::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
@@ -148,7 +148,7 @@ void LoadCustomDevice(const std::string &library_dir) {
     auto dso_handle = dlopen(lib_path.c_str(), RTLD_LAZY);
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Fail to open library: %s with error: %s", lib_path, dlerror()));
 
     phi::LoadCustomRuntimeLib(lib_path, dso_handle);
@@ -164,7 +164,7 @@ static std::once_flag init_devices_flag;
 void InitDevices() {
   std::call_once(init_devices_flag, []() {
     // set name at the entry point of Paddle
-    platform::SetCurrentThreadName("MainThread");
+    phi::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
@@ -324,8 +324,8 @@ void SignalHandle(const char *data, int size) {
 
       sout << "\n----------------------\nError Message "
               "Summary:\n----------------------\n";
-      sout << phi::errors::Fatal("`%s` is detected by the operating system.",
-                                 ParseSignalErrorString(signal_info))
+      sout << common::errors::Fatal("`%s` is detected by the operating system.",
+                                    ParseSignalErrorString(signal_info))
                   .to_string();
       std::cout << sout.str() << (*signal_msg_dumper_ptr).str() << std::endl;
     }

@@ -43,7 +43,7 @@ namespace cutlass_internal {
   PADDLE_ENFORCE_EQ(                                                          \
       status,                                                                 \
       CUBLAS_STATUS_SUCCESS,                                                  \
-      phi::errors::External(                                                  \
+      common::errors::External(                                               \
           #name                                                               \
           "execution error"                                                   \
           "refer https://docs.nvidia.com/cuda/cublas/index.html to get more " \
@@ -133,7 +133,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
   } else if (activation_type == "identity") {
     VLOG(3) << "No activation function set, the activation type is identity";
   } else {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Can not support this activation type, please check the act"));
   }
 
@@ -247,10 +247,10 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                                                  &heuristicResult,
                                                  &returnedResults);
 
-    PADDLE_ENFORCE_NE(
-        returnedResults,
-        0,
-        phi::errors::NotFound("Unable to find suitable cuBLAS GEMM algorithm"));
+    PADDLE_ENFORCE_NE(returnedResults,
+                      0,
+                      common::errors::NotFound(
+                          "Unable to find suitable cuBLAS GEMM algorithm"));
     algo = &heuristicResult.algo;
   }
 
@@ -266,7 +266,7 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
   PADDLE_ENFORCE_EQ(
       status,
       CUBLAS_STATUS_SUCCESS,
-      phi::errors::External("cuBLAS GEMM algorithm check failed"));
+      common::errors::External("cuBLAS GEMM algorithm check failed"));
 
   size_t temp_workspace_size = heurResult.workspaceSize;
   auto temp_workspace = phi::memory_utils::Alloc(
@@ -304,7 +304,7 @@ void cublaslt_fp8_fp8_fp16_gemm(
     DenseTensor* out) {
   PADDLE_ENFORCE_EQ(x.dims().size() == y.dims().size(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "FP8 gemm x_dims.size, must equal to y_dims.size,"
                         "x_dims.size = %d, but y_dims.size = %d",
                         x.dims().size(),
@@ -319,25 +319,25 @@ void cublaslt_fp8_fp8_fp16_gemm(
   PADDLE_ENFORCE_EQ(
       k == y_k,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "FP8 gemm x_k needs to equal to y_k, x_k = %d, but y_k = %d",
           k,
           y_k));
 
   if (bias) {
-    PADDLE_ENFORCE_EQ(
-        bias->dims()[0] == n,
-        true,
-        phi::errors::InvalidArgument("FP8 gemm bias_vecotr_dim needs to equal "
-                                     "to n, n = %d, but bias_vector_dim = %d",
-                                     n,
-                                     bias->dims()[0]));
+    PADDLE_ENFORCE_EQ(bias->dims()[0] == n,
+                      true,
+                      common::errors::InvalidArgument(
+                          "FP8 gemm bias_vecotr_dim needs to equal "
+                          "to n, n = %d, but bias_vector_dim = %d",
+                          n,
+                          bias->dims()[0]));
   }
 
-  PADDLE_ENFORCE_EQ(
-      k % 16 == 0,
-      true,
-      phi::errors::InvalidArgument("FP8 gemm need k % 16 = 0, but k = %d", k));
+  PADDLE_ENFORCE_EQ(k % 16 == 0,
+                    true,
+                    common::errors::InvalidArgument(
+                        "FP8 gemm need k % 16 = 0, but k = %d", k));
 
   ctx.template Alloc<phi::dtype::float16>(out);
   int batch_count = 1;
@@ -361,7 +361,7 @@ void cublaslt_fp8_fp8_bf16_gemm(
     DenseTensor* out) {
   PADDLE_ENFORCE_EQ(x.dims().size() == y.dims().size(),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "FP8 gemm x_dims.size, must equal to y_dims.size,"
                         "x_dims.size = %d, but y_dims.size = %d",
                         x.dims().size(),
@@ -376,25 +376,25 @@ void cublaslt_fp8_fp8_bf16_gemm(
   PADDLE_ENFORCE_EQ(
       k == y_k,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "FP8 gemm x_k needs to equal to y_k, x_k = %d, but y_k = %d",
           k,
           y_k));
 
   if (bias) {
-    PADDLE_ENFORCE_EQ(
-        bias->dims()[0] == n,
-        true,
-        phi::errors::InvalidArgument("FP8 gemm bias_vecotr_dim needs to equal "
-                                     "to n, n = %d, but bias_vector_dim = %d",
-                                     n,
-                                     bias->dims()[0]));
+    PADDLE_ENFORCE_EQ(bias->dims()[0] == n,
+                      true,
+                      common::errors::InvalidArgument(
+                          "FP8 gemm bias_vecotr_dim needs to equal "
+                          "to n, n = %d, but bias_vector_dim = %d",
+                          n,
+                          bias->dims()[0]));
   }
 
-  PADDLE_ENFORCE_EQ(
-      k % 16 == 0,
-      true,
-      phi::errors::InvalidArgument("FP8 gemm need k % 16 = 0, but k = %d", k));
+  PADDLE_ENFORCE_EQ(k % 16 == 0,
+                    true,
+                    common::errors::InvalidArgument(
+                        "FP8 gemm need k % 16 = 0, but k = %d", k));
 
   ctx.template Alloc<phi::dtype::bfloat16>(out);
   int batch_count = 1;

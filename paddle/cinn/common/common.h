@@ -56,17 +56,56 @@ T& Reference(const T* x) {
 }
 
 static void CheckVarNameValid(const absl::string_view name) {
-  CHECK(!name.empty());
-  CHECK(name.find(' ') == std::string::npos &&   //
-        name.find('.') == std::string::npos &&   //
-        name.find('@') == std::string::npos &&   //
-        name.find('/') == std::string::npos &&   //
-        name.find('\t') == std::string::npos &&  //
-        name.find('\n') == std::string::npos &&  //
-        name.find('\r') == std::string::npos)
-      << "Some invalid character found";
-  CHECK(!cinn::common::IsAxisNameReserved(std::string(name)))
-      << "The name [" << name << "] is reserved for internal axis";
+  PADDLE_ENFORCE_EQ(name.empty(),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Var name is empty. Please check your input"));
+  PADDLE_ENFORCE_EQ(
+      name.find(' '),
+      std::string::npos,
+      ::common::errors::InvalidArgument("Var name contains space. Received: "
+                                        "%s, which is invalid for var name.",
+                                        name));
+  PADDLE_ENFORCE_EQ(
+      name.find('.'),
+      std::string::npos,
+      ::common::errors::InvalidArgument(
+          "Var name contains dot. Received: %s, which is invalid for var name.",
+          name));
+  PADDLE_ENFORCE_EQ(
+      name.find('@'),
+      std::string::npos,
+      ::common::errors::InvalidArgument(
+          "Var name contains at. Received: %s, which is invalid for var name.",
+          name));
+  PADDLE_ENFORCE_EQ(
+      name.find('/'),
+      std::string::npos,
+      ::common::errors::InvalidArgument("Var name contains slash. Received: "
+                                        "%s, which is invalid for var name.",
+                                        name));
+  PADDLE_ENFORCE_EQ(
+      name.find('\t'),
+      std::string::npos,
+      ::common::errors::InvalidArgument(
+          "Var name contains tab. Received: %s, which is invalid for var name.",
+          name));
+  PADDLE_ENFORCE_EQ(
+      name.find('\n'),
+      std::string::npos,
+      ::common::errors::InvalidArgument("Var name contains newline. Received: "
+                                        "%s, which is invalid for var name.",
+                                        name));
+  PADDLE_ENFORCE_EQ(name.find('\r'),
+                    std::string::npos,
+                    ::common::errors::InvalidArgument(
+                        "Var name contains carriage return. Received: %s, "
+                        "which is invalid for var name.",
+                        name));
+  PADDLE_ENFORCE_EQ(cinn::common::IsAxisNameReserved(std::string(name)),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "The name [%s] is reserved for internal axis", name));
 }
 
 }  // namespace cinn

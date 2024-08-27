@@ -65,7 +65,7 @@ struct UnionFindNode : public Object {
     PADDLE_ENFORCE_EQ(
         std::strcmp(T::__type_info__, type_info()),
         0,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Want a %d but get a %d", T::__type_info__, type_info()));
     return reinterpret_cast<T*>(this);
   }

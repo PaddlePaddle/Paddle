@@ -24,6 +24,7 @@ import numpy as np
 import paddle
 from paddle.base.framework import _set_expected_place
 from paddle.pir.core import datatype_to_vartype
+from paddle.utils import deprecated
 
 from . import core
 from .data_feeder import BatchedTensorProvider, DataFeeder
@@ -136,10 +137,10 @@ class DataLoaderBase:
         return self
 
     def __iter__(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def __next__(self):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @classmethod
     def _check_input_array(cls, item):
@@ -155,6 +156,7 @@ class DataLoaderBase:
         return arr
 
 
+@deprecated(update_to="paddle.io.DataLoader")
 class DataLoader:
     @staticmethod
     def from_generator(
@@ -881,11 +883,13 @@ class GeneratorLoader(DataLoaderBase):
             shape_concat.extend(feed_data.shape)
             ranks.append(len(feed_data.shape))
             shapes.append(feed_data.shape)
-            lod_levels.append(feed_data.lod_level)
+
             if in_pir_mode():
                 need_check_feed.append(0)
+                lod_levels.append(0)
             else:
                 need_check_feed.append(int(feed_data.desc.need_check_feed()))
+                lod_levels.append(feed_data.lod_level)
 
         queue_name = data_loader_unique_name_generator(
             'lod_tensor_blocking_queue'
@@ -1060,10 +1064,11 @@ class GeneratorLoader(DataLoaderBase):
         else:
             places = _get_paddle_place(places)
         has_lod = False
-        for f in self._feed_list:
-            if f.lod_level != 0:
-                has_lod = True
-                break
+        if not in_pir_mode():
+            for f in self._feed_list:
+                if f.lod_level != 0:
+                    has_lod = True
+                    break
 
         if has_lod:
             self.set_sample_list_generator(
@@ -1125,6 +1130,7 @@ class GeneratorLoader(DataLoaderBase):
         return self
 
 
+@deprecated()
 class PyReader(DataLoaderBase):
     r"""
     Create a reader object for data feeding in Python.

@@ -165,7 +165,7 @@ void FoldInterpOutsizeFusePass::FoldInterpOutsize(ir::Graph* graph) const {
 
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
-        scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
+        scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
     auto* concat_y_t =
         scope->GetVar(concat_y->Name())->GetMutable<phi::DenseTensor>();
@@ -202,7 +202,7 @@ void FoldInterpOutsizeFusePass::FoldInterpOutsize(ir::Graph* graph) const {
 
 void FoldInterpOutsizeFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   FoldInterpOutsize(graph);

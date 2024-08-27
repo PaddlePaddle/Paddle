@@ -49,7 +49,7 @@ void BindFramework(pybind11::module *m) {
            [](NodeAttr &self, const std::string &key) {
              PADDLE_ENFORCE_EQ(self.attr_store.count(key),
                                1,
-                               phi::errors::InvalidArgument(
+                               ::common::errors::InvalidArgument(
                                    "Didn't find value with key [%d].",
                                    self.attr_store.count(key)));
              return self.attr_store[key];

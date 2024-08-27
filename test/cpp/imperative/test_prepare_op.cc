@@ -58,9 +58,9 @@ static framework::VariableNameMap CreateVarNameMap(
       PADDLE_ENFORCE_EQ(
           var.dispensable(),
           true,
-          phi::errors::NotFound("Variable %s is not dispensable and "
-                                "there are no such var in inputs",
-                                var.name()));
+          common::errors::NotFound("Variable %s is not dispensable and "
+                                   "there are no such var in inputs",
+                                   var.name()));
       result[var.name()] = {};
     } else {
       auto& var_vector = it->second;

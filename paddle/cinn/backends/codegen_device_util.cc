@@ -17,7 +17,7 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_mutator.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(cinn_bucket_compile);
 namespace cinn {
 namespace backends {
@@ -51,7 +51,7 @@ ir::Module CreateSwitchWithBroadcastConditionModule(
       ir::Argument(kernel_args_num, ir::Argument::IO::kInput),
       ir::Argument(tensor_shape_args, ir::Argument::IO::kOutput)};
 
-  const auto &CreateSymbolArgDefines = [&]() -> std::vector<ir::Expr> {
+  const auto &symbolic_arg_define = [&]() -> std::vector<ir::Expr> {
     std::vector<ir::Expr> arg_defs;
     for (const auto &item : symbolic_shape_var_index) {
       ir::Expr call_get_value_in_kernel_args =
@@ -68,13 +68,13 @@ ir::Module CreateSwitchWithBroadcastConditionModule(
       arg_defs.push_back(stmt);
     }
     return arg_defs;
-  };
+  }();
 
   const auto &CreateSwitchFunction =
       [&](std::vector<ir::Argument> func_arguments,
           const std::vector<ir::Expr> &read_args,
           std::string name_extend) -> ir::Expr {
-    std::vector<ir::Expr> body_stmts(CreateSymbolArgDefines());
+    std::vector<ir::Expr> body_stmts(symbolic_arg_define);
     for (int i = 0; i < broadcast_conditions.size(); ++i) {
       ir::Expr callee = ir::Call::Make(Void(),
                                        case_func_names[i] + name_extend,
@@ -113,8 +113,11 @@ ir::Module CreateSwitchWithBroadcastConditionModule(
   module_builder.AddFunctionWithoutOptim(
       infer_shape_func_caller.as_lowered_func_ref());
   // no need cx86 func
-  ir::Expr cx86_func_caller = ir::_LoweredFunc_::Make(
-      wrapper_func_name + "_CX86", host_func_arguments, ir::Expr(), {});
+  ir::Expr cx86_func_caller =
+      ir::_LoweredFunc_::Make(wrapper_func_name + "_CX86",
+                              host_func_arguments,
+                              ir::Block::Make({}),
+                              {});
   module_builder.AddFunctionWithoutOptim(
       cx86_func_caller.as_lowered_func_ref());
   return module_builder.Build();
@@ -137,6 +140,8 @@ struct PredicatePrinter : public ir::IrPrinter {
   void Visit(const ir::GE *x) { PrintBinaryOp("GE", x); }
   void Visit(const ir::And *x) { PrintBinaryOp("AND", x); }
   void Visit(const ir::Or *x) { PrintBinaryOp("OR", x); }
+  void Visit(const ir::Max *x) { PrintBinaryOp("MAX", x); }
+  void Visit(const ir::Min *x) { PrintBinaryOp("MIN", x); }
 
   template <typename IRN>
   void PrintBinaryOp(const std::string &op, const ir::BinaryOpNode<IRN> *x) {
@@ -189,7 +194,11 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
     ir::Expr func, ir::Expr predicate) {
   VLOG(4) << "Process Lowered Func" << func;
   ir::_LoweredFunc_ *func_node = func.as_lowered_func();
-  CHECK(func_node);
+  PADDLE_ENFORCE_NOT_NULL(
+      func_node,
+      ::common::errors::InvalidArgument(
+          "The provided function could not be cast to a lowered function. "
+          "Please ensure the function is valid."));
   if (!func_node->cuda_axis_info.valid()) {
     func_node->cuda_axis_info.set_valid(true);
   }
@@ -211,8 +220,9 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
 #endif
       },
       [&](common::HygonDCUArchHIP) {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "CINN todo: new hardware HygonDCUArchHIP"));
+#ifdef CINN_WITH_HIP
+        shared_mem_bytes = hip::CalculateSharedMemory(func);
+#endif
       });
 
   VLOG(6) << "Add a call node for func_node->name " << func_node->name << "\n"
@@ -232,8 +242,7 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         call_kernel = runtime::intrinsic::call_cuda_kernel;
       },
       [&](common::HygonDCUArchHIP) {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "CINN todo: new hardware HygonDCUArchHIP"));
+        call_kernel = runtime::intrinsic::call_hip_kernel;
       });
   ir::Expr call_extern_api =
       ir::Call::Make(Void(),

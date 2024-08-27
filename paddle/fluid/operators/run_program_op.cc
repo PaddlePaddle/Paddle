@@ -25,13 +25,13 @@ class RunProgramOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInputs("X"),
-        true,
-        phi::errors::NotFound("Input(X) of RunProgramOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"),
+                      true,
+                      common::errors::NotFound(
+                          "Input(X) of RunProgramOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutputs("Out"),
                       true,
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "Output(Out) of RunProgramOp should not be null."));
   }
 
@@ -174,12 +174,12 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInputs("X"),
                       true,
-                      phi::errors::NotFound(
+                      common::errors::NotFound(
                           "Input(X) of RunProgramGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInputs(framework::GradVarName("Out")),
         true,
-        phi::errors::NotFound(
+        common::errors::NotFound(
             "Input(Out@GRAD) of RunProgramGradOp should not be null."));
     // NOTE: The X@GRAD and Params@GRAD may not exist,
     // because they can be set stop_gradient = True

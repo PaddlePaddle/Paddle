@@ -178,9 +178,6 @@ def __bootstrap__():
     if 'Darwin' in sysstr:
         remove_flag_if_exists('use_pinned_memory')
 
-    if os.name == 'nt':
-        remove_flag_if_exists('cpu_deterministic')
-
     if core.is_compiled_with_ipu():
         # Currently we request all ipu available for training and testing
         #   finer control of pod of IPUs will be added later

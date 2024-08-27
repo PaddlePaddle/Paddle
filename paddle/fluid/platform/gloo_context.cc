@@ -33,7 +33,7 @@ void GlooParallelContext::Barrier() {
   PADDLE_ENFORCE_EQ(
       gloo_ptr->IsInitialized(),
       true,
-      phi::errors::Unavailable("Gloo context is not initialized."));
+      common::errors::Unavailable("Gloo context is not initialized."));
   gloo_ptr->Barrier();
 }
 

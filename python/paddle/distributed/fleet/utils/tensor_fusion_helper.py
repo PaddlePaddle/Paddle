@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import itertools
+import os
 import weakref
 from collections import OrderedDict
+from distutils.util import strtobool
 
 import numpy as np
 
@@ -41,9 +43,9 @@ alignment = {
 }
 
 align = {
-    paddle.float16.value: 2,
-    paddle.bfloat16.value: 2,
-    paddle.float32.value: 4,
+    paddle.float16: 2,
+    paddle.bfloat16: 2,
+    paddle.float32: 4,
 }
 
 
@@ -78,9 +80,18 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
     )
 
     var_groups = OrderedDict()
+    group_msg = []
     for group_idx, indices in enumerate(group_indices):
+        group_size = 0
         for index in indices:
             var_groups.setdefault(group_idx, []).append(parameters[index])
+            group_size += np.prod(parameters[index].shape)
+        dtype = parameters[indices[0]].dtype
+        bytes = group_size * core.size_of_dtype(dtype)
+        msg = f"group_{group_idx}: {bytes / 1024 ** 2:.4f} MB, dtype: {dtype!s}"
+        group_msg.append(msg)
+
+    logger.info(f"Tensor Fusion Group Info:\n{group_msg}\n")
     return var_groups
 
 
@@ -150,13 +161,10 @@ def flatten_dense_tensors(
         else:
             param_storage.buffer.main_grad = grad_storage.buffer
         param_storage.buffer.stop_gradient = False
-        outputs = (param_storage,) + outputs
+        outputs = (param_storage, *outputs)
 
     if release_grad:
-        outputs = outputs + (
-            _buffer_size,
-            _param2offset,
-        )
+        outputs = (*outputs, _buffer_size, _param2offset)
 
     return outputs
 
@@ -480,9 +488,9 @@ class FusedCommBuffer:
             )
 
         if self._act == HOOK_ACTION.REDUCE_SCATTER:
-            self._sharding_param_grad_view[
-                param.name
-            ]._grad_buffer = self.grad_storage
+            self._sharding_param_grad_view[param.name]._grad_buffer = (
+                self.grad_storage
+            )
             tmp_var = self._sharding_param_grad_view[
                 param.name
             ]._slice_grad_from_buffer()
@@ -601,6 +609,14 @@ class FusedCommBuffer:
             scale_factor = 1.0 / self._comm_group.nranks
             self.grad_storage.scale_(scale_factor)
 
+        need_check = strtobool(os.getenv('FLAGS_pp_check_naninf', '0'))
+        if need_check:
+            naninf = paddle.isfinite(self.grad_storage).all()
+            if not naninf.item():
+                raise ValueError(
+                    f"Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
+                )
+
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(
                 self.grad_storage,
@@ -658,11 +674,12 @@ def obtain_storage(
     acc_steps=1,
     scale_after_comm=False,
     use_reduce_avg=False,
+    group_size=256 * 1024 * 1024,
 ):
     if len(parameters) < 1:
         return [], []
 
-    var_groups = assign_group_by_size(parameters, group_size=256 * 1024 * 1024)
+    var_groups = assign_group_by_size(parameters, group_size=group_size)
     storage = []
     buffers = []
     for group_idx, parameters in var_groups.items():
@@ -694,25 +711,29 @@ def obtain_storage(
 def filter_params(params, is_fp32, is_distributed, need_clip):
     params = list(
         filter(
-            lambda x: x.is_distributed
-            if is_distributed
-            else (not x.is_distributed),
+            lambda x: (
+                x.is_distributed if is_distributed else (not x.is_distributed)
+            ),
             params,
         )
     )
     params = list(
         filter(
-            lambda x: getattr(x, 'need_clip', True)
-            if need_clip
-            else (not getattr(x, 'need_clip', True)),
+            lambda x: (
+                getattr(x, 'need_clip', True)
+                if need_clip
+                else (not getattr(x, 'need_clip', True))
+            ),
             params,
         )
     )
     params = list(
         filter(
-            lambda x: x.dtype == paddle.float32
-            if is_fp32
-            else x.dtype != paddle.float32,
+            lambda x: (
+                x.dtype == paddle.float32
+                if is_fp32
+                else x.dtype != paddle.float32
+            ),
             params,
         )
     )
@@ -738,6 +759,7 @@ def _fused_parameters_impl(
     scale_after_comm=False,
     apply_decay_param_fun=None,
     use_reduce_avg=False,
+    group_size=256 * 1024 * 1024,
 ):
     param_groups = []
     attrs = []
@@ -789,6 +811,7 @@ def _fused_parameters_impl(
             acc_steps=acc_step,
             scale_after_comm=scale_after_comm,
             use_reduce_avg=use_reduce_avg,
+            group_size=group_size,
         )
         other, other_buffers = obtain_storage(
             other_params,
@@ -803,6 +826,7 @@ def _fused_parameters_impl(
             acc_steps=acc_step,
             scale_after_comm=scale_after_comm,
             use_reduce_avg=use_reduce_avg,
+            group_size=group_size,
         )
         decay_fused += decay
         all_fused += decay
@@ -826,6 +850,7 @@ def fused_parameters(
     group_params=False,
     apply_decay_param_fun=None,
     use_reduce_avg=False,
+    group_size=256 * 1024 * 1024,
 ):
     """
     Fuse gradients. Fuse parameters if be enabled. Prepare for comm overlap if be enabled.
@@ -841,6 +866,7 @@ def fused_parameters(
     :param group_params: the format of the input parameters is param group
     :param apply_decay_param_fun: the function to filter decay param
     :param use_reduce_avg: use reduce_avg comm operation instead of scale and reduce_sum
+    :param group_size: the size of each group, default is 256MB
     :return: param storage if fused, comm buffers if comm overlap, param groups if use group params
     """
     if act is None:
@@ -884,6 +910,7 @@ def fused_parameters(
                 scale_after_comm=scale_after_comm,
                 apply_decay_param_fun=apply_decay_param_fun,
                 use_reduce_avg=use_reduce_avg,
+                group_size=group_size,
             )
             if comm_overlap:
                 comm_buffers.extend(group_all_buffers)
@@ -905,6 +932,7 @@ def fused_parameters(
             scale_after_comm=scale_after_comm,
             apply_decay_param_fun=apply_decay_param_fun,
             use_reduce_avg=use_reduce_avg,
+            group_size=group_size,
         )
 
         return decay_fused, all_fused, all_buffers

@@ -21,7 +21,9 @@ from legacy_test.test_parallel_dygraph_dataparallel import (
 
 class TestParallelClassCenterSample(TestMultipleAccelerators):
     def test_parallel_class_center_sample(self):
-        self.run_mnist_2accelerators('parallel_class_center_sample.py')
+        self.run_mnist_2accelerators(
+            'parallel_class_center_sample.py',
+        )
 
 
 if __name__ == "__main__":

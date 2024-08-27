@@ -24,7 +24,7 @@
 
 #ifndef CINN_NOT_IMPLEMENTED
 #define CINN_NOT_IMPLEMENTED \
-  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
+  PADDLE_THROW(::common::errors::Unimplemented("Not Implemented"));
 #endif
 
 #define CINN_RESULT_SHOULD_USE __attribute__((warn_unused_result))

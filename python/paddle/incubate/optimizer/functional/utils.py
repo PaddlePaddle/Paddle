@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.base.data_feeder import check_type
-from paddle.base.framework import Variable
+from paddle.base.framework import Variable, in_pir_mode
 
 
 def check_input_type(input, name, op_name):
@@ -50,6 +50,24 @@ def check_initial_inverse_hessian_estimate(H0):
             paddle.linalg.cholesky(H0)
         except RuntimeError as error:
             raise_func()
+    elif in_pir_mode():
+        paddle.static.nn.control_flow.Assert(
+            is_symmetric,
+            None,
+            10,
+            name="The initial_inverse_hessian_estimate should be symmetric and positive definite, but the specified is not.",
+        )
+        eigvals = paddle.linalg.eigvals(H0)
+        is_positive = paddle.bitwise_and(
+            paddle.all(eigvals.real() > 0.0), paddle.all(eigvals.imag() == 0.0)
+        )
+        paddle.static.nn.control_flow.Assert(
+            is_positive,
+            None,
+            10,
+            name="The initial_inverse_hessian_estimate should be symmetric and positive definite, but the specified is not.",
+        )
+
     else:
 
         def create_tmp_var(program, name, dtype, shape):

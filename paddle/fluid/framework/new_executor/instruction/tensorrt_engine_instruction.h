@@ -16,8 +16,8 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/tensorrt/engine.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace pir {
 class Operation;
@@ -31,7 +31,7 @@ class ValueExecutionInfo;
 class TensorRTEngineInstruction : public InstructionBase {
  public:
   TensorRTEngineInstruction(size_t id,
-                            const platform::Place& place,
+                            const phi::Place& place,
                             ::pir::Operation* op,
                             const ValueExecutionInfo* value_exec_info);
 
@@ -42,6 +42,7 @@ class TensorRTEngineInstruction : public InstructionBase {
   const std::string& Name() const override { return op_name_; }
 
  private:
+  std::string ReadBinaryFileToString(const std::string& filePath);
   void PrepareDynamicShape();
   void RunTrt();
   void BindInputTensor(const std::string& input_name,

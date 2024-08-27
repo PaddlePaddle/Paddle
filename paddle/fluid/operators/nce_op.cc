@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/nce_op.h"
-
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -45,7 +44,7 @@ class NCEOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           x_dims[0],
           label_dims[0],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The first dimension of Input(Input) and Input(Label) should be "
               "equal in runtime. But received: Input(Input)'s shape = [%s] "
               "with 1st dim =  %d, Input(Label)'s shape = [%s] with 1st dim = "
@@ -61,7 +60,7 @@ class NCEOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Weight")[0],
           ctx->GetInputDim("Bias")[0],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The first dimension of Input(Weight) and Input(Bias) "
               "should be equal. But received: Input(Weight)'s shape = [%s] "
               "with 1st dim = %d, and Input(Bias)'s shape = [%s] with 1st dim "
@@ -78,7 +77,7 @@ class NCEOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         num_total_classes,
         ctx->GetInputDim("Weight")[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of total classes should be equal to the first "
             "dimension of Input(Weight). But received: Attr(num_total_classes) "
             "= %d, Input(Weight)'s shape = [%s] with 1st dim = %d.",
@@ -89,7 +88,7 @@ class NCEOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           custom_neg_classes.size(),
           static_cast<size_t>(num_neg_samples),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The size of Attr(custom_neg_classes) should be equal "
               "to the number of negative samples. But received: "
               "custom_neg_classes.size() = %d, num_neg_samples = %d.",
@@ -321,8 +320,3 @@ REGISTER_OPERATOR(nce_grad,
                   ops::NCEOpGrad,
                   ops::NCEOpGradVarTypeInference,
                   ops::NCEGradOpNoNeedBufferVarInferer);
-
-PD_REGISTER_STRUCT_KERNEL(nce, CPU, ALL_LAYOUT, ops::NCEKernel, float, double) {
-}
-PD_REGISTER_STRUCT_KERNEL(
-    nce_grad, CPU, ALL_LAYOUT, ops::NCEGradKernel, float, double) {}

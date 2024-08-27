@@ -20,9 +20,9 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 namespace paddle {
 namespace framework {
@@ -63,7 +63,7 @@ struct VarHandleBase {
   void AddOutput(OpHandleBase* out, ir::Node* node) {
     if (pending_ops_.find(out) == pending_ops_.end()) {
       PADDLE_ENFORCE_NOT_NULL(out,
-                              platform::errors::InvalidArgument(
+                              common::errors::InvalidArgument(
                                   "The output added to VarHandle %s is NULL.",
                                   this->Node()->Name()));
       pending_ops_.insert(out);
@@ -136,7 +136,7 @@ struct VarHandle : public VarHandleBase {
     PADDLE_ENFORCE_EQ(
         HasEvent(),
         true,
-        platform::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The cuda event is not set, maybe InitCUDA() is not called."));
     return event_;
   }

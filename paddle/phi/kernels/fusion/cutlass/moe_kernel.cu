@@ -31,9 +31,11 @@
 #include "cutlass/gemm/kernel/default_gemm_grouped.h"
 #include "cutlass/numeric_conversion.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/gemm/kernel/gemm_moe_problem_visitor.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_extensions/gemm/kernel/moe_problem_visitor.h"
+#include "paddle/phi/kernels/fusion/cutlass/cutlass_kernels/moe_gemm/fused_moe_cutlass_kernel.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe/default_moe_fc_traits.h"
 #include "paddle/phi/kernels/fusion/cutlass/moe/linear_combination_ft_gelu.h"
-#include "paddle/phi/kernels/fusion/cutlass/moe/moe_cutlass_kernel.h"
 #pragma GCC diagnostic pop
 
 namespace phi {
@@ -199,7 +201,7 @@ void invokeMaskedSoftMax(T* buffer,
   } else {
     PADDLE_ENFORCE_EQ(true,
                       false,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Softmax kernel only support columns in 0 - 4096. "));
   }
 }
@@ -318,7 +320,7 @@ void InitMoeRoutingKernelLauncher(
           ec_route);
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Currently only support `ec_route = True`. "));
   }
 }
@@ -394,13 +396,15 @@ void GenericMoeGemmKernelLauncher(const T* A,
       cutlass::gemm::kernel::MoeFCGemm<typename GemmKernel_::Mma,
                                        typename GemmKernel_::Epilogue,
                                        typename GemmKernel_::ThreadblockSwizzle,
+                                       arch,  // Ensure top level arch is used
+                                              // for dispatch
                                        GemmKernel_::kGroupScheduleMode>;
   using GemmGrouped = cutlass::gemm::device::GemmGrouped<GemmKernel>;
 
   int occupancy = GemmGrouped::maximum_active_blocks();
   const int threadblock_count = multi_processor_count * occupancy;
   if (occupancy == 0) {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "[MoE Runner] GPU lacks the shared memory resources to run GroupedGEMM "
         "kernel"));
   }
@@ -424,21 +428,21 @@ void GenericMoeGemmKernelLauncher(const T* A,
   if (can_implement != cutlass::Status::kSuccess) {
     std::string err_msg = "MoEFC kernel will fail for params. Error: " +
                           std::string(cutlassGetStatusString(can_implement));
-    PADDLE_THROW(phi::errors::Fatal("[MoE Runner] " + err_msg));
+    PADDLE_THROW(common::errors::Fatal("[MoE Runner] " + err_msg));
   }
   auto init_status = gemm.initialize(args);
   if (init_status != cutlass::Status::kSuccess) {
     std::string err_msg =
         "Failed to initialize cutlass variable batched gemm. Error: " +
         std::string(cutlassGetStatusString(init_status));
-    PADDLE_THROW(phi::errors::Fatal("[MoE Runner] " + err_msg));
+    PADDLE_THROW(common::errors::Fatal("[MoE Runner] " + err_msg));
   }
   auto run_status = gemm.run(stream);
   if (run_status != cutlass::Status::kSuccess) {
     std::string err_msg =
         "Failed to run cutlass variable batched gemm. Error: " +
         std::string(cutlassGetStatusString(run_status));
-    PADDLE_THROW(phi::errors::Fatal("[MoE Runner] " + err_msg));
+    PADDLE_THROW(common::errors::Fatal("[MoE Runner] " + err_msg));
   }
 }
 

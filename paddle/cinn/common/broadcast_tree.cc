@@ -18,10 +18,7 @@
 #include <unordered_map>
 
 #include "paddle/common/enforce.h"
-#include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
-
-COMMON_DECLARE_int64(pir_broadcast_tree_limit);
 
 namespace cinn::common {
 
@@ -95,11 +92,12 @@ template <typename DoEachT>
 bool SearchBroadcastImpl(const symbol::Broadcast<symbol::DimExpr>& variadic,
                          const DoEachT& DoEach) {
   const auto& operands = *(variadic.operands);
-  if (operands.size() > 3) {
-    PADDLE_THROW(phi::errors::Fatal("Too many broadcast leaves to compile!"));
-  }
   for (const auto& operand : operands) {
-    CHECK(!operand.isa<int64_t>());
+    PADDLE_ENFORCE_EQ(!operand.isa<int64_t>(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Invalid operand type. Expected operand "
+                          "not to be of type int64_t."));
     if (SearchBroadcast(operand, DoEach)) return true;
   }
   return DoEach(variadic);
@@ -261,8 +259,13 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
       }
     }
     if (lhs_symbol.has_value() && rhs_symbol.has_value()) {
-      CHECK(lhs_symbol != rhs_symbol)
-          << lhs_symbol.value() << " != " << rhs_symbol.value();
+      PADDLE_ENFORCE_NE(lhs_symbol,
+                        rhs_symbol,
+                        ::common::errors::InvalidArgument(
+                            "Symbols should not be equal. "
+                            "Received lhs_symbol = %s, rhs_symbol = %s.",
+                            lhs_symbol.value(),
+                            rhs_symbol.value()));
       ret = symbol::Broadcastable<symbol::DimExpr>{lhs_symbol.value(),
                                                    rhs_symbol.value()};
       return true;
@@ -298,9 +301,12 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
     const auto& operands = broadcast.operands;
     PADDLE_ENFORCE_GE(operands->size(),
                       2,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The operands size should be greater than 2."));
-    CHECK(operands->at(0) != operands->at(1));
+    PADDLE_ENFORCE_NE(
+        operands->at(0),
+        operands->at(1),
+        ::common::errors::InvalidArgument("Operands should not be equal. "));
     ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),
                                                  operands->at(1)};
     return true;
@@ -310,13 +316,13 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
 
 BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves,
                                      int* num_of_leaves) {
+  if (*num_of_leaves > FLAGS_pir_broadcast_tree_limit) {
+    return leaves;
+  }
   std::optional<symbol::Broadcastable<symbol::DimExpr>>
       broadcastable_condition = GetFirstCstrBroadcastable(leaves);
   if (!broadcastable_condition.has_value()) {
     (*num_of_leaves)++;
-    if (*num_of_leaves > FLAGS_pir_broadcast_tree_limit) {
-      PADDLE_THROW(phi::errors::Fatal("Too many broadcast leaves to compile!"));
-    }
     return leaves;
   }
   return ConstructBroadcastBranch(

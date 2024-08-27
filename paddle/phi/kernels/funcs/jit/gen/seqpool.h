@@ -32,7 +32,7 @@ class SeqPoolJitCode : public JitCode {
       : JitCode(code_size, code_ptr), w_(attr.w), type_(attr.type) {
     if (!(type_ == SeqPoolType::kSum || type_ == SeqPoolType::kAvg ||
           type_ == SeqPoolType::kSqrt)) {
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Only supports sum, average and sqrt pool type."));
     }
     fp_h_[0] = 1.f;
@@ -129,7 +129,7 @@ class SeqPoolJitCode : public JitCode {
       PADDLE_ENFORCE_EQ(
           reg_idx,
           rest_used_num_regs,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "All heights of SeqPool should use the same number of registers."
               "It equals to the numbr of rest registers. But use %d registers "
               "and the numbr of rest registers is %d.",

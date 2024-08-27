@@ -39,7 +39,8 @@ class TestBase(unittest.TestCase):
     def set_input_grad(self):
         if self.with_train:
             for i in range(len(self.inputs)):
-                self.inputs[i].stop_gradient = False
+                if self.inputs[i].dtype in [paddle.float32, paddle.float64]:
+                    self.inputs[i].stop_gradient = False
 
     def init(self):
         pass
@@ -96,7 +97,7 @@ class TestBase(unittest.TestCase):
                     st.numpy(), cinn.numpy(), atol=self.atol
                 )
         if self.with_train:
-            if type(st_out) == tuple:
+            if isinstance(st_out, (tuple, list)):
                 st_loss, cinn_loss = 0, 0
                 for i in range(len(st_out)):
                     st_loss += st_out[i].mean()

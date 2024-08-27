@@ -34,7 +34,7 @@ TEST(OpKernelType, ToString) {
   OpKernelType op_kernel_type2(
       DataType::FP16, CUDAPlace(0), DataLayout::kNCHW, LibraryType::kCUDNN);
   ASSERT_EQ(paddle::framework::KernelTypeToString(op_kernel_type2),
-            "{data_type[::paddle::platform::float16]; data_layout[NCHW]; "
+            "{data_type[::phi::dtype::float16]; data_layout[NCHW]; "
             "place[Place(gpu:0)]; library_type[CUDNN]}");
 }
 

@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 
 #include "paddle/common/ddim.h"
 

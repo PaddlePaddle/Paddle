@@ -50,7 +50,7 @@ void LayerNormGradKernel(const Context& ctx,
   if (!is_scale_bias_same_dtype_with_x) {
     PADDLE_ENFORCE_EQ(scale_bias_dtype,
                       phi::CppTypeToDataType<float>::Type(),
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Unsupported data type of Scale and Bias"));
   }
   using XPUType = typename XPUTypeTrait<T>::Type;

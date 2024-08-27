@@ -48,8 +48,8 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
             ->mutable_value()
             ->MoveMemoryHolder());
     var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
-  } else if (var->IsType<LoDTensorArray>()) {
-    auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+  } else if (var->IsType<phi::TensorArray>()) {
+    auto* tensor_arr = var->GetMutable<phi::TensorArray>();
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder());
     }
@@ -75,7 +75,7 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
     // refer to executor.cc to see what old garbage collector does.
     // do nothing, because the sub scope will be deleted by sub-executor.
   } else {
-    PADDLE_THROW(platform::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "The variable(%s) is not supported in eager deletion.",
         framework::ToTypeName(var->Type())));
   }

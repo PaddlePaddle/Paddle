@@ -1010,9 +1010,9 @@ class PsDescBuilder:
                 table_proto.type == the_one_ps_pb2.PS_SPARSE_TABLE
                 and table_proto.common is not None
             ):
-                self.sparse_table_maps[
-                    table_proto.common.table_name
-                ] = table_proto.table_id
+                self.sparse_table_maps[table_proto.common.table_name] = (
+                    table_proto.table_id
+                )
 
         self.service._set(
             self.ps_desc.server_param.downpour_server_param.service_param
@@ -1046,9 +1046,9 @@ class TheOnePSRuntime(RuntimeBase):
         self.context["origin_startup_programs"] = context.get(
             'origin_startup_programs', [context['origin_startup_program']]
         )
-        self.context[
-            'is_heter_ps_mode'
-        ] = self.role_maker._is_heter_parameter_server_mode
+        self.context['is_heter_ps_mode'] = (
+            self.role_maker._is_heter_parameter_server_mode
+        )
         self.is_heter_ps_mode = self.context['is_heter_ps_mode']
         self.context['trainer'] = TrainerRuntimeConfig(
             context['valid_strategy']
@@ -1159,22 +1159,32 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_worker(self, scopes=None):
         worker_desc = self.ps_desc_builder.build_worker_desc()
-        if self.context['use_ps_gpu']:
-            main_program = self.context['loss'].block.program
-            if not main_program._fleet_opt:
-                main_program._fleet_opt = {}
-            main_program._fleet_opt["use_ps_gpu"] = True
-            gpus_env = os.getenv("FLAGS_selected_gpus")
-            gpus_env = [int(s) for s in gpus_env.split(",")]
-            main_program._fleet_opt["worker_places"] = gpus_env
-        if self.context['use_gpu_graph']:
-            main_program._fleet_opt["use_gpu_graph"] = True
+        main_programs = []
+        if (
+            isinstance(self.context['loss'], list)
+            and len(self.context['loss']) > 1
+        ):
+            for i in range(len(self.context['loss'])):
+                main_programs.append(self.context['loss'][i].block.program)
+        else:
+            main_programs.append(self.context['loss'].block.program)
+
+        for i in range(len(main_programs)):
+            if self.context['use_ps_gpu']:
+                if not main_programs[i]._fleet_opt:
+                    main_programs[i]._fleet_opt = {}
+                main_programs[i]._fleet_opt["use_ps_gpu"] = True
+                gpus_env = os.getenv("FLAGS_selected_gpus")
+                gpus_env = [int(s) for s in gpus_env.split(",")]
+                main_programs[i]._fleet_opt["worker_places"] = gpus_env
+            if self.context['use_gpu_graph']:
+                main_programs[i]._fleet_opt["use_gpu_graph"] = True
 
         def sync_strategy_envs():
             kwargs = {}
-            kwargs[
-                "pserver_endpoints"
-            ] = self.role_maker._get_pserver_endpoints()
+            kwargs["pserver_endpoints"] = (
+                self.role_maker._get_pserver_endpoints()
+            )
             kwargs["trainer_id"] = self.role_maker._worker_index()
             return kwargs
 
