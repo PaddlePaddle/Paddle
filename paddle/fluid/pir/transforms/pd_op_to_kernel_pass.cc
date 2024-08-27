@@ -2147,11 +2147,10 @@ void HandleForSpecialOp(
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
   // Generate new op
 
-  op_item->set_attribute("origin_id",
-                         pir::Int64Attribute::get(ctx, op_item->id()));
-
   pir::Operation* op = pir::Operation::Create(
       vec_inputs, op_item->attributes(), op_output_types, op_info);
+  op->set_attribute("origin_id", pir::Int64Attribute::get(ctx, op_item->id()));
+
   block->push_back(op);
   (*map_op_pair)[op_item] = op;
   // only deal with single output
