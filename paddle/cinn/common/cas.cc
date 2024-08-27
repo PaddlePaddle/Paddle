@@ -1541,8 +1541,8 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
                       2U,
                       ::common::errors::InvalidArgument(
                           "left_mul's operands size should be greater than 2"));
-                          
-    if(left_mul->operands().size()>2) return tmp;
+
+    if (left_mul->operands().size() > 2) return tmp;
 
     Expr mul_left = left_mul->operand(0);
     Expr mul_right = left_mul->operand(1);
