@@ -61,7 +61,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   // Type promotion Logic
   if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {
     VLOG(5) << "got different data type, run type protmotion automatically.";
-    LOG(WARNING) << "got different data type, run type protmotion "
+    LOG_FIRST_N(WARNING, 1) << "got different data type, run type protmotion "
                     "automatically, this may cause data type been changed.";
     auto op_name = phi::TransToFluidOpName("multiply");
     auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
@@ -407,7 +407,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   // Type promotion Logic
   if (phi::NeedTypePromotion(x.dtype(), y.dtype())) {
     VLOG(5) << "got different data type, run type protmotion automatically.";
-    LOG(WARNING) << "got different data type, run type protmotion "
+    LOG_FIRST_N(WARNING, 1) << "got different data type, run type protmotion "
                     "automatically, this may cause data type been changed.";
     auto op_name = phi::TransToFluidOpName("multiply");
     auto promotion_type = phi::GetPromoteDtype(op_name, x.dtype(), y.dtype());
