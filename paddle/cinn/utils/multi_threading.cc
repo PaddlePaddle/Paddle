@@ -61,12 +61,7 @@ void parallel_run(const WorkerFuncType& fn,
     int index = -1, counter = 0;
     while ((index = dispatcher.Next()) != -1) {
       VLOG(5) << "Thread-" << tid << " process at index: " << index;
-      try {
-        fn(index);
-      } catch (...) {
-        std::cerr << "inner error" << std::endl;
-        PADDLE_THROW(::common::errors::PermissionDenied("22"));
-      }
+      fn(index);
       ++counter;
     }
     return counter;
@@ -102,16 +97,15 @@ void parallel_run(const WorkerFuncType& fn,
     for (auto&& thread : threads) {
       thread.join();
     }
+  } catch (::common::EnforceNotMet& ex) {
+    LOG(ERROR) << ex.error_str();
+    PADDLE_THROW(
+        ::common::errors::Fatal("Parallel compile Paddle enfore error"));
   } catch (const std::exception& e) {
-    std::stringstream ss;
-    ss << "parallel_run incurs error: " << e.what();
-    std::cerr << "error " << ss.str() << std::endl;
-    // PADDLE_THROW(::common::errors::Fatal(ss.str()));
-    PADDLE_THROW(::common::errors::PermissionDenied("11"));
+    LOG(ERROR) << "Parallel compile error " << e.what();
+    PADDLE_THROW(::common::errors::Fatal("Parallel compile std::exception"));
   } catch (...) {
-    std::cerr << "catch exception ...\n";
-    // PADDLE_THROW(::common::errors::Fatal(ss.str()));
-    PADDLE_THROW(::common::errors::PermissionDenied("22"));
+    PADDLE_THROW(::common::errors::Fatal("Parallel compile unknow exception"));
   }
 }
 
