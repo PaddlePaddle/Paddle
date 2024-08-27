@@ -189,7 +189,9 @@ void IrPrinter::PrintOperationWithNoRegion(Operation* op) {
 
   os << " \"" << op->name() << "\"";
 
-  os << " [id:" << op->id() << "]";
+  if (VLOG_IS_ON(1) || FLAGS_pir_debug) {
+    os << " [id:" << op->id() << "]";
+  }
 
   // TODO(lyk): add API to get operands directly
   PrintOpOperands(op);
