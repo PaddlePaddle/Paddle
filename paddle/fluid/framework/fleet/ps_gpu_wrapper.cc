@@ -120,6 +120,20 @@ void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
 }
 #endif
 
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
+                              const std::string& fs_user,
+                              const std::string& pass_wd,
+                              const std::string& conf) {
+  int ret = afs_handle_.Init(fs_name, fs_user, pass_wd, conf);
+  if (ret != 0) {
+    VLOG(0) << "AFS Init Error";
+    return;
+  }
+  use_afs_api_ = 1;
+}
+#endif
+
 void PSGPUWrapper::add_key_to_local(const std::vector<uint64_t>& vec_data) {
   size_t total_len = vec_data.size();
   size_t len_per_thread = total_len / thread_keys_thread_num_;

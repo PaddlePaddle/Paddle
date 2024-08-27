@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/backends/dynload/afs_api.h"
 
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
+namespace phi {
+namespace dynload {
 
-namespace py = pybind11;
+std::once_flag afsapi_dso_flag;
+void* afsapi_dso_handle = nullptr;
 
-namespace paddle {
-namespace pybind {
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-#ifdef PADDLE_WITH_HETERPS
-void BindPSGPUWrapper(py::module* m);
-void BindAfsWrapper(py::module* m);
-#endif
-}  // namespace pybind
-}  // namespace paddle
+AFSAPI_ROUTINE_EACH(DEFINE_WRAP);
+
+}  // namespace dynload
+}  // namespace phi
