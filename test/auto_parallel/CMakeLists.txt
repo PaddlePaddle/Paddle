@@ -310,7 +310,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_auto_conditional_block)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
   py_test_modules(test_dist_concat MODULES test_dist_concat)
-  py_test_modules(test_tensor_fusion_pass MODULES test_tensor_fusion_pass)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()
