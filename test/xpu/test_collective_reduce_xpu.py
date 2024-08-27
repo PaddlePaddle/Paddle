@@ -34,6 +34,7 @@ class TestCollectiveReduceAPI(TestDistBase):
     )
     def test_reduce(self):
         with paddle.pir_utils.OldIrGuard():
+            paddle.disable_static()
             support_types = get_xpu_op_support_types('c_reduce_sum')
             for dtype in support_types:
                 self.check_with_place(
