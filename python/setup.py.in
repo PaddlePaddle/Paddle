@@ -137,6 +137,7 @@ commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
+with_pip_tensorrt ='%(with_pip_tensorrt)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
@@ -389,6 +390,7 @@ def cinn() -> str:
             'is_tagged': is_tagged(),
             'with_mkl': '@WITH_MKL@',
             'cinn': get_cinn_version(),
+            'with_pip_tensorrt':'@WITH_PIP_TENSORRT@',
             'with_pip_cuda_libraries': '@WITH_PIP_CUDA_LIBRARIES@'})
 
 def get_cinn_config_jsons():
@@ -559,7 +561,7 @@ def get_paddle_extra_install_requirements():
 
         paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[cuda_major_version].split("|")
 
-    if '@TENSORRT_FOUND@' == 'ON':
+    if '@WITH_PIP_TENSORRT@' == 'ON':
         version_str = get_tensorrt_version()
         version_default = int(version_str.split(".")[0])
         if platform.system() =='Linux' or (platform.system()=='Windows' and version_default>=10):
@@ -593,7 +595,7 @@ def get_paddle_extra_install_requirements():
                 )
                 return paddle_cuda_requires, []
 
-    return paddle_cuda_requires
+    return paddle_cuda_requires,paddle_tensorrt_requires
 
 
 
@@ -790,8 +792,9 @@ if sys.version_info >= (3,8):
         setup_requires_tmp+=[setup_requires_i]
     setup_requires = setup_requires_tmp
     if '@WITH_GPU@' == 'ON' and platform.system() in ('Linux', 'Windows') and platform.machine() in ('x86_64', 'AMD64'):
-        paddle_cuda_requires= get_paddle_extra_install_requirements()
+        paddle_cuda_requires,paddle_tensorrt_requires= get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
+        setup_requires += paddle_tensorrt_requires
 
 
 # the prefix is sys.prefix which should always be usr

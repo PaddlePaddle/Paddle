@@ -1796,8 +1796,8 @@ class GPUPSUtil(FleetUtil):
             >>> fleet_util.rank0_print("my log")
     """
 
-    def __init__(self, fs_client=None):
-        super().__init__("pslib")
+    def __init__(self, fs_client=None, mode="pslib"):
+        super().__init__(mode)
         self._afs = fs_client
         # self._afs = fs_client._fs
 
