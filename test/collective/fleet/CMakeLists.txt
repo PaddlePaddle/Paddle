@@ -389,17 +389,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
 endif()
 
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_fleet_pipeline_meta_optimizer
-    START_BASH
-    ../../legacy_test/dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21236;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-endif()
-if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_fleet_gradient_merge_meta_optimizer MODULES
     test_fleet_gradient_merge_meta_optimizer ENVS

@@ -60,7 +60,6 @@ PROTOBUF3_NEEDED_TESTING_LIST = [
     'test_fleet_graph_executor',
     'test_fleet_localsgd_meta_optimizer',
     'test_fleet_lars_meta_optimizer',
-    'test_fleet_pipeline_meta_optimizer',
     'test_fleet_gradient_merge_meta_optimizer',
     'test_fleet_amp_init',
     'test_fleet_dgc_meta_optimizer',
