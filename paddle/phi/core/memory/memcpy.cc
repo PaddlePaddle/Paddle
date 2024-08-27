@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include "paddle/phi/core/memory/memcpy.h"
 
-#include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/utils/test_macros.h"
 
@@ -300,7 +300,7 @@ TEST_API void Copy<phi::CPUPlace, phi::GPUPlace>(phi::CPUPlace dst_place,
           << dst_place << " by stream(" << stream << ")";
   if (stream) {
     phi::RecordEvent record_event(
-        "GpuMemcpyAsync:GPU->CPU", platform::TracerEventType::UserDefined, 1);
+        "GpuMemcpyAsync:GPU->CPU", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpyAsync(dst,
                              src,
@@ -316,7 +316,7 @@ TEST_API void Copy<phi::CPUPlace, phi::GPUPlace>(phi::CPUPlace dst_place,
 #endif
   } else {
     phi::RecordEvent record_event(
-        "GpuMemcpySync:GPU->CPU", platform::TracerEventType::UserDefined, 1);
+        "GpuMemcpySync:GPU->CPU", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToHost);
 #else
@@ -343,7 +343,7 @@ TEST_API void Copy<phi::GPUPlace, phi::CPUPlace>(phi::GPUPlace dst_place,
           << dst_place << " by stream(" << stream << ")";
   if (stream) {
     phi::RecordEvent record_event(
-        "GpuMemcpyAsync:CPU->GPU", platform::TracerEventType::UserDefined, 1);
+        "GpuMemcpyAsync:CPU->GPU", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpyAsync(dst,
                              src,
@@ -359,7 +359,7 @@ TEST_API void Copy<phi::GPUPlace, phi::CPUPlace>(phi::GPUPlace dst_place,
 #endif
   } else {
     phi::RecordEvent record_event(
-        "GpuMemcpySync:CPU->GPU", platform::TracerEventType::UserDefined, 1);
+        "GpuMemcpySync:CPU->GPU", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyHostToDevice);
 #else
@@ -387,7 +387,7 @@ void Copy<phi::GPUPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
     platform::SetDeviceId(src_place.device);
     if (stream) {
       phi::RecordEvent record_event("GpuMemcpyAsync(same_gpu):GPU->GPU",
-                                    platform::TracerEventType::UserDefined,
+                                    phi::TracerEventType::UserDefined,
                                     1);
 #ifdef PADDLE_WITH_HIP
       platform::GpuMemcpyAsync(dst,
@@ -404,7 +404,7 @@ void Copy<phi::GPUPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
 #endif
     } else {
       phi::RecordEvent record_event("GpuMemcpySync(same_gpu):GPU->GPU",
-                                    platform::TracerEventType::UserDefined,
+                                    phi::TracerEventType::UserDefined,
                                     1);
 #ifdef PADDLE_WITH_HIP
       platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToDevice);
@@ -414,9 +414,8 @@ void Copy<phi::GPUPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
     }
   } else {
     if (stream) {
-      phi::RecordEvent record_event("GpuMemcpyPeerAsync:GPU->GPU",
-                                    platform::TracerEventType::UserDefined,
-                                    1);
+      phi::RecordEvent record_event(
+          "GpuMemcpyPeerAsync:GPU->GPU", phi::TracerEventType::UserDefined, 1);
       platform::GpuMemcpyPeerAsync(dst,
                                    dst_place.device,
                                    src,
@@ -424,9 +423,8 @@ void Copy<phi::GPUPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
                                    num,
                                    reinterpret_cast<gpuStream_t>(stream));
     } else {
-      phi::RecordEvent record_event("GpuMemcpyPeerSync:GPU->GPU",
-                                    platform::TracerEventType::UserDefined,
-                                    1);
+      phi::RecordEvent record_event(
+          "GpuMemcpyPeerSync:GPU->GPU", phi::TracerEventType::UserDefined, 1);
       platform::GpuMemcpyPeerSync(
           dst, dst_place.device, src, src_place.device, num);
     }
@@ -483,9 +481,8 @@ void Copy<phi::GPUPinnedPlace, phi::GPUPlace>(phi::GPUPinnedPlace dst_place,
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by stream(" << stream << ")";
   if (stream) {
-    phi::RecordEvent record_event("GpuMemcpyAsync:GPU->CUDAPinned",
-                                  platform::TracerEventType::UserDefined,
-                                  1);
+    phi::RecordEvent record_event(
+        "GpuMemcpyAsync:GPU->CUDAPinned", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpyAsync(dst,
                              src,
@@ -500,9 +497,8 @@ void Copy<phi::GPUPinnedPlace, phi::GPUPlace>(phi::GPUPinnedPlace dst_place,
                              reinterpret_cast<gpuStream_t>(stream));
 #endif
   } else {
-    phi::RecordEvent record_event("GpuMemcpySync:GPU->CUDAPinned",
-                                  platform::TracerEventType::UserDefined,
-                                  1);
+    phi::RecordEvent record_event(
+        "GpuMemcpySync:GPU->CUDAPinned", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyDeviceToHost);
 #else
@@ -524,9 +520,8 @@ void Copy<phi::GPUPlace, phi::GPUPinnedPlace>(phi::GPUPlace dst_place,
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place << " by stream(" << stream << ")";
   if (stream) {
-    phi::RecordEvent record_event("GpuMemcpyAsync:CUDAPinned->GPU",
-                                  platform::TracerEventType::UserDefined,
-                                  1);
+    phi::RecordEvent record_event(
+        "GpuMemcpyAsync:CUDAPinned->GPU", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpyAsync(dst,
                              src,
@@ -541,9 +536,8 @@ void Copy<phi::GPUPlace, phi::GPUPinnedPlace>(phi::GPUPlace dst_place,
                              reinterpret_cast<gpuStream_t>(stream));
 #endif
   } else {
-    phi::RecordEvent record_event("GpuMemcpySync:CUDAPinned->GPU",
-                                  platform::TracerEventType::UserDefined,
-                                  1);
+    phi::RecordEvent record_event(
+        "GpuMemcpySync:CUDAPinned->GPU", phi::TracerEventType::UserDefined, 1);
 #ifdef PADDLE_WITH_HIP
     platform::GpuMemcpySync(dst, src, num, hipMemcpyHostToDevice);
 #else
