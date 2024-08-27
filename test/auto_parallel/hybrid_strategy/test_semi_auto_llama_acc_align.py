@@ -20,7 +20,9 @@ import collective.test_communication_api_base as test_base
 class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=8, timeout=200, nnode=1)
-        self._default_envs = {
+
+    def test_simple_net_hybrid_strategy_acc(self):
+        _default_envs = {
             "dp": "2",
             "mp": "2",
             "pp": "2",
@@ -29,13 +31,33 @@ class TestSemiAutoParallelLlamaACCTest(test_base.CommunicationTestDistBase):
             "FLAGS_cudnn_deterministic": "1",
             "FLAGS_enable_pir_api": "1",
         }
-        self._changeable_envs = {
+        _changeable_envs = {
             "backend": ["gpu"],
         }
-
-    def test_simple_net_hybrid_strategy_acc(self):
         envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
+            _default_envs, _changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_llama_acc_align.py",
+                user_defined_envs=envs,
+            )
+
+    def test_simple_net_hybrid_strategy_acc_grad_merge(self):
+        _default_envs = {
+            "dp": "2",
+            "mp": "2",
+            "pp": "2",
+            "acc_step": "2",
+            "FLAGS_embedding_deterministic": "1",
+            "FLAGS_cudnn_deterministic": "1",
+            "FLAGS_enable_pir_api": "1",
+        }
+        _changeable_envs = {
+            "backend": ["gpu"],
+        }
+        envs_list = test_base.gen_product_envs_list(
+            _default_envs, _changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(

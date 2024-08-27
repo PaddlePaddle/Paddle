@@ -672,7 +672,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             elif param in attr_names:
                 param_code = param_code + param + ", "
             elif isinstance(param, str):
-                param_code = param_code + "\"" + param + "\", "
+                param_code = f'{param_code}"{param}", '
             elif isinstance(param, bool):
                 param_code = param_code + str(param).lower() + ", "
             else:

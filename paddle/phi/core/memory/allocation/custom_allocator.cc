@@ -14,9 +14,9 @@
 
 #include "paddle/phi/core/memory/allocation/custom_allocator.h"
 
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler/trace_event.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/profiler.h"
 
 COMMON_DECLARE_bool(custom_device_mem_record);
@@ -43,7 +43,7 @@ void CustomAllocator::FreeImpl(phi::Allocation* allocation) {
     platform::RecordMemEvent(allocation->ptr(),
                              place_,
                              allocation->size(),
-                             platform::TracerMemEventType::ReservedFree);
+                             phi::TracerMemEventType::ReservedFree);
   }
   delete allocation;
 }
@@ -57,7 +57,7 @@ phi::Allocation* CustomAllocator::AllocateImpl(size_t size) {
     if (FLAGS_custom_device_mem_record) {
       DEVICE_MEMORY_STAT_UPDATE(Reserved, place_.GetDeviceId(), size);
       platform::RecordMemEvent(
-          ptr, place_, size, platform::TracerMemEventType::ReservedAllocate);
+          ptr, place_, size, phi::TracerMemEventType::ReservedAllocate);
     }
     return new Allocation(ptr, size, place_);
   }

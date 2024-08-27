@@ -65,6 +65,10 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.gelu",
     "pd_op.hardswish",
     "pd_op.reduce_as",
+    "pd_op.max",
+    "pd_op.stack",
+    "pd_op.expand",
+    "pd_op.pad",
 ]
 
 
@@ -605,8 +609,8 @@ def get_grad_semantic_info(op):
         "pd_op.while",
         "pd_op.pylayer",
         "cf.tuple_push",
-        "dist_op.dtensor_from_local_tensors",
-        "dist_op.local_tensors_from_dtensor",
+        "dist_op.moe_global_mesh_tensor",
+        "dist_op.moe_sub_mesh_tensors",
     ]:
         grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]
         if op.name() == "pd_op.if":

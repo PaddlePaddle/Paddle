@@ -11,10 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License
+from __future__ import annotations
 
 import copy
+from typing import TYPE_CHECKING
 
 from . import constants
+
+if TYPE_CHECKING:
+    from paddle._typing.dtype_like import _DTypeLiteral
 
 
 class BaseConfig:
@@ -60,7 +65,7 @@ class BaseConfig:
         result_dict = self.to_dict()
         string = "{"
         for k, v in result_dict.items():
-            string += f"\"{k}\":\"{v}\","
+            string += f'"{k}":"{v}",'
         return string + "}"
 
     def __deepcopy__(self, memo):
@@ -89,24 +94,53 @@ class FusedLinearPromotionConfig(BaseConfig):
 
 
 class AMPConfig(BaseConfig):
+    enable: bool
+    dtype: _DTypeLiteral
+    level: str
+    init_loss_scaling: float
+    incr_every_n_steps: int
+    decr_every_n_nan_or_inf: int
+    incr_ratio: float
+    decr_ratio: float
+    use_dynamic_loss_scaling: bool
+    custom_white_list: list[str]
+    custom_black_list: list[str]
+    custom_black_varnames: list[str]
+    use_fp16_guard: bool
+    use_bf16_guard: bool
+    use_master_grad: bool
+
     def __init__(self, config_dict=None):
         category = constants.AMP
         super().__init__(category, config_dict)
 
 
 class ShardingConfig(BaseConfig):
+    enable: bool
+    stage: int
+    degree: int
+
     def __init__(self, config_dict=None):
         category = constants.SHARDING
         super().__init__(category, config_dict)
 
 
 class GradientMergeConfig(BaseConfig):
+    enable: bool
+    k_steps: int
+    avg: bool
+
     def __init__(self, config_dict=None):
         category = constants.GRADIENT_MERGE
         super().__init__(category, config_dict)
 
 
 class PipelineConfig(BaseConfig):
+    enable: bool
+    schedule_mode: str
+    micro_batch_size: int
+    accumulate_steps: int
+
     def __init__(self, config_dict=None):
         category = constants.PIPELINE
         super().__init__(category, config_dict)

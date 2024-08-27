@@ -12,7 +12,7 @@ limitations under the License. */
 
 #include <cstring>
 
-#include "paddle/fluid/platform/profiler/extra_info.h"
+#include "paddle/phi/core/platform/profiler/extra_info.h"
 
 namespace paddle::platform {
 
