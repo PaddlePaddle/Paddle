@@ -3445,12 +3445,140 @@ bool Unsqueeze_OpInferSymbolicShape(
   return UnsqueezeOpInferSymbolicShape(op, infer_context);
 }
 
-// bool UnfoldOpInferSymbolicShape(pir::Operation *op,
-//                                 pir::InferSymbolicShapeContext
-//                                 *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UnfoldOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  auto in_shapes = x_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      in_shapes.size(),
+      4UL,
+      common::errors::InvalidArgument(
+          "Input should be 4-D tensor of format [N, C, H, W], but get %u",
+          in_shapes.size()));
+
+  std::vector<int> kernel_sizes =
+      paddle::dialect::details::GetVectorAttr<int>(op, "kernel_sizes");
+  std::vector<int> strides =
+      paddle::dialect::details::GetVectorAttr<int>(op, "strides");
+  std::vector<int> paddings =
+      paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
+  std::vector<int> dilations =
+      paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
+
+  PADDLE_ENFORCE_EQ(
+      in_shapes.size() - kernel_sizes.size(),
+      2UL,
+      common::errors::InvalidArgument(
+          "The dims of X should be larger than that of kernel_sizes "
+          "by a number of 2, due to the batch size and input channel dim. "
+          "But received dims(X:%u) - dims(kernel_sizes:%u) != 2",
+          in_shapes.size(),
+          kernel_sizes.size()));
+  PADDLE_ENFORCE_EQ(
+      strides.size(),
+      kernel_sizes.size(),
+      common::errors::InvalidArgument(
+          "The dims of strides should be the same with that of kernel_sizes. "
+          "But received dims(strides: %u) != dims(kernel_sizes: %u).",
+          strides.size(),
+          kernel_sizes.size()));
+  PADDLE_ENFORCE_EQ(
+      paddings.size(),
+      2 * strides.size(),
+      common::errors::InvalidArgument(
+          "The dims of paddings should be 2 times of that of strides. "
+          "But received dims(paddings: %u) != 2*dims(strides: %u).",
+          paddings.size(),
+          strides.size()));
+  PADDLE_ENFORCE_EQ(
+      strides.size(),
+      dilations.size(),
+      common::errors::InvalidArgument(
+          "The dims of strides should be the same with that of dilations. "
+          "But received dims(strides: %u) != dims(dilations: %u).",
+          strides.size(),
+          dilations.size()));
+
+  PADDLE_ENFORCE_GT(kernel_sizes[0],
+                    0,
+                    common::errors::InvalidArgument(
+                        "The `kernel_sizes` should be greater than zero, "
+                        "but received kernel_height: %d kernel_width: %d.",
+                        kernel_sizes[0],
+                        kernel_sizes[1]));
+  PADDLE_ENFORCE_GT(kernel_sizes[1],
+                    0,
+                    common::errors::InvalidArgument(
+                        "The `kernel_sizes` should be greater than zero, "
+                        "but received kernel_height: %d kernel_width: %d.",
+                        kernel_sizes[0],
+                        kernel_sizes[1]));
+
+  PADDLE_ENFORCE_GT(strides[0],
+                    0,
+                    common::errors::InvalidArgument(
+                        "The `strides` should be greater than zero, "
+                        "but received strides_height: %d strides_width: %d.",
+                        strides[0],
+                        strides[1]));
+  PADDLE_ENFORCE_GT(strides[1],
+                    0,
+                    common::errors::InvalidArgument(
+                        "The `strides` should be greater than zero, "
+                        "but received strides_height: %d strides_width: %d.",
+                        strides[0],
+                        strides[1]));
+
+  PADDLE_ENFORCE_GT(
+      dilations[0],
+      0,
+      common::errors::InvalidArgument(
+          "The `dilations` should be greater than zero, "
+          "but received dilations_height: %d dilations_width: %d.",
+          dilations[0],
+          dilations[1]));
+  PADDLE_ENFORCE_GT(
+      dilations[1],
+      0,
+      common::errors::InvalidArgument(
+          "The `dilations` should be greater than zero, "
+          "but received dilations_height: %d dilations_width: %d.",
+          dilations[0],
+          dilations[1]));
+
+  std::vector<symbol::DimExpr> out_shapes;
+
+  out_shapes.push_back(in_shapes[0]);
+  out_shapes.push_back(in_shapes[1] * kernel_sizes[0] * kernel_sizes[1]);
+
+  int output_height =
+      phi::funcs::CalcOutputSize(in_shapes[2],
+                                 kernel_sizes[0],
+                                 dilations[0],
+                                 paddings[0],
+                                 paddings[2],
+                                 strides[0]);
+  int output_width =
+      phi::funcs::CalcOutputSize(in_shapes[3],
+                                 kernel_sizes[1],
+                                 dilations[1],
+                                 paddings[1],
+                                 paddings[3],
+                                 strides[1]);
+  int output_col_length = output_height * output_width;
+
+  out_shapes.push_back(symbol::DimExpr(output_col_length));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          out_shapes)});
+
+  return true;
+}
 
 bool UnstackOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
