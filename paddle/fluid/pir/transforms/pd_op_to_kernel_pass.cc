@@ -2147,10 +2147,11 @@ void HandleForSpecialOp(
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_item->name());
   // Generate new op
 
-  auto& op_attribute = op_item->attributes().emplace("origin_id", pir::Int64Attribute::get(ctx, op_item->id()));
+  op_item->set_attribute("origin_id",
+                         pir::Int64Attribute::get(ctx, op_item->id()));
 
   pir::Operation* op = pir::Operation::Create(
-      vec_inputs, op_attribute, op_output_types, op_info);
+      vec_inputs, op_item->attributes(), op_output_types, op_info);
   block->push_back(op);
   (*map_op_pair)[op_item] = op;
   // only deal with single output
@@ -2320,7 +2321,8 @@ void HandleForCustomOp(
     op_attribute.emplace("is_inplace", pir::BoolAttribute::get(ctx, true));
   }
 
-    op_attribute.emplace("origin_id", pir::Int64Attribute::get(ctx, op_item->id()));
+  op_attribute.emplace("origin_id",
+                       pir::Int64Attribute::get(ctx, op_item->id()));
 
   VLOG(6) << "Lower custom op: " << op_item->name()
           << " to : " << CustomKernelOp::name();
@@ -3008,7 +3010,8 @@ pir::Operation* BuildKernelOp(
     op_attribute.emplace("is_inplace", pir::BoolAttribute::get(ctx, true));
   }
 
-    op_attribute.emplace("origin_id", pir::Int64Attribute::get(ctx, op_item->id()));
+  op_attribute.emplace("origin_id",
+                       pir::Int64Attribute::get(ctx, op_item->id()));
 
   pir::Operation* op = nullptr;
 #ifdef PADDLE_WITH_DNNL
