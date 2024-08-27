@@ -222,8 +222,14 @@ def list_no_arguments():
     return l1[0] + l2[0]
 
 
-def list_unpack_range(x):
+def list_extend_range(x):
     return [1, *range(0, len(x.shape))]
+
+
+def list_extend_dict():
+    l1 = []
+    l1.extend({1: 2, 2: 3, 3: 4})
+    return l1
 
 
 class TestListBasic(TestCaseBase):
@@ -326,8 +332,11 @@ class TestListMethods(TestCaseBase):
     def test_list_noargs(self):
         self.assert_results(list_no_arguments)
 
-    def test_list_unpack_range(self):
-        self.assert_results(list_unpack_range, paddle.to_tensor([1, 2]))
+    def test_list_extend_range(self):
+        self.assert_results(list_extend_range, paddle.to_tensor([1, 2]))
+
+    def test_list_extend_dist(self):
+        self.assert_results(list_extend_dict)
 
 
 if __name__ == "__main__":
