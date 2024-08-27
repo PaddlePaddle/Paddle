@@ -490,6 +490,24 @@ bool Cast_OpInferSymbolicShape(pir::Operation *op,
   return CastOpInferSymbolicShape(op, infer_context);
 }
 
+bool CheckNumericsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &tensor_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+
+  symbol::TensorShapeOrDataDimExprs stats_shape(
+      std::vector<symbol::DimExpr>{symbol::DimExpr(3)});
+  symbol::TensorShapeOrDataDimExprs values_shape(
+      std::vector<symbol::DimExpr>{symbol::DimExpr(3)});
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::ShapeOrDataDimExprs{stats_shape});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1), symbol::ShapeOrDataDimExprs{values_shape});
+
+  return true;
+}
+
 bool CholeskyOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
