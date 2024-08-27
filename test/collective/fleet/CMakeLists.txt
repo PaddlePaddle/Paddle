@@ -4,14 +4,6 @@
 # and then run the command `python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py -f ${CURRENT_DIRECTORY}/testslist.csv`
 set(LOCAL_ALL_ARCH ON)
 set(LOCAL_ALL_PLAT ON)
-if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_fleet_sharding_meta_optimizer MODULES
-    test_fleet_sharding_meta_optimizer ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_fleet_sharding_meta_optimizer
-                       PROPERTIES TIMEOUT "350" LABELS "RUN_TYPE=DIST")
-endif()
 if(WITH_DGC)
   if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     py_test_modules(

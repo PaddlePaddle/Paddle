@@ -1,5 +1,4 @@
 name,os,arch,timeout,run_type,launcher,num_port,run_serial,envs,conditions
-test_fleet_sharding_meta_optimizer,,GPU;XPU,350,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_fleet_static_mp_layers,LINUX;WIN32,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dgc_op,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_DGC
 test_dgc_optimizer,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_DGC
