@@ -527,11 +527,6 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_sparse_embedding PROPERTIES TIMEOUT
                                                                          "200")
 endif()
-if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_fleet_amp_meta_optimizer MODULES test_fleet_amp_meta_optimizer ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-endif()
 if(WITH_NCCL)
   if(${NCCL_VERSION} VERSION_GREATER_EQUAL 2212)
     if((WITH_GPU) AND LOCAL_ALL_PLAT)
