@@ -2110,12 +2110,60 @@ bool PixelShuffleOpInferSymbolicShape(
   return true;
 }
 
-// bool PixelUnshuffleOpInferSymbolicShape(pir::Operation *op,
-//                                         pir::InferSymbolicShapeContext
-//                                         *infer_context) {
-//   // pass
-//   return true;
-// }
+bool PixelUnshuffleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+
+  const pir::AttributeMap attributes = op->attributes();
+  const int downscale_factor =
+      attributes.at("downscale_factor").dyn_cast<pir::Int32Attribute>().data();
+  const std::string &data_format =
+      op->attribute<pir::StrAttribute>("data_format").AsString();
+
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Input should be a 4-D tensor of format [N, C, H, W] "
+                        "or [N, H, W, C], but got %u.",
+                        x_shape.size()));
+
+  PADDLE_ENFORCE_GE(downscale_factor,
+                    1,
+                    common::errors::InvalidArgument(
+                        "downscale_factor should be larger than 0."));
+
+  PADDLE_ENFORCE_EQ(
+      data_format == "NCHW" || data_format == "NHWC",
+      true,
+      common::errors::InvalidArgument("data_format must be one of NCHW and "
+                                      "NHWC. But received data_format: %s",
+                                      data_format));
+
+  // the number of height and width should be able to be divided by the
+  // upscale_factor ^ 2.
+  // TODO(Lans1ot, Buaa): add constrain for the height, width and upscale_factor
+
+  const bool channel_last = (data_format == "NHWC");
+
+  std::vector<symbol::DimExpr> output_shape = x_shape;
+  const symbol::DimExpr downscale_factor_(downscale_factor);
+  output_shape[0] = x_shape[0];
+  if (!channel_last) {
+    output_shape[1] = x_shape[1] * (downscale_factor_ * downscale_factor_);
+    output_shape[2] = x_shape[2] / downscale_factor_;
+    output_shape[3] = x_shape[3] / downscale_factor_;
+  } else {
+    output_shape[1] = x_shape[1] / downscale_factor_;
+    output_shape[2] = x_shape[2] / downscale_factor_;
+    output_shape[3] = x_shape[3] * (downscale_factor_ * downscale_factor_);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0), symbol::TensorShapeOrDataDimExprs(output_shape));
+
+  return true;
+}
 
 bool PNormOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
