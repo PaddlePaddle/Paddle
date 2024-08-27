@@ -71,7 +71,7 @@ void CConcatKernel(const Context& dev_ctx,
                     common::errors::Unavailable(
                         "NCCLCommContext is nullptr, collective op should "
                         "has ring_id attr."));
-  stream = comm_ctx->GetStream();
+  stream = dev_ctx.stream();
   comm_ctx->AllGather(&temp_out, *x, stream);
 
   std::vector<phi::DenseTensor> inputs;
