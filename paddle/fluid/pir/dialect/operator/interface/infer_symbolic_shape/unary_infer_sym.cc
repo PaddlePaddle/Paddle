@@ -3554,28 +3554,26 @@ bool UnfoldOpInferSymbolicShape(pir::Operation *op,
   out_shapes.push_back(in_shapes[0]);
   out_shapes.push_back(in_shapes[1] * kernel_sizes[0] * kernel_sizes[1]);
 
-  int output_height =
-      phi::funcs::CalcOutputSize(in_shapes[2],
-                                 kernel_sizes[0],
-                                 dilations[0],
-                                 paddings[0],
-                                 paddings[2],
-                                 strides[0]);
-  int output_width =
-      phi::funcs::CalcOutputSize(in_shapes[3],
-                                 kernel_sizes[1],
-                                 dilations[1],
-                                 paddings[1],
-                                 paddings[3],
-                                 strides[1]);
+  int output_height = phi::funcs::CalcOutputSize(in_shapes[2],
+                                                 kernel_sizes[0],
+                                                 dilations[0],
+                                                 paddings[0],
+                                                 paddings[2],
+                                                 strides[0]);
+  int output_width = phi::funcs::CalcOutputSize(in_shapes[3],
+                                                kernel_sizes[1],
+                                                dilations[1],
+                                                paddings[1],
+                                                paddings[3],
+                                                strides[1]);
   int output_col_length = output_height * output_width;
 
   out_shapes.push_back(symbol::DimExpr(output_col_length));
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
-          out_shapes)});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shapes)});
 
   return true;
 }
