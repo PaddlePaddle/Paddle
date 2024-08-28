@@ -2404,9 +2404,10 @@ bool MultiplexOpInferSymbolicShape(
                                       "than one candidate input tensors."));
 
   size_t num_inputs = inputs_shape_or_data_list.size();
-  std::vector<symbol::DimExpr> in_shape = inputs_shape_or_data_list[0].shape();
+  std::vector<symbol::DimExpr> input_shape =
+      inputs_shape_or_data_list[0].shape();
   PADDLE_ENFORCE_GE(
-      in_shape.size(),
+      input_shape.size(),
       2,
       common::errors::InvalidArgument(
           "The rank of candidate tensors must be not less than 2."));
@@ -2414,27 +2415,29 @@ bool MultiplexOpInferSymbolicShape(
   for (size_t i = 1; i < num_inputs; ++i) {
     std::vector<symbol::DimExpr> shape = inputs_shape_or_data_list[i].shape();
 
-    PADDLE_ENFORCE_EQ(in_shape.size(),
+    PADDLE_ENFORCE_EQ(input_shape.size(),
                       shape.size(),
                       common::errors::PreconditionNotMet(
                           "All the candidate tensors must have the same dim."));
 
-    for (size_t j = 0; j < in_shape.size(); ++j)
-      infer_context->AddEqualCstr(in_shape[j], shape[j]);
+    for (size_t j = 0; j < input_shape.size(); ++j)
+      infer_context->AddEqualCstr(input_shape[j], shape[j]);
+    // all of the input Tensors should have the same shape
   }
 
-  if (in_shape[0].isa<int64_t>() &&
+  if (input_shape[0].isa<int64_t>() &&
       ids_shape_or_data.shape()[0].isa<int64_t>()) {
-    PADDLE_ENFORCE_GE(in_shape[0].dyn_cast<int64_t>(),
+    PADDLE_ENFORCE_GE(input_shape[0].dyn_cast<int64_t>(),
                       ids_shape_or_data.shape()[0].dyn_cast<int64_t>(),
                       common::errors::InvalidArgument(
                           "The 2nd-dim of input cannot be smaller than "
                           "batchSize of the index tensor."));
   }
-  in_shape[0] = ids_shape_or_data.shape()[0];
+  std::vector<symbol::DimExpr> &output_shape = input_shape;
+  output_shape[0] = ids_shape_or_data.shape()[0];
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrData{symbol::TensorShapeOrDataDimExprs(in_shape)});
+      symbol::ShapeOrData{symbol::TensorShapeOrDataDimExprs(output_shape)});
   return true;
 }
 bool YoloLossOpInferSymbolicShape(
