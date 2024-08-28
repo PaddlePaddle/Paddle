@@ -2542,10 +2542,10 @@ bool SetValueWithTensor_OpInferSymbolicShape(
 
 bool SquaredL2NormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  auto dtype = infer_context->GetDataTypeForValue(op->operand_source(0));
+  auto dtype = infer_context->GetShapeOrDataForValue(op->operand_source(0));
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::ShapeOrDataDimExprs({symbol::DimExpr(1)}));
-  infer_context->SetDataTypeForValue(op->result(0), dtype);
+  infer_context->SetShapeOrDataForValue(op->result(0), dtype);
   return true;
 }
 
@@ -2563,8 +2563,7 @@ bool TemporalShiftOpInferSymbolicShape(
                                       x_dims.size()));
 
   int seg_num = op->attribute<pir::Int32Attribute>("seg_num").data();
-  float shift_ratio =
-      op->attribute<pir::Float32Attribute>("shift_ratio").data();
+  float shift_ratio = op->attribute<pir::FloatAttribute>("shift_ratio").data();
 
   PADDLE_ENFORCE_GT(
       seg_num,
@@ -2583,10 +2582,6 @@ bool TemporalShiftOpInferSymbolicShape(
       common::errors::InvalidArgument(
           "Attr(shift_ratio) should be less than 0.5, but received %f",
           shift_ratio));
-
-  if (op->config().is_runtime) {
-    infer_context->AddEqualCstr(x_dims[0] % seg_num, 0);
-  }
 
   infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
 
