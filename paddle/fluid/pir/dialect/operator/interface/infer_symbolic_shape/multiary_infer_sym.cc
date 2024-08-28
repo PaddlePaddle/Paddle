@@ -1414,10 +1414,11 @@ bool GraphKhopSamplerOpInferSymbolicShape(
   const symbol::ShapeOrDataDimExprs &eids_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
 
-  auto row_shape = row_shape_or_data.shape();
-  auto col_ptr_shape = col_ptr_shape_or_data.shape();
-  auto x_shape = x_shape_or_data.shape();
-  auto eids_shape = eids_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &row_shape = row_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &col_ptr_shape =
+      col_ptr_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &eids_shape = eids_shape_or_data.shape();
 
   auto GKSShapeCheck = [&](const std::vector<symbol::DimExpr> &shape,
                            const std::string &tensor_name) {
@@ -1487,12 +1488,76 @@ bool GraphKhopSamplerOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool GraphSampleNeighborsOpInferSymbolicShape(pir::Operation *op,
-//                                               pir::InferSymbolicShapeContext
-//                                               *infer_context) {
-//   // pass
-//   return true;
-// }
+bool GraphSampleNeighborsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &row_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &col_ptr_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const symbol::ShapeOrDataDimExprs &eids_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const symbol::ShapeOrDataDimExprs &perm_buffer_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+
+  const std::vector<symbol::DimExpr> &row_shape = row_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &col_ptr_shape =
+      col_ptr_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &eids_shape = eids_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &perm_buffer_shape =
+      perm_buffer_shape_or_data.shape();
+
+  auto GSNShapeCheck = [&](const std::vector<symbol::DimExpr> &shape,
+                           const std::string &tensor_name) {
+    if (shape.size() == 2)
+      infer_context->AddEqualCstr(shape[1], symbol::DimExpr{1});
+    else
+      PADDLE_ENFORCE_EQ(
+          shape.size(),
+          1,
+          common::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              shape.size()));
+  };
+
+  GSNShapeCheck(row_shape, "Row");
+  GSNShapeCheck(col_ptr_shape, "Col_Ptr");
+  GSNShapeCheck(x_shape, "X");
+
+  bool return_eids = op->attribute<pir::BoolAttribute>("return_eids").data();
+  bool flag_perm_buffer =
+      op->attribute<pir::BoolAttribute>("flag_perm_buffer").data();
+
+  if (return_eids) {
+    GSNShapeCheck(eids_shape, "Eids");
+    symbol::DimExpr out_unknown_2 = infer_context->GetNextSymName();
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs({out_unknown_2})});
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(2));
+  }
+
+  if (flag_perm_buffer) {
+    GSNShapeCheck(perm_buffer_shape, "Perm_Buffer");
+  }
+
+  symbol::DimExpr out_unknown_0 = infer_context->GetNextSymName();
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({out_unknown_0})});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({x_shape[0]})});
+
+  return true;
+}
 
 // bool GruOpInferSymbolicShape(pir::Operation *op,
 //                              pir::InferSymbolicShapeContext *infer_context)

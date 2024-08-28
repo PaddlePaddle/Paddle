@@ -2298,7 +2298,7 @@
     func : graph_sample_neighbors
     data_type : row
   optional : eids, perm_buffer
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
