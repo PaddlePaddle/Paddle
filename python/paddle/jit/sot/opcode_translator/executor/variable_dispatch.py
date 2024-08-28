@@ -640,12 +640,7 @@ Dispatcher.register(
 # bool
 Dispatcher.register(
     bool,
-    ("ContainerVariable | SymbolicVariable",),
-    lambda var: var.bool(),
-)
-Dispatcher.register(
-    operator.truth,
-    ("ConstantVariable | SymbolicVariable",),
+    ("VariableBase",),
     lambda var: var.bool(),
 )
 
@@ -936,7 +931,7 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
             ),
         )
-# Tensor
+# Tensor and Symbolic
 fallback_tensor_unary_method = {
     int,
     bool,
@@ -952,6 +947,18 @@ for unary_fn in UNARY_OPS:
             unary_fn,
             ("TensorVariable",),
             raise_break_graph_fn,
+        )
+        Dispatcher.register(
+            unary_fn,
+            ("SymbolicVariable",),
+            partial(
+                lambda fn, var: VariableFactory.from_value(
+                    fn(var.get_py_value()),
+                    var.graph,
+                    tracker=DummyTracker([var]),
+                ),
+                unary_fn,
+            ),
         )
         continue
 
@@ -1034,20 +1041,6 @@ for binary_fn in BINARY_OPS:
                         magic_method.name,
                     ),
                 )
-# Symbolic
-for unary_fn in fallback_tensor_unary_method:
-    Dispatcher.register(
-        unary_fn,
-        ("SymbolicVariable",),
-        partial(
-            lambda fn, var: VariableFactory.from_value(
-                fn(var.get_py_value()),
-                var.graph,
-                tracker=DummyTracker([var]),
-            ),
-            unary_fn,
-        ),
-    )
 
 for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
