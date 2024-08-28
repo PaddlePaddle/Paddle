@@ -2404,36 +2404,37 @@ bool MultiplexOpInferSymbolicShape(
                                       "than one candidate input tensors."));
 
   size_t num_inputs = inputs_shape_or_data_list.size();
-  std::vector<symbol::DimExpr> input_shape =
+  std::vector<symbol::DimExpr> first_input_shape =
       inputs_shape_or_data_list[0].shape();
   PADDLE_ENFORCE_GE(
-      input_shape.size(),
+      first_input_shape.size(),
       2,
       common::errors::InvalidArgument(
           "The rank of candidate tensors must be not less than 2."));
 
   for (size_t i = 1; i < num_inputs; ++i) {
-    std::vector<symbol::DimExpr> shape = inputs_shape_or_data_list[i].shape();
+    std::vector<symbol::DimExpr> element_shape =
+        inputs_shape_or_data_list[i].shape();
 
-    PADDLE_ENFORCE_EQ(input_shape.size(),
-                      shape.size(),
+    PADDLE_ENFORCE_EQ(first_input_shape.size(),
+                      element_shape.size(),
                       common::errors::PreconditionNotMet(
                           "All the candidate tensors must have the same dim."));
 
-    for (size_t j = 0; j < input_shape.size(); ++j)
-      infer_context->AddEqualCstr(input_shape[j], shape[j]);
+    for (size_t j = 0; j < first_input_shape.size(); ++j)
+      infer_context->AddEqualCstr(first_input_shape[j], element_shape[j]);
     // all of the input Tensors should have the same shape
   }
 
-  if (input_shape[0].isa<int64_t>() &&
+  if (first_input_shape[0].isa<int64_t>() &&
       ids_shape_or_data.shape()[0].isa<int64_t>()) {
-    PADDLE_ENFORCE_GE(input_shape[0].dyn_cast<int64_t>(),
+    PADDLE_ENFORCE_GE(first_input_shape[0].dyn_cast<int64_t>(),
                       ids_shape_or_data.shape()[0].dyn_cast<int64_t>(),
                       common::errors::InvalidArgument(
                           "The 2nd-dim of input cannot be smaller than "
                           "batchSize of the index tensor."));
   }
-  std::vector<symbol::DimExpr> &output_shape = input_shape;
+  std::vector<symbol::DimExpr> &output_shape = first_input_shape;
   output_shape[0] = ids_shape_or_data.shape()[0];
   infer_context->SetShapeOrDataForValue(
       op->result(0),
