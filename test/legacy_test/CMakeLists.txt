@@ -743,11 +743,7 @@ endif()
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
-set_tests_properties(
-  test_sync_batch_norm_op test_distributed_fused_lamb_op_with_clip
-  test_distributed_fused_lamb_op_without_clip
-  test_distributed_fused_lamb_op_with_gradient_merge
-  PROPERTIES LABELS "RUN_TYPE=DIST")
+set_tests_properties(test_sync_batch_norm_op PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
   set_tests_properties(test_imperative_signal_handler
@@ -855,12 +851,6 @@ set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
-                                                                         240)
-set_tests_properties(test_distributed_fused_lamb_op_without_clip
-                     PROPERTIES TIMEOUT 120)
-set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
-                     PROPERTIES TIMEOUT 240)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
 if(NOT WITH_COVERAGE)
