@@ -46,7 +46,7 @@ void BatchNormCooGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ((scale_grad == nullptr && bias_grad == nullptr) ||
                         (scale_grad != nullptr && bias_grad != nullptr),
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Weight and bias's stop_gradient of BatchNorm must be "
                         "True or False at the same time."));
 

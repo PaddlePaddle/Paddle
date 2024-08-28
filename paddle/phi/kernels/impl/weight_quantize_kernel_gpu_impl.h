@@ -438,7 +438,7 @@ void weight_quant_gpu(const GPUContext& dev_ctx,
   constexpr int kVectorSize = 128 / sizeof(T) / 8;
   PADDLE_ENFORCE_EQ(total_n % kVectorSize,
                     0,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "Currently, weight_quant_gpu kernel only support n "
                         "with multiple of %d, please use",
                         kVectorSize));

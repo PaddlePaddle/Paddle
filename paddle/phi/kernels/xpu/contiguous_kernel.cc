@@ -178,7 +178,7 @@ void ContiguousKernel(const Context& dev_ctx,
                                 0);
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Received unsupported dtype : %s.", input.dtype()));
   }
 

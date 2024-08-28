@@ -23,18 +23,20 @@ namespace phi {
 
 template <typename Context>
 void UnsqueezeGradStridedKernel(const Context& dev_ctx,
-                                const DenseTensor& x_shape,
+                                const DenseTensor& x,
                                 const DenseTensor& dout,
                                 DenseTensor* dx) {
   if (!FLAGS_use_stride_kernel) {
-    PADDLE_THROW(
-        phi::errors::Fatal("FLAGS_use_stride_kernel is closed. Strided kernel "
-                           "be called, something wrong has happened!"));
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
   }
-  const auto& xshape_dims = x_shape.dims();
-  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  // NOTE: [Why not to use x.dims() ?]
+  // Because inplace strategy is different between old IR and PIR,
+  // we need fix it into x.dims() after cleaning old IR system.
+  const auto& x_dims = dx->dims();
   ReshapeStridedKernel<Context>(
-      dev_ctx, dout, IntArray(common::vectorize<int64_t>(x_dims)), dx, nullptr);
+      dev_ctx, dout, IntArray(common::vectorize<int64_t>(x_dims)), dx);
 }
 
 }  // namespace phi

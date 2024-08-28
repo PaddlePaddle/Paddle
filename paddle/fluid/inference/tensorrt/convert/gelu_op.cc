@@ -140,7 +140,7 @@ class GeluOpConverter : public OpConverter {
                                     nvinfer1::ElementWiseOperation::kPROD);
       layer = y;
 #else
-      PADDLE_THROW(phi::errors::Fatal(
+      PADDLE_THROW(common::errors::Fatal(
           "You are running GeLU Op with approximate True, need to confirm that "
           "your TRT version is no less than 7.0"));
 #endif
@@ -223,7 +223,7 @@ class GeluOpConverter : public OpConverter {
             new plugin::GeluPluginDynamic(with_fp16);
         layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
 #else
-        PADDLE_THROW(phi::errors::Fatal(
+        PADDLE_THROW(common::errors::Fatal(
             "You are running the TRT Dynamic Shape mode, need to confirm that "
             "your TRT version is no less than 6.0"));
 #endif

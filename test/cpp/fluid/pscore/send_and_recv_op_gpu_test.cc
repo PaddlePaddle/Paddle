@@ -27,8 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
@@ -313,14 +313,14 @@ TEST(SENDANDRECV, GPU) {
   PADDLE_ENFORCE_EQ(
       task.first,
       "x",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   auto task2 = (*task_queue_)[0]->Pop();
   PADDLE_ENFORCE_EQ(
       task2.first,
       "x",
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Recv message and Send message name not match, Check your Code"));
 
   b_rpc_service2->Stop();

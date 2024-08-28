@@ -83,7 +83,7 @@ void CheckTensorHasNanOrInf(InstructionBase* instruction,
         paddle::framework::details::tensor_check<phi::GPUContext>(
             api_name, tensor_name, *dense_tensor, place);
 #else
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
+        PADDLE_THROW(common::errors::PreconditionNotMet(
             "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
             tensor_name));
 #endif

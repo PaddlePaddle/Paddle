@@ -30,6 +30,7 @@
 #include <utility>
 
 #include "paddle/cinn/common/type.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace backends {

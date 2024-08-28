@@ -21,11 +21,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Generator,
     Generic,
-    Iterable,
-    Iterator,
-    Sequence,
     Tuple,
     TypeVar,
 )
@@ -37,6 +33,8 @@ import paddle
 from ... import framework
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Iterable, Iterator, Sequence
+
     from paddle import Tensor
 
 _T = TypeVar('_T')
@@ -67,7 +65,7 @@ class Dataset(Generic[_T]):
             >>> from paddle.io import Dataset
 
             >>> # define a random dataset
-            >>> class RandomDataset(Dataset):
+            >>> class RandomDataset(Dataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -100,6 +98,10 @@ class Dataset(Generic[_T]):
             "{}".format('__len__', self.__class__.__name__)
         )
 
+    if TYPE_CHECKING:
+        # A virtual method for type checking only
+        def __iter__(self) -> Iterator[_T]: ...
+
 
 class IterableDataset(Dataset[_T]):
     """
@@ -125,7 +127,7 @@ class IterableDataset(Dataset[_T]):
             >>> from paddle.io import IterableDataset
 
             >>> # define a random dataset
-            >>> class RandomDataset(IterableDataset):
+            >>> class RandomDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -157,7 +159,7 @@ class IterableDataset(Dataset[_T]):
             >>> import numpy as np
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            >>> class SplitedIterableDataset(IterableDataset):
+            >>> class SplitedIterableDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, start, end):
             ...         self.start = start
             ...         self.end = end
@@ -212,7 +214,7 @@ class IterableDataset(Dataset[_T]):
             >>> import numpy as np
             >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            >>> class RangeIterableDataset(IterableDataset):
+            >>> class RangeIterableDataset(IterableDataset): # type: ignore[type-arg]
             ...     def __init__(self, start, end):
             ...         self.start = start
             ...         self.end = end
@@ -226,7 +228,7 @@ class IterableDataset(Dataset[_T]):
             >>> def worker_init_fn(worker_id):
             ...     worker_info = get_worker_info()
             ...
-            ...     dataset = worker_info.dataset
+            ...     dataset: RangeIterableDataset = worker_info.dataset # type: ignore[assignment]
             ...     start = dataset.start
             ...     end = dataset.end
             ...     num_per_worker = int(
@@ -436,7 +438,7 @@ class ChainDataset(IterableDataset[Any]):
 
 
             >>> # define a random dataset
-            >>> class RandomDataset(IterableDataset):
+            >>> class RandomDataset(IterableDataset):  # type: ignore[type-arg]
             ...     def __init__(self, num_samples):
             ...         self.num_samples = num_samples
             ...
@@ -482,18 +484,31 @@ class Subset(Dataset[_T]):
         .. code-block:: python
 
             >>> import paddle
-            >>> from paddle.io import Subset
 
-            >>> # example 1:
-            >>> a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2])
+            >>> class RangeDataset(paddle.io.Dataset):  # type: ignore[type-arg]
+            ...     def __init__(self, start, stop):
+            ...         self.start = start
+            ...         self.stop = stop
+            ...
+            ...     def __getitem__(self, index):
+            ...         return index + self.start
+            ...
+            ...     def __len__(self):
+            ...         return self.stop - self.start
+
+            >>> # Example 1:
+            >>> a = paddle.io.Subset(dataset=RangeDataset(1, 4), indices=[0, 2])
             >>> print(list(a))
             [1, 3]
 
-            >>> # example 2:
-            >>> b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])
+            >>> # Example 2:
+            >>> b = paddle.io.Subset(dataset=RangeDataset(1, 4), indices=[1, 1])
             >>> print(list(b))
             [2, 2]
     """
+
+    dataset: Dataset[_T]
+    indices: Sequence[int]
 
     def __init__(self, dataset: Dataset[_T], indices: Sequence[int]) -> None:
         self.dataset = dataset
@@ -535,14 +550,14 @@ def random_split(
             2
 
             >>> # output of the first subset
-            >>> for idx, v in enumerate(a_list[0]):  # type: ignore[arg-type, var-annotated]
+            >>> for idx, v in enumerate(a_list[0]):
             ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 7
             1 6
             2 5
 
             >>> # output of the second subset
-            >>> for idx, v in enumerate(a_list[1]):  # type: ignore[arg-type, var-annotated]
+            >>> for idx, v in enumerate(a_list[1]):
             ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
             0 1
             1 9

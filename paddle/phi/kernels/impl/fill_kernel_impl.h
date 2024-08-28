@@ -29,10 +29,11 @@ void FillKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   double fill_var = value.to<double>();
 
-  PADDLE_ENFORCE_EQ(std::isnan(fill_var),
-                    false,
-                    phi::errors::InvalidArgument("fill value should not be NaN,"
-                                                 " but received NaN"));
+  PADDLE_ENFORCE_EQ(
+      std::isnan(fill_var),
+      false,
+      common::errors::InvalidArgument("fill value should not be NaN,"
+                                      " but received NaN"));
 
   dev_ctx.template Alloc<T>(out);
 

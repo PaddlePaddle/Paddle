@@ -756,15 +756,15 @@ class SymbolicVariable(VariableBase):
     ):
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
-        for expr, symbolic_input in symbolic_inputs.items():
-            if tracker.match_expr(expr):
-                symbolic_input.setdefault(value, 0)
-                symbolic_input[value] += 1
-                if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
-                    return False
-                if len(symbolic_input.keys()) > 1:
-                    return True
+        if tracker_expr in symbolic_inputs:
+            symbolic_input = symbolic_inputs[tracker_expr]
+            symbolic_input.setdefault(value, 0)
+            symbolic_input[value] += 1
+            if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
                 return False
+            if len(symbolic_input.keys()) > 1:
+                return True
+            return False
         return False
 
     @staticmethod
@@ -915,18 +915,16 @@ class SliceVariable(VariableBase):
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        result = (
-            [
-                StringifiedExpression(
-                    "isinstance({}, slice)",
-                    [frame_value_tracer],
-                    frame_value_tracer.free_vars,
-                ),
-            ]
-            + self.getattr("start").make_stringified_guard()
-            + self.getattr("stop").make_stringified_guard()
-            + self.getattr("step").make_stringified_guard()
-        )
+        result = [
+            StringifiedExpression(
+                "isinstance({}, slice)",
+                [frame_value_tracer],
+                frame_value_tracer.free_vars,
+            ),
+            *self.getattr("start").make_stringified_guard(),
+            *self.getattr("stop").make_stringified_guard(),
+            *self.getattr("step").make_stringified_guard(),
+        ]
         return result
 
     def _reconstruct(self, codegen: PyCodeGen):

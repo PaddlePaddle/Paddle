@@ -295,7 +295,7 @@ class FusedMultiTransformerInt8XPUQuantPass : public FusePassBase {
 
 void FusedMultiTransformerInt8XPUQuantPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
   VLOG(3) << "in FusedMultiTransformerInt8XPUQuantPass::ApplyImpl";
 
@@ -488,7 +488,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
           PADDLE_ENFORCE_NE(
               curr_tensor,
               nullptr,
-              phi::errors::Fatal("tensor node should not be nullptr"));
+              common::errors::Fatal("tensor node should not be nullptr"));
           // Create dst node
           // Update dst var_desc in block
           VarDesc dst_desc(dst_name);
@@ -545,7 +545,7 @@ int FusedMultiTransformerInt8XPUQuantPass::FusedMultiTransformerInt8(
         PADDLE_ENFORCE_NE(
             curr_tensor,
             nullptr,
-            phi::errors::Fatal("tensor node should not be nullptr"));
+            common::errors::Fatal("tensor node should not be nullptr"));
         CastToFp32(curr_tensor);
 
         Node* curr_node = FindNodeWithName(graph, name);

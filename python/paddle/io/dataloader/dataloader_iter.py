@@ -135,6 +135,9 @@ class _DataLoaderIterBase:
     def __iter__(self):
         return self
 
+    def __next__(self):
+        raise NotImplementedError('Should implement `__next__` for a iterator')
+
     def __len__(self):
         return len(self._batch_sampler)
 

@@ -99,7 +99,7 @@ void FullLikeKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         is_out_range,
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The filled value is out of range for target type, "
             "current kernel type is %s, the range should between %f "
             "and %f, but now value is %f.",

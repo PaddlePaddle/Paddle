@@ -27,13 +27,5 @@ void BindPir(pybind11::module *m);
 const phi::DDim &GetValueDims(Value value);
 bool GetValueBoolAttr(Value value, const std::string &attr_name);
 
-namespace name_analysis {
-
-std::vector<std::string> GetValueAllNames(Value value);
-std::string GetValueFirstName(Value value);
-std::optional<std::string> TryGetValueFirstName(Value value);
-
-}  // namespace name_analysis
-
 }  // namespace pybind
 }  // namespace paddle

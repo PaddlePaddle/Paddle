@@ -46,7 +46,7 @@ class UpdateLossScalingFunctor<phi::CPUContext, T, IsFoundInfOnCPU> {
     PADDLE_ENFORCE_EQ(
         IsFoundInfOnCPU,
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The Input(FoundInfinite) should be on the CPUPlace."));
     Update<T>(found_inf_data,
               pre_loss_scaling_data,

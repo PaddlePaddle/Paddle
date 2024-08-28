@@ -35,7 +35,7 @@ SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
 SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
                               const DistMetaTensor& out_grad);
 
-SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& out_grad);
 
 }  // namespace distributed

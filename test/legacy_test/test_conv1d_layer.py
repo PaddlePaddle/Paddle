@@ -60,9 +60,9 @@ class Conv1DTestCase(unittest.TestCase):
 
     def setUp(self):
         input_shape = (
-            (self.batch_size, self.num_channels) + self.spartial_shape
+            (self.batch_size, self.num_channels, *self.spartial_shape)
             if not self.channel_last
-            else (self.batch_size,) + self.spartial_shape + (self.num_channels,)
+            else (self.batch_size, *self.spartial_shape, self.num_channels)
         )
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
@@ -73,7 +73,8 @@ class Conv1DTestCase(unittest.TestCase):
         self.weight_shape = weight_shape = (
             self.num_filters,
             self.num_channels // self.groups,
-        ) + tuple(filter_size)
+            *filter_size,
+        )
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )

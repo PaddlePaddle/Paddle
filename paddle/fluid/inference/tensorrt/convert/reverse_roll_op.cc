@@ -37,7 +37,7 @@ class ReverseRollOpConverter : public OpConverter {
         PADDLE_GET_CONST(int, op_desc.GetAttr("input_resolution"));
     PADDLE_ENFORCE_EQ(window_size * window_size,
                       window_len,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The window_len should equal to window_size * "
                           "window_size, but got window_size:%d, window_len:%d",
                           window_size,
@@ -45,7 +45,7 @@ class ReverseRollOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         window_number * window_len,
         input_resolution * input_resolution,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input_resolution*input_resolution should equal to "
             "window_number * window_len, but got window_len:%d, "
             "window_number:%d, input_resolution:%d",
@@ -64,7 +64,7 @@ class ReverseRollOpConverter : public OpConverter {
                                                with_fp16);
       reverse_roll_layer = engine_->AddDynamicPlugin(&X, 1, plugin);
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "ReverseROll TRT Plugin should run in dynamic shape."));
     }
     auto output_name = op_desc.Output("Out").front();

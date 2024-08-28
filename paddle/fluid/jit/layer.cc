@@ -63,7 +63,7 @@ const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
   PADDLE_ENFORCE_EQ(
       info_map_.count(name),
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "FunctionInfo named %s is not existed in info_map_.", name));
   return info_map_.at(name);
 }
@@ -80,7 +80,7 @@ std::vector<std::string> Layer::FunctionNames() const {
   template <>                                                         \
   T Layer::Attribute<T>(const std::string& name) const {              \
     if (attrs_map_->find(name) == attrs_map_->end()) {                \
-      PADDLE_THROW(phi::errors::NotFound(                             \
+      PADDLE_THROW(common::errors::NotFound(                          \
           "Attribute can not found %s, please check if it exists.")); \
       return T();                                                     \
     }                                                                 \

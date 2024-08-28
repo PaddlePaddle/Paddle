@@ -100,7 +100,7 @@ TEST_F(TensorRTEngineTest, add_layer) {
                            nvinfer1::MatrixOperation::kTRANSPOSE);
   PADDLE_ENFORCE_NOT_NULL(
       matmul_layer,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The TRT MatrixMultiply layer cannot be null. There is something "
           "wrong with the TRT network building and layer creation."));
   auto *add_layer = TRT_ENGINE_ADD_LAYER(engine_,
@@ -110,7 +110,7 @@ TEST_F(TensorRTEngineTest, add_layer) {
                                          nvinfer1::ElementWiseOperation::kSUM);
   PADDLE_ENFORCE_NOT_NULL(
       add_layer,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The TRT elementwise layer cannot be null. There is something wrong "
           "with the TRT network building and layer creation."));
 
@@ -170,7 +170,7 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
                            nvinfer1::MatrixOperation::kTRANSPOSE);
   PADDLE_ENFORCE_NOT_NULL(
       matmul_layer,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The TRT MatrixMultiply layer cannot be null. There is something "
           "wrong with the TRT network building and layer creation."));
   auto *add_layer = TRT_ENGINE_ADD_LAYER(engine_,
@@ -180,7 +180,7 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
                                          nvinfer1::ElementWiseOperation::kSUM);
   PADDLE_ENFORCE_NOT_NULL(
       add_layer,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The TRT elementwise layer cannot be null. There is something wrong "
           "with the TRT network building and layer creation."));
 
@@ -236,9 +236,9 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
                                           nvinfer1::DimsHW{3, 3},
                                           weight.get(),
                                           bias.get());
-  PADDLE_ENFORCE_NOT_NULL(
-      conv_layer,
-      phi::errors::InvalidArgument("TRT convolution layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(conv_layer,
+                          common::errors::InvalidArgument(
+                              "TRT convolution layer building failed."));
   conv_layer->setStrideNd(nvinfer1::Dims2{1, 1});
   conv_layer->setPaddingNd(nvinfer1::Dims2{1, 1});
 
@@ -299,7 +299,7 @@ TEST_F(TensorRTEngineTest, test_pool2d) {
 
   PADDLE_ENFORCE_NOT_NULL(
       pool_layer,
-      phi::errors::InvalidArgument("TRT pooling layer building failed."));
+      common::errors::InvalidArgument("TRT pooling layer building failed."));
   pool_layer->setStrideNd(nvinfer1::Dims2{1, 1});
   pool_layer->setPaddingNd(nvinfer1::Dims2{0, 0});
 

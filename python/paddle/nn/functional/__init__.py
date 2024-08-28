@@ -87,13 +87,17 @@ from .extension import (
     temporal_shift,
 )
 from .flash_attention import (
-    flash_attention_with_sparse_mask,
     flash_attn_qkvpacked,
     flash_attn_varlen_qkvpacked,
+    flashmask_attention,
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
-from .input import embedding, one_hot
+from .input import (
+    embedding,
+    embedding_renorm_,  # noqa: F401
+    one_hot,
+)
 from .loss import (
     adaptive_log_softmax_with_loss,
     binary_cross_entropy,
@@ -288,7 +292,7 @@ __all__ = [
     'soft_margin_loss',
     'gaussian_nll_loss',
     'scaled_dot_product_attention',
-    'flash_attention_with_sparse_mask',
+    'flashmask_attention',
     'flash_attn_qkvpacked',
     'flash_attn_varlen_qkvpacked',
     'group_norm',

@@ -79,7 +79,7 @@ int GetSubBlockIndex(const proto::OpDesc& op_desc) {
     if (attr.type() == proto::AttrType::BLOCK) {
       PADDLE_ENFORCE_EQ(attr.has_block_idx(),
                         true,
-                        phi::errors::NotFound(
+                        common::errors::NotFound(
                             "Attribute sub_block is not found in operator %s",
                             op_desc.type()));
       return attr.block_idx();
@@ -95,8 +95,8 @@ void GetSubBlocksIndices(const proto::OpDesc& op_desc,
       PADDLE_ENFORCE_GT(
           attr.blocks_idx_size(),
           0,
-          phi::errors::NotFound("Attribute blocks is not found in operator %s",
-                                op_desc.type()));
+          common::errors::NotFound(
+              "Attribute blocks is not found in operator %s", op_desc.type()));
       indices->resize(attr.blocks_idx_size());
       for (int i = 0; i < attr.blocks_idx_size(); i++) {
         (*indices)[i] = attr.blocks_idx(i);
@@ -110,7 +110,7 @@ void SetSubBlockIndex(proto::OpDesc* op_desc, int sub_idx) {
     if (attr.type() == proto::AttrType::BLOCK) {
       PADDLE_ENFORCE_EQ(attr.has_block_idx(),
                         true,
-                        phi::errors::NotFound(
+                        common::errors::NotFound(
                             "Attribute sub_block is not found in operator %s",
                             op_desc->type()));
       attr.set_block_idx(sub_idx);
@@ -125,8 +125,8 @@ void SetSubBlocksIndices(proto::OpDesc* op_desc,
       PADDLE_ENFORCE_GT(
           attr.blocks_idx_size(),
           0,
-          phi::errors::NotFound("Attribute blocks is not found in operator %s",
-                                op_desc->type()));
+          common::errors::NotFound(
+              "Attribute blocks is not found in operator %s", op_desc->type()));
       attr.clear_blocks_idx();
       for (auto idx : sub_indices) {
         attr.add_blocks_idx(idx);
@@ -146,8 +146,8 @@ bool HasSubBlocks(const proto::OpDesc& op_desc) {
       PADDLE_ENFORCE_GT(
           attr.blocks_idx_size(),
           0,
-          phi::errors::NotFound("Attribute blocks is not found in operator %s",
-                                op_desc.type()));
+          common::errors::NotFound(
+              "Attribute blocks is not found in operator %s", op_desc.type()));
       return true;
     }
   }
@@ -161,9 +161,9 @@ int GetOpRole(const proto::OpDesc& op_desc) {
       PADDLE_ENFORCE_EQ(
           attr.has_i(),
           true,
-          phi::errors::NotFound("Attribute %s is empty in operator %s",
-                                OpProtoAndCheckerMaker::OpRoleAttrName(),
-                                op_desc.type()));
+          common::errors::NotFound("Attribute %s is empty in operator %s",
+                                   OpProtoAndCheckerMaker::OpRoleAttrName(),
+                                   op_desc.type()));
       return attr.i();
     }
   }
@@ -242,7 +242,7 @@ void prune_impl(const proto::ProgramDesc& input,
     PADDLE_ENFORCE_EQ(
         op_desc.type() != kFeedOpType || expect_feed,
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "All FeedOps are at the beginning of the ProgramDesc"));
     expect_feed = (op_desc.type() == kFeedOpType);
   }
@@ -252,7 +252,7 @@ void prune_impl(const proto::ProgramDesc& input,
     auto& op_desc = *op_iter;
     PADDLE_ENFORCE_EQ(op_desc.type() != kFetchOpType || expect_fetch,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "All FetchOps must at the end of the ProgramDesc"));
     expect_fetch = (op_desc.type() == kFetchOpType);
   }
@@ -405,7 +405,7 @@ void prune_impl(const proto::ProgramDesc& input,
           }
         } else {
           PADDLE_ENFORCE(false,
-                         phi::errors::PreconditionNotMet(
+                         common::errors::PreconditionNotMet(
                              "Attr Block or Blocks must exist when recursively "
                              "calling prune_impl"));
         }
@@ -484,7 +484,7 @@ std::map<int, int> Prune(const proto::ProgramDesc& input,
         PADDLE_ENFORCE_NE(
             sub_idx,
             -1,
-            phi::errors::NotFound(
+            common::errors::NotFound(
                 "The origin sub block id should be found in "
                 "pruned_progin_block_id_map when the op has sub_block"));
         SetSubBlockIndex(&op_desc, sub_idx);
@@ -497,7 +497,7 @@ std::map<int, int> Prune(const proto::ProgramDesc& input,
           PADDLE_ENFORCE_NE(
               sub_idx,
               -1,
-              phi::errors::NotFound(
+              common::errors::NotFound(
                   "The origin sub block id should be found in "
                   "pruned_progin_block_id_map when the op has sub_blocks"));
           sub_indices.push_back(sub_idx);
@@ -636,11 +636,11 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
       } else {
         auto parent_idx =
             FindMapByValue(pruned_progin_block_id_map, origin->parent_idx());
-        PADDLE_ENFORCE_NE(
-            parent_idx,
-            -1,
-            phi::errors::NotFound("The origin parent block id is not found in "
-                                  "pruned_progin_block_id_map"));
+        PADDLE_ENFORCE_NE(parent_idx,
+                          -1,
+                          common::errors::NotFound(
+                              "The origin parent block id is not found in "
+                              "pruned_progin_block_id_map"));
         pruned_block->set_parent_idx(parent_idx);
       }
     }
@@ -659,7 +659,7 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
         PADDLE_ENFORCE_NE(
             sub_idx,
             -1,
-            phi::errors::NotFound(
+            common::errors::NotFound(
                 "The origin sub block id is not found in "
                 "pruned_progin_block_id_map when the op has sub_block"));
         SetSubBlockIndex(&op_desc, sub_idx);
@@ -672,7 +672,7 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
           PADDLE_ENFORCE_NE(
               sub_idx,
               -1,
-              phi::errors::NotFound(
+              common::errors::NotFound(
                   "The origin sub block id should be found in "
                   "pruned_progin_block_id_map when the op has sub_blocks"));
           sub_indices.push_back(sub_idx);

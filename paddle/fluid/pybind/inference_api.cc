@@ -194,7 +194,7 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
       dt = py::dtype::of<bool>();
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, FLOAT64, "
           "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
@@ -294,7 +294,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
         shape,
         ToPaddleInferPlace(input_tensor.place().GetType()));
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
         "INT64, FLOAT64, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
@@ -349,7 +349,7 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,     // NOLINT
         shape,
         ToPaddleInferPlace(paddle_tensor.place().GetType()));
   } else {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported data type. Now share_external_data only supports INT32, "
         "INT64, UINT8, FLOAT32, FLOAT16, BFLOAT16 and BOOL."));
   }
@@ -399,7 +399,7 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
       size = sizeof(bool);
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported data t ype. Now only supports INT32, INT64, FLOAT64, "
           "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
@@ -443,7 +443,7 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
       tensor.copy_to_cpu<bool>(static_cast<bool *>(array.mutable_data()));
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, FLOAT64, "
           "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
@@ -487,7 +487,7 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
       tensor.CopyToCpu(static_cast<bool *>(array.mutable_data()));
       break;
     default:
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported data t ype. Now only supports INT32, INT64, FLOAT64, "
           "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
@@ -625,7 +625,7 @@ void BindPaddleBuf(py::module *m) {
                auto size = self.length() / sizeof(float);
                l = py::cast(std::vector<float>(data, data + size));
              } else {
-               PADDLE_THROW(phi::errors::Unimplemented(
+               PADDLE_THROW(common::errors::Unimplemented(
                    "Unsupported data type. Now only supports INT32, INT64 and "
                    "FLOAT32."));
              }

@@ -57,8 +57,8 @@ cudnn_frontend::DataType_t get_cudnn_fe_dtype(const phi::DataType &t) {
     case phi::DataType::BFLOAT16:
       return cudnn_frontend::DataType_t::BFLOAT16;
     default:
-      PADDLE_THROW(
-          phi::errors::InvalidArgument("Invalid data type for cuDNN frontend"));
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Invalid data type for cuDNN frontend"));
   }
 }
 
@@ -81,14 +81,14 @@ void FusedDotProductAttentionKernel(
     DenseTensor *rng_state) {
   PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
                     80,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
   auto cudnn_version = phi::backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8906,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports CUDNN version >= 8906, "
                         "but got %d.",
                         cudnn_version));
@@ -97,7 +97,7 @@ void FusedDotProductAttentionKernel(
           (cu_seqlen_q.get_ptr() == nullptr &&
            cu_seqlen_kv.get_ptr() == nullptr),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cu_seqlen_q and cu_seqlen_kv must be both set or both not set"));
 
   // allocate output variables
@@ -115,7 +115,7 @@ void FusedDotProductAttentionKernel(
   PADDLE_ENFORCE_EQ(
       is_type_supported,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cuDNN fused attention Only supports FP16/BF16 currently"));
   auto mha_layout = MHA_Layout::BSHD_BSHD_BSHD;
   auto bias_type = MHA_Bias_Type::NO_BIAS;
@@ -124,7 +124,7 @@ void FusedDotProductAttentionKernel(
   if (bias_type_iter != kBiasTypeMap.end()) {
     bias_type = bias_type_iter->second;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Invalid bias type: %s, only support no_bias, pre_scale_bias, "
         "post_scale_bias",
         bias_type_str));
@@ -136,7 +136,7 @@ void FusedDotProductAttentionKernel(
   if (mask_type_iter != kMaskTypeMap.end()) {
     mask_type = mask_type_iter->second;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Invalid mask type: %s, only support causal, padding, none, "
         "padding_causal",
         mask_type_str));
@@ -289,14 +289,14 @@ void FusedDotProductAttentionGradKernel(
   auto sm_arch = dev_ctx.GetComputeCapability();
   PADDLE_ENFORCE_GE(sm_arch,
                     80,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
                         "but got compute capability: %d.",
                         dev_ctx.GetComputeCapability()));
   auto cudnn_version = phi::backends::gpu::DnnVersion();
   PADDLE_ENFORCE_GE(cudnn_version,
                     8906,
-                    phi::errors::PreconditionNotMet(
+                    common::errors::PreconditionNotMet(
                         "This op only supports CUDNN version >= 8906, "
                         "but got %d.",
                         cudnn_version));
@@ -316,7 +316,7 @@ void FusedDotProductAttentionGradKernel(
   PADDLE_ENFORCE_EQ(
       is_type_supported,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "cuDNN fused attention Only supports FP16/BF16 currently"));
   auto mha_layout = MHA_Layout::BSHD_BSHD_BSHD;
   auto bias_type = MHA_Bias_Type::NO_BIAS;
@@ -325,7 +325,7 @@ void FusedDotProductAttentionGradKernel(
   if (bias_type_iter != kBiasTypeMap.end()) {
     bias_type = bias_type_iter->second;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Invalid bias type: %s, only support no_bias, pre_scale_bias, "
         "post_scale_bias",
         bias_type_str));
@@ -337,7 +337,7 @@ void FusedDotProductAttentionGradKernel(
   if (mask_type_iter != kMaskTypeMap.end()) {
     mask_type = mask_type_iter->second;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Invalid mask type: %s, only support causal, padding, none, "
         "padding_causal",
         mask_type_str));

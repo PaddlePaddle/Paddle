@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/event.h"
+#include "paddle/phi/api/profiler/event.h"
 
 namespace paddle {
 namespace framework {
@@ -175,36 +175,36 @@ TEST(CostDataTest, TestEmptyTimeEvent) {
 TEST(CostDataTest, TestNoOpEvent) {
   CostData cost_data;
   ProgramDesc program = CreateTestProgram();
-  std::vector<platform::Event> thread_events;
+  std::vector<phi::Event> thread_events;
   thread_events.push_back(
-      platform::Event(platform::EventType::kPushRange, "not exist name", 0));
-  std::vector<std::vector<platform::Event>> time_events{thread_events};
+      phi::Event(phi::EventType::kPushRange, "not exist name", 0));
+  std::vector<std::vector<phi::Event>> time_events{thread_events};
   EXPECT_EQ(cost_data.SetCostData(program, time_events), false);
 }
 
 TEST(CostDataTest, TestNoOpPopEvent) {
   CostData cost_data;
   ProgramDesc program = CreateTestProgram();
-  std::vector<platform::Event> thread_events;
+  std::vector<phi::Event> thread_events;
   thread_events.push_back(
-      platform::Event(platform::EventType::kPushRange, "fake_test_op", 0));
-  std::vector<std::vector<platform::Event>> time_events{thread_events};
+      phi::Event(phi::EventType::kPushRange, "fake_test_op", 0));
+  std::vector<std::vector<phi::Event>> time_events{thread_events};
   EXPECT_EQ(cost_data.SetCostData(program, time_events), false);
 }
 
 TEST(CostDataTest, TestNoWholeEvent) {
   CostData cost_data;
   ProgramDesc program = CreateTestProgram();
-  std::vector<platform::Event> thread_events;
+  std::vector<phi::Event> thread_events;
   thread_events.push_back(
-      platform::Event(platform::EventType::kPushRange, "fake_test_op", 0));
+      phi::Event(phi::EventType::kPushRange, "fake_test_op", 0));
   thread_events.push_back(
-      platform::Event(platform::EventType::kPopRange, "fake_test_op", 0));
+      phi::Event(phi::EventType::kPopRange, "fake_test_op", 0));
   thread_events.push_back(
-      platform::Event(platform::EventType::kPushRange, "fake_test_op", 0));
+      phi::Event(phi::EventType::kPushRange, "fake_test_op", 0));
   thread_events.push_back(
-      platform::Event(platform::EventType::kPopRange, "fake_test_op", 0));
-  std::vector<std::vector<platform::Event>> time_events{thread_events};
+      phi::Event(phi::EventType::kPopRange, "fake_test_op", 0));
+  std::vector<std::vector<phi::Event>> time_events{thread_events};
   EXPECT_EQ(cost_data.SetCostData(program, time_events), false);
 }
 

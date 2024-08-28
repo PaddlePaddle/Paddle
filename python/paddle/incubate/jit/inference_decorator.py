@@ -18,6 +18,7 @@ import inspect
 import os
 import sys
 import textwrap
+import warnings
 from pathlib import Path
 from typing import Callable, Protocol, TypeVar, overload
 
@@ -44,6 +45,26 @@ def get_inference_precision(precision_str):
         raise AssertionError(f"unsupported precision {precision_str}")
 
 
+def register_triton_custom_ops(model_dir):
+    for root, dirs, files in os.walk(model_dir):
+        for file in files:
+            if file.endswith("_package.so"):
+                so_full_path = os.path.join(root, file)
+                paddle.utils.cpp_extension.load_op_meta_info_and_register_op(
+                    so_full_path
+                )
+
+
+# When return True, we will fix them when doing d2s.
+def is_fixed_type(input):
+    if input is None:
+        return True
+    elif isinstance(input, bool):
+        return True
+    else:
+        return False
+
+
 # get paddle.Tensor for paddle inference use.
 def get_tensor(run_time_args, arg_name):
     if isinstance(run_time_args, paddle.Tensor):
@@ -56,8 +77,8 @@ def get_tensor(run_time_args, arg_name):
             ), f"the elements in {arg_name} must be paddle.Tensor"
             this_input_tensor_lists.append(ele)
         return this_input_tensor_lists
-    elif run_time_args is None:
-        return [None]
+    elif is_fixed_type(run_time_args):
+        return [run_time_args]
     else:
         raise AssertionError(
             f'''we only support adding paddle.incubate.jit.inference() in functions whose arguments are paddle.Tensor or list[paddle.Tensor] or None,
@@ -79,9 +100,8 @@ def get_d2s_spec(run_time_args, name):
             )
             suffix += 1
         return this_input_spec
-    elif run_time_args is None:
-        # we need to add a None input_spec!
-        return None
+    elif is_fixed_type(run_time_args):
+        return run_time_args
 
 
 class InferenceEngine:
@@ -144,7 +164,7 @@ class InferenceEngine:
         # get old d2s shapes!
         if os.path.exists(d2s_input_info_path) and self.cache_static_model:
             with open(d2s_input_info_path, "r") as f:
-                for line in f.readlines():
+                for line in f:
                     line = line.strip()
                     name_shape = line.split(":")
                     assert len(name_shape) == 2
@@ -165,15 +185,15 @@ class InferenceEngine:
         # initiate the d2s_input_shapes.
         if len(d2s_input_shapes) == 0:
             for tensor in input_tensor_lists:
-                if tensor is None:
+                if is_fixed_type(tensor):
                     d2s_input_shapes.append([])
                 else:
+                    assert isinstance(tensor, paddle.Tensor)
                     d2s_input_shapes.append(tensor.shape)
-
         self.re_do_d2s = False
         # check whether the shape is changed
         for i in range(len(d2s_input_shapes)):
-            if input_tensor_lists[i] is None:
+            if is_fixed_type(input_tensor_lists[i]):
                 continue
             # The rank of this tensor has changed
             if len(d2s_input_shapes[i]) != len(input_tensor_lists[i].shape):
@@ -230,11 +250,15 @@ class InferenceEngine:
                 input_specs.append(get_d2s_spec(this_input, name=arg_names[i]))
             else:
                 this_input = arg_defaults[i]
-                if this_input is not None:
-                    raise ValueError(
-                        f"{arg_names[i]}'s default value must be None."
-                    )
-                input_specs.append(None)
+                assert is_fixed_type(this_input)
+                input_specs.append(this_input)
+
+        for i in range(len(input_specs)):
+            if isinstance(input_specs[i], list):
+                for j in range(len(input_specs[i])):
+                    input_specs[i][j].stop_gradient = True
+            elif isinstance(input_specs[i], paddle.static.InputSpec):
+                input_specs[i].stop_gradient = True
 
         # update the input_spec's shape for doing d2s
         d2s_shapes_id = 0
@@ -253,12 +277,14 @@ class InferenceEngine:
                 input_specs[i].shape = self.d2s_input_shapes[d2s_shapes_id]
                 self.d2s_input_names[d2s_shapes_id] = input_specs[i].name
                 d2s_shapes_id += 1
-            elif input_specs[i] is None:
+            else:
                 if self.used_as_at_decorator:
                     self.d2s_input_names[d2s_shapes_id] = arg_names[i + 1]
                 else:
                     self.d2s_input_names[d2s_shapes_id] = arg_names[i]
                 d2s_shapes_id += 1
+
+        os.environ["TRITON_KERNEL_CACHE_DIR"] = self.save_model_dir
 
         print(
             f"now will use paddle.jit.save to save the {func.__name__} function to {self.save_path}.pdmodel"
@@ -312,10 +338,6 @@ class InferenceEngine:
                 collected_names.append(arg_names[i])
             else:
                 this_input = arg_defaults[i]
-                if this_input is not None:
-                    raise ValueError(
-                        f"{arg_names[i]}'s default value must be None."
-                    )
                 input_tensor_lists += [this_input]
                 collected_names.append(arg_names[i])
 
@@ -367,16 +389,16 @@ class InferenceEngine:
                 )
             else:
                 for i in range(len(input_tensor_lists)):
-                    if input_tensor_lists[i] is not None:
-                        min_input_shape[
-                            self.d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
-                        max_input_shape[
-                            self.d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
-                        opt_input_shape[
-                            self.d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
+                    if not is_fixed_type(input_tensor_lists[i]):
+                        min_input_shape[self.d2s_input_names[i]] = (
+                            input_tensor_lists[i].shape
+                        )
+                        max_input_shape[self.d2s_input_names[i]] = (
+                            input_tensor_lists[i].shape
+                        )
+                        opt_input_shape[self.d2s_input_names[i]] = (
+                            input_tensor_lists[i].shape
+                        )
 
                 config.set_trt_dynamic_shape_info(
                     min_input_shape, max_input_shape, opt_input_shape
@@ -396,19 +418,24 @@ class InferenceEngine:
         for pass_name in self.delete_pass_lists:
             config.delete_pass(pass_name)
 
+        for i in range(len(input_tensor_lists)):
+            if is_fixed_type(input_tensor_lists[i]):
+                warnings.warn(
+                    f"{self.d2s_input_names[i]} is fixed."
+                    + "You must ensure that this value will not change during your program."
+                )
+
         self.predictor = create_predictor(config)
 
 
 class _InferenceDecorator(Protocol):
     @overload
-    def __call__(self, function: _LayerT) -> _LayerT:
-        ...
+    def __call__(self, function: _LayerT) -> _LayerT: ...
 
     @overload
     def __call__(
         self, function: Callable[_InputT, _RetT]
-    ) -> Callable[_InputT, _RetT]:
-        ...
+    ) -> Callable[_InputT, _RetT]: ...
 
 
 @overload
@@ -428,8 +455,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
-) -> _InferenceDecorator:
-    ...
+) -> _InferenceDecorator: ...
 
 
 @overload
@@ -449,8 +475,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
-) -> _LayerT:
-    ...
+) -> _LayerT: ...
 
 
 @overload
@@ -470,8 +495,7 @@ def inference(
     enable_new_ir: bool = ...,
     exp_enable_use_cutlass: bool = ...,
     delete_pass_lists: list[str] | None = ...,
-) -> Callable[_InputT, _RetT]:
-    ...
+) -> Callable[_InputT, _RetT]: ...
 
 
 def inference(
@@ -540,13 +564,22 @@ def inference(
             >>> batch = 4096
             >>> hidd = 1024
             >>> dtype = "bfloat16"
-            >>> x = paddle.rand([batch, hidd], dtype=dtype)
+            >>> x = paddle.rand([batch, hidd], dtype=dtype) # type: ignore[arg-type]
             >>> mylayer = ExampleLayer(hidd)
             >>> dynamic_result = mylayer(x)
             >>> mylayer = paddle.incubate.jit.inference(mylayer)
             >>> decorator_result = mylayer(x)
 
     """
+    # if function has already been decorated by @paddle.incubate.jit.inference(), then we just return it.
+    if (
+        hasattr(function, "__name__")
+        and function.__name__ == "innermost_decorator"
+    ):
+        return function
+    elif isinstance(function, Layer):
+        if function.forward.__name__ == "innermost_decorator":
+            return function
 
     used_as_at_decorator = function is None
 
@@ -584,7 +617,7 @@ def inference(
             infer_engine.check_and_update_d2s_input_shapes(input_tensor_lists)
 
             remove_non_input_tensor_lists = [
-                ele for ele in input_tensor_lists if ele is not None
+                ele for ele in input_tensor_lists if not is_fixed_type(ele)
             ]
 
             if (
@@ -605,6 +638,9 @@ def inference(
                 infer_engine.to_static_model(
                     func, input_tensor_lists, *args, **kwargs
                 )
+            else:
+                # we need register some triton ops.
+                register_triton_custom_ops(infer_engine.save_model_dir)
 
             infer_engine.create_predictor(input_tensor_lists)
 

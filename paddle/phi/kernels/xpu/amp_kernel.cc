@@ -48,10 +48,10 @@ void UpdateLossScalingKernel(const Context& dev_ctx,
   using MPDType = typename phi::dtype::MPTypeTrait<T>::Type;
   using XPUTyp = typename XPUTypeTrait<T>::Type;
 
-  PADDLE_ENFORCE_EQ(
-      found_infinite.numel(),
-      1,
-      phi::errors::InvalidArgument("FoundInfinite must has only one element."));
+  PADDLE_ENFORCE_EQ(found_infinite.numel(),
+                    1,
+                    common::errors::InvalidArgument(
+                        "FoundInfinite must has only one element."));
   const bool* found_inf_data = found_infinite.data<bool>();
   bool cpu_found_inf_data = false;
   if (found_infinite.place().GetType() == phi::AllocationType::XPU) {

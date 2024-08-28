@@ -144,7 +144,7 @@ void addIntermediateOut(Node *op_node,
 int PrelnResidualBiasFusePass::ApplyPattern(ir::Graph *graph,
                                             bool with_bias) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_residual_bias_fuse", graph);
 
   int found_subgraph_count = 0;
@@ -285,7 +285,7 @@ void PrelnResidualBiasFusePass::ApplyImpl(ir::Graph *graph) const {
   VLOG(1) << "Fuse PrelnResidualBias into "
              "fused_bias_dropout_residual_layer_norm op with dropout rate = 0";
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::PreconditionNotMet("graph should not be null."));
+      graph, common::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("preln_residual_bias_fuse", graph);
 
   int found_subgraph_count = 0;

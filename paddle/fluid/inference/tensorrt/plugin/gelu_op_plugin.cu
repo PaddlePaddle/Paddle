@@ -127,7 +127,7 @@ int GeluPlugin::enqueue(int batch_size,
         <<<grid_size, block_size, 0, stream>>>(
             kAT, kBT, kCT, num, input, output);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The Gelu TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
@@ -151,16 +151,16 @@ bool GeluPluginDynamic::supportsFormatCombination(
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos,
       nb_inputs + nb_outputs,
-      phi::errors::InvalidArgument("The pos(%d) should be less than the "
-                                   "num(%d) of the input and the output.",
-                                   pos,
-                                   nb_inputs + nb_outputs));
+      common::errors::InvalidArgument("The pos(%d) should be less than the "
+                                      "num(%d) of the input and the output.",
+                                      pos,
+                                      nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
@@ -183,12 +183,12 @@ nvinfer1::DataType GeluPluginDynamic::getOutputDataType(
     int index,
     const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(
-      index,
-      0,
-      phi::errors::InvalidArgument("The Gelu Plugin only has one input, so the "
-                                   "index value should be 0, but get %d.",
-                                   index));
+  PADDLE_ENFORCE_EQ(index,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The Gelu Plugin only has one input, so the "
+                        "index value should be 0, but get %d.",
+                        index));
   return input_types[0];
 }
 
@@ -218,7 +218,7 @@ int GeluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         <<<grid_size, block_size, 0, stream>>>(
             kAT, kBT, kCT, num, input, output);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The Gelu TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;

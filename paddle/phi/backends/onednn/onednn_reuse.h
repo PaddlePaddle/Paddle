@@ -1293,18 +1293,18 @@ class PReluOneDNNHandler
 
   std::shared_ptr<memory> AcquireWeightsMemoryPossiblyWithReorder(
       const DenseTensor* weights, const bool is_test) {
-    const T* weights_data = weights->data<T>();
+    const float* weights_data = weights->data<float>();
 
     // if weights are 1D, every format tag is correct, so we accept
     // format_tag::any's output and no reorder is needed
     if (weights->dims().size() == 1) {
-      return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                              to_void_cast<T>(weights_data));
+      return this->AcquireMemoryFromPrimitive(
+          this->fwd_pd_->weights_desc(), to_void_cast<float>(weights_data));
     }
 
     return this->AcquireMemoryWithReorder(weights->mem_desc(),
                                           this->fwd_pd_->weights_desc(),
-                                          to_void_cast<T>(weights_data),
+                                          to_void_cast<float>(weights_data),
                                           is_test);
   }
 

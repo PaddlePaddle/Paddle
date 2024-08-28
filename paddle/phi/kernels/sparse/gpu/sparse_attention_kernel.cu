@@ -312,7 +312,7 @@ void SparseSoftmaxForward(const phi::GPUContext& ctx,
                            columns_data,
                            num_rows);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The head_dim of query in sparse_attention op should less or equal "
         "512"));
   }
@@ -410,7 +410,7 @@ void SparseSoftmaxBackward(const phi::GPUContext& ctx,
                            columns_data,
                            num_rows);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The head_dim of query in sparse_attention op should less or equal "
         "512"));
   }
@@ -422,7 +422,7 @@ inline cudaDataType_t GetGpuType(const DataType data_type) {
   } else if (data_type == DataType::FLOAT64) {
     return CUDA_R_64F;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Not support tensor type in sparse_attention OP: %s",
         phi::DataTypeToString(data_type)));
   }
@@ -539,9 +539,9 @@ void DotSdd(const phi::GPUContext& ctx,
   CusparseDestroy(&mat_a, &mat_b, &mat_c);
   phi::dynload::cusparseDestroy(handle);
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("DotSdd use cusparseSDDMM, which is supported "
-                                 "from CUDA 11.3"));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "DotSdd use cusparseSDDMM, which is supported "
+      "from CUDA 11.3"));
 #endif
 }
 
@@ -641,9 +641,9 @@ void DotDsd(const phi::GPUContext& ctx,
   CusparseDestroy(&mat_b, &mat_c, &mat_a);
   phi::dynload::cusparseDestroy(handle);
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("DotDsd use cusparseSpMM, which is supported "
-                                 "from CUDA 11.0"));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "DotDsd use cusparseSpMM, which is supported "
+      "from CUDA 11.0"));
 #endif
 }
 

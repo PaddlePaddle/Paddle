@@ -26,8 +26,10 @@ from .parallel_layers import (  # noqa: F401
 )
 from .pipeline_parallel import (  # noqa: F401
     PipelineParallel,
+    PipelineParallelMicroStepLocations,
     PipelineParallelWithInterleave,
     PipelineParallelWithInterleaveFthenB,
+    register_global_pipeline_parallel_hook,
 )
 from .segment_parallel import SegmentParallel  # noqa: F401
 from .sharding_parallel import ShardingParallel  # noqa: F401

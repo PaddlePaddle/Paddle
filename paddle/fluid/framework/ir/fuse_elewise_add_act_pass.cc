@@ -42,7 +42,7 @@ void FuseElewiseAddActPass::ApplyImpl(ir::Graph *graph) const {
 ir::Graph *FuseElewiseAddActPass::FuseElewiseAddAct(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("elewise_add_act", graph);
 
   GraphPatternDetector gpd;
@@ -94,7 +94,7 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddAct(
 ir::Graph *FuseElewiseAddActPass::FuseActElewiseAdd(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("act_elewise_add", graph);
 
   GraphPatternDetector gpd;
@@ -147,7 +147,7 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAdd(
 ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("elewise_add_act_grad", graph);
 
   GraphPatternDetector gpd;
@@ -229,7 +229,7 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
 ir::Graph *FuseElewiseAddActPass::FuseActElewiseAddInplaceGrad(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("act_elewise_add_grad", graph);
   GraphPatternDetector gpd;
   auto *d_out_var =
@@ -348,7 +348,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
       PADDLE_ENFORCE_EQ(
           (save_intermediate_out && !intermediate_out_args.empty()),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The %s should save the intermediate out in the fusing stage.",
               cur_node->Name()));
 
@@ -369,7 +369,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
       PADDLE_ENFORCE_EQ(
           intermediate_out_grad_args.empty(),
           false,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The %s should save the intermediate out in the fusing stage.",
               cur_node->Name()));
       auto cur_node_outputs = cur_node->outputs;
@@ -391,7 +391,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
     // RemovedVars.
     PADDLE_ENFORCE_EQ(graph->Has(details::kRemovedVars),
                       false,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Removed nodes are only saved for "
                           "fuse_elewise_add_act_pass in temporary."));
     graph->Set(details::kRemovedVars, saved_removed_nodes);
@@ -424,7 +424,7 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
     } else {
       PADDLE_ENFORCE_EQ(out,
                         intermediate_out,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "Output of op(%s) must be %s, but not %s.",
                             op_1->Name(),
                             intermediate_out->Name(),
@@ -511,8 +511,8 @@ std::vector<Node *> FuseElewiseAddActPass::ReplaceNode(
       });
   PADDLE_ENFORCE_EQ(has_replaced,
                     true,
-                    phi::errors::NotFound("Not found %s in the node list.",
-                                          cur_node->Name()));
+                    common::errors::NotFound("Not found %s in the node list.",
+                                             cur_node->Name()));
   return new_list;
 }
 

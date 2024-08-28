@@ -93,9 +93,9 @@ void ArrayToTensorKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       n,
       0,
-      phi::errors::InvalidArgument("Input tensorarray size should > 0,"
-                                   "but the received is %d",
-                                   n));
+      common::errors::InvalidArgument("Input tensorarray size should > 0,"
+                                      "but the received is %d",
+                                      n));
 
   std::vector<DenseTensor> tmp_inputs(x.size());
   std::vector<const DenseTensor*> inputs;
@@ -144,9 +144,9 @@ void ArrayPopKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       array.size(),
       0,
-      phi::errors::InvalidArgument("Input tensorarray size should > 0,"
-                                   "but the received is %d",
-                                   array.size()));
+      common::errors::InvalidArgument("Input tensorarray size should > 0,"
+                                      "but the received is %d",
+                                      array.size()));
   if (index < 0) {
     index += array.size();
   }

@@ -33,7 +33,7 @@ void DropoutGradRawKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   PADDLE_ENFORCE_EQ(!is_test,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "GradOp is only callable when is_test is false"));
   auto* grad_x = x_grad;
   auto* grad_y = &out_grad;

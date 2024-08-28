@@ -80,7 +80,7 @@ void QuantDequantMkldnnPass::CollectInfoFromFake(
         auto* var = scope->FindVar(scale_name);
         PADDLE_ENFORCE_NOT_NULL(
             var,
-            phi::errors::NotFound(
+            common::errors::NotFound(
                 "The Scales variable [%s] of dequantize op is not found.",
                 var));
 
@@ -114,7 +114,7 @@ void QuantDequantMkldnnPass::CollectWeightScalesInfoFromONNXFormatDequantize(
       auto* var = scope->FindVar(scale_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          phi::errors::NotFound(
+          common::errors::NotFound(
               "The Scales variable [%s] of dequantize op is not found.", var));
 
       auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
@@ -165,9 +165,9 @@ void QuantDequantMkldnnPass::CollectInputScalesFromQuantize(
       PADDLE_ENFORCE_EQ(
           bit_length,
           8,
-          phi::errors::InvalidArgument("Unsupported number quantization "
-                                       "bits: %d, only 8 is supported now.",
-                                       bit_length));
+          common::errors::InvalidArgument("Unsupported number quantization "
+                                          "bits: %d, only 8 is supported now.",
+                                          bit_length));
 
       std::string scale_name = "InScale";
       std::string out_name = "Out";
@@ -182,7 +182,7 @@ void QuantDequantMkldnnPass::CollectInputScalesFromQuantize(
       auto* var = scope->FindVar(scale_var_name);
       PADDLE_ENFORCE_NOT_NULL(
           var,
-          phi::errors::NotFound(
+          common::errors::NotFound(
               "The InScale variable [%s] of quantize op is not found.", var));
 
       auto* scale_tensor = var->GetMutable<phi::DenseTensor>();
@@ -264,12 +264,12 @@ void QuantDequantMkldnnPass::CollectFakeQuantizeOps(
 
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_in,
-      phi::errors::NotFound("The input var [%s] of quantize op is not found.",
-                            x_var_name));
+      common::errors::NotFound(
+          "The input var [%s] of quantize op is not found.", x_var_name));
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_out,
-      phi::errors::NotFound("The output var [%s] of quantize op is not found.",
-                            out_var_name));
+      common::errors::NotFound(
+          "The output var [%s] of quantize op is not found.", out_var_name));
 
   std::string input_act_name = fake_quant_in->Var()->Name();
   std::string output_act_name = fake_quant_out->Var()->Name();
@@ -312,11 +312,11 @@ void QuantDequantMkldnnPass::CollectFakeDequantizeOps(
 
   PADDLE_ENFORCE_NOT_NULL(
       fake_dequant_in,
-      phi::errors::NotFound("The input var [%s] of dequantize op is not found.",
-                            x_var_name));
+      common::errors::NotFound(
+          "The input var [%s] of dequantize op is not found.", x_var_name));
   PADDLE_ENFORCE_NOT_NULL(
       fake_dequant_out,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The output var [%s] of dequantize op is not found.", out_var_name));
 
   std::string input_act_name = fake_dequant_in->Var()->Name();
@@ -360,16 +360,16 @@ void QuantDequantMkldnnPass::CollectQuantizeDequantizeOpsFromONNXFormat(
 
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_in,
-      phi::errors::NotFound("The input var [%s] of quantize op is not found.",
-                            x_var_name));
+      common::errors::NotFound(
+          "The input var [%s] of quantize op is not found.", x_var_name));
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_in_scale,
-      phi::errors::NotFound("The scale var [%s] of quantize op is not found.",
-                            in_scale_name));
+      common::errors::NotFound(
+          "The scale var [%s] of quantize op is not found.", in_scale_name));
   PADDLE_ENFORCE_NOT_NULL(
       fake_quant_out,
-      phi::errors::NotFound("The output var [%s] of quantize op is not found.",
-                            out_var_name));
+      common::errors::NotFound(
+          "The output var [%s] of quantize op is not found.", out_var_name));
 
   std::string input_act_name = fake_quant_in->Var()->Name();
   std::string output_act_name = fake_quant_out->Var()->Name();
@@ -538,7 +538,7 @@ void QuantDequantMkldnnPass::ConvertFromINT8ToFP32(
            weight_data.data(),
            weight_tensor->numel() * sizeof(float));
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "The size of weight scales vector (%d) does not "
         "match the dimensions (%d) of the weights tensor %s.",
         size,
@@ -564,7 +564,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
   if (iter != weight_thresholds.end()) {
     scales = iter->second;
   } else {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Could not find threshold information for [%s] var, please check if "
         "the model is correct.",
         output_var_name));
@@ -573,7 +573,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeights(
   auto* var = scope->FindVar(weight_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The input persistable [%s] var of [%s] op is not found.",
           weight_var_name,
           op_desc->Type()));
@@ -608,7 +608,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
     if (!IsInt8Weight(op_node, scope, weight_name)) {
       return;
     }
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Could not find threshold information for [%s] var, please check if "
         "the model is correct.",
         weight_var_name));
@@ -617,7 +617,7 @@ void QuantDequantMkldnnPass::DequantizeOpWeightsFromONNXFormat(
   auto* var = scope->FindVar(weight_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "The input persistable [%s] var of [%s] op is not found.",
           weight_var_name,
           op_desc->Type()));

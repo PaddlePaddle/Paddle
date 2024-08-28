@@ -91,7 +91,7 @@ void recompute_bias_and_weights(const Scope* scope,
   // Re-compute bias of conv2d from BN
   PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(),
                     bn_bias_tensor.dims(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "phi::DenseTensor elementwise y(%d) and batch "
                         "norm bias(%d) must have same dims.",
                         eltwise_y_in_tensor->dims().size(),
@@ -122,7 +122,7 @@ void recompute_bias_and_weights(const Scope* scope,
   for (int i = 0; i < variance_tensor->numel(); i++) {
     PADDLE_ENFORCE_EQ(std::isfinite(variance_array[i]),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The inverse of Fused batch norm variance "
                           "should be finite. Found nonfinite values! "
                           "Please check %s ",
@@ -136,13 +136,13 @@ void recompute_bias_and_weights(const Scope* scope,
   eltwise_y_in_array =
       ((eltwise_y_in_array - mean_array) * variance_array) + bn_bias_array;
   for (int i = 0; i < eltwise_y_in_tensor->numel(); i++) {
-    PADDLE_ENFORCE_EQ(
-        std::isfinite(eltwise_y_in_array[i]),
-        true,
-        phi::errors::InvalidArgument("Fused batch norm bias should be "
-                                     "finite. Found nonfinite values! "
-                                     "Please check %s and related variables.",
-                                     bn_variance.Name()));
+    PADDLE_ENFORCE_EQ(std::isfinite(eltwise_y_in_array[i]),
+                      true,
+                      common::errors::InvalidArgument(
+                          "Fused batch norm bias should be "
+                          "finite. Found nonfinite values! "
+                          "Please check %s and related variables.",
+                          bn_variance.Name()));
   }
 
   // Re-compute weight of conv2d from BN
@@ -304,7 +304,7 @@ ConvBNFusePass::ConvBNFusePass() {
 
 void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   VLOG(3) << "Running conv_bn_fuse_pass.";
@@ -317,7 +317,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -425,12 +425,12 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
         PADDLE_ENFORCE_EQ(
             conv_bias_names.size(),
             1UL,
-            phi::errors::InvalidArgument("Find input var Bias error."));
+            common::errors::InvalidArgument("Find input var Bias error."));
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
                           bn_bias_tensor->dims(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "phi::DenseTensor convolution bias(%d) and batch "
                               "normalization bias (%d) "
                               "must have same dims.",
@@ -612,7 +612,7 @@ ConvEltwiseAddBNFusePass::ConvEltwiseAddBNFusePass() {
 
 void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, phi::errors::InvalidArgument("Graph cannot be nullptr."));
+      graph, common::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init(name_scope_, graph);
 
   VLOG(3) << "Running conv_eltwiseadd_bn_fuse_pass.";
@@ -626,7 +626,7 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
 
   auto* scope = param_scope();
   PADDLE_ENFORCE_NOT_NULL(
-      scope, phi::errors::InvalidArgument("Scope cannot be nullptr."));
+      scope, common::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   auto* conv_input =

@@ -13,7 +13,6 @@ set(TEST_MKLDNN_CACHING_DEPS
     common
     scope
     device_context
-    enforce
     generated_static_op)
 
 if(WITH_GPU OR WITH_ROCM)

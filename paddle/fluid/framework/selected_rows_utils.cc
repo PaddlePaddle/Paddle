@@ -66,7 +66,7 @@ void DeserializeFromStream(std::istream& is,
     is.read(reinterpret_cast<char*>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(version,
                       0U,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Only version 0 SelectedRows is supported."));
   }
   {
@@ -76,7 +76,7 @@ void DeserializeFromStream(std::istream& is,
     PADDLE_ENFORCE_EQ(
         is.good(),
         true,
-        phi::errors::Unavailable("Cannot read the number of rows."));
+        common::errors::Unavailable("Cannot read the number of rows."));
     auto& rows = *selected_rows->mutable_rows();
     rows.resize(size);
     for (uint64_t i = 0; i < size; ++i) {

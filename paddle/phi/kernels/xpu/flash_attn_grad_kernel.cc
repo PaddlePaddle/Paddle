@@ -56,7 +56,7 @@ void FlashAttnGradKernel(const Context& ctx,
   PADDLE_ENFORCE_EQ(
       head_size_og,
       head_size,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "flash_attn_bwd receive input with head_size_og == head_size"));
 
   // raw pointers
@@ -77,11 +77,11 @@ void FlashAttnGradKernel(const Context& ctx,
     if (mask_dims.size() == 3 || (mask_dims[1] == 1 && mask_dims.size() == 4)) {
       fa_layout |= AttnQKVLayout_t::BIAS_BLL;
     } else {
-      PADDLE_ENFORCE_EQ(
-          mask_dims.size(),
-          4,
-          phi::errors::InvalidArgument("flash_attn_bwd requires mask's shape "
-                                       "like [b,l,l] or [b, h, l, l]"));
+      PADDLE_ENFORCE_EQ(mask_dims.size(),
+                        4,
+                        common::errors::InvalidArgument(
+                            "flash_attn_bwd requires mask's shape "
+                            "like [b,l,l] or [b, h, l, l]"));
     }
     if (attn_mask->dtype() == phi::DataType::FLOAT32) {
       bias_data = attn_mask->data<float>();
@@ -186,7 +186,7 @@ void FlashAttnGradKernel(const Context& ctx,
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_bwd");
 #else
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "re-compile using -DWITH_XPU_XRE5=ON to use FlashAttnGradKernel"));
 #endif
 }

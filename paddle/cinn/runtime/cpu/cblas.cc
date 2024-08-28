@@ -121,7 +121,7 @@ void cinn_call_cholesky_host(
   PADDLE_ENFORCE_EQ(
       bits == 32 || bits == 64,
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "Unsupported bits = %d float data type for cholesky.", bits));
   char uplo = upper ? 'U' : 'L';
   for (int i = 0; i < batch_size; i++) {
@@ -146,10 +146,10 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
   FunctionProto::shape_inference_t inference_shape_gemm =
       [](const std::vector<Expr>& args, int offset) {
         PADDLE_ENFORCE_EQ(
-            offset, 0UL, phi::errors::InvalidArgument("Only one output."));
+            offset, 0UL, ::common::errors::InvalidArgument("Only one output."));
         PADDLE_ENFORCE_EQ(args.size(),
                           12UL,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Wrong number of arguments passed in."));
         auto M = cinn::common::AutoSimplify(args[1]);
         auto N = cinn::common::AutoSimplify(args[2]);
@@ -162,15 +162,16 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
   FunctionProto::shape_inference_t inference_shape_gemm_batch =
       [](const std::vector<Expr>& args, int offset) {
         PADDLE_ENFORCE_EQ(
-            offset, 0UL, phi::errors::InvalidArgument("Only one output."));
+            offset, 0UL, ::common::errors::InvalidArgument("Only one output."));
         PADDLE_ENFORCE_EQ(args.size(),
                           16UL,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Wrong number of arguments passed in."));
         auto& A = args[14];
         auto A_tensor = A.as_tensor();
         PADDLE_ENFORCE_NOT_NULL(
-            A_tensor, phi::errors::InvalidArgument("expected type is tensor."));
+            A_tensor,
+            ::common::errors::InvalidArgument("expected type is tensor."));
 
         auto batch_size = cinn::common::AutoSimplify(args[1]);
         int32_t batch_size_val = batch_size.as_int32();
@@ -185,7 +186,7 @@ CINN_REGISTER_HELPER(cinn_cpu_mkl) {
           PADDLE_ENFORCE_EQ(
               val.is_constant(),
               true,
-              phi::errors::InvalidArgument("expected type is constant."));
+              ::common::errors::InvalidArgument("expected type is constant."));
           shape.push_back(val);
           total *= val.as_int32();
           if (total >= batch_size_val) break;

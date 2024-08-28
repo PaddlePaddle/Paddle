@@ -38,21 +38,21 @@ void ScatterKernel(const Context &ctx,
   const auto &index_type = index.dtype();
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match,
-      true,
-      phi::errors::InvalidArgument("Index holds the wrong type, it holds [%s],"
-                                   "but desires to be [%s] or [%s].",
-                                   index_type,
-                                   phi::DataType::INT32,
-                                   phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    common::errors::InvalidArgument(
+                        "Index holds the wrong type, it holds [%s],"
+                        "but desires to be [%s] or [%s].",
+                        index_type,
+                        phi::DataType::INT32,
+                        phi::DataType::INT64));
 
   // check index of shape 1-D
   PADDLE_ENFORCE_EQ(
       index.dims().size() == 1 || index.dims().size() == 0 ||
           (index.dims().size() == 2 && index.dims()[1] == 1),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "index's shape is error, "
           "expect index'dims shape is 0, 1, 2 (index.dims[1] should "
           "be 1), 0 but got index'dims shape is %d",
@@ -68,7 +68,7 @@ void ScatterKernel(const Context &ctx,
       PADDLE_ENFORCE_EQ(
           x_dims[i],
           update_dims[i],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The dimensions of the source tensor and target tensor should"
               " match, but received source tensor's %d-th dimension is %d,"
               "target tensor's %d-th dimension is %d.",

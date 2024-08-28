@@ -82,9 +82,9 @@ class TestConv2DMKLDNNOp(TestConv2DOp):
             )
             output = conv2d_residual_naive(output, input_residual)
 
-            self.attrs[
-                'fuse_residual_connection'
-            ] = self.fuse_residual_connection
+            self.attrs['fuse_residual_connection'] = (
+                self.fuse_residual_connection
+            )
             self.inputs['ResidualData'] = OpTest.np_dtype_to_base_dtype(
                 input_residual
             )
@@ -163,9 +163,9 @@ class TestConv2DMKLDNNOp2(TestConv2DOp):
             )
             output = conv2d_residual_naive(output, input_residual)
 
-            self.attrs[
-                'fuse_residual_connection'
-            ] = self.fuse_residual_connection
+            self.attrs['fuse_residual_connection'] = (
+                self.fuse_residual_connection
+            )
             self.inputs['ResidualData'] = OpTest.np_dtype_to_base_dtype(
                 input_residual
             )

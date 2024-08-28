@@ -43,6 +43,32 @@ class ParamInplaceNet(paddle.nn.Layer):
             return paddle._C_ops.assign_(self.weight)
 
 
+class ParamDirectlyReturnNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.weight = self.create_parameter(shape=[10], dtype='float32')
+
+    def forward(self, x):
+        return self.weight
+
+
+class ParamReturnAfterAssignNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.weight = self.create_parameter(shape=[10], dtype='float32')
+
+    def forward(self, x):
+        return paddle.assign(self.weight)
+
+
+class InputDirectlyReturnNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return x
+
+
 class TestDealInplace(Dy2StTestBase):
     def copy_inputs(self, inputs):
         # Make a copy for inputs to avoid inplace effect.
@@ -70,19 +96,43 @@ class TestDealInplace(Dy2StTestBase):
     def test_deal_view(self):
         bn_layer = paddle.nn.BatchNorm2D(10)
         x = paddle.to_tensor(np.random.random((2, 10, 3, 3)).astype('float32'))
+        x.stop_gradient = False
         self.run_test(fn_with_inplace_op, bn_layer, x, static_n_times=2)
 
     @test_pir_only
     def test_deal_inplace(self):
         sigmoid_layer = paddle.nn.Sigmoid()
         x = paddle.to_tensor(np.random.random((2, 10, 3, 3)).astype('float32'))
+        x.stop_gradient = False
         self.run_test(fn_with_inplace_op, sigmoid_layer, x, static_n_times=2)
 
     @test_pir_only
     def test_param_inplace(self):
         net = ParamInplaceNet()
         x = paddle.to_tensor(np.random.random(10).astype('float32'))
-        self.run_test(fn_with_inplace_op, net, x, static_n_times=2)
+        x.stop_gradient = False
+        self.run_test(net, x, static_n_times=2)
+
+    @test_pir_only
+    def test_param_directly_return(self):
+        net = ParamDirectlyReturnNet()
+        x = paddle.to_tensor(np.random.random(10).astype('float32'))
+        x.stop_gradient = False
+        self.run_test(net, x, static_n_times=2)
+
+    @test_pir_only
+    def test_param_return_after_assign(self):
+        net = ParamReturnAfterAssignNet()
+        x = paddle.to_tensor(np.random.random(10).astype('float32'))
+        x.stop_gradient = False
+        self.run_test(net, x, static_n_times=2)
+
+    @test_pir_only
+    def test_input_directly_return(self):
+        net = InputDirectlyReturnNet()
+        x = paddle.to_tensor(np.random.random(10).astype('float32'))
+        x.stop_gradient = False
+        self.run_test(net, x, static_n_times=2)
 
 
 if __name__ == '__main__':

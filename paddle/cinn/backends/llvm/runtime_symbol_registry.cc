@@ -54,7 +54,7 @@ void RuntimeSymbols::Register(const std::string &name, void *address) {
     PADDLE_ENFORCE_EQ(
         it->second,
         address,
-        phi::errors::InvalidArgument("Duplicate register symbol"));
+        ::common::errors::InvalidArgument("Duplicate register symbol"));
     return;
   }
 
