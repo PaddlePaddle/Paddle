@@ -33,6 +33,8 @@ _LayerT = TypeVar("_LayerT", bound=Layer)
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 
+inference_engine_name = "paddle_inference_engine"
+
 
 def get_inference_precision(precision_str):
     if precision_str == "float32":
@@ -574,11 +576,11 @@ def inference(
     # if function has already been decorated by @paddle.incubate.jit.inference(), then we just return it.
     if (
         hasattr(function, "__name__")
-        and function.__name__ == "paddle_inference_engine"
+        and function.__name__ == inference_engine_name
     ):
         return function
     elif isinstance(function, Layer):
-        if function.forward.__name__ == "paddle_inference_engine":
+        if function.forward.__name__ == inference_engine_name:
             return function
 
     used_as_at_decorator = function is None
