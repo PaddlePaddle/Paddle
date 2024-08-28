@@ -182,7 +182,7 @@ void Executor::Run(const ProgramDesc& pdesc,
                    bool keep_kid_scopes) {
   LOG_FIRST_N(INFO, 1) << "Old Executor is Running.";
   phi::RecordEvent record_run(
-      "Executor::Run", platform::TracerEventType::UserDefined, 1);
+      "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
@@ -328,7 +328,7 @@ void Executor::Run(const ProgramDesc& program,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
   phi::RecordEvent record_run(
-      "Executor::Run", platform::TracerEventType::UserDefined, 1);
+      "Executor::Run", phi::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(kProgramId);
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
 #ifdef PADDLE_WITH_DNNL
@@ -471,7 +471,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
                                          bool create_vars,
                                          bool keep_kids) {
   phi::RecordEvent record_run("Executor::RunPartialPreparedContext",
-                              platform::TracerEventType::UserDefined,
+                              phi::TracerEventType::UserDefined,
                               1);
   platform::RecordBlock b(kProgramId);
   PADDLE_ENFORCE_NOT_NULL(
@@ -494,8 +494,7 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     auto& op = ctx->ops_[i];
     op->Run(*local_scope, place_);
     if (gc) {
-      phi::RecordEvent record(
-          "CheckGC", platform::TracerEventType::UserDefined, 10);
+      phi::RecordEvent record("CheckGC", phi::TracerEventType::UserDefined, 10);
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }
   }

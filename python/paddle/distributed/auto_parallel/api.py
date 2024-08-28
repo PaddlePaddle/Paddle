@@ -1447,7 +1447,7 @@ class ShardingStage3(_ShardingStageBase):
 
 def shard_optimizer(
     optimizer: Optimizer,
-    shard_fn: Callable[[str, Layer, ProcessMesh], None] | None = None,
+    shard_fn: Callable[[str, Tensor, Tensor], Tensor] | None = None,
 ) -> _ShardOptimizer:
     """
 
@@ -3140,3 +3140,9 @@ def shard_dataloader(
     return ShardDataloader(
         dataloader, meshes, input_keys, shard_dims, is_dataset_splitted
     )
+
+
+def in_auto_parallel_align_mode():
+    return paddle.base.framework.get_flags(
+        "FLAGS_enable_auto_parallel_align_mode"
+    )["FLAGS_enable_auto_parallel_align_mode"]

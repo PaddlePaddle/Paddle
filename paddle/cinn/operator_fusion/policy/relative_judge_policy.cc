@@ -218,9 +218,24 @@ bool RelativeJudgePolicy::ReduceTreeGrownCanMerge(
   }
   const auto& [related, _UNUSED] =
       SplitFirstIfRelatedBySecond(downstream_reduce_dims, upstream_output_dims);
-  auto res = (related.size() == 0);
-  VLOG(4) << "ReduceTreeGrownCanMerge: " << res;
-  return res;
+  if (related.size() > 0) {
+    return false;
+  }
+
+  auto upstream_reduce_op = upstream_tree.GetRootPattern().GetReduceOp();
+  const auto& [upstream_reduce_dims, _unused_dims] = SplitReduceDims(
+      axes_info_.GetSignature(upstream_reduce_op), upstream_reduce_op);
+  if (upstream_reduce_dims.size() != downstream_reduce_dims.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < upstream_reduce_dims.size(); ++i) {
+    if (upstream_reduce_dims[i].GetSymbolicDim() !=
+        downstream_reduce_dims[i].GetSymbolicDim()) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(

@@ -17,11 +17,11 @@
 #include <mutex>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/buddy_allocator.h"
 #include "paddle/phi/core/memory/allocation/system_allocator.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/profiler.h"
 #include "paddle/phi/core/utils/visit_place.h"

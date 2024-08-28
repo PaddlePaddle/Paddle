@@ -91,6 +91,10 @@ std::string GenCSVFilePath(const cinn::common::Target target,
     }
   };
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  if (root_path == "") {
+    const std::string kTestFileDir = "./tile_file_test/";
+    root_path = kTestFileDir;
+  }
   std::string target_str = target.arch_str() + "_" + target.device_name_str();
   checkexist(root_path);
   checkexist(root_path + target_str);
@@ -535,6 +539,12 @@ void TestPerformanceForTileConfig(int spatial_left_bound,
                                   bool test_single_large) {
   FLAGS_enable_cinn_compile_cache = false;
   FLAGS_cinn_measure_kernel_time = true;
+  // set tile_file path to test path when user use default setting
+  std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  if (root_path == "") {
+    const std::string kTestFileDir = "./tile_file_test/";
+    FLAGS_cinn_tile_config_filename_label = kTestFileDir;
+  }
 
   constexpr int kThreadsPerWarp = 32;
   constexpr int kMaxThreadsPerBlock = 1024;

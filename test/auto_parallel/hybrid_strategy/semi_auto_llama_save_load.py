@@ -230,10 +230,12 @@ class TestLlamaAuto:
             dist_model._engine._pir_dist_main_progs["train"], model_file_path
         )
         loaded_model = paddle.load(model_file_path)
-        paddle.disable_static()
         self.check_program_equal(
             dist_model._engine._pir_dist_main_progs["train"], loaded_model
         )
+        paddle.disable_static()
+        paddle.distributed.barrier()
+
         time.sleep(10)
 
         loss_after_load = []
