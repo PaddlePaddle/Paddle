@@ -560,6 +560,22 @@ def fused_ffn_pass(dense_main_program):
     ffn_values['w_up_g'] = bwd_ffn_ops[1].result(1)
     ffn_values['w_gate_g'] = bwd_ffn_ops[2].result(1)
     ffn_values['in_g'] = bwd_ffn_ops[4].result(1)
+
+    tmp_program = paddle.static.Program()
+    with tmp_program.global_block():
+        w_list = [ffn_values['w_gate'], ffn_values['w_up']]
+        weights = paddle._C_ops.builtin_combine(w_list)
+        fused_w, weights_tmp = paddle._C_ops.concat_and_relocate_(weights)
+        fused_o = paddle.matmul(
+            ffn_values['in'], fused_w, transpose_x=False, transpose_y=False
+        )
+        out = paddle.incubate.nn.functional.swiglu(fused_o)
+
+        # copy_out = paddle.framework.core.call_vjp(fwd_op, inputs, outputs, output_grads, input_grad_stopgradients)
+
+    print("dense_main_program: ", dense_main_program, flush=1)
+    print("tmp_program: ", tmp_program, flush=1)
+
     # (3) 删除融合前的子图
 
 

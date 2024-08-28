@@ -67,6 +67,7 @@ from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
     complete_op_role,
+    fused_ffn_pass,
     pipeline_pass,
     remove_other_rank_input_output_pass,
     remove_other_rank_op_pass,
@@ -894,6 +895,9 @@ class Engine:
         dense_program = dist_program.clone()
         paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_program)
         remove_unuseful_comm_op_pass(dense_program)
+
+        # # NOTE(zhangbo): Add tensor fusion pass for dense program.
+        fused_ffn_pass(dense_program)
 
         if self._strategy.pipeline.enable:
             self._job_plan = pipeline_pass(
