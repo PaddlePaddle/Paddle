@@ -370,7 +370,7 @@ Dispatcher.register(
     list.extend,
     (
         "ListVariable",
-        "ListVariable | TupleVariable | DictVariable | RangeVariable",
+        "ListVariable | TupleVariable",
     ),
     lambda var, other: var.extend(other),
 )
