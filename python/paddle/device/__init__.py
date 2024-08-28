@@ -584,7 +584,7 @@ class Event:
                 >>> e1.elapsed_time(e2)
 
         '''
-        return 0
+        return self.event_base.elapsed_time(end_event.event_base)
 
     def synchronize(self):
         '''
