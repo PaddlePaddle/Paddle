@@ -134,7 +134,7 @@ def append_add_n(
             index = 1
             grad_op_list = []
             while index < len(add_n_list):
-                grad_value += add_n_list[index]
+                grad_value = paddle._C_ops.add_(grad_value, add_n_list[index])
                 grad_op_list.append(grad_value.get_defining_op())
                 index += 1
             update_bwdop_structure(

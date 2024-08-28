@@ -17,6 +17,8 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -28,6 +30,8 @@
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 
 namespace paddle {
@@ -762,6 +766,16 @@ static PyObject *static_api_run_custom_op(PyObject *self,
                                        vec_input_dtypes,
                                        vec_input_name2id_map,
                                        custom_attrs);
+  dialect::ProcessMeshAttribute op_mesh;
+  bool run_auto_parallel = false;
+  std::vector<pir::Attribute> dist_result_attrs;
+  phi::distributed::SpmdInfo spmd_info;
+  if (dialect::HasDistInput(argument_inputs, &op_mesh)) {
+    VLOG(7) << "Custom Op: " << op_type << " InferSPMD";
+    run_auto_parallel = true;
+    spmd_info = paddle::framework::RunInferSpmd(
+        vec_map[0], op_type, op_mesh, argument_inputs, custom_attrs);
+  }
 
   size_t all_values_num = 0;
   // output name -> value num (that output should hold)
@@ -814,7 +828,18 @@ static PyObject *static_api_run_custom_op(PyObject *self,
           "Tensors' dtype",
           all_values_num,
           output_dtypes.size()));
-
+  if (run_auto_parallel) {
+    PADDLE_ENFORCE_EQ(
+        spmd_info.second.size(),
+        all_values_num,
+        common::errors::InvalidArgument(
+            "The number of output dist_attr after running custom operator's "
+            "InferSPMD is wrong, "
+            "expected contains %d Tensors' dist_attr, but actually contains %d "
+            "Tensors' dist_attr",
+            all_values_num,
+            spmd_info.second.size()));
+  }
   size_t value_index = 0;
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto &output = outputs.at(i);
@@ -827,23 +852,35 @@ static PyObject *static_api_run_custom_op(PyObject *self,
     }
     if (paddle::framework::detail::IsDuplicableVar(output)) {
       std::vector<pir::Type> out_types;
+      std::vector<pir::Attribute> dist_attrs;
       for (size_t j = 0; j < value_num; ++j) {
         auto ddims = phi::make_ddim(output_shapes[value_index]);
         auto dtype = output_dtypes[value_index];
         phi::DataLayout layout{DataLayout::NCHW};
         phi::LoD lod;
-        out_types.push_back(paddle::dialect::DenseTensorType::get(
+        auto type = paddle::dialect::DenseTensorType::get(
             pir::IrContext::Instance(),
             paddle::dialect::TransToIrDataType(dtype),
             ddims,
             layout,
             lod,
-            0));
+            0);
+        if (run_auto_parallel) {
+          auto dist_attr = dialect::CvtToPirAttr(spmd_info.second[value_index]);
+          out_types.push_back(dialect::CvtToPirDistType(type, dist_attr));
+          dist_attrs.push_back(dist_attr);
+        } else {
+          out_types.push_back(std::move(type));
+        }
         value_index++;
       }
       pir::Type out_vector_type =
           pir::VectorType::get(pir::IrContext::Instance(), out_types);
       argument_outputs.push_back(out_vector_type);
+      if (run_auto_parallel) {
+        dist_result_attrs.push_back(
+            pir::ArrayAttribute::get(pir::IrContext::Instance(), dist_attrs));
+      }
     } else {
       auto ddims = phi::make_ddim(output_shapes[value_index]);
       auto dtype = output_dtypes[value_index];
@@ -856,9 +893,34 @@ static PyObject *static_api_run_custom_op(PyObject *self,
           layout,
           lod,
           0);
-      argument_outputs.push_back(out_type);
+      if (run_auto_parallel) {
+        auto dist_attr = dialect::CvtToPirAttr(spmd_info.second[value_index]);
+        argument_outputs.push_back(
+            dialect::CvtToPirDistType(out_type, dist_attr));
+        dist_result_attrs.push_back(dist_attr);
+      } else {
+        argument_outputs.push_back(out_type);
+      }
       value_index++;
     }
+  }
+
+  // construct operator_dist_attr
+  if (run_auto_parallel) {
+    std::vector<pir::Attribute> dist_operand_attrs;
+    for (auto &arg_dist : spmd_info.first) {
+      dist_operand_attrs.push_back(dialect::CvtToPirAttr(arg_dist));
+    }
+    auto op_dist_attr = dialect::OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    std::ostringstream print_stream;
+    print_stream << op_dist_attr;
+    VLOG(7) << "Custom Op: " << op_type << " InferSPMD Operator dist attr"
+            << print_stream.str();
+    argument.AddAttribute(
+        kAttrOpDistAttr,
+        dialect::OperationDistAttribute::get(
+            ctx, op_mesh, dist_operand_attrs, dist_result_attrs));
   }
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
@@ -1165,5 +1227,4 @@ static PyMethodDef ManualOpsAPI[] = {
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind
-
 }  // namespace paddle

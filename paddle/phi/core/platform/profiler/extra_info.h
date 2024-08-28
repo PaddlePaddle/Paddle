@@ -18,7 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/phi/core/platform/profiler/utils.h"
 
 namespace paddle {
 namespace platform {

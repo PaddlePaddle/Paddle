@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <algorithm>
 #include <iterator>
+#include <numeric>
+#include <set>
 
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
@@ -121,13 +123,113 @@ void ProcessMesh::to_proto(ProcessMeshProto *proto) const {
 }
 
 bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {
-  if (lhs.shape() != rhs.shape()) {
-    return false;
-  }
-  if (lhs.process_ids() != rhs.process_ids()) {
+  if (lhs.shape() != rhs.shape() || lhs.process_ids() != rhs.process_ids()) {
     return false;
   }
   return true;
+}
+
+bool mesh_equal_ignore_shape1(const ProcessMesh &a,
+                              const ProcessMesh &b,
+                              int split_dim) {
+  if (a == b) {
+    return true;
+  }
+  if (a.process_ids() != b.process_ids()) {
+    return false;
+  }
+  std::vector<int64_t> a_shape = a.shape();
+  std::vector<int64_t> b_shape = b.shape();
+  if (a_shape[split_dim] != 1) {
+    return false;
+  }
+  a_shape.erase(a_shape.begin() + split_dim);
+  return a_shape == b_shape;
+}
+
+std::vector<ProcessMesh> SplitMesh(const ProcessMesh &mesh, int axis) {
+  std::vector<int64_t> mesh_shape = mesh.shape();
+  std::vector<int64_t> process_ids = mesh.process_ids();
+  std::vector<ProcessMesh> result;
+
+  int64_t total_elements = process_ids.size();
+
+  int64_t num_splits = mesh_shape[axis];
+  int64_t prod_before = std::accumulate(mesh_shape.begin(),
+                                        mesh_shape.begin() + axis,
+                                        1,
+                                        std::multiplies<int64_t>());
+  int64_t prod_after = std::accumulate(mesh_shape.begin() + axis + 1,
+                                       mesh_shape.end(),
+                                       1,
+                                       std::multiplies<int64_t>());
+
+  for (int i = 0; i < num_splits; ++i) {
+    std::vector<int64_t> new_shape = mesh_shape;
+    new_shape[axis] = 1;
+
+    std::vector<int64_t> new_process_ids;
+    for (int64_t j = 0; j < prod_before; ++j) {
+      for (int64_t k = 0; k < prod_after; ++k) {
+        int64_t index = j * mesh_shape[axis] * prod_after + i * prod_after + k;
+        if (index < total_elements) {
+          new_process_ids.push_back(process_ids[index]);
+        }
+      }
+    }
+
+    result.emplace_back(
+        ProcessMesh(new_shape, new_process_ids, mesh.dim_names()));
+  }
+
+  return result;
+}
+
+int SubMeshDim(const ProcessMesh &global_mesh, const ProcessMesh &sub_mesh) {
+  std::set<int64_t> global_ids(global_mesh.process_ids().begin(),
+                               global_mesh.process_ids().end());
+  std::set<int64_t> sub_ids(sub_mesh.process_ids().begin(),
+                            sub_mesh.process_ids().end());
+  if (!std::includes(
+          global_ids.begin(), global_ids.end(), sub_ids.begin(), sub_ids.end()))
+    return -1;
+
+  int sub_dim = -1;
+  std::vector<int64_t> global_shape = global_mesh.shape();
+  std::vector<int64_t> sub_shape = sub_mesh.shape();
+
+  if (global_mesh.ndim() == sub_mesh.ndim() + 1) {
+    // for the case that the `1` is not explicitly specified in the shape
+    // e.g.
+    //  global_mesh: shape = [2,3], process_ids = [0,1,2,3,4,5]
+    //  sub_mesh: shape = [3], process_ids = [0,1,2]
+    int global_ndim = global_mesh.ndim();
+    for (int i = 0; i < global_ndim - 1; ++i) {
+      std::vector<ProcessMesh> sub_meshes = SplitMesh(global_mesh, i);
+      for (const ProcessMesh &mesh : sub_meshes) {
+        if (mesh_equal_ignore_shape1(mesh, sub_mesh, i)) {
+          return i;
+        }
+      }
+    }
+    return sub_dim;
+  } else if (global_mesh.ndim() != sub_mesh.ndim()) {
+    return -1;
+  }
+
+  auto it = std::find(sub_shape.begin(), sub_shape.end(), 1);
+  if (it == sub_shape.end()) {
+    return -1;
+  }
+
+  sub_dim = it - sub_shape.begin();
+  std::vector<ProcessMesh> sub_meshes = SplitMesh(global_mesh, sub_dim);
+  if (std::find(sub_meshes.begin(), sub_meshes.end(), sub_mesh) !=
+      sub_meshes.end()) {
+    return sub_dim;
+  }
+
+  return -1;
 }
 
 }  // namespace distributed

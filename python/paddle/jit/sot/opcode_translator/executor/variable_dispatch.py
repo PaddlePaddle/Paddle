@@ -335,6 +335,38 @@ Dispatcher.register(
     ("TupleVariable", "VariableBase"),
     lambda var, value: var.index(value),
 )
+Dispatcher.register(
+    operator.add,
+    ("TupleVariable", "TupleVariable"),
+    lambda var, other: var.concat(other),
+)
+Dispatcher.register(
+    operator.iadd,
+    ("TupleVariable", "TupleVariable"),
+    lambda var, other: var.concat(other),
+)
+
+
+@Dispatcher.register_decorator(operator.eq)
+def dispatch_tuple_eq(lhs: TupleVariable, rhs: TupleVariable):
+    if len(lhs) != len(rhs):
+        return ConstantVariable(False, lhs.graph, DummyTracker([lhs, rhs]))
+    size = len(lhs)
+
+    return ConstantVariable(
+        all(
+            Dispatcher.call(operator.eq, lhs[i], rhs[i]).get_py_value()
+            for i in range(size)
+        ),
+        lhs.graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
+@Dispatcher.register_decorator(operator.ne)
+def dispatch_tuple_ne(lhs: TupleVariable, rhs: TupleVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
 
 # list
 Dispatcher.register(
@@ -427,15 +459,37 @@ Dispatcher.register(
     lambda var, other: var.concat(other),
 )
 Dispatcher.register(
-    operator.add,
-    ("TupleVariable", "TupleVariable"),
-    lambda var, other: var.concat(other),
+    operator.iadd,
+    ("ListVariable", "ListVariable"),
+    lambda var, other: var.inplace_concat(other),
 )
 Dispatcher.register(
     operator.mul,
     ("ListVariable | TupleVariable", "ConstantVariable"),
     lambda var, other: var.repeat(other),
 )
+
+
+@Dispatcher.register_decorator(operator.eq)
+def dispatch_list_eq(lhs: ListVariable, rhs: ListVariable):
+    if len(lhs) != len(rhs):
+        return ConstantVariable(False, lhs.graph, DummyTracker([lhs, rhs]))
+    size = len(lhs)
+
+    return ConstantVariable(
+        all(
+            Dispatcher.call(operator.eq, lhs[i], rhs[i]).get_py_value()
+            for i in range(size)
+        ),
+        lhs.graph,
+        DummyTracker([lhs, rhs]),
+    )
+
+
+@Dispatcher.register_decorator(operator.ne)
+def dispatch_list_ne(lhs: ListVariable, rhs: ListVariable):
+    return Dispatcher.call(operator.eq, lhs, rhs).bool_not()
+
 
 # getattr
 Dispatcher.register(

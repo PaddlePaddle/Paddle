@@ -1508,7 +1508,37 @@ class DistForwardAPI(ForwardAPI):
 
         return input_tensor_code, input_name_tensor_map
 
-    def generate_infer_meta_code(self) -> str:
+    def get_shape_type(self, attr_info):
+        shape_type = "int"
+        for name, info in attr_info.items():
+            if "IntArray" in info[0]:
+                shape_type = "int64_t"
+        return shape_type
+
+    def generate_infer_local_shape_code(self) -> str:
+        arg_name = self.infer_meta['local_shape']
+        assert arg_name in self.outputs['names'], (
+            f"Auto Parallel will calculate local_shape for {arg_name} "
+            f"in {self.api}, but {arg_name} is not found in its outputs."
+        )
+        # shape_type = self.attrs['attr_info'][shape_name][0]
+        # out_name = self.dist_output_args[0]
+        dist_out_name = self.dist_output_args[
+            self.outputs['names'].index(arg_name)
+        ]
+        shape_type = self.get_shape_type(self.attrs['attr_info'])
+        return CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
+            out_name=dist_out_name,
+            out_dist_attr=(
+                "PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);"
+                if self.infer_meta['spmd_rule']
+                else f"phi::distributed::TensorDistAttr(common::vectorize({dist_out_name}->dims()))"
+            ),
+            dtype=shape_type,
+            op_name=self.kernel['func'][0],
+        )
+
+    def generate_infer_meta_func_and_args_code(self) -> str:
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
 
@@ -1583,6 +1613,20 @@ class DistForwardAPI(ForwardAPI):
                         f"{out_name} ? &meta_{out_name} : nullptr, "
                     )
         output_args_code = output_args_code[:-2]
+        return (
+            infer_meta_func_code,
+            input_args_code,
+            output_decl_code,
+            output_args_code,
+        )
+
+    def generate_infer_meta_code(self) -> str:
+        (
+            infer_meta_func_code,
+            input_args_code,
+            output_decl_code,
+            output_args_code,
+        ) = self.generate_infer_meta_func_and_args_code()
 
         infer_meta_code = ""
 
@@ -1602,25 +1646,8 @@ class DistForwardAPI(ForwardAPI):
 
         # TODO(GhostScreaming): kernel like reshape need calculate local_shape
         if self.infer_meta['local_shape'] is not None:
-            shape_name = self.infer_meta['local_shape']
-            assert (
-                shape_name in self.attrs['names']
-            ), f"Auto Parallel will calculate local_shape {shape_name} for"
-            "operator {self.kernel['func'][0]}, but {shape_name} is not"
-            "found in its attributes."
-            shape_type = self.attrs['attr_info'][shape_name][0]
-            out_name = self.dist_output_args[0]
-            infer_meta_code += CALCULATE_LOCAL_SHAPE_TEMPLATE.format(
-                out_name=out_name,
-                out_dist_attr=(
-                    "PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmd_info.second[0]);"
-                    if self.infer_meta['spmd_rule']
-                    else f"phi::distributed::TensorDistAttr(common::vectorize({out_name}->dims()))"
-                ),
-                dtype="int64_t" if shape_type == "IntArray" else "int",
-                op_name=self.kernel['func'][0],
-                shape_name=shape_name,
-            )
+            infer_meta_code += self.generate_infer_local_shape_code()
+
         infer_meta_code = infer_meta_code + INFER_META_TEMPLATE.format(
             infer_meta_func_code, input_args_code, output_args_code
         )
