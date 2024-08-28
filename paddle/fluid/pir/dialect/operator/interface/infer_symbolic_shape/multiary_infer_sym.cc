@@ -1099,13 +1099,13 @@ bool EditDistanceOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       hyps_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(Hyps) must be a 2-D Tensor, but received rank %u.",
           hyps_dims.size()));
   PADDLE_ENFORCE_EQ(
       refs_dims.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(Refs) must be a 2-D Tensor, but received rank %u.",
           refs_dims.size()));
 
@@ -1155,7 +1155,7 @@ bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
   int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
   PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "'bit_length' should be between 1 and 16, but "
                         "the received is %d",
                         bit_length));
@@ -1831,7 +1831,7 @@ bool RoiPoolOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         rois_num_shape.size(),
         1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The number of rois should be a 1-D tensor with shape (num_rois), "
             "but received the number of rois with %d dimension",
             rois_num_shape.size()));
@@ -1843,13 +1843,13 @@ bool RoiPoolOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       4,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input data should be a four-dimensional tensor with [N,C,H,W], "
           "but received input data with %d dimension",
           x_shape.size()));
   PADDLE_ENFORCE_EQ(rois_shape.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "rois should be a 2-D LoDTensor with shape (num_rois, "
                         "4) given as [[x1, y1, x2, y2], ...], but received "
                         "rois is %d-dimensional LoDTensor",
@@ -2226,10 +2226,10 @@ bool PsroiPoolOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       input_dims.size(),
       4,
-      phi::errors::InvalidArgument("The format of input tensor is NCHW"));
+      common::errors::InvalidArgument("The format of input tensor is NCHW"));
   PADDLE_ENFORCE_EQ(rois_dims.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
                         "given as [(x1, y1, x2, y2), ...]"));
   infer_context->AddEqualCstr(rois_dims[1], symbol::DimExpr(4));
@@ -2238,12 +2238,12 @@ bool PsroiPoolOpInferSymbolicShape(
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
     const std::vector<symbol::DimExpr> &rois_num_dims =
         rois_num_shape_or_data.shape();
-    PADDLE_ENFORCE_EQ(
-        rois_num_dims.size(),
-        1,
-        phi::errors::InvalidArgument("The second dimension of RoisNum should "
-                                     "be 1, but received dimension is %d",
-                                     rois_num_dims.size()));
+    PADDLE_ENFORCE_EQ(rois_num_dims.size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "The second dimension of RoisNum should "
+                          "be 1, but received dimension is %d",
+                          rois_num_dims.size()));
   }
   int pooled_height =
       op->attribute<pir::Int32Attribute>("pooled_height").data();
@@ -2255,15 +2255,15 @@ bool PsroiPoolOpInferSymbolicShape(
   infer_context->AddEqualCstr(input_dims[1], divisor);
   PADDLE_ENFORCE_GT(pooled_height,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The pooled output height must be greater than 0"));
   PADDLE_ENFORCE_GT(pooled_width,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The pooled output width must be greater than 0"));
   PADDLE_ENFORCE_GT(output_channels,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The pooled output channels must greater than 1"));
   std::vector<symbol::DimExpr> out_dims = {
       rois_dims[0], output_channels, pooled_height, pooled_width};
@@ -2875,19 +2875,19 @@ bool YoloLossOpInferSymbolicShape(
 
   PADDLE_ENFORCE_EQ(x_shape.size(),
                     4,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(X) should be a 4-D tensor. But received "
                         "X dimension size(%s)",
                         x_shape.size()));
-  PADDLE_ENFORCE_EQ(
-      box_shape.size(),
-      3,
-      phi::errors::InvalidArgument("Input(GTBox) should be a 3-D tensor, but "
-                                   "received gtbox dimension size(%s)",
-                                   box_shape.size()));
+  PADDLE_ENFORCE_EQ(box_shape.size(),
+                    3,
+                    common::errors::InvalidArgument(
+                        "Input(GTBox) should be a 3-D tensor, but "
+                        "received gtbox dimension size(%s)",
+                        box_shape.size()));
   PADDLE_ENFORCE_EQ(label_shape.size(),
                     2,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(GTLabel) should be a 2-D tensor,"
                         "But received Input(GTLabel) dimension size(%s) != 2.",
                         label_shape.size()));
@@ -2904,9 +2904,9 @@ bool YoloLossOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         score_shape.size(),
         2,
-        phi::errors::InvalidArgument("Input(GTScore) should be a 2-D tensor"
-                                     "But received GTScore dimension(%s)",
-                                     box_shape.size()));
+        common::errors::InvalidArgument("Input(GTScore) should be a 2-D tensor"
+                                        "But received GTScore dimension(%s)",
+                                        box_shape.size()));
     infer_context->AddEqualCstr(score_shape[0], box_shape[0]);
     infer_context->AddEqualCstr(score_shape[1], box_shape[1]);
   }

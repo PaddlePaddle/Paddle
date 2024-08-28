@@ -973,7 +973,7 @@ bool FractionalMaxPoolOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       (x_dims.size() == 4 || x_dims.size() == 5),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Pooling input should be 4-D or 5-D tensor but received %dD-Tensor",
           x_dims.size()));
 
@@ -1243,7 +1243,7 @@ bool FakeQuantizeDequantizeAbsMaxOpInferSymbolicShape(
   int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
   PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
                     true,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "'bit_length' should be between 1 and 16, but "
                         "the received is %d",
                         bit_length));
@@ -1681,7 +1681,7 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       x_shape.size() - kernel_size_.size(),
       2U,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input size %d minus the kernel size %d should equal to 2.",
           x_shape.size(),
           kernel_size_.size()));
@@ -1695,7 +1695,7 @@ bool MaxPoolWithIndexOpInferSymbolicShape(
       PADDLE_ENFORCE_NE(
           strides[i],
           0,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The stride of MaxPool shall not be 0, but received %d.",
               strides[i]));
 
@@ -1733,9 +1733,9 @@ bool MaxPool2dWithIndexOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       4,
-      phi::errors::InvalidArgument("Pooling intput should be 4-D Tensor"
-                                   "but received %dD-Tensor",
-                                   x_shape.size()));
+      common::errors::InvalidArgument("Pooling intput should be 4-D Tensor"
+                                      "but received %dD-Tensor",
+                                      x_shape.size()));
 
   std::vector<int> paddings =
       paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
@@ -1745,13 +1745,13 @@ bool MaxPool2dWithIndexOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       paddings.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "It is expected paddings size equals to 2, but got size %d",
           paddings.size()));
   PADDLE_ENFORCE_EQ(
       strides.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "It is expected strides_size equals to 2, but got size %d",
           strides.size()));
 
@@ -1767,9 +1767,9 @@ bool MaxPool3dWithIndexOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
       5,
-      phi::errors::InvalidArgument("Pooling intput should be 5-D Tensor"
-                                   "but received %dD-Tensor",
-                                   x_shape.size()));
+      common::errors::InvalidArgument("Pooling intput should be 5-D Tensor"
+                                      "but received %dD-Tensor",
+                                      x_shape.size()));
 
   std::vector<int> paddings =
       paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
@@ -1779,13 +1779,13 @@ bool MaxPool3dWithIndexOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       paddings.size(),
       3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "It is expected paddings size equals to 3, but got size %d",
           paddings.size()));
   PADDLE_ENFORCE_EQ(
       strides.size(),
       3,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "It is expected strides_size equals to 3, but got size %d",
           strides.size()));
 
@@ -2591,20 +2591,20 @@ bool RreluOpInferSymbolicShape(pir::Operation *op,
   // Check constraints for the attributes lower and upper
   PADDLE_ENFORCE_GE(lower,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The lower value should be greater than or equal to 0. "
                         "But received lower value = %f.",
                         lower));
   PADDLE_ENFORCE_LE(upper,
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The upper value should be less than or equal to 1. "
                         "But received upper value = %f.",
                         upper));
   PADDLE_ENFORCE_GE(
       upper,
       lower,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The upper value should be greater than or equal to lower value. "
           "But received upper value = %f, lower value = %f.",
           upper,
