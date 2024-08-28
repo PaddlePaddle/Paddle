@@ -271,11 +271,47 @@ bool BincountOpInferSymbolicShape(
   return true;
 }
 
-// bool BmmOpInferSymbolicShape(pir::Operation *op,
-//                              pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool BmmOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const std::vector<symbol::DimExpr> &x_shapes = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &y_shapes = y_shape_or_data.shape();
+  std::size_t x_size = x_shapes.size();
+  std::size_t y_size = y_shapes.size();
+
+  PADDLE_ENFORCE_EQ(
+      x_size,
+      3,
+      common::errors::InvalidArgument("Input(X) of BmmOp must be 3-dimensional "
+                                      "in BmmOp, but received X's shape: [%d].",
+                                      x_size));
+  PADDLE_ENFORCE_EQ(
+      y_size,
+      3,
+      common::errors::InvalidArgument("Input(Y) of BmmOp must be 3-dimensional "
+                                      "in BmmOp, but received Y's shape: [%d].",
+                                      y_size));
+
+  infer_context->AddEqualCstr(x_shapes[2], y_shapes[1]);
+  infer_context->AddEqualCstr(x_shapes[0], y_shapes[0]);
+
+  const symbol::DimExpr batch_size = x_shapes[0];
+
+  const symbol::DimExpr out_height = x_shapes[1];
+  const symbol::DimExpr out_width = y_shapes[2];
+
+  std::vector<symbol::DimExpr> out_dims = {batch_size, out_height, out_width};
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 
 // bool CholeskySolveOpInferSymbolicShape(pir::Operation *op,
 //                                        pir::InferSymbolicShapeContext

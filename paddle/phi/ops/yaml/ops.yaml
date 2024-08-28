@@ -630,6 +630,7 @@
     backend : x
   inplace: (x -> out)
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : bitwise_xor
   args : (Tensor x, Tensor y)
@@ -651,6 +652,7 @@
   kernel :
     func : bmm
   backward : bmm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : box_clip
   args: (Tensor input, Tensor im_info)
@@ -1642,7 +1644,7 @@
   output : Tensor(out)
   infer_meta :
     func : ExpandAsInferMeta
-    local_shape: target_shape
+    local_shape: out
   kernel :
     func : expand_as
     data_type : x
@@ -2297,7 +2299,7 @@
     func : graph_sample_neighbors
     data_type : row
   optional : eids, perm_buffer
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
@@ -3343,6 +3345,7 @@
     func : multinomial
     data_type : x
   traits : paddle::dialect::ForwardOnlyTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : multiplex
   args : (Tensor[] inputs, Tensor index)
@@ -3386,6 +3389,7 @@
   kernel :
     func : nanmedian
   backward : nanmedian_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : nearest_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
@@ -3577,7 +3581,7 @@
   kernel :
     func : pixel_unshuffle
   backward : pixel_unshuffle_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : poisson
   args : (Tensor x)
@@ -3922,7 +3926,7 @@
   infer_meta :
     func : ReshapeInferMeta
     spmd_rule : ReshapeInferSpmd
-    local_shape: shape
+    local_shape: out
     global_shape: out
   kernel :
     func : reshape
@@ -4185,7 +4189,7 @@
     data_type: x
   optional: padding_data
   backward: sequence_conv_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : sequence_mask
   args: (Tensor x, Scalar(int) max_len, DataType out_dtype)
