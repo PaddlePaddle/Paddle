@@ -1045,9 +1045,6 @@ def synchronize(device: PlaceLike | None = None) -> None:
 
     """
 
-    if not paddle.in_dynamic_mode():
-        return
-
     if device is None:
         place = paddle.framework._current_expected_place()
     elif isinstance(device, str):
