@@ -129,7 +129,20 @@ class TestReduceFusion(unittest.TestCase):
             return (x,)
 
         self.compare_result(func, None, init)
+        
+    def test_reduce_all_reshape(self):
+        # R(reduce all) -> reshape
+        def func(x):
+            a = paddle.max(x, axis=[0, 1, 2, 3], keepdim=False)
+            b = paddle.reshape(a, [1])
+            return b
 
+        def init():
+            x = paddle.rand((1, 1, 128, 128))
+            return (x,)
+
+        self.compare_result(func, None, init)
+        
     def test_cast_int32_reduce(self):
         def func(x):
             a = paddle.cast(x, dtype='int32')
@@ -138,9 +151,9 @@ class TestReduceFusion(unittest.TestCase):
 
         def init():
             x = paddle.rand((3, 128, 96), dtype='float32')
-            return (x,)
 
         self.compare_result(func, None, init)
+
 
 
 if __name__ == "__main__":
