@@ -202,6 +202,8 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'nce',
     'lrn',
     'max_pool2d_v2',
+    'mp_allreduce_sum',
+    'mp_allreduce_sum_',
     'partial_sum',
     'pull_gpups_sparse',
     'pull_gpups_sparse_',
