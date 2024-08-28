@@ -21,7 +21,7 @@ class IndexPutOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(8200)
+#if IS_TRT_VERSION_GE(8510)
     VLOG(3) << "convert a index_put op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     std::string input_name = op_desc.Input("x").front();
@@ -67,11 +67,8 @@ class IndexPutOpConverter : public OpConverter {
     indices_slice_layer->setInput(1, *start_tensor);
     indices_slice_layer->setInput(2, *input_shape_tensor);
     indices_slice_layer->setInput(3, *stride_tensor);
-#if IS_TRT_VERSION_GE(8500)
     indices_slice_layer->setMode(nvinfer1::SampleMode::kCLAMP);
-#else
-    indices_slice_layer->setMode(nvinfer1::SliceMode::kCLAMP);
-#endif
+
     auto* bool_indices_tensor =
         Cast(indices_slice_layer->getOutput(0), nvinfer1::DataType::kBOOL);
     // nonzero
@@ -100,11 +97,8 @@ class IndexPutOpConverter : public OpConverter {
     value_slice_layer->setInput(1, *Add1DConstantLayer(0));
     value_slice_layer->setInput(2, *indices_count_tensor);
     value_slice_layer->setInput(3, *Add1DConstantLayer(1));
-#if IS_TRT_VERSION_GE(8500)
     value_slice_layer->setMode(nvinfer1::SampleMode::kCLAMP);
-#else
-    value_slice_layer->setMode(nvinfer1::SliceMode::kCLAMP);
-#endif
+
     value_tensor = value_slice_layer->getOutput(0);
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
                                        Scatter,
