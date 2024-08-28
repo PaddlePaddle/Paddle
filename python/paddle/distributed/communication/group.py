@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
+from typing import TYPE_CHECKING, Literal
 
 import paddle
 import paddle.distributed as dist
 from paddle import framework
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.base.core import ProcessGroup
 
 
 class Group:
@@ -24,7 +31,14 @@ class Group:
     The abstract representation of group.
     """
 
-    def __init__(self, rank_in_group, id, ranks, pg=None, name=None):
+    def __init__(
+        self,
+        rank_in_group: int,
+        id: int,
+        ranks: list[int],
+        pg: ProcessGroup | None = None,
+        name: str | None = None,
+    ) -> None:
         self._rank_in_group = rank_in_group
         self._world_size = len(ranks) if rank_in_group >= 0 else -1
         self._id = id
@@ -33,51 +47,51 @@ class Group:
         self._name = name
 
     @property
-    def rank(self):
+    def rank(self) -> int:
         return self._rank_in_group
 
     @property
-    def ranks(self):
+    def ranks(self) -> list[int]:
         return self._ranks
 
     @property
-    def nranks(self):
+    def nranks(self) -> int:
         return len(self._ranks)
 
     @property
-    def name(self):
+    def name(self) -> str | None:
         return self._name
 
     @property
-    def process_group(self):
+    def process_group(self) -> ProcessGroup:
         return self._pg
 
     @property
-    def world_size(self):
+    def world_size(self) -> int:
         return self._world_size
 
     @property
-    def backend(self):
+    def backend(self) -> str:
         return self._pg.name()
 
     @property
-    def id(self):
+    def id(self) -> int:
         return self._id
 
-    def is_member(self):
+    def is_member(self) -> bool:
         if self.rank < 0:
             return False
         if self.nranks < 2:
             return False
         return True
 
-    def get_group_rank(self, rank):
+    def get_group_rank(self, rank: int) -> int | Literal[-1]:
         if self.is_member():
             return self.ranks.index(rank)
         else:
             return -1
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         debug_str = (
             f"rank: {self.rank}, nranks: {self.nranks}, id: {self.id}, ranks: "
         )
@@ -126,7 +140,7 @@ def _get_or_throw_group_rank(global_rank, group):
     return group_rank
 
 
-def is_initialized():
+def is_initialized() -> bool:
     """
 
     Check whether the distributed environment has been initialized
@@ -154,7 +168,7 @@ def is_initialized():
     return _GroupManager.global_group_id in _GroupManager.group_map_by_id
 
 
-def destroy_process_group(group=None):
+def destroy_process_group(group: Group | None = None) -> None:
     """
     Destroy a given group for communication
 
@@ -196,7 +210,7 @@ def destroy_process_group(group=None):
         del _GroupManager.group_map_by_id[group.id]
 
 
-def get_group(id=0):
+def get_group(id: int = 0) -> Group:
     """
 
     Get group instance by group id.
@@ -255,7 +269,9 @@ def _sync_comm_stream(tensor, ring_id=0):
         )
 
 
-def wait(tensor, group=None, use_calc_stream=True):
+def wait(
+    tensor: Tensor, group: Group | None = None, use_calc_stream: bool = True
+) -> None:
     """
 
     wait to sync stream for group.
@@ -291,7 +307,7 @@ def wait(tensor, group=None, use_calc_stream=True):
         _sync_comm_stream(tensor, ring_id)
 
 
-def barrier(group=None):
+def barrier(group: Group | None = None) -> None:
     """
 
     Barrier among all participators in the group.
@@ -347,7 +363,7 @@ def barrier(group=None):
         )
 
 
-def get_backend(group=None):
+def get_backend(group: Group | None = None) -> str:
     """
     Get the backend of given group.
 

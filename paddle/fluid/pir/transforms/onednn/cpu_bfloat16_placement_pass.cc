@@ -212,7 +212,11 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
           prev_fp32 = true;
           break;
         }
-        if (op_attr.find("mkldnn_data_type")->second == "float32") {
+        auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
+                                    .dyn_cast<pir::StrAttribute>()
+                                    .AsString();
+
+        if (mkldnn_data_type == "float32") {
           prev_fp32 = true;
           break;
         }
