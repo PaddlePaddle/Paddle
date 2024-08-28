@@ -25,10 +25,12 @@ if(WITH_ROCM)
     APPEND
     HIP_SRCS
     rocblas.cc
+    hipblasLt.cc
     miopen.cc
     hiprand.cc
     hipfft.cc
     rocsparse.cc)
+  # add_definitions(-D__HIP_PLATFORM_AMD__)
 endif()
 
 # There is no macOS version of NCCL.
