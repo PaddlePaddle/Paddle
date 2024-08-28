@@ -26,10 +26,10 @@ from paddle.base import core
 from paddle.nn.functional.flash_attention import (
     calc_reduced_attention_scores,
     flash_attention,
-    flash_attention_with_sparse_mask,
     flash_attn_qkvpacked,
     flash_attn_unpadded,
     flash_attn_varlen_qkvpacked,
+    flashmask_attention,
     scaled_dot_product_attention,
 )
 from paddle.pir_utils import test_with_pir_api
@@ -567,10 +567,10 @@ class TestFlashAttentionGQA(unittest.TestCase):
             low=1, high=self.seq_len, size=[self.batch_size]
         )
         cu_seqlen_q = paddle.to_tensor(
-            [0] + np.cumsum(seq_len_q).tolist(), dtype=paddle.int32
+            [0, *np.cumsum(seq_len_q).tolist()], dtype=paddle.int32
         )
         cu_seqlen_k = paddle.to_tensor(
-            [0] + np.cumsum(seq_len_k).tolist(), dtype=paddle.int32
+            [0, *np.cumsum(seq_len_k).tolist()], dtype=paddle.int32
         )
 
         qs, ks, vs = [], [], []
@@ -772,7 +772,7 @@ class TestFlashAttentionGQA(unittest.TestCase):
 
             tmp_shape = tmp_xs[i].shape
             tmp_pad = paddle.zeros(
-                [max_seqlen - tmp_shape[0]] + list(tmp_shape[1:]), dtype=x.dtype
+                [max_seqlen - tmp_shape[0], *tmp_shape[1:]], dtype=x.dtype
             )
             tmp_x = paddle.concat([tmp_xs[i], tmp_pad]).unsqueeze(0)
             tmp_x_pads.append(tmp_x)
@@ -921,15 +921,15 @@ class TestFlashAttentionWithSparseMaskAPI(unittest.TestCase):
         attn_mask_start_row_indices = paddle.to_tensor(
             start_row_indices, dtype=paddle.int32
         )
+        startend_row_indices = paddle.unsqueeze(attn_mask_start_row_indices, -1)
 
-        out = flash_attention_with_sparse_mask(
+        out = flashmask_attention(
             q,
             k,
             v,
-            attn_mask_start_row_indices=attn_mask_start_row_indices,
-            attn_mask_start_row=attn_mask_start_row,
-            dropout_p=self.dropout,
-            is_causal=self.causal,
+            startend_row_indices=startend_row_indices,
+            dropout=self.dropout,
+            causal=self.causal,
         )
         out_ = attention_naive_with_mask(q_, k_, v_, m)
         out.backward()
@@ -966,7 +966,7 @@ class TestFlashAttentionVarlenQKVPackedGQA(TestFlashAttentionGQA):
         )
         seq_len_k = seq_len_q
         cu_seqlen_q = paddle.to_tensor(
-            [0] + np.cumsum(seq_len_q).tolist(), dtype=paddle.int32
+            [0, *np.cumsum(seq_len_q).tolist()], dtype=paddle.int32
         )
         cu_seqlen_k = cu_seqlen_q
 

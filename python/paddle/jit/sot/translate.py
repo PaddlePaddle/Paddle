@@ -21,6 +21,7 @@ from typing_extensions import ParamSpec
 import paddle
 
 from .opcode_translator import eval_frame_callback
+from .profiler import SotStepProfilerGuard
 from .utils import GraphLogger, StepInfoManager, StepState, log_do
 
 P = ParamSpec("P")
@@ -111,7 +112,7 @@ def symbolic_translate(fn: Callable[P, R], **kwargs) -> Callable[P, R]:
         return outs
 
     def impl(*args: P.args, **kwargs: P.kwargs) -> R:
-        with StepInfoManager().step_guard(fn.__code__):
+        with StepInfoManager().step_guard(fn.__code__), SotStepProfilerGuard():
             state = StepInfoManager().current_state
 
             if state == StepState.RUN_SOT:

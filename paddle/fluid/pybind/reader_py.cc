@@ -37,7 +37,7 @@
 COMMON_DECLARE_bool(reader_queue_speed_test_mode);
 
 // disable auto conversion to list in Python
-PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
+PYBIND11_MAKE_OPAQUE(phi::TensorArray);
 
 namespace paddle {
 namespace pybind {
@@ -128,7 +128,7 @@ class MultiDeviceFeedReader {
  public:
   using ResultDictList =
       std::vector<std::unordered_map<std::string, phi::DenseTensor>>;
-  using ResultList = std::vector<paddle::framework::LoDTensorArray>;
+  using ResultList = std::vector<phi::TensorArray>;
 
   static constexpr bool kKeepOrder =
       std::is_same<QueueType,
@@ -346,7 +346,7 @@ class MultiDeviceFeedReader {
   std::vector<std::future<Status>> futures_;
   std::vector<std::exception_ptr> exceptions_;
 
-  std::vector<paddle::framework::LoDTensorArray> ret_;
+  std::vector<phi::TensorArray> ret_;
   bool drop_last_;
   bool pin_memory_;
 };
@@ -453,7 +453,7 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::LoDTensorBlockingQueue &self,
-             const paddle::framework::LoDTensorArray &lod_tensor_vec) {
+             const phi::TensorArray &lod_tensor_vec) {
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())
@@ -471,7 +471,7 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::OrderedMultiDeviceLoDTensorBlockingQueue &self,
-             const paddle::framework::LoDTensorArray &lod_tensor_vec) {
+             const phi::TensorArray &lod_tensor_vec) {
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())

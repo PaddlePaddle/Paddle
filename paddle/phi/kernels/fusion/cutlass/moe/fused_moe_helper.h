@@ -126,18 +126,19 @@ class MoeHelper {
                   const DenseTensor *gate_weight,
                   const DenseTensor *ffn1_weight,
                   const paddle::optional<DenseTensor> &ffn1_scale,
-                  const DenseTensor *ffn1_bias,
+                  const paddle::optional<DenseTensor> &ffn1_bias,
                   const DenseTensor *ffn2_weight,
                   const paddle::optional<DenseTensor> &ffn2_scale,
-                  const DenseTensor *ffn2_bias,
+                  const paddle::optional<DenseTensor> &ffn2_bias,
                   const DenseTensor *moe_token_type_ids,
                   const int moe_topk,
+                  const bool norm_topk_prob,
                   const std::string moe_type,
                   DenseTensor *output) {
     auto *input_activations = X->data<T>();
     auto *gating_weights = gate_weight->data<float>();
-    auto *fc1_expert_biases = ffn1_bias->data<T>();
-    auto *fc2_expert_biases = ffn2_bias->data<T>();
+    auto *fc1_expert_biases = ffn1_bias.get_ptr()->data<T>();
+    auto *fc2_expert_biases = ffn2_bias.get_ptr()->data<T>();
 
     auto *output_ = output->data<T>();
     auto stream = ctx.stream();
@@ -158,6 +159,10 @@ class MoeHelper {
       inter_dim = ffn1_dims[2] * ffn1_dims[3] * ffn1_dims[4];
     } else {
       inter_dim = ffn1_dims[2];
+    }
+
+    if (gemm_method_ == "weight_only_int4") {
+      inter_dim = inter_dim * 2;
     }
 
     const int inter_size = inter_dim;
@@ -375,7 +380,7 @@ class MoeHelper {
             inter_size / 2,
             num_experts,
             ctx.stream());
-      } else if (gemm_method_ == "weight_onlyint4") {
+      } else if (gemm_method_ == "weight_only_int4") {
         int4_moe_gemm_runner_->moe_gemm(
             reinterpret_cast<NvType *>(act_out),
             reinterpret_cast<const cutlass::uint4b_t *>(
@@ -413,6 +418,7 @@ class MoeHelper {
           hidden_size,
           k,
           static_cast<int>(1),
+          norm_topk_prob,
           ctx.stream());
     } else {
       finalize_moe_routing_kernelLauncher(
@@ -427,6 +433,7 @@ class MoeHelper {
           inter_size,
           k,
           static_cast<int>(0),
+          norm_topk_prob,
           ctx.stream());
     }
     VLOG(4) << " Finished EXPERT \n";

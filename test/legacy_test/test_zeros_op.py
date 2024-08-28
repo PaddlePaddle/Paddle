@@ -51,25 +51,16 @@ class ApiZerosTest(unittest.TestCase):
             exe = paddle.static.Executor(place)
             result = exe.run(fetch_list=[out])
             self.assertEqual((result == out_np).all(), True)
-
-    def test_base_out(self):
         with program_guard(Program()):
-            zeros = paddle.zeros(shape=[10], dtype='int64')
+            out_np = np.zeros(shape=10, dtype='int32')
+            out = paddle.zeros(shape=10, dtype='int32')
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            (result,) = exe.run(fetch_list=[zeros])
-            expected_result = np.zeros(10, dtype='int64')
-        self.assertEqual((result == expected_result).all(), True)
+            result = exe.run(fetch_list=[out])
+            self.assertEqual((result == out_np).all(), True)
 
 
 class ApiZerosError(unittest.TestCase):
-    def test_errors(self):
-        def test_error1():
-            with paddle.static.program_guard(base.Program()):
-                ones = paddle.zeros(shape=10, dtype='int64')
-
-        self.assertRaises(TypeError, test_error1)
-
     def test_shape_errors(self):
         with base.dygraph.guard():
             try:

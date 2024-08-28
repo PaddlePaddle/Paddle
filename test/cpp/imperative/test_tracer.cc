@@ -26,9 +26,9 @@
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/memory/memcpy.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);

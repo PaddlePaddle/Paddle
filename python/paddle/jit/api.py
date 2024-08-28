@@ -183,14 +183,12 @@ class _ToStaticOptions(TypedDict):
 
 class _ToStaticDecorator(Protocol):
     @overload
-    def __call__(self, function: _LayerT) -> _LayerT:
-        ...
+    def __call__(self, function: _LayerT) -> _LayerT: ...
 
     @overload
     def __call__(
         self, function: Callable[_InputT, _RetT]
-    ) -> StaticFunction[_InputT, _RetT]:
-        ...
+    ) -> StaticFunction[_InputT, _RetT]: ...
 
 
 @overload
@@ -200,8 +198,7 @@ def to_static(
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
     **kwargs: Unpack[_ToStaticOptions],
-) -> _LayerT:
-    ...
+) -> _LayerT: ...
 
 
 @overload
@@ -211,8 +208,7 @@ def to_static(
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
     **kwargs: Unpack[_ToStaticOptions],
-) -> StaticFunction[_InputT, _RetT]:
-    ...
+) -> StaticFunction[_InputT, _RetT]: ...
 
 
 @overload
@@ -222,8 +218,7 @@ def to_static(
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
     **kwargs: Unpack[_ToStaticOptions],
-) -> _ToStaticDecorator:
-    ...
+) -> _ToStaticDecorator: ...
 
 
 def to_static(
@@ -351,22 +346,20 @@ class _NotToStaticDecorator(Protocol):
     @overload
     def __call__(
         self, func: Callable[_InputT, _RetT]
-    ) -> Callable[_InputT, _RetT]:
-        ...
+    ) -> Callable[_InputT, _RetT]: ...
 
     @overload
-    def __call__(self, func: None = ...) -> _NotToStaticDecorator:
-        ...
+    def __call__(self, func: None = ...) -> _NotToStaticDecorator: ...
 
 
 @overload
-def not_to_static(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-    ...
+def not_to_static(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]: ...
 
 
 @overload
-def not_to_static(func: None = ...) -> _NotToStaticDecorator:
-    ...
+def not_to_static(func: None = ...) -> _NotToStaticDecorator: ...
 
 
 def not_to_static(func=None):
@@ -883,8 +876,7 @@ class _SaveFunction(Protocol):
         path: str,
         input_spec: Sequence[InputSpec | Tensor | object] | None = ...,
         **configs: Unpack[_SaveOptions],
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 @wrap_decorator
@@ -1336,16 +1328,16 @@ def save(
                     if param_or_buffer.name not in extra_var_info:
                         extra_info_dict = {}
                         if param_or_buffer.name in state_names_dict:
-                            extra_info_dict[
-                                'structured_name'
-                            ] = state_names_dict[param_or_buffer.name]
-                        extra_info_dict[
-                            'stop_gradient'
-                        ] = param_or_buffer.stop_gradient
+                            extra_info_dict['structured_name'] = (
+                                state_names_dict[param_or_buffer.name]
+                            )
+                        extra_info_dict['stop_gradient'] = (
+                            param_or_buffer.stop_gradient
+                        )
                         if isinstance(param_or_buffer, EagerParamBase):
-                            extra_info_dict[
-                                'trainable'
-                            ] = param_or_buffer.trainable
+                            extra_info_dict['trainable'] = (
+                                param_or_buffer.trainable
+                            )
                         extra_var_info[param_or_buffer.name] = extra_info_dict
         # 4. build input & output of save_inference_model
         # NOTE(chenweihang): [ Get input variables name ]

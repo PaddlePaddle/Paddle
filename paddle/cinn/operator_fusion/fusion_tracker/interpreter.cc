@@ -33,6 +33,8 @@ void RunCombineInstr(const std::shared_ptr<CombineInstr>& instr,
     const auto& to_insert = interpreter->scope.at(name);
     new_pattern->Extend(to_insert->fusion_ops);
   }
+  VLOG(4) << "After CombineInstr Pattern: \n"
+          << GetFusibleOpsExpr(new_pattern->fusion_ops);
   interpreter->scope[instr->result_] = new_pattern;
 }
 
@@ -46,7 +48,10 @@ void RunInitPatternInstr(const std::shared_ptr<InitPatternInstr>& instr,
 
 void RunTrivialInlineInstr(const std::shared_ptr<TrivialInlineInstr>& instr,
                            FusionInterpreter* interpreter) {
-  PADDLE_ENFORCE_EQ(interpreter->scope[instr->upstream_]->fusion_ops.size(), 1);
+  PADDLE_ENFORCE_EQ(interpreter->scope[instr->upstream_]->fusion_ops.size(),
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "Upstream op must have only one fusion_op."));
   auto upstream_op = std::get<TrivialOp>(
       interpreter->scope[instr->upstream_]->fusion_ops.front());
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
@@ -66,31 +71,48 @@ void RunTrivialInlineInstr(const std::shared_ptr<TrivialInlineInstr>& instr,
 
 void RunTmpTransformInstr(const std::shared_ptr<TmpTransformInstr>& instr,
                           FusionInterpreter* interpreter) {
-  VLOG(4) << interpreter->scope[instr->upstream_]->fusion_ops.size();
-  PADDLE_ENFORCE_EQ(interpreter->scope[instr->downstream_]->fusion_ops.size(),
-                    1,
-                    "Downstream op must have only one fusion_op.");
-  auto upstream_op = std::get<ReduceOp>(
-      interpreter->scope[instr->upstream_]->fusion_ops.front());
+  PADDLE_ENFORCE_GT(
+      interpreter->scope.count(instr->upstream_),
+      0,
+      ::common::errors::NotFound("Can not find TmpTransformInstr uptream."));
+  PADDLE_ENFORCE_GT(
+      interpreter->scope.count(instr->downstream_),
+      0,
+      ::common::errors::NotFound("Can not find TmpTransformInstr downstream."));
+
+  PADDLE_ENFORCE_EQ(
+      interpreter->scope[instr->downstream_]->fusion_ops.size(),
+      1,
+      ::common::errors::InvalidArgument(
+          "Downstream %s must have only one fusion_op.", instr->downstream_));
   auto downstream_op =
       interpreter->scope[instr->downstream_]->fusion_ops.front();
+  std::vector<FusibleOp> changed_upstreams;
+  for (auto fusion_op : interpreter->scope[instr->upstream_]->fusion_ops) {
+    auto upstream_op = std::get<ReduceOp>(fusion_op);
+    changed_upstreams = ConcatVector(
+        changed_upstreams,
+        cinn::hlir::framework::pir::trivial_fusion_detail::
+            TransformReduceLoopRange(
+                upstream_op, &downstream_op, instr->fake_reduce_iter_idx_));
+  }
+
   // inplace set the upstream
-  ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
-  new_pattern->fusion_ops = cinn::hlir::framework::pir::trivial_fusion_detail::
-      TransformReduceLoopRange(
-          upstream_op, &downstream_op, instr->fake_reduce_iter_idx_);
-  interpreter->scope[instr->out_upstream_] = new_pattern;
+  interpreter->scope[instr->out_upstream_] = std::make_shared<ScopeElement>();
+  interpreter->scope[instr->out_upstream_]->fusion_ops = changed_upstreams;
   // inplace set the downstream
-  ScopeElementPtr new_downstream = std::make_shared<ScopeElement>();
-  new_downstream->fusion_ops.push_back(downstream_op);
-  interpreter->scope[instr->out_downstream_] = new_downstream;
+  interpreter->scope[instr->out_downstream_] = std::make_shared<ScopeElement>();
+  interpreter->scope[instr->out_downstream_]->fusion_ops.push_back(
+      downstream_op);
 }
 
 void RunTrivialLoopAlignInstr(
     const std::shared_ptr<TrivialLoopAlignInstr>& instr,
     FusionInterpreter* interpreter) {
   PADDLE_ENFORCE_EQ(interpreter->scope[instr->downstream_]->fusion_ops.size(),
-                    1);
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "Downstream op must have only one fusion_op."));
   auto upstream_op = std::get<ReduceOp>(
       interpreter->scope[instr->upstream_]->fusion_ops.front());
   auto downstream_op = std::get<TrivialOp>(
@@ -104,7 +126,10 @@ void RunTrivialLoopAlignInstr(
 
 void RunAnchorTransformInstr(const std::shared_ptr<AnchorTransformInstr>& instr,
                              FusionInterpreter* interpreter) {
-  PADDLE_ENFORCE_EQ(interpreter->scope[instr->target_]->fusion_ops.size(), 1);
+  PADDLE_ENFORCE_EQ(interpreter->scope[instr->target_]->fusion_ops.size(),
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "Target op must have only one fusion_op."));
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
 
   std::function<ir::Expr(ir::Expr)> do_transform =
@@ -187,7 +212,8 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
             dynamic_cast_instr_with_err<TrivialLoopAlignInstr>(instr), this);
         break;
       default:
-        PADDLE_THROW("Unsupported Fusion Instrution");
+        PADDLE_THROW(
+            ::common::errors::Unavailable("Unsupported Fusion Instrution"));
     }
   }
 

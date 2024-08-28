@@ -14,8 +14,8 @@
 
 #include "paddle/phi/core/memory/allocation/pinned_allocator.h"
 
-#include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/phi/core/memory/stats.h"
+#include "paddle/phi/core/platform/profiler/mem_tracing.h"
 namespace paddle::memory::allocation {
 bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
 void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
@@ -29,7 +29,7 @@ void CPUPinnedAllocator::FreeImpl(phi::Allocation *allocation) {
   platform::RecordMemEvent(allocation->ptr(),
                            allocation->place(),
                            allocation->size(),
-                           platform::TracerMemEventType::ReservedFree);
+                           phi::TracerMemEventType::ReservedFree);
   delete allocation;
 }
 phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
@@ -44,7 +44,7 @@ phi::Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   platform::RecordMemEvent(ptr,
                            phi::GPUPinnedPlace(),
                            size,
-                           platform::TracerMemEventType::ReservedAllocate);
+                           phi::TracerMemEventType::ReservedAllocate);
   return new Allocation(ptr, size, phi::GPUPinnedPlace());
 }
 }  // namespace paddle::memory::allocation

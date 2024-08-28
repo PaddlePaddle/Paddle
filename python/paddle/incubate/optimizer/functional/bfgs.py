@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal
+
 import numpy as np
 
 import paddle
@@ -23,20 +27,25 @@ from .utils import (
     check_input_type,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from paddle import Tensor
+
 
 def minimize_bfgs(
-    objective_func,
-    initial_position,
-    max_iters=50,
-    tolerance_grad=1e-7,
-    tolerance_change=1e-9,
-    initial_inverse_hessian_estimate=None,
-    line_search_fn='strong_wolfe',
-    max_line_search_iters=50,
-    initial_step_length=1.0,
-    dtype='float32',
-    name=None,
-):
+    objective_func: Callable[[Tensor], Tensor],
+    initial_position: Tensor,
+    max_iters: int = 50,
+    tolerance_grad: float = 1e-7,
+    tolerance_change: float = 1e-9,
+    initial_inverse_hessian_estimate: Tensor | None = None,
+    line_search_fn: Literal['strong_wolfe'] = 'strong_wolfe',
+    max_line_search_iters: int = 50,
+    initial_step_length: float = 1.0,
+    dtype: Literal['float32', 'float64'] = 'float32',
+    name: str | None = None,
+) -> tuple[bool, int, Tensor, Tensor, Tensor, Tensor]:
     r"""
     Minimizes a differentiable function `func` using the BFGS method.
     The BFGS is a quasi-Newton method for solving an unconstrained optimization problem over a differentiable function.

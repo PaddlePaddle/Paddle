@@ -266,8 +266,12 @@ def _convert_to_place(device: str) -> PlaceLike:
                     "The device must be a string which is like 'cpu', {}".format(
                         ', '.join(
                             f"'{x}', '{x}:x'"
-                            for x in ['gpu', 'xpu', 'npu']
-                            + core.get_all_custom_device_type()
+                            for x in [
+                                'gpu',
+                                'xpu',
+                                'npu',
+                                *core.get_all_custom_device_type(),
+                            ]
                         )
                     )
                 )
@@ -600,7 +604,7 @@ class Event:
                 >>> e1.elapsed_time(e2)
 
         '''
-        return 0
+        return self.event_base.elapsed_time(end_event.event_base)
 
     def synchronize(self) -> None:
         '''
@@ -975,7 +979,7 @@ class stream_guard:
             >>> data2 = paddle.ones(shape=[20])
             >>> data3 = data1 + data2
             >>> with paddle.device.stream_guard(s):
-            ...     s.wait_stream(paddle.device.default_stream())
+            ...     s.wait_stream(paddle.device.default_stream()) # type: ignore[attr-defined]
             ...     data4 = data1 + data3
 
     '''

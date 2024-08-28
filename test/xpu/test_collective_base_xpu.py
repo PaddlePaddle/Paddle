@@ -175,7 +175,7 @@ def runtime_main(test_class, col_type, sub_type):
     args["dtype"] = os.getenv("DTYPE")
     args["batch_size"] = os.getenv("BATCH_SIZE")
     args["dynamic_static_unified_comm"] = bool(
-        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+        int(os.getenv("FLAGS_dynamic_static_unified_comm", "1"))
     )
     model.run_trainer(args)
 
@@ -293,7 +293,6 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
             "DTYPE": dtype,
-            "FLAGS_dynamic_static_unified_comm": "0",
         }
         required_envs.update(need_envs)
         if check_error_log:

@@ -49,7 +49,7 @@ std::string DotNode::repr() const {
   std::stringstream ss;
   PADDLE_ENFORCE_NE(name.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The name of DotNode is empty! Please check."));
   ss << id_;
   if (attrs.empty()) {
@@ -78,11 +78,11 @@ std::string DotEdge::repr() const {
   std::stringstream ss;
   PADDLE_ENFORCE_NE(source.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The source of DotEdge is empty! Please check."));
   PADDLE_ENFORCE_NE(target.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The target of DotEdge is empty! Please check."));
   ss << source << "->" << target;
   for (size_t i = 0; i < attrs.size(); i++) {
@@ -101,10 +101,10 @@ void DotLang::AddNode(const std::string& id,
                       std::string cluster_id,
                       bool allow_duplicate) {
   if (!allow_duplicate) {
-    PADDLE_ENFORCE_EQ(
-        !nodes_.count(id),
-        true,
-        phi::errors::InvalidArgument("Duplicate Node %s, please check.", id));
+    PADDLE_ENFORCE_EQ(!nodes_.count(id),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Duplicate Node %s, please check.", id));
   }
   if (!nodes_.count(id)) {
     if (label.empty()) {
@@ -114,7 +114,7 @@ void DotLang::AddNode(const std::string& id,
     if (!cluster_id.empty()) {
       PADDLE_ENFORCE_GE(clusters_.count(cluster_id),
                         1,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "Cluster %s is not existed.", cluster_id));
       clusters_[cluster_id].Insert(&nodes_[id]);
     }
@@ -123,10 +123,10 @@ void DotLang::AddNode(const std::string& id,
 
 void DotLang::AddCluster(const std::string& id,
                          const std::vector<DotAttr>& attrs) {
-  PADDLE_ENFORCE_EQ(
-      !clusters_.count(id),
-      true,
-      phi::errors::InvalidArgument("Duplicate Cluster %s, please check.", id));
+  PADDLE_ENFORCE_EQ(!clusters_.count(id),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Duplicate Cluster %s, please check.", id));
   clusters_.emplace(id, DotCluster{id, attrs});
 }
 
@@ -135,19 +135,19 @@ void DotLang::AddEdge(const std::string& source,
                       const std::vector<DotAttr>& attrs) {
   PADDLE_ENFORCE_NE(source.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The source of AddEdge is empty! Please check."));
   PADDLE_ENFORCE_NE(target.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The target of AddEdge is empty! Please check."));
   PADDLE_ENFORCE_EQ(nodes_.find(source) != nodes_.end(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Call AddNote to add %s to dot first.", source));
   PADDLE_ENFORCE_EQ(nodes_.find(target) != nodes_.end(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Call AddNote to add %s to dot first.", target));
   auto sid = nodes_.at(source).id();
   auto tid = nodes_.at(target).id();

@@ -27,9 +27,9 @@ paddle.enable_static()
 class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
-        os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"
-        ] = "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = (
+            "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+        )
         # pre-assigned ring id
         self.mp_ring_id = 0
         self.sharding_ring_id = 1
@@ -910,9 +910,9 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
 class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "3"
-        os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"
-        ] = "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = (
+            "127.0.0.1:36001,127.0.0.1:36002,127.0.0.1:36003,127.0.0.1:36004"
+        )
         # pre-assigned ring id
         self.mp_ring_id = 0
         self.sharding_ring_id = 1

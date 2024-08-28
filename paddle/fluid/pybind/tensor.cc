@@ -73,11 +73,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
@@ -112,6 +110,8 @@ limitations under the License. */
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/lod_utils.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
+#include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/core/platform/profiler.h"
 #include "paddle/utils/none.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -130,19 +130,19 @@ limitations under the License. */
 #ifndef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/capi/capi.h"
 #endif
 
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
@@ -173,7 +173,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(use_shm_cache);
 
 // disable auto conversion to list in Python
-PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
+PYBIND11_MAKE_OPAQUE(phi::TensorArray);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
@@ -729,7 +729,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              auto dtype =
                  static_cast<phi::DataType>(t[1].cast<int>());
              auto dims = common::make_ddim(t[2].cast<std::vector<int>>());
-             auto lod_info = t[3].cast<framework::LoD>();
+             auto lod_info = t[3].cast<phi::LoD>();
              auto device_id = t[4].cast<int>();
 
              auto shared_reader_holder =
@@ -840,7 +840,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  shared_reader_holder,
                  static_cast<phi::DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
-             tensor.set_lod(t[5].cast<framework::LoD>());
+             tensor.set_lod(t[5].cast<phi::LoD>());
 
              return tensor;
            },
@@ -975,7 +975,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  shared_holder,
                  static_cast<phi::DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
-             tensor.set_lod(t[5].cast<framework::LoD>());
+             tensor.set_lod(t[5].cast<phi::LoD>());
 
              return tensor;
            },
@@ -1063,7 +1063,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 shared_reader_holder,
                 static_cast<phi::DataType>(t[2].cast<int>()));
             tensor.Resize(common::make_ddim(t[3].cast<std::vector<int>>()));
-            tensor.set_lod(t[4].cast<framework::LoD>());
+            tensor.set_lod(t[4].cast<phi::LoD>());
 
             return tensor;
           }));

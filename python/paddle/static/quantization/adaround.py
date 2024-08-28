@@ -270,12 +270,12 @@ def run_adaround(
                 )
                 orig_out_tensor = static.data(
                     name='orig_out_tensor',
-                    shape=(-1,) + fp32_fetch_list.shape,
+                    shape=(-1, *fp32_fetch_list.shape),
                     dtype='float32',
                 )
                 adaround_out_tensor = static.data(
                     name='adaround_out_tensor',
-                    shape=(-1,) + fp32_fetch_list.shape,
+                    shape=(-1, *fp32_fetch_list.shape),
                     dtype='float32',
                 )
                 beta_tensor = static.data(
@@ -350,9 +350,9 @@ def run_adaround(
             sys.stdout.flush()
             if i == num_iterations:
                 break
-        final_weight_tensor_quant_dict[
-            weight_var_name
-        ] = adaround.update_final_weights()
+        final_weight_tensor_quant_dict[weight_var_name] = (
+            adaround.update_final_weights()
+        )
 
         if bias_correction:
             final_weight_tensor_quant_dict[weight_var_name] = bias_correction_w(

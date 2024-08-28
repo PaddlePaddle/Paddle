@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops
@@ -24,6 +27,14 @@ from paddle.framework import (
     in_pir_mode,
 )
 from paddle.optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Sequence
+
+    from paddle import Tensor
+    from paddle.optimizer.optimizer import _ParameterConfig
+    from paddle.static import Executor, Program
+
 
 __all__ = []
 
@@ -169,14 +180,22 @@ class ModelAverage(Optimizer):
 
     """
 
+    helper: LayerHelper
+    average_window: float
+    min_average_window: int
+    max_average_window: int
+    type: str
+    apply_program: Program
+    restore_program: Program
+
     def __init__(
         self,
-        average_window_rate,
-        parameters=None,
-        min_average_window=10000,
-        max_average_window=10000,
-        name=None,
-    ):
+        average_window_rate: float,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
+        min_average_window: int = 10000,
+        max_average_window: int = 10000,
+        name: str | None = None,
+    ) -> None:
         super().__init__(
             learning_rate=0.0,
             parameters=parameters,
@@ -296,8 +315,12 @@ class ModelAverage(Optimizer):
 
     @imperative_base.no_grad
     def minimize(
-        self, loss, startup_program=None, parameters=None, no_grad_set=None
-    ):
+        self,
+        loss: Tensor,
+        startup_program: Program | None = None,
+        parameters: list[Tensor] | None = None,
+        no_grad_set: set[Tensor] | set[str] | None = None,
+    ) -> None:
         """
         Add operations to minimize ``loss`` by updating ``parameters``.
 
@@ -350,7 +373,7 @@ class ModelAverage(Optimizer):
 
     @framework.dygraph_only
     @imperative_base.no_grad
-    def step(self):
+    def step(self) -> None:
         """
         Execute the optimizer and update parameters once.
 
@@ -395,7 +418,9 @@ class ModelAverage(Optimizer):
 
     @signature_safe_contextmanager
     @imperative_base.no_grad
-    def apply(self, executor=None, need_restore=True):
+    def apply(
+        self, executor: Executor | None = None, need_restore: bool = True
+    ) -> Generator[None, None, None]:
         """
         Apply the average of the cumulative ``Parameter`` to the parameters of the current model.
 
@@ -474,7 +499,7 @@ class ModelAverage(Optimizer):
                 self.restore(executor)
 
     @imperative_base.no_grad
-    def restore(self, executor=None):
+    def restore(self, executor: Executor | None = None) -> None:
         """
         Restore ``Parameter`` values of current model.
 

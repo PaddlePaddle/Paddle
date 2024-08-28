@@ -20,6 +20,7 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/tensor.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -40,8 +41,10 @@ class Schedule : public cinn::common::Object {
    */
   ir::Tensor operator[](const ir::Operation& op) {
     auto it = stage_map.find(op.name);
-    CHECK(it != stage_map.end())
-        << "Cannot find Stage for operator " << op.name << " in the schedule";
+    PADDLE_ENFORCE(
+        it != stage_map.end(),
+        phi::errors::NotFound("Cannot find Stage for operator in the schedule",
+                              op.name));
     return it->second;
   }
 
