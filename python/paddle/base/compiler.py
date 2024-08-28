@@ -939,7 +939,7 @@ class IpuStrategy:
 
                 >>> ipu_strategy = static.IpuStrategy()
                 >>> options = {'num_ipus':1, 'enable_fp16': True}
-                >>> ipu_strategy.set_options(options)
+                >>> ipu_strategy.set_options(options)  # type: ignore[arg-type]
         """
         self._ipu_strategy.set_options(options)
         # check whether to recompile program with updated ipu options.
