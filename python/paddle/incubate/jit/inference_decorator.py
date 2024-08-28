@@ -620,18 +620,6 @@ def inference(
                 ele for ele in input_tensor_lists if not is_fixed_type(ele)
             ]
 
-            if with_trt:
-                # Note(Zhouakngkang): because paddle-trt only support well for fp32 model with float16 precision
-                # not well for fp16 model with fp16 precision.
-                for i in range(len(remove_non_input_tensor_lists)):
-                    ele = remove_non_input_tensor_lists[i]
-                    if (
-                        ele.dtype == paddle.float16
-                        or ele.dtype == paddle.bfloat16
-                    ):
-                        ele = ele.cast("float32")
-                        remove_non_input_tensor_lists[i] = ele
-
             if (
                 infer_engine.predictor is not None
                 and not infer_engine.re_do_d2s
