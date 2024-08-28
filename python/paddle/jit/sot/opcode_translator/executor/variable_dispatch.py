@@ -637,13 +637,6 @@ Dispatcher.register(
     ),
 )
 
-# bool
-Dispatcher.register(
-    bool,
-    ("VariableBase",),
-    lambda var: var.bool(),
-)
-
 # str
 Dispatcher.register(
     str,
@@ -1268,4 +1261,17 @@ Dispatcher.register(
         x.graph,
         tracker=DummyTracker([x]),
     ),
+)
+
+# bool
+Dispatcher.register(
+    bool,
+    ("VariableBase",),
+    lambda var: var.bool(),
+)
+
+Dispatcher.register(
+    operator.truth,
+    ("VariableBase",),
+    lambda var: var.bool(),
 )
