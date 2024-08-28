@@ -33,7 +33,7 @@ def fused_bias_act(
     Applies fused_bias_act kenerl
 
     Args:
-        x (Tensor): the input Tensor. Its shape is [bsz, seq_len, d_model].
+        x (Tensor): the input Tensor.
         bias (Tensor, optional): the input bias Tensor. If it is None, no bias addition would be performed. Otherwise, the bias will be added before activation function. Default: None.
         dequant_scales (Tensor, optional): the dequantization scale tensor, If it is None, no dequantization will be performed. Default: None.
         shift (Tensor, optional): the shift tensor, used to shift the input tensor before activation function. If None, no translation will be performed. Default: None.
