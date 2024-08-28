@@ -1333,7 +1333,6 @@ bool FusedMultiTransformerOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
   const auto &qkv_weight_data_list =
