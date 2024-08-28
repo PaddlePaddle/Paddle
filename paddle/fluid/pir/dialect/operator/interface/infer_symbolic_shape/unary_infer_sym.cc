@@ -2081,34 +2081,25 @@ bool OverlapAddOpInferSymbolicShape(
 
   std::vector<symbol::DimExpr> output_shape;
   symbol::DimExpr n_frames;
-  int frame_length;
+  symbol::DimExpr frame_length;
   symbol::DimExpr seq_length;
 
   int start_axis = 0;
   int end_axis = 0;
   if (axis == 0) {
     n_frames = x_dims[0];
-    frame_length = static_cast<int64_t>(x_dims[0].Get<std::int64_t>());
+    frame_length = x_dims[0];
     start_axis = 2;
     end_axis = x_rank - 1;
   } else {
     n_frames = x_dims[x_rank - 1];
-    frame_length = static_cast<int64_t>(x_dims[x_rank - 2].Get<std::int64_t>());
+    frame_length = x_dims[x_rank - 2];
     start_axis = 0;
     end_axis = x_rank - 3;
   }
 
-  PADDLE_ENFORCE_LE(
-      hop_length,
-      frame_length,
-      common::errors::InvalidArgument(
-          "Attribute(hop_length) of OverlapAddOp should be less or equal "
-          "to frame_length, but got hop_length(%s) > frame_length(%s).",
-          hop_length,
-          frame_length));
-
   seq_length = (n_frames - symbol::DimExpr(1)) * symbol::DimExpr(hop_length) +
-               symbol::DimExpr(frame_length);
+               frame_length;
 
   for (int i = start_axis; i <= end_axis; i++) {
     output_shape.push_back(x_dims[i]);
