@@ -18,7 +18,11 @@ import inspect
 import operator
 import types
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Callable
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+)
 
 import paddle
 
@@ -33,7 +37,9 @@ from ....utils import (
     is_not_supported_paddle_layer,
     is_paddle_api,
     magic_method_builtin_dispatch,
+    map_if,
 )
+from ....utils.envs import ENV_SOT_ALLOW_DYNAMIC_SHAPE
 from ....utils.exceptions import BreakGraphError, FallbackError, SotErrorBase
 from ..dispatcher import Dispatcher
 from ..guard import (
@@ -626,8 +632,29 @@ class BuiltinVariable(FunctionVariable):
         self.value = fn
 
     def call_function(self, /, *args, **kwargs):
+        from .basic import SymbolicVariable
+
         # Lookup the handler from dispatcher
         handler = Dispatcher.dispatch(self.value, *args, **kwargs)
+
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and handler is None:
+            fake_args, fake_kwargs = map_if(
+                (args, kwargs),
+                pred=lambda x: isinstance(x, SymbolicVariable),
+                # this is a fake args, we don't need to care about the value of the args
+                true_fn=lambda x: ConstantVariable.wrap_literal(
+                    None, graph=self.graph
+                ),
+                false_fn=lambda x: x,
+            )
+            handler = Dispatcher.dispatch(self.value, *fake_args, **fake_kwargs)
+            args, kwargs = map_if(
+                (args, kwargs),
+                pred=lambda x: isinstance(x, SymbolicVariable),
+                true_fn=lambda x: x.to_constant(),
+                false_fn=lambda x: x,
+            )
+
         if handler is not None:
             return handler(*args, **kwargs)
 
