@@ -556,27 +556,62 @@ def fused_ffn_pass(dense_main_program):
     ffn_values['w_gate'] = fwd_ffn_ops[0].operand_source(1)
     ffn_values['w_up'] = fwd_ffn_ops[1].operand_source(1)
     ffn_values['swiglu_out'] = fwd_ffn_ops[2].operand_source(1)
-    ffn_values['swiglu_out_g'] = bwd_ffn_ops[0].operand_source(3)
+    ffn_values['swiglu_out_g'] = bwd_ffn_ops[0].operand_source(2)
     ffn_values['w_up_g'] = bwd_ffn_ops[1].result(1)
     ffn_values['w_gate_g'] = bwd_ffn_ops[2].result(1)
-    ffn_values['in_g'] = bwd_ffn_ops[4].result(1)
+    ffn_values['in_g'] = bwd_ffn_ops[4].result(0)
+
+    def prepare_for_vjp(fwd_op):
+        fwd_inputs = [[value] for value in fwd_op.operands_source()]
+        fwd_outputs = [[value] for value in fwd_op.results()]
+        stop_gradients = []
+        for v in fwd_inputs:
+            stop_gradients.append([v[0].stop_gradient])
+        return fwd_inputs, fwd_outputs, stop_gradients
 
     tmp_program = paddle.static.Program()
     with tmp_program.global_block():
+        # prepare fwd pattern
         w_list = [ffn_values['w_gate'], ffn_values['w_up']]
-        weights = paddle._C_ops.builtin_combine(w_list)
-        fused_w, weights_tmp = paddle._C_ops.concat_and_relocate_(weights)
+        _, fused_w = paddle._C_ops.concat_and_relocate_(w_list)
+
         fused_o = paddle.matmul(
             ffn_values['in'], fused_w, transpose_x=False, transpose_y=False
         )
         out = paddle.incubate.nn.functional.swiglu(fused_o)
 
-        # copy_out = paddle.framework.core.call_vjp(fwd_op, inputs, outputs, output_grads, input_grad_stopgradients)
+        # prepare bwd pattern
+        swiglu_op = tmp_program.global_block().ops[-1]
+        matmul_op = tmp_program.global_block().ops[-2]
+        fwd_inputs, fwd_outputs, stop_gradients = prepare_for_vjp(swiglu_op)
+        paddle.framework.core.call_vjp(
+            swiglu_op,
+            fwd_inputs,
+            fwd_outputs,
+            [[ffn_values['swiglu_out_g']]],
+            stop_gradients,
+        )
+        swiglu_grad_op = tmp_program.global_block().ops[-1]
 
-    print("dense_main_program: ", dense_main_program, flush=1)
-    print("tmp_program: ", tmp_program, flush=1)
+        fwd_inputs, fwd_outputs, stop_gradients = prepare_for_vjp(matmul_op)
+        paddle.framework.core.call_vjp(
+            matmul_op,
+            fwd_inputs,
+            fwd_outputs,
+            [[tmp_program.global_block().ops[-1].result(0)]],
+            stop_gradients,
+        )
+        matmul_grad_op = tmp_program.global_block().ops[-1]
+
+        # prepare opt pattern
+        w_gate, w_up = paddle.split(fused_w, num_or_sections=2, axis=1)
+        w_gate_g, w_up_g = paddle.split(
+            matmul_grad_op.result(1), num_or_sections=2, axis=1
+        )
 
     # (3) 删除融合前的子图
+    print("dense_main_program: ", dense_main_program, flush=1)
+    print("tmp_program: ", tmp_program, flush=1)
 
 
 def fused_attention_qkv_pass(dense_mian_program):
