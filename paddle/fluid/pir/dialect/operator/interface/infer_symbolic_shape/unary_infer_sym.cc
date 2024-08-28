@@ -1543,6 +1543,9 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
     for (const auto &axis_i : axis_expr) {
       if (axis_i.isa<int64_t>()) {
         axis.emplace_back(axis_i.dyn_cast<int64_t>());
+      } else {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "The type of axis must be int64, please check."));
       }
     }
   }
