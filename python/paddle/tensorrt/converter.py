@@ -103,7 +103,7 @@ class PaddleToTensorRTConverter:
         _logger.info(f"start process {group_op}")
         operations = next(iter(group_op.blocks())).ops
         input_values, output_values = self.find_graph_inputs_outputs(group_op)
-        builder = trt.Builder(trt.Logger(trt.Logger.VERBOSE))
+        builder = trt.Builder(trt.Logger(trt.Logger.ERROR))
         network = builder.create_network(
             1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
         )
