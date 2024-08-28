@@ -41,21 +41,23 @@ class SymbolicValue(metaclass=Singleton):
 
 
 class SymbolicBool(SymbolicValue):
-    def get_static_type(self) -> type:
+    def get_static_type(self) -> type[bool]:
         return bool
 
 
 class SymbolicInt(SymbolicValue):
-    def get_static_type(self) -> type:
+    def get_static_type(self) -> type[int]:
         return int
 
 
 class SymbolicFloat(SymbolicValue):
-    def get_static_type(self) -> type:
+    def get_static_type(self) -> type[float]:
         return float
 
 
 class MetaInfo:
+    shape: list[int | SymbolicInt]
+
     def __init__(
         self,
         shape,
@@ -73,7 +75,7 @@ class MetaInfo:
         self.persistable = persistable
         self.type = type
         self.place = place
-        self.shape: list[int | SymbolicInt] = shape
+        self.shape = shape
         self.dtype = dtype
         self.stop_gradient = stop_gradient
 
@@ -81,7 +83,7 @@ class MetaInfo:
         self, dynamic_symbol: DynamicSymbolT = -1
     ) -> list[int | DynamicSymbolT]:
         return [
-            dim if not isinstance(dim, SymbolicInt) else dynamic_symbol
+            dynamic_symbol if isinstance(dim, SymbolicInt) else dim
             for dim in self.shape
         ]
 

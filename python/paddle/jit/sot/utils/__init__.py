@@ -24,6 +24,7 @@ from .envs import (  # noqa: F401
     ENV_STRICT_MODE,
     cost_model_guard,
     min_graph_size_guard,
+    sot_step_profiler_guard,
     strict_mode_guard,
     with_allow_dynamic_shape_guard,
     with_control_flow_guard,

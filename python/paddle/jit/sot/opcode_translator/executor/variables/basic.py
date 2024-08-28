@@ -686,7 +686,7 @@ class SymbolicVariable(VariableBase):
             )
         self.need_guard_value = False
 
-    def get_py_value(self, allow_tensor=False):
+    def get_py_value(self, allow_tensor: bool = False) -> bool | int | float:
         self.need_guard_value = True
         if isinstance(self.value, SymbolicValue):
             assert isinstance(
@@ -698,6 +698,7 @@ class SymbolicVariable(VariableBase):
             self.value = getattr(
                 inputs[0].get_py_value(), self.tracker.method_name
             )(*other_inputs_value)
+            assert isinstance(self.value, (bool, int, float))
         return self.value
 
     def get_py_type(self):
@@ -713,6 +714,18 @@ class SymbolicVariable(VariableBase):
 
     def bool(self):
         return ConstantVariable(bool(self), self.graph, DummyTracker([self]))
+
+    def __int__(self) -> int:
+        return int(self.get_py_value())
+
+    def int(self):
+        return ConstantVariable(int(self), self.graph, DummyTracker([self]))
+
+    def __float__(self) -> float:
+        return float(self.get_py_value())
+
+    def float(self):
+        return ConstantVariable(float(self), self.graph, DummyTracker([self]))
 
     @property
     def out_var_name(self):

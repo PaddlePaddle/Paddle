@@ -162,9 +162,14 @@ void SubstitudeTargetExprWithDestExpr(const ir::Expr& source,
                                       ir::Expr* body) {
   VLOG(4) << "SubstitideExpr Start";
   VLOG(5) << "Substitide Body : " << *body;
+  ir::Expr new_dest = dest;
+  if (source.type() != dest.type()) {
+    VLOG(4) << "Cast the dest" << dest << " to type" << source.type();
+    new_dest = ir::Cast::Make(source.type(), dest);
+  }
   VLOG(4) << "Substitide From : " << source;
-  VLOG(4) << "Substitide To   : " << dest;
-  MappingTargetExprToDestExprMutator mapper(source, dest);
+  VLOG(4) << "Substitide To   : " << new_dest;
+  MappingTargetExprToDestExprMutator mapper(source, new_dest);
   mapper(body);
   VLOG(5) << "SubstitideExpr Result: " << *body;
 }

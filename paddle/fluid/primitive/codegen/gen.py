@@ -396,12 +396,12 @@ def process_backward_invoke_info(apis):
             api['invoke']['args'] = ', '.join(args)
 
 
-def process_optional_output_info(apis):
+def process_optional_inplace_output_info(apis):
     for api in apis:
         inputs_dict = to_named_dict(api['inputs'])
         for output in api['outputs']:
             if not api['is_fwd']:
-                output['optional'] = False
+                return
             else:
                 if (
                     api.get("inplace", None)
@@ -524,7 +524,7 @@ def gen(
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
     process_backward_invoke_info(apis)
-    process_optional_output_info(apis)
+    process_optional_inplace_output_info(apis)
 
     apis = [
         {**api, **{'class_name': to_pascal_case(api["name"]) + "Op"}}
