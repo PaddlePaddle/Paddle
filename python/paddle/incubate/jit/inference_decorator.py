@@ -574,11 +574,11 @@ def inference(
     # if function has already been decorated by @paddle.incubate.jit.inference(), then we just return it.
     if (
         hasattr(function, "__name__")
-        and function.__name__ == "innermost_decorator"
+        and function.__name__ == "paddle_inference_engine"
     ):
         return function
     elif isinstance(function, Layer):
-        if function.forward.__name__ == "innermost_decorator":
+        if function.forward.__name__ == "paddle_inference_engine":
             return function
 
     used_as_at_decorator = function is None
@@ -606,9 +606,9 @@ def inference(
             delete_pass_lists=delete_pass_lists,
         )
 
-        # This is the inner_most decorator, ie. when user invoke the function decorated by @paddle.incubate.jit.inference()
+        # This is the paddle_inference_engine, ie. when user invoke the function decorated by @paddle.incubate.jit.inference()
         # he is actually invoke this internel function.
-        def innermost_decorator(*args, **kwargs):
+        def paddle_inference_engine(*args, **kwargs):
             input_tensor_lists = infer_engine.get_input_tensor_lists(
                 *args, **kwargs
             )
@@ -659,7 +659,7 @@ def inference(
             results = infer_engine.predictor.run(remove_non_input_tensor_lists)
             return results if len(results) > 1 else results[0]
 
-        return innermost_decorator
+        return paddle_inference_engine
 
     if function is not None:
         if isinstance(function, Layer):
