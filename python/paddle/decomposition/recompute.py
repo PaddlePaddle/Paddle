@@ -156,7 +156,7 @@ MAX_DIST_FROM_BW = 3
 
 def DebugPrint(*args):
     flag = os.getenv("FLAGS_print_auto_recompute_debug")
-    if flag and flag.lower() in ("1", "true"):
+    if flag and str(flag).lower() in ("1", "true"):
         print(*args)
 
 
@@ -526,7 +526,7 @@ def partition_joint_graph(
     mem = 0
     for mid in mid_hold_values:
         mem += cal_value_node_size(mid)
-    print(mem / 1024 / 1024 / 1024, "GB")
+    DebugPrint("Saved Memory is: ", mem / 1024 / 1024 / 1024, "GB")
 
     # print(
     #     "Saved_Values:",
@@ -572,7 +572,9 @@ def replace_mid_values_with_forward_subgraph(
             new_chain = list(chain)
             new_chain.append(recompute_value)
             define_op = recompute_value.get_defining_op()
+            print("marked_recompute_ops: ", define_op)
             if define_op in marked_recompute_ops:
+                print('---')
                 return
             op_inputs = define_op.operands_source()
             if len(op_inputs) == 0 and define_op.name() not in [
@@ -612,6 +614,7 @@ def replace_mid_values_with_forward_subgraph(
                     new_chain,
                 )
             marked_recompute_ops.add(define_op)
+
             return
 
         # {inputs:[...], ops: [...], needed_outputs: [...]}
@@ -625,7 +628,10 @@ def replace_mid_values_with_forward_subgraph(
                     return idx
             raise RuntimeError("op not found in program")
 
+        print("=============saved_values", saved_values)
+
         for recompute_value in mid_values:
+            print("============= ", recompute_value)
             _find_recompute_ops(
                 recompute_value,
                 saved_values,
@@ -633,7 +639,9 @@ def replace_mid_values_with_forward_subgraph(
                 recompute_subgraph_inputs,
                 [],
             )
+
         DebugPrint("Recompute Ops: ", len(recompute_subgraph_ops))
+        DebugPrint("Recompute Ops: ", recompute_subgraph_ops)
         recompute_subgraph = {
             "inputs": recompute_subgraph_inputs,
             "recompute_ops": recompute_subgraph_ops,
@@ -679,7 +687,7 @@ def replace_mid_values_with_forward_subgraph(
                     if cloned_op in parent_ops and cloned_op not in reseted_ops:
                         cloned_op.move_before(op)
                         reseted_ops.add(cloned_op)
-    # print("recompute program", program)
+    DebugPrint("recompute program", program)
     return program, fwd_op_end_idx
 
 

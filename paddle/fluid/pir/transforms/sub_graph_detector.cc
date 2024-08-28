@@ -601,21 +601,26 @@ void SubgraphDetector::DoOpFusion() {
   for (auto* op : sort_ops_) {
     auto producers = GetProducerOpsReverseSort(op, op2id_);
     for (auto* producer : producers) {
-      if (!op_classifier_(*op)) {
+      if (!op_classifier_(*op) || !op_classifier_(*producer)) {
         continue;
       }
-      if (!op_classifier_(*producer)) {
+      VLOG(4) << "Start Judge: " << op->id() << " vs " << producer->id();
+
+      MergeSubGraphs(producer, op, union_find, loop_detector);
+    }
+  }
+  for (auto* op : sort_ops_) {
+    auto producers = GetProducerOpsReverseSort(op, op2id_);
+    for (auto* producer : producers) {
+      if (op_classifier_(*op) && !op_classifier_(*producer)) {
         for (auto* consumer : GetConsumerOpsSimple(producer)) {
-          if (op_classifier_(*consumer)) {
+          if (op_classifier_(*consumer) &&
+              consumer->GetParent() == op->GetParent()) {
             MergeSubGraphs(op, consumer, union_find, loop_detector);
           }
         }
         continue;
       }
-
-      VLOG(4) << "Start Judge: " << op->id() << " vs " << producer->id();
-
-      MergeSubGraphs(producer, op, union_find, loop_detector);
     }
   }
   for (const auto& op : sort_ops_) {
