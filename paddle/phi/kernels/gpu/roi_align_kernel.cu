@@ -19,16 +19,20 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/fast_divmod.h"
 
 namespace phi {
 
-static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaxinumNumBlocks = 4096;
+#define THRESHOLD 26624
+static constexpr int kNumCUDAThreadsS = 64;
+static constexpr int kNumCUDAThreadsL = 256;
+static constexpr int kNumMaximumNumBlocks = 3328;
 static constexpr int kROISize = 4;
 
 static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaxinumNumBlocks);
+  int NumThreads = N >= THRESHOLD ? kNumCUDAThreadsL : kNumCUDAThreadsS;
+  return std::min((N + NumThreads - 1) / NumThreads,
+                  kNumMaximumNumBlocks);
 }
 
 template <class T>
@@ -81,12 +85,20 @@ __global__ void GPURoiAlignForward(const int nthreads,
                                    const int sampling_ratio,
                                    int* roi_batch_id_data,
                                    T* output_data,
-                                   const bool continuous_coordinate) {
-  CUDA_KERNEL_LOOP(i, nthreads) {
-    int pw = i % pooled_width;
-    int ph = (i / pooled_width) % pooled_height;
-    int c = (i / pooled_width / pooled_height) % channels;
-    int n = i / pooled_width / pooled_height / channels;
+                                   const bool continuous_coordinate,
+                                   const funcs::FastDivMod fastDiv_pooled_width,
+                                   const funcs::FastDivMod fastDiv_pooled_height,
+                                   const funcs::FastDivMod fastDiv_channels) {
+  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  for(int i = index; i < nthreads; i += stride){
+    const int tmp0 = fastDiv_pooled_width.Div(i);
+    const int tmp1 = fastDiv_pooled_height.Div(tmp0);
+    const int tmp2 = fastDiv_channels.Div(tmp1);
+    int pw = i - pooled_width * tmp0;
+    int ph = tmp0 - pooled_height * tmp1;
+    int c = tmp1 - channels * tmp2;
+    int n = tmp2;
 
     const T* offset_input_rois = input_rois + n * kROISize;
     int roi_batch_ind = roi_batch_id_data[n];
@@ -160,7 +172,7 @@ void RoiAlignKernel(const Context& dev_ctx,
 
   int output_size = out->numel();
   int blocks = NumBlocks(output_size);
-  int threads = kNumCUDAThreads;
+  int threads = output_size >= THRESHOLD ? kNumCUDAThreadsL : kNumCUDAThreadsS;
 #ifdef WITH_NV_JETSON
   backends::gpu::ChangeThreadNum(dev_ctx, &threads, 256);
 #endif
@@ -229,6 +241,9 @@ void RoiAlignKernel(const Context& dev_ctx,
       }
     }
   }
+  funcs::FastDivMod fastDiv_pooled_width = funcs::FastDivMod(pooled_width);
+  funcs::FastDivMod fastDiv_pooled_height = funcs::FastDivMod(pooled_height);
+  funcs::FastDivMod fastDiv_channels = funcs::FastDivMod(channels);
   int bytes = roi_batch_id_list.numel() * sizeof(int);
   auto roi_ptr = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
@@ -250,7 +265,10 @@ void RoiAlignKernel(const Context& dev_ctx,
                                                  sampling_ratio,
                                                  roi_id_data,
                                                  dev_ctx.template Alloc<T>(out),
-                                                 aligned);
+                                                 aligned,
+                                                 fastDiv_pooled_width,
+                                                 fastDiv_pooled_height,
+                                                 fastDiv_channels);
 }
 
 }  // namespace phi
