@@ -574,7 +574,7 @@
     param : [x, x, grad_x_grad_forward]
   kernel :
     func : cos_triple_grad
-  optional: grad_out_forward, grad_x_grad_forward, grad_out_grad_grad
+  optional: grad_out_forward, grad_x_grad_forward, grad_out_grad_grad, grad_out_forward_grad
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
 
 - backward_op : cosh_grad
@@ -2928,7 +2928,7 @@
     param : [x, x, grad_x_grad_forward]
   kernel :
     func : sin_triple_grad
-  optional: grad_out_forward, grad_x_grad_forward, grad_out_grad_grad
+  optional: grad_out_forward, grad_x_grad_forward, grad_out_grad_grad, grad_out_forward_grad
   inplace : (grad_x_grad_forward -> grad_out_forward_grad)
 
 - backward_op : sinh_grad
