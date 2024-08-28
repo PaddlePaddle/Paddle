@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ctypes
 import errno
 import fnmatch
 import glob
@@ -456,6 +457,7 @@ commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
+with_pip_tensorrt ='%(with_pip_tensorrt)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
@@ -712,6 +714,7 @@ def cinn() -> str:
                 'with_pip_cuda_libraries': env_dict.get(
                     "WITH_PIP_CUDA_LIBRARIES"
                 ),
+                'with_pip_tensorrt': env_dict.get("WITH_PIP_TENSORRT"),
             }
         )
 
@@ -947,13 +950,13 @@ def get_setup_requires():
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
             if (
-                "<\"3.6\"" in setup_requires_i
-                or "<=\"3.6\"" in setup_requires_i
-                or "<\"3.5\"" in setup_requires_i
-                or "<=\"3.5\"" in setup_requires_i
-                or "<\"3.7\"" in setup_requires_i
-                or "<=\"3.7\"" in setup_requires_i
-                or "<\"3.8\"" in setup_requires_i
+                '<"3.6"' in setup_requires_i
+                or '<="3.6"' in setup_requires_i
+                or '<"3.5"' in setup_requires_i
+                or '<="3.5"' in setup_requires_i
+                or '<"3.7"' in setup_requires_i
+                or '<="3.7"' in setup_requires_i
+                or '<"3.8"' in setup_requires_i
             ):
                 continue
             setup_requires_tmp += [setup_requires_i]
@@ -966,7 +969,50 @@ def get_setup_requires():
         )
 
 
+def find_libnvinfer():
+
+    trt_infer_rt_path = env_dict.get("TR_INFER_RT")
+    tensorrt_library_path = env_dict.get("TENSORRT_LIBRARY_DIR")
+
+    libnvinfer_file = os.path.join(tensorrt_library_path, trt_infer_rt_path)
+
+    if os.path.exists(libnvinfer_file):
+        return libnvinfer_file
+    else:
+        print(f"{libnvinfer_file} not found.")
+    return None
+
+
+def get_tensorrt_version():
+    try:
+
+        libnvinfer_path = find_libnvinfer()
+        if not libnvinfer_path:
+            return None
+
+        trt = ctypes.CDLL(libnvinfer_path)
+        get_version = trt.getInferLibVersion
+        get_version.restype = ctypes.c_int
+        version = get_version()
+        version_str = str(version)
+        major = version_str[:1] if len(version_str) > 1 else version_str
+        minor = version_str[1:2] if len(version_str) > 3 else version_str[1:]
+        patch = version_str[3:] if len(version_str) > 3 else ''
+
+        minor = minor if minor else '0'
+        patch = patch if patch else '0'
+        version_str = f"{major}.{minor}.{patch}"
+
+        return version_str
+
+    except Exception as e:
+        print(f"Error while getting TensorRT version: {e}")
+        return None
+
+
 def get_paddle_extra_install_requirements():
+    paddle_cuda_requires = []
+    paddle_tensorrt_requires = []
     # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
     if env_dict.get("WITH_PIP_CUDA_LIBRARIES") == "ON":
         if platform.system() == 'Linux':
@@ -1023,9 +1069,9 @@ def get_paddle_extra_install_requirements():
             output = subprocess.check_output(['nvcc', '--version']).decode(
                 'utf-8'
             )
-            version_line = [
+            version_line = next(
                 line for line in output.split('\n') if 'release' in line
-            ][0]
+            )
             version = version_line.split(' ')[-1].split(',')[0]
             cuda_major_version = version.split('.')[0]
         except Exception as e:
@@ -1035,9 +1081,65 @@ def get_paddle_extra_install_requirements():
             cuda_major_version
         ].split("|")
 
-        return paddle_cuda_requires
-    else:
-        return []
+    if env_dict.get("WITH_PIP_TENSORRT") == "ON":
+        version_str = get_tensorrt_version()
+        version_default = int(version_str.split(".")[0])
+        if platform.system() == 'Linux' or (
+            platform.system() == 'Windows' and version_default >= 10
+        ):
+
+            PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
+                "tensorrt==8.5.3.1",
+                "tensorrt==8.6.0",
+                "tensorrt==8.6.1.post1",
+            ]
+
+            if not version_str:
+                return paddle_cuda_requires, []
+
+            version_main = ".".join(version_str.split(".")[:3])
+
+            matched_package = None
+            for (
+                paddle_tensorrt_requires
+            ) in PADDLE_TENSORRT_INSTALL_REQUIREMENTS:
+                paddle_tensorrt_version = paddle_tensorrt_requires.split("==")[
+                    1
+                ]
+                paddle_tensorrt_main = ".".join(
+                    paddle_tensorrt_version.split(".")[:3]
+                )
+
+                if version_main == paddle_tensorrt_main:
+                    matched_package = paddle_tensorrt_requires
+                    break
+
+            if matched_package:
+                paddle_tensorrt_requires = [matched_package]
+            else:
+                print(
+                    f"No exact match found for TensorRT Version: {version_str}. We currently support TensorRT versions 8.5.3.1, 8.6.0, and 8.6.1."
+                )
+                return paddle_cuda_requires, []
+
+    return paddle_cuda_requires, paddle_tensorrt_requires
+
+
+def get_cinn_config_jsons():
+    from pathlib import Path
+
+    src_cinn_config_path = (
+        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinn_config'
+    )
+    prefix_len = len(src_cinn_config_path) + 1
+    p = Path(src_cinn_config_path)
+    json_list = list(p.glob('**/*.json'))
+    json_path_list = []
+    for json in json_list:
+        json = str(json)
+        json = json[prefix_len:]
+        json_path_list += [json]
+    return json_path_list
 
 
 def get_package_data_and_package_dir():
@@ -1055,6 +1157,19 @@ def get_package_data_and_package_dir():
     package_data['paddle.base'] += [
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
+
+    whl_cinn_config_path = paddle_binary_dir + '/python/paddle/cinn_config'
+    src_cinn_config_path = (
+        env_dict.get("PADDLE_SOURCE_DIR") + '/python/paddle/cinn_config'
+    )
+    package_data['paddle.cinn_config'] = []
+    if os.path.exists(whl_cinn_config_path):
+        shutil.rmtree(whl_cinn_config_path)
+    shutil.copytree(src_cinn_config_path, whl_cinn_config_path)
+    json_path_list = get_cinn_config_jsons()
+    for json in json_path_list:
+        package_data['paddle.cinn_config'] += [json]
+
     if 'develop' in sys.argv:
         package_dir = {'': 'python'}
     else:
@@ -1161,8 +1276,14 @@ def get_package_data_and_package_dir():
             + '/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
             libs_path,
         )
+        shutil.copy(
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/hip/cinn_hip_runtime_source.h',
+            libs_path,
+        )
         package_data['paddle.libs'] += ['libcinnapi.so']
         package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+        package_data['paddle.libs'] += ['cinn_hip_runtime_source.h']
 
         cinn_fp16_file = (
             env_dict.get("CINN_INCLUDE_DIR")
@@ -1392,15 +1513,18 @@ def get_package_data_and_package_dir():
         ext_modules = []
 
     # type hints
-    package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
-    package_data['paddle.framework'] = package_data.get(
-        'paddle.framework', []
-    ) + ['*.pyi']
-    package_data['paddle.base'] = package_data.get('paddle.base', []) + [
-        '*.pyi'
+    package_data['paddle'] = [*package_data.get('paddle', []), 'py.typed']
+    package_data['paddle.framework'] = [
+        *package_data.get('paddle.framework', []),
+        '*.pyi',
     ]
-    package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
-        'tensor.pyi'
+    package_data['paddle.base'] = [
+        *package_data.get('paddle.base', []),
+        '*.pyi',
+    ]
+    package_data['paddle.tensor'] = [
+        *package_data.get('paddle.tensor', []),
+        'tensor.pyi',
     ]
 
     return package_data, package_dir, ext_modules
@@ -1497,11 +1621,16 @@ def get_headers():
                 recursive=True,
             )
         )
+        + list(  # operator init headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/ir',
+            )
+        )
         + list(  # pass utils init headers
             find_files(
                 'general_functions.h',
                 paddle_source_dir + '/paddle/fluid/pir/utils',
-                recursive=True,
             )
         )
         + list(  # serialize and deserialize interface headers
@@ -1509,7 +1638,25 @@ def get_headers():
                 'interface.h',
                 paddle_source_dir
                 + '/paddle/fluid/pir/serialize_deserialize/include',
-                recursive=True,
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'dense_tensor.inl',
+                paddle_source_dir + '/paddle/phi/core',
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'op_yaml_info.h',
+                paddle_source_dir
+                + '/paddle/fluid/pir/dialect/operator/interface',
+            )
+        )
+        + list(  # serialize and deserialize interface headers
+            find_files(
+                'op_yaml_info_util.h',
+                paddle_source_dir + '/paddle/fluid/pir/dialect/operator/utils',
             )
         )
     )
@@ -1566,8 +1713,11 @@ def get_setup_parameters():
             'AMD64',
         )
     ):
-        paddle_cuda_requires = get_paddle_extra_install_requirements()
+        paddle_cuda_requires, paddle_tensorrt_requires = (
+            get_paddle_extra_install_requirements()
+        )
         setup_requires += paddle_cuda_requires
+        setup_requires += paddle_tensorrt_requires
 
     packages = [
         'paddle',
@@ -1664,6 +1814,7 @@ def get_setup_parameters():
         'paddle.base.incubate.checkpoint',
         'paddle.amp',
         'paddle.cost_model',
+        'paddle.cinn_config',
         'paddle.hapi',
         'paddle.vision',
         'paddle.vision.models',
@@ -1836,7 +1987,7 @@ def check_submodules():
         with open(git_submodules_path) as f:
             return [
                 os.path.join(TOP_DIR, line.split("=", 1)[1].strip())
-                for line in f.readlines()
+                for line in f
                 if line.strip().startswith("path")
             ]
 

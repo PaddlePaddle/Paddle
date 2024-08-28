@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Dict, List
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -136,7 +137,7 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             # The last dim of input_bboxes should be static.
             self.dynamic_shape.min_input_shape = {
@@ -189,8 +190,8 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
         self,
         atol: float,
         rtol: float,
-        tensor: Dict[str, np.array],
-        baseline: Dict[str, np.array],
+        tensor: dict[str, np.array],
+        baseline: dict[str, np.array],
     ):
         # the order of tensorrt outputs are not consistent with paddle
         for key, arr in tensor.items():

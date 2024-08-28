@@ -58,7 +58,7 @@ ir::Tensor LogicalRightShift(const ir::Tensor &A,
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED
       },
-      [&](common::HygonDCUArchHIP) { extern_func += "hygonDcuHip_"; });
+      [&](common::HygonDCUArchHIP) { extern_func += "hip_"; });
 
   extern_func += "logical_right_shift";
 
@@ -91,30 +91,32 @@ std::shared_ptr<OpStrategy> StrategyForLogicalRightShift(
     PADDLE_ENFORCE_NE(
         args.empty(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The input argument of  %s compute is empty! Please check.\n",
             op_name.c_str()));
     CINNValuePack pack_args = args[0];
     PADDLE_ENFORCE_GE(pack_args.size(),
                       2U,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "2 input tensors for %s compute\n", op_name.c_str()));
 
     Expr A_expr = pack_args[0];
     Expr B_expr = pack_args[1];
-    PADDLE_ENFORCE_EQ(A_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument("Input is not a Tensor"));
-    PADDLE_ENFORCE_EQ(B_expr.as_tensor(),
-                      true,
-                      phi::errors::InvalidArgument("Input in not a Tensor"));
+    PADDLE_ENFORCE_EQ(
+        A_expr.as_tensor(),
+        true,
+        ::common::errors::InvalidArgument("Input is not a Tensor"));
+    PADDLE_ENFORCE_EQ(
+        B_expr.as_tensor(),
+        true,
+        ::common::errors::InvalidArgument("Input in not a Tensor"));
     ir::Tensor A = A_expr.as_tensor_ref();
     ir::Tensor B = B_expr.as_tensor_ref();
 
     PADDLE_ENFORCE_EQ(pack_args.size(),
                       3U,
-                      phi::errors::InvalidArgument("Input size is %u not 3",
-                                                   pack_args.size()));
+                      ::common::errors::InvalidArgument(
+                          "Input size is %u not 3", pack_args.size()));
     std::string tensor_name = pack_args[2].operator std::string();
 
     auto out = LogicalRightShift(A, B, target, tensor_name);

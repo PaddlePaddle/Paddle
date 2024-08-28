@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 namespace google {
 namespace protobuf {
@@ -209,7 +209,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
              brpc::Controller* cntl) override {
     LOG(INFO) << "entered Handle";
     phi::RecordEvent record_event("SendAndRecvVariableHandler->Handle",
-                                  platform::TracerEventType::Communication,
+                                  phi::TracerEventType::Communication,
                                   1);
     FLAGS_eager_delete_tensor_gb = -1;
 

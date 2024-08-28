@@ -24,6 +24,7 @@ namespace phi {
 
 template <typename Context>
 void ReshapeGradStridedKernel(const Context& dev_ctx,
+                              const DenseTensor& x,
                               const DenseTensor& out_grad,
                               DenseTensor* x_grad) {
   if (!FLAGS_use_stride_kernel) {
@@ -35,13 +36,12 @@ void ReshapeGradStridedKernel(const Context& dev_ctx,
       dev_ctx,
       out_grad,
       IntArray(common::vectorize<int64_t>(x_grad->dims())),
-      x_grad,
-      nullptr);
+      x_grad);
 }
 
 template <typename Context>
 void ReshapeDoubleGradStridedKernel(const Context& dev_ctx,
-                                    const DenseTensor& out_grad UNUSED,
+                                    const DenseTensor& out_grad,
                                     const DenseTensor& x_grad_grad,
                                     DenseTensor* out_grad_grad) {
   if (!FLAGS_use_stride_kernel) {
@@ -49,7 +49,8 @@ void ReshapeDoubleGradStridedKernel(const Context& dev_ctx,
         "FLAGS_use_stride_kernel is closed. Strided kernel "
         "be called, something wrong has happened!"));
   }
-  ReshapeGradStridedKernel<Context>(dev_ctx, x_grad_grad, out_grad_grad);
+  ReshapeGradStridedKernel<Context>(
+      dev_ctx, out_grad, x_grad_grad, out_grad_grad);
 }
 
 }  // namespace phi

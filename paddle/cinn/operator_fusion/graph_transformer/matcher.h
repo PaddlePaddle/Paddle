@@ -164,7 +164,7 @@ struct LEOneElementWiseDownstreamMatcher {
         count += is_elementwise;
       }
     }
-    return (count <= 1);
+    return (count < node->downstream().size());
   }
 };
 
@@ -349,9 +349,11 @@ struct HorizontalCheckMiddleOutputVar {
     }
 
     // compare non_one value dims of
-    PADDLE_ENFORCE_EQ(lhs_squeeze_value_dim.size(),
-                      rhs_squeeze_value_dim.size(),
-                      "lhs squeezed dims is not equal to rhs squeezed dims");
+    PADDLE_ENFORCE_EQ(
+        lhs_squeeze_value_dim.size(),
+        rhs_squeeze_value_dim.size(),
+        ::common::errors::PreconditionNotMet(
+            "lhs squeezed dims is not equal to rhs squeezed dims"));
     for (int i = 0; i < lhs_squeeze_value_dim.size(); ++i) {
       if (get_axes_from_valuedim(lhs_squeeze_value_dim[i]) !=
           get_axes_from_valuedim(rhs_squeeze_value_dim[i]))

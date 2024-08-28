@@ -18,7 +18,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/runtime/flags.h"
-#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/include/core/builtin_type.h"
@@ -399,7 +399,10 @@ struct StaticDimToDynamicConverter {
   template <typename DoEachT>
   void ForEachConstantToSymbol(const DoEachT& DoEach) {
     const auto& map = *GetGlobalStaticDimToDynamicMap();
-    CHECK(map.has_value());
+    PADDLE_ENFORCE_EQ(
+        map.has_value(),
+        true,
+        phi::errors::InvalidArgument("map is empty, it should have value"));
     for (const auto& [constant, symbol] : map.value()) {
       DoEach(constant, symbol);
     }

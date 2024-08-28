@@ -18,7 +18,8 @@
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
-
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 namespace pir {
 
 const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
@@ -117,6 +118,72 @@ void ModuleOp::VerifySig() const {
                     0u,
                     common::errors::InvalidArgument(
                         "The size of inputs must be equal to 0."));
+}
+
+const char *GroupOp::attributes_name[attributes_num] = {"group_info"};
+
+void GroupOp::Build(Builder &builder,
+                    OperationArgument &argument,
+                    const std::vector<Type> &output_types) {
+  argument.AddRegion(nullptr);
+  argument.output_types = output_types;
+}
+
+void GroupOp::Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    std::unique_ptr<Block> &&block) {
+  VLOG(4) << "Start build GroupOp";
+  if (block && !block->empty()) {
+    PADDLE_ENFORCE_EQ(block->back().isa<pir::YieldOp>(), true);
+    auto &op = block->back();
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      argument.AddOutput(op.operand(i).type());
+    }
+  }
+  argument.AddRegion().push_back(block.release());
+}
+
+Block *GroupOp::block() {
+  pir::Region &region = (*this)->region(0);
+  if (region.empty()) region.emplace_back();
+  return &region.front();
+}
+
+Block *GroupOp::block() const {
+  pir::Region &region = (*this)->region(0);
+  PADDLE_ENFORCE_EQ(region.empty(),
+                    false,
+                    ::common::errors::Unavailable(
+                        "Required GroupOp's region must not be emptpy."));
+  return &region.front();
+}
+
+std::vector<pir::Operation *> GroupOp::GetOperators() const {
+  std::vector<pir::Operation *> rt_ops;
+  for (auto &op : *block()) {
+    rt_ops.push_back(&op);
+  }
+  return rt_ops;
+}
+
+void GroupOp::VerifySig() {}
+
+void GroupOp::Print(IrPrinter &printer) {
+  auto &os = printer.os;
+  auto op = operation();
+  printer.PrintOpResult(op);
+  os << " = \"" << name() << "\" [id:" << op->id() << "]";
+  printer.PrintOpOperands(op);
+  os << " -> ";
+  printer.PrintOpReturnType(op);
+  os << " {\n";
+  printer.AddIndentation();
+  for (auto &sub_op : GetOperators()) {
+    printer.PrintOperation(sub_op);
+    os << "\n";
+  }
+  printer.DecreaseIndentation();
+  os << printer.indentation() << "}";
 }
 
 const char *ParameterOp::attributes_name[attributes_num] = {  // NOLINT
@@ -610,3 +677,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantLikeTrait)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ConstantTensorOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::GroupOp)

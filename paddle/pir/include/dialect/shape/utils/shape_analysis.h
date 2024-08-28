@@ -56,6 +56,12 @@ class IR_API InferSymbolicShapeCacheKey {
   void SetInputShapeOrDatas(
       const std::vector<symbol::ShapeOrDataDimExprs>& input_shape_or_datas);
 };
+struct ConstraintsForInputDimExpr {
+  symbol::DimExpr dim_expr;
+  // bind_info = [(input_name, dim_index)]
+  std::vector<std::pair<std::string, int>> bind_info;
+  symbol::ConstraintsManager::Range range;
+};
 }  // namespace pir
 
 namespace std {
@@ -75,7 +81,8 @@ class IR_API InferSymbolicShapeContext {
   InferSymbolicShapeContext() = default;
   InferSymbolicShapeContext(const InferSymbolicShapeContext&) = delete;
   InferSymbolicShapeContext(InferSymbolicShapeContext&&) = delete;
-  void Init();
+  void Init(
+      const std::vector<ConstraintsForInputDimExpr>& input_shape_constraints);
 
   // Note: Only initialize the symbol info, the value info is not update.
   void RegisterSymbolConstraintFromContext(
@@ -106,6 +113,8 @@ class IR_API InferSymbolicShapeContext {
   bool IsBroadcastable(const symbol::DimExpr& lhs,
                        const symbol::DimExpr& rhs) const;
 
+  bool HasPredefinedRange(const symbol::DimExpr& dim_expr) const;
+
   void PrintShapeOrDatas() const;
 
   void SetOpInferSymbolicShapeCache(
@@ -118,6 +127,18 @@ class IR_API InferSymbolicShapeContext {
   const symbol::ConstraintsManager& constraints_manager() const {
     return constraints_manager_;
   }
+
+  struct DimIndexAndExpr {
+    int index;
+    symbol::DimExpr dim_expr;
+    DimIndexAndExpr(int index_val, const symbol::DimExpr& dim_expr_val)
+        : index(index_val), dim_expr(dim_expr_val) {}
+  };
+
+  bool HasPredefinedDimExprForInputName(const std::string& input_name) const;
+
+  const std::vector<DimIndexAndExpr> GetPredefinedDimExprForInputName(
+      const std::string& input_name) const;
 
  private:
   symbol::ShapeOrDataDimExprs SimplifyBroadcastForShapeOrData(
@@ -140,6 +161,9 @@ class IR_API InferSymbolicShapeContext {
 
   std::unordered_map<InferSymbolicShapeCacheKey, InferSymbolicShapeCacheValue>
       infer_symbolic_shape_cache_;
+
+  std::unordered_map<std::string, std::vector<DimIndexAndExpr>>
+      predefined_dimexpr_map_for_inputs_;
 };
 
 class IR_API ShapeConstraintIRAnalysis final
@@ -148,7 +172,7 @@ class IR_API ShapeConstraintIRAnalysis final
   ShapeConstraintIRAnalysis() = default;
   ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
   ShapeConstraintIRAnalysis(ShapeConstraintIRAnalysis&&) = delete;
-  void Init();
+  void InitInferContext();
 
   void RegisterSymbolConstraintFromShapeAnalysis(
       const ShapeConstraintIRAnalysis& other);
@@ -202,6 +226,11 @@ class IR_API ShapeConstraintIRAnalysis final
     return context_.constraints_manager();
   }
 
+  void SetInputShapeConstraints(
+      const std::vector<ConstraintsForInputDimExpr>& input_shape_constraints) {
+    input_shape_constraints_ = input_shape_constraints;
+  }
+
  private:
   InferSymbolicShapeContext* MutInferSymbolicShapeContext() {
     return &context_;
@@ -215,6 +244,7 @@ class IR_API ShapeConstraintIRAnalysis final
 
  private:
   InferSymbolicShapeContext context_;
+  std::vector<ConstraintsForInputDimExpr> input_shape_constraints_;
 };
 
 class IR_API ShapeAnalysisManager {

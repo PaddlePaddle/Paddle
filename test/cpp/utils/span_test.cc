@@ -39,7 +39,11 @@ TEST(default_ctor, span) {
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end());
 #else
-    CHECK(s.begin() == s.end());
+    PADDLE_ENFORCE_EQ(s.begin(),
+                      s.end(),
+                      common::errors::Fatal(
+                          "constexpr `span`'s begin() is not equal, but "
+                          "`span` should be empty, please check constructor"));
 #endif
   }
 
@@ -51,7 +55,11 @@ TEST(default_ctor, span) {
 #ifndef _MSC_VER
     static_assert(s.begin() == s.end());
 #else
-    CHECK(s.begin() == s.end());
+    PADDLE_ENFORCE_EQ(s.begin(),
+                      s.end(),
+                      common::errors::Fatal(
+                          "constexpr `span`'s begin() is not equal, but "
+                          "`span` should be empty, please check constructor"));
 #endif
   }
 }
@@ -744,7 +752,11 @@ TEST(ctor_from_spans, span) {
 #ifndef _MSC_VER
   static_assert(d.begin() == d.end());
 #else
-  CHECK(d.begin() == d.end());
+  PADDLE_ENFORCE_EQ(d.begin(),
+                    d.end(),
+                    common::errors::Fatal(
+                        "Variable `d`'s begin() should be the same to end(), "
+                        "please check related function"));
 #endif
 }
 
@@ -981,12 +993,20 @@ TEST(iterator, span) {
     std::vector<int> vec;
     span<int> s{vec};
     std::sort(s.begin(), s.end());
-    CHECK(std::is_sorted(vec.cbegin(), vec.cend()));
+    PADDLE_ENFORCE_EQ(
+        std::is_sorted(vec.cbegin(), vec.cend()),
+        true,
+        common::errors::Fatal("Varible `vec` should be sorted, please check"));
   }
 
   {
     const std::vector<int> vec{1, 2, 3};
     span<const int> s{vec};
-    CHECK(std::equal(s.rbegin(), s.rend(), vec.crbegin()));
+    PADDLE_ENFORCE_EQ(
+        std::equal(s.rbegin(), s.rend(), vec.crbegin()),
+        true,
+        common::errors::Fatal(
+            "Varible `s` is not equal to its self by using rbegin(), rend() "
+            "and crbegin() with std::equal, please check related function"));
   }
 }

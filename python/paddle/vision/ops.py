@@ -1137,7 +1137,7 @@ class DeformConv2D(Layer):
 
         self._padding = convert_to_list(padding, 2, 'padding')
 
-        filter_shape = [out_channels, in_channels // groups] + self._kernel_size
+        filter_shape = [out_channels, in_channels // groups, *self._kernel_size]
 
         def _get_default_param_initializer():
             filter_elem_num = np.prod(self._kernel_size) * self._in_channels
@@ -1181,8 +1181,7 @@ def distribute_fpn_proposals(
     pixel_offset: bool = ...,
     rois_num: None = ...,
     name: str | None = ...,
-) -> tuple[list[Tensor], Tensor, None]:
-    ...
+) -> tuple[list[Tensor], Tensor, None]: ...
 
 
 @overload
@@ -1195,8 +1194,7 @@ def distribute_fpn_proposals(
     pixel_offset: bool = ...,
     rois_num: Tensor = ...,
     name: str | None = ...,
-) -> tuple[list[Tensor], Tensor, list[Tensor]]:
-    ...
+) -> tuple[list[Tensor], Tensor, list[Tensor]]: ...
 
 
 def distribute_fpn_proposals(
@@ -2097,7 +2095,7 @@ def nms(
         return keep_boxes_idxs[sorted_sub_indices]
 
     if in_dygraph_mode():
-        top_k = shape if shape < top_k else top_k
+        top_k = min(top_k, shape)
         _, topk_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
         return keep_boxes_idxs[topk_sub_indices]
 
@@ -2119,8 +2117,7 @@ def generate_proposals(
     pixel_offset: bool = ...,
     return_rois_num: Literal[True] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -2138,8 +2135,7 @@ def generate_proposals(
     pixel_offset: bool = ...,
     return_rois_num: Literal[False] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, None]:
-    ...
+) -> tuple[Tensor, Tensor, None]: ...
 
 
 @overload
@@ -2157,8 +2153,7 @@ def generate_proposals(
     pixel_offset: bool = ...,
     return_rois_num: bool = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor | None]: ...
 
 
 def generate_proposals(
@@ -2374,8 +2369,7 @@ def matrix_nms(
     return_index: Literal[True] = ...,
     return_rois_num: Literal[False] = ...,
     name: str | None = None,
-) -> tuple[Tensor, None, Tensor]:
-    ...
+) -> tuple[Tensor, None, Tensor]: ...
 
 
 @overload
@@ -2393,8 +2387,7 @@ def matrix_nms(
     return_index: Literal[True] = ...,
     return_rois_num: Literal[True] = ...,
     name: str | None = None,
-) -> tuple[Tensor, Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor, Tensor]: ...
 
 
 @overload
@@ -2412,8 +2405,7 @@ def matrix_nms(
     return_index: Literal[False] = ...,
     return_rois_num: Literal[True] = ...,
     name: str | None = None,
-) -> tuple[Tensor, Tensor, None]:
-    ...
+) -> tuple[Tensor, Tensor, None]: ...
 
 
 @overload
@@ -2431,8 +2423,7 @@ def matrix_nms(
     return_index: Literal[False] = ...,
     return_rois_num: Literal[False] = ...,
     name: str | None = None,
-) -> tuple[Tensor, None, None]:
-    ...
+) -> tuple[Tensor, None, None]: ...
 
 
 @overload
@@ -2450,8 +2441,7 @@ def matrix_nms(
     return_index: bool = ...,
     return_rois_num: bool = ...,
     name: str | None = None,
-) -> tuple[Tensor, Tensor | None, Tensor | None]:
-    ...
+) -> tuple[Tensor, Tensor | None, Tensor | None]: ...
 
 
 def matrix_nms(

@@ -45,13 +45,13 @@ Target::Target(OS o,
              [&](ARMArch) {},
              [&](NVGPUArch) {
 #ifndef CINN_WITH_CUDA
-               PADDLE_THROW(phi::errors::Unimplemented(
+               PADDLE_THROW(::common::errors::Unimplemented(
                    "Please recompile with flag WITH_GPU and WITH_CINN."));
 #endif
              },
              [&](HygonDCUArchHIP) {
 #ifndef CINN_WITH_HIP
-               PADDLE_THROW(phi::errors::Unimplemented(
+               PADDLE_THROW(::common::errors::Unimplemented(
                    "Please recompile with flag WITH_ROCM and WITH_CINN."));
 #endif
              });

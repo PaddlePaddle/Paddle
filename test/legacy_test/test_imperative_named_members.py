@@ -84,7 +84,7 @@ class TestImperativeNamedSubLayers(unittest.TestCase):
 
             self.assertListEqual(
                 [l for _, l in list(model.named_sublayers(include_self=True))],
-                [model] + expected_sublayers,
+                [model, *expected_sublayers],
             )
 
 
