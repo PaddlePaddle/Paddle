@@ -817,18 +817,12 @@ def find_var_used_op_chunk_id(var):
     all_used_ops = var.all_used_ops()
     for used_op in all_used_ops:
         if used_op.name() in dist_skip_op_list:
-            for operand_source in used_op.operand_sources():
-                chunk_id = find_var_used_op_chunk_id(operand_source)
+            for output_var in used_op.results():
+                chunk_id = find_var_used_op_chunk_id(output_var)
                 if chunk_id != -1:
                     return chunk_id
-        if used_op.dist_attr and used_op.dist_attr.chunk_id != -1:
+        elif used_op.dist_attr and used_op.dist_attr.chunk_id != -1:
             return used_op.dist_attr.chunk_id
-
-    if var.get_defining_op().has_attr("replace_all_uses_with_reshard_var"):
-        reshard_op = all_used_ops[0]
-        reshard_var = reshard_op.result(0)
-        return find_var_used_op_chunk_id(reshard_var)
-
     return -1
 
 
@@ -955,12 +949,12 @@ def _pir_program_for_vpp(
         following_program_types = all_program_types[
             all_program_types.index(program_type) + 1 :
         ]
-        op_num_results = type_to_ops["optimizer"][op_idx].num_results()
+        op_num_results = type_to_ops[program_type][op_idx].num_results()
         op_name = type_to_ops[program_type][op_idx].name()
 
         for idx in range(op_num_results):
             var_name = None
-            for type in following_program_types:
+            for type in reversed(following_program_types):
                 op_result = type_to_ops[type][op_idx].result(idx)
                 if op_result.use_empty():
                     continue
@@ -1064,7 +1058,6 @@ def _pir_program_for_vpp(
             raise ValueError(
                 f"The op[{op.name()}]'s op role: {op_role} isn't one of Forward, Backward or Optimizer."
             )
-    # print(222, type_to_program)
 
     return list(type_to_program.keys()), list(type_to_program.values())
 

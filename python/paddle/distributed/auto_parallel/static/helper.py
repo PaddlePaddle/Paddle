@@ -33,6 +33,7 @@ from paddle.static.amp.fp16_utils import (
 )
 
 from .converter import Converter
+from .dist_attribute import TensorDistAttr
 from .process_group import get_world_process_group
 from .utils import get_logger, to_list
 
@@ -241,6 +242,7 @@ class ProgramHelper:
         self.build_info = BuildInfo()
         self._logger = get_logger(logging.INFO)
         self.lazy_init = False
+        self._all_params_dist_attr = {}
 
     def reset(self):
         """
@@ -379,6 +381,23 @@ class ProgramHelper:
                 ].name
 
         for param in dy_params:
+            if param.is_dist():
+                process_mesh, dims_mapping = self._all_params_dist_attr[
+                    param.name
+                ]
+                var_dist_attr = TensorDistAttr()
+                var_dist_attr.process_mesh = process_mesh
+                var_dist_attr.dims_mapping = dims_mapping
+
+                with paddle.no_grad():
+                    tmp = paddle.base.core.reshard(param, var_dist_attr)
+                if tmp._is_initialized():
+                    param.get_tensor()._share_data_with(tmp.get_tensor())
+                else:
+                    # Only setting the "param" to "None" can't release the memory
+                    param.get_tensor()._clear()
+                    param = None
+
             # create var in scope and share parameters to scope
             if param is None:
                 continue
@@ -559,6 +578,17 @@ class ProgramHelper:
                 barrier_tensor, barrier_tensor, 'ring_id', 0
             )
             paddle.enable_static()
+
+    def save_all_params_dist_attr(self, all_params):
+        for param_value in all_params:
+            dist_attr = param_value.dist_attr()
+            if dist_attr:
+                process_mesh = dist_attr.process_mesh
+                dims_mapping = dist_attr.dims_mapping
+                self._all_params_dist_attr[param_value.name] = [
+                    process_mesh,
+                    dims_mapping,
+                ]
 
     @property
     def concrete_program(self):

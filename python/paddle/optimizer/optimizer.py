@@ -1363,10 +1363,6 @@ class Optimizer:
             self._create_accumulators(target_block, params_acc_dict)
 
         if isinstance(parameters_and_grads, list):
-            # TODO(luchang): Fix the repeat add learning_rate when process_mesh appears alternately
-            parameters_and_grads.sort(
-                key=lambda x: x[0].dist_attr().process_mesh.process_ids
-            )
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue

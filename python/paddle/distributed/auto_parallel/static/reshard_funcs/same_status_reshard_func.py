@@ -71,7 +71,13 @@ class SameStatusReshardFunction(ReshardFunction):
                 break
 
             elif dst == cur_global_rank:
-                chunk_id = find_var_used_op_chunk_id(src_value)
+                all_used_ops = src_value.all_used_ops()
+                chunk_id = -1
+                for used_op in all_used_ops:
+                    var = used_op.result(0)
+                    if var.dist_attr().process_mesh == dst_mesh:
+                        chunk_id = find_var_used_op_chunk_id(var)
+
                 src_local_rank = all_process_ids.index(src)
                 assert (
                     -1 not in dst_type.shape

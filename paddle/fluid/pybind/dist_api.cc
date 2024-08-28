@@ -147,6 +147,12 @@ void BindDistUtils(pybind11::module *m) {
          py::arg("operands"),
          py::arg("results"),
          py::arg("chunk_id") = -1);
+  m->def("create_process_mesh",
+         [](const std::vector<int64_t> &shape,
+            const std::vector<int64_t> &process_ids,
+            const std::vector<std::string> &dim_names) {
+           return phi::distributed::ProcessMesh(shape, process_ids, dim_names);
+         });
   m->def("get_sub_meshes", phi::distributed::GetSubMeshes);
   m->def("cvt_to_dist_type", &dialect::CvtToPirDistType);
 }

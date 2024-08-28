@@ -702,11 +702,7 @@ class Engine:
             self._strategy.pipeline.enable
             and self._strategy.pipeline.schedule_mode == "VPP"
         ):
-            apply_reshard_pass(dist_program)
-            print(111, dist_program)
             complete_chunk_id(dist_program, self._strategy.pipeline)
-            # # add reshard op between pipeline chunks
-            # apply_partition_pass(dist_program)
 
         # Step 1.2: pir backward
         last_forward_op = dist_program.global_block().ops[-1]
@@ -849,6 +845,9 @@ class Engine:
         apply_reshard_pass(dist_program, params_grads)
         # print('after reshard', dist_program, flush=1)
 
+        self.program_helper.save_all_params_dist_attr(
+            dist_program.global_block().all_parameters()
+        )
         remove_other_rank_input_output_pass(dist_program)
         # print(
         #     'after remove_other_rank_input_output_pass', dist_program, flush=1
@@ -905,8 +904,6 @@ class Engine:
             and self._strategy.pipeline.schedule_mode == "VPP"
         ):
             check_chunk_id(dist_program)
-
-        # print(222, dist_program)
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
@@ -1009,7 +1006,6 @@ class Engine:
                 _create_dist_input_var(input_var, input_spec)
 
     def _build(self, mode):
-        print('start build')
         if in_dynamic_mode() or self._dygraph_mode:
             paddle.disable_static()
             self._dygraph_mode = True

@@ -23,7 +23,7 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.passes.pass_base import PassContext, new_pass
 from paddle.pir import get_current_insertion_point
 
-from ...passes.pass_utils import auto_complete_op_role, infer_chunk_id
+from ...passes.pass_utils import auto_complete_op_role
 from .mix_to_dist_pass import dist_skip_op_list
 from .process_group import get_process_group
 from .reshard_funcs.base_reshard_func import (
@@ -351,13 +351,26 @@ def remove_other_rank_op_pass(dist_program, dist_params_grads):
 
     # merge pd.data ops for
     lr_ops = []
+    lr_parameters = []
     for op in dist_program.global_block().ops[::-1]:
         if op.name() == 'pd_op.data' and "learning_rate" in op.attrs()["name"]:
             lr_ops.append(op)
+        if (
+            op.name() == 'builtin.parameter'
+            and "learning_rate" in op.attrs()["parameter_name"]
+        ):
+            lr_parameters.append(op)
 
     if len(lr_ops) > 1:
         lr_value = lr_ops[0].result(0)
         for op in lr_ops[1:]:
+            lr = op.result(0)
+            lr.replace_all_uses_with(lr_value)
+            op.erase()
+
+    if len(lr_parameters) > 1:
+        lr_value = lr_parameters[0].result(0)
+        for op in lr_parameters[1:]:
             lr = op.result(0)
             lr.replace_all_uses_with(lr_value)
             op.erase()
@@ -570,16 +583,6 @@ def _get_seg_struct_names(ops, seg_method):
                     f"The op {ops[i].name()} without seg_method in its struct_name should only be reshard"
                 )
 
-    # reshard_ops = []
-    # for op in ops:
-    #     if op.name() == "dist_op.reshard":
-    #         print(555, op)
-    #         reshard_ops.append(op)
-
-    # for op in reshard_ops:
-    #     op.result(0).replace_all_uses_with(op.operand_source(0))
-    #     op.erase()
-
     return list(struct_names.keys())
 
 
@@ -716,6 +719,7 @@ def complete_chunk_id(dist_program, pipeline_strategy):
     if vpp_degree < 2:
         return
 
+    fold_reshard_pass(dist_program)
     seg_struct_names = _get_seg_struct_names(
         dist_program.global_block().ops, seg_method
     )
@@ -746,6 +750,7 @@ def complete_chunk_id(dist_program, pipeline_strategy):
 
     # Step4: Set the process_mesh of each op
     seg_id = 0
+    reshard_ops = []
     for seg_id in range(num_chunks):
         start_idx = seg_parts[seg_id * seg_layer_num]
         end_idx = seg_parts[seg_id * seg_layer_num + seg_layer_num]
@@ -768,6 +773,10 @@ def complete_chunk_id(dist_program, pipeline_strategy):
         for idx in range(start_idx, end_idx):
             if ops[idx].name() in dist_skip_op_list:
                 continue
+            if ops[idx].name() == "dist_op.reshard":
+                reshard_ops.append(ops[idx])
+                continue
+
             is_seg_op = _extract_seg_method(ops[idx], seg_method) is not None
             for sub_block in ops[idx].blocks():
                 if len(sub_block.ops) > 0:
@@ -779,6 +788,71 @@ def complete_chunk_id(dist_program, pipeline_strategy):
                 chunk_id,
                 non_use_custom_mesh & is_seg_op,
             )
+
+    # Step5: set right process_mesh for reshard op
+    for op in reshard_ops:
+        var = op.operand_source(0)
+
+        op_dist_attr = op.dist_attr
+        src_dist_attr = op_dist_attr.operand(0).as_tensor_dist_attr()
+        dst_dist_attr = op_dist_attr.result(0).as_tensor_dist_attr()
+
+        if src_dist_attr == dst_dist_attr:
+            op.result(0).replace_all_uses_with(var)
+            op.erase()
+            continue
+
+        reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
+        reshard_func_name = reshard_func.__class__.__name__
+
+        if reshard_func_name == "NdMeshReshardFunction":
+            new_process_mesh = var.dist_attr().process_mesh
+            new_src_dist_attr = copy_dist_attr_with_new_member(
+                src_dist_attr, new_process_mesh=new_process_mesh
+            )
+            new_dst_dist_attr = copy_dist_attr_with_new_member(
+                dst_dist_attr, new_process_mesh=new_process_mesh
+            )
+            op.dist_attr = copy_op_attr_with_new_member(
+                op_dist_attr,
+                new_operands=[new_src_dist_attr],
+                new_results=[new_dst_dist_attr],
+                new_process_mesh=new_process_mesh,
+            )
+        elif reshard_func_name == "GlobaleToSubMeshFunction":
+            result_var = op.result(0)
+            new_process_mesh = result_var.dist_attr().process_mesh
+            new_dst_dist_attr = copy_dist_attr_with_new_member(
+                dst_dist_attr, new_process_mesh=new_process_mesh
+            )
+            op.dist_attr = copy_op_attr_with_new_member(
+                op_dist_attr, new_results=[new_dst_dist_attr]
+            )
+        elif reshard_func_name == "NdMeshReshardFunctionCrossMesh":
+            result_var = op.result(0)
+            src_process_mesh = var.dist_attr().process_mesh
+            dst_process_mesh = result_var.dist_attr().process_mesh
+            new_src_dist_attr = copy_dist_attr_with_new_member(
+                src_dist_attr, new_process_mesh=src_process_mesh
+            )
+            new_dst_dist_attr = copy_dist_attr_with_new_member(
+                dst_dist_attr, new_process_mesh=dst_process_mesh
+            )
+            op.dist_attr = copy_op_attr_with_new_member(
+                op_dist_attr,
+                new_operands=[new_src_dist_attr],
+                new_results=[new_dst_dist_attr],
+            )
+        elif reshard_func_name == "SameStatusReshardFunction":
+            op.result(0).replace_all_uses_with(var)
+            op.erase()
+        else:
+            raise ValueError(
+                f"Unsupport reshard function: {reshard_func_name}, reshard op's dist_attr: {op.dist_attr}"
+            )
+
+    # Step6: add reshard op between pipeline chunks
+    apply_partition_pass(dist_program)
 
 
 def check_chunk_id(dist_program):
@@ -810,17 +884,6 @@ def check_chunk_id(dist_program):
                             f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
                         )
                 else:
-                    chunk_id = infer_chunk_id(idx, all_ops)
-                    if chunk_id != -1:
-                        op.dist_attr = (
-                            paddle.base.libpaddle.pir.create_op_dist_attribute(
-                                op.dist_attr.process_mesh,
-                                op.dist_attr.operands(),
-                                op.dist_attr.results(),
-                                chunk_id,
-                            )
-                        )
-                    else:
-                        raise ValueError(
-                            f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
-                        )
+                    raise ValueError(
+                        f"The chunk_id of op[{op.name()}] is not set. Please check the chunk_id setting."
+                    )

@@ -117,11 +117,7 @@ class TestLlamaAuto:
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
         self.config.recompute = False
         self.config.sep_parallel_degree = 1
-
-        self.run_step_dynamic = 10
-        self.run_step_dy2static = (
-            self.run_step_dynamic // self.gradient_accumulation_steps
-        )
+        self.run_step_dy2static = 5
 
         self.init_dist_env()
 
@@ -205,11 +201,11 @@ class TestLlamaAuto:
 
     def run_test_cases(self):
         self.init_dist_env()
-        dy_loss_md5 = self.run_llama(use_vpp=True)
-        # self.init_dist_env()
-        # st_loss_md5 = self.run_dy2static()
-        # if int(dist.get_rank()) in [2, 3, 6, 7]:
-        #     assert dy_loss_md5 == st_loss_md5
+        loss_vpp_md5 = self.run_llama(use_vpp=True)
+        self.init_dist_env()
+        loss_1f1b_md5 = self.run_llama(use_vpp=False)
+        if int(dist.get_rank()) in [2, 3, 6, 7]:
+            assert loss_vpp_md5 == loss_1f1b_md5
 
 
 if __name__ == '__main__':

@@ -109,3 +109,23 @@ def copy_op_attr_with_new_member(
         new_results,
         new_chunk_id,
     )
+
+
+def copy_process_mesh_with_new_member(
+    src_process_mesh,
+    new_shape=None,
+    new_process_ids=None,
+    new_dim_names=None,
+):
+    if new_shape is None:
+        new_shape = src_process_mesh.shape
+    if new_process_ids is None:
+        new_process_ids = src_process_mesh.process_ids
+    if new_dim_names is None:
+        new_dim_names = src_process_mesh.dim_names
+
+    return paddle.base.libpaddle.pir.create_process_mesh(
+        new_shape,
+        new_process_ids,
+        new_dim_names,
+    )
