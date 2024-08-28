@@ -420,7 +420,7 @@ class FleetWrapper {
   size_t GetAbsoluteSum(size_t start,
                         size_t end,
                         size_t level,
-                        const framework::LoD& lod);
+                        const phi::LoD& lod);
 
  protected:
   static bool is_initialized_;
