@@ -572,9 +572,7 @@ def replace_mid_values_with_forward_subgraph(
             new_chain = list(chain)
             new_chain.append(recompute_value)
             define_op = recompute_value.get_defining_op()
-            print("marked_recompute_ops: ", define_op)
             if define_op in marked_recompute_ops:
-                print('---')
                 return
             op_inputs = define_op.operands_source()
             if len(op_inputs) == 0 and define_op.name() not in [
@@ -628,10 +626,7 @@ def replace_mid_values_with_forward_subgraph(
                     return idx
             raise RuntimeError("op not found in program")
 
-        print("=============saved_values", saved_values)
-
         for recompute_value in mid_values:
-            print("============= ", recompute_value)
             _find_recompute_ops(
                 recompute_value,
                 saved_values,
