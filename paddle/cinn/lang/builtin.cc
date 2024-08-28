@@ -158,9 +158,9 @@ Expr min_value(const Type& type) {
                         "The value of min type's lanes is incorrect"
                         "Expected value is 1, but receive %d. ",
                         type.lanes()));
-#define FOR_CASE(type__)                                                     \
-  if (type == type_of<type__>()) {                                           \
-    return Expr(static_cast<type__>(std::numeric_limits<type__>::lowest())); \
+#define FOR_CASE(type__)                                                      \
+  if (type == type_of<type__>()) {                                            \
+    return ir::Cast::Make(type, Expr(std::numeric_limits<type__>::lowest())); \
   }
   FOR_CASE(int8_t)
   FOR_CASE(int16_t)
@@ -186,9 +186,10 @@ Expr max_value(const Type& type) {
                         "Expected value is 1, but receive %d. ",
                         type.lanes()));
 
-#define FOR_CASE(type__)                                                  \
-  if (type == type_of<type__>()) {                                        \
-    return Expr(static_cast<type__>(std::numeric_limits<type__>::max())); \
+#define FOR_CASE(type__)                                                      \
+  if (type == type_of<type__>()) {                                            \
+    return ir::Cast::Make(                                                    \
+        type, Expr(static_cast<type__>(std::numeric_limits<type__>::max()))); \
   }
   FOR_CASE(int8_t)
   FOR_CASE(int16_t)

@@ -147,8 +147,10 @@ inline Expr ReduceMax(Expr e,
                       const std::vector<Var>& reduce_axis,
                       Expr initial = Expr()) {
   if (!initial.defined()) {
+    std::cerr << "not init\n";
     initial = min_value(e.type());
   }
+
   return ir::Reduce::Make(ir::Reduce::kMax, initial, e, reduce_axis);
 }
 inline Expr ReduceMin(Expr e,

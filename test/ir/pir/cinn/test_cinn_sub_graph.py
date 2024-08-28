@@ -116,13 +116,43 @@ class CINNReduceSumSubGraphNet(paddle.nn.Layer):
 
     def forward(self, x):
 
-        t = x.reshape([4, 2, 27])
+        # t = x.reshape([4, 2, 27])
+        t = x
         sum1 = t.mean(-1, keepdim=True)
         t2 = t - sum1
         t3 = t2 * t2
         t5 = t3.sum(-1, keepdim=True)
 
-        return t, t5
+        return t5
+
+
+# class CINNReduceMaxSubGraphNet(paddle.nn.Layer):
+#     def __init__(self):
+#         super().__init__()
+
+#     def forward(self, x):
+
+#         #t = x.reshape([4, 2, 27])
+
+#         max1 = x.max(-1, keepdim=True)
+
+#         return max1
+
+
+class CINNReduceMaxSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, dim):
+
+        # t = x.reshape([4, 2, 27])
+
+        t = x.reshape([dim, -1])
+        sum1 = t.mean(-1, keepdim=True)
+        t3 = t * t
+        t5 = t3.sum(-1, keepdim=True)
+
+        return sum1, t5
 
 
 class CINNDropoutSubGraphNet(paddle.nn.Layer):
@@ -145,10 +175,11 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [216]
+        self.shape = [32, 256, 256]
         self.axis = -1
         self.x = paddle.uniform(self.shape, dtype="float32", min=-0.5, max=0.5)
         self.x.stop_gradient = False
+        self.dim = paddle.full([1], dtype="int32", fill_value=128)
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
@@ -175,18 +206,24 @@ class TestCinnSubGraphBase(unittest.TestCase):
 class TestCinnSoftmax(TestCinnSubGraphBase):
     def train(self, use_cinn):
         paddle.seed(2022)
-        net = CINNReduceSumSubGraphNet()
+        net = CINNReduceMaxSubGraphNet()
         net.eval()
         input_specs = [
             paddle.static.InputSpec(
-                shape=[216],
+                shape=[None, 256, 256],
                 dtype=paddle.float32,
-                name=None,
+                name="x",
                 stop_gradient=False,
-            )
+            ),
+            paddle.static.InputSpec(
+                shape=[1],
+                dtype=paddle.int32,
+                name="d",
+                stop_gradient=False,
+            ),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec=input_specs)
-        out = net(self.x)
+        out = net(self.x, self.dim)
 
         return out, self.x.gradient()
 
