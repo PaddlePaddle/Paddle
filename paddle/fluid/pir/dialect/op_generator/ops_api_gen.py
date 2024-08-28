@@ -171,8 +171,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_split',
     'comm_init_all',
     'decayed_adagrad',
-    'distributed_fused_lamb',
-    'distributed_fused_lamb_',
     'distributed_push_sparse',
     'distributed_lookup_table',
     'dgc_momentum',
