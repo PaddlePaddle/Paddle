@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/new_executor/collect_shape_manager.h"
-#include "glog/logging.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
+
 namespace paddle {
 namespace framework {
 CollectShapeManager &CollectShapeManager::Instance() {
@@ -47,8 +47,6 @@ void CollectShapeManager::CollectShapeInfo(
 #endif
 
     phi::DDim dim = tensor.dims();
-    LOG(INFO) << "============value id :" << input.first.impl();
-    LOG(INFO) << "tensor dim:" << dim;
     std::vector<int32_t> shape(dim.size());
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
@@ -177,8 +175,6 @@ std::vector<int32_t> CollectShapeManager::GetValueShapeRangeInfo(
                         "op_value, maybe origin program has changed or not "
                         "open FLAGS_enable_collect_shape."));
   auto kernel_val = op_value2kernel_value_[op_val];
-  LOG(INFO) << "======kernel val:" << std::hex
-            << op_value2kernel_value_[op_val].impl();
   if (shape_mode == ShapeMode::kMIN) {
     if (is_shape_tensor) {
       PADDLE_ENFORCE_NE(
