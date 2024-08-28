@@ -47,10 +47,10 @@
 #include "paddle/pir/include/core/parameter.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
-#include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
@@ -135,6 +135,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
         paddle::dialect::SumOp::name(),
         paddle::dialect::SigmoidCrossEntropyWithLogitsOp::name(),
         paddle::dialect::CrossEntropyWithSoftmax_Op::name(),
+        "pd_op.array_to_tensor",
     });
   }
 
@@ -165,6 +166,10 @@ class AutoMixedPrecisionPass : public pir::Pass {
         auto backend = ConvertPlaceToBackend(place_);
         support_low_precision =
             OpSupportPrecision(op_type, backend, precision_mode_);
+        if (op_name == "pd_op.scale" && !OpHasFloatResult(op)) {
+          support_low_precision = false;
+          op_should_not_handle_.insert(op);
+        }
       } else {  // pd op without float result
         support_low_precision = false;
         op_should_not_handle_.insert(op);
@@ -481,6 +486,9 @@ class AutoMixedPrecisionPass : public pir::Pass {
     return operand.type() &&
            operand.type().isa<paddle::dialect::DenseTensorType>();
   }
+  bool IsOperandHasDenseTensorVectorType(pir::OpOperand operand) const {
+    return operand.type() && operand.type().isa<pir::VectorType>();
+  }
 
   void DoInsertCastOp(pir::Operation* op,
                       pir::OpOperand operand,
@@ -586,7 +594,6 @@ class AutoMixedPrecisionPass : public pir::Pass {
       SetResultDataType(op->result(0), precision_mode_, builder.ir_context());
       return;
     }
-
     // Other pd ops
     if (OpRunLowPrecision(op)) {
       auto phi_kernel =
@@ -659,11 +666,38 @@ class AutoMixedPrecisionPass : public pir::Pass {
       auto phi_dtype = phi::DataType::FLOAT32;
       for (size_t i = 0; i < op->num_operands(); i++) {
         auto operand = op->operand(i);
-        if (!IsOperandHasDenseTensorType(operand)) continue;
-        auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
-        if (IsPhiDataTypeFloat(operand_phi_dtype) &&
-            operand_phi_dtype == precision_mode_) {
-          DoInsertCastOp(op, operand, phi_dtype, builder);
+        if (IsOperandHasDenseTensorType(operand)) {
+          auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
+          if (IsPhiDataTypeFloat(operand_phi_dtype) &&
+              operand_phi_dtype == precision_mode_) {
+            DoInsertCastOp(op, operand, phi_dtype, builder);
+          }
+        } else if (IsOperandHasDenseTensorVectorType(operand)) {
+          LOG(INFO) << "IsOperandHasDenseTensorVectorType(operand)";
+          LOG(INFO) << operand.source().defining_op()->name();
+          auto defining_op_ = operand.source().defining_op();
+          if (defining_op_->isa<pir::CombineOp>()) {
+            auto input_num = defining_op_->num_operands();
+            for (size_t i = 0; i < input_num; ++i) {
+              auto operand = defining_op_->operand(i);
+              auto operand_phi_dtype = GetPhiDataTypeFromOpOperand(operand);
+              if (IsPhiDataTypeFloat(operand_phi_dtype) &&
+                  operand_phi_dtype != phi::DataType::FLOAT32) {
+                DoInsertCastOp(
+                    defining_op_, operand, phi::DataType::FLOAT32, builder);
+                LOG(INFO) << "DoInsertCastOp";
+              }
+            }
+            std::vector<pir::Type> inputs_type(input_num);
+            for (size_t idx = 0; idx < input_num; ++idx) {
+              inputs_type[idx] = defining_op_->operand(idx).type();
+            }
+            auto new_vec_type =
+                pir::VectorType::get(builder.ir_context(), inputs_type);
+            defining_op_->result(0).set_type(new_vec_type);
+          }
+        } else {
+          continue;
         }
       }
     }
