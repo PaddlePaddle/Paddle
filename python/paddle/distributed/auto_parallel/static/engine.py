@@ -711,6 +711,7 @@ class Engine:
                             custom_black_list=self._strategy.amp.custom_black_list,
                             dtype=self._strategy.amp.dtype,
                         )
+                        self._optimizer._sorted = False
                         self._optimizer = paddle.static.amp.decorator.OptimizerWithMixedPrecision(
                             optimizer=self._optimizer,
                             amp_lists=amp_lists,
