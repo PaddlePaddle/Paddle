@@ -6,6 +6,7 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
             FLAGS_memory_fraction_of_eager_deletion=1.0)
 set(dist_ENVS http_proxy="" https_proxy="")
+set(dist_without_pir_ENVS http_proxy="" https_proxy="" FLAGS_enable_pir_api=0)
 
 file(
   GLOB DIST_TEST_OPS
@@ -101,7 +102,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
+  #list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
@@ -286,7 +287,10 @@ function(py_test_modules TARGET_NAME)
     set(multiValueArgs MODULES DEPS ENVS)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-
+    message(
+      STATUS
+        "${py_test_modules_MODULES} py_test_modules_ENVS:${py_test_modules_ENVS}"
+    )
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       if(WITH_ASCEND_CL)
@@ -745,9 +749,7 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op test_distributed_fused_lamb_op_with_clip
-  test_distributed_fused_lamb_op_without_clip
-  test_distributed_fused_lamb_op_with_gradient_merge
-  PROPERTIES LABELS "RUN_TYPE=DIST")
+  test_distributed_fused_lamb_op_without_clip PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
   set_tests_properties(test_imperative_signal_handler
@@ -776,8 +778,8 @@ if(WITH_DISTRIBUTE)
   set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
                                                                        200)
   set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
-                       PROPERTIES TIMEOUT 60)
+  #set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
+  #                     PROPERTIES TIMEOUT 60)
   set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
 endif()
 
@@ -859,8 +861,8 @@ set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
                                                                          240)
 set_tests_properties(test_distributed_fused_lamb_op_without_clip
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
-                     PROPERTIES TIMEOUT 240)
+#set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
+#                     PROPERTIES TIMEOUT 240)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
 if(NOT WITH_COVERAGE)
@@ -1175,15 +1177,15 @@ set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   # These UTs are specially designed for FleetExecutor
-  set_tests_properties(
-    test_fleet_executor PROPERTIES ENVIRONMENT
-                                   "FLAGS_new_executor_micro_batching=False")
-  set_tests_properties(
-    test_fleet_executor_origin_scheduler
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-  set_tests_properties(
-    test_fleet_executor_with_task_nodes
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  #set_tests_properties(
+  #  test_fleet_executor PROPERTIES ENVIRONMENT
+  #                                 "FLAGS_new_executor_micro_batching=False")
+  #  set_tests_properties(
+  #   test_fleet_executor_origin_scheduler
+  #   PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  #set_tests_properties(
+  #  test_fleet_executor_with_task_nodes
+  #  PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
 endif()
 
 set_tests_properties(test_bicubic_interp_v2_op PROPERTIES TIMEOUT 120)

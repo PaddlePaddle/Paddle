@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from legacy_test.test_collective_api_base import (
     TestCollectiveAPIRunnerBase,
     runtime_main,
 )
+
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 import paddle
 from paddle import base, framework

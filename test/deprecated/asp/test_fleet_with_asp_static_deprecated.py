@@ -14,6 +14,19 @@
 # limitations under the License.
 
 import os
+
+print(
+    "first print env FLAGS_enable_pir_api",
+    os.environ["FLAGS_enable_pir_api"],
+    flush=True,
+)
+os.environ['FLAGS_enable_pir_api'] = '0'
+print(
+    "second print env FLAGS_enable_pir_api",
+    os.environ["FLAGS_enable_pir_api"],
+    flush=True,
+)
+
 import unittest
 
 import numpy as np

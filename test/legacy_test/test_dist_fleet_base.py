@@ -15,9 +15,11 @@
 """
 high level unit test for distribute fleet.
 """
+import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
 
 import argparse
-import os
 import shutil
 import socket
 import subprocess

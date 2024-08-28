@@ -14,6 +14,8 @@
 
 import os
 
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import numpy as np
 from legacy_test.test_collective_api_base import (
     TestCollectiveAPIRunnerBase,
