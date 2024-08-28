@@ -862,12 +862,41 @@ bool HuberLossOpInferSymbolicShape(
   return true;
 }
 
-// bool HistogramOpInferSymbolicShape(pir::Operation *op,
-//                                    pir::InferSymbolicShapeContext
-//                                    *infer_context) {
-//   // pass
-//   return true;
-// }
+bool HistogramOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &input_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  int64_t bins = op->attribute<pir::Int64Attribute>("bins").data();
+  int min = op->attribute<pir::Int32Attribute>("min").data();
+  int max = op->attribute<pir::Int32Attribute>("max").data();
+  PADDLE_ENFORCE_GE(bins,
+                    1,
+                    common::errors::InvalidArgument(
+                        "The bins should be greater than or equal to 1."
+                        "But received nbins is %d",
+                        bins));
+  PADDLE_ENFORCE_GE(
+      max,
+      min,
+      common::errors::InvalidArgument("max must be larger or equal to min."
+                                      "But received max is %d, min is %d",
+                                      max,
+                                      min));
+  if (op->operand_source(1)) {
+    const symbol::ShapeOrDataDimExprs &weight_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    size_t ndims_input = input_shape_or_data.shape().size();
+    for (size_t i = 0; i < ndims_input; ++i) {
+      infer_context->AddEqualCstr(weight_shape_or_data.shape()[i],
+                                  input_shape_or_data.shape()[i]);
+    }
+  }
+  std::vector<symbol::DimExpr> dim_out = {bins};
+  symbol::ShapeOrDataDimExprs shape_data{
+      symbol::TensorShapeOrDataDimExprs(dim_out)};
+  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  return true;
+}
 
 bool IndexSampleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
