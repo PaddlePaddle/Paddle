@@ -698,7 +698,7 @@ def cal_value_node_size(value_node):
     if is_dynamic_value_node(value_node):
         return 1
     return (
-        reduce(lambda x, y: x * y, value_node.shape)
+        reduce(lambda x, y: x * y, value_node.shape, 1)
         * _PADDLE_DTYPE_2_NBYTES[value_node.dtype]
     )
 
