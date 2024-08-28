@@ -19,7 +19,7 @@
 namespace cinn::fusion {
 
 ShardableAxes ShardableAxesInfoManager::ReplaceShardableAxesWithRootName(
-    const ShardableAxes& axes) {
+    const ShardableAxes& axes, bool normalize_name) {
   std::vector<std::string> names;
   const auto FindRoot = [&](std::string non_root) {
     std::string result = non_root;
@@ -29,7 +29,8 @@ ShardableAxes ShardableAxesInfoManager::ReplaceShardableAxesWithRootName(
     return result;
   };
   for (auto name : axes.axis_names) {
-    names.push_back(FindRoot(name));
+    names.push_back(normalize_name ? normalized_root_name_map_[FindRoot(name)]
+                                   : FindRoot(name));
   }
   return ShardableAxes(names);
 }
@@ -44,12 +45,12 @@ ShardableAxesSignature ShardableAxesInfoManager::GetModifiedSignature(
   auto result = ShardableAxesSignature();
   auto origin_sig = op_signature_map_[op];
   for (const auto& axes : origin_sig.inputs) {
-    result.inputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+    result.inputs.emplace_back(ReplaceShardableAxesWithRootName(axes, true));
   }
   for (const auto& axes : origin_sig.outputs) {
-    result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes));
+    result.outputs.emplace_back(ReplaceShardableAxesWithRootName(axes, true));
   }
-  result.loop = ReplaceShardableAxesWithRootName(origin_sig.loop);
+  result.loop = ReplaceShardableAxesWithRootName(origin_sig.loop, true);
   return result;
 }
 
@@ -424,6 +425,37 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
   for (const auto& [child, father] : name_union_) {
     name_union_[child] = FindRoot(child);
   }
+
+  root_to_sons_.clear();
+  std::vector<std::string> sorted_roots;
+  for (const auto& [non_root, root] : name_union_) {
+    if (root_to_sons_.find(root) == root_to_sons_.end()) {
+      root_to_sons_[root] = std::vector<std::string>{non_root};
+      sorted_roots.push_back(root);
+    } else {
+      root_to_sons_[root].push_back(non_root);
+    }
+  }
+
+  auto min_son_id = [&](const std::string& root) -> int64_t {
+    auto min_id = std::min_element(
+        root_to_sons_[root].begin(),
+        root_to_sons_[root].end(),
+        [&](const std::string& a, const std::string& b) {
+          return std::stoll(a.substr(1)) < std::stoll(b.substr(1));
+        });
+    return std::stoll(min_id->substr(1));
+  };
+  std::sort(sorted_roots.begin(),
+            sorted_roots.end(),
+            [&](const std::string& a, const std::string& b) {
+              return min_son_id(a) < min_son_id(b);
+            });
+
+  for (size_t i = 0; i < sorted_roots.size(); ++i) {
+    normalized_root_name_map_[sorted_roots[i]] = "i_" + std::to_string(i);
+  }
+
   VLOG(4) << NameUnionDebugStr();
 }
 
@@ -437,29 +469,21 @@ std::string ShardableAxes::DebugStr() const {
 
 std::string ShardableAxesSignature::DebugStr() const {
   std::stringstream ss;
-  ss << "ShardableAxes Signature:\n";
+  ss << "ShardableAxes Signature:";
+  ss << "\n    loop: " << loop.DebugStr();
   for (int i = 0; i < inputs.size(); i++) {
-    ss << "input " << i << ": " << inputs[i].DebugStr() << "\n";
+    ss << "\n    input " << i << ": " << inputs[i].DebugStr();
   }
   for (int i = 0; i < outputs.size(); i++) {
-    ss << "output " << i << ": " << outputs[i].DebugStr() << "\n";
+    ss << "\n    output " << i << ": " << outputs[i].DebugStr();
   }
-  ss << "loop: " << loop.DebugStr() << "\n";
   return ss.str();
 }
 
 std::string ShardableAxesInfoManager::NameUnionDebugStr() const {
   std::stringstream ss;
   ss << "[ShardableAxesInfoManager] NameUnion :\n";
-  std::unordered_map<std::string, std::vector<std::string>> root_to_sons;
-  for (const auto& [non_root, root] : name_union_) {
-    if (root_to_sons.find(root) == root_to_sons.end()) {
-      root_to_sons[root] = std::vector<std::string>{non_root};
-    } else {
-      root_to_sons[root].push_back(non_root);
-    }
-  }
-  for (const auto& [root, sons] : root_to_sons) {
+  for (const auto& [root, sons] : root_to_sons_) {
     ss << "Root " << root << ": ";
     for (const auto& son : sons) {
       ss << son << ", ";
