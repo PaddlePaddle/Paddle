@@ -216,9 +216,21 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
   VLOG(4) << "Begin write Operation " << op.name() << ".";
   op_json[OPRESULTS] = WriteValue(op.result(0));
   Json attrs_json = Json::array();
-  OPTIONAL_CHECK(attrs_json, "is_distributed", 0)
-  OPTIONAL_CHECK(attrs_json, "is_parameter", 1)
-  OPTIONAL_CHECK(attrs_json, "need_clip", 0)
+  PADDLE_ENFORCE_EQ(attrs_json.contains("is_distributed") &&
+                        attrs_json["is_distributed"] == 0,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The attribute 'is_distributed' must be set to 0."));
+  PADDLE_ENFORCE_EQ(
+      attrs_json.contains("is_parameter") && attrs_json["is_parameter"] == 1,
+      true,
+      phi::errors::InvalidArgument(
+          "The attribute 'is_parameter' must be set to 1."));
+  PADDLE_ENFORCE_EQ(
+      attrs_json.contains("need_clip") && attrs_json["need_clip"] == 0,
+      true,
+      phi::errors::InvalidArgument(
+          "The attribute 'need_clip' must be set to 0."));
 
   if (op.attributes().count("parameter_name") > 0) {
     attrs_json.emplace_back(op.attributes()
@@ -242,9 +254,21 @@ Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
   op_json[DIST_ATTRS] = dist_attrs_json;
 
   Json other_attrs_json = Json::array();
-  OPTIONAL_CHECK(other_attrs_json, "persistable", 1)
-  OPTIONAL_CHECK(other_attrs_json, "stop_gradient", 1)
-  OPTIONAL_CHECK(other_attrs_json, "trainable", 1)
+  PADDLE_ENFORCE_EQ(other_attrs_json.contains("persistable") &&
+                        other_attrs_json["persistable"] == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The attribute 'persistable' must be set to 1."));
+  PADDLE_ENFORCE_EQ(other_attrs_json.contains("stop_gradient") &&
+                        other_attrs_json["stop_gradient"] == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The attribute 'stop_gradient' must be set to 1."));
+  PADDLE_ENFORCE_EQ(other_attrs_json.contains("trainable") &&
+                        other_attrs_json["trainable"] == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The attribute 'trainable' must be set to 1."));
   if (trainable_) {
     op_json[OPRESULTS_ATTRS] = other_attrs_json;
   }
