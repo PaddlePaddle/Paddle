@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
