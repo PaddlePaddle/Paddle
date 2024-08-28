@@ -1057,8 +1057,10 @@ bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
                         bit_length));
 
   // Set the shape for the output tensor 'out', same as input tensor 'x'
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
-
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({x_shape})});
   // Create a scalar shape for the other output tensors
   symbol::TensorShapeOrDataDimExprs scalar_shape(
       std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
