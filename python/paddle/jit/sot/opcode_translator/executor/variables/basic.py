@@ -666,6 +666,7 @@ class SymbolicVariable(VariableBase):
 
     var_name_generator = NameGenerator("symint_")
     value: int | SymbolicValue
+    mutable_attrs = ["need_guard_value"]
 
     def __init__(
         self,
@@ -685,6 +686,11 @@ class SymbolicVariable(VariableBase):
                 [], paddle.int64, True, self.var_name, False, None, None
             )
         self.need_guard_value = False
+
+    def to_constant(self):
+        return ConstantVariable(
+            self.get_py_value(), self.graph, DummyTracker([self])
+        )
 
     def get_py_value(self, allow_tensor: bool = False) -> bool | int | float:
         self.need_guard_value = True
