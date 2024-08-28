@@ -580,14 +580,8 @@ def inference(
 
     """
     # if function has already been decorated by @paddle.incubate.jit.inference(), then we just return it.
-    if (
-        hasattr(function, "__name__")
-        and function.__name__ == "innermost_decorator"
-    ):
+    if is_inference_mode(function):
         return function
-    elif isinstance(function, Layer):
-        if function.forward.__name__ == "innermost_decorator":
-            return function
 
     used_as_at_decorator = function is None
 
