@@ -115,6 +115,12 @@ class OpcodeExecutorCache(metaclass=Singleton):
                         2,
                         f"[Cache]: Cache hit, Guard is \n{getattr(guard_fn, 'expr', 'None')}\n",
                     )
+                    update_symbolic_inputs = getattr(
+                        guard_fn, 'update_symbolic_inputs', None
+                    )
+                    if update_symbolic_inputs is not None:
+                        update_symbolic_inputs(frame)
+
                     return custom_code
                 else:
                     log_do(

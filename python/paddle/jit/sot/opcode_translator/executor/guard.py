@@ -21,7 +21,12 @@ from typing import TYPE_CHECKING, Any, Callable, TypeVar
 import paddle
 
 from ...profiler import EventGuard
-from ...utils import current_tmp_name_records, log, log_do
+from ...utils import (
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
+    current_tmp_name_records,
+    log,
+    log_do,
+)
 
 Guard = Callable[[types.FrameType], bool]
 
@@ -116,6 +121,23 @@ def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
         guard.expr = func_string
         assert callable(guard), "guard must be callable."
 
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            from .executor_cache import OpcodeExecutorCache
+
+            def update_symbolic_inputs(frame):
+                symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+                    frame.f_code
+                )
+                for tracker_expr in symbolic_inputs:
+                    value = eval(tracker_expr, {"frame": frame})
+                    symbolic_input = symbolic_inputs[tracker_expr]
+                    if symbolic_input is None:
+                        continue
+                    symbolic_input.setdefault(value, 0)
+                    symbolic_input[value] += 1
+
+            guard.update_symbolic_inputs = update_symbolic_inputs
+
         return guard
 
 
@@ -126,7 +148,7 @@ def support_weak_ref(obj):
 
 
 def check_guard(
-    fn: Callable[[CheckGuardInputT], list[StringifiedExpression]]
+    fn: Callable[[CheckGuardInputT], list[StringifiedExpression]],
 ) -> Callable[[CheckGuardInputT], list[StringifiedExpression]]:
     def wrapper(self: CheckGuardInputT) -> list[StringifiedExpression]:
         assert (
