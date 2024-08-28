@@ -187,9 +187,11 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     std::string log;
     log.resize(log_size);
     NVRTC_CALL(nvrtcGetProgramLog(prog, &log[0]));
-    PADDLE_ENFORCE_EQ(compile_res,
-                      NVRTC_SUCCESS,
-                      ::common::errors::Fatal("NVRTC compilation failed"));
+
+    PADDLE_ENFORCE_EQ(
+        compile_res,
+        NVRTC_SUCCESS,
+        ::common::errors::Fatal("NVRTC compilation failed: %s", log));
   }
 
   size_t size;

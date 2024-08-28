@@ -221,7 +221,7 @@ void SerializeToStream(std::ostream &os,
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
 
     for (auto &each : lod) {
-      size = each.size() * sizeof(framework::LoD::value_type::value_type);
+      size = each.size() * sizeof(phi::LoD::value_type::value_type);
       os.write(reinterpret_cast<const char *>(&size), sizeof(size));
       os.write(reinterpret_cast<const char *>(each.data()),
                static_cast<std::streamsize>(size));
