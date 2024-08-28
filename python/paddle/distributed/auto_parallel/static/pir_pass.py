@@ -494,3 +494,74 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
     )
     plan = pass_context.get_attr("plan")
     return plan
+
+
+# NOTE(zhangbo): Add Fused_FFN pass for dense program.
+# 1. forward ffn pattern:
+# (o1) = "pd_op.matmul" (in, w1)
+# (o2) = "pd_op.matmul" (in, w2)
+# (o3) = "pd_op.swiglu" (o1, o2)
+# -->
+# (fused_ffn_w) = concat_and_relocate_(w1, w2)
+# (fused_ffn_o) = "pd_op.matmul" (in, fused_ffn_w)
+# (o3) = "pd_op.swiglu"(fused_ffn_o)
+#
+# 2. backward ffn pattern:
+# (o2_g, o1_g) = "pd_op.swiglu_grad" (o1, o2, o3_g)
+# (in_g1, w2_g) = "pd_op.matmul_grad" (in, w2, o2_g)
+# (in_g2, w1_g) = "pd_op.matmul_grad" (in, w1, o1_g)
+# (in_g_combine) = "builtin.combine" (in_g1, in_g2)
+# (in_g) = "pd_op.add_n" (in_g_combine)
+# -->
+# (fused_ffn_o_g, null) = "pd_op.swiglu_grad" (fused_ffn_o, null, o3_g)
+# (in_g, fused_ffn_w_g) = "pd_op.matmul_grad" (in, fused_ffn_w, fused_ffn_o_g)
+#
+# 3. opt pattern:
+# (w1_tmp, w2_tmp) = "pd_op.split" (fused_ffn_w, 2)
+# (-) = "pd_op.assign_out_" (w1_tmp, w1)
+# (-) = "pd_op.assign_out_" (w2_tmp, w2)
+# (w2_g, w1_g) = "pd_op.split" (fused_ffn_w_g, 2)
+def fused_ffn_pass(dense_main_program):
+    # (1) 找到前向、反向pattern
+    all_ops = dense_main_program.global_block().ops
+    fwd_ffn_ops = []
+    bwd_ffn_ops = []
+    for i in range(len(all_ops) - 4):
+        if (
+            all_ops[i].name() == "pd_op.matmul"
+            and all_ops[i + 1].name() == "pd_op.matmul"
+            and all_ops[i + 2].name() == "pd_op.swiglu"
+        ):
+            fwd_ffn_ops.append(all_ops[i])
+            fwd_ffn_ops.append(all_ops[i + 1])
+            fwd_ffn_ops.append(all_ops[i + 2])
+        if (
+            all_ops[i].name() == "pd_op.swiglu_grad"
+            and all_ops[i + 1].name() == "pd_op.matmul_grad"
+            and all_ops[i + 2].name() == "pd_op.matmul_grad"
+            and all_ops[i + 3].name() == "builtin.combine"
+            and all_ops[i + 4].name() == "pd_op.add_n"
+        ):
+            bwd_ffn_ops.append(all_ops[i])
+            bwd_ffn_ops.append(all_ops[i + 1])
+            bwd_ffn_ops.append(all_ops[i + 2])
+            bwd_ffn_ops.append(all_ops[i + 3])
+            bwd_ffn_ops.append(all_ops[i + 4])
+    if len(fwd_ffn_ops) == 0 or len(bwd_ffn_ops) == 0:
+        return
+
+    # (2) 根据找到的前反向 pattern 插入融合后的子图
+    ffn_values = {}
+    ffn_values['in'] = fwd_ffn_ops[0].operand_source(0)
+    ffn_values['w_gate'] = fwd_ffn_ops[0].operand_source(1)
+    ffn_values['w_up'] = fwd_ffn_ops[1].operand_source(1)
+    ffn_values['swiglu_out'] = fwd_ffn_ops[2].operand_source(1)
+    ffn_values['swiglu_out_g'] = bwd_ffn_ops[0].operand_source(3)
+    ffn_values['w_up_g'] = bwd_ffn_ops[1].result(1)
+    ffn_values['w_gate_g'] = bwd_ffn_ops[2].result(1)
+    ffn_values['in_g'] = bwd_ffn_ops[4].result(1)
+    # (3) 删除融合前的子图
+
+
+def fused_attention_qkv_pass(dense_mian_program):
+    pass

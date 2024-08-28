@@ -83,6 +83,7 @@ bool DrrRewritePattern::PatternGraphMatch(
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
       bind_map = FindCandidateIrOutputOp(op, anchor, *source_pattern_graph_);
   if (bind_map.empty()) {
+    VLOG(6) << "PatternGraphMatch Failed: no candidate ir ops found.";
     return false;
   }
   std::vector<const OpCall*> drr_output_sequence;
@@ -100,6 +101,7 @@ bool DrrRewritePattern::PatternGraphMatch(
       for (pir::Operation* op : ir_output_sequence) {
         auto pr = ir_output_set.insert(op);
         if (pr.second == false) {
+          VLOG(6) << "PatternGraphMatch Failed: duplicate ir op binding.";
           return false;
         }
       }
@@ -118,6 +120,7 @@ bool DrrRewritePattern::PatternGraphMatch(
         *source_pattern_match_ctx = *match_ctx;
         return true;
       }
+      VLOG(6) << "PatternGraphMatch Failed: no match context found.";
       return false;
     }
     for (auto* ir_op : bind_map[drr_output_sequence[index]]) {
@@ -127,6 +130,7 @@ bool DrrRewritePattern::PatternGraphMatch(
       }
       ir_output_sequence.pop_back();
     }
+    VLOG(6) << "PatternGraphMatch Failed: final.";
     return false;
   };
 
@@ -149,6 +153,8 @@ DrrRewritePattern::FindCandidateIrOutputOp(
   std::unordered_set<const OpCall*> drr_visited_ops{anchor};
   DfsVisitor(
       anchor, op, drr_output_op_set, &drr_visited_ops, &output_op_bind_map);
+  VLOG(6) << "output_op_bind_map.size(): " << output_op_bind_map.size();
+  VLOG(6) << "drr_output_op_set.size(): " << drr_output_op_set.size();
   if (output_op_bind_map.size() != drr_output_op_set.size()) {
     return {};
   }
@@ -165,18 +171,21 @@ void DrrRewritePattern::DfsVisitor(
   VLOG(6) << "DfsVisitor Start: drr op(" << drr_op->name() << ")"
           << "ir op(" << ir_op->name() << ")";
   if (drr_op->name() != ir_op->name()) {
+    VLOG(6) << "DfsVisitor Failed: op name not match.";
     return;
   }
   // check op input's size
   const auto& drr_op_input_tensors = drr_op->inputs();
   auto ir_op_input_value_size = ir_op->num_operands();
   if (drr_op_input_tensors.size() != ir_op_input_value_size) {
+    VLOG(6) << "DfsVisitor Failed: op input size not match.";
     return;
   }
   // check op output's size
   const auto& drr_op_output_tensors = drr_op->outputs();
   auto ir_op_output_value_size = ir_op->num_results();
   if (drr_op_output_tensors.size() != ir_op_output_value_size) {
+    VLOG(6) << "DfsVisitor Failed: op output size not match.";
     return;
   }
   // check producer op
@@ -214,6 +223,7 @@ void DrrRewritePattern::DfsVisitor(
     auto ir_operand_value = ir_op->operand(i).source();
     if (drr_op_input_tensors[i]->consumers().size() !=
         ir_operand_value.use_count()) {
+      VLOG(6) << "DfsVisitor Failed: op input consumers size not match.";
       return;
     }
     auto* ir_producer_op = ir_operand_value.defining_op();
@@ -227,6 +237,7 @@ void DrrRewritePattern::DfsVisitor(
   }
   if (drr_output_op_set.count(drr_op)) {
     (*output_op_bind_map)[drr_op].insert(ir_op);
+    VLOG(6) << "insert a ir op";
     return;
   }
   // check child ops

@@ -153,6 +153,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'qkv_unpack_mha',
     'hash',
     'beam_search_decode',
+    'concat_and_relocate_',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -245,7 +246,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'push_box_sparse_',
     'send_and_recv',
     'send_and_recv_',
-    'concat_and_relocate_',
 ]
 
 

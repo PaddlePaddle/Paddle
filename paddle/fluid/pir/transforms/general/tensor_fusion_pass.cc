@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/general/tensor_fusion_pass.h"
 
+#include <glog/logging.h>
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -54,11 +56,14 @@ class TensorFusionPass : public pir::PatternRewritePass {
             }
           }
         }
-
+        VLOG(4) << "equal_shape: " << equal_shape;
         const auto &cast1_type = match_ctx.Attr<phi::DataType>("dtype1");
         const auto &cast2_type = match_ctx.Attr<phi::DataType>("dtype2");
-
-        return equal_shape && (cast1_type == cast2_type);
+        bool equal_dtype = cast1_type == cast2_type;
+        VLOG(4) << "equal_dtype: " << equal_dtype;
+        bool rtn = equal_shape && equal_dtype;
+        VLOG(4) << "rtn: " << rtn;
+        return rtn;
       });
 
       paddle::drr::ResultPattern res_pat = src_pat.ResultPattern();
@@ -76,8 +81,8 @@ class TensorFusionPass : public pir::PatternRewritePass {
       res_pat.Tensor("fused_x") = concat_and_relocate_op(res_pat.Tensor("x"));
       res_pat.Tensor("fuesd_out") = cast_op(res_pat.Tensor("fused_x"));
       res_pat.Tensor("split_outs") = split_op(res_pat.Tensor("fuesd_out"));
-      buitin_split_op({&res_pat.Tensor("split_outs"), &res_pat.Tensor("out1")},
-                      {&res_pat.Tensor("out2")});
+      buitin_split_op({&res_pat.Tensor("split_outs")},
+                      {&res_pat.Tensor("out1"), &res_pat.Tensor("out2")});
     }
   };
 
