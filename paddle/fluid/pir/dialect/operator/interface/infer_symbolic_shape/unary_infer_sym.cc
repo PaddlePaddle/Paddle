@@ -1073,6 +1073,39 @@ bool FakeChannelWiseQuantizeAbsMaxOpInferSymbolicShape(
   return true;
 }
 
+bool FloorDivideOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
+  std::vector<symbol::DimExpr> y_shape = y_shape_or_data.shape();
+  int x_ndims = x_shape.size();
+  int y_ndims = y_shape.size();
+  std::vector<symbol::DimExpr> out_shape;
+  int diff = x_ndims - y_ndims;
+  if (diff > 0) {
+    for (int i = 0; i < diff; ++i) {
+      y_shape.emplace(y_shape.begin(), 1);
+    }
+  } else {
+    for (int i = 0; i < -diff; ++i) {
+      x_shape.emplace(x_shape.begin(), 1);
+    }
+  }
+  symbol::DimExprBuilder builder;
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    out_shape.emplace_back(builder.Broadcast(x_shape[i], y_shape[i]));
+    infer_context->AddBroadcastableCstr(x_shape[i], y_shape[i]);
+  }
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
+
 bool EigvalsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
