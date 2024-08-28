@@ -274,6 +274,7 @@
   output : Tensor(out), Tensor(seed_offset)
   infer_meta :
     func : FusedDropoutAddInferMeta
+    spmd_rule : FusedDropoutAddSpmd
     param : [x, y]
   kernel :
     func : fused_dropout_add
