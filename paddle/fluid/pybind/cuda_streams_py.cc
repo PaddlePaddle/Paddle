@@ -393,10 +393,10 @@ void BindCudaStream(py::module *m_ptr) {
                   >>> import paddle
 
                   >>> paddle.set_device('gpu')
-                  >>> e1 = paddle.device.Event()
+                  >>> e1 = paddle.device.Event(enable_timing=True)
                   >>> e1.record()
 
-                  >>> e2 = paddle.device.Event()
+                  >>> e2 = paddle.device.Event(enable_timing=True)
                   >>> e2.record()
                   >>> e1.elapsed_time(e2)
 
