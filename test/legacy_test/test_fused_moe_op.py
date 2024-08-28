@@ -136,6 +136,8 @@ class TestFusedMoEOp(OpTest):
             fc0_expert_weights_for_ref_list.append(
                 fc0_expert_weights_for_ref_i.reshape(
                     [self.d_model, self.d_feedforward * 2]
+                    if self.quant_method == "weight_only_int8"
+                    else [self.d_model, self.d_feedforward]
                 )
             )
             scale0.append(fc0_expert_weights_scale_for_ref_i)
@@ -151,6 +153,8 @@ class TestFusedMoEOp(OpTest):
             fc1_expert_weights_for_ref_list.append(
                 fc1_expert_weights_for_ref_i.reshape(
                     [self.d_feedforward, self.d_model]
+                    if self.quant_method == "weight_only_int8"
+                    else [self.d_feedforward, self.d_model // 2]
                 )
             )
             scale1.append(fc1_expert_weights_scale_for_ref_i)
@@ -265,6 +269,20 @@ class TestFusedMoEOpWint8(TestFusedMoEOp):
         self.rtol = 1e-2
         self.atol = 1e-2
         self.quant_method = "weight_only_int8"
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda()
+    or get_cuda_version() < 11030
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "FusedMoe requires CUDA >= 11.2 and CUDA_ARCH >= 8",
+)
+class TestFusedMoEOpWint4(TestFusedMoEOp):
+    def config(self):
+        super().config()
+        self.rtol = 1e-2
+        self.atol = 1e-2
+        self.quant_method = "weight_only_int4"
 
 
 @unittest.skipIf(

@@ -137,6 +137,7 @@ commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
+with_pip_tensorrt ='%(with_pip_tensorrt)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
@@ -389,7 +390,23 @@ def cinn() -> str:
             'is_tagged': is_tagged(),
             'with_mkl': '@WITH_MKL@',
             'cinn': get_cinn_version(),
+            'with_pip_tensorrt':'@WITH_PIP_TENSORRT@',
             'with_pip_cuda_libraries': '@WITH_PIP_CUDA_LIBRARIES@'})
+
+def get_cinn_config_jsons():
+    from pathlib import Path
+
+    src_cinn_config_path = '${PADDLE_SOURCE_DIR}/python/paddle/cinn_config'
+    prefix_len = len(src_cinn_config_path) + 1
+    p = Path(src_cinn_config_path)
+    json_list = list(p.glob('**/*.json'))
+    json_path_list = []
+    for json in json_list:
+        json = str(json)
+        json = json[prefix_len:]
+        json_path_list += [json]
+    return json_path_list
+
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version/__init__.py')
 
 def write_cuda_env_config_py(filename='paddle/cuda_env.py'):
@@ -544,7 +561,7 @@ def get_paddle_extra_install_requirements():
 
         paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[cuda_major_version].split("|")
 
-    if '@TENSORRT_FOUND@' == 'ON':
+    if '@WITH_PIP_TENSORRT@' == 'ON':
         version_str = get_tensorrt_version()
         version_default = int(version_str.split(".")[0])
         if platform.system() =='Linux' or (platform.system()=='Windows' and version_default>=10):
@@ -578,7 +595,7 @@ def get_paddle_extra_install_requirements():
                 )
                 return paddle_cuda_requires, []
 
-    return paddle_cuda_requires
+    return paddle_cuda_requires,paddle_tensorrt_requires
 
 
 
@@ -677,6 +694,7 @@ packages=['paddle',
           'paddle.base.incubate.checkpoint',
           'paddle.amp',
           'paddle.cost_model',
+          'paddle.cinn_config',
           'paddle.hapi',
           'paddle.vision',
           'paddle.vision.models',
@@ -774,8 +792,9 @@ if sys.version_info >= (3,8):
         setup_requires_tmp+=[setup_requires_i]
     setup_requires = setup_requires_tmp
     if '@WITH_GPU@' == 'ON' and platform.system() in ('Linux', 'Windows') and platform.machine() in ('x86_64', 'AMD64'):
-        paddle_cuda_requires= get_paddle_extra_install_requirements()
+        paddle_cuda_requires,paddle_tensorrt_requires= get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
+        setup_requires += paddle_tensorrt_requires
 
 
 # the prefix is sys.prefix which should always be usr
@@ -790,6 +809,17 @@ else:
     package_data={'paddle.base': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
 package_data['paddle.base'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
+
+whl_cinn_config_path = '${PADDLE_BINARY_DIR}/python/paddle/cinn_config'
+src_cinn_config_path = '${PADDLE_SOURCE_DIR}/python/paddle/cinn_config'
+
+package_data['paddle.cinn_config'] = []
+if os.path.exists(whl_cinn_config_path):
+    shutil.rmtree(whl_cinn_config_path)
+shutil.copytree(src_cinn_config_path, whl_cinn_config_path)
+json_path_list = get_cinn_config_jsons()
+for json in json_path_list:
+    package_data['paddle.cinn_config'] += [json]
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',

@@ -657,6 +657,37 @@ def create_sym_link_if_not_exist():
         return raw_core_name[:-3]
 
 
+def find_ccache_home():
+    """
+    Use heuristic method to find ccache path
+    """
+    ccache_path = None
+    # step 1. find in $PATH environment variable
+    paths = os.environ.get('PATH', '').split(os.pathsep)
+    for path in paths:
+        ccache_candidate = os.path.join(path, 'ccache')
+        if os.path.exists(ccache_candidate):
+            ccache_path = ccache_candidate
+            break
+
+    # step 2. find ccache path by `which ccache` command
+    if ccache_path is None:
+        which_cmd = 'where' if os.name == 'nt' else 'which'
+        try:
+            ccache_path = (
+                subprocess.check_output([which_cmd, 'ccache']).decode().strip()
+            )
+        except:
+            ccache_path = None
+
+    if ccache_path is None:
+        warning_message = "No ccache found. Please be aware that recompiling all source files may be required. "
+        warning_message += "You can download and install ccache from: https://github.com/ccache/ccache/blob/master/doc/INSTALL.md"
+        warnings.warn(warning_message)
+
+    return ccache_path
+
+
 def find_cuda_home():
     """
     Use heuristic method to find cuda path
