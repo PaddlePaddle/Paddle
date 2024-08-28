@@ -151,6 +151,7 @@ class TestReduceFusion(unittest.TestCase):
 
         def init():
             x = paddle.rand((3, 128, 96), dtype='float32')
+            return (x,)
 
         self.compare_result(func, None, init)
 
