@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/set_input_shape_constraint_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/specify_input_dynamic_dim_util.h"
 
 #include <sys/stat.h>
 #include <fstream>
@@ -26,40 +26,40 @@ namespace ir {
 
 namespace {
 
-std::vector<pir::ConstraintsForInputDimName>
-DeserializeInputShapeConstrainsFromJson(const Json& json) {
-  std::vector<pir::ConstraintsForInputDimName> all_constraints;
-  for (auto& element : json.items()) {
-    pir::ConstraintsForInputDimName dim_constraint;
-    dim_constraint.dim_name = [&]() -> std::string { return element.key(); }();
-    dim_constraint.bind_info = [&]() {
+std::vector<pir::InputDynamicDimSpec> DeserializeInputDynamicDimSpecFromJson(
+    const Json& json) {
+  std::vector<pir::InputDynamicDimSpec> res;
+  for (const auto& element : json.items()) {
+    pir::InputDynamicDimSpec dim_spec;
+    dim_spec.dim_name = [&]() -> std::string { return element.key(); }();
+    dim_spec.input_bind = [&]() {
       const auto& value = element.value();
       std::vector<std::pair<std::string, int>> res;
-      PADDLE_ENFORCE_EQ(value.contains("bind_dim"),
+      PADDLE_ENFORCE_EQ(value.contains("input_bind"),
                         true,
                         ::common::errors::InvalidArgument(
-                            "input dim constriant must contain bind_dim"));
-      for (const auto& bind_item : value["bind_dim"]) {
+                            "input dynamic dim spec must contain input_bind"));
+      for (const auto& bind_item : value["input_bind"]) {
         const auto& input_name = bind_item[0].get<std::string>();
         const auto& dim_index = bind_item[1].get<int>();
         res.emplace_back(std::make_pair(input_name, dim_index));
       }
       return res;
     }();
-    dim_constraint.range = [&]() {
+    dim_spec.range = [&]() {
       const auto& value = element.value();
-      symbol::ConstraintsManager::Range res;
+      symbol::ConstraintsManager::Range range;
       if (value.contains("min")) {
-        res.min = value["min"].get<int>();
+        range.min = value["min"].get<int>();
       }
       if (value.contains("max")) {
-        res.max = value["max"].get<int>();
+        range.max = value["max"].get<int>();
       }
-      return res;
+      return range;
     }();
-    all_constraints.emplace_back(std::move(dim_constraint));
+    res.emplace_back(std::move(dim_spec));
   }
-  return all_constraints;
+  return res;
 }
 
 bool PathExists(const std::string& path) {
@@ -70,39 +70,39 @@ bool PathExists(const std::string& path) {
   return false;
 }
 
-std::vector<pir::ConstraintsForInputDimName>
-DeserializeInputShapeConstrainsFromJsonFile(std::string file_path) {
+std::vector<pir::InputDynamicDimSpec>
+DeserializeInputDynamicDimSpecFromJsonFile(std::string file_path) {
   PADDLE_ENFORCE_EQ(
       PathExists(file_path),
       true,
       ::common::errors::InvalidArgument(
-          "File path for input shape constraint not exists: %s.", file_path));
+          "File path for input dynamic dim spec not exists: %s.", file_path));
   std::ifstream ifs(file_path);
   PADDLE_ENFORCE_EQ(
       !ifs,
       false,
       ::common::errors::InvalidArgument(
-          "File path for input shape constraint fail to open for reading: %s.",
+          "File path for input dynamic dim spec fail to open for reading: %s.",
           file_path));
   Json json;
   ifs >> json;
-  return DeserializeInputShapeConstrainsFromJson(json);
+  return DeserializeInputDynamicDimSpecFromJson(json);
 }
 
 }  // namespace
 
-void SetInputShapeConstraint(
+void SpecifyInputDynamicDim(
     pir::Program* program,
-    const std::vector<pir::ConstraintsForInputDimName>& input_constraints) {
+    const std::vector<pir::InputDynamicDimSpec>& input_dynamic_dim_spec) {
   pir::ShapeConstraintIRAnalysis& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(program);
-  shape_analysis.SetInputShapeConstraints(input_constraints);
+  shape_analysis.SetInputDynamicDimSpec(input_dynamic_dim_spec);
 }
 
-void SetInputShapeConstraintFromFile(pir::Program* program,
-                                     std::string filepath) {
-  SetInputShapeConstraint(
-      program, DeserializeInputShapeConstrainsFromJsonFile(filepath));
+void SpecifyInputDynamicDimFromFile(pir::Program* program,
+                                    std::string filepath) {
+  SpecifyInputDynamicDim(program,
+                         DeserializeInputDynamicDimSpecFromJsonFile(filepath));
 }
 
 }  // namespace ir

@@ -20,11 +20,11 @@
 namespace cinn {
 namespace dialect {
 namespace ir {
-void SetInputShapeConstraint(
+void SpecifyInputDynamicDim(
     pir::Program* program,
-    const std::vector<pir::ConstraintsForInputDimName>& input_constraints);
-void SetInputShapeConstraintFromFile(pir::Program* program,
-                                     std::string filepath);
+    const std::vector<pir::InputDynamicDimSpec>& input_dynamic_dim_spec);
+void SpecifyInputDynamicDimFromFile(pir::Program* program,
+                                    std::string filepath);
 }  // namespace ir
 }  // namespace dialect
 }  // namespace cinn
