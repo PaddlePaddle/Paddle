@@ -2064,6 +2064,61 @@ bool MeshgridOpInferSymbolicShape(
   return true;
 }
 
+bool NceOpInferSymbolicShape(pir::Operation *op,
+                             pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const auto &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &label_shape = label_shape_or_data.shape();
+
+  infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
+
+  symbol::DimExpr num_true_classes =
+      (label_shape.size() == 2 ? label_shape[1] : 1);
+
+  const auto &weight_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const std::vector<symbol::DimExpr> &weight_shape =
+      weight_shape_or_data.shape();
+
+  if (op->operand_source(3) != nullptr) {
+    const auto &bias_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(3));
+    const std::vector<symbol::DimExpr> &bias_shape = bias_shape_or_data.shape();
+    infer_context->AddEqualCstr(weight_shape[0], bias_shape[0]);
+  }
+
+  int num_total_classes =
+      op->attribute<pir::Int64Attribute>("num_total_classes").data();
+  infer_context->AddEqualCstr(symbol::DimExpr(num_total_classes),
+                              weight_shape[0]);
+
+  std::vector<symbol::DimExpr> out_shape = {x_shape[0], 1};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  bool is_test = op->attribute<pir::BoolAttribute>("is_test").data();
+  int num_neg_samples =
+      op->attribute<pir::Int64Attribute>("num_neg_samples").data();
+  if (!is_test) {
+    std::vector<symbol::DimExpr> sample_out_shape = {x_shape[0]};
+    sample_out_shape.push_back(num_true_classes + num_neg_samples);
+    infer_context->SetShapeOrDataForValue(
+        op->result(1),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(sample_out_shape)});
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(sample_out_shape)});
+  }
+  return true;
+}
+
 bool MovingAverageAbsMaxScaleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Get shapes of input tensors
@@ -2236,12 +2291,86 @@ bool RmsNormOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool SequenceConvOpInferSymbolicShape(pir::Operation *op,
-//                                       pir::InferSymbolicShapeContext
-//                                       *infer_context) {
-//   // pass
-//   return true;
-// }
+bool SequenceConvOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  // 获取输入张量的符号形状和数据类型
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &padding_data_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &filter_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  const std::vector<symbol::DimExpr> &x_dims = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &filter_dims =
+      filter_shape_or_data.shape();
+
+  int context_length =
+      op->attribute<pir::Int32Attribute>("context_length").data();
+  bool padding_trainable =
+      op->attribute<pir::BoolAttribute>("padding_trainable").data();
+  int context_start =
+      op->attribute<pir::Int32Attribute>("context_start").data();
+  int context_stride =
+      op->attribute<pir::Int32Attribute>("context_stride").data();
+
+  PADDLE_ENFORCE_EQ(
+      context_stride,
+      1,
+      common::errors::InvalidArgument(
+          "Currently, SequenceConvOp only supports contextStride=1. But "
+          "received contextStride = %u.",
+          context_stride));
+  PADDLE_ENFORCE_EQ(
+      x_dims.size() == 2 && filter_dims.size() == 2,
+      true,
+      common::errors::InvalidArgument(
+          "Input(X, Filter) should be 2-D tensor. But received Input(X): "
+          "input rank %u, input shape [%s]; received Input(Filter): "
+          "input rank %u, input shape [%s].",
+          x_dims.size(),
+          x_dims,
+          filter_dims.size(),
+          filter_dims));
+  auto divisor = symbol::DimExpr(context_length);
+  infer_context->AddEqualCstr(filter_dims[0], divisor * x_dims[1]);
+
+  if (padding_trainable) {
+    const std::vector<symbol::DimExpr> &padding_dims =
+        padding_data_shape_or_data.shape();
+    int up_pad = std::max(0, -context_start);
+    int down_pad = std::max(0, context_start + context_length - 1);
+    int total_pad = up_pad + down_pad;
+    const auto &input_width = x_dims[1];
+    bool start_equals_zero = context_start == 0;
+    bool length_equals_one = context_length == 1;
+    bool start_length = start_equals_zero && length_equals_one;
+
+    PADDLE_ENFORCE_EQ(
+        start_length,
+        false,
+        common::errors::InvalidArgument(
+            "If context_start is 0 and context_length is 1, paddingTrainable "
+            "should be false."));
+    PADDLE_ENFORCE_EQ(
+        padding_dims.size(),
+        2,
+        common::errors::InvalidArgument(
+            "Input(PaddingData) should be 2-D tensor. But received: "
+            "input rank %u, input shape [%s].",
+            padding_dims.size(),
+            padding_dims));
+    infer_context->AddEqualCstr(padding_dims[0], symbol::DimExpr(total_pad));
+    infer_context->AddEqualCstr(padding_dims[1], input_width);
+  }
+
+  std::vector<symbol::DimExpr> out_dims = x_dims;
+  out_dims[1] = filter_dims[1];
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+  return true;
+}
 
 bool SparseAttentionOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
