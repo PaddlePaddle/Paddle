@@ -17,8 +17,8 @@ limitations under the License. */
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 void PrepareCPUTensors(phi::DenseTensor* ids,
                        phi::DenseTensor* scores,
@@ -47,12 +47,12 @@ void PrepareCPUTensors(phi::DenseTensor* ids,
   PADDLE_ENFORCE_EQ(
       static_cast<size_t>(ids->numel()),
       ids_vec_data.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Required ids->numel() should be equal to ids_vec_data.size(). "));
   PADDLE_ENFORCE_EQ(
       static_cast<size_t>(ids->numel()),
       scores_vec_data.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Required ids->numel() should be equal to scores_vec_data.size(). "));
 
   for (int i = 0; i < ids->numel(); i++) {

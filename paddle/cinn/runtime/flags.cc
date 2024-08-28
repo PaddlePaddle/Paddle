@@ -55,8 +55,7 @@ PD_DEFINE_string(cinn_kernel_execution_label,
                  "Label used to measure kernel execution time");
 
 PD_DEFINE_string(cinn_tile_config_filename_label,
-                 StringFromEnv("FLAGS_cinn_tile_config_filename_label",
-                               "./tile_file/"),
+                 StringFromEnv("FLAGS_cinn_tile_config_filename_label", ""),
                  "Label used to name file of tile config database");
 
 PD_DEFINE_string(
@@ -172,6 +171,11 @@ PD_DEFINE_bool(
     "when FLAGS_nvrtc_compile_to_cubin=true. Fmad is the cuda speed up "
     "technique which contract fp multiplication and addition/subtraction into "
     "multiply-add operation. It may result in different fp precision.");
+
+PD_DEFINE_bool(
+    cinn_compile_with_hiprtc,
+    BoolFromEnv("FLAGS_cinn_compile_with_hiprtc", false),
+    "Compile hip source code with hiprtc if true, otherwise use hipcc.");
 
 // FLAGS for performance analysis and accuracy debug
 PD_DEFINE_bool(cinn_sync_run,
@@ -349,6 +353,8 @@ bool CanUseNvccCompiler() {
   return (access(nvcc_dir.c_str(), 0) == -1 ? false : true) &&
          (!FLAGS_cinn_compile_with_nvrtc);
 }
+
+bool UseHipccCompiler() { return !FLAGS_cinn_compile_with_hiprtc; }
 
 bool IsCompiledWithCUDA() {
 #if !defined(CINN_WITH_CUDA)

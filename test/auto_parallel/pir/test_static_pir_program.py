@@ -16,6 +16,9 @@ import unittest
 
 import paddle
 import paddle.distributed as dist
+from paddle.distributed.auto_parallel.static.mix_to_dist_pass import (
+    apply_mix2dist_pass,
+)
 
 BATCH_SIZE = 2
 SEQ_LEN = 4
@@ -140,6 +143,90 @@ class TestBuildFakeProgram(unittest.TestCase):
 
         self.assertEqual(dist_w1.dist_attr().process_mesh, mesh)
         self.assertEqual(dist_w1.dist_attr().dims_mapping, [-1, 0])
+
+    def test_build_with_apply_mix2dist_pass(self):
+        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            main_program = paddle.base.Program()
+            with paddle.base.program_guard(main_program):
+                mesh = dist.ProcessMesh([0, 1], dim_names=['dp'])
+                input1 = paddle.randint(low=0, high=1000, shape=[8, 4])
+                output1 = dist.shard_tensor(input1, mesh, [dist.Shard(0)])
+
+                input2 = paddle.randn([4, 8])
+                output2 = dist.shard_tensor(input2, mesh, [dist.Shard(1)])
+
+                self.assertTrue(input1.is_dense_tensor_type())
+                self.assertTrue(input2.is_dense_tensor_type())
+
+        self.assertTrue(main_program.num_ops() == 6)
+
+        self.assertFalse(input1.use_empty())
+        self.assertFalse(input2.use_empty())
+
+        self.assertTrue(output1.use_empty())
+        self.assertTrue(output2.use_empty())
+
+        self.assertFalse(input1.get_defining_op().has_attr("op_dist_attr"))
+        self.assertFalse(input2.get_defining_op().has_attr("op_dist_attr"))
+
+        # check dist type
+        self.assertTrue(output1.is_dist_dense_tensor_type())
+        self.assertTrue(output2.is_dist_dense_tensor_type())
+
+        # run apply_mix2dist_pass
+        apply_mix2dist_pass(main_program)
+
+        # after apply_mix2dist_pass, the program changed
+        self.assertTrue(main_program.num_ops() == 4)
+
+        self.assertTrue(input1.is_dist_dense_tensor_type())
+        self.assertTrue(input2.is_dist_dense_tensor_type())
+
+        self.assertTrue(input1.get_defining_op().has_attr("op_dist_attr"))
+        self.assertTrue(input2.get_defining_op().has_attr("op_dist_attr"))
+
+        # check op result dist_attr
+        input1_op_dist_attr = input1.get_defining_op().dist_attr
+        tensor_dist_attr = input1_op_dist_attr.result(0).as_tensor_dist_attr()
+        self.assertEqual(tensor_dist_attr.process_mesh, mesh)
+        self.assertEqual(tensor_dist_attr.dims_mapping, [0, -1])
+
+        input2_op_dist_attr = input2.get_defining_op().dist_attr
+        tensor_dist_attr = input2_op_dist_attr.result(0).as_tensor_dist_attr()
+        self.assertEqual(tensor_dist_attr.process_mesh, mesh)
+        self.assertEqual(tensor_dist_attr.dims_mapping, [-1, 0])
+
+        # check value dist_attr
+        self.assertEqual(input1.dist_attr().process_mesh, mesh)
+        self.assertEqual(input1.dist_attr().dims_mapping, [0, -1])
+
+        self.assertEqual(input2.dist_attr().process_mesh, mesh)
+        self.assertEqual(input2.dist_attr().dims_mapping, [-1, 0])
+
+        # check full_int_array op result dist_attr
+        input1_shape = input1.get_defining_op().operand_source(0)
+        input1_shape_op_dist_attr = input1_shape.get_defining_op().dist_attr
+        tensor_dist_attr = input1_shape_op_dist_attr.result(
+            0
+        ).as_tensor_dist_attr()
+        self.assertEqual(tensor_dist_attr.process_mesh, mesh)
+        self.assertEqual(tensor_dist_attr.dims_mapping, [-1])
+
+        input2_shape = input2.get_defining_op().operand_source(0)
+        input2_shape_op_dist_attr = input2_shape.get_defining_op().dist_attr
+        tensor_dist_attr = input2_shape_op_dist_attr.result(
+            0
+        ).as_tensor_dist_attr()
+        self.assertEqual(tensor_dist_attr.process_mesh, mesh)
+        self.assertEqual(tensor_dist_attr.dims_mapping, [-1])
+
+        # check shape value dist_attr
+        self.assertEqual(input1_shape.dist_attr().process_mesh, mesh)
+        self.assertEqual(input1_shape.dist_attr().dims_mapping, [-1])
+
+        self.assertEqual(input2_shape.dist_attr().process_mesh, mesh)
+        self.assertEqual(input2_shape.dist_attr().dims_mapping, [-1])
 
 
 if __name__ == "__main__":

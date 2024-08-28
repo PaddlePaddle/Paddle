@@ -21,8 +21,7 @@ if(WITH_XPU)
          data_transform
          phi
          common
-         var_helper
-         profiler)
+         var_helper)
 else()
   cc_library(
     prepared_operator
@@ -37,8 +36,7 @@ else()
          data_transform
          phi
          common
-         var_helper
-         profiler)
+         var_helper)
 endif()
 cc_library(
   layer

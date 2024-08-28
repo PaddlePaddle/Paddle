@@ -176,12 +176,13 @@ class OpLoweringGroup {
     this->reduce_axis_ = reduce_axis;
   }
 
-  const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map() const {
-    return this->int_args_map_;
+  const std::map<int, CINNKernelInfo::SymbolArgBindInfo>& symbol_args_map()
+      const {
+    return this->symbol_args_map_;
   }
 
-  std::map<int, CINNKernelInfo::ArgDimIdx>& mut_int_args_map() {
-    return this->int_args_map_;
+  std::map<int, CINNKernelInfo::SymbolArgBindInfo>& mut_symbol_args_map() {
+    return this->symbol_args_map_;
   }
 
  private:
@@ -206,7 +207,7 @@ class OpLoweringGroup {
     this->alignment_schedule_info_ = alignment_schedule_info;
   }
 
-  std::shared_ptr<OpLoweringGroup> Clone(const std::string name_suffix) const;
+  std::shared_ptr<OpLoweringGroup> Clone(const std::string& name_suffix) const;
 
  private:
   friend std::ostream& operator<<(std::ostream&, const OpLoweringGroup&);
@@ -229,7 +230,7 @@ class OpLoweringGroup {
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;
   std::vector<::pir::Value> output_values_;
-  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map_;
+  std::map<int, CINNKernelInfo::SymbolArgBindInfo> symbol_args_map_;
 
   alignment_schedule_info_t alignment_schedule_info_;
   std::vector<int64_t> reduce_axis_;

@@ -89,7 +89,7 @@ struct DimExprToIrExprVisitor {
     PADDLE_ENFORCE_EQ(
         !operands->empty(),
         true,
-        phi::errors::InvalidArgument("The value in dim_expr is empty"));
+        ::common::errors::InvalidArgument("The value in dim_expr is empty"));
     ir::Expr max = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
       max = ir::Max::Make(max, ConvertToIrExpr(operands->at(i)));
@@ -102,7 +102,7 @@ struct DimExprToIrExprVisitor {
     PADDLE_ENFORCE_EQ(
         !operands->empty(),
         true,
-        phi::errors::InvalidArgument("The value in dim_expr is empty"));
+        ::common::errors::InvalidArgument("The value in dim_expr is empty"));
     ir::Expr min = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
       min = ir::Min::Make(min, ConvertToIrExpr(operands->at(i)));
@@ -116,7 +116,7 @@ struct DimExprToIrExprVisitor {
     PADDLE_ENFORCE_EQ(
         !operands->empty(),
         true,
-        phi::errors::InvalidArgument("The value in dim_expr is empty"));
+        ::common::errors::InvalidArgument("The value in dim_expr is empty"));
     ir::Expr max = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
       max = ir::Max::Make(max, ConvertToIrExpr(operands->at(i)));
@@ -140,7 +140,7 @@ struct DimExprConverterWithSymbolBindings::
   ir::Expr operator()(const std::string& dim_expr) override {
     PADDLE_ENFORCE_EQ(symbol_binding_map_.count(dim_expr),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "symbol_binding_map_ does not contain dim_expr"));
     auto symbol_binding = symbol_binding_map_[dim_expr];
     auto [input_idx, input_dim_idx] = std::visit(

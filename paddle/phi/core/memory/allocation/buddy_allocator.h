@@ -25,10 +25,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/memory/allocation/memory_block.h"
 #include "paddle/phi/core/memory/allocation/system_allocator.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace memory {

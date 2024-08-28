@@ -19,21 +19,21 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/os_info.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -60,9 +60,9 @@ limitations under the License. */
 
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
-#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_resource_pool.h"
 #elif (defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL))
-#include "paddle/fluid/platform/device/xpu/xpu_resource_pool.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_resource_pool.h"
 #endif
 
 COMMON_DECLARE_int32(paddle_num_threads);

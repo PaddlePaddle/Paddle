@@ -39,7 +39,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     LoadCombineOp::name(),
     CConcatOp::name(),
     CBroadcast_Op::name(),
-    CSyncCalcStream_Op::name(),
     CSyncCommStream_Op::name(),
     DistributedPushSparseOp::name(),
     SendV2Op::name(),
@@ -61,8 +60,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PushDenseOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
-    MovingAverageAbsMaxScaleOp::name(),
-    MovingAverageAbsMaxScale_Op::name(),
     CReduceAvgOp::name(),
     CReduceAvg_Op::name(),
     CReduceMaxOp::name(),
@@ -72,8 +69,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     PullBoxSparseOp::name(),
     PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
-    PartialSendOp::name(),
-    PartialRecvOp::name(),
     SendAndRecvOp::name()};
 
 enum class AttrType {

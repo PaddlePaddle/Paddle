@@ -340,11 +340,11 @@ class TestSGDOpBF16API(unittest.TestCase):
         with base.program_guard(main):
             ids_shape = list(self.ids_shape)
             x = paddle.static.data(
-                name='X', shape=[-1] + ids_shape, dtype='int64'
+                name='X', shape=[-1, *ids_shape], dtype='int64'
             )
             y_shape = list(self.y_shape)
             label = paddle.static.data(
-                name='Y', shape=[-1] + y_shape, dtype='uint16'
+                name='Y', shape=[-1, *y_shape], dtype='uint16'
             )
             pre_dtype = paddle.get_default_dtype()
             paddle.set_default_dtype("uint16")

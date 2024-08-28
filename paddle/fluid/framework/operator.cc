@@ -34,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/ops_signature/signatures.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/int_array.h"
@@ -42,14 +41,15 @@ limitations under the License. */
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/platform/profiler.h"
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_DNNL
@@ -58,7 +58,7 @@ class DenseTensor;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_dnn.h"
 #endif
 
 COMMON_DECLARE_bool(benchmark);
@@ -821,11 +821,11 @@ void OperatorBase::Run(const Scope& scope, const phi::Place& place) {
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
       phi::RecordEvent op_type_record_event(
-          Type(), platform::TracerEventType::Operator, 1);
+          Type(), phi::TracerEventType::Operator, 1);
       auto op_name = platform::OpName(outputs_, Type());
       phi::RecordEvent op_name_record_event(
           op_name,
-          platform::TracerEventType::Operator,
+          phi::TracerEventType::Operator,
           FLAGS_enable_host_event_recorder_hook ? 20 : 1,
           phi::EventRole::kUniqueOp);
       RunImpl(scope, place);
@@ -1291,7 +1291,7 @@ struct OperatorWithKernel::CacheImpl {
       PADDLE_ENFORCE_EQ(
           last_ddims_.size(),
           tensors_.size(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The size of last_ddims_ should be equal to tensors_. "));
       for (size_t i = 0; i < last_ddims_.size(); ++i) {
         if (tensors_[i]->dims() != last_ddims_[i]) {
@@ -2008,7 +2008,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   Scope* transfer_scope = nullptr;
   {
     phi::RecordEvent record_event("prepare_data",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
     if (need_prepare_data_) {
@@ -2034,7 +2034,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!all_kernels_must_compute_runtime_shape_) {
     phi::RecordEvent record_event("infer_shape",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
@@ -2052,7 +2052,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
     phi::RecordEvent record_event("compute",
-                                  platform::TracerEventType::OperatorInner,
+                                  phi::TracerEventType::OperatorInner,
                                   1,
                                   phi::EventRole::kInnerOp);
     if (run_phi_kernel_ && phi_kernel_->GetKernelRegisteredType() ==

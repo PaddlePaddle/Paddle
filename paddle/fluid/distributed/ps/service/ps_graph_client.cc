@@ -118,7 +118,7 @@ void PsGraphClient::FinalizeWorker() {
         VLOG(0) << "PullSparsePtr, miss key " << k << " rank=" << _rank_id;
         PADDLE_ENFORCE_NE(it,
                           keys2rank_vec[shard].end(),
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "The key was not found in the expected shard."));
       }
     } else {
@@ -217,7 +217,7 @@ void PsGraphClient::FinalizeWorker() {
         PADDLE_ENFORCE_NE(
             it,
             keys2rank_vec[shard].end(),
-            phi::errors::InvalidArgument(
+            common::errors::InvalidArgument(
                 "The key was not found in the expected shard.", k));
       }
     } else {

@@ -179,13 +179,15 @@ class TestExponentialSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': ()
-                + tuple(paddle.squeeze(self._paddle_expon.rate).shape),
+                'expect': tuple(paddle.squeeze(self._paddle_expon.rate).shape),
             },
             {
                 'input': (3, 2),
-                'expect': (3, 2)
-                + tuple(paddle.squeeze(self._paddle_expon.rate).shape),
+                'expect': (
+                    3,
+                    2,
+                    *paddle.squeeze(self._paddle_expon.rate).shape,
+                ),
             },
         ]
         for case in cases:
@@ -217,13 +219,15 @@ class TestExponentialSample(unittest.TestCase):
         cases = [
             {
                 'input': (),
-                'expect': ()
-                + tuple(paddle.squeeze(self._paddle_expon.rate).shape),
+                'expect': tuple(paddle.squeeze(self._paddle_expon.rate).shape),
             },
             {
                 'input': (2, 5),
-                'expect': (2, 5)
-                + tuple(paddle.squeeze(self._paddle_expon.rate).shape),
+                'expect': (
+                    2,
+                    5,
+                    *paddle.squeeze(self._paddle_expon.rate).shape,
+                ),
             },
         ]
         for case in cases:

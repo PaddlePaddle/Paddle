@@ -2777,6 +2777,32 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "argsort") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      if (!desc.HasAttr("descending") || !desc.HasAttr("axis")) {
+        VLOG(3) << op_type << " needs attributes: descending and axis.";
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVarRecursive(x_var_name);
+      std::vector<int64_t> shape = x_var_desc->GetShape();
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis < 0) {
+        axis += shape.size();
+      }
+      if (shape[axis] > 3840 || shape[axis] < 0) {
+        VLOG(3) << op_type << " shape[" << axis << "] = " << shape[axis]
+                << " is invalid, it should less than 3840 and greater than "
+                   "zero in TensorRT.";
+        return false;
+      }
+    }
+
     if (op_type == "unbind") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the unbind does not support "
@@ -2826,6 +2852,41 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (asvector || porder != 2.0f || axis != -1) {
         VLOG(3) << op_type
                 << " op only support asvector=False, porder=2, axis = -1.";
+        return false;
+      }
+    }
+
+    if (op_type == "index_put") {
+#if IS_TRT_VERSION_LT(8200)
+      VLOG(3) << "index_put is not supported when TensorRT < 8.2";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the index_put does not support "
+                   "static shape yet";
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto value_var_name = desc.Input("value")[0];
+      auto* value_var_desc = block->FindVarRecursive(value_var_name);
+      const auto value_shape = value_var_desc->GetShape();
+      int value_num = std::accumulate(
+          value_shape.begin(), value_shape.end(), 1, std::multiplies<int>());
+      if (value_num != 1) {
+        VLOG(3) << op_type << " op only support value_num = 1 in tensorrt.";
+        return false;
+      }
+      auto indices_var_name = desc.Input("indices")[0];
+      auto* indices_var_desc = block->FindVarRecursive(indices_var_name);
+      auto dtype = indices_var_desc->GetDataType();
+      if (dtype != framework::proto::VarType::BOOL) {
+        VLOG(3) << op_type << " op only support bool indices in tensorrt.";
         return false;
       }
     }
@@ -3071,6 +3132,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "shape",
       "squeeze2",
       "unsqueeze2",
+      "index_put",
       "layernorm_shift_partition",
       "reverse_roll",
       "take_along_axis",
@@ -3098,6 +3160,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "quantize_linear",
       "dequantize_linear",
       "share_data",
+      "argsort",
       "bitwise_and",
       "bitwise_or",
       "size"};
@@ -3248,6 +3311,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "layernorm_shift_partition",
       "reverse_roll",
       "tanh_shrink",
+      "index_put",
       "take_along_axis",
       "logsigmoid",
       "preln_layernorm_shift_partition",
@@ -3272,6 +3336,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "quantize_linear",
       "dequantize_linear",
       "share_data",
+      "argsort",
       "bitwise_and",
       "bitwise_or",
       "size"};

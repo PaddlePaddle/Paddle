@@ -40,10 +40,11 @@ GetSubReshapeDimRanges(const List<DimExpr>& lhs_dims,
   PADDLE_ENFORCE_EQ(
       !lhs_dims->empty(),
       true,
-      phi::errors::InvalidArgument("Sorry,but lhs_dims is empty"));
-  PADDLE_ENFORCE_EQ(!rhs_dims->empty(),
-                    true,
-                    phi::errors::InvalidArgument("Sory,but rhs_dims is empty"));
+      ::common::errors::InvalidArgument("Sorry,but lhs_dims is empty"));
+  PADDLE_ENFORCE_EQ(
+      !rhs_dims->empty(),
+      true,
+      ::common::errors::InvalidArgument("Sory,but rhs_dims is empty"));
   std::vector<std::pair<int, int>> lhs_ranges{};
   std::vector<std::pair<int, int>> rhs_ranges{};
   int lhs_start = 0;
@@ -59,7 +60,7 @@ GetSubReshapeDimRanges(const List<DimExpr>& lhs_dims,
       PADDLE_ENFORCE_EQ(
           dims->at(i).Has<std::int64_t>(),
           true,
-          phi::errors::InvalidArgument("dims->at(i) is not int64_t"));
+          ::common::errors::InvalidArgument("dims->at(i) is not int64_t"));
       ret *= dims->at(i).Get<std::int64_t>();
     }
     return ret;
@@ -95,7 +96,7 @@ GetSubReshapeDimRanges(const List<DimExpr>& lhs_dims,
   }
   PADDLE_ENFORCE_EQ(lhs_end == lhs_dims->size() && rhs_end == rhs_dims->size(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "lhs_end is not equal to lhs_dims->size() and rhs_end "
                         "is not equal to rhs_dims->size()"));
   if (lhs_start < lhs_end && rhs_start < rhs_end) {

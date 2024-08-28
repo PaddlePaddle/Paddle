@@ -34,13 +34,14 @@ int GetMaxLen(const Context& dev_ctx,
                                            max_len_tensor->data<int>(),
                                            {batch_size},
                                            {0});
-  PD_CHECK(r == 0, "baidu::xpu::api::reduce_max failed.");
+  PADDLE_ENFORCE_EQ(
+      r, 0, common::errors::Fatal("baidu::xpu::api::reduce_max failed."));
   xpu_wait(dev_ctx.x_context()->xpu_stream);
   r = xpu_memcpy(&max_len_cpu,
                  max_len_tensor->data<int>(),
                  sizeof(int),
                  XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-  PD_CHECK(r == 0, "xpu_memcpy failed.");
+  PADDLE_ENFORCE_EQ(r, 0, common::errors::Fatal("xpu_memcpy failed."));
   return max_len_cpu;
 }
 
@@ -73,7 +74,8 @@ void qkv_split_rope_kernel(
       {1, 1, 1},
       1);
   const_cast<DenseTensor*>(&qkv_input)->clear();
-  PD_CHECK(r == 0, "baidu::xpu::api::split failed.");
+  PADDLE_ENFORCE_EQ(
+      r, 0, common::errors::Fatal("baidu::xpu::api::split failed."));
   r = baidu::xpu::api::vsl_rotary_neox_embedding<XPUType, float, int32_t>(
       xpu_ctx.x_context(),
       q_data,
@@ -90,7 +92,10 @@ void qkv_split_rope_kernel(
       pos_emb_offset,
       "NORMAL",
       -1);
-  PD_CHECK(r == 0, "baidu::xpu::api::vsl_rotary_neox_embedding failed.");
+  PADDLE_ENFORCE_EQ(r,
+                    0,
+                    common::errors::Fatal(
+                        "baidu::xpu::api::vsl_rotary_neox_embedding failed."));
 }
 
 template <typename T, typename Context>

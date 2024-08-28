@@ -50,7 +50,7 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
         paddle.enable_static()
         with base.program_guard(self.prog, self.startup_prog):
             x = paddle.static.data(
-                name='x', shape=[-1] + self.ids_shape, dtype='int64'
+                name='x', shape=[-1, *self.ids_shape], dtype='int64'
             )
             self.emb = paddle.static.nn.embedding(
                 input=x,

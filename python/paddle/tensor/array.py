@@ -15,7 +15,7 @@
 # Define functions about array.
 from __future__ import annotations
 
-from typing import Any, Sequence, TypeVar, overload
+from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import paddle
 from paddle import _typing
@@ -25,18 +25,19 @@ from ..base.framework import in_pir_mode
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core, in_dynamic_mode
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 __all__ = []
 T = TypeVar("T")
 
 
 @overload
-def array_length(array: list[Any]) -> int:
-    ...
+def array_length(array: list[Any]) -> int: ...
 
 
 @overload
-def array_length(array: paddle.Tensor) -> paddle.Tensor:
-    ...
+def array_length(array: paddle.Tensor) -> paddle.Tensor: ...
 
 
 def array_length(array):
@@ -99,13 +100,11 @@ def array_length(array):
 
 
 @overload
-def array_read(array: list[T], i: paddle.Tensor) -> T:
-    ...
+def array_read(array: list[T], i: paddle.Tensor) -> T: ...
 
 
 @overload
-def array_read(array: paddle.Tensor, i: paddle.Tensor) -> paddle.Tensor:
-    ...
+def array_read(array: paddle.Tensor, i: paddle.Tensor) -> paddle.Tensor: ...
 
 
 def array_read(array, i):
@@ -189,22 +188,19 @@ def array_read(array, i):
 @overload
 def array_write(
     x: paddle.Tensor, i: paddle.Tensor, array: None = None
-) -> list[Any] | paddle.Tensor:
-    ...
+) -> list[Any] | paddle.Tensor: ...
 
 
 @overload
 def array_write(
     x: paddle.Tensor, i: paddle.Tensor, array: list[paddle.Tensor]
-) -> list[paddle.Tensor]:
-    ...
+) -> list[paddle.Tensor]: ...
 
 
 @overload
 def array_write(
     x: paddle.Tensor, i: paddle.Tensor, array: paddle.Tensor
-) -> paddle.Tensor:
-    ...
+) -> paddle.Tensor: ...
 
 
 def array_write(

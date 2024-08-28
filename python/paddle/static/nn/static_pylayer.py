@@ -555,9 +555,9 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
                         bwd_out_new = _append_grad_suffix_(
                             fwd_input_name
                         )  # "X" => "X@GRAD"
-                        mgr.var_old_to_new[
-                            bwd_output.name
-                        ] = bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
+                        mgr.var_old_to_new[bwd_output.name] = (
+                            bwd_out_new  # e.g. "tmp_0.mean_0": "X@GRAD"
+                        )
 
         # **Delete the backward input**
         for bwd_var in grad_var_ins:

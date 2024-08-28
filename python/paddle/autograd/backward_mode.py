@@ -14,13 +14,15 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle.base import core, framework
 from paddle.base.backward import gradients_with_optimizer  # noqa: F401
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
 
@@ -29,8 +31,8 @@ __all__ = []
 
 @framework.dygraph_only
 def backward(
-    tensors: list[Tensor],
-    grad_tensors: list[Tensor | None] | None = None,
+    tensors: Tensor | Sequence[Tensor],
+    grad_tensors: Tensor | Sequence[Tensor | None] | None = None,
     retain_graph: bool = False,
 ) -> None:
     """
