@@ -486,7 +486,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_dist_op',
     'test_new_group_api',
     'test_dist_fleet_heter_base',
-    'test_collective_split_col_linear',
     'test_dist_fleet_heter_program',
     'test_dist_fleet_ctr',
     'test_collective_allreduce_api',
