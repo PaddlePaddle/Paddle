@@ -2256,6 +2256,7 @@ bool QrOpInferSymbolicShape(pir::Operation *op,
 
   symbol::DimExpr m = x_shape[x_rank - 2];
   symbol::DimExpr n = x_shape[x_rank - 1];
+  symbol::DimExprBuilder builder;
   symbol::DimExpr min_mn = builder.Min(m, n);
 
   if (compute_q) {
