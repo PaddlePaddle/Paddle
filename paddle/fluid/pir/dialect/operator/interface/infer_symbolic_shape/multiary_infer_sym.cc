@@ -64,15 +64,16 @@ bool AccuracyOpInferSymbolicShape(
 
 bool AddNOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  const auto &input_list_shape =
+  const auto &input_list_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   PADDLE_ENFORCE_EQ(
-      input_list_shape.isa<symbol::TensorListShapeOrDataDimExprs>(),
+      input_list_shape_or_data.isa<symbol::TensorListShapeOrDataDimExprs>(),
       true,
       common::errors::InvalidArgument(
           "The type of inputs shape should be TensorListShapeOrDataDimExprs"));
   const auto &inputs_shape =
-      input_list_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+      input_list_shape_or_data
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
   PADDLE_ENFORCE_GT(
       inputs_shape.size(),
       0,
@@ -1148,8 +1149,8 @@ bool EditDistanceOpInferSymbolicShape(
 
 bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
 
   // Validate the bit_length attribute
   int bit_length = op->attribute<pir::Int32Attribute>("bit_length").data();
@@ -1161,8 +1162,10 @@ bool FakeQuantizeMovingAverageAbsMaxOpInferSymbolicShape(
                         bit_length));
 
   // Set the shape for the output tensor 'out', same as input tensor 'x'
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
-
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({x_shape})});
   // Create a scalar shape for the other output tensors
   symbol::TensorShapeOrDataDimExprs scalar_shape(
       std::vector<symbol::DimExpr>{symbol::DimExpr(1)});
@@ -2188,18 +2191,27 @@ bool MovingAverageAbsMaxScaleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Get shapes of input tensors
   const auto &x_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   const auto &in_state_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
   const auto &in_accum_shape =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
 
   // Set shapes for output tensors
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({x_shape})});
   infer_context->SetShapeOrDataForValue(
       op->result(1), symbol::TensorShapeOrDataDimExprs({symbol::DimExpr(1)}));
-  infer_context->SetShapeOrDataForValue(op->result(2), in_state_shape);
-  infer_context->SetShapeOrDataForValue(op->result(3), in_accum_shape);
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({in_state_shape})});
+  infer_context->SetShapeOrDataForValue(
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs({in_accum_shape})});
 
   return true;
 }
@@ -2836,16 +2848,16 @@ bool WarprnntOpInferSymbolicShape(
 
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      infer_context->GetShapeOrDataForValue(op->operand_source(0)));
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   const std::vector<pir::Value> &operands = {op->operand_source(0),
                                              op->operand_source(1)};
 
-  size_t rank = infer_context->GetShapeOrDataForValue(op->operand_source(0))
-                    .shape()
-                    .size();
+  size_t rank = x_shape.size();
 
   for (size_t i = 0; i < rank; ++i) {
     paddle::dialect::details::BuildCstrEqForTensorListAlongAxis(
