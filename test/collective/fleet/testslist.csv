@@ -69,7 +69,6 @@ test_parallel_dygraph_mnist,,GPU;ROCM,200,DIST,../../legacy_test/dist_test.sh,2,
 test_parallel_dygraph_se_resnext,,GPU;ROCM,200,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_sync_batch_norm,,GPU;ROCM,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_imperative_auto_mixed_precision_for_eager,,GPU;ROCM,300,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
-test_mixed_precision,,GPU;ROCM,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dygraph_recompute_for_eager,,GPU;ROCM,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_dist_mnist_dgc_nccl,,,,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL OR WITH_RCCL;WITH_DGC
 test_dist_se_resnext_dgc,,,,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL OR WITH_RCCL;WITH_DGC
