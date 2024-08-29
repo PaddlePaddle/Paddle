@@ -73,7 +73,7 @@ class ElementwiseSubCompositeGradOpMaker
     PADDLE_ENFORCE_EQ(
         axis,
         -1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "We only support axis = -1 in composite sub_grad but we got: ",
             axis));
     VLOG(6) << "Running sub_grad composite func";
@@ -121,12 +121,12 @@ class ElementwiseSubCompositeDoubleGradOpMaker
 
     // get attr
     int axis = static_cast<int>(this->Attr<int>("axis"));
-    PADDLE_ENFORCE_EQ(
-        axis,
-        -1,
-        phi::errors::InvalidArgument("We only support axis = -1 in composite "
-                                     "subtract_doubel_grad but we got: ",
-                                     axis));
+    PADDLE_ENFORCE_EQ(axis,
+                      -1,
+                      common::errors::InvalidArgument(
+                          "We only support axis = -1 in composite "
+                          "subtract_doubel_grad but we got: ",
+                          axis));
 
     paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
     std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);

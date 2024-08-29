@@ -61,10 +61,18 @@ class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
         self._seed = eval(os.getenv("seed"))
         self._ckpt_path = os.getenv("ckpt_path")
+        self._amp = eval(os.getenv("amp", '0'))
+        self._master_weight = eval(os.getenv("use_master_weight", '0'))
+        self._master_grad = eval(os.getenv("use_master_grad", '0'))
+        self._use_promote = eval(os.getenv("use_promote", '0'))
+        self._amp_dtype = os.getenv("amp_dtype", 'float16')
+        self._amp_level = os.getenv("amp_level", 'O0')
+        self._init_loss_scaling = 1024.0
         self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._in_pir_mode = paddle.base.framework.get_flags(
             "FLAGS_enable_pir_api"
         )["FLAGS_enable_pir_api"]
+        self.num_batch = 2
 
     def set_random_seed(self, seed):
         random.seed(seed)
@@ -81,9 +89,30 @@ class TestSimpleNetForSemiAutoParallel:
     def run_dy2static(self, layer, opt, dist_loader):
         # create loss
         loss_fn = nn.MSELoss()
+        strategy = dist.Strategy()
+        if self._amp:
+            layer, opt = paddle.amp.decorate(
+                models=layer,
+                optimizers=opt,
+                level=self._amp_level,
+                master_weight=self._master_weight,
+                master_grad=self._master_grad,
+            )
+            amp = strategy.amp
+            amp.enable = self._amp
+            amp.dtype = self._amp_dtype
+            amp.level = self._amp_level
+            amp.use_master_weight = self._master_weight
+            amp.use_master_weight = self._master_grad
+            amp.use_promote = self._use_promote
+            amp.init_loss_scaling = self._init_loss_scaling
+
         # static training
-        dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)
+        dist_model = dist.to_static(
+            layer, dist_loader, loss_fn, opt, strategy=strategy
+        )
         loss_list = []
+
         dist_model.train()
 
         if self._in_pir_mode:
@@ -99,7 +128,7 @@ class TestSimpleNetForSemiAutoParallel:
             )
             dist_model._engine._init_comm()
 
-        for epoch in range(5):
+        for epoch in range(self.num_batch):
             for batch_id, data in enumerate(dist_loader()):
                 if isinstance(data, dict):
                     image = data['image']
@@ -107,6 +136,8 @@ class TestSimpleNetForSemiAutoParallel:
                 else:
                     image, label = data
                 loss = dist_model(image, label)
+                # if paddle.distributed.get_rank() == 0:
+                #     print('st_loss', loss, paddle.to_tensor(loss)._md5sum(), flush=1)
                 loss_list.append(loss)
 
         return np.array(loss_list), dist_model
@@ -114,8 +145,20 @@ class TestSimpleNetForSemiAutoParallel:
     def run_dynamic(self, layer, opt, dist_loader, is_recompute=False):
         # create loss
         loss_fn = nn.MSELoss()
+        if self._amp:
+            layer, opt = paddle.amp.decorate(
+                models=layer,
+                optimizers=opt,
+                level=self._amp_level,
+                master_weight=self._master_weight,
+                master_grad=self._master_grad,
+            )
         loss_list = []
-        for epoch in range(5):
+        scaler = paddle.amp.GradScaler(
+            enable=self._amp, init_loss_scaling=self._init_loss_scaling
+        )
+        scaler = dist.shard_scaler(scaler)
+        for epoch in range(self.num_batch):
             for batch_id, data in enumerate(dist_loader()):
                 if isinstance(data, dict):
                     image = data['image']
@@ -124,11 +167,22 @@ class TestSimpleNetForSemiAutoParallel:
                     image, label = data
                 if is_recompute:
                     image.stop_gradient = False
-                out = layer(image)
-                loss = loss_fn(out, label)
+
+                with paddle.amp.auto_cast(
+                    level=self._amp_level,
+                    dtype=self._amp_dtype,
+                    enable=self._amp,
+                    use_promote=self._use_promote,
+                ):
+                    out = layer(image)
+                    loss = loss_fn(out, label)
+                scaled = scaler.scale(loss)
+                # if paddle.distributed.get_rank() == 0:
+                #     print('dy_loss', loss, loss._md5sum(), flush=1)
                 loss_list.append(loss.numpy())
-                loss.backward()
-                opt.step()
+                scaled.backward()
+                scaler.step(opt)
+                scaler.update()
                 opt.clear_grad()
         return np.array(loss_list)
 
@@ -139,15 +193,15 @@ class TestSimpleNetForSemiAutoParallel:
 
         self.set_random_seed(self._seed)
         dy_layer = DemoNet(self.mesh)
-        dy_opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=dy_layer.parameters()
+        dy_opt = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=dy_layer.parameters()
         )
 
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         self.set_random_seed(self._seed)
         dy2static_layer = DemoNet(self.mesh)
-        dy2static_opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=dy2static_layer.parameters()
+        dy2static_opt = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=dy2static_layer.parameters()
         )
         dist_dataloader = dist.shard_dataloader(
             dataloader=data_loader,
@@ -167,15 +221,15 @@ class TestSimpleNetForSemiAutoParallel:
 
         self.set_random_seed(self._seed)
         dy_layer = DPDemoNet(self.mesh)
-        dy_opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=dy_layer.parameters()
+        dy_opt = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=dy_layer.parameters()
         )
 
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         self.set_random_seed(self._seed)
         dy2static_layer = DPDemoNet(self.mesh)
-        dy2static_opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=dy2static_layer.parameters()
+        dy2static_opt = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=dy2static_layer.parameters()
         )
         dist_dataloader = dist.shard_dataloader(
             dataloader=data_loader,
@@ -205,20 +259,20 @@ class TestSimpleNetForSemiAutoParallel:
         paddle.disable_static()
         self.set_random_seed(self._seed)
         mesh1 = dist.ProcessMesh([0], dim_names=["x"])
-        mesh2 = dist.ProcessMesh([1], dim_names=["y"])
+        mesh2 = dist.ProcessMesh([1], dim_names=["x"])
         data_loader = self.create_data_loader()
 
         self.set_random_seed(self._seed)
         dy_layer = PPDemoNet(mesh1, mesh2)
-        dy_opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=dy_layer.parameters()
+        dy_opt = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=dy_layer.parameters()
         )
 
         paddle.base.set_flags({'FLAGS_enable_pir_api': 1})
         self.set_random_seed(self._seed)
         dy2static_layer = PPDemoNet(mesh1, mesh2)
-        dy2static_opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=dy2static_layer.parameters()
+        dy2static_opt = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=dy2static_layer.parameters()
         )
         dist_dataloader = dist.shard_dataloader(
             dataloader=data_loader,

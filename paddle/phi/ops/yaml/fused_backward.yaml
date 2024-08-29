@@ -35,6 +35,7 @@
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
     func : FusedDropoutAddGradInferMeta
+    spmd_rule : FusedDropoutAddGradInferSpmd
     param : [seed_offset, out_grad]
   kernel :
     func : fused_dropout_add_grad

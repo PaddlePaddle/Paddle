@@ -192,12 +192,12 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             num_classes = 20
             self.inputs = {
                 'X': logit(
-                    np.random.uniform(
-                        0, 1, tuple(batch_size + [num_classes])
-                    ).astype(self.dtype)
+                    np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                        self.dtype
+                    )
                 ),
                 'Label': np.random.uniform(
-                    0, 1, tuple(batch_size + [num_classes])
+                    0, 1, (*batch_size, num_classes)
                 ).astype(self.dtype),
             }
             self.attrs = {'num_classes': num_classes, 'batch_size': batch_size}
@@ -221,12 +221,12 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             num_classes = 20
             self.inputs = {
                 'X': logit(
-                    np.random.uniform(
-                        0, 1, tuple(batch_size + [num_classes])
-                    ).astype(self.dtype)
+                    np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                        self.dtype
+                    )
                 ),
                 'Label': np.random.randint(
-                    0, 2, tuple(batch_size + [num_classes])
+                    0, 2, (*batch_size, num_classes)
                 ).astype(self.dtype),
             }
             self.attrs = {'num_classes': num_classes, 'batch_size': batch_size}
@@ -250,15 +250,15 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             num_classes = 20
             self.inputs = {
                 'X': logit(
-                    np.random.uniform(
-                        0, 1, tuple(batch_size + [num_classes])
-                    ).astype(self.dtype)
+                    np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                        self.dtype
+                    )
                 ),
                 'Label': np.random.randint(
-                    0, 2, tuple(batch_size + [num_classes])
+                    0, 2, (*batch_size, num_classes)
                 ).astype(self.dtype),
                 'pos_weight': np.random.uniform(
-                    0, 1, tuple(batch_size + [num_classes])
+                    0, 1, (*batch_size, num_classes)
                 ).astype(self.dtype),
             }
             self.attrs = {'num_classes': num_classes, 'batch_size': batch_size}
@@ -287,12 +287,12 @@ class XPUTestSigmoidCrossEntropyWithLogitsOp(XPUOpTestWrapper):
             self.ignore_index = ignore_index
             self.inputs = {
                 'X': logit(
-                    np.random.uniform(
-                        0, 1, tuple(batch_size + [num_classes])
-                    ).astype(self.dtype)
+                    np.random.uniform(0, 1, (*batch_size, num_classes)).astype(
+                        self.dtype
+                    )
                 ),
                 'Label': np.random.randint(
-                    -1, 2, tuple(batch_size + [num_classes])
+                    -1, 2, (*batch_size, num_classes)
                 ).astype(self.dtype),
             }
             self.attrs = {'ignore_index': ignore_index, 'normalize': True}

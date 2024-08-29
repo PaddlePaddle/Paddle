@@ -62,7 +62,7 @@ void FakeInitializeOutputsForFunctionKernel(
     const phi::Kernel& phi_kernel,
     const phi::KernelSignature& kernel_sig,
     const RuntimeContext& ctx,
-    const platform::DeviceContext& dev_ctx);
+    const phi::DeviceContext& dev_ctx);
 
 void FakeInitializeOutputsForStructureKernel(
     const framework::OpKernelType& op_kernel_type,

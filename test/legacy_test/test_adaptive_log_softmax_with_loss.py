@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -57,7 +58,13 @@ class SimpleModel(nn.Layer):
 class TestNNAdaptiveLogSoftmaxWithLossAPI(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
-        self.place = ['cpu']
+        self.place = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.place.append('cpu')
         if paddle.is_compiled_with_cuda():
             self.place.append('gpu')
         self.log_np = np.random.randn(4, 8).astype('float32')

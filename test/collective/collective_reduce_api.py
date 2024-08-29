@@ -66,10 +66,10 @@ class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program, rank):
+    def get_model(self, main_prog, startup_program, rank, dtype='float32'):
         with base.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(
-                name="tindata", shape=[-1, 10, 1000], dtype='float32'
+                name="tindata", shape=[-1, 10, 1000], dtype=dtype
             )
             tindata.desc.set_need_check_feed(False)
             paddle.distributed.reduce(tindata, dst=0)
@@ -89,17 +89,6 @@ class TestCollectiveReduceAPI(TestCollectiveAPIRunnerBase):
             )
             tindata.desc.set_need_check_feed(False)
             reduce_new(tindata, dst=0, reduce_type=reduce_type)
-            return [tindata]
-
-    def get_model_new_comm(
-        self, main_prog, startup_program, rank, dtype='float32'
-    ):
-        with base.program_guard(main_prog, startup_program):
-            tindata = paddle.static.data(
-                name="tindata", shape=[-1, 10, 1000], dtype=dtype
-            )
-            tindata.desc.set_need_check_feed(False)
-            paddle.distributed.reduce(tindata, dst=0)
             return [tindata]
 
 

@@ -492,6 +492,7 @@ class TestDistSPTrainingWithConfigs(TestDistSPTrainingBase):
             "mp_configs": {
                 "mp_async_allreduce": True,
                 "mp_fused_linear_param_grad_add": True,
+                "sp_async_reduce_scatter": True,
             },
         }
         fleet.init(is_collective=True, strategy=strategy)
@@ -509,6 +510,7 @@ class TestDistSPTrainingAmpWithConfigs(TestDistSPTrainingBase):
             "mp_configs": {
                 "mp_async_allreduce": True,
                 "mp_fused_linear_param_grad_add": True,
+                "sp_async_reduce_scatter": True,
                 "recompute_allgather": True,
             },
         }
@@ -688,6 +690,7 @@ class TestDistSPTrainingWithoutBias(unittest.TestCase):
             "mp_configs": {
                 "mp_async_allreduce": False,
                 "mp_fused_linear_param_grad_add": False,
+                "sp_async_reduce_scatter": False,
             },
         }
         fleet.init(is_collective=True, strategy=strategy)
@@ -775,6 +778,7 @@ class TestDistSPTrainingWithoutBias2(TestDistSPTrainingWithoutBias):
             "mp_configs": {
                 "mp_async_allreduce": True,
                 "mp_fused_linear_param_grad_add": True,
+                "sp_async_reduce_scatter": True,
             },
         }
         fleet.init(is_collective=True, strategy=strategy)

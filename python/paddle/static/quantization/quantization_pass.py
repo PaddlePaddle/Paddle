@@ -3375,10 +3375,7 @@ class AddQuantDequantForInferencePass:
             else:
                 var_names = utils._get_op_input_var_names(op_node)
                 for var_name in var_names:
-                    if (
-                        var_name in dequant_node_map
-                        and dequant_node_map[var_name]
-                    ):
+                    if dequant_node_map.get(var_name):
                         in_node = graph._find_node_by_name(
                             op_node.inputs, var_name
                         )

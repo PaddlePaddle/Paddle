@@ -57,8 +57,8 @@ int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
   PADDLE_ENFORCE_NE(
       iter,
       process_ids.end(),
-      phi::errors::NotFound("Global rank %lld cannot be found in process_mesh",
-                            global_rank));
+      common::errors::NotFound(
+          "Global rank %lld cannot be found in process_mesh", global_rank));
   return iter - process_ids.begin();
 }
 
@@ -76,8 +76,8 @@ std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
   PADDLE_ENFORCE_NE(
       iter,
       process_ids.end(),
-      phi::errors::NotFound("Rank %lld cannot be found in process_mesh",
-                            cur_global_rank));
+      common::errors::NotFound("Rank %lld cannot be found in process_mesh",
+                               cur_global_rank));
 
   int64_t flat_idx_in_mesh = iter - process_ids.begin();
 
@@ -106,7 +106,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
                                                 static_cast<int>(rank),
                                                 static_cast<int>(world_size));
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Cannot use gloo on CPU, please turn PADDLE_WITH_GLOO flag on."));
 #endif
     } else if (phi::CustomContext::classof(&dev_ctx)) {
@@ -123,7 +123,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
                                                   static_cast<int>(world_size));
       }
 #else
-      PADDLE_THROW(phi::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "CommContext is only supported on CPU and GPU for now, other devices "
           "will be supported later."));
 #endif
@@ -170,7 +170,7 @@ bool NeedComputationClipForPP(
   PADDLE_ENFORCE_EQ(
       phi::distributed::DistTensor::classof(tensor_impl.get()),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input tensor of NeedComputationClipForPP should be "
           "``phi::distributed::DistTensor``. "
           "However it's %s",

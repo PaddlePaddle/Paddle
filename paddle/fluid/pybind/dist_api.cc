@@ -105,7 +105,7 @@ void BindDistOpsAPI(pybind11::module *module) {
     if (PyModule_AddFunctions(module->ptr(), DistOpsAPI) < 0) {
       {
         PADDLE_THROW(
-            phi::errors::Fatal("Add C++ DistOpsAPI to core.ops failed!"));
+            common::errors::Fatal("Add C++ DistOpsAPI to core.ops failed!"));
       }
     }
   }

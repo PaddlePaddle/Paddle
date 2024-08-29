@@ -17,6 +17,8 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/framework/new_executor/instruction/custom_kernel_instruction.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_tools.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -28,6 +30,8 @@
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 
 namespace paddle {
@@ -272,7 +276,6 @@ static PyObject *static_api_array_length(PyObject *self,
     return nullptr;
   }
 }
-
 static PyObject *static_api_array_read(PyObject *self,
                                        PyObject *args,
                                        PyObject *kwargs) {
@@ -300,6 +303,33 @@ static PyObject *static_api_array_read(PyObject *self,
     CallStackRecorder callstack_recoder("array_read");
     callstack_recoder.Record();
     auto static_api_out = paddle::dialect::array_read(array, i);
+    callstack_recoder.AttachToOps();
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
+static PyObject *static_api_fetch(PyObject *self,
+                                  PyObject *args,
+                                  PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add fetch op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *value_obj = PyTuple_GET_ITEM(args, 0);
+    auto value = CastPyArg2Value(value_obj, "fetch", 0, false);
+
+    std::string name = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
+    int col = CastPyArg2Int(PyTuple_GET_ITEM(args, 2), "array_read", 2);
+
+    // Call ir static api
+    CallStackRecorder callstack_recoder("fetch");
+    callstack_recoder.Record();
+    auto static_api_out = paddle::dialect::fetch(value, name, col);
     callstack_recoder.AttachToOps();
 
     return ToPyObject(static_api_out);
@@ -362,7 +392,7 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
       std::vector<pir::Value> x_tmp =
           CastPyArg2VectorOfValue(x_obj, "array_to_tensor", 0, false);
       if (x_tmp.size() != 1) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "Input x expects only one input, but %d are given.",
             x_tmp.size()));  // NOLINT
       }
@@ -516,7 +546,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   const auto &meta_info_map = OpMetaInfoMap::Instance().GetMap();
   PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
                     meta_info_map.end(),
-                    phi::errors::NotFound(
+                    common::errors::NotFound(
                         "Can't find %s in Eager OpMetaInfoMap which should be "
                         "created by LoadOpMetaInfoAndRegisterOp, please make "
                         "sure you registered your op first and try again. ",
@@ -707,7 +737,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
           attr_name_and_type[0],
           pir::ArrayAttribute::get(pir::IrContext::Instance(), array_attr));
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
           "Supported data types include `bool`, `int`, `float`, "
           "`int64_t`, `std::string`, `std::vector<int>`, "
@@ -736,6 +766,16 @@ static PyObject *static_api_run_custom_op(PyObject *self,
                                        vec_input_dtypes,
                                        vec_input_name2id_map,
                                        custom_attrs);
+  dialect::ProcessMeshAttribute op_mesh;
+  bool run_auto_parallel = false;
+  std::vector<pir::Attribute> dist_result_attrs;
+  phi::distributed::SpmdInfo spmd_info;
+  if (dialect::HasDistInput(argument_inputs, &op_mesh)) {
+    VLOG(7) << "Custom Op: " << op_type << " InferSPMD";
+    run_auto_parallel = true;
+    spmd_info = paddle::framework::RunInferSpmd(
+        vec_map[0], op_type, op_mesh, argument_inputs, custom_attrs);
+  }
 
   size_t all_values_num = 0;
   // output name -> value num (that output should hold)
@@ -746,7 +786,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       PADDLE_ENFORCE_NE(
           inplace_reverse_map.find(output),
           inplace_reverse_map.end(),
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "Only support vector output that is set for inplace, Please use "
               "`SetInplaceMap` in your output when registry custom operator."));
       const auto &input = inplace_reverse_map.at(output);
@@ -770,7 +810,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   PADDLE_ENFORCE_EQ(
       output_shapes.size(),
       all_values_num,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of output shapes after running custom operator's "
           "InferShapeFunc is wrong, "
           "expected contains %d Tensors' shape, but actually contains %d "
@@ -781,14 +821,25 @@ static PyObject *static_api_run_custom_op(PyObject *self,
   PADDLE_ENFORCE_EQ(
       output_dtypes.size(),
       all_values_num,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The number of output dtypes after running custom operator's "
           "InferDtypeFunc is wrong, "
           "expected contains %d Tensors' dtype, but actually contains %d "
           "Tensors' dtype",
           all_values_num,
           output_dtypes.size()));
-
+  if (run_auto_parallel) {
+    PADDLE_ENFORCE_EQ(
+        spmd_info.second.size(),
+        all_values_num,
+        common::errors::InvalidArgument(
+            "The number of output dist_attr after running custom operator's "
+            "InferSPMD is wrong, "
+            "expected contains %d Tensors' dist_attr, but actually contains %d "
+            "Tensors' dist_attr",
+            all_values_num,
+            spmd_info.second.size()));
+  }
   size_t value_index = 0;
   for (size_t i = 0; i < outputs.size(); ++i) {
     const auto &output = outputs.at(i);
@@ -801,23 +852,35 @@ static PyObject *static_api_run_custom_op(PyObject *self,
     }
     if (paddle::framework::detail::IsDuplicableVar(output)) {
       std::vector<pir::Type> out_types;
+      std::vector<pir::Attribute> dist_attrs;
       for (size_t j = 0; j < value_num; ++j) {
         auto ddims = phi::make_ddim(output_shapes[value_index]);
         auto dtype = output_dtypes[value_index];
         phi::DataLayout layout{DataLayout::NCHW};
         phi::LoD lod;
-        out_types.push_back(paddle::dialect::DenseTensorType::get(
+        auto type = paddle::dialect::DenseTensorType::get(
             pir::IrContext::Instance(),
             paddle::dialect::TransToIrDataType(dtype),
             ddims,
             layout,
             lod,
-            0));
+            0);
+        if (run_auto_parallel) {
+          auto dist_attr = dialect::CvtToPirAttr(spmd_info.second[value_index]);
+          out_types.push_back(dialect::CvtToPirDistType(type, dist_attr));
+          dist_attrs.push_back(dist_attr);
+        } else {
+          out_types.push_back(std::move(type));
+        }
         value_index++;
       }
       pir::Type out_vector_type =
           pir::VectorType::get(pir::IrContext::Instance(), out_types);
       argument_outputs.push_back(out_vector_type);
+      if (run_auto_parallel) {
+        dist_result_attrs.push_back(
+            pir::ArrayAttribute::get(pir::IrContext::Instance(), dist_attrs));
+      }
     } else {
       auto ddims = phi::make_ddim(output_shapes[value_index]);
       auto dtype = output_dtypes[value_index];
@@ -830,9 +893,34 @@ static PyObject *static_api_run_custom_op(PyObject *self,
           layout,
           lod,
           0);
-      argument_outputs.push_back(out_type);
+      if (run_auto_parallel) {
+        auto dist_attr = dialect::CvtToPirAttr(spmd_info.second[value_index]);
+        argument_outputs.push_back(
+            dialect::CvtToPirDistType(out_type, dist_attr));
+        dist_result_attrs.push_back(dist_attr);
+      } else {
+        argument_outputs.push_back(out_type);
+      }
       value_index++;
     }
+  }
+
+  // construct operator_dist_attr
+  if (run_auto_parallel) {
+    std::vector<pir::Attribute> dist_operand_attrs;
+    for (auto &arg_dist : spmd_info.first) {
+      dist_operand_attrs.push_back(dialect::CvtToPirAttr(arg_dist));
+    }
+    auto op_dist_attr = dialect::OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    std::ostringstream print_stream;
+    print_stream << op_dist_attr;
+    VLOG(7) << "Custom Op: " << op_type << " InferSPMD Operator dist attr"
+            << print_stream.str();
+    argument.AddAttribute(
+        kAttrOpDistAttr,
+        dialect::OperationDistAttribute::get(
+            ctx, op_mesh, dist_operand_attrs, dist_result_attrs));
   }
 
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
@@ -970,7 +1058,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
 
     PyObject *param_obj = PyTuple_GET_ITEM(args, 1);
     if (!PyObject_TypeCheck(param_obj, g_tensorrt_engine_params_pytype)) {
-      PADDLE_THROW(platform::errors::InvalidType(
+      PADDLE_THROW(common::errors::InvalidType(
           "tensorrt_engine(): argument (position %d) must be "
           "EngineParams, but got %s",
           2,
@@ -995,7 +1083,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
         outputs_shape.emplace_back(CastPyArg2VectorOfInt64(item, 4));
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidType(
+      PADDLE_THROW(common::errors::InvalidType(
           "argument (position %d) must be "
           "list but got %s",
           5,
@@ -1014,7 +1102,7 @@ static PyObject *static_api_tensorrt_engine(PyObject *self,
             CastPyArg2DataTypeDirectly(item, "tensorrt_engine", 5));
       }
     } else {
-      PADDLE_THROW(platform::errors::InvalidType(
+      PADDLE_THROW(common::errors::InvalidType(
           "argument (position %d) must be "
           "list but got %s",
           6,
@@ -1092,6 +1180,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_array_read,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for array_read."},
+    {"fetch",
+     (PyCFunction)(void (*)(void))static_api_fetch,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for fetch."},
     {"array_write_",
      (PyCFunction)(void (*)(void))static_api_array_write_,
      METH_VARARGS | METH_KEYWORDS,
@@ -1135,5 +1227,4 @@ static PyMethodDef ManualOpsAPI[] = {
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind
-
 }  // namespace paddle

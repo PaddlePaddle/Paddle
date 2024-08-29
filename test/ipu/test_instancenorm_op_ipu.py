@@ -60,17 +60,20 @@ class TestBase(IPUOpTest):
             )
             scale = paddle.ParamAttr(trainable=True)
             bias = paddle.ParamAttr(trainable=True)
-            out = paddle.static.nn.instance_norm(
-                conv1, param_attr=scale, bias_attr=bias, **self.attrs
-            )
+            out = paddle.nn.InstanceNorm2D(
+                num_features=ch, weight_attr=scale, bias_attr=bias, **self.attrs
+            )(conv1)
             loss = paddle.mean(out)
             adam = paddle.optimizer.Adam(learning_rate=1e-2)
             adam.minimize(loss)
             self.fetch_list = [loss.name]
         else:
-            out = paddle.static.nn.instance_norm(
-                x, param_attr=True, bias_attr=True, **self.attrs
-            )
+            out = paddle.nn.InstanceNorm2D(
+                num_features=self.feed_shape[0][1],
+                weight_attr=True,
+                bias_attr=True,
+                **self.attrs,
+            )(x)
             self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

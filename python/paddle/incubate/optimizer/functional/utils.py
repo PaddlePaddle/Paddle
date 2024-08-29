@@ -58,8 +58,8 @@ def check_initial_inverse_hessian_estimate(H0):
             name="The initial_inverse_hessian_estimate should be symmetric and positive definite, but the specified is not.",
         )
         eigvals = paddle.linalg.eigvals(H0)
-        is_positive = paddle.all(eigvals.real() > 0.0) and paddle.all(
-            eigvals.imag() == 0.0
+        is_positive = paddle.bitwise_and(
+            paddle.all(eigvals.real() > 0.0), paddle.all(eigvals.imag() == 0.0)
         )
         paddle.static.nn.control_flow.Assert(
             is_positive,

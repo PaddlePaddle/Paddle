@@ -90,9 +90,9 @@ void FindChannelAbsMaxFunctor<Context, T>::operator()(
   PADDLE_ENFORCE_EQ(
       quant_axis == 0 || quant_axis == 1,
       true,
-      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                   "the received is %d",
-                                   quant_axis));
+      common::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                      "the received is %d",
+                                      quant_axis));
   auto *in_data = in_tensor.data<T>();
   auto in_dims = in_tensor.dims();
   const int64_t channel = in_dims[quant_axis];
@@ -134,9 +134,9 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
   PADDLE_ENFORCE_EQ(
       quant_axis == 0 || quant_axis == 1,
       true,
-      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                   "the received is %d",
-                                   quant_axis));
+      common::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                      "the received is %d",
+                                      quant_axis));
   auto *scale_data = scale.data<T>();
   auto *in_data = in.data<T>();
   auto *out_data = ctx.template Alloc<T>(out);
@@ -212,9 +212,9 @@ void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
   PADDLE_ENFORCE_EQ(
       quant_axis == 0 || quant_axis == 1,
       true,
-      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
-                                   "the received is %d",
-                                   quant_axis));
+      common::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                      "the received is %d",
+                                      quant_axis));
 
   auto *scale_data = scale.data<T>();
   auto *in_data = in.data<T>();

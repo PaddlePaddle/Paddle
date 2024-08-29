@@ -88,79 +88,83 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "set_subgraph_edge_pass",                                       //
-      "trt_remove_amp_strategy_op_pass",                          //
-      "trt_support_nhwc_pass",                                    //
-      "adaptive_pool2d_convert_global_pass",                      //
-      "trt_map_ops_to_matrix_multiply_pass",                      //
-      "shuffle_channel_detect_pass",                              //
-      "quant_conv2d_dequant_fuse_pass",                           //
-      "delete_quant_dequant_op_pass",                             //
-      "delete_quant_dequant_filter_op_pass",                      //
-      "trt_delete_weight_dequant_linear_op_pass",                 //
-      "delete_quant_dequant_linear_op_pass",                      //
-      "identity_op_clean_pass",                                   //
-      "add_support_int8_pass",                                    //
-      "simplify_with_basic_ops_pass",                             //
-      "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",  //
-      "trt_embedding_eltwise_layernorm_fuse_pass",                //
-      "preln_embedding_eltwise_layernorm_fuse_pass",              //
-      "trt_multihead_matmul_fuse_pass_v2",                        //
-      "trt_multihead_matmul_fuse_pass_v3",                        //
-      "multihead_matmul_roformer_fuse_pass",                      //
-      "constant_folding_pass",                                    //
+    "set_subgraph_edge_pass",                                   //
+    "trt_remove_amp_strategy_op_pass",                          //
+    "trt_support_nhwc_pass",                                    //
+    "adaptive_pool2d_convert_global_pass",                      //
+    "trt_map_ops_to_matrix_multiply_pass",                      //
+    "shuffle_channel_detect_pass",                              //
+    "quant_conv2d_dequant_fuse_pass",                           //
+    "delete_quant_dequant_op_pass",                             //
+    "delete_quant_dequant_filter_op_pass",                      //
+    "trt_delete_weight_dequant_linear_op_pass",                 //
+    "delete_quant_dequant_linear_op_pass",                      //
+    "identity_op_clean_pass",                                   //
+    "add_support_int8_pass",                                    //
+    "simplify_with_basic_ops_pass",                             //
+    "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",  //
+    "trt_embedding_eltwise_layernorm_fuse_pass",                //
+    "preln_embedding_eltwise_layernorm_fuse_pass",              //
+    "trt_multihead_matmul_fuse_pass_v2",                        //
+    "trt_multihead_matmul_fuse_pass_v3",                        //
+    "multihead_matmul_roformer_fuse_pass",                      //
+#if defined _WIN32  // Windows does not support sparse_conv3d_implicit_gemm
+#else
+    "sparse_conv_optim_pass",  //
+#endif
+    "constant_folding_pass",  //
 #ifdef PADDLE_WITH_TENSORRT
 #if !IS_TRT_VERSION_GE(8610)
-      "trt_flash_multihead_matmul_fuse_pass",  //
-      "trt_cross_multihead_matmul_fuse_pass",  //
+    "trt_flash_multihead_matmul_fuse_pass",  //
+    "trt_cross_multihead_matmul_fuse_pass",  //
 #endif
 #endif
-      "vit_attention_fuse_pass",              //
-      "trt_qk_multihead_matmul_fuse_pass",    //
-      "layernorm_shift_partition_fuse_pass",  //
-      "merge_layernorm_fuse_pass",            //
+    "vit_attention_fuse_pass",              //
+    "trt_qk_multihead_matmul_fuse_pass",    //
+    "layernorm_shift_partition_fuse_pass",  //
+    "merge_layernorm_fuse_pass",            //
 #if !defined _WIN32
-      "split_layernorm_to_math_ops_pass",  //
+    "split_layernorm_to_math_ops_pass",  //
 #endif
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
-      "trt_skip_layernorm_fuse_pass",          //
-      "preln_skip_layernorm_fuse_pass",        //
+    "trt_skip_layernorm_fuse_pass",    //
+    "preln_skip_layernorm_fuse_pass",  //
 #endif
-      "preln_residual_bias_fuse_pass",   //
-      "preln_layernorm_x_fuse_pass",     //
-      "reverse_roll_fuse_pass",          //
-      "conv_bn_fuse_pass",               //
-      "conv_elementwise_add_fuse_pass",  //
+    "preln_residual_bias_fuse_pass",   //
+    "preln_layernorm_x_fuse_pass",     //
+    "reverse_roll_fuse_pass",          //
+    "conv_bn_fuse_pass",               //
+    "conv_elementwise_add_fuse_pass",  //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
-      "trans_layernorm_fuse_pass",             //
+    "trans_layernorm_fuse_pass",  //
 #endif
-      "remove_padding_recover_padding_pass",         //
-      "delete_remove_padding_recover_padding_pass",  //
-      // "yolo_box_fuse_pass",      //
-      "dense_fc_to_sparse_pass",                //
-      "dense_multihead_matmul_to_sparse_pass",  //
+    "remove_padding_recover_padding_pass",         //
+    "delete_remove_padding_recover_padding_pass",  //
+    // "yolo_box_fuse_pass",      //
+    "dense_fc_to_sparse_pass",                //
+    "dense_multihead_matmul_to_sparse_pass",  //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
-      "elementwise_groupnorm_act_pass",        //
-      "preln_elementwise_groupnorm_act_pass",  //
-      "groupnorm_act_pass",                    //
-      "elementwiseadd_transpose_pass",         //
+    "elementwise_groupnorm_act_pass",        //
+    "preln_elementwise_groupnorm_act_pass",  //
+    "groupnorm_act_pass",                    //
+    "elementwiseadd_transpose_pass",         //
 #endif
-      "tensorrt_subgraph_pass",  //
-      "conv_bn_fuse_pass",       //
+    "tensorrt_subgraph_pass",  //
+    "conv_bn_fuse_pass",       //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
 // disable the pass.
 #if !(CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8100)
-      "conv_elementwise_add_act_fuse_pass",   //
-      "conv_elementwise_add2_act_fuse_pass",  //
+    "conv_elementwise_add_act_fuse_pass",   //
+    "conv_elementwise_add2_act_fuse_pass",  //
 #endif
 #endif
-      "transpose_flatten_concat_fuse_pass",  //
-      "auto_mixed_precision_pass",
+    "transpose_flatten_concat_fuse_pass",  //
+    "auto_mixed_precision_pass",
 });
 
 // TODO(inference): Most of the existing pass fusion operators do not
@@ -249,56 +253,56 @@ const std::vector<std::string> CpuBasicPasses{
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
-    "map_op_to_another_pass",                    //
-        "is_test_pass",                          //
-        "simplify_with_basic_ops_pass",          //
-        "delete_quant_dequant_linear_op_pass",   //
-        "delete_weight_dequant_linear_op_pass",  //
+      "map_op_to_another_pass",                //
+      "is_test_pass",                          //
+      "simplify_with_basic_ops_pass",          //
+      "delete_quant_dequant_linear_op_pass",   //
+      "delete_weight_dequant_linear_op_pass",  //
 #if defined _WIN32  // Windows does not support sparse_conv3d_implicit_gemm
 #else
-        "sparse_conv_optim_pass",              //
+      "sparse_conv_optim_pass",  //
 #endif
-        "constant_folding_pass",                                        //
-        "silu_fuse_pass",                                               //
-        "conv_bn_fuse_pass",                                            //
-        "conv_eltwiseadd_bn_fuse_pass",                                 //
-        "embedding_eltwise_layernorm_fuse_pass",                        //
-        "multihead_matmul_fuse_pass_v2",                                //
-        "vit_attention_fuse_pass",                                      //
-        "fused_multi_transformer_encoder_pass",                         //
-        "fused_multi_transformer_decoder_pass",                         //
-        "fused_multi_transformer_encoder_fuse_qkv_pass",                //
-        "fused_multi_transformer_decoder_fuse_qkv_pass",                //
-        "multi_devices_fused_multi_transformer_encoder_pass",           //
-        "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",  //
-        "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",  //
-        "fuse_multi_transformer_layer_pass",                            //
-        "gpu_cpu_squeeze2_matmul_fuse_pass",                            //
-        "gpu_cpu_reshape2_matmul_fuse_pass",                            //
-        "gpu_cpu_flatten2_matmul_fuse_pass",                            //
-        "gpu_cpu_map_matmul_v2_to_mul_pass",                            //
-        "gpu_cpu_map_matmul_v2_to_matmul_pass",                         //
-        "matmul_scale_fuse_pass",                                       //
-        "multihead_matmul_fuse_pass_v3",                                //
-        "gpu_cpu_map_matmul_to_mul_pass",                               //
-        "fc_fuse_pass",                                                 //
-        "fc_elementwise_layernorm_fuse_pass",                           //
+      "constant_folding_pass",                                        //
+      "silu_fuse_pass",                                               //
+      "conv_bn_fuse_pass",                                            //
+      "conv_eltwiseadd_bn_fuse_pass",                                 //
+      "embedding_eltwise_layernorm_fuse_pass",                        //
+      "multihead_matmul_fuse_pass_v2",                                //
+      "vit_attention_fuse_pass",                                      //
+      "fused_multi_transformer_encoder_pass",                         //
+      "fused_multi_transformer_decoder_pass",                         //
+      "fused_multi_transformer_encoder_fuse_qkv_pass",                //
+      "fused_multi_transformer_decoder_fuse_qkv_pass",                //
+      "multi_devices_fused_multi_transformer_encoder_pass",           //
+      "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",  //
+      "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",  //
+      "fuse_multi_transformer_layer_pass",                            //
+      "gpu_cpu_squeeze2_matmul_fuse_pass",                            //
+      "gpu_cpu_reshape2_matmul_fuse_pass",                            //
+      "gpu_cpu_flatten2_matmul_fuse_pass",                            //
+      "gpu_cpu_map_matmul_v2_to_mul_pass",                            //
+      "gpu_cpu_map_matmul_v2_to_matmul_pass",                         //
+      "matmul_scale_fuse_pass",                                       //
+      "multihead_matmul_fuse_pass_v3",                                //
+      "gpu_cpu_map_matmul_to_mul_pass",                               //
+      "fc_fuse_pass",                                                 //
+      "fc_elementwise_layernorm_fuse_pass",                           //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
 // disable the pass.
 #if !(CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8100)
-        "conv_elementwise_add_act_fuse_pass",   //
-        "conv_elementwise_add2_act_fuse_pass",  //
+      "conv_elementwise_add_act_fuse_pass",   //
+      "conv_elementwise_add2_act_fuse_pass",  //
 #endif
-        "conv_elementwise_add_fuse_pass",      //
-#endif                                         //
-        "transpose_flatten_concat_fuse_pass",  //
-        "transfer_layout_pass",                //
-        "transfer_layout_elim_pass",
-        "auto_mixed_precision_pass",  //
-        "identity_op_clean_pass",  // should be after auto_mixed_precision_pass.
-        "inplace_op_var_pass",     // should be the last pass.
+      "conv_elementwise_add_fuse_pass",      //
+#endif                                       //
+      "transpose_flatten_concat_fuse_pass",  //
+      "transfer_layout_pass",                //
+      "transfer_layout_elim_pass",
+      "auto_mixed_precision_pass",  //
+      "identity_op_clean_pass",  // should be after auto_mixed_precision_pass.
+      "inplace_op_var_pass",     // should be the last pass.
   });
 
   use_gpu_ = true;
@@ -616,6 +620,7 @@ const std::vector<std::string> kPirGpuPasses{
     "remove_redundant_transpose_pass",
     "transfer_layout_pass",
     "auto_mixed_precision_pass",
+    "horizontal_fuse_pass",
 };
 
 const std::vector<std::string> kPirXpuPasses{
@@ -625,51 +630,59 @@ const std::vector<std::string> kPirXpuPasses{
     "map_op_to_another_pass",
     "identity_op_clean_pass",
     // Operator fusion pass
+    "add_activation_xpu_fuse_pass",
     "add_layernorm_xpu_fuse_pass",
     "conv2d_bn_xpu_fuse_pass",
     "conv2d_add_xpu_fuse_pass",
     "group_norm_silu_fuse_pass",
     "fc_xpu_fuse_pass"};
 
-const std::vector<std::string> kPirMkldnnPasses {
-  "delete_quant_dequant_linear_op_pass",          //
-      "delete_weight_dequant_linear_op_pass",     //
-      "depthwise_conv_onednn_pass",               //
-      "squeeze_transpose_onednn_fuse_pass",       //
-      "conv2d_bn_onednn_fuse_pass",               //
-      "conv2d_bias_bn_onednn_fuse_pass",          //
-      "conv2d_bias_fuse_pass",                    //
-      "conv2d_transpose_bn_fuse_pass",            //
-      "conv2d_transpose_bias_bn_fuse_pass",       //
-      "conv2d_transpose_bias_fuse_pass",          //
-      "conv3d_bias_fuse_pass",                    //
-      "conv_elementwise_add_onednn_fuse_pass",    //
-      "conv_activation_onednn_fuse_pass",         //
-      "conv_concat_activation_onednn_fuse_pass",  //
-      "matmul_scale_fuse_pass",                   //
-      "scale_matmul_fuse_pass",                   //
-      "reshape_transpose_matmul_fuse_pass",       //
-      "matmul_transpose_reshape_fuse_pass",       //
-      "matmul_add_act_fuse_pass",                 //
-      "matmul_reshape_add_fuse_pass",             //
-      "fc_onednn_enable_pass",                    //
-      "matmul_elementwise_add_fuse_pass",         //
-      "matmul_activation_fuse_pass",              //
-      "matmul_add_act_fuse_pass",                 //
-      "fc_onednn_enable_pass",                    //
-      "fc_activation_fuse_pass",                  //
+const std::vector<std::string> kPirMkldnnPasses{
+    "delete_quant_dequant_linear_op_pass",      //
+    "delete_weight_dequant_linear_op_pass",     //
+    "depthwise_conv_onednn_pass",               //
+    "squeeze_transpose_onednn_fuse_pass",       //
+    "conv2d_bn_onednn_fuse_pass",               //
+    "conv2d_bias_bn_onednn_fuse_pass",          //
+    "conv2d_bias_fuse_pass",                    //
+    "conv2d_transpose_bn_fuse_pass",            //
+    "conv2d_transpose_bias_bn_fuse_pass",       //
+    "conv2d_transpose_bias_fuse_pass",          //
+    "conv3d_bias_fuse_pass",                    //
+    "conv_elementwise_add_onednn_fuse_pass",    //
+    "conv_activation_onednn_fuse_pass",         //
+    "conv_concat_activation_onednn_fuse_pass",  //
+    "matmul_scale_fuse_pass",                   //
+    "scale_matmul_fuse_pass",                   //
+    "reshape_transpose_matmul_fuse_pass",       //
+    "matmul_transpose_reshape_fuse_pass",       //
+    "matmul_add_act_fuse_pass",                 //
+    "matmul_reshape_add_fuse_pass",             //
+    "fc_onednn_enable_pass",                    //
+    "matmul_elementwise_add_fuse_pass",         //
+    "matmul_activation_fuse_pass",              //
+    "matmul_add_act_fuse_pass",                 //
+    "fc_onednn_enable_pass",                    //
+    "fc_activation_fuse_pass",                  //
 #if defined(PADDLE_WITH_AVX512F) && defined(PADDLE_WITH_MKLML) && \
     defined(PADDLE_WITH_DNNL)
-      "self_attention_fuse_pass",  //
+    "self_attention_fuse_pass",  //
 #endif
-      "batch_norm_act_fuse_pass",             //
-      "softplus_activation_fuse_pass",        //
-      "shuffle_channel_detect_pass",          //
-      "elementwise_act_onednn_fuse_pass",     //
-      "operator_scale_onednn_fuse_pass",      //
-      "operator_unsqueeze_onednn_fuse_pass",  //
-      "operator_reshape_onednn_fuse_pass",    //
-      "onednn_placement_pass"                 //
+    "batch_norm_act_fuse_pass",             //
+    "softplus_activation_fuse_pass",        //
+    "shuffle_channel_detect_pass",          //
+    "elementwise_act_onednn_fuse_pass",     //
+    "operator_scale_onednn_fuse_pass",      //
+    "operator_unsqueeze_onednn_fuse_pass",  //
+    "operator_reshape_onednn_fuse_pass",    //
+    "onednn_placement_pass",                //
+};
+
+const std::vector<std::string> kPirMkldnnBf16Passes{
+    "cpu_bfloat16_placement_pass",
+    "cpu_bfloat16_pass",
+    "cpu_bfloat16_type_placement_pass",
+    "cpu_bf16_quantize_squash_pass",
 };
 
 const std::vector<std::string> kPirCpuPasses{

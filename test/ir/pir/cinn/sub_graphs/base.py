@@ -97,7 +97,7 @@ class TestBase(unittest.TestCase):
                     st.numpy(), cinn.numpy(), atol=self.atol
                 )
         if self.with_train:
-            if type(st_out) == tuple:
+            if isinstance(st_out, (tuple, list)):
                 st_loss, cinn_loss = 0, 0
                 for i in range(len(st_out)):
                     st_loss += st_out[i].mean()

@@ -25,7 +25,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/memory/memcpy.h"
 #include "test/cpp/eager/performance_tests/benchmark_utils.h"
 #include "test/cpp/eager/test_utils.h"
 
@@ -78,7 +78,7 @@ TEST(Benchmark, FluidScaleCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(common::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -137,7 +137,7 @@ TEST(Benchmark, FluidMatmulCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(common::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }
@@ -221,7 +221,7 @@ TEST(Benchmark, FluidMLPCPU) {
       std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
 
     } else {
-      PADDLE_THROW(phi::errors::Fatal("Unknown benchmark mode"));
+      PADDLE_THROW(common::errors::Fatal("Unknown benchmark mode"));
     }
   }
 }

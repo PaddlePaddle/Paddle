@@ -45,19 +45,19 @@ def config_callbacks(
     cbks = cbks if isinstance(cbks, (list, tuple)) else [cbks]
 
     if not any(isinstance(k, ProgBarLogger) for k in cbks) and verbose:
-        cbks = [ProgBarLoggerAuto(log_freq, verbose=verbose)] + cbks
+        cbks = [ProgBarLoggerAuto(log_freq, verbose=verbose), *cbks]
 
     if not any(isinstance(k, LRScheduler) for k in cbks):
-        cbks = [LRSchedulerAuto()] + cbks
+        cbks = [LRSchedulerAuto(), *cbks]
 
     if not any(isinstance(k, ModelCheckpoint) for k in cbks):
-        cbks = cbks + [ModelCheckpointAuto(save_freq, save_dir)]
+        cbks = [*cbks, ModelCheckpointAuto(save_freq, save_dir)]
 
     if not any(isinstance(k, Profiler) for k in cbks) and verbose == 3:
-        cbks = cbks + [Profiler(timer_only=True)]
+        cbks = [*cbks, Profiler(timer_only=True)]
 
     if not any(isinstance(k, History) for k in cbks):
-        cbks = cbks + [History()]
+        cbks = [*cbks, History()]
 
     for i, k in enumerate(cbks):
         if isinstance(k, ProgBarLogger):

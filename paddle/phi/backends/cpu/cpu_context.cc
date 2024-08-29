@@ -44,7 +44,7 @@ struct CPUContext::Impl {
     PADDLE_ENFORCE_NE(
         eigen_device_,
         nullptr,
-        phi::errors::Unavailable("the cpu eigen_device is nullptr."));
+        common::errors::Unavailable("the cpu eigen_device is nullptr."));
     return eigen_device_;
   }
 

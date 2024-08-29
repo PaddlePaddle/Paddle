@@ -333,7 +333,7 @@ class DistUTPortManager:
                     )
                 ) as csv_file:
                     found = False
-                    for line in csv_file.readlines():
+                    for line in csv_file:
                         (
                             name,
                             _,

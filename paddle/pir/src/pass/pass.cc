@@ -49,14 +49,14 @@ std::optional<detail::PassExecutionState>& Pass::pass_state() {
 void Pass::SignalPassFailure() {
   PADDLE_ENFORCE_EQ(pass_state_.has_value(),
                     true,
-                    phi::errors::InvalidArgument("pass state has no value"));
+                    common::errors::InvalidArgument("pass state has no value"));
   pass_state_->pass_failed = true;
 }
 
 AnalysisManager Pass::analysis_manager() {
   PADDLE_ENFORCE_EQ(pass_state_.has_value(),
                     true,
-                    phi::errors::InvalidArgument("pass state has no value"));
+                    common::errors::InvalidArgument("pass state has no value"));
   return pass_state_->am;
 }
 //===----------------------------------------------------------------------===//
@@ -67,7 +67,7 @@ bool PatternRewritePass::Initialize(IrContext* context) {
   PADDLE_ENFORCE_EQ(
       ps.Empty(),
       false,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Pass creation failed."
           "When using PatternRewritePass to create a Pass, the number of "
           "customized Patterns is required to be greater than zero."

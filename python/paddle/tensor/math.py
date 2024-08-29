@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -95,6 +95,8 @@ from .ops import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
@@ -442,7 +444,12 @@ def multiplex(
              [3., 4.]])
 
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.multiplex(inputs, index)
+    elif in_pir_mode():
+        check_variable_and_dtype(
+            index, "index", ['int32', 'int64'], 'multiplex'
+        )
         return _C_ops.multiplex(inputs, index)
     else:
         helper = LayerHelper('multiplex', **locals())
@@ -2310,9 +2317,9 @@ def mm(input: Tensor, mat2: Tensor, name: str | None = None) -> Tensor:
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
-            x_shape = [1] + x_shape
+            x_shape = [1, *x_shape]
         if len(y_shape) == 1:
-            y_shape = y_shape + [1]
+            y_shape = [*y_shape, 1]
 
         # check the inner 2 dimensions
         if x_shape[-1] != y_shape[-2]:
@@ -7523,7 +7530,7 @@ def ldexp_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if not isinstance(y, (paddle.Tensor, Variable)):
         raise TypeError(f"y must be tensor type, but got {type(y)}")
     if x.dtype == paddle.float64 or y.dtype == paddle.float64:
-        out_dtype = paddle.float64
+        out_dtype = "float64"
     else:
         out_dtype = paddle.get_default_dtype()
     x = paddle.cast_(x, dtype=out_dtype)
@@ -7616,7 +7623,7 @@ def bitwise_left_shift(
                 [[2  , 8  , 32 , 128],
                     [64 , 136, 128, 130]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_left_shift(x, y, is_arithmetic)
     return _bitwise_op(
         op_name="bitwise_left_shift",
@@ -7703,7 +7710,7 @@ def bitwise_right_shift(
                 [[123, 59 , 27 , 11 ],
                     [60 , 29 , 56 , 95 ]])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_right_shift(x, y, is_arithmetic)
 
     return _bitwise_op(
@@ -7806,7 +7813,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
     if isinstance(y, (float, int)):
         y = paddle.to_tensor(y, dtype=x.dtype)
     out_shape = broadcast_shape(x.shape, y.shape)
-    if out_shape != x.shape:
+    if out_shape != list(x.shape):
         warnings.warn(
             f"The shape of broadcast output {out_shape} is different from the input tensor x with shape: {x.shape}, please make sure you are using copysign api correctly."
         )

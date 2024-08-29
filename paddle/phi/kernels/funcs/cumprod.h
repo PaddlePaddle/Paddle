@@ -25,7 +25,7 @@ static void GetCumprodDimInfo(const DDim& dim,
   PADDLE_ENFORCE_GE(
       cumprod_dim,
       -dim.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The input dim of CumprodOp should be larger than the opposite "
           "rank of input x which is %d.But received dim=%d",
           -dim.size(),
@@ -34,7 +34,7 @@ static void GetCumprodDimInfo(const DDim& dim,
     PADDLE_ENFORCE_LE(
         cumprod_dim,
         dim.size(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The input dim of CumprodOp should be smaller than the "
             "rank of input x which is %d.But received dim=%d",
             dim.size(),
@@ -44,7 +44,7 @@ static void GetCumprodDimInfo(const DDim& dim,
 
   PADDLE_ENFORCE_LT(cumprod_dim,
                     dim.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The input dim of CumprodOp should be smaller than the "
                         "rank of input x which is %d.But received dim=%d",
                         dim.size(),

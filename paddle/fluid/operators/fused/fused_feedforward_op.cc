@@ -78,8 +78,8 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         mat_dim_x.width_,
         static_cast<size_t>(1),
-        phi::errors::InvalidArgument("Product from the X shape[1] to "
-                                     "shape[n-1] must be larger than 1!"));
+        common::errors::InvalidArgument("Product from the X shape[1] to "
+                                        "shape[n-1] must be larger than 1!"));
     auto dim_Linear1Weight = context->GetInputDim("Linear1Weight");
     auto tmp_dim_x = dim_x;
     tmp_dim_x[dim_x.size() - 1] =
@@ -189,7 +189,7 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f,
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "'dropout1_rate' must be between 0.0 and 1.0."));
         });
     AddAttr<float>("dropout2_rate", "the dropout rate of second dropout")
@@ -198,7 +198,7 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f,
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "'dropout2_rate' must be between 0.0 and 1.0."));
         });
     AddAttr<std::string>("dropout1_implementation",
@@ -208,7 +208,7 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train",
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "dropout1_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
@@ -219,7 +219,7 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train",
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "dropout2_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
@@ -265,7 +265,7 @@ class FusedFeedForwardOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"),
                       false,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
     bool pre_layer_norm = ctx->Attrs().Get<bool>("pre_layer_norm");
     OP_INOUT_CHECK(ctx->HasInput("Dropout1Mask"),

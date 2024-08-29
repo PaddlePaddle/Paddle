@@ -21,8 +21,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    ContextManager,
-    Sequence,
     TypeVar,
     overload,
 )
@@ -41,8 +39,9 @@ from .tracer import Tracer
 
 if TYPE_CHECKING:
     from collections import OrderedDict
+    from collections.abc import Generator, Sequence
+    from contextlib import AbstractContextManager
     from types import TracebackType
-    from typing import Generator
 
     from typing_extensions import Self
 
@@ -63,6 +62,14 @@ def in_to_static_mode() -> bool:
 
     """
     return global_var._in_to_static_mode_
+
+
+def in_sot_simulation_mode() -> bool:
+    """
+    Return a bool value that indicates whether running code under SOT simulation context.
+
+    """
+    return global_var._in_sot_simulation_mode_
 
 
 # TODO(Aurelius84): Need to remove this alias after clean usage in PaddleX
@@ -100,7 +107,7 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 
 
 @signature_safe_contextmanager
-def _to_static_mode_guard_(
+def to_static_mode_guard(
     is_to_static: bool = True,
 ) -> Generator[None, None, None]:
     global global_var
@@ -110,6 +117,19 @@ def _to_static_mode_guard_(
         yield
     finally:
         global_var._in_to_static_mode_ = original_val
+
+
+@signature_safe_contextmanager
+def sot_simulation_mode_guard(
+    is_sot_simulation: bool = True,
+) -> Generator[None, None, None]:
+    global global_var
+    original_val = global_var._in_sot_simulation_mode_
+    global_var._in_sot_simulation_mode_ = is_sot_simulation
+    try:
+        yield
+    finally:
+        global_var._in_sot_simulation_mode_ = original_val
 
 
 @signature_safe_contextmanager
@@ -139,7 +159,7 @@ def _convert_into_variable(tensor):
     """
     if paddle.framework.use_pir_api():
         return paddle.pir.core._convert_into_value(tensor)
-    if isinstance(tensor, core.eager.Tensor):
+    if isinstance(tensor, paddle.Tensor):
         # Check whether has been created before.
         new_var = tensor.block._find_var_recursive(tensor.name)
         if new_var is not None:
@@ -299,13 +319,11 @@ def _switch_tracer_mode_guard_(
 
 
 @overload
-def no_grad(func: None = ...) -> ContextManager:
-    ...
+def no_grad(func: None = ...) -> AbstractContextManager: ...
 
 
 @overload
-def no_grad(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
-    ...
+def no_grad(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]: ...
 
 
 def no_grad(func=None):
@@ -484,8 +502,7 @@ class set_grad_enabled(_DecoratorContextManager):
         _set_grad_enabled(mode)
         self.mode = mode
 
-    def __enter__(self) -> None:
-        ...
+    def __enter__(self) -> None: ...
 
     def __exit__(self, *args: object) -> None:
         _set_grad_enabled(self.prev)

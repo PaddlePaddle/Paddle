@@ -15,10 +15,10 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.framework import in_dynamic_or_pir_mode
 from paddle.regularizer import L2Decay
 
@@ -26,6 +26,8 @@ from ..base import core, framework
 from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from typing_extensions import NotRequired
 
     from paddle import Tensor
@@ -271,7 +273,8 @@ class Momentum(Optimizer):
         )
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        if not isinstance(block, (framework.Block, pir.Block)):
+            raise TypeError("block is not instance of Block.")
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 

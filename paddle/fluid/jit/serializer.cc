@@ -18,7 +18,7 @@
 
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/jit/engine/interpreter_engine.h"
@@ -37,7 +37,7 @@ using FunctionInfoMap =
 
 Layer Deserializer::operator()(const std::string& path,
                                const phi::Place& place) {
-  const auto& pdmodel_paths = utils::PdmodelFilePaths(path);
+  const auto& pdmodel_paths = utils::ModelFilePaths(path);
   // set is ordered
   std::set<std::string> param_names_set;
   FunctionInfoMap info_map;

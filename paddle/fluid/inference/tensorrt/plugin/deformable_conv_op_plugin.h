@@ -20,8 +20,8 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
-#include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/cublas.h"
 
 namespace paddle {
 namespace inference {

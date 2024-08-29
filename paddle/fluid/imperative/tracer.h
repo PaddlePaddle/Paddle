@@ -23,12 +23,12 @@
 #include <vector>
 
 #include "ThreadPool.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
-#include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/utils/test_macros.h"
 
