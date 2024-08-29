@@ -524,32 +524,51 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
 def fused_ffn_pass(dense_main_program):
     # (1) Search for source pattern of ffn
     all_ops = dense_main_program.global_block().ops
-    src_pattern = {}
+    src_pattern_list = []
     for i in range(len(all_ops) - 4):
+        # find fwd pattern
         if (
             all_ops[i].name() == "pd_op.matmul"
             and all_ops[i + 1].name() == "pd_op.matmul"
             and all_ops[i + 2].name() == "pd_op.swiglu"
         ):
+            src_pattern = {}
             src_pattern['mm1'] = all_ops[i]
-            print(src_pattern['mm1'].attrs().keys())
             src_pattern['mm2'] = all_ops[i + 1]
-            print(src_pattern['mm2'].attrs().keys())
             src_pattern['swiglu'] = all_ops[i + 2]
-            print(src_pattern['swiglu'].attrs().keys())
-        if (
-            all_ops[i].name() == "pd_op.swiglu_grad"
-            and all_ops[i + 1].name() == "pd_op.matmul_grad"
-            and all_ops[i + 2].name() == "pd_op.matmul_grad"
-            and all_ops[i + 3].name() == "builtin.combine"
-            and all_ops[i + 4].name() == "pd_op.add_n"
-        ):
-            src_pattern['swiglu_g'] = all_ops[i]
-            src_pattern['mm2_g'] = all_ops[i + 1]
-            src_pattern['mm1_g'] = all_ops[i + 2]
-            src_pattern['combine'] = all_ops[i + 3]
-            src_pattern['add_n'] = all_ops[i + 4]
-    if len(src_pattern) == 0:
+            # solve bwd pattern
+            for op in src_pattern['swiglu'].operand_source(0).all_used_ops():
+                if op.name() == "pd_op.swiglu_grad":
+                    src_pattern['swiglu_g'] = op
+                    src_pattern['mm2_g'] = all_ops[all_ops.index(op) + 1]
+                    src_pattern['mm1_g'] = all_ops[all_ops.index(op) + 2]
+                    src_pattern['combine'] = all_ops[all_ops.index(op) + 3]
+                    src_pattern['add_n'] = all_ops[all_ops.index(op) + 4]
+
+                    if (
+                        src_pattern['mm2_g']
+                        .result(1)
+                        .first_use()
+                        .owner()
+                        .name()
+                        == "pd_op.cast"
+                        and src_pattern['mm2_g']
+                        .result(1)
+                        .first_use()
+                        .owner()
+                        .name()
+                        == "pd_op.cast"
+                    ):
+                        src_pattern['cast_w_up_g'] = (
+                            src_pattern['mm2_g'].result(1).first_use().owner()
+                        )
+                        src_pattern['cast_w_gate_g'] = (
+                            src_pattern['mm1_g'].result(1).first_use().owner()
+                        )
+
+            src_pattern_list.append(src_pattern)
+
+    if len(src_pattern_list) == 0:
         return
 
     # (2) Construct result pattern of ffn
@@ -561,72 +580,88 @@ def fused_ffn_pass(dense_main_program):
             stop_gradients.append([v[0].stop_gradient])
         return fwd_inputs, fwd_outputs, stop_gradients
 
-    res_pattern = paddle.static.Program()
-    with res_pattern.global_block():
-        # prepare fwd pattern
-        w_list = [
-            src_pattern['mm1'].operand_source(1),
-            src_pattern['mm2'].operand_source(1),
-        ]
-        _, fused_w = paddle._C_ops.concat_and_relocate_(w_list)
+    res_pattern_list = []
+    for src_pattern in src_pattern_list:
+        res_pattern = paddle.static.Program()
+        with res_pattern.global_block():
+            # prepare fwd pattern
+            w_list = [
+                src_pattern['mm1'].operand_source(1),
+                src_pattern['mm2'].operand_source(1),
+            ]
+            _, fused_w = paddle._C_ops.concat_and_relocate_(w_list)
 
-        fused_o = paddle.matmul(
-            src_pattern['mm1'].operand_source(0),
-            fused_w,
-            transpose_x=False,
-            transpose_y=False,
-        )
-        out = paddle.incubate.nn.functional.swiglu(fused_o)
+            fused_o = paddle.matmul(
+                src_pattern['mm1'].operand_source(0),
+                fused_w,
+                transpose_x=False,
+                transpose_y=False,
+            )
+            out = paddle.incubate.nn.functional.swiglu(fused_o)
 
-        for op in res_pattern.global_block().ops:
-            if not op.has_attr("op_role"):
-                op.op_role = 0
+            for op in res_pattern.global_block().ops:
+                if not op.has_attr("op_role"):
+                    op.op_role = 0
 
-        # prepare bwd pattern
-        swiglu_op = res_pattern.global_block().ops[-1]
-        swiglu_op.copy_attrs_from(src_pattern['swiglu'])
-        matmul_op = res_pattern.global_block().ops[-2]
-        matmul_op.copy_attrs_from(src_pattern['mm1'])
+            # prepare bwd pattern
+            swiglu_op = res_pattern.global_block().ops[-1]
+            swiglu_op.copy_attrs_from(src_pattern['swiglu'])
+            matmul_op = res_pattern.global_block().ops[-2]
+            matmul_op.copy_attrs_from(src_pattern['mm1'])
 
-        fwd_inputs, fwd_outputs, stop_gradients = prepare_for_vjp(swiglu_op)
-        paddle.framework.core.call_vjp(
-            swiglu_op,
-            fwd_inputs,
-            fwd_outputs,
-            [[src_pattern['swiglu_g'].operand_source(2)]],
-            stop_gradients,
-        )
-        swiglu_grad_op = res_pattern.global_block().ops[-1]
-        swiglu_grad_op.copy_attrs_from(src_pattern['swiglu_g'])
+            fwd_inputs, fwd_outputs, stop_gradients = prepare_for_vjp(swiglu_op)
+            paddle.framework.core.call_vjp(
+                swiglu_op,
+                fwd_inputs,
+                fwd_outputs,
+                [[src_pattern['swiglu_g'].operand_source(2)]],
+                stop_gradients,
+            )
+            swiglu_grad_op = res_pattern.global_block().ops[-1]
+            swiglu_grad_op.copy_attrs_from(src_pattern['swiglu_g'])
 
-        fwd_inputs, fwd_outputs, stop_gradients = prepare_for_vjp(matmul_op)
-        paddle.framework.core.call_vjp(
-            matmul_op,
-            fwd_inputs,
-            fwd_outputs,
-            [[res_pattern.global_block().ops[-1].result(0)]],
-            stop_gradients,
-        )
-        matmul_grad_op = res_pattern.global_block().ops[-1]
-        matmul_grad_op.copy_attrs_from(src_pattern['mm1_g'])
+            fwd_inputs, fwd_outputs, stop_gradients = prepare_for_vjp(matmul_op)
+            paddle.framework.core.call_vjp(
+                matmul_op,
+                fwd_inputs,
+                fwd_outputs,
+                [[res_pattern.global_block().ops[-1].result(0)]],
+                stop_gradients,
+            )
+            matmul_grad_op = res_pattern.global_block().ops[-1]
+            matmul_grad_op.copy_attrs_from(src_pattern['mm1_g'])
 
-        for op in res_pattern.global_block().ops:
-            if not op.has_attr("op_role"):
-                op.op_role = 1
+            cast_op = None
+            if "cast_w_up_g" in src_pattern and "cast_w_gate_g" in src_pattern:
+                y = paddle.cast(matmul_grad_op.result(1), 'float32')
+                cast_op = res_pattern.global_block().ops[-1]
+                cast_op.copy_attrs_from(src_pattern['cast_w_gate_g'])
 
-        # prepare opt pattern
-        w_gate, w_up = paddle.split(fused_w, num_or_sections=2, axis=1)
-        w_gate_g, w_up_g = paddle.split(
-            matmul_grad_op.result(1), num_or_sections=2, axis=1
-        )
+            for op in res_pattern.global_block().ops:
+                if not op.has_attr("op_role"):
+                    op.op_role = 1
 
-        for op in res_pattern.global_block().ops:
-            if not op.has_attr("op_role"):
-                op.op_role = 2
+            # prepare opt pattern
+            w_gate, w_up = paddle.split(fused_w, num_or_sections=2, axis=1)
+
+            if cast_op is None:
+                w_gate_g, w_up_g = paddle.split(
+                    matmul_grad_op.result(1), num_or_sections=2, axis=1
+                )
+            else:
+                w_gate_g, w_up_g = paddle.split(
+                    cast_op.result(0), num_or_sections=2, axis=1
+                )
+
+            for op in res_pattern.global_block().ops:
+                if not op.has_attr("op_role"):
+                    op.op_role = 2
+
+        res_pattern_list.append(res_pattern)
 
     # (3) Replace source pattern with result pattern
     print("dense_main_program: ", dense_main_program, flush=1)
-    print("res_pattern: ", res_pattern, flush=1)
+    print("res_pattern_list: ", res_pattern_list, flush=1)
 
 
 def fused_attention_qkv_pass(dense_mian_program):
