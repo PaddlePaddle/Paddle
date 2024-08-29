@@ -1591,7 +1591,7 @@ bool UnpoolOpInferSymbolicShape(pir::Operation *op,
   }
 
   const std::vector<int> &ksize = details::GetVectorAttr<int>(op, "ksize");
-  const auto &output_size = [&]() -> std::vector<symbol::DimExpr> {
+  const auto &output_size = [&]() -> std::vector<int64_t> {
     std::vector<int64_t> output_size_int_vec =
         op->attribute<paddle::dialect::IntArrayAttribute>("output_size")
             .data()
