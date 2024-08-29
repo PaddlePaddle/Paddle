@@ -536,20 +536,13 @@ void Adam(T beta1,
     mom2_out_ptr[i] =
         beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
 
-    // T mom2 = mom2_out_ptr[i];
-    T mom2 = std::max(mom2_out_ptr[i], mom2_max_out_ptr[i]);
-
-    // if (tmp > mom2_out_ptr[i]) {
-    //   std::cout << tmp << " | " << mom2_ptr[i] << " | " << mom2_out_ptr[i] <<
-    //   " | " << mom2 << std::endl; std::cout << "---------- old " <<
-    //   std::endl;
-
-    // }
-    // else {
-    //   std::cout << "---------- new " << std::endl;
-
-    // }
-    mom2_max_out_ptr[i] = mom2;
+    T mom2;
+    if (amsgrad) {
+      mom2 = std::max(mom2_out_ptr[i], mom2_max_out_ptr[i]);
+      mom2_max_out_ptr[i] = mom2;
+    } else {
+      mom2 = mom2_out_ptr[i];
+    }
 
     param_out_ptr[i] =
         param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2) + eps));
