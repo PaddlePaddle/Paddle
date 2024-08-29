@@ -302,6 +302,10 @@ void ConcatAndRelocateInferMeta(const std::vector<const MetaTensor*>& input,
                                 std::vector<MetaTensor*> output,
                                 MetaTensor* concated_out);
 
+void SplitAndRelocateInferMeta(const MetaTensor& concated_input,
+                               const std::vector<const MetaTensor*>& input,
+                               std::vector<MetaTensor*> output);
+
 void CrfDecodingInferMeta(const MetaTensor& emission,
                           const MetaTensor& transition,
                           const MetaTensor& label,

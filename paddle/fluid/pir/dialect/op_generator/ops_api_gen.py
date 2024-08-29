@@ -154,6 +154,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'hash',
     'beam_search_decode',
     'concat_and_relocate_',
+    'split_and_relocate_',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [

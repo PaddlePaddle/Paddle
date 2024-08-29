@@ -3,6 +3,16 @@
 # 2) The definitions of static graphs and dynamic graphs are inconsistent, but the final definition plan has not yet been clarified.
 # After the definition is clearly defined, migrate to paddle/phi/ops/yaml/inconsistent/update_ops.yaml or paddle/phi/ops/yaml/ops.yaml
 
+  - op: split_and_relocate_
+  args: (Tensor concated_input, Tensor[] input)
+  output: Tensor[](output){input.size()}
+  infer_meta:
+    func: SplitAndRelocateInferMeta
+  kernel:
+    func: split_and_relocate
+    data_type: input
+  inplace: (input -> output)
+
 - op : add
   args : (Tensor x, Tensor y)
   output : Tensor(out)

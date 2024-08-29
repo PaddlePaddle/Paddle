@@ -1344,6 +1344,7 @@ void ChunkEvalInferMeta(const MetaTensor& inference,
   num_label_chunks->set_dtype(phi::DataType::INT64);
   num_correct_chunks->set_dtype(phi::DataType::INT64);
 }
+
 void ConcatAndRelocateInferMeta(const std::vector<const MetaTensor*>& input,
                                 std::vector<MetaTensor*> output,
                                 MetaTensor* concated_out) {
@@ -1354,6 +1355,13 @@ void ConcatAndRelocateInferMeta(const std::vector<const MetaTensor*>& input,
     output[i]->share_lod(*input[i]);
   }
 }
+
+void SplitAndRelocateInferMeta(const MetaTensor& concated_input,
+                               const std::vector<const MetaTensor*>& input,
+                               std::vector<MetaTensor*> output) {
+  phi::SplitWithNumInferMeta(concated_input, 3, -1, output);
+}
+
 void CrfDecodingInferMeta(const MetaTensor& emission,
                           const MetaTensor& transition,
                           const MetaTensor& label,
