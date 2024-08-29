@@ -602,16 +602,11 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
 
-  # TODO(sandyhouse): fix and add the ut back
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_hallreduce")
-
   #not need
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
 
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_ctr")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_lars")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_train")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_save_load")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_text_classification")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_train")

@@ -359,13 +359,6 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_fleet_rolemaker_new MODULES test_fleet_rolemaker_new ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX OR WIN32))
-  py_test_modules(
-    test_dist_mnist_gradient_merge MODULES test_dist_mnist_gradient_merge ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_dist_mnist_gradient_merge
-                       PROPERTIES TIMEOUT "360" LABELS "RUN_TYPE=DIST")
-endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_recv_save_op MODULES test_recv_save_op ENVS
