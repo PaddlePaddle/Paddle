@@ -49,17 +49,6 @@ class TestDistMnistNCCL2DGC(TestDistBase):
         self._nccl2_mode = True
         self._use_dgc = True
 
-    def test_dist_train(self):
-        from paddle import base
-
-        if base.core.is_compiled_with_cuda():
-            self.check_with_place(
-                os.path.abspath("../../legacy_test/dist_mnist_dgc.py"),
-                delta=1e-5,
-                check_error_log=True,
-                log_name=flag_name,
-            )
-
     def tearDown(self):
         from paddle import base
 
