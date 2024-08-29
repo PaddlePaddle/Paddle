@@ -686,6 +686,7 @@ class SymbolicVariable(VariableBase):
                 [], paddle.int64, True, self.var_name, False, None, None
             )
         self.need_guard_value = False
+        self.graph.side_effects.record_mutable_variable(self)
 
     def to_constant(self):
         return ConstantVariable(
