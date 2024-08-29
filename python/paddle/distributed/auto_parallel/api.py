@@ -994,11 +994,11 @@ class _ShardOptimizer(Optimizer):
                 self._shard_fn._shard_parameter(param)
 
     def _set_and_check_sharding_prop_from_param(self):
-        if (self._shard_fn._mesh is not None) and (
-            len(self._shard_fn._mesh._shape) == 1
-        ):
-            self._sharding_degree = self._shard_fn._mesh.get_dim_size(0)
-            self._sharding_mesh_axis = 0
+        if self._shard_fn._mesh is not None:
+            self._sharding_degree = self._shard_fn._mesh.get_dim_size('dp')
+            self._sharding_mesh_axis = self._shard_fn._mesh.dim_names.index(
+                'dp'
+            )
         else:
             param_list = self._inner_opt._parameter_list
             for param in param_list:
