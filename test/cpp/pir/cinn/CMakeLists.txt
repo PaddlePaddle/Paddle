@@ -27,9 +27,8 @@ if(WITH_TESTING AND WITH_CINN)
   paddle_test(merge_parallel_matmul_pass_test SRCS
               merge_parallel_matmul_pass_test.cc)
 
-  paddle_test(
-    test_tile_config_searcher_spatial_reduce SRCS
-    tile_config_searcher_spatial_reduce_test.cc DEPS schedule_config_search)
+  paddle_test(test_tile_config_searcher SRCS tile_config_searcher_test.cc DEPS
+              schedule_config_search)
 
   paddle_test(
     test_tile_config_searcher_pure_spatial SRCS
@@ -51,7 +50,7 @@ if(WITH_TESTING AND WITH_CINN)
       test_compilation_task
       test_generate_shape_util_test
       merge_parallel_matmul_pass_test
-      test_tile_config_searcher_spatial_reduce
+      test_tile_config_searcher
       test_tile_config_searcher_pure_spatial
       test_file_tile_config)
 
