@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import inspect
+import itertools
 import operator
 import types
 from functools import reduce
@@ -29,6 +30,7 @@ import paddle
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
     get_static_function,
     is_break_graph_api,
@@ -39,8 +41,11 @@ from ....utils import (
     magic_method_builtin_dispatch,
     map_if,
 )
-from ....utils.envs import ENV_SOT_ALLOW_DYNAMIC_SHAPE
-from ....utils.exceptions import BreakGraphError, FallbackError, SotErrorBase
+from ....utils.exceptions import (
+    BreakGraphError,
+    FallbackError,
+    SotErrorBase,
+)
 from ..dispatcher import Dispatcher
 from ..guard import (
     StringifiedExpression,
@@ -637,7 +642,13 @@ class BuiltinVariable(FunctionVariable):
         # Lookup the handler from dispatcher
         handler = Dispatcher.dispatch(self.value, *args, **kwargs)
 
-        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and handler is None:
+        if handler is not None:
+            return handler(*args, **kwargs)
+
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and any(
+            isinstance(var, SymbolicVariable)
+            for var in itertools.chain(args, kwargs.values())
+        ):
             fake_args, fake_kwargs = map_if(
                 (args, kwargs),
                 pred=lambda x: isinstance(x, SymbolicVariable),
@@ -648,15 +659,35 @@ class BuiltinVariable(FunctionVariable):
                 false_fn=lambda x: x,
             )
             handler = Dispatcher.dispatch(self.value, *fake_args, **fake_kwargs)
-            args, kwargs = map_if(
-                (args, kwargs),
-                pred=lambda x: isinstance(x, SymbolicVariable),
-                true_fn=lambda x: x.to_constant(),
-                false_fn=lambda x: x,
-            )
+            if handler is not None:
+                from ..executor_cache import (
+                    OpcodeExecutorCache,
+                )
 
-        if handler is not None:
-            return handler(*args, **kwargs)
+                symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+                    self.graph.pycode_gen._origin_code
+                )
+
+                for var in itertools.chain(args, kwargs.values()):
+                    if isinstance(var, SymbolicVariable):
+                        if var.tracker.is_traceable():
+                            tracker_expr = (
+                                var.tracker.trace_value_from_frame().inlined_expr
+                            )
+                            symbolic_inputs[tracker_expr] = None
+                        else:
+                            for traceable_var in var.get_traceable_inputs():
+                                tracker_expr = (
+                                    traceable_var.tracker.trace_value_from_frame().inlined_expr
+                                )
+                                symbolic_inputs[tracker_expr] = None
+                args, kwargs = map_if(
+                    (args, kwargs),
+                    pred=lambda x: isinstance(x, SymbolicVariable),
+                    true_fn=lambda x: x.to_constant(),
+                    false_fn=lambda x: x,
+                )
+                return handler(*args, **kwargs)
 
         # Try to inline call the magic function
         magic_methods = magic_method_builtin_dispatch(self.value)
