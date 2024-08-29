@@ -733,14 +733,7 @@ bool ChunkEvalOpInferSymbolicShape(
             inference_shape));
 
     if (inference_shape.size() == 3) {
-      infer_context->AddEqualCstr(
-          inference_shape[2],
-          symbol::DimExpr(1),
-          phi::errors::InvalidArgument(
-              "When Input(SeqLength) is provided, if Input(Inference) "
-              "has dim 3, "
-              "the third dimension should be 1, but received [%s].",
-              inference_shape[2]));
+      infer_context->AddEqualCstr(inference_shape[2], symbol::DimExpr(1))
     }
 
     PADDLE_ENFORCE_LE(
