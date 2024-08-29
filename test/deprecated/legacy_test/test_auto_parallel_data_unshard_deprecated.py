@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import (
+sys.path.append("../../legacy_test")
+
+from test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
 )
 
