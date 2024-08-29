@@ -644,6 +644,13 @@ def fused_ffn_pass(dense_main_program):
             # prepare opt pattern
             w_gate, w_up = paddle.split(fused_w, num_or_sections=2, axis=1)
 
+            paddle._C_ops.assign_out_(
+                w_gate, src_pattern['mm1'].operand_source(1)
+            )
+            paddle._C_ops.assign_out_(
+                w_up, src_pattern['mm2'].operand_source(1)
+            )
+
             if cast_op is None:
                 w_gate_g, w_up_g = paddle.split(
                     matmul_grad_op.result(1), num_or_sections=2, axis=1
@@ -659,7 +666,7 @@ def fused_ffn_pass(dense_main_program):
 
         res_pattern_list.append(res_pattern)
 
-    # (3) Replace source pattern with result pattern
+    # (3) Replace source pattern with result pattern: First, insert the operators from res_pattern into the original program, and then delete the operators from src_pattern in reverse order.
     print("dense_main_program: ", dense_main_program, flush=1)
     print("res_pattern_list: ", res_pattern_list, flush=1)
 
