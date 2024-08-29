@@ -3445,12 +3445,12 @@ bool Unsqueeze_OpInferSymbolicShape(
   return UnsqueezeOpInferSymbolicShape(op, infer_context);
 }
 
-bool UnfoldOpInferSymbolicShape(pir::Operation* op,
-                                pir::InferSymbolicShapeContext* infer_context) {
-  const symbol::ShapeOrDataDimExprs& x_shape_or_data =
+bool UnfoldOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
-  const auto& x_shape = x_shape_or_data.shape();
+  const auto &x_shape = x_shape_or_data.shape();
 
   PADDLE_ENFORCE_EQ(
       x_shape.size(),
@@ -3459,13 +3459,13 @@ bool UnfoldOpInferSymbolicShape(pir::Operation* op,
           "Input should be 4-D tensor of format [N, C, H, W], but get %u",
           x_shape.size()));
 
-  const std::vector<int>& kernel_sizes =
+  const std::vector<int> &kernel_sizes =
       paddle::dialect::details::GetVectorAttr<int>(op, "kernel_sizes");
-  const std::vector<int>& strides =
+  const std::vector<int> &strides =
       paddle::dialect::details::GetVectorAttr<int>(op, "strides");
-  const std::vector<int>& paddings =
+  const std::vector<int> &paddings =
       paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  const std::vector<int>& dilations =
+  const std::vector<int> &dilations =
       paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
 
   PADDLE_ENFORCE_EQ(
@@ -3508,7 +3508,7 @@ bool UnfoldOpInferSymbolicShape(pir::Operation* op,
   out_shapes.push_back(x_shape[1] *
                        symbol::DimExpr(kernel_sizes[0] * kernel_sizes[1]));
 
-  const auto& calculate_output_dim = [&](symbol::DimExpr input_size,
+  const auto &calculate_output_dim = [&](symbol::DimExpr input_size,
                                          int padding1,
                                          int padding2,
                                          int dilation,
