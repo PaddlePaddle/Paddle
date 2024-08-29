@@ -532,8 +532,11 @@ def fused_ffn_pass(dense_main_program):
             and all_ops[i + 2].name() == "pd_op.swiglu"
         ):
             src_pattern['mm1'] = all_ops[i]
+            print(src_pattern['mm1'].attrs().keys())
             src_pattern['mm2'] = all_ops[i + 1]
+            print(src_pattern['mm2'].attrs().keys())
             src_pattern['swiglu'] = all_ops[i + 2]
+            print(src_pattern['swiglu'].attrs().keys())
         if (
             all_ops[i].name() == "pd_op.swiglu_grad"
             and all_ops[i + 1].name() == "pd_op.matmul_grad"
@@ -575,9 +578,16 @@ def fused_ffn_pass(dense_main_program):
         )
         out = paddle.incubate.nn.functional.swiglu(fused_o)
 
+        for op in res_pattern.global_block().ops:
+            if not op.has_attr("op_role"):
+                op.op_role = 0
+
         # prepare bwd pattern
         swiglu_op = res_pattern.global_block().ops[-1]
+        swiglu_op.copy_attrs_from(src_pattern['swiglu'])
         matmul_op = res_pattern.global_block().ops[-2]
+        matmul_op.copy_attrs_from(src_pattern['mm1'])
+
         fwd_inputs, fwd_outputs, stop_gradients = prepare_for_vjp(swiglu_op)
         paddle.framework.core.call_vjp(
             swiglu_op,
@@ -587,6 +597,7 @@ def fused_ffn_pass(dense_main_program):
             stop_gradients,
         )
         swiglu_grad_op = res_pattern.global_block().ops[-1]
+        swiglu_grad_op.copy_attrs_from(src_pattern['swiglu_g'])
 
         fwd_inputs, fwd_outputs, stop_gradients = prepare_for_vjp(matmul_op)
         paddle.framework.core.call_vjp(
@@ -597,12 +608,21 @@ def fused_ffn_pass(dense_main_program):
             stop_gradients,
         )
         matmul_grad_op = res_pattern.global_block().ops[-1]
+        matmul_grad_op.copy_attrs_from(src_pattern['mm1_g'])
+
+        for op in res_pattern.global_block().ops:
+            if not op.has_attr("op_role"):
+                op.op_role = 1
 
         # prepare opt pattern
         w_gate, w_up = paddle.split(fused_w, num_or_sections=2, axis=1)
         w_gate_g, w_up_g = paddle.split(
             matmul_grad_op.result(1), num_or_sections=2, axis=1
         )
+
+        for op in res_pattern.global_block().ops:
+            if not op.has_attr("op_role"):
+                op.op_role = 2
 
     # (3) Replace source pattern with result pattern
     print("dense_main_program: ", dense_main_program, flush=1)
