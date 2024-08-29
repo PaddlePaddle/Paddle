@@ -238,7 +238,8 @@ class TestModel(unittest.TestCase):
         self.fit(True)
 
     def test_fit_static(self):
-        self.fit(False)
+        if not paddle.framework.in_pir_mode():
+            self.fit(False)
 
     def test_fit_dynamic_with_tuple_input(self):
         self.fit_with_tuple_input(True)
@@ -281,65 +282,64 @@ class TestModel(unittest.TestCase):
         paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
 
-        with paddle.pir_utils.OldIrGuard():
-            net = LeNet()
-            optim_new = paddle.optimizer.Adam(
-                learning_rate=0.001, parameters=net.parameters()
-            )
-            model = Model(net, inputs=self.inputs, labels=self.labels)
-            model.prepare(
-                optim_new,
-                loss=CrossEntropyLoss(reduction="sum"),
-                metrics=Accuracy(),
-            )
-            model.fit(self.train_dataset, batch_size=64, shuffle=False)
+        net = LeNet()
+        optim_new = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=net.parameters()
+        )
+        model = Model(net, inputs=self.inputs, labels=self.labels)
+        model.prepare(
+            optim_new,
+            loss=CrossEntropyLoss(reduction="sum"),
+            metrics=Accuracy(),
+        )
+        model.fit(self.train_dataset, batch_size=64, shuffle=False)
 
-            result = model.evaluate(self.val_dataset, batch_size=64)
-            np.testing.assert_allclose(result['acc'], self.acc1)
+        result = model.evaluate(self.val_dataset, batch_size=64)
+        np.testing.assert_allclose(result['acc'], self.acc1)
 
-            model.fit(
-                self.train_dataset,
-                batch_size=64,
-                shuffle=False,
-                num_iters=num_iters,
-            )
+        model.fit(
+            self.train_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_iters=num_iters,
+        )
 
-            result = model.evaluate(
-                self.val_dataset, batch_size=64, num_iters=num_iters
-            )
+        result = model.evaluate(
+            self.val_dataset, batch_size=64, num_iters=num_iters
+        )
 
-            model.fit(self.train_dataset, batch_size=(64, 64), shuffle=False)
+        model.fit(self.train_dataset, batch_size=(64, 64), shuffle=False)
 
-            train_sampler = DistributedBatchSampler(
-                self.train_dataset,
-                batch_size=64,
-                shuffle=False,
-                num_replicas=num_replicas,
-                rank=rank,
-            )
-            val_sampler = DistributedBatchSampler(
-                self.val_dataset,
-                batch_size=64,
-                shuffle=False,
-                num_replicas=num_replicas,
-                rank=rank,
-            )
+        train_sampler = DistributedBatchSampler(
+            self.train_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank,
+        )
+        val_sampler = DistributedBatchSampler(
+            self.val_dataset,
+            batch_size=64,
+            shuffle=False,
+            num_replicas=num_replicas,
+            rank=rank,
+        )
 
-            train_loader = paddle.io.DataLoader(
-                self.train_dataset,
-                batch_sampler=train_sampler,
-                places=self.device,
-                return_list=True,
-            )
+        train_loader = paddle.io.DataLoader(
+            self.train_dataset,
+            batch_sampler=train_sampler,
+            places=self.device,
+            return_list=True,
+        )
 
-            val_loader = paddle.io.DataLoader(
-                self.val_dataset,
-                batch_sampler=val_sampler,
-                places=self.device,
-                return_list=True,
-            )
+        val_loader = paddle.io.DataLoader(
+            self.val_dataset,
+            batch_sampler=val_sampler,
+            places=self.device,
+            return_list=True,
+        )
 
-            model.fit(train_loader, val_loader)
+        model.fit(train_loader, val_loader)
         base.disable_dygraph() if dynamic else None
 
     def fit_with_tuple_input(self, dynamic, num_replicas=None, rank=None):
