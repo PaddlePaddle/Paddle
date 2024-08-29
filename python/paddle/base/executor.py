@@ -74,7 +74,7 @@ InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 
 
-def global_scope() -> core.Scope:
+def global_scope() -> core._Scope:
     """
     :api_attr: Static Graph
 
@@ -96,7 +96,7 @@ def global_scope() -> core.Scope:
     return g_scope
 
 
-def _switch_scope(scope: core.Scope) -> core.Scope:
+def _switch_scope(scope: core._Scope) -> core._Scope:
     global g_scope
     ex = g_scope
     g_scope = scope
@@ -104,7 +104,7 @@ def _switch_scope(scope: core.Scope) -> core.Scope:
 
 
 @signature_safe_contextmanager
-def scope_guard(scope: core.Scope) -> Generator[None, None, None]:
+def scope_guard(scope: core._Scope) -> Generator[None, None, None]:
     """
 
     This function switches scope through python `with` statement.
@@ -615,7 +615,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
     Args:
         name(str): name of the variable. Typically, only persistable variables
             can be found in the scope used for running the program.
-        scope(core.Scope|None): scope object. It should be the scope where
+        scope(core._Scope|None): scope object. It should be the scope where
             you pass to Executor.run() when running your program.
             If None, global_scope() will be used. Default None.
         return_numpy(bool): whether convert the tensor to numpy.ndarray.
@@ -1704,7 +1704,7 @@ class Executor:
         fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
-        scope: core.Scope | None = ...,
+        scope: core._Scope | None = ...,
         return_numpy: Literal[True] = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
@@ -1718,7 +1718,7 @@ class Executor:
         fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
-        scope: core.Scope | None = ...,
+        scope: core._Scope | None = ...,
         return_numpy: Literal[False] = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
@@ -1732,7 +1732,7 @@ class Executor:
         fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
-        scope: core.Scope | None = ...,
+        scope: core._Scope | None = ...,
         return_numpy: bool = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
@@ -3183,7 +3183,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = None,
         dataset: DatasetBase | _FleetDatasetBase | None = None,
-        scope: core.Scope | None = None,
+        scope: core._Scope | None = None,
         thread: int = 0,
         debug: bool = False,
         fetch_list: list[Tensor] | None = None,
@@ -3261,7 +3261,7 @@ class Executor:
     def start_heter_trainer(
         self,
         program: Program | None = None,
-        scope: core.Scope | None = None,
+        scope: core._Scope | None = None,
         debug: bool = False,
         fetch_list: list[Tensor] | None = None,
         fetch_info: list[str] | None = None,
@@ -3306,7 +3306,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = None,
         dataset: DatasetBase | _FleetDatasetBase | None = None,
-        scope: core.Scope | None = None,
+        scope: core._Scope | None = None,
         thread: int = 0,
         debug: bool = False,
         fetch_list: list[Tensor] | None = None,
