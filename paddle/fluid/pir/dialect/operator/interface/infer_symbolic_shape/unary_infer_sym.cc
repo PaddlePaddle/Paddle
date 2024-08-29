@@ -492,18 +492,23 @@ bool Cast_OpInferSymbolicShape(pir::Operation *op,
 
 bool CheckNumericsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &tensor_shape =
+  const symbol::ShapeOrDataDimExprs &tensor_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
-  symbol::TensorShapeOrDataDimExprs stats_shape(
-      std::vector<symbol::DimExpr>{symbol::DimExpr(3)});
-  symbol::TensorShapeOrDataDimExprs values_shape(
-      std::vector<symbol::DimExpr>{symbol::DimExpr(3)});
+  const std::vector<symbol::DimExpr> &tensor_shape =
+      tensor_shape_or_data.shape();
 
+  std::vector<symbol::DimExpr> stats_dims = {symbol::DimExpr(3)};
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::ShapeOrDataDimExprs{stats_shape});
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(stats_dims)});
+
+  std::vector<symbol::DimExpr> values_dims = {symbol::DimExpr(3)};
   infer_context->SetShapeOrDataForValue(
-      op->result(1), symbol::ShapeOrDataDimExprs{values_shape});
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(values_dims)});
 
   return true;
 }
