@@ -52,9 +52,9 @@ std::string PrintFusionIters(const FusionIters& iters) {
 std::string FusionItersSignature::DebugStr() const {
   std::stringstream ss;
   ss << "FusionIters Signature:";
-  ss << "\n    loop: " << PrintFusionIters(loop_iters);
+  ss << "\n    loop    : " << PrintFusionIters(loop_iters);
   for (size_t i = 0; i < input_iters.size(); ++i) {
-    ss << "\n    input " << i << ": " << PrintFusionIters(input_iters[i]);
+    ss << "\n    input  " << i << ": " << PrintFusionIters(input_iters[i]);
   }
   for (size_t i = 0; i < output_iters.size(); ++i) {
     ss << "\n    output " << i << ": " << PrintFusionIters(output_iters[i]);
@@ -62,23 +62,23 @@ std::string FusionItersSignature::DebugStr() const {
   return ss.str();
 }
 
-FusionItersSignature FuseItersForTrivialSink(PatternNodePtr upstream,
-                                             PatternNodePtr downstream) {
-  VLOG(4) << "[ItersFusion] Start FuseItersForTrivialSink.";
-  PADDLE_ENFORCE_EQ(GetPatternName(upstream->stmt_pattern()),
-                    TrivialPattern::name(),
-                    ::common::errors::InvalidArgument(
-                        "The upstream pattern should be TrivialPattern."));
+FusionItersSignature SingleDownstreamItersFusion(PatternNodePtr upstream,
+                                                 PatternNodePtr downstream,
+                                                 bool is_sink) {
+  VLOG(4) << "[ItersFusion] Start SingleDownstreamItersFusion.";
+  VLOG(4) << "[ItersFusion] Upstream " << upstream->fusion_iters().DebugStr();
+  VLOG(4) << "[ItersFusion] Downstream "
+          << downstream->fusion_iters().DebugStr();
   auto upstream_iters = upstream->fusion_iters();
   auto downstream_iters = downstream->fusion_iters();
-  PADDLE_ENFORCE_EQ(
-      upstream_iters.output_iters.size(),
-      1,
-      ::common::errors::InvalidArgument(
-          "The number of upstream outputs in TrivialSink should be 1."));
+  PADDLE_ENFORCE_EQ(upstream_iters.output_iters.size(),
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "The number of upstream outputs should be 1."));
 
   FusionItersSignature fused_iters;
-  fused_iters.loop_iters = downstream_iters.loop_iters;
+  fused_iters.loop_iters =
+      is_sink ? downstream_iters.loop_iters : upstream_iters.loop_iters;
   fused_iters.output_values = downstream_iters.output_values;
   fused_iters.output_iters = downstream_iters.output_iters;
 
@@ -94,7 +94,8 @@ FusionItersSignature FuseItersForTrivialSink(PatternNodePtr upstream,
       fused_iters.input_values.push_back(downstream_iters.input_values[i]);
     }
   }
-  VLOG(4) << "[ItersFusion] End FuseItersForTrivialSink.";
+  VLOG(4) << "[ItersFusion] Merged " << fused_iters.DebugStr();
+  VLOG(4) << "[ItersFusion] End SingleDownstreamItersFusion.";
   return fused_iters;
 }
 

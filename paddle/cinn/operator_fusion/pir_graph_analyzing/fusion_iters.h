@@ -33,7 +33,8 @@ struct FusionItersSignature {
 
 class PatternNode;
 using PatternNodePtr = std::shared_ptr<PatternNode>;
-FusionItersSignature FuseItersForTrivialSink(PatternNodePtr upstream,
-                                             PatternNodePtr downstream);
+FusionItersSignature SingleDownstreamItersFusion(PatternNodePtr upstream,
+                                                 PatternNodePtr downstream,
+                                                 bool is_sink);
 
 }  // namespace cinn::fusion

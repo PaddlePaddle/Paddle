@@ -156,15 +156,17 @@ class TestAnchorFusion(unittest.TestCase):
         self.compare_result(func, None, init)
 
     def test_shardable_axes(self):
-        #    T   T
-        #     \ /
-        #      T
-        #      |
-        #  Transpose
-        #     / \
-        #    S   R
-        #   /     \
-        #  B       B
+        #     T   T
+        #      \ /
+        #       T
+        #       |
+        #   Transpose
+        #      / \
+        #     S   R
+        #    /     \
+        #   B       B
+        #            \
+        #             R
         def func(x, y):
             a = x + 1
             b = y * 2
@@ -173,8 +175,9 @@ class TestAnchorFusion(unittest.TestCase):
             e = d[0, :]
             f = paddle.expand(e, [16, 16])
             g = paddle.max(d, axis=0)
-            h = paddle.expand(g, [16, 16])
-            return f, h
+            h = paddle.expand(g, [32, 16])
+            i = paddle.sum(h, axis=0)
+            return f, i
 
         def init():
             x = paddle.rand((16, 32))
