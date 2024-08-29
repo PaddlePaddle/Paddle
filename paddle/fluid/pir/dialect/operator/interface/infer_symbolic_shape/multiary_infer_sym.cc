@@ -733,7 +733,7 @@ bool ChunkEvalOpInferSymbolicShape(
             inference_shape));
 
     if (inference_shape.size() == 3) {
-      infer_context->Addequalcstr(
+      infer_context->AddEqualCstr(
           inference_shape[2],
           symbol::DimExpr(1),
           phi::errors::InvalidArgument(
