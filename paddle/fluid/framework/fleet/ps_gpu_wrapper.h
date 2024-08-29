@@ -192,9 +192,9 @@ class AfsWrapper {
 
   std::string Cat(const std::string& path) {
     size_t file_len = 0;
-    const char* ret = phi::dynload::afs_cat(handle_, path.c_str(), &file_len);
+    char* ret = phi::dynload::afs_cat(handle_, path.c_str(), &file_len);
     auto ret_str = std::string(ret, file_len);
-    phi::dynload::afs_free(const_cast<char*>(ret));
+    phi::dynload::afs_free(reinterpret_cast<void*>(ret));
     return ret_str;
   }
 
