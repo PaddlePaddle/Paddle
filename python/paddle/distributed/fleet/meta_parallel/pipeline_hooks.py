@@ -28,9 +28,9 @@ class BubbleHook:
     def register_hook(self, bubble_id: int, hook: Callable):
         self.hooks[bubble_id].append(hook)
 
-    def run_hook(self, bubble_id: int, **kwargs):
+    def run_hook(self, bubble_id: int):
         if bubble_id not in self.hooks:
             return
 
         for hook in self.hooks[bubble_id]:
-            hook(**kwargs)
+            hook(bubble_id)
