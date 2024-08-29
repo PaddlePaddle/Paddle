@@ -522,7 +522,7 @@ def pipeline_pass(dense_main_program, dense_starup_program, pipeline_strategy):
 # (-) = "pd_op.assign_out_" (w2_tmp, w2)
 # (w2_g, w1_g) = "pd_op.split" (fused_ffn_w_g, 2)
 def fused_ffn_pass(dense_main_program):
-    # (1) 找到前向、反向pattern
+    # (1) Search for source pattern of ffn
     all_ops = dense_main_program.global_block().ops
     fwd_ffn_ops = []
     bwd_ffn_ops = []
@@ -550,7 +550,6 @@ def fused_ffn_pass(dense_main_program):
     if len(fwd_ffn_ops) == 0 or len(bwd_ffn_ops) == 0:
         return
 
-    # (2) 根据找到的前反向 pattern 插入融合后的子图
     ffn_values = {}
     ffn_values['in'] = fwd_ffn_ops[0].operand_source(0)
     ffn_values['w_gate'] = fwd_ffn_ops[0].operand_source(1)
@@ -561,6 +560,7 @@ def fused_ffn_pass(dense_main_program):
     ffn_values['w_gate_g'] = bwd_ffn_ops[2].result(1)
     ffn_values['in_g'] = bwd_ffn_ops[4].result(0)
 
+    # (2) Construct result pattern of ffn
     def prepare_for_vjp(fwd_op):
         fwd_inputs = [[value] for value in fwd_op.operands_source()]
         fwd_outputs = [[value] for value in fwd_op.results()]
@@ -609,7 +609,7 @@ def fused_ffn_pass(dense_main_program):
             matmul_grad_op.result(1), num_or_sections=2, axis=1
         )
 
-    # (3) 删除融合前的子图
+    # (3) Replace source pattern with result pattern
     print("dense_main_program: ", dense_main_program, flush=1)
     print("tmp_program: ", tmp_program, flush=1)
 
