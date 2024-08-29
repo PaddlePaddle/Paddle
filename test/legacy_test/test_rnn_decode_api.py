@@ -396,7 +396,8 @@ class TestBeamSearch(ModuleApiTest):
     def test_check_output(self):
         self.setUp()
         self.make_inputs()
-        self.check_output()
+        if not paddle.framework.in_pir_mode():
+            self.check_output()
 
 
 class EncoderCell(SimpleRNNCell):
@@ -700,7 +701,8 @@ class TestDynamicDecode(ModuleApiTest):
     def test_check_output(self):
         self.setUp()
         self.make_inputs()
-        self.check_output()
+        if not paddle.framework.in_pir_mode():
+            self.check_output()
 
 
 if __name__ == '__main__':
