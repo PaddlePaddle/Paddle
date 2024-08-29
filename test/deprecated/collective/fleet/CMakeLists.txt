@@ -12,14 +12,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 
-if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
-  py_test_modules(
-    test_fleet_utils MODULES test_fleet_utils ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_fleet_utils PROPERTIES TIMEOUT "120" LABELS
-                                                   "RUN_TYPE=DIST")
-endif()
-
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_meta_optimizer_base_deprecated MODULES
