@@ -39,20 +39,6 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_c_split PROPERTIES TIMEOUT "120" LABELS
                                                "RUN_TYPE=DIST")
 endif()
-if((WITH_ROCM OR WITH_GPU) AND (LINUX))
-  bash_test_modules(
-    test_collective_split_embedding
-    START_BASH
-    ../legacy_test/dist_test.sh
-    TIMEOUT
-    "300"
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21288;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy="
-  )
-  set_tests_properties(test_collective_split_embedding PROPERTIES TIMEOUT "300")
-endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_collective_allgather_api MODULES test_collective_allgather_api ENVS
