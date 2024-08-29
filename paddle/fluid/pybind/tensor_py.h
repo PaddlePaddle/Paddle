@@ -398,7 +398,7 @@ void SetTensorFromPyArrayT(
       self->ResetHolderWithType(holder, framework::TransToPhiDataType(type));
     } else {
       auto dst = self->mutable_data<T>(place);
-      std::memcpy(dst, array.data(), array.nbytes());
+      std::memcpy(dst, array.data(), array.size()*sizeof(T));
     }
   } else if (paddle::platform::is_xpu_place(place)) {
 #ifdef PADDLE_WITH_XPU
@@ -427,10 +427,10 @@ void SetTensorFromPyArrayT(
       // IPU does not store Tensor data, Tensor will be created on CPU
       if (!self->initialized()) {
         auto dst = self->mutable_data<T>(place);
-        std::memcpy(dst, array.data(), array.nbytes());
+        std::memcpy(dst, array.data(), array.size()*sizeof(T));
       } else {
         auto dst = self->mutable_data<T>(self->place());
-        std::memcpy(dst, array.data(), array.nbytes());
+        std::memcpy(dst, array.data(), array.size()*sizeof(T));
       }
     }
 #else
@@ -473,7 +473,7 @@ void SetTensorFromPyArrayT(
 
     } else if (paddle::platform::is_cuda_pinned_place(place)) {
       auto dst = self->mutable_data<T>(place);
-      std::memcpy(dst, array.data(), array.nbytes());
+      std::memcpy(dst, array.data(), array.size()*sizeof(T));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Incompatible place type: Tensor.set() supports "
