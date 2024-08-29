@@ -389,39 +389,6 @@ void Compiler::RegisterHipModuleSymbol() {
 #endif
 }
 
-void Compiler::RegisterHipModuleSymbol() {
-#ifdef CINN_WITH_HIP
-  hiprtc::Compiler compiler;
-  std::string source_code =
-      hip::CodeGenHipDevice::GetSourceHeader() + device_fn_code_;
-  std::string hsaco = compiler(source_code);
-  PADDLE_ENFORCE_EQ(
-      !hsaco.empty(),
-      true,
-      phi::errors::Fatal("Compile hsaco failed from source code:\n%s",
-                         source_code));
-  using runtime::hip::HIPModule;
-  hip_module_.reset(new HIPModule(hsaco));
-  // get device id
-  using cinn::runtime::BackendAPI;
-  int device_id = BackendAPI::get_backend(target_)->get_device();
-  // register kernel
-  RuntimeSymbols symbols;
-  for (const auto& kernel_fn_name : device_fn_name_) {
-    auto fn_kernel = hip_module_->GetFunction(device_id, kernel_fn_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        fn_kernel,
-        phi::errors::Fatal("HIP GetFunction Error: get valid kernel."));
-    fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
-    symbols.RegisterVar(kernel_fn_name + "_ptr_",
-                        reinterpret_cast<void*>(fn_kernel));
-  }
-  engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
-#else
-  CINN_NOT_IMPLEMENTED
-#endif
-}
-
 void Compiler::CompileCudaModule(const Module& module,
                                  const std::string& code) {
 #ifdef CINN_WITH_CUDA
