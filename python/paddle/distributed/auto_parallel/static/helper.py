@@ -380,6 +380,7 @@ class ProgramHelper:
                     i
                 ].name
 
+        is_comm = False
         for param in dy_params:
             if param.is_dist():
                 process_mesh, dims_mapping = self._all_params_dist_attr[
@@ -388,7 +389,7 @@ class ProgramHelper:
                 var_dist_attr = TensorDistAttr()
                 var_dist_attr.process_mesh = process_mesh
                 var_dist_attr.dims_mapping = dims_mapping
-
+                is_comm = True
                 with paddle.no_grad():
                     tmp = paddle.base.core.reshard(param, var_dist_attr)
                 if tmp._is_initialized():
@@ -436,6 +437,19 @@ class ProgramHelper:
                 pir_scope_param._share_data_with(
                     param.get_tensor().get_tensor()
                 )
+
+        world_group = get_world_process_group()
+        if (
+            is_comm
+            and world_group.nranks > 1
+            and paddle.distributed.get_world_size() > 1
+        ):
+            paddle.disable_static()
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', 0
+            )
+            paddle.enable_static()
 
     def init(self, main_program, place, dist_context):
         if self.lazy_init:
@@ -579,7 +593,7 @@ class ProgramHelper:
             )
             paddle.enable_static()
 
-    def save_all_params_dist_attr(self, all_params):
+    def cache_whole_graph_dist_attr(self, all_params):
         for param_value in all_params:
             dist_attr = param_value.dist_attr()
             if dist_attr:

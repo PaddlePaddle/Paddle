@@ -158,7 +158,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                     w_job.set_micro_batch_id(micro_batch_id)
                     job_list.append(w_job)
         job_types = [job.type() for job in job_list]
-        logger.debug(f"The VPP job list: {job_types}")
+        print(f"The VPP job list: {job_types}")
         opt_job = core.Job(OPT)
         job_list.append(opt_job)
         return job_list
@@ -326,5 +326,8 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             logger.debug(
                 f"type = {types[i]}, sub_programs = {sub_program_list[i]}\n"
             )
+
+        for type, sub_program in zip(types, sub_program_list):
+            print(type, sub_program)
 
         return types, sub_program_list

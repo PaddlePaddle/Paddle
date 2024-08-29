@@ -845,9 +845,11 @@ class Engine:
         apply_reshard_pass(dist_program, params_grads)
         # print('after reshard', dist_program, flush=1)
 
-        self.program_helper.save_all_params_dist_attr(
-            dist_program.global_block().all_parameters()
-        )
+        # Note(luchang): When using VPP pipeline pass, we need to split the whole graph into
+        # multiple chunks and adjust the process mesh accordingly. Here, we need to store the
+        # distributed information of the entire graph for later resharding of the dynamic graph parameters.
+        self.program_helper.cache_whole_graph_dist_attr(dist_program)
+
         remove_other_rank_input_output_pass(dist_program)
         # print(
         #     'after remove_other_rank_input_output_pass', dist_program, flush=1
@@ -944,6 +946,66 @@ class Engine:
                 jobs,
             )
             self._job_plan = core.Plan(jobs, type_to_program)
+
+        # if self._strategy.pipeline.schedule_mode == "VPP":
+        #     forward0_program = self._job_plan.ir_program("forward0")
+        #     backward1_program = self._job_plan.ir_program("backward1")
+        #     forward1_program = self._job_plan.ir_program("forward1")
+        # else:
+        #     forward0_program = self._job_plan.ir_program("forward")
+        # for op in forward0_program.global_block().ops:
+        #     paddle.pir.set_insertion_point(op)
+        #     for i, operand_source in enumerate(op.operands_source()):
+        #         if operand_source.is_dist_dense_tensor_type() or operand_source.is_selected_row_type() or operand_source.is_dense_tensor_array_type() or operand_source.is_dense_tensor_type():
+        #             if operand_source.has_name:
+        #                 value_name = operand_source.name
+        #             else:
+        #                 value_name = f"%{operand_source.id}"
+        #             paddle.static.Print(operand_source, message=f"[forward0] source[{i}] {op.name()}[{value_name}]:")
+        #     paddle.pir.set_insertion_point_after(op)
+        #     for i, result in enumerate(op.results()):
+        #         if result.is_dist_dense_tensor_type() or result.is_selected_row_type() or result.is_dense_tensor_array_type() or result.is_dense_tensor_type():
+        #             if result.has_name:
+        #                 value_name = f"%{result.name}"
+        #             else:
+        #                 value_name = f"%{result.id}"
+        #             paddle.static.Print(result, message=f"[forward0] result[{i}] {op.name()}[{value_name}]:")
+
+        # for op in forward1_program.global_block().ops:
+        #     paddle.pir.set_insertion_point(op)
+        #     for i, operand_source in enumerate(op.operands_source()):
+        #         if operand_source.is_dist_dense_tensor_type() or operand_source.is_selected_row_type() or operand_source.is_dense_tensor_array_type() or operand_source.is_dense_tensor_type():
+        #             if operand_source.has_name:
+        #                 value_name = operand_source.name
+        #             else:
+        #                 value_name = f"%{operand_source.id}"
+        #             paddle.static.Print(operand_source, message=f"[forward1] source[{i}] {op.name()}[{value_name}]:")
+        #     paddle.pir.set_insertion_point_after(op)
+        #     for i, result in enumerate(op.results()):
+        #         if result.is_dist_dense_tensor_type() or result.is_selected_row_type() or result.is_dense_tensor_array_type() or result.is_dense_tensor_type():
+        #             if result.has_name:
+        #                 value_name = f"%{result.name}"
+        #             else:
+        #                 value_name = f"%{result.id}"
+        #             paddle.static.Print(result, message=f"[forward1] result[{i}] {op.name()}[{value_name}]:")
+
+        # for op in backward1_program.global_block().ops:
+        #     paddle.pir.set_insertion_point(op)
+        #     for i, operand_source in enumerate(op.operands_source()):
+        #         if operand_source.is_dist_dense_tensor_type() or operand_source.is_selected_row_type() or operand_source.is_dense_tensor_array_type() or operand_source.is_dense_tensor_type():
+        #             if operand_source.has_name:
+        #                 value_name = operand_source.name
+        #             else:
+        #                 value_name = f"%{operand_source.id}"
+        #             paddle.static.Print(operand_source, message=f"[backward1] source[{i}] {op.name()}[{value_name}]:")
+        #     paddle.pir.set_insertion_point_after(op)
+        #     for i, result in enumerate(op.results()):
+        #         if result.is_dist_dense_tensor_type() or result.is_selected_row_type() or result.is_dense_tensor_array_type() or result.is_dense_tensor_type():
+        #             if result.has_name:
+        #                 value_name = f"%{result.name}"
+        #             else:
+        #                 value_name = f"%{result.id}"
+        #             paddle.static.Print(result, message=f"[backward1] result[{i}] {op.name()}[{value_name}]:")
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
@@ -1362,6 +1424,7 @@ class Engine:
 
                 for del_op in del_ops:
                     del_op.erase()
+                print(startup_prog, 11112222)
                 self._executor.run(startup_prog)
                 if self._job_plan is not None:
                     # pipeline scheduling should be enabled after running
@@ -2135,12 +2198,33 @@ class Engine:
             loss_value = program_for_executor.get_output_value_by_name(
                 self._loss_names[0]
             )
+            param_names = []
             if paddle.pir.is_fake_value(loss_value):
                 no_fetch = True
                 fetch_names = []
             else:
                 fetch_names = [loss_value]
+                param_names.append('loss_0')
             fetch_names += self._pir_fetch_values
+
+            if self._strategy.pipeline.schedule_mode == "VPP":
+                forward0_program = self._job_plan.ir_program("forward0")
+            else:
+                forward0_program = self._job_plan.ir_program("forward")
+
+            new_fetch_names = []
+            for op in forward0_program.global_block().ops:
+                if op.name() == "builtin.shadow_output":
+                    new_fetch_names.append(op.operand_source(0))
+
+            for param_value in new_fetch_names:
+                # value = forward0_program.get_output_value_by_name(name)
+                value = param_value
+                if value is None:
+                    continue
+                if not paddle.pir.is_fake_value(value):
+                    fetch_names.append(value)
+                    param_names.append(value.name)
 
         outs = self._executor.run(
             self.main_program,
@@ -2149,6 +2233,22 @@ class Engine:
             use_program_cache=use_cache,
             return_numpy=self._strategy.return_numpy,
         )
+
+        for i, item in enumerate(outs):
+            print(param_names[i], item)
+
+        print("param_names:", param_names)
+        sames = []
+        for i, item in enumerate(outs):
+            is_same = True
+            val = item[0]
+            for j in range(1, len(item)):
+                if not np.array_equal(val, item[j]):
+                    is_same = False
+                    break
+            print(param_names[i], is_same)
+            sames.append(is_same)
+        print("sames", sames)
 
         if self._in_pir_mode:
             if no_fetch:

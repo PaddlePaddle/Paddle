@@ -779,8 +779,8 @@ def complete_chunk_id(dist_program, pipeline_strategy):
 
             is_seg_op = _extract_seg_method(ops[idx], seg_method) is not None
             for sub_block in ops[idx].blocks():
-                if len(sub_block.ops) > 0:
-                    pass
+                # TODO(luchang): support condition block
+                pass
 
             _set_process_mesh_and_chunk_id(
                 ops[idx],
