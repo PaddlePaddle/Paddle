@@ -667,7 +667,7 @@ if((WITH_GPU OR WITH_XPU) AND (LINUX))
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21270;http_proxy=;https_proxy=")
+    "PADDLE_DIST_UT_PORT=21270;http_proxy=;https_proxy=;FLAGS_enable_pir_api=0")
   set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT "120")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
