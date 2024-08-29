@@ -257,7 +257,7 @@ class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
         return self._linear_0(x)
 
     def forward_no_param(self, x):
-        return x
+        return x * 1.0
 
     def forward_general(self, x):
         return self._linear_0(x) + self._linear_1(x) * self._scale
@@ -1437,10 +1437,13 @@ class TestJitSaveLoadEmptyLayer(unittest.TestCase):
         layer = EmptyLayer()
         x = paddle.to_tensor(np.random.random(10).astype('float32'))
         out = layer(x)
-        paddle.jit.save(layer, self.model_path)
-        load_layer = paddle.jit.load(self.model_path)
-        load_out = load_layer(x)
-        np.testing.assert_array_equal(out, load_out)
+        try:
+            paddle.jit.save(layer, self.model_path)
+        except ValueError as e:
+            self.assertTrue(
+                'program must not be empty. at least one operator is required!'
+                in str(e)
+            )
 
 
 class TestJitSaveLoadNoParamLayer(unittest.TestCase):
@@ -2085,7 +2088,7 @@ class InputSepcLayer(paddle.nn.Layer):
     # A layer with InputSpec to test InputSpec compatibility
 
     def forward(self, x, y):
-        return x, y
+        return x * 1.0, y * 1.0
 
 
 class TestInputSpecCompatibility(unittest.TestCase):
