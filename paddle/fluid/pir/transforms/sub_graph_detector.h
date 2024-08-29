@@ -23,7 +23,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#endif
 #include "paddle/pir/include/core/builder.h"
 
 namespace pir {
@@ -59,6 +61,7 @@ class SubgraphDetector {
   bool IsDependencySimplify(const SubGraphPtr& producer_g,
                             const SubGraphPtr& consumer,
                             const std::unordered_set<SubGraphPtr>& consumers);
+  void SetCanApplyFusionMap();
 
  private:
   pir::Block* block_;
@@ -68,6 +71,8 @@ class SubgraphDetector {
   std::unordered_map<pir::Operation*, size_t> op2id_;
   std::vector<SubGraphPtr> subgraph_list_;
   std::unordered_map<pir::Operation*, SubGraphPtr> subgraph_map_;
+  std::unordered_map<pir::Operation*, std::unordered_map<pir::Operation*, bool>>
+      can_apply_fusion_map_;
 };
 
 std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops);

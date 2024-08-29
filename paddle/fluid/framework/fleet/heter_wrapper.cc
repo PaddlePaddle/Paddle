@@ -98,7 +98,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname,
   for (auto& dim : common::vectorize(tensor->dims())) {
     req_var->add_dims(dim);
   }
-  const framework::LoD lod = tensor->lod();
+  const phi::LoD lod = tensor->lod();
   if (lod.size() > 0) {
     req_var->set_lod_level(lod.size());
     for (auto& each : lod) {
@@ -243,7 +243,7 @@ framework::proto::VarType::Type HeterWrapper::ToVarType(
     case VariableMessage::BOOL:
       return framework::proto::VarType::BOOL;  // NOLINT
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "ToVarType:Unsupported type %d", type));
   }
 }

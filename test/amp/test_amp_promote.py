@@ -94,14 +94,15 @@ class TestStaticAmpPromoteStats(AmpTestBase):
             "reduce_mean": 0,
             "adamw": 0,
         }
-        self.check_promote_results(
-            True,
-            'float16',
-            'O1',
-            use_promote=True,
-            expected_op_calls=expected_fp16_calls,
-            debug_info="TestStaticAmpPromoteStats/test_static_amp_o1",
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self.check_promote_results(
+                True,
+                'float16',
+                'O1',
+                use_promote=True,
+                expected_op_calls=expected_fp16_calls,
+                debug_info="TestStaticAmpPromoteStats/test_static_amp_o1",
+            )
 
     def test_static_amp_o2(self):
         expected_fp16_calls = {
@@ -113,14 +114,15 @@ class TestStaticAmpPromoteStats(AmpTestBase):
             "reduce_mean": 1,
             "adamw": 4,
         }
-        self.check_promote_results(
-            True,
-            'float16',
-            'O2',
-            use_promote=True,
-            expected_op_calls=expected_fp16_calls,
-            debug_info="TestStaticAmpPromoteStats/test_static_amp_o2",
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self.check_promote_results(
+                True,
+                'float16',
+                'O2',
+                use_promote=True,
+                expected_op_calls=expected_fp16_calls,
+                debug_info="TestStaticAmpPromoteStats/test_static_amp_o2",
+            )
 
 
 @unittest.skipIf(

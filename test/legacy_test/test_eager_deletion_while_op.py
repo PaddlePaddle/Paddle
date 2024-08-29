@@ -33,9 +33,13 @@ base.core._set_eager_deletion_mode(0.0, 1.0, True)
 class TestEagerDeletionWhileOpBase(unittest.TestCase):
     @test_with_pir_api
     def test_main(self):
-        places = [
-            core.CPUPlace(),
-        ]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 

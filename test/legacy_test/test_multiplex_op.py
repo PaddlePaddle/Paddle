@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestMultiplexOp(OpTest):
@@ -95,6 +96,7 @@ class TestMultiplexOp_complex128(TestMultiplexOp):
 
 
 class TestMultiplexOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with base.program_guard(base.Program(), base.Program()):
             x1 = paddle.static.data(name='x1', shape=[None, 2], dtype='int64')

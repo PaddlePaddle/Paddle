@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -36,7 +37,13 @@ def rms_norm(weight, hidden):
     return hidden * weight
 
 
-places = [paddle.CPUPlace()]
+places = []
+if (
+    os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+    in ['1', 'true', 'on']
+    or not paddle.is_compiled_with_cuda()
+):
+    places.append(paddle.CPUPlace())
 if paddle.is_compiled_with_cuda():
     places.append(paddle.CUDAPlace(0))
 
@@ -68,9 +75,11 @@ class TestAutoRecomputeRmsNorm(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.inputs = [
-            x.astype(cls.dtype)
-            if cls.dtype != "bfloat16"
-            else x.astype("float32")
+            (
+                x.astype(cls.dtype)
+                if cls.dtype != "bfloat16"
+                else x.astype("float32")
+            )
             for x in cls.inputs
         ]
         core._set_prim_all_enabled(True)

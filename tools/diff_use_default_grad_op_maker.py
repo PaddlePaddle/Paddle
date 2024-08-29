@@ -30,7 +30,7 @@ def generate_spec(filename):
 
 def read_spec(filename):
     with open(filename, 'r') as f:
-        return {line.strip() for line in f.readlines()}
+        return {line.strip() for line in f}
 
 
 def get_spec_diff(dev_filename, pr_filename):

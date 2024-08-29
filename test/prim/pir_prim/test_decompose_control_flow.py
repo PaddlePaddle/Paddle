@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import pathlib
 import sys
 import unittest
@@ -82,7 +83,13 @@ class TestPrimControlFlowIf(unittest.TestCase):
         self.shape_y = [8, 16, 32]
         self.x_np = np.random.random(self.shape_x).astype("float32")
         self.y_np = np.random.random(self.shape_y).astype("float32")
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -143,7 +150,13 @@ class TestPrimControlFlowWhile(unittest.TestCase):
         self.shape_y = [8, 16, 32]
         self.x_np = np.random.random(self.shape_x).astype("float32")
         self.y_np = np.random.random(self.shape_y).astype("float32") + 3
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
@@ -184,7 +197,13 @@ class TestPrimControlFlowWhileAndIf(unittest.TestCase):
         self.shape_y = [8, 16, 32]
         self.x_np = np.random.random(self.shape_x).astype("float32")
         self.y_np = np.random.random(self.shape_y).astype("float32") + 3
-        self.places = [paddle.CPUPlace()]
+        self.places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not paddle.is_compiled_with_cuda()
+        ):
+            self.places.append(paddle.CPUPlace())
         if paddle.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 

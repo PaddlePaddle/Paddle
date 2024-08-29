@@ -21,7 +21,9 @@ import unittest
 import numpy as np
 
 import paddle
+import paddle.sparse
 from paddle.base import core
+from paddle.base.framework import in_pir_mode
 
 
 def get_cuda_version():
@@ -175,6 +177,84 @@ class TestSparseAttentionAPI5(TestSparseAttentionAPI1):
         self.head_dim = 64
         self.dtype = 'float64'
         self.use_mask = True
+
+
+devices = []
+if paddle.device.get_device() != "cpu":
+    devices.append(paddle.device.get_device())
+else:
+    devices.append('cpu')
+
+
+class TestSparseSoftmaxStaticAPI(unittest.TestCase):
+    '''
+    Test the API paddle.sparse.nn.functional.softmax on some sparse tensors in pir mode in static graph.
+    '''
+
+    def check_result_coo(self, x_shape):
+        '''
+        x_shape: a tensor shape,
+        generate a sparse tensor with shape "x_shape" and compute the output of paddle.sparse.nn.functional.softmax.
+        compare the output of paddle.sparse.nn.functional.softmax and the output of paddle.nn.functional.Softmax.
+        '''
+        for device in devices:
+            paddle.device.set_device(device)
+            x = paddle.rand(x_shape, dtype='float32')
+            indices_data, values_data = (
+                x.detach().to_sparse_coo(sparse_dim=len(x_shape)).indices(),
+                x.detach().to_sparse_coo(sparse_dim=len(x_shape)).values(),
+            )
+
+            x.stop_gradient = False
+            out = paddle.nn.functional.softmax(x)
+
+            paddle.enable_static()
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.staic.Program()
+            ):
+                indices = paddle.static.data(
+                    name="indices",
+                    shape=indices_data.shape,
+                    dtype=indices_data.dtype,
+                )
+                values = paddle.static.data(
+                    name="values",
+                    shape=values_data.shape,
+                    dtype=values_data.dtype,
+                )
+
+                sp_x = paddle.sparse.sparse_coo_tensor(
+                    indices,
+                    values,
+                    shape=x.shape,
+                    dtype=x.dtype,
+                )
+                sp_out = paddle.sparse.nn.functional.softmax(sp_x)
+                sp_dense_out = sp_out.to_dense()
+
+                sp_exe = paddle.static.Executor()
+                sp_fetch = sp_exe.run(
+                    feed={
+                        "indices": indices_data.numpy(),
+                        "values": values_data.numpy(),
+                    },
+                    fetch_list=[sp_dense_out],
+                    return_numpy=True,
+                )
+                np.testing.assert_allclose(out.numpy(), sp_fetch[0], rtol=1e-05)
+                paddle.disable_static()
+
+    def test_softmax_2d(self):
+        if in_pir_mode():
+            self.check_result_coo([3, 4])
+
+    def test_softmax_3d(self):
+        if in_pir_mode():
+            self.check_result_coo([3, 4, 5])
+
+    def test_softmax_4d(self):
+        if in_pir_mode():
+            self.check_result_coo([3, 4, 5, 6])
 
 
 if __name__ == '__main__':

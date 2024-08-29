@@ -15,7 +15,7 @@ endif()
 cc_library(
   task_loop_thread_pool
   SRCS task_loop_thread_pool.cc task_loop_thread.cc task_loop.cc
-  DEPS enforce glog common)
+  DEPS phi glog common)
 cc_library(
   fleet_executor
   SRCS fleet_executor.cc

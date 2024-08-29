@@ -39,13 +39,13 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       ((arch == 80) || (arch == 86)),
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently weightonly linear grad only support arch = 80 or 86. "));
 
   PADDLE_ENFORCE_EQ(
       group_size,
       -1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Currently weightonly linear grad only support per-channel mode. "));
 
   int n = weight_scale.dims()[0];
@@ -67,7 +67,7 @@ void WeightOnlyLinearGradKernel(const Context& dev_ctx,
       dev_ctx, out_grad, weight_dequantized, false, false, x_grad);
 #else
   PADDLE_THROW(
-      phi::errors::PreconditionNotMet("Not compiled with WITH_CUTLASS=ON"));
+      common::errors::PreconditionNotMet("Not compiled with WITH_CUTLASS=ON"));
 #endif
 }
 

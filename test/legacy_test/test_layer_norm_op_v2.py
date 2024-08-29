@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -23,7 +24,15 @@ from paddle.base import Program, core, program_guard
 
 class TestDygraphLayerNormv2(unittest.TestCase):
     def test_dygraph(self):
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -47,7 +56,15 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_eager(self):
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -79,7 +96,15 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
             places.append(base.CUDAPlace(0))
         for p in places:
@@ -116,7 +141,15 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
 class TestLayerNormFunction(unittest.TestCase):
     def test_dygraph(self):
-        places = [base.CPUPlace()]
+        places = []
+        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
+            '1',
+            'true',
+            'on',
+        ] or not (
+            core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm")
+        ):
+            places.append(base.CPUPlace())
         if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
             places.append(base.CUDAPlace(0))
         for p in places:

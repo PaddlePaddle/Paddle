@@ -90,7 +90,7 @@ void GetSegments(const int64_t* label,
     PADDLE_ENFORCE_LE(
         label[i],
         num_chunk_types * num_tag_types,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The value of Input(Label) should be less than the number of "
             "chunk types times the number of tag types, but received %d "
             "(Label) vs %d (chunk types) * %d (tag types).",
@@ -224,7 +224,7 @@ void ChunkEvalKernel(const Context& dev_ctx,
     tag_end = -1;
     tag_single = -1;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unknown chunk scheme."));
+    PADDLE_THROW(common::errors::InvalidArgument("Unknown chunk scheme."));
   }
   other_chunk_type = num_chunk_types;
   excluded_chunk_types_new.insert(excluded_chunk_types.begin(),
@@ -278,13 +278,13 @@ void ChunkEvalKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         lod.size(),
         1UL,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Only support one level LoD sequence now, but received %d.",
             lod.size()));
     PADDLE_ENFORCE_EQ(
         lod,
         inference.lod(),
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Input(Inference) and Input(Label) of Op(chunk_eval) should have "
             "same LoD information."));
     num_sequences = lod[0].size() - 1;

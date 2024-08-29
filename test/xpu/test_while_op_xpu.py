@@ -20,6 +20,7 @@ import paddle
 from paddle import base
 from paddle.base.backward import append_backward
 from paddle.base.executor import Executor
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -75,6 +76,7 @@ class TestWhileOp(unittest.TestCase):
         loss = paddle.mean(sum_result)
         return loss, sum_result
 
+    @test_with_pir_api
     def test_simple_net(self):
         main_program = base.Program()
         startup_program = base.Program()
@@ -96,12 +98,16 @@ class TestWhileOp(unittest.TestCase):
             )
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
+    @test_with_pir_api
     def test_simple_net_forward(self):
         main_program = base.Program()
         startup_program = base.Program()
         with base.program_guard(main_program, startup_program):
             self.simple_net()
-            binary = base.compiler.CompiledProgram(main_program)
+            if paddle.framework.in_pir_mode():
+                binary = main_program
+            else:
+                binary = base.compiler.CompiledProgram(main_program)
 
             xpu_place = paddle.XPUPlace(0)
             exe = Executor(xpu_place)
@@ -113,6 +119,7 @@ class TestWhileOp(unittest.TestCase):
             for _ in range(2):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
+    @test_with_pir_api
     def test_exceptions(self):
         i = paddle.zeros(shape=[2], dtype='int64')
         array_len = paddle.tensor.fill_constant(

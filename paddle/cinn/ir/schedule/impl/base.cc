@@ -29,7 +29,7 @@
 #define CINN_IR_SCHEDULE_END(err_msg_level)              \
   }                                                      \
   catch (const utils::ErrorHandler& err_handler) {       \
-    PADDLE_THROW(phi::errors::InvalidArgument(           \
+    PADDLE_THROW(::common::errors::InvalidArgument(      \
         err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
@@ -86,7 +86,7 @@ void DyScheduleImpl::MergeExprs() {
     PADDLE_ENFORCE_EQ(
         root_block.size(),
         1U,
-        phi::errors::InvalidArgument("Number of root block should be 1"));
+        ::common::errors::InvalidArgument("Number of root block should be 1"));
     for (auto& it_block : root_block) {
       auto& block_body = it_block.As<ir::ScheduleBlockRealize>()
                              ->schedule_block.As<ir::ScheduleBlock>()

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
@@ -317,8 +318,11 @@ void HeterCpuWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
       continue;
     }
     phi::DenseTensor* tensor = fea_var->GetMutable<phi::DenseTensor>();
-    CHECK(tensor != nullptr)
-        << "tensor of var " << sparse_key_names_[table_id][i] << " is null";
+    PADDLE_ENFORCE_EQ(
+        tensor != nullptr,
+        true,
+        common::errors::InvalidArgument("Tensor of var %s is null.",
+                                        sparse_key_names_[table_id][i]));
 
     // skip slots which do not have embedding
     Variable* emb_var = scope->FindVar(sparse_value_names_[table_id][i]);
@@ -339,8 +343,12 @@ void HeterCpuWorker::CollectLabelInfo(std::shared_ptr<HeterTask> task,
       }
     }
   }
-  CHECK(global_index == feature.size())
-      << "expect fea info size:" << feature.size() << " real:" << global_index;
+  PADDLE_ENFORCE_EQ(global_index == feature.size(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Expect fea info size: %d, but received %d.",
+                        feature.size(),
+                        global_index));
 }
 
 void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
@@ -369,7 +377,10 @@ void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
       continue;
     }
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
+    PADDLE_ENFORCE_EQ(tensor != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "Tensor of var %s is null.", slot_name));
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     Variable* var_emb = scope->FindVar(emb_slot_name);
@@ -476,9 +487,13 @@ void HeterCpuWorker::AdjustInsWeight(std::shared_ptr<HeterTask> task) {
   float* ins_weights = ins_weight_tensor->data<float>();
   size_t len = ins_weight_tensor->numel();  // len = batch size
   // here we assume nid_show slot only has one feasign in each instance
-  CHECK(len == nid_show_.size())
-      << "ins_weight size should be equal to "
-      << "nid_show size, " << len << " vs " << nid_show_.size();
+  PADDLE_ENFORCE_EQ(
+      len == nid_show_.size(),
+      true,
+      common::errors::InvalidArgument("Ins weight size should be equal to nid "
+                                      "show size, but received %d and %d.",
+                                      len,
+                                      nid_show_.size()));
   float nid_adjw_threshold = adjust_ins_weight_config_.nid_adjw_threshold();
   float nid_adjw_ratio = adjust_ins_weight_config_.nid_adjw_ratio();
   int64_t nid_adjw_num = 0;
@@ -587,22 +602,35 @@ void HeterCpuWorker::CopyDenseVars() {
     VLOG(3) << "copy dense var from " << src_var_name << " to "
             << dest_var_name;
     Variable* src_var = thread_scope_->FindVar(src_var_name);
-    CHECK(src_var != nullptr) << src_var_name << " not found";  // NOLINT
+    PADDLE_ENFORCE_EQ(src_var != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "Src var name %s not found.", src_var_name));
     phi::DenseTensor* src_tensor = src_var->GetMutable<phi::DenseTensor>();
-    CHECK(src_tensor != nullptr)
-        << src_var_name << " tensor is null";  // NOLINT
+    PADDLE_ENFORCE_EQ(
+        src_tensor != nullptr,
+        true,
+        common::errors::InvalidArgument("Tensor %s is null.", src_var_name));
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
-    CHECK(dest_var != nullptr) << dest_var_name << " not found";  // NOLINT
+    PADDLE_ENFORCE_EQ(dest_var != nullptr,
+                      true,
+                      common::errors::InvalidArgument(
+                          "Dest var name %s not found.", dest_var_name));
     phi::DenseTensor* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
-    CHECK(dest_tensor != nullptr)
-        << dest_var_name << " tensor is null";  // NOLINT
+    PADDLE_ENFORCE_EQ(
+        dest_tensor != nullptr,
+        true,
+        common::errors::InvalidArgument("Tensor %s is null.", dest_var_name));
     float* dest_data = dest_tensor->data<float>();
 
-    CHECK(src_tensor->numel() == dest_tensor->numel())
-        << "tensor numel not equal," << src_tensor->numel() << " vs "
-        << dest_tensor->numel();
+    PADDLE_ENFORCE_EQ(
+        src_tensor->numel() == dest_tensor->numel(),
+        true,
+        common::errors::InvalidArgument("Tensor numel not equal, %d vs %d.",
+                                        src_tensor->numel(),
+                                        dest_tensor->numel()));
     for (int i = 0; i < src_tensor->numel(); i++) {
       dest_data[i] = src_data[i];
     }

@@ -29,7 +29,7 @@ class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
         self.global_ring_id = 0
 
-    def get_model(self, main_prog, startup_program, rank):
+    def get_model(self, main_prog, startup_program, rank, dtype="float32"):
         with base.program_guard(main_prog, startup_program):
             fleet.init(is_collective=True)
             np.random.seed(2020)
@@ -40,7 +40,7 @@ class TestParallelEmbeddingAPI(TestCollectiveAPIRunnerBase):
             data_in = paddle.randint(0, size[0], shape=(10, 4))
 
             data = paddle.static.data(
-                name='tindata', shape=[10, 1000], dtype="float32"
+                name='tindata', shape=[10, 1000], dtype=dtype
             )
             per_part_size = size[0] // 2
             if rank == 0:

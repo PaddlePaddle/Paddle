@@ -24,16 +24,16 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/flags.h"
-#include "paddle/fluid/platform/os_info.h"
-#include "paddle/fluid/platform/profiler/utils.h"
+#include "paddle/common/flags.h"
+#include "paddle/phi/core/os_info.h"
+#include "paddle/phi/core/platform/profiler/utils.h"
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
-PADDLE_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,
-                              "",
-                              "FLAGS_static_executor_perfstat_filepath "
-                              "enables performance statistics for the static "
-                              "graph executor.");
+PHI_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,
+                           "",
+                           "FLAGS_static_executor_perfstat_filepath "
+                           "enables performance statistics for the static "
+                           "graph executor.");
 
 namespace paddle::framework {
 
@@ -128,7 +128,7 @@ int StatisticsEngine::Init(const platform::NodeTrees& trees) {
     LOG(WARNING) << "Duplicate initialization for StatisticsEngine";
     return -1;
   }
-  if (platform::GetCurrentThreadName() != "MainThread") {
+  if (phi::GetCurrentThreadName() != "MainThread") {
     LOG(WARNING) << "StatisticsEngin must run on the main thread";
     return -1;
   }
@@ -137,7 +137,7 @@ int StatisticsEngine::Init(const platform::NodeTrees& trees) {
   InitInnerthreadPriorityForStdEvents();
   InitInterthreadPriorityForStdEvents();
   // determine executor type
-  uint64_t main_tid = platform::GetCurrentThreadId().sys_tid;
+  uint64_t main_tid = phi::GetCurrentThreadId().sys_tid;
   for (const auto& kv : trees.GetNodeTrees()) {
     if (kv.first != main_tid) {
       continue;
@@ -256,20 +256,20 @@ int StatisticsEngine::InitFiltersForExecutor() {
          RegisterEventFilter("RunOp",
                              [](const platform::HostTraceEventNode& evt) {
                                return evt.Type() ==
-                                      platform::TracerEventType::Operator;
+                                      phi::TracerEventType::Operator;
                              }) ||
-         RegisterEventFilter(
-             "OpCompute",
-             [](const platform::HostTraceEventNode& evt) {
-               return evt.Name() == "compute" &&
-                      evt.Type() == platform::TracerEventType::OperatorInner;
-             }) ||
-         RegisterEventFilter(
-             "OpInfershape",
-             [](const platform::HostTraceEventNode& evt) {
-               return evt.Name() == "infer_shape" &&
-                      evt.Type() == platform::TracerEventType::OperatorInner;
-             }) ||
+         RegisterEventFilter("OpCompute",
+                             [](const platform::HostTraceEventNode& evt) {
+                               return evt.Name() == "compute" &&
+                                      evt.Type() ==
+                                          phi::TracerEventType::OperatorInner;
+                             }) ||
+         RegisterEventFilter("OpInfershape",
+                             [](const platform::HostTraceEventNode& evt) {
+                               return evt.Name() == "infer_shape" &&
+                                      evt.Type() ==
+                                          phi::TracerEventType::OperatorInner;
+                             }) ||
          RegisterEventFilter("GarbageCollect",
                              [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "CheckGC";
@@ -285,7 +285,7 @@ int StatisticsEngine::InitFiltersForExecutor() {
          RegisterEventFilter(
              "DataTransform", [](const platform::HostTraceEventNode& evt) {
                return evt.Name() == "prepare_data" &&
-                      evt.Type() == platform::TracerEventType::OperatorInner;
+                      evt.Type() == phi::TracerEventType::OperatorInner;
              });
 }
 
@@ -301,20 +301,20 @@ int StatisticsEngine::InitFiltersForInterpreterCore() {
          RegisterEventFilter("RunOp",
                              [](const platform::HostTraceEventNode& evt) {
                                return evt.Type() ==
-                                      platform::TracerEventType::Operator;
+                                      phi::TracerEventType::Operator;
                              }) ||
-         RegisterEventFilter(
-             "OpCompute",
-             [](const platform::HostTraceEventNode& evt) {
-               return evt.Name() == "compute" &&
-                      evt.Type() == platform::TracerEventType::OperatorInner;
-             }) ||
-         RegisterEventFilter(
-             "OpInfershape",
-             [](const platform::HostTraceEventNode& evt) {
-               return evt.Name() == "infer_shape" &&
-                      evt.Type() == platform::TracerEventType::OperatorInner;
-             }) ||
+         RegisterEventFilter("OpCompute",
+                             [](const platform::HostTraceEventNode& evt) {
+                               return evt.Name() == "compute" &&
+                                      evt.Type() ==
+                                          phi::TracerEventType::OperatorInner;
+                             }) ||
+         RegisterEventFilter("OpInfershape",
+                             [](const platform::HostTraceEventNode& evt) {
+                               return evt.Name() == "infer_shape" &&
+                                      evt.Type() ==
+                                          phi::TracerEventType::OperatorInner;
+                             }) ||
          RegisterEventFilter("GarbageCollect",
                              [](const platform::HostTraceEventNode& evt) {
                                return evt.Name() == "CheckGC" ||
@@ -352,7 +352,7 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
       for (const auto& child : cur_node->GetChildren()) {
         // Remove duplicate operator records.
         // See InterpreterCore::RunInstruction for details.
-        if (child->Type() == platform::TracerEventType::Operator &&
+        if (child->Type() == phi::TracerEventType::Operator &&
             cur_node->Name() == "compute") {
           removed.insert(cur_node);
           removed.insert(child);

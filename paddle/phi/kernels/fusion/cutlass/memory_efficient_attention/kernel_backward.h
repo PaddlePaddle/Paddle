@@ -1084,39 +1084,39 @@ struct AttentionBackwardKernel {
     PADDLE_ENFORCE_EQ(
         p.lse_strideH % 8,
         0,
-        phi::errors::InvalidArgument("LSE is not correctly aligned"));
+        common::errors::InvalidArgument("LSE is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.lse_strideB % 8,
         0,
-        phi::errors::InvalidArgument("LSE is not correctly aligned"));
+        common::errors::InvalidArgument("LSE is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.q_strideH % kMinimumAlignment,
         0,
-        phi::errors::InvalidArgument("query is not correctly aligned"));
+        common::errors::InvalidArgument("query is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.k_strideH % kMinimumAlignment,
         0,
-        phi::errors::InvalidArgument("key is not correctly aligned"));
+        common::errors::InvalidArgument("key is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.v_strideH % kMinimumAlignment,
         0,
-        phi::errors::InvalidArgument("value is not correctly aligned"));
+        common::errors::InvalidArgument("value is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.bias_strideB % kMinimumAlignment,
         0,
-        phi::errors::InvalidArgument("attn_bias is not correctly aligned"));
+        common::errors::InvalidArgument("attn_bias is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.bias_strideH % kMinimumAlignment,
         0,
-        phi::errors::InvalidArgument("attn_bias is not correctly aligned"));
+        common::errors::InvalidArgument("attn_bias is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.bias_strideM % kMinimumAlignment,
         0,
-        phi::errors::InvalidArgument("attn_bias is not correctly aligned"));
+        common::errors::InvalidArgument("attn_bias is not correctly aligned"));
     PADDLE_ENFORCE_EQ(
         p.cu_seqlens_q_ptr && p.bias_ptr,
         false,
-        phi::errors::InvalidArgument("CuSeqlen + bias not implemented yet"));
+        common::errors::InvalidArgument("CuSeqlen + bias not implemented yet"));
     return true;
   }
 

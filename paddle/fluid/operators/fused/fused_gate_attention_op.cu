@@ -401,7 +401,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           !key || query == key || query->data<T>() == key->data<T>(),
           true,
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "key is expected to be nullptr or the same as "
               "query, but received key=%p, query=%p.",
               key,

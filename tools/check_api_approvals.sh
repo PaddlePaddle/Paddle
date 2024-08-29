@@ -61,14 +61,6 @@ if [ "$api_yaml_diff" != "" ]; then
     check_approval 1 YuanRisheng zyfncg phlrain
 fi
 
-api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5`
-if [ "$api_src_spec_diff" != "" ]; then
-    echo_line="APIs without core.ops: \n${api_src_spec_diff}\n"
-    echo_line="${echo_line}You must have one RD (JiabinYang (Recommend) or wanghuancoder, phlrain) approval for the api change for the opreator-related api without '_C_ops'.\n"
-    echo_line="${echo_line}For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/paddle_api_development_manual.md]\n"
-    check_approval 1 JiabinYang wanghuancoder phlrain
-fi
-
 op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec`
 if [ "$op_type_spec_diff" != "" ]; then
     echo_line="You must have one RD (Aurelius84 (Recommend) or zhhsplendid)approval for the data_type registration of new operator. More data_type of new operator should be registered in your PR. Please make sure that both float/double (or int/int64_t) have been registered.\n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/Data-types-of-generic-Op-must-be-fully-registered].\n"

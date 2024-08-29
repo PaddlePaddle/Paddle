@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/macros.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/float16.h"
 
 namespace paddle {

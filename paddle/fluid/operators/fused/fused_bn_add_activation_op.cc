@@ -54,32 +54,32 @@ void FusedBatchNormAddActOp::InferShape(
   PADDLE_ENFORCE_EQ(
       x_dims,
       z_dims,
-      phi::errors::InvalidArgument("ShapeError: the shapes of input "
-                                   "must be equal. But received: the shape "
-                                   "of input X = [%s], and the shape of "
-                                   "input Y = [%s]",
-                                   x_dims,
-                                   z_dims));
+      common::errors::InvalidArgument("ShapeError: the shapes of input "
+                                      "must be equal. But received: the shape "
+                                      "of input X = [%s], and the shape of "
+                                      "input Y = [%s]",
+                                      x_dims,
+                                      z_dims));
   PADDLE_ENFORCE_GE(
       x_dims.size(),
       2,
-      phi::errors::InvalidArgument("ShapeError: the dimensions of input "
-                                   "must greater than or equal to 2."
-                                   "But received: the shape of input "
-                                   "= [%s], the dimension of input = "
-                                   "[%d]",
-                                   x_dims,
-                                   x_dims.size()));
+      common::errors::InvalidArgument("ShapeError: the dimensions of input "
+                                      "must greater than or equal to 2."
+                                      "But received: the shape of input "
+                                      "= [%s], the dimension of input = "
+                                      "[%d]",
+                                      x_dims,
+                                      x_dims.size()));
   PADDLE_ENFORCE_LE(
       x_dims.size(),
       5,
-      phi::errors::InvalidArgument("ShapeError: the dimensions of input "
-                                   "must smaller than or equal to 5."
-                                   "But received: the shape of input "
-                                   "= [%s], the dimension of input = "
-                                   "[%d]",
-                                   x_dims,
-                                   x_dims.size()));
+      common::errors::InvalidArgument("ShapeError: the dimensions of input "
+                                      "must smaller than or equal to 5."
+                                      "But received: the shape of input "
+                                      "= [%s], the dimension of input = "
+                                      "[%d]",
+                                      x_dims,
+                                      x_dims.size()));
 
   const int64_t C = x_dims[x_dims.size() - 1];
 
@@ -89,7 +89,7 @@ void FusedBatchNormAddActOp::InferShape(
   PADDLE_ENFORCE_EQ(
       scale_dim.size(),
       1UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "ShapeError: the dimension of scale must equal to 1."
           "But received: the shape of scale is [%s], the dimension "
           "of scale is [%d]",
@@ -97,7 +97,7 @@ void FusedBatchNormAddActOp::InferShape(
           scale_dim.size()));
   PADDLE_ENFORCE_EQ(bias_dim.size(),
                     1UL,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "ShapeError: the dimension of bias must equal to 1."
                         "But received: the shape of bias is [%s],the dimension "
                         "of bias is [%d]",
@@ -113,14 +113,14 @@ void FusedBatchNormAddActOp::InferShape(
   if (check) {
     PADDLE_ENFORCE_EQ(scale_dim[0],
                       C,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the shape of scale must equal to [%d]"
                           "But received: the shape of scale is [%d]",
                           C,
                           scale_dim[0]));
     PADDLE_ENFORCE_EQ(bias_dim[0],
                       C,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ShapeError: the shape of bias must equal to [%d]"
                           "But received: the shape of bias is [%d]",
                           C,
@@ -145,12 +145,12 @@ phi::KernelKey FusedBatchNormAddActOp::GetExpectedKernelType(
       bn_param_type,
       framework::TransToProtoVarType(
           ctx.Input<phi::DenseTensor>("Scale")->dtype()),
-      phi::errors::InvalidArgument("Scale input should be of float type"));
+      common::errors::InvalidArgument("Scale input should be of float type"));
   PADDLE_ENFORCE_EQ(
       bn_param_type,
       framework::TransToProtoVarType(
           ctx.Input<phi::DenseTensor>("Bias")->dtype()),
-      phi::errors::InvalidArgument("Bias input should be of float type"));
+      common::errors::InvalidArgument("Bias input should be of float type"));
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
@@ -194,7 +194,7 @@ void FusedBatchNormAddActOpMaker::Make() {
       .AddCustomChecker([](const float &epsilon) {
         PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
                           true,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "'epsilon' should be between 0.0 and 0.001."));
       });
   AddAttr<std::string>("act_type", "The activation type to be fused.")
@@ -261,8 +261,8 @@ phi::KernelKey FusedBatchNormAddActGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
-    PADDLE_THROW(
-        phi::errors::NotFound("Can not find Y@GRAD in the execution context."));
+    PADDLE_THROW(common::errors::NotFound(
+        "Can not find Y@GRAD in the execution context."));
   }
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
@@ -270,7 +270,7 @@ phi::KernelKey FusedBatchNormAddActGradOp::GetExpectedKernelType(
   }
   if (t == nullptr) {
     PADDLE_THROW(
-        phi::errors::NotFound("Can not get the tensor value of Y@GRAD."));
+        common::errors::NotFound("Can not get the tensor value of Y@GRAD."));
   }
 
   return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),

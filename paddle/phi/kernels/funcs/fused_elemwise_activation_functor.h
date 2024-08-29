@@ -50,7 +50,7 @@ static inline bool IsUnaryCompound(
   PADDLE_ENFORCE_EQ(
       functor_list.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
           functor_list.size(),
           2));
@@ -70,7 +70,7 @@ static inline bool HasInPlaceUnary(
   PADDLE_ENFORCE_EQ(
       functor_list.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
           functor_list.size(),
           2));
@@ -90,7 +90,7 @@ static inline bool InputXCanBeAbsent(
   PADDLE_ENFORCE_EQ(
       functor_list.size(),
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
           functor_list.size(),
           2));
@@ -108,7 +108,7 @@ static bool IsSupportedCompound(const std::vector<std::string> &functors) {
   PADDLE_ENFORCE_EQ(
       functors.size(),
       2UL,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
           functors.size(),
           2));
@@ -124,12 +124,12 @@ static bool IsSupportedCompound(const std::vector<std::string> &functors) {
   } else if (binary_fun.count(functors[1])) {
     unary_fun_str = functors[0];
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "%s and %s are not included in fused_list.", functors[0], functors[1]));
   }
   PADDLE_ENFORCE_EQ(unary_fun.count(unary_fun_str),
                     1,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "%s is not included in fused_list.", unary_fun_str));
   return true;
 }
@@ -528,8 +528,8 @@ void RunFunctors(const DeviceContext &dev_ctx,
         axis,
         save_intermediate_out);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("%s has not been implemented.",
-                                              funcs_str));
+    PADDLE_THROW(common::errors::InvalidArgument("%s has not been implemented.",
+                                                 funcs_str));
   }
 }
 
@@ -736,8 +736,8 @@ void RunGradFunctors(const DeviceContext &dev_ctx,
                                           d_intermediate_out,
                                           axis);
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("%s has not been implemented.",
-                                              funcs_str));
+    PADDLE_THROW(common::errors::InvalidArgument("%s has not been implemented.",
+                                                 funcs_str));
   }
 }
 

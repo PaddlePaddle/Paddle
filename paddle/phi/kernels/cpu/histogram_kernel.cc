@@ -57,7 +57,7 @@ void HistogramKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LT(
       range,
       static_cast<double>(std::numeric_limits<T>::max()),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The range of max - min is out of range for target type, "
           "current kernel type is %s, the range should less than %f "
           "but now min is %f, max is %f.",
@@ -66,16 +66,17 @@ void HistogramKernel(const Context& dev_ctx,
           output_min,
           output_max));
 
-  PADDLE_ENFORCE_EQ((std::isinf(static_cast<float>(output_min)) ||
-                     std::isnan(static_cast<float>(output_max)) ||
-                     std::isinf(static_cast<float>(output_min)) ||
-                     std::isnan(static_cast<float>(output_max))),
-                    false,
-                    phi::errors::OutOfRange("range of min, max is not finite"));
+  PADDLE_ENFORCE_EQ(
+      (std::isinf(static_cast<float>(output_min)) ||
+       std::isnan(static_cast<float>(output_max)) ||
+       std::isinf(static_cast<float>(output_min)) ||
+       std::isnan(static_cast<float>(output_max))),
+      false,
+      common::errors::OutOfRange("range of min, max is not finite"));
   PADDLE_ENFORCE_GE(
       output_max,
       output_min,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "max must be larger or equal to min. If min and max are both zero, "
           "the minimum and maximum values of the data are used. "
           "But received max is %d, min is %d",
