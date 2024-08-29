@@ -645,7 +645,9 @@ Dispatcher.register(
 )
 
 Dispatcher.register(
-    operator.truth, ("VariableBase",), lambda var: Dispatcher.call(bool, var)
+    operator.truth,
+    ("ConstantVariable",),
+    lambda var: Dispatcher.call(bool, var),
 )
 
 # str
