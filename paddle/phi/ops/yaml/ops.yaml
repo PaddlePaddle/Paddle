@@ -3081,7 +3081,7 @@
     data_type : x
   optional : bias, src_mask, cum_offsets, sequence_lengths, rotary_tensor, beam_cache_offset, qkv_out_scale, out_shift, out_smooth
   inplace : (cache_kv -> cache_kv_out), (beam_cache_offset -> beam_cache_offset_out)
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : masked_select
   args : (Tensor x, Tensor mask)

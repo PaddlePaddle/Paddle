@@ -1747,12 +1747,69 @@ bool NearestInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
-// bool MaskedMultiheadAttention_OpInferSymbolicShape(pir::Operation *op,
-//                                                    pir::InferSymbolicShapeContext
-//                                                    *infer_context) {
-//   // pass
-//   return true;
-// }
+bool MaskedMultiheadAttentionOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &cache_kv_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const symbol::ShapeOrDataDimExprs &beam_cache_offset_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(7));
+
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &cache_kv_shape =
+      cache_kv_shape_or_data.shape();
+
+  int seq_len = op->attribute<pir::Int32Attribute>("seq_len").data();
+  int rotary_emb_dims =
+      op->attribute<pir::Int32Attribute>("rotary_emb_dims").data();
+  bool use_neox_rotary_style =
+      op->attribute<pir::BoolAttribute>("use_neox_rotary_style").data();
+  std::string compute_dtype =
+      op->attribute<pir::StrAttribute>("compute_dtype").AsString();
+  float out_scale = op->attribute<pir::FloatAttribute>("out_scale").data();
+  int quant_round_type =
+      op->attribute<pir::Int32Attribute>("quant_round_type").data();
+  float quant_max_bound =
+      op->attribute<pir::FloatAttribute>("quant_max_bound").data();
+  float quant_min_bound =
+      op->attribute<pir::FloatAttribute>("quant_min_bound").data();
+
+  PADDLE_ENFORCE_EQ(
+      cache_kv_dims.size(),
+      5,
+      phi::errors::InvalidArgument("The cache_kv must be 5 dims."));
+  infer_context->AddEqualCstr(cache_kv_shape[0], symbol::DimExpr(2));
+  // TODO(Luohongzhige, Buaa): add constrain for the num_head and k_num_head
+
+  symbol::DimExpr bsz = x_dims[0];
+  symbol::DimExpr dim_head = cache_kv_dims[4];
+  symbol::DimExpr k_num_head = cache_kv_dims[2];
+  symbol::DimExpr v_num_head = k_num_head;
+  int num_head =
+      (x_shape[x_shape.size() - 1] / dim_head - k_num_head - v_num_head)
+          .AsInt();
+  std::vector<symbol::DimExpr> out_dims = {bsz, num_head * dim_head};
+
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        symbol::ShapeOrDataDimExprs{out_dims});
+
+  infer_context->SetShapeOrDataForValue(op->result(1), cache_kv_shape);
+
+  if (!beam_cache_offset_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    const std::vector<symbol::DimExpr> &beam_cache_offset_shape =
+        beam_cache_offset_shape_or_data.shape();
+    infer_context->SetShapeOrDataForValue(op->result(2),
+                                          beam_cache_offset_shape);
+  }
+
+  return true;
+}
+
+bool MaskedMultiheadAttention_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return MaskedMultiheadAttentionOpInferSymbolicShape(op, infer_context);
+}
 
 bool MemoryEfficientAttentionOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
