@@ -423,7 +423,7 @@ void Compiler::CompileCudaModule(const Module& module,
     std::string kernel_fn_name = fn->name;
     device_fn_name_.emplace_back(kernel_fn_name);
   }
-  engine_->Link<CodeGenCudaHost>(host_module);
+  engine_->Link<CodeGenGpuHost>(host_module);
 
 #else
   CINN_NOT_IMPLEMENTED
@@ -460,7 +460,7 @@ void Compiler::CompileHipModule(const Module& module, const std::string& code) {
     std::string kernel_fn_name = fn->name;
     device_fn_name_.emplace_back(kernel_fn_name);
   }
-  engine_->Link<CodeGenCUDA_Host>(host_module);
+  engine_->Link<CodeGenGpuHost>(host_module);
 #else
   CINN_NOT_IMPLEMENTED
 #endif
