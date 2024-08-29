@@ -224,6 +224,7 @@ class QuantConvBf16SquashPattern
     std::vector<pir::Type> op_item_inner_output_types;
     for (size_t i = 0; i < next_op->num_results(); ++i) {
       pir::Type type = next_op->result_type(i);
+      if (!type.isa<pir::DenseTensorType>()) return false;
       pir::Type new_type =
           create_type<pir::DenseTensorType, paddle::dialect::DenseTensorType>(
               type, pir::BFloat16Type::get(ctx), ctx);
@@ -283,6 +284,7 @@ class QuantFusedConvBf16SquashPattern
     std::vector<pir::Type> op_item_inner_output_types;
     for (size_t i = 0; i < next_op->num_results(); ++i) {
       pir::Type type = next_op->result_type(i);
+      if (!type.isa<pir::DenseTensorType>()) return false;
       pir::Type new_type =
           create_type<pir::DenseTensorType, paddle::dialect::DenseTensorType>(
               type, pir::BFloat16Type::get(ctx), ctx);
