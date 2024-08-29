@@ -37,9 +37,6 @@ from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
     shard_tensor as shard_tensor_static,
 )
-from paddle.distributed.auto_parallel.placement_type import (
-    to_placements,
-)
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.static.completion import (
     mark_as_sharding_propagation_skip_op,
@@ -60,7 +57,12 @@ from paddle.io.dataloader.batch_sampler import (
 )
 from paddle.optimizer import Optimizer
 
-from .placement_type import check_placements_equal, get_shard_spec
+from .placement_type import (
+    check_placements_equal,
+    get_shard_spec,
+    to_dim_map,
+    to_placements,
+)
 from .random import determinate_rng, rng_state
 
 if TYPE_CHECKING:
@@ -1035,8 +1037,13 @@ class _ShardOptimizer(Optimizer):
     def _shard_accumulator(self, param):
         target_name = param.name
         if param.name in self._inner_opt._master_weights.keys():
-            target_name = self._inner_opt._master_weights[param.name].name
-
+            master_weight = self._inner_opt._master_weights[param.name]
+            target_name = master_weight.name
+            # shard the master weight
+            if self._shard_fn is not None:
+                self._inner_opt._master_weights[param.name] = (
+                    self._shard_fn.shard_master_weight(param, master_weight)
+                )
         # shard the accumulators
         for key in self._inner_opt._accumulators.keys():
             accumulator = self._inner_opt._accumulators[key][target_name]
@@ -1204,6 +1211,37 @@ class _ShardingStageBase:
 
     def _set_sharding_mesh_axis(self, sharding_mesh_axis):
         self._sharding_mesh_axis = sharding_mesh_axis
+
+    def shard_master_weight(
+        self, param: Tensor, master_weight: Tensor
+    ) -> Tensor:
+        if param.is_dist():
+            if isinstance(master_weight, pir.Value):
+                data_op = master_weight.get_defining_op()
+                assert (
+                    data_op.name() == "pd_op.data"
+                ), "The master weight must be a result of data op."
+                placements = get_placement_with_sharding(
+                    param, self._sharding_mesh_axis
+                )
+                dim_map, partial_status = to_dim_map(
+                    placements, len(master_weight.shape)
+                )
+                dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        param.process_mesh, dim_map, partial_status
+                    )
+                )
+                dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    master_weight.type(), dist_attr
+                )
+                master_weight.set_type(dist_type)
+                data_op.dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        param.process_mesh, [], [dist_attr]
+                    )
+                )
+        return master_weight
 
 
 class ShardingStage1(_ShardingStageBase):

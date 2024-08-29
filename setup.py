@@ -1799,6 +1799,7 @@ def get_setup_parameters():
         'paddle.jit.sot.opcode_translator.executor',
         'paddle.jit.sot.opcode_translator.executor.variables',
         'paddle.jit.sot.opcode_translator.instruction_utils',
+        'paddle.jit.sot.profiler',
         'paddle.jit.sot.symbolic',
         'paddle.jit.sot.utils',
         'paddle.inference',

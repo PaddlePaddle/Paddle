@@ -652,6 +652,7 @@
   kernel :
     func : bmm
   backward : bmm_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : box_clip
   args: (Tensor input, Tensor im_info)
@@ -2297,7 +2298,7 @@
     func : graph_sample_neighbors
     data_type : row
   optional : eids, perm_buffer
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
@@ -3475,6 +3476,7 @@
   data_transform:
     skip_transform : x
   no_need_buffer : x
+  traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : one_hot
@@ -3576,7 +3578,7 @@
   kernel :
     func : pixel_unshuffle
   backward : pixel_unshuffle_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : poisson
   args : (Tensor x)
