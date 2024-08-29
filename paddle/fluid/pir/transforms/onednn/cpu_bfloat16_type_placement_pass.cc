@@ -27,6 +27,7 @@
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 
 namespace {
@@ -118,10 +119,15 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
       std::vector<pir::Type> op_item_inner_output_types;
       for (size_t i = 0; i < op->num_results(); ++i) {
         pir::Type type = op->result_type(i);
-        pir::Type new_type =
-            create_type<pir::DenseTensorType,
-                        paddle::dialect::AllocatedDenseTensorType>(
-                type, phi::CPUPlace(), pir::BFloat16Type::get(ctx), ctx);
+        auto dense_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
+        auto new_type = paddle::dialect::DenseTensorType::get(
+            rewriter.ir_context(),
+            paddle::dialect::TransToIrDataType(phi::DataType::BFLOAT16,
+                                               rewriter.ir_context()),
+            dense_type.dims(),
+            dense_type.data_layout(),
+            dense_type.lod(),
+            dense_type.offset());
         // set bf16 op tensor output type to bf16.
         op_item_inner_output_types.push_back(new_type);
       }
