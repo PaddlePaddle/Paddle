@@ -695,43 +695,62 @@ bool CheckFiniteAndUnscale_OpInferSymbolicShape(
 
 bool ChunkEvalOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &inference_shape =
+  const symbol::ShapeOrDataDimExprs &inference_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const symbol::ShapeOrDataDimExprs &label_shape =
+  const symbol::ShapeOrDataDimExprs &label_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
+  const std::vector<symbol::DimExpr> &inference_shape =
+      inference_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &label_shape = label_shape_or_data.shape();
+
   PADDLE_ENFORCE_EQ(
-      inference_shape.shape(),
-      label_shape.shape(),
-      phi::errors::InvalidArgument(
-          "Input(Inference)'s shape must be the same as Input(Label)'s "
-          "shape, but received [%s] (Inference) vs [%s] (Label).",
-          inference_shape,
-          label_shape));
+      inference_shape.size(),
+      label_shape.size(),
+      common::errors::InvalidArgument(
+          "Input(Inference)'s rank must be the same as Input(Label)'s rank, "
+          "but received [%s] (Inference) vs [%s] (Label).",
+          inference_shape.size(),
+          label_shape.size()));
 
-  if (op->operand_source(2)) {
-    const symbol::ShapeOrDataDimExprs &seq_length_shape =
-        infer_context->GetShapeOrDataForValue(op->operand_source(2));
-
-    PADDLE_ENFORCE_EQ((inference_shape.shape().size() == 3 &&
-                       inference_shape.shape()[2] == symbol::DimExpr(1)) ||
-                          inference_shape.shape().size() == 2,
-                      true,
-                      phi::errors::InvalidArgument(
-                          "when Input(SeqLength) is provided, Input(Inference) "
-                          "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
-                          "(batch_size, bucket), but received [%s].",
-                          inference_shape.shape()));
-
-    PADDLE_ENFORCE_LE(seq_length_shape.shape().size(),
-                      2,
-                      phi::errors::InvalidArgument(
-                          "Input(SeqLength)'s rank should not be greater "
-                          "than 2, but received %d.",
-                          seq_length_shape.shape().size()));
+  for (size_t i = 0; i < inference_shape.size(); ++i) {
+    infer_context->AddEqualCstr(inference_shape[i], label_shape[i]);
   }
 
-  std::vector<symbol::DimExpr> scalar_shape = {symbol::DimExpr(1)};
+  if (op->operand_source(2)) {
+    const symbol::ShapeOrDataDimExprs &seq_length_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const std::vector<symbol::DimExpr> &seq_length_shape =
+        seq_length_shape_or_data.shape();
+
+    PADDLE_ENFORCE_EQ(
+        inference_shape.size() == 3 || inference_shape.size() == 2,
+        true,
+        common::errors::InvalidArgument(
+            "when Input(SeqLength) is provided, Input(Inference) "
+            "should be of dim 3 or dim 2 "
+            "but received [%s].",
+            inference_shape));
+
+    if (inference_shape.size() == 3) {
+      Addequalcstr(inference_shape[2],
+                   symbol::DimExpr(1),
+                   phi::errors::InvalidArgument(
+                       "When Input(SeqLength) is provided, if Input(Inference) "
+                       "has dim 3, "
+                       "the third dimension should be 1, but received [%s].",
+                       inference_shape[2]));
+    }
+
+    PADDLE_ENFORCE_LE(
+        seq_length_shape.size(),
+        2,
+        common::errors::InvalidArgument("Input(SeqLength)'s rank should not be "
+                                        "greater than 2, but received %d.",
+                                        seq_length_shape.size()));
+  }
+
+  std::vector<symbol::DimExpr> scalar_shape{symbol::DimExpr(1)};
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
