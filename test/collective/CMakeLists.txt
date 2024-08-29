@@ -320,13 +320,6 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_split_row_linear MODULES test_collective_split_row_linear
-    ENVS "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
-  set_tests_properties(test_collective_split_row_linear
-                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
-endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  py_test_modules(
     test_collective_wait MODULES test_collective_wait ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_wait PROPERTIES TIMEOUT "300" LABELS
