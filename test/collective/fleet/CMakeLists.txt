@@ -237,20 +237,6 @@ if(WITH_NCCL)
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
-    test_pipeline
-    START_BASH
-    ../../legacy_test/dist_test.sh
-    TIMEOUT
-    "160"
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21222;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_pipeline PROPERTIES TIMEOUT "160")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
     test_static_model_parallel
     START_BASH
     ../../legacy_test/dist_test.sh
@@ -715,20 +701,6 @@ if((WITH_GPU OR WITH_XPU) AND (LINUX))
     ENVS
     "PADDLE_DIST_UT_PORT=21270;http_proxy=;https_proxy=")
   set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT "120")
-endif()
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_ir_pass_pipeline
-    START_BASH
-    ../../legacy_test/dist_test.sh
-    TIMEOUT
-    "240"
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21272;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT "240")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   bash_test_modules(

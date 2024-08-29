@@ -19,7 +19,6 @@ test_parallel_dygraph_pipeline_parallel_with_virtual_stage,,GPU,500,DIST,../../l
 test_parallel_dygraph_pp_adaptor,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_fleet_localsgd_meta_optimizer,LINUX,GPU;XPU,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_class_center_sample,,GPU,120,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL
-test_pipeline,,,160,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_fleet_utils,LINUX;APPLE,,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_static_model_parallel,,,240,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_no_sync,,GPU,300,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL
@@ -64,7 +63,6 @@ test_auto_parallel_parallelizer,,,120,DIST,../../legacy_test/dist_test.sh,2,,htt
 test_fleet_recompute_meta_optimizer,LINUX;WIN32,GPU;XPU,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_new_group,,GPU;XPU,,DIST,test_new_group.sh,2,,http_proxy=;https_proxy=,
 test_c_comm_init_op,LINUX,GPU;XPU,120,DIST,test_c_comm_init_op.sh,2,,http_proxy=;https_proxy=,
-test_ir_pass_pipeline,,,240,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_mnist,,GPU;ROCM,200,DIST,../../legacy_test/dist_test.sh,2,,NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_se_resnext,,GPU;ROCM,200,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_parallel_dygraph_sync_batch_norm,,GPU;ROCM,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,

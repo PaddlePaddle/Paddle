@@ -619,7 +619,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_fused_fc_elementwise_layernorm_op',
     'test_fusion_transpose_flatten_concat_op',
     'test_nvprof',
-    'test_pipeline',
     'test_weight_decay',
     'test_fleet_base_2',
     'test_fleet_pipeline_meta_optimizer',
