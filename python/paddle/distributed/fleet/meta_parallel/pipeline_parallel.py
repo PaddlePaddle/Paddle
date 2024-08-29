@@ -16,6 +16,7 @@ import sys
 import time
 import warnings
 from collections import defaultdict
+from typing import Callable
 
 import paddle
 from paddle import framework
@@ -45,6 +46,10 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+)
+
+from .pipeline_hooks import (
+    BubbleHook,
 )
 
 __all__ = []
@@ -144,6 +149,16 @@ class FakeMicroDataset:
             "batch_size = %d, micro_batch_size = %d, accumulate_steps = %d."
             % (batch_size, self._micro_batch_size, self._acc_steps)
         )
+
+
+pipeline_bubble_hooks_ = BubbleHook()
+
+
+def register_bubble_pipeline_parallel_hook(location: int, hook: Callable):
+    """
+    Registering bubble hooks for pipeline parallelism.
+    """
+    pipeline_bubble_hooks_.register_hook(location, hook)
 
 
 class PipelineParallel(MetaParallelBase):
@@ -299,6 +314,10 @@ class PipelineParallel(MetaParallelBase):
         self.loss_fn_idx = 0
 
         self._compute_loss = True
+
+        self.bubble_hooks = pipeline_bubble_hooks_
+
+        self.bubble_hooks.set_bubble_times(bubble_times=self.num_stages)
 
         logger.info(
             f"Pipeline Info -- num_stages: {self.num_stages}, stage_id: {self.stage_id}"
@@ -1334,6 +1353,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         steady_steps = num_steps - startup_steps
 
+        bubble_idx = -1
+        for location in range(self.stage_id):
+            bubble_idx += 1
+            self.bubble_hooks.on_location(bubble_idx, step_id=bubble_idx)
+
+        rest_bubble_times = self.num_stages - 1 - self.stage_id
+
         self.set_virtual_pipeline_rank(0)
         if not static_scheduler:
             self.input_tensors[0].append(
@@ -1370,6 +1396,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._record_stamp("F", micro_step, '"B"', forward=True)
             output_tensor = self._forward_step_helper(micro_dataset, micro_step)
             self._record_stamp("F", micro_step, '"E"', forward=True)
+
+            if micro_step >= startup_steps - rest_bubble_times:
+                bubble_idx += 1
+                self.bubble_hooks.on_location(bubble_idx, step_id=bubble_idx)
 
             # determine whether recv forward tensor or not
             next_virtual_pp_rank = self._get_virtual_pp_rank(
