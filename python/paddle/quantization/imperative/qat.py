@@ -16,7 +16,7 @@ import os
 
 import paddle
 from paddle.base.framework import IrGraph
-from paddle.framework import core
+from paddle.framework import core, in_pir_mode
 from paddle.nn.quant import quant_layers
 
 from ...static.quantization.quantization_pass import (
@@ -294,9 +294,10 @@ class ImperativeQuantAware:
         return model
 
     def save_quantized_model(self, layer, path, input_spec=None, **config):
-        self._quantize_outputs.save_quantized_model(
-            layer, path, input_spec, **config
-        )
+        with paddle.pir_utils.OldIrGuard():
+            self._quantize_outputs.save_quantized_model(
+                layer, path, input_spec, **config
+            )
 
 
 class ImperativeQuantizeInputs:
@@ -550,6 +551,9 @@ class ImperativeQuantizeOutputs:
         dirname = os.path.dirname(path)
         basename = os.path.basename(path)
         model_filename = basename + INFER_MODEL_SUFFIX
+        if in_pir_mode():
+            model_filename = basename + '.json'
+        params_filename = basename + INFER_PARAMS_SUFFIX
         params_filename = basename + INFER_PARAMS_SUFFIX
 
         [
