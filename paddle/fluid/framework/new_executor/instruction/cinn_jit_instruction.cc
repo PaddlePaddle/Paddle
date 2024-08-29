@@ -87,7 +87,8 @@ class CinnJitInstruction::FnPtrImpl {
         int graph_nodes_num = ps.GetGraphNodesNum();
         phi::gpuGraph_t graph;
         phi::gpuGraphExec_t instance;
-        phi::gpuStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+        phi::gpuStreamBeginCapture(
+            stream, gpuStreamCaptureMode(0));  // StreamCaptureModeGlobal
         for (int ikrnl = 0; ikrnl < graph_nodes_num; ikrnl++) {
           ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
               static_cast<void*>(func_args_.data()), func_args_.size(), stream);
