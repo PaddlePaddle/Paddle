@@ -1204,9 +1204,7 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
             else:
                 self.assertEqual(fetch_targets[0].shape, (10, 10))
                 ops = [op.type for op in inference_program.block(0).ops]
-                self.assertEqual(
-                    ops, ['feed', 'elementwise_add', 'scale', 'fetch']
-                )
+                self.assertEqual(ops, ['feed', 'elementwise_add', 'fetch'])
 
 
 if __name__ == '__main__':

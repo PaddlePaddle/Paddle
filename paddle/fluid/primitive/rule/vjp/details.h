@@ -985,16 +985,30 @@ void dropout_grad(const Tensor& mask,
     if (mode == "upscale_in_train") {
       by_pass<T>(out_grad, x_grad);
     } else {
-      set_output<T>(out_grad * (1.0 - p.to<float>()), x_grad);
+      Tensor scalar = full_scalar<T>(1.0 - p.to<float>(), out_grad.dtype());
+      set_output<T>(out_grad * scalar, x_grad);
     }
   } else {
     if (mode == "upscale_in_train") {
-      if (p.to<float>() == 1.0f) {
-        set_output<T>(scale<T>(out_grad, 0.0), x_grad);
+      if (has_dynamic_shape(out_grad.shape())) {
+        if (p.to<float>() == 1.0f) {
+          Tensor zero = full_scalar<T>(0.0, out_grad.dtype());
+          set_output<T>(backend::scale<T>(out_grad, zero), x_grad);
+        } else {
+          Tensor scalar =
+              full_scalar<T>(1.0 / (1.0 - p.to<float>()), out_grad.dtype());
+          set_output<T>(backend::scale<T>(
+                            out_grad * cast<T>(mask, out_grad.dtype()), scalar),
+                        x_grad);
+        }
       } else {
-        set_output<T>(scale<T>(out_grad * cast<T>(mask, out_grad.dtype()),
-                               1.0 / (1.0 - p.to<float>())),
-                      x_grad);
+        if (p.to<float>() == 1.0f) {
+          set_output<T>(scale<T>(out_grad, 0.0), x_grad);
+        } else {
+          set_output<T>(scale<T>(out_grad * cast<T>(mask, out_grad.dtype()),
+                                 1.0 / (1.0 - p.to<float>())),
+                        x_grad);
+        }
       }
     } else {
       set_output<T>(out_grad * cast<T>(mask, out_grad.dtype()), x_grad);
@@ -1552,21 +1566,40 @@ void pad_grad(const Tensor& input,
               const Scalar& pad_value,
               Tensor* input_grad) {
   if (input_grad) {
+    Tensor out_tmp;
     size_t rank = input.dims().size();
-    auto out_dims = out_grad.dims();
-
-    std::vector<int64_t> starts(rank, 0);
-    std::vector<int64_t> ends(rank, 0);
     std::vector<int64_t> axes(rank, 0);
     std::vector<int64_t> infer_flags(rank, 1);
     std::vector<int64_t> decrease_axis({});
-    for (size_t i = 0; i < rank; ++i) {
-      starts[i] = static_cast<int64_t>(paddings[2 * i]);
-      ends[i] = static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]);
-      axes[i] = i;
+    if (has_dynamic_shape(out_grad.shape())) {
+      auto out_shape = shape<T>(out_grad);
+      std::vector<Tensor> starts, ends;
+      for (size_t i = 0; i < rank; ++i) {
+        starts.push_back(full<T>({1}, paddings[2 * i], out_shape.dtype()));
+        ends.push_back(get_slice<T>(out_shape, i) -
+                       full<T>({1}, paddings[2 * i + 1], out_shape.dtype()));
+        axes[i] = i;
+      }
+      out_tmp = backend::slice<T>(out_grad,
+                                  concat<T>(starts),
+                                  concat<T>(ends),
+                                  axes,
+                                  infer_flags,
+                                  decrease_axis);
+    } else {
+      auto out_dims = out_grad.dims();
+
+      std::vector<int64_t> starts(rank, 0);
+      std::vector<int64_t> ends(rank, 0);
+
+      for (size_t i = 0; i < rank; ++i) {
+        starts[i] = static_cast<int64_t>(paddings[2 * i]);
+        ends[i] = static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]);
+        axes[i] = i;
+      }
+      out_tmp =
+          slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);
     }
-    auto out_tmp =
-        slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);
     set_output<T>(out_tmp, input_grad);
   }
 }
