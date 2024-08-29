@@ -2987,6 +2987,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
+    spmd_rule : LogSumExpInferSpmd
   kernel :
     func : logsumexp
   backward : logsumexp_grad
