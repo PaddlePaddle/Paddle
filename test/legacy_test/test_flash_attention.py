@@ -469,7 +469,7 @@ class TestSDPAttentionAPITest(TestFlashAttentionAPI):
         self.enable_mem_efficient = False
 
 
-class TestFlashAttenionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
+class TestFlashAttentionWithMaskAPITest(TestFlashAttentionWithMaskAPI):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.shape = (8, 1024, 16, 128)
@@ -861,7 +861,6 @@ def generate_mask_matrix_from_mask_indices(start_rows):
             for j in range(seq_len):
                 start_row = start_rows[bz_idx, head_idx, j]
                 matrix[bz_idx, head_idx, start_row:, j] = -np.inf
-                matrix[bz_idx, head_idx, j, j] = 0.0
     return matrix
 
 
@@ -937,7 +936,7 @@ class TestFlashAttentionWithSparseMaskAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
 
-class TestFlashAttenionWithSparseMaskAPITest(
+class TestFlashAttentionWithSparseMaskAPITest(
     TestFlashAttentionWithSparseMaskAPI
 ):
     def setUp(self):
@@ -948,7 +947,7 @@ class TestFlashAttenionWithSparseMaskAPITest(
         self.causal = True
 
 
-class TestFlashAttenionWithSparseMaskBF16APITest(
+class TestFlashAttentionWithSparseMaskBF16APITest(
     TestFlashAttentionWithSparseMaskAPI
 ):
     def setUp(self):
