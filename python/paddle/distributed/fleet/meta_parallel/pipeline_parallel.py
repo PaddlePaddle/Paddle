@@ -1356,7 +1356,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         bubble_idx = -1
         for location in range(self.stage_id):
             bubble_idx += 1
-            self.bubble_hooks.on_location(bubble_idx, step_id=bubble_idx)
+            self.bubble_hooks.run_hook(bubble_idx, bubble_id=bubble_idx)
 
         rest_bubble_times = self.num_stages - 1 - self.stage_id
 
@@ -1399,7 +1399,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             if micro_step >= startup_steps - rest_bubble_times:
                 bubble_idx += 1
-                self.bubble_hooks.on_location(bubble_idx, step_id=bubble_idx)
+                self.bubble_hooks.run_hook(bubble_idx, bubble_id=bubble_idx)
 
             # determine whether recv forward tensor or not
             next_virtual_pp_rank = self._get_virtual_pp_rank(
@@ -1748,6 +1748,14 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         f"backward step for {real_micro_step} with virtual pp rank {virtual_pp_rank}"
                     )
                     continue
+
+                if (
+                    micro_step
+                    < steady_steps + self.num_stages - 1 - self.stage_id
+                ):
+                    bubble_idx += 1
+                    self.bubble_hooks.run_hook(bubble_idx, bubble_id=bubble_idx)
+
                 # cooldown loop
                 self._record_stamp("B", micro_step, '"B"', forward=False)
                 input_tensor_grad = self._backward_step_helper(micro_step)
@@ -1781,6 +1789,15 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 )
 
             self._sync_overlap_grads()
+
+            for _ in range(self.stage_id):
+                bubble_idx += 1
+                self.bubble_hooks.run_hook(bubble_idx, bubble_id=bubble_idx)
+
+            if not forward_only:
+                assert (bubble_idx + 1) == (
+                    2 * self.num_stages - 2
+                ), f"All bubbles number {bubble_idx + 1} should be equal to {(2 * self.num_stages - 2)}"
 
             if static_scheduler:
                 self._reset_counter()
