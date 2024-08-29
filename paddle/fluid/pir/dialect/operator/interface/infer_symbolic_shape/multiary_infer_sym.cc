@@ -733,7 +733,7 @@ bool ChunkEvalOpInferSymbolicShape(
             inference_shape));
 
     if (inference_shape.size() == 3) {
-      infer_context->AddEqualCstr(inference_shape[2], symbol::DimExpr(1))
+      infer_context->AddEqualCstr(inference_shape[2], symbol::DimExpr(1));
     }
 
     PADDLE_ENFORCE_LE(
