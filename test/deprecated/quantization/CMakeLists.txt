@@ -251,14 +251,14 @@ endforeach()
 
 # setting timeout value for old unittests
 if(NOT WIN32)
-  set_tests_properties(test_post_training_quantization_while PROPERTIES TIMEOUT
-                                                                        120)
+  set_tests_properties(test_post_training_quantization_while_deprecated
+                       PROPERTIES TIMEOUT 120)
   set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT
                                                                        120)
   set_tests_properties(test_quant_aware_deprecated PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_post_quant_aware PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_aware_user_defined PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_amp PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_quant_amp_deprecated PROPERTIES TIMEOUT 200)
 endif()
 
 set_tests_properties(test_graph_deprecated PROPERTIES TIMEOUT 120)
@@ -267,8 +267,8 @@ set_tests_properties(test_user_defined_quantization_deprecated
                      PROPERTIES TIMEOUT 200)
 
 if(APPLE)
-  set_tests_properties(test_post_training_quantization_while PROPERTIES TIMEOUT
-                                                                        300)
+  set_tests_properties(test_post_training_quantization_while_deprecated
+                       PROPERTIES TIMEOUT 300)
 endif()
 
 set_tests_properties(test_quantization_scale_pass_deprecated PROPERTIES TIMEOUT
