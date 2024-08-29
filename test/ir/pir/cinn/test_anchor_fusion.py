@@ -155,7 +155,7 @@ class TestAnchorFusion(unittest.TestCase):
 
         self.compare_result(func, None, init)
 
-    def test_shardable_axes(self):
+    def test_fusion_iters(self):
         #     T   T
         #      \ /
         #       T

@@ -66,9 +66,6 @@ FusionItersSignature SingleDownstreamItersFusion(PatternNodePtr upstream,
                                                  PatternNodePtr downstream,
                                                  bool is_sink) {
   VLOG(4) << "[ItersFusion] Start SingleDownstreamItersFusion.";
-  VLOG(4) << "[ItersFusion] Upstream " << upstream->fusion_iters().DebugStr();
-  VLOG(4) << "[ItersFusion] Downstream "
-          << downstream->fusion_iters().DebugStr();
   auto upstream_iters = upstream->fusion_iters();
   auto downstream_iters = downstream->fusion_iters();
   PADDLE_ENFORCE_EQ(upstream_iters.output_iters.size(),
@@ -94,7 +91,6 @@ FusionItersSignature SingleDownstreamItersFusion(PatternNodePtr upstream,
       fused_iters.input_values.push_back(downstream_iters.input_values[i]);
     }
   }
-  VLOG(4) << "[ItersFusion] Merged " << fused_iters.DebugStr();
   VLOG(4) << "[ItersFusion] End SingleDownstreamItersFusion.";
   return fused_iters;
 }
