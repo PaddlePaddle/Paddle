@@ -12,23 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 from paddle import _C_ops
 from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def fused_bias_act(
-    x,
-    bias=None,
-    dequant_scales=None,
-    shift=None,
-    smooth=None,
-    act_method="gelu",
-    compute_dtype="default",
-    quant_scale=-1,
-    quant_round_type=0,
-    quant_max_bound=0,
-    quant_min_bound=0,
-):
+    x: Tensor,
+    bias: Tensor | None = None,
+    dequant_scales: Tensor | None = None,
+    shift: Tensor | None = None,
+    smooth: Tensor | None = None,
+    act_method: str = "gelu",
+    compute_dtype: str = "default",
+    quant_scale: float = -1,
+    quant_round_type: int = 0,
+    quant_max_bound: float = 0,
+    quant_min_bound: float = 0,
+) -> Tensor:
     """
     Applies fused_bias_act kenerl
 
@@ -40,10 +47,10 @@ def fused_bias_act(
         smooth (Tensor, optional): the smooth tensor, used to smooth the input tensor before activation function. If None, no smoothing processing will be performed. Default: None.
         act_method (Str, optional): the activation method, specify the activation function to be used. Default: gelu.
         compute_dtype (Str, optional): a compute dtype, is used to represent the input data type. Default is "default", which means compute dtype is determined by input dtype.
-        quant_scale (float, optional): the quant scale. Default: -1.
+        quant_scale (Float, optional): the quant scale. Default: -1.
         quant_round_type (Int, optional): the quant round type, if 0 is set, value will be rounding to nearest ties to even. If 1 is set, value will be rounding to nearest ties away from zero. Default: 0.
-        quant_max_bound (Float32, optional): the max bound of float type to int type. Default: 0.
-        quant_min_bound (Float32, optional): the min bound of float type to int type. Default: 0.
+        quant_max_bound (Float, optional): the max bound of float type to int type. Default: 0.
+        quant_min_bound (Float, optional): the min bound of float type to int type. Default: 0.
 
 
     Returns:
