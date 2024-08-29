@@ -3445,37 +3445,37 @@ bool Unsqueeze_OpInferSymbolicShape(
   return UnsqueezeOpInferSymbolicShape(op, infer_context);
 }
 
-bool UnfoldOpInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+bool UnfoldOpInferSymbolicShape(pir::Operation* op,
+                                pir::InferSymbolicShapeContext* infer_context) {
+  const symbol::ShapeOrDataDimExprs& x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
-  auto in_shapes = x_shape_or_data.shape();
+  const auto& x_shape = x_shape_or_data.shape();
 
   PADDLE_ENFORCE_EQ(
-      in_shapes.size(),
+      x_shape.size(),
       4UL,
       common::errors::InvalidArgument(
           "Input should be 4-D tensor of format [N, C, H, W], but get %u",
-          in_shapes.size()));
+          x_shape.size()));
 
-  std::vector<int> kernel_sizes =
+  const std::vector<int>& kernel_sizes =
       paddle::dialect::details::GetVectorAttr<int>(op, "kernel_sizes");
-  std::vector<int> strides =
+  const std::vector<int>& strides =
       paddle::dialect::details::GetVectorAttr<int>(op, "strides");
-  std::vector<int> paddings =
+  const std::vector<int>& paddings =
       paddle::dialect::details::GetVectorAttr<int>(op, "paddings");
-  std::vector<int> dilations =
+  const std::vector<int>& dilations =
       paddle::dialect::details::GetVectorAttr<int>(op, "dilations");
 
   PADDLE_ENFORCE_EQ(
-      in_shapes.size() - kernel_sizes.size(),
+      x_shape.size() - kernel_sizes.size(),
       2UL,
       common::errors::InvalidArgument(
           "The dims of X should be larger than that of kernel_sizes "
           "by a number of 2, due to the batch size and input channel dim. "
           "But received dims(X:%u) - dims(kernel_sizes:%u) != 2",
-          in_shapes.size(),
+          x_shape.size(),
           kernel_sizes.size()));
   PADDLE_ENFORCE_EQ(
       strides.size(),
@@ -3502,81 +3502,40 @@ bool UnfoldOpInferSymbolicShape(pir::Operation *op,
           strides.size(),
           dilations.size()));
 
-  PADDLE_ENFORCE_GT(kernel_sizes[0],
-                    0,
-                    common::errors::InvalidArgument(
-                        "The `kernel_sizes` should be greater than zero, "
-                        "but received kernel_height: %d kernel_width: %d.",
-                        kernel_sizes[0],
-                        kernel_sizes[1]));
-  PADDLE_ENFORCE_GT(kernel_sizes[1],
-                    0,
-                    common::errors::InvalidArgument(
-                        "The `kernel_sizes` should be greater than zero, "
-                        "but received kernel_height: %d kernel_width: %d.",
-                        kernel_sizes[0],
-                        kernel_sizes[1]));
-
-  PADDLE_ENFORCE_GT(strides[0],
-                    0,
-                    common::errors::InvalidArgument(
-                        "The `strides` should be greater than zero, "
-                        "but received strides_height: %d strides_width: %d.",
-                        strides[0],
-                        strides[1]));
-  PADDLE_ENFORCE_GT(strides[1],
-                    0,
-                    common::errors::InvalidArgument(
-                        "The `strides` should be greater than zero, "
-                        "but received strides_height: %d strides_width: %d.",
-                        strides[0],
-                        strides[1]));
-
-  PADDLE_ENFORCE_GT(
-      dilations[0],
-      0,
-      common::errors::InvalidArgument(
-          "The `dilations` should be greater than zero, "
-          "but received dilations_height: %d dilations_width: %d.",
-          dilations[0],
-          dilations[1]));
-  PADDLE_ENFORCE_GT(
-      dilations[1],
-      0,
-      common::errors::InvalidArgument(
-          "The `dilations` should be greater than zero, "
-          "but received dilations_height: %d dilations_width: %d.",
-          dilations[0],
-          dilations[1]));
-
   std::vector<symbol::DimExpr> out_shapes;
 
-  out_shapes.push_back(in_shapes[0]);
-  out_shapes.push_back(in_shapes[1] * kernel_sizes[0] * kernel_sizes[1]);
+  out_shapes.push_back(x_shape[0]);
+  out_shapes.push_back(x_shape[1] *
+                       symbol::DimExpr(kernel_sizes[0] * kernel_sizes[1]));
 
-  int output_height = 0;
-  int output_width = 0;
-  if (in_shapes[2].dyn_cast<int64_t>() == -1) {
-    output_height = -1;
-  } else {
-    const int dkernel_height = dilations[0] * (kernel_sizes[0] - 1) + 1;
-    output_height = (in_shapes[2].dyn_cast<int64_t>() + paddings[0] +
-                     paddings[2] - dkernel_height) /
-                        strides[0] +
-                    1;
-  }
-  if (in_shapes[3].dyn_cast<int64_t>() == -1) {
-    output_width = -1;
-  } else {
-    const int dkernel_width = dilations[1] * (kernel_sizes[1] - 1) + 1;
-    output_width = (in_shapes[3].dyn_cast<int64_t>() + paddings[1] +
-                    paddings[3] - dkernel_width) /
-                       strides[1] +
-                   1;
-  }
-  int output_col_length = output_height * output_width;
+  const auto& calculate_output_dim = [&](symbol::DimExpr input_size,
+                                         int padding1,
+                                         int padding2,
+                                         int dilation,
+                                         int kernel_size,
+                                         int stride) {
+    const symbol::DimExpr dkernel_size =
+        symbol::DimExpr(dilation * (kernel_size - 1) + 1);
+    return (input_size + symbol::DimExpr(padding1 + padding2) - dkernel_size) /
+               symbol::DimExpr(stride) +
+           symbol::DimExpr(1);
+  };
 
-  out_shapes.push_back(symbol::DimExpr(output_col_length));
+  symbol::DimExpr output_height = calculate_output_dim(x_shape[2],
+                                                       paddings[0],
+                                                       paddings[2],
+                                                       dilations[0],
+                                                       kernel_sizes[0],
+                                                       strides[0]);
+  symbol::DimExpr output_width = calculate_output_dim(x_shape[3],
+                                                      paddings[1],
+                                                      paddings[3],
+                                                      dilations[1],
+                                                      kernel_sizes[1],
+                                                      strides[1]);
+
+  symbol::DimExpr output_col_length = output_height * output_width;
+  out_shapes.push_back(output_col_length);
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
