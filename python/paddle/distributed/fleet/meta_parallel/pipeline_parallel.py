@@ -1415,7 +1415,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         steady_steps = num_steps - startup_steps
 
-        bubble_idx = 0
+        bubble_idx = -1
         for location in range(self.stage_id):
             bubble_idx += 1
             self.bubble_hooks.on_location(bubble_idx, step_id=bubble_idx)
