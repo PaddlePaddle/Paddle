@@ -444,8 +444,6 @@ def auto_recompute(
                 user.id,
                 " (inf) ",
             )
-            # if user.get_defining_op().name() == "pd_op.adamw_":
-            #     continue
             nx_graph.add_edge(
                 value_node.id + "_out", user.id + "_in", capacity=math.inf
             )
@@ -528,10 +526,6 @@ def partition_joint_graph(
         mem += cal_value_node_size(mid)
     DebugPrint("Saved Memory is: ", mem / 1024 / 1024 / 1024, "GB")
 
-    # print(
-    #     "Saved_Values:",
-    # )
-
     def getIdx(program, op):
         for idx, op_iter in enumerate(program.global_block().ops):
             if op == op_iter:
@@ -586,16 +580,6 @@ def replace_mid_values_with_forward_subgraph(
                             return idx
                     raise RuntimeError("op not found in program")
 
-                # for value in new_chain:
-                #     print(
-                #         "Error Chain is:",
-                #         value,
-                #         getIdx(program, value.get_defining_op()),
-                #         value.id,
-                #     )
-                # print(
-                #     f"Every path to recompute value {recompute_value} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {define_op.name()} op"
-                # )
                 raise Exception(
                     f"Every path to recompute value {recompute_value} must have saved value or starting point of the path is one of op in [pd_op.full, pd_op.full_int_array], but find {define_op.name()} op"
                 )
@@ -615,7 +599,6 @@ def replace_mid_values_with_forward_subgraph(
 
             return
 
-        # {inputs:[...], ops: [...], needed_outputs: [...]}
         recompute_subgraph_ops = set()
         recompute_subgraph_inputs = backward_utils.ValueSet()
         recompute_subgraph_outputs_backward_needed = mid_values
@@ -789,8 +772,7 @@ def is_dynamic_value_node(value_node):
     try:
         return -1 in value_node.shape
     except:
-        DebugPrint("============================", value_node)
-        return -1
+        raise ValueError(f"value node not found in program: {value_node} ")
 
 
 def cal_value_node_size(value_node):
@@ -870,13 +852,8 @@ def clone_graph(program, origin_ops, graph_inputs, clone_insertion_op):
     cloned_ops = []
     for input_value in graph_inputs:
         value_map.add(input_value, input_value)
-    # for op in origin_ops:
-    #     if(op.name() == "pd_op.full" or op.name() == "pd_op.full_int_array"):
-    #         value_map.add(op.results()[0], op.results()[0])
     for op in all_ops:
         if op in origin_ops:
-            # if(op.name() == "pd_op.full" or op.name() == "pd_op.full_int_array"):
-            #     continue
             cloned_ops.append(
                 op.clone(value_map, paddle.pir.CloneOptions(False, True, True))
             )

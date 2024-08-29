@@ -1111,7 +1111,7 @@ class _ExecutorCache:
                     )
 
                     if core._enable_auto_recompute():
-                        print("apply auto_recompute in executor", flush=True)
+                        logging.info("apply auto_recompute in executor")
                         pir_program = decomp.auto_recompute_pir_program(
                             pir_program, None
                         )
