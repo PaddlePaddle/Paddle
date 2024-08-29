@@ -38,31 +38,35 @@ def map_dtype(pd_dtype):
         raise TypeError(f"Unsupported dtype: {pd_dtype}")
 
 
-def run_pir_pass(program, partition_mode=False):
+def run_pir_pass(program, partition_mode=False, use_executor=True):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
+    pm.enable_ir_printing()
     paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
-    passes = [
-        {'multihead_matmul_fuse_pass': {}},
-        {'transpose_flatten_concat_fuse_pass': {}},
-        {'fused_dropout_add_pass': {}},
-        {'fused_linear_param_grad_add_pass': {}},
-        {'fuse_allreduce_split_to_reducescatter_pass': {}},
-        {'inplace_pass': {}},
-        {'identity_op_clean_pass': {}},
-        {'map_op_to_another_pass': {}},
-        {'matmul_scale_fuse_pass': {}},
-        {'matmul_transpose_fuse_pass': {}},
-        {'silu_fuse_pass': {}},
-        {'group_norm_silu_fuse_pass': {}},
-        {'fused_dot_product_attention_pass': {}},
-        {'fused_flash_attn_pass': {}},
-        {'remove_redundant_transpose_pass': {}},
-        {'fused_rotary_position_embedding_pass': {}},
-        {'trt_op_marker_pass': {}},
-    ]
+    if use_executor and not partition_mode:
+        passes = [
+            {'multihead_matmul_fuse_pass': {}},
+            {'transpose_flatten_concat_fuse_pass': {}},
+            {'fused_dropout_add_pass': {}},
+            {'fused_linear_param_grad_add_pass': {}},
+            {'fuse_allreduce_split_to_reducescatter_pass': {}},
+            {'inplace_pass': {}},
+            {'identity_op_clean_pass': {}},
+            {'map_op_to_another_pass': {}},
+            {'matmul_scale_fuse_pass': {}},
+            {'matmul_transpose_fuse_pass': {}},
+            {'silu_fuse_pass': {}},
+            {'group_norm_silu_fuse_pass': {}},
+            {'fused_dot_product_attention_pass': {}},
+            {'fused_flash_attn_pass': {}},
+            {'remove_redundant_transpose_pass': {}},
+            {'fused_rotary_position_embedding_pass': {}},
+        ]
     if partition_mode:
-        passes = [{'trt_sub_graph_extract_pass': {}}]
+        passes = [
+            {'trt_op_marker_pass': {}},
+            {'trt_sub_graph_extract_pass': {}},
+        ]
 
     for pass_item in passes:
         for pass_name, pass_attr in pass_item.items():
