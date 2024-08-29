@@ -275,8 +275,21 @@ struct AdamTuple {
   static constexpr KernelType kernel_type = kAdam;
   typedef T data_type;
   typedef adam_attr_t attr_type;
-  typedef void (*func_type)(
-      T, T, T, T, int64_t, const T*, const T*, const T*, const T*, T*, T*, T*);
+  typedef void (*func_type)(T,
+                            T,
+                            T,
+                            T,
+                            int64_t,
+                            const T*,
+                            const T*,
+                            const T*,
+                            const T*,
+                            const T*,
+                            T*,
+                            T*,
+                            T*,
+                            T*,
+                            bool);
 };
 
 template <typename T>

@@ -35,6 +35,7 @@ void AdamDenseKernel(const Context& dev_ctx,
                      const DenseTensor& learning_rate,
                      const DenseTensor& moment1,
                      const DenseTensor& moment2,
+                     const DenseTensor& moment2_max,
                      const DenseTensor& beta1_pow,
                      const DenseTensor& beta2_pow,
                      const paddle::optional<DenseTensor>& master_param,
@@ -46,9 +47,11 @@ void AdamDenseKernel(const Context& dev_ctx,
                      int64_t min_row_size_to_use_multithread,
                      bool multi_precision,
                      bool use_global_beta_pow,
+                     bool amsgrad,
                      DenseTensor* param_out,
                      DenseTensor* moment1_out,
                      DenseTensor* moment2_out,
+                     DenseTensor* moment2_max_out,
                      DenseTensor* beta1_pow_out,
                      DenseTensor* beta2_pow_out,
                      DenseTensor* master_param_outs) {
@@ -72,6 +75,7 @@ void AdamDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    phi::Copy(dev_ctx, moment2_max, dev_ctx.GetPlace(), false, moment2_max_out);
     if (!use_global_beta_pow) {
       phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
       phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
@@ -112,6 +116,7 @@ void AdamDenseKernel(const Context& dev_ctx,
   T* param_out_ptr = dev_ctx.template Alloc<T>(param_out);
   T* mom1_out_ptr = dev_ctx.template Alloc<T>(moment1_out);
   T* mom2_out_ptr = dev_ctx.template Alloc<T>(moment2_out);
+  T* mom2_max_out_ptr = dev_ctx.template Alloc<T>(moment2_max_out);
 
   T learning_rate_ =
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
@@ -123,6 +128,7 @@ void AdamDenseKernel(const Context& dev_ctx,
   const T* param_ptr = param.data<T>();
   const T* mom1_ptr = moment1.data<T>();
   const T* mom2_ptr = moment2.data<T>();
+  const T* mom2_max_ptr = moment2_max.data<T>();
   const T* grad_ptr = grad.data<T>();
 
   auto adam =
@@ -144,10 +150,13 @@ void AdamDenseKernel(const Context& dev_ctx,
          grad_ptr + offset,
          mom1_ptr + offset,
          mom2_ptr + offset,
+         mom2_max_ptr + offset,
          param_ptr + offset,
          mom1_out_ptr + offset,
          mom2_out_ptr + offset,
-         param_out_ptr + offset);
+         mom2_max_out_ptr + offset,
+         param_out_ptr + offset,
+         amsgrad);
   }
 
   if (numel % chunk_size != 0) {
@@ -161,10 +170,13 @@ void AdamDenseKernel(const Context& dev_ctx,
          grad_ptr + offset,
          mom1_ptr + offset,
          mom2_ptr + offset,
+         mom2_max_ptr + offset,
          param_ptr + offset,
          mom1_out_ptr + offset,
          mom2_out_ptr + offset,
-         param_out_ptr + offset);
+         mom2_max_out_ptr + offset,
+         param_out_ptr + offset,
+         amsgrad);
   }
 }
 
@@ -176,6 +188,7 @@ void MergedAdamKernel(
     const std::vector<const DenseTensor*>& learning_rate,
     const std::vector<const DenseTensor*>& moment1,
     const std::vector<const DenseTensor*>& moment2,
+    const std::vector<const DenseTensor*>& moment2_max,
     const std::vector<const DenseTensor*>& beta1_pow,
     const std::vector<const DenseTensor*>& beta2_pow,
     const paddle::optional<std::vector<const DenseTensor*>>& master_param,
@@ -184,9 +197,11 @@ void MergedAdamKernel(
     const Scalar& epsilon,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad,
     std::vector<DenseTensor*> param_out,
     std::vector<DenseTensor*> moment1_out,
     std::vector<DenseTensor*> moment2_out,
+    std::vector<DenseTensor*> moment2_max_out,
     std::vector<DenseTensor*> beta1_pow_out,
     std::vector<DenseTensor*> beta2_pow_out,
     std::vector<DenseTensor*> master_param_out) {
@@ -255,10 +270,13 @@ void MergedAdamKernel(
         dev_ctx.template Alloc<T>(moment1_out[idx]),
         moment2[idx]->data<T>(),
         dev_ctx.template Alloc<T>(moment2_out[idx]),
+        moment2_max[idx]->data<T>(),
+        dev_ctx.template Alloc<T>(moment2_max_out[idx]),
         learning_rate[idx]->data<T>(),
         grad[idx]->data<T>(),
         param[idx]->data<T>(),
-        dev_ctx.template Alloc<T>(param_out[idx]));
+        dev_ctx.template Alloc<T>(param_out[idx]),
+        amsgrad);
     functor(param[idx]->numel());
     if (!use_global_beta_pow) {
       dev_ctx.template Alloc<T>(beta1_pow_out[idx])[0] =

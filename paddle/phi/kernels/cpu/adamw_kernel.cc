@@ -75,6 +75,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                                 learning_rate,
                                 moment1,
                                 moment2,
+                                moment2,  // TODO(megemini)
                                 beta1_pow,
                                 beta2_pow,
                                 master_param,
@@ -86,9 +87,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
                                 min_row_size_to_use_multithread,
                                 multi_precision,
                                 use_global_beta_pow,
+                                false,  // TODO(megemini)
                                 param_out,
                                 moment1_out,
                                 moment2_out,
+                                moment2_out,  // TODO(megemini)
                                 beta1_pow_out,
                                 beta2_pow_out,
                                 master_param_outs);

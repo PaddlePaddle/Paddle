@@ -152,6 +152,7 @@ void AdamInferMeta(const MetaTensor& param,
                    const MetaTensor& learning_rate,
                    const MetaTensor& moment1,
                    const MetaTensor& moment2,
+                   const MetaTensor& moment2_max,
                    const MetaTensor& beta1_pow,
                    const MetaTensor& beta2_pow,
                    const MetaTensor& master_param,
@@ -163,9 +164,11 @@ void AdamInferMeta(const MetaTensor& param,
                    int64_t min_row_size_to_use_multithread,
                    bool multi_precision,
                    bool use_global_beta_pow,
+                   bool amsgrad,
                    MetaTensor* param_out,
                    MetaTensor* moment1_out,
                    MetaTensor* moment2_out,
+                   MetaTensor* moment2_max_out,
                    MetaTensor* beta1_pow_out,
                    MetaTensor* beta2_pow_out,
                    MetaTensor* master_param_outs) {
@@ -232,6 +235,8 @@ void AdamInferMeta(const MetaTensor& param,
   moment1_out->set_dtype(moment1.dtype());
   moment2_out->set_dims(param_dims);
   moment2_out->set_dtype(moment2.dtype());
+  moment2_max_out->set_dims(param_dims);
+  moment2_max_out->set_dtype(moment2_max.dtype());
 
   beta1_pow_out->set_dims(beta1_pow_dims);
   beta1_pow_out->set_dtype(beta1_pow.dtype());
@@ -353,6 +358,7 @@ void AdamwInferMeta(const MetaTensor& param,
                 learning_rate,
                 moment1,
                 moment2,
+                moment2,  // TODO(megemini)
                 beta1_pow,
                 beta2_pow,
                 master_param,
@@ -364,9 +370,11 @@ void AdamwInferMeta(const MetaTensor& param,
                 min_row_size_to_use_multithread,
                 multi_precision,
                 use_global_beta_pow,
+                false,  // TODO(megemini)
                 param_out,
                 moment1_out,
                 moment2_out,
+                moment2_out,  // TODO(megemini)
                 beta1_pow_out,
                 beta2_pow_out,
                 master_param_outs);

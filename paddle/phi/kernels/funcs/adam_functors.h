@@ -244,10 +244,13 @@ class AdamFunctor<T, CPUAdam> {
   T* moment1_out_;
   const T* moment2_;
   T* moment2_out_;
+  const T* moment2_max_;
+  T* moment2_max_out_;
   const T* lr_;
   const T* grad_;
   const T* param_;
   T* param_out_;
+  bool amsgrad_;
 
  public:
   AdamFunctor(T beta1,
@@ -259,10 +262,13 @@ class AdamFunctor<T, CPUAdam> {
               T* mom1_out,
               const T* mom2,
               T* mom2_out,
+              const T* mom2_max,
+              T* mom2_max_out,
               const T* lr,
               const T* grad,
               const T* param,
-              T* param_out)
+              T* param_out,
+              bool amsgrad)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -272,10 +278,13 @@ class AdamFunctor<T, CPUAdam> {
         moment1_out_(mom1_out),
         moment2_(mom2),
         moment2_out_(mom2_out),
+        moment2_max_(mom2_max),
+        moment2_max_out_(mom2_max_out),
         lr_(lr),
         grad_(grad),
         param_(param),
-        param_out_(param_out) {}
+        param_out_(param_out),
+        amsgrad_(amsgrad) {}
 
   void operator()(size_t numel) const {
     Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> g{

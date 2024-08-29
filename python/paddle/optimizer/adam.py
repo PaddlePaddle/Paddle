@@ -191,6 +191,7 @@ class Adam(Optimizer):
     type: str
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
+    _moment2_acc_max_str = "moment2_max"
     _beta1_pow_acc_str = "beta1_pow_acc"
     _beta2_pow_acc_str = "beta2_pow_acc"
 
@@ -208,6 +209,7 @@ class Adam(Optimizer):
         lazy_mode: bool = False,
         multi_precision: bool = False,
         use_multi_tensor: bool = False,
+        amsgrad: bool = False,
         name: str | None = None,
     ) -> None:
         assert learning_rate is not None
@@ -255,10 +257,13 @@ class Adam(Optimizer):
             self._param_dict = self._create_multi_tensor_dict()
             self._moment1_dict = self._create_multi_tensor_dict()
             self._moment2_dict = self._create_multi_tensor_dict()
+            self._moment2_max_dict = self._create_multi_tensor_dict()
             self._beta1_pow_acc_dict = self._create_multi_tensor_dict()
             self._beta2_pow_acc_dict = self._create_multi_tensor_dict()
             self._master_weight_dict = self._create_multi_tensor_dict()
             self._master_weight_dict['FP32_LODTensor'] = None
+
+        self._amsgrad = amsgrad
 
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
@@ -269,6 +274,7 @@ class Adam(Optimizer):
                 acc_dtype = core.VarDesc.VarType.FP32
         self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
         self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+        self._add_accumulator(self._moment2_acc_max_str, p, dtype=acc_dtype)
         self._add_accumulator(
             name=self._beta1_pow_acc_str,
             param=p,
@@ -332,6 +338,9 @@ class Adam(Optimizer):
         moment2 = self._get_accumulator_master(
             self._moment2_acc_str, param_and_grad[0]
         )
+        moment2_max = self._get_accumulator_master(
+            self._moment2_acc_max_str, param_and_grad[0]
+        )
         beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
@@ -364,12 +373,13 @@ class Adam(Optimizer):
                 self._get_auxiliary_var('found_inf') if in_pir_mode() else None
             )
 
-            _, _, _, _, _, _ = _C_ops.adam_(
+            _ = _C_ops.adam_(
                 param_and_grad[0],
                 param_and_grad[1],
                 lr,
                 moment1,
                 moment2,
+                moment2_max,
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
@@ -381,6 +391,7 @@ class Adam(Optimizer):
                 1000,
                 find_master,
                 False,
+                self._amsgrad,
             )
 
             return None
@@ -391,6 +402,7 @@ class Adam(Optimizer):
                 "LearningRate": [lr],
                 "Moment1": [moment1],
                 "Moment2": [moment2],
+                "Moment2Max": [moment2_max],
                 "Beta1Pow": [beta1_pow_acc],
                 "Beta2Pow": [beta2_pow_acc],
             }
@@ -405,6 +417,7 @@ class Adam(Optimizer):
                 "ParamOut": [param_and_grad[0]],
                 "Moment1Out": [moment1],
                 "Moment2Out": [moment2],
+                "Moment2MaxOut": [moment2_max],
                 "Beta1PowOut": [beta1_pow_acc],
                 "Beta2PowOut": [beta2_pow_acc],
             }
@@ -534,6 +547,9 @@ class Adam(Optimizer):
         for param in parameters:
             moment1 = self._get_accumulator_master(self._moment1_acc_str, param)
             moment2 = self._get_accumulator_master(self._moment2_acc_str, param)
+            moment2_max = self._get_accumulator_master(
+                self._moment2_acc_max_str, param
+            )
             beta1_pow_acc = self._get_accumulator_master(
                 self._beta1_pow_acc_str, param
             )
@@ -551,6 +567,9 @@ class Adam(Optimizer):
                 self._moment2_dict['FP32_LODTensor'][param_group_idx].append(
                     moment2
                 )
+                self._moment2_max_dict['FP32_LODTensor'][
+                    param_group_idx
+                ].append(moment2_max)
                 self._beta1_pow_acc_dict['FP32_LODTensor'][
                     param_group_idx
                 ].append(beta1_pow_acc)
@@ -567,6 +586,9 @@ class Adam(Optimizer):
                 self._moment2_dict['FP16_LODTensor'][param_group_idx].append(
                     moment2
                 )
+                self._moment2_max_dict['FP16_LODTensor'][
+                    param_group_idx
+                ].append(moment2_max)
                 self._beta1_pow_acc_dict['FP16_LODTensor'][
                     param_group_idx
                 ].append(beta1_pow_acc)
@@ -762,6 +784,7 @@ class Adam(Optimizer):
                             lr_dict[key],
                             self._moment1_dict[key][param_group_idx],
                             self._moment2_dict[key][param_group_idx],
+                            self._moment2_max_dict[key][param_group_idx],
                             self._beta1_pow_acc_dict[key][param_group_idx],
                             self._beta2_pow_acc_dict[key][param_group_idx],
                             master_weight,
@@ -770,6 +793,7 @@ class Adam(Optimizer):
                             self._epsilon,
                             find_master,
                             False,
+                            self._amsgrad,
                         )
                 elif in_pir_mode():
                     master_weight = self._master_weight_dict[key]
@@ -784,6 +808,7 @@ class Adam(Optimizer):
                         lr_dict[key],
                         self._moment1_dict[key][param_group_idx],
                         self._moment2_dict[key][param_group_idx],
+                        self._moment2_max_dict[key][param_group_idx],
                         self._beta1_pow_acc_dict[key][param_group_idx],
                         self._beta2_pow_acc_dict[key][param_group_idx],
                         master_weight,
@@ -792,6 +817,7 @@ class Adam(Optimizer):
                         self._epsilon,
                         find_master,
                         False,
+                        self._amsgrad,
                     )
                 else:
                     inputs = {
@@ -800,6 +826,9 @@ class Adam(Optimizer):
                         "LearningRate": lr_dict[key],
                         "Moment1": self._moment1_dict[key][param_group_idx],
                         "Moment2": self._moment2_dict[key][param_group_idx],
+                        "Moment2Max": self._moment2_max_dict[key][
+                            param_group_idx
+                        ],
                         "Beta1Pow": self._beta1_pow_acc_dict[key][
                             param_group_idx
                         ],
@@ -811,6 +840,9 @@ class Adam(Optimizer):
                         "ParamOut": self._param_dict[key][param_group_idx],
                         "Moment1Out": self._moment1_dict[key][param_group_idx],
                         "Moment2Out": self._moment2_dict[key][param_group_idx],
+                        "Moment2MaxOut": self._moment2_max_dict[key][
+                            param_group_idx
+                        ],
                         "Beta1PowOut": self._beta1_pow_acc_dict[key][
                             param_group_idx
                         ],

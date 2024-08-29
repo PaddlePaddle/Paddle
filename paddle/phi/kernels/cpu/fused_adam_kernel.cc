@@ -106,6 +106,7 @@ void FusedAdamKernel(
           learning_rate,
           *moments1[idx],
           *moments2[idx],
+          *moments2[idx],  // TODO(megemini)
           *beta1_pows[idx],
           *beta2_pows[idx],
           master_params_tmp,
@@ -117,9 +118,11 @@ void FusedAdamKernel(
           1000,
           multi_precision,
           use_global_beta_pow,
+          false,  // TODO(megemini)
           params_out[idx],
           moments1_out[idx],
           moments2_out[idx],
+          moments2_out[idx],  // TODO(megemini)
           beta1_pows_out[idx],
           beta2_pows_out[idx],
           master_params_out.empty() ? nullptr : master_params_out[idx]);

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <stdio.h>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -523,16 +524,35 @@ void Adam(T beta1,
           const T* grad_ptr,
           const T* mom1_ptr,
           const T* mom2_ptr,
+          const T* mom2_max_ptr,
           const T* param_ptr,
           T* mom1_out_ptr,
           T* mom2_out_ptr,
-          T* param_out_ptr) {
+          T* mom2_max_out_ptr,
+          T* param_out_ptr,
+          bool amsgrad) {
   for (int i = 0; i < numel; ++i) {
     mom1_out_ptr[i] = beta1 * mom1_ptr[i] + (1 - beta1) * grad_ptr[i];
     mom2_out_ptr[i] =
         beta2 * mom2_ptr[i] + (1 - beta2) * grad_ptr[i] * grad_ptr[i];
+
+    // T mom2 = mom2_out_ptr[i];
+    T mom2 = std::max(mom2_out_ptr[i], mom2_max_out_ptr[i]);
+
+    // if (tmp > mom2_out_ptr[i]) {
+    //   std::cout << tmp << " | " << mom2_ptr[i] << " | " << mom2_out_ptr[i] <<
+    //   " | " << mom2 << std::endl; std::cout << "---------- old " <<
+    //   std::endl;
+
+    // }
+    // else {
+    //   std::cout << "---------- new " << std::endl;
+
+    // }
+    mom2_max_out_ptr[i] = mom2;
+
     param_out_ptr[i] =
-        param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2_out_ptr[i]) + eps));
+        param_ptr[i] + lr * (mom1_out_ptr[i] / (sqrt(mom2) + eps));
   }
 }
 

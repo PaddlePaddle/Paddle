@@ -30,6 +30,7 @@ SpmdInfo AdamInferSpmdDynamic(const DistMetaTensor& param,
                               const DistMetaTensor& learning_rate,
                               const DistMetaTensor& moment1,
                               const DistMetaTensor& moment2,
+                              const DistMetaTensor& moment2_max,
                               const DistMetaTensor& beta1_pow,
                               const DistMetaTensor& beta2_pow,
                               const DistMetaTensor& master_param,
@@ -40,7 +41,8 @@ SpmdInfo AdamInferSpmdDynamic(const DistMetaTensor& param,
                               bool lazy_mode,
                               int64_t min_row_size_to_use_multithread,
                               bool multi_precision,
-                              bool use_global_beta_pow) {
+                              bool use_global_beta_pow,
+                              bool amsgrad) {
   // shape check
   PADDLE_ENFORCE(
       param.dims().size() == grad.dims().size() &&
@@ -79,6 +81,8 @@ SpmdInfo AdamInferSpmdDynamic(const DistMetaTensor& param,
       CopyTensorDistAttrForOutput(moment1.dist_attr());
   TensorDistAttr moment2_dist_attr =
       CopyTensorDistAttrForOutput(moment2.dist_attr());
+  TensorDistAttr moment2_max_dist_attr =
+      CopyTensorDistAttrForOutput(moment2_max.dist_attr());
   TensorDistAttr beta1_pow_dist_attr =
       CopyTensorDistAttrForOutput(beta1_pow.dist_attr());
   TensorDistAttr beta2_pow_dist_attr =
@@ -115,6 +119,7 @@ SpmdInfo AdamInferSpmdDynamic(const DistMetaTensor& param,
   auto grad_spmd_dims_mapping = grad_dist_attr_spmd.dims_mapping();
   auto momentum1_src_dims_mapping = moment1.dist_attr().dims_mapping();
   auto momentum2_src_dims_mapping = moment2.dist_attr().dims_mapping();
+  auto momentum2_max_src_dims_mapping = moment2_max.dist_attr().dims_mapping();
 
   // Get the final dist attr for param, master_param, grad and momentum.
   // Whatever the input dist attrs are, the output dist attr should be same.
@@ -172,12 +177,14 @@ SpmdInfo AdamInferSpmdDynamic(const DistMetaTensor& param,
   }
   moment1_dist_attr.set_dims_mapping(dst_dims_mapping);
   moment2_dist_attr.set_dims_mapping(dst_dims_mapping);
+  moment2_max_dist_attr.set_dims_mapping(dst_dims_mapping);
 
   return {{param_dist_attr,
            grad_dist_attr,
            lr_dist_attr,
            moment1_dist_attr,
            moment2_dist_attr,
+           moment2_max_dist_attr,
            beta1_pow_dist_attr,
            beta2_pow_dist_attr,
            master_param_dist_attr,
@@ -185,6 +192,7 @@ SpmdInfo AdamInferSpmdDynamic(const DistMetaTensor& param,
           {param_dist_attr,
            moment1_dist_attr,
            moment2_dist_attr,
+           moment2_max_dist_attr,
            beta1_pow_dist_attr,
            beta2_pow_dist_attr,
            master_param_dist_attr}};
