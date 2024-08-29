@@ -337,8 +337,6 @@ class PipelineParallel(MetaParallelBase):
         self.callbacks = pipeline_parallel_callbacks_
 
         self.bubble_hooks = pipeline_bubble_hooks_
-        print(f"self.num_stages: {self.num_stages}")
-        print(f"{self.bubble_hooks}, {self.bubble_hooks.set_bubble_times}")
 
         self.bubble_hooks.set_bubble_times(bubble_times=self.num_stages)
 
