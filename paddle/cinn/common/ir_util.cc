@@ -192,18 +192,20 @@ Expr IndiceToAbsOffset(const std::vector<Expr> &shape,
             "the current data type of shape[{}] is {}",
             i,
             shape[i].type()));
-    Expr indice_prod = indices[i];
-    optim::SimplifyCast(&indice_prod);
-    for (int j = i + 1; j < shape.size(); j++) {
-      indice_prod = RampRelatedMul(indice_prod, shape[j]);
-    }
+    Expr indice_cast = indices[i];
+    optim::SimplifyCast(&indice_cast);
     if (res.defined()) {
-      res = RampRelatedAdd(res, indice_prod);
+      res = RampRelatedAdd(RampRelatedMul(res, shape[i]), indice_cast);
     } else {
-      res = indice_prod;
+      res = indice_cast;
+    }
+
+    if (i > 0) {
+      res = cinn::common::AutoSimplify(res);
     }
   }
-  return cinn::common::AutoSimplify(res);
+
+  return res;
 }
 
 Expr IndiceToAbsOffset(const std::vector<int> &shape,
@@ -258,7 +260,7 @@ bool is_zero(Expr v) {
   auto *float_n = v.As<ir::FloatImm>();
 
   if (int_n) return int_n->value == 0;
-  if (float_n) return float_n->value = 0.f;
+  if (float_n) return float_n->value == 0.f;
   return false;
 }
 

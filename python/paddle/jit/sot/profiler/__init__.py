@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import (
-    profiler as profiler,
-    psdb,  # noqa: F401
+from .kernel_stats import SotStepProfilerGuard as SotStepProfilerGuard
+from .profiler import (
+    EventGuard as EventGuard,
+    SotProfiler as SotProfiler,
+    event_register as event_register,
 )
-from .opcode_translator.breakpoint import (  # noqa: F401
-    BM,
-    add_breakpoint,
-    add_event,
-)
-from .translate import symbolic_translate  # noqa: F401
