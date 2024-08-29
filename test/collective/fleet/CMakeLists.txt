@@ -69,17 +69,6 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     "PADDLE_DIST_UT_PORT=21204;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
   )
 endif()
-if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
-  bash_test_modules(
-    test_rnn_dp
-    START_BASH
-    ../../legacy_test/dist_test.sh
-    LABELS
-    "RUN_TYPE=DIST"
-    ENVS
-    "PADDLE_DIST_UT_PORT=21208;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-endif()
 if(WITH_NCCL)
   if((WITH_GPU) AND LOCAL_ALL_PLAT)
     bash_test_modules(

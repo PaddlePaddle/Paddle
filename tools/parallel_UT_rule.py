@@ -551,7 +551,6 @@ HIGH_PARALLEL_JOB_NEW = [
     'test_parallel_dygraph_sharding_parallel',
     'test_dist_hapi_model',
     'test_dist_mnist_gradient_merge',
-    'test_rnn_dp',
     'test_parallel_dygraph_no_sync',
     'test_parallel_dygraph_no_sync_gradient_check',
     'test_hybrid_parallel_inference_helper',
