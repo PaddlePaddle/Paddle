@@ -116,6 +116,12 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes.at(i);
     slice_dims.at(axis) = ends.at(i) - starts.at(i);
+    if (!in_dims[i].isa<int64_t>() || !ends[i].isa<int64_t>()) {
+      symbol::List<symbol::DimExpr> min_lists{in_dims[i], ends.at(i)};
+      slice_dims.at(axis) =
+          symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})}) -
+          starts.at(i);
+    }
   }
 
   return slice_dims;
