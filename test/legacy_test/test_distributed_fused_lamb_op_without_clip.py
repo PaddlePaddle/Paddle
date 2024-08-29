@@ -12,9 +12,66 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import shlex
+import sys
+import tempfile
 import unittest
 
-from test_distributed_fused_lamb_op_with_clip import run_test
+import paddle
+
+
+def get_test_file():
+    dirname = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(dirname, 'distributed_fused_lamb_test_base.py')
+
+
+def run_test(
+    clip_after_allreduce=True,
+    max_global_norm=-1.0,
+    gradient_merge_steps=1,
+    use_master_acc_grad=True,
+    need_env={},
+):
+    temp_dir = tempfile.TemporaryDirectory()
+    if not paddle.is_compiled_with_cuda():
+        return
+    if os.name == 'nt':
+        return
+    args = locals()
+    log_dir = os.path.join(temp_dir.name, f'log_{os.getpid()}')
+    cmd = [
+        sys.executable,
+        '-u',
+        '-m',
+        'paddle.distributed.launch',
+        '--devices',
+        '0,1',
+        '--log_dir',
+        log_dir,
+        get_test_file(),
+    ]
+
+    cmd = ' '.join([shlex.quote(c) for c in cmd])
+
+    os.environ['CLIP_AFTER_ALLREDUCE'] = str(clip_after_allreduce)
+    os.environ['MAX_GLOBAL_NORM'] = str(max_global_norm)
+    os.environ['GRADIENT_MERGE_STEPS'] = str(gradient_merge_steps)
+    os.environ['USE_MASTER_ACC_GRAD'] = str(1 if use_master_acc_grad else 0)
+    os.environ.update(need_env)
+
+    touch_file_env = 'SUCCESS_TOUCH_FILE'
+    touch_file_name = os.path.join(
+        temp_dir.name,
+        f'distributed_fused_lamb_touch_file_{os.getpid()}',
+    )
+    os.environ[touch_file_env] = touch_file_name
+    try:
+        assert os.system(cmd) == 0 and os.path.exists(
+            touch_file_name
+        ), f'Test failed when {args}'
+    finally:
+        temp_dir.cleanup()
 
 
 class TestDistributedFusedLambWithoutClip(unittest.TestCase):
