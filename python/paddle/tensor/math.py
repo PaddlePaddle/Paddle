@@ -6308,13 +6308,13 @@ def diff(
 
             >>> out = paddle.diff(x, n=2, append=y)
             >>> out
-            Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [ -2, -4,  8, -3])
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-2, -4,  8, -3])
 
             >>> out = paddle.diff(x, n=3, append=y)
             >>> out
-            Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [ -2,  12, -11])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-2 ,  12, -11])
 
             >>> z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             >>> out = paddle.diff(z, axis=0)
