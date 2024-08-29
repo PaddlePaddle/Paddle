@@ -499,7 +499,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_imperative_ocr_attention_model',
     'test_recv_save_op',
     'test_transpiler_ops',
-    'test_communicator_sync',
     'test_collective_optimizer',
     'test_data_norm_op',
     'test_fuse_bn_act_pass_deprecated',

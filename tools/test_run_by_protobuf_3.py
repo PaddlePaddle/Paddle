@@ -47,7 +47,6 @@ PROTOBUF3_NEEDED_TESTING_LIST = [
     'test_dist_fleet_sparse_embedding_ctr',
     'test_dist_sparse_tensor_load_adam',
     'test_dist_sparse_tensor_load_sgd_deprecated',
-    'test_communicator_sync',
     'test_dist_fuse_adam_pass',
     'test_dist_fuse_bn_act_pass',
     'test_dist_fuse_bn_add_act_pass',

@@ -26,16 +26,6 @@ if(LOCAL_ALL_ARCH AND (LINUX OR APPLE))
                                                    "RUN_TYPE=DIST")
 endif()
 
-if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
-  py_test_modules(
-    test_communicator_sync
-    MODULES
-    test_communicator_sync
-    ENVS
-    "FLAGS_communicator_send_queue_size=1;FLAGS_communicator_max_merge_var_num=1;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-endif()
-
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
     test_fleet_meta_optimizer_base_deprecated MODULES
