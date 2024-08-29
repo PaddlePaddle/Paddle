@@ -132,7 +132,7 @@ int32_t Expr::as_int32() const {
       true,
       phi::errors::InvalidArgument(
           "Invalid type. The type must be an 32-bit integer type. %s",
-          utils::enforce::GetCurrentTraceBackString()));
+          ::common::GetCurrentTraceBackString()));
   return As<IntImm>()->value;
 }
 int64_t Expr::as_int64() const {

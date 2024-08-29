@@ -148,31 +148,27 @@ float CalculateEstOccupancy(uint32_t DeviceId,
 #endif  // PADDLE_WITH_CUPTI
 
 const char* StringTracerMemEventType(phi::TracerMemEventType type) {
-  static const char* category_name_[] = {// NOLINT
-                                         "Allocate",
-                                         "Free",
-                                         "ReservedAllocate",
-                                         "ReservedFree"};
-  return category_name_[static_cast<int>(type)];
+  switch (type) {
+#define CASE_NAME(name)               \
+  case phi::TracerMemEventType::name: \
+    return #name;
+    FOR_EACH_TRACER_MEM_EVENT_TYPES(CASE_NAME)
+#undef CASE_NAME
+    default:
+      return "Unknown";
+  }
 }
 
 const char* StringTracerEventType(phi::TracerEventType type) {
-  static const char* category_name_[] = {"Operator",  // NOLINT
-                                         "Dataloader",
-                                         "ProfileStep",
-                                         "CudaRuntime",
-                                         "Kernel",
-                                         "Memcpy",
-                                         "Memset",
-                                         "UserDefined",
-                                         "OperatorInner",
-                                         "Forward",
-                                         "Backward",
-                                         "Optimization",
-                                         "Communication",
-                                         "PythonOp",
-                                         "PythonUserDefined"};
-  return category_name_[static_cast<int>(type)];
+  switch (type) {
+#define CASE_NAME(name)            \
+  case phi::TracerEventType::name: \
+    return #name;
+    FOR_EACH_TRACER_EVENT_TYPES(CASE_NAME)
+#undef CASE_NAME
+    default:
+      return "Unknown";
+  }
 }
 
 }  // namespace platform

@@ -2597,6 +2597,9 @@ void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   MetaTensor* rpn_rois_num) {
   rpn_rois->set_dims(common::make_ddim({-1, 4}));
   rpn_roi_probs->set_dims(common::make_ddim({-1, 1}));
+  if (rpn_rois_num) {
+    rpn_rois_num->set_dims(common::make_ddim({scores.dims()[0]}));
+  }
 }
 
 void LegacyGenerateProposalsInferMeta(const MetaTensor& scores,
