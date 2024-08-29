@@ -1409,9 +1409,8 @@ bool GroupNormOpInferSymbolicShape(
   return true;
 }
 
-bool InstanceNormOpInferSymbolicShape(pir::Operation *op,
-                                      pir::InferSymbolicShapeContext
-                                      *infer_context) {
+bool InstanceNormOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
@@ -1445,10 +1444,11 @@ bool InstanceNormOpInferSymbolicShape(pir::Operation *op,
   symbol::DimExpr C = x_shape[1];
 
   if (op->operand_source(1) != nullptr) {
-      const auto &scale_shape_or_data =
-          infer_context->GetShapeOrDataForValue(op->operand_source(1));
-      const std::vector<symbol::DimExpr> &scale_shape = scale_shape_or_data.shape();
-      PADDLE_ENFORCE_EQ(
+    const auto &scale_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    const std::vector<symbol::DimExpr> &scale_shape =
+        scale_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
         scale_shape.size(),
         1UL,
         phi::errors::InvalidArgument(
@@ -1457,14 +1457,14 @@ bool InstanceNormOpInferSymbolicShape(pir::Operation *op,
             "of scale is [%d]",
             scale_shape,
             scale_shape.size()));
-      infer_context->AddEqualCstr(scale_shape[0], C);
+    infer_context->AddEqualCstr(scale_shape[0], C);
   }
 
   if (op->operand_source(2) != nullptr) {
-      const auto &bias_shape_or_data =
-          infer_context->GetShapeOrDataForValue(op->operand_source(2));
-      const std::vector<symbol::DimExpr> &bias_shape = bias_shape_or_data.shape();
-      PADDLE_ENFORCE_EQ(
+    const auto &bias_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const std::vector<symbol::DimExpr> &bias_shape = bias_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(
         bias_shape.size(),
         1UL,
         phi::errors::InvalidArgument(
@@ -1473,23 +1473,20 @@ bool InstanceNormOpInferSymbolicShape(pir::Operation *op,
             "of scale is [%d]",
             bias_shape,
             bias_shape.size()));
-      infer_context->AddEqualCstr(bias_shape[0], C);
+    infer_context->AddEqualCstr(bias_shape[0], C);
   }
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(x_shape)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   std::vector<symbol::DimExpr> sq_shape = {N * C};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(sq_shape)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(sq_shape)});
   infer_context->SetShapeOrDataForValue(
       op->result(2),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(sq_shape)});
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(sq_shape)});
 
   return true;
 }
@@ -1648,7 +1645,8 @@ bool LLMInt8LinearOpInferSymbolicShape(
 
   const auto &w_scale_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
-  const std::vector<symbol::DimExpr> &w_scale_shape = w_scale_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &w_scale_shape =
+      w_scale_shape_or_data.shape();
   infer_context->AddEqualCstr(w_scale_shape[0], w_shape[0]);
 
   std::vector<symbol::DimExpr> out_shape = x_shape;
