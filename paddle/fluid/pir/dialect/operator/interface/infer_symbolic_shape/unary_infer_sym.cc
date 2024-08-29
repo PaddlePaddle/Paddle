@@ -443,8 +443,8 @@ bool AsStridedOpInferSymbolicShape(
   int rank = shape.size();
   std::vector<symbol::DimExpr> out_shape;
   for (int i = 0; i < rank; ++i) {
-    symbol::DimExpr out_unknown = infer_context->GetNextSymName();
     if (shape[i] == -1) {
+      symbol::DimExpr out_unknown = infer_context->GetNextSymName();
       out_shape.push_back(out_unknown);
     } else {
       out_shape.push_back(symbol::DimExpr(shape[i]));
