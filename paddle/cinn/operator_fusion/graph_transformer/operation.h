@@ -44,6 +44,8 @@ struct MergeTrivialPatternOperation {
 
       if (can_fuse) {
         auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
+        merged_node->set_fusion_iters(
+            FuseItersForTrivialSink(upstream, downstream));
         graph->RemoveNode(downstream);
         VLOG(4) << "Spliting trivial pattern: \nupstream "
                 << upstream->DebugStr() << "\ndownstream "

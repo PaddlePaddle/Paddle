@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_fuser.h"
-#include "paddle/cinn/operator_fusion/pir_graph_analyzing/shardable_axes_base.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/fusion_iters.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
@@ -30,7 +30,7 @@ struct PatternNode {
                        const ShardableAxesSignature& axes)
       : sink_op_(content.op),
         stmt_pattern_(ConvertToStmtPattern(content)),
-        axes_(axes) {}
+        fusion_iters_(FusionItersSignature(content.op, axes)) {}
 
   explicit PatternNode(PatternNodePtr fused_up_node,
                        PatternNodePtr fused_down_node,
@@ -60,7 +60,7 @@ struct PatternNode {
     for (const auto& d : downstream_) {
       ss << GetPatternId(d->stmt_pattern()) << "(" << d << "), ";
     }
-    ss << "\n" << axes_.DebugStr();
+    ss << "\n" << fusion_iters_.DebugStr();
     pir::IrPrinter printer(ss);
     if (GetPatternName(stmt_pattern_) == AnchorPattern::name()) {
       ss << "\n anchor: ";
@@ -97,6 +97,11 @@ struct PatternNode {
     GetFusionTracker(stmt_pattern_)->append(instr);
   }
   void UpdateTracker() { PatternUpdateTracker(stmt_pattern_); }
+  FusionItersSignature fusion_iters() const { return fusion_iters_; }
+  void set_fusion_iters(const FusionItersSignature& fusion_iters) {
+    fusion_iters_ = fusion_iters;
+    VLOG(4) << "set_fusion_iters";
+  }
 
  private:
   StmtPattern stmt_pattern_;
@@ -105,7 +110,7 @@ struct PatternNode {
   std::vector<PatternNodePtr> upstream_;
   std::vector<PatternNodePtr> downstream_;
 
-  ShardableAxesSignature axes_;
+  FusionItersSignature fusion_iters_;
 };
 
 using PatternNodePtr = std::shared_ptr<PatternNode>;

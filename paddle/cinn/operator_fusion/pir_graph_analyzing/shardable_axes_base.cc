@@ -453,7 +453,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
             });
 
   for (size_t i = 0; i < sorted_roots.size(); ++i) {
-    normalized_root_name_map_[sorted_roots[i]] = "i_" + std::to_string(i);
+    normalized_root_name_map_[sorted_roots[i]] = "I" + std::to_string(i);
   }
 
   VLOG(4) << NameUnionDebugStr();
