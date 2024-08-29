@@ -40,7 +40,6 @@ def get_cache_path():
     return cache_path
 
 
-paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
@@ -212,7 +211,8 @@ class PaddleToTensorRTConverter:
         out_shapes = []
         out_names = []
         out_types = []
-        for result_value in output_values:
+        for out_index in range(len(output_values)):
+            result_value = output_values[out_index]
             output_tensor = value_to_trt_tensor[result_value.id]
             if output_tensor is None:
                 out_names.append("")
@@ -223,11 +223,8 @@ class PaddleToTensorRTConverter:
             out_names.append(output_tensor.name)
             out_shapes.append(result_value.shape)
             out_types.append(result_value.dtype)
-            if (
-                result_value.has_one_use()
-                and result_value.all_used_ops()[0].name() == "cf.yield"
-            ):
-                # if result value is a return value, it doesn't need get shape, continue
+            if group_op.result(out_index).use_empty():
+                # if result value is not used, it doesn't need get shape, continue
                 continue
             min_shape = get_value_shape_range_info(
                 result_value, False, paddle.base.core.ShapeMode.kMIN
@@ -283,7 +280,7 @@ class PaddleToTensorRTConverter:
             )
 
             for out_index in range(len(out)):
-                if out[out_index].use_empty():
+                if group_op.result(out_index).use_empty():
                     # if result value is not been used, it doesn't need get shape, continue
                     continue
                 ori_value = output_values[out_index]
