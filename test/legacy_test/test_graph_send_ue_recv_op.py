@@ -115,7 +115,8 @@ def compute_graph_send_ue_recv_for_sum(inputs, attributes):
     gather_x = x[src_index]
     out_shp = [
         x.shape[0],
-    ] + get_broadcast_shape(x.shape[1:], y.shape[1:])
+        *get_broadcast_shape(x.shape[1:], y.shape[1:]),
+    ]
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output.
@@ -138,7 +139,8 @@ def compute_graph_send_ue_recv_for_mean(inputs, attributes):
     gather_x = x[src_index]
     out_shp = [
         x.shape[0],
-    ] + get_broadcast_shape(x.shape[1:], y.shape[1:])
+        *get_broadcast_shape(x.shape[1:], y.shape[1:]),
+    ]
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output.
@@ -168,7 +170,8 @@ def compute_graph_send_ue_recv_for_max_min(inputs, attributes):
     gather_x = x[src_index]
     out_shp = [
         x.shape[0],
-    ] + get_broadcast_shape(x.shape[1:], y.shape[1:])
+        *get_broadcast_shape(x.shape[1:], y.shape[1:]),
+    ]
     results = np.zeros(out_shp, dtype=x.dtype)
 
     # Calculate forward output.

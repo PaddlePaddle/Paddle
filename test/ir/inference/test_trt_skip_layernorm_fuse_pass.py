@@ -28,14 +28,14 @@ from paddle.base.core import AnalysisConfig, PassVersionChecker
 class SkipLayernormFusePassTest(InferencePassTest):
     def setUp(self):
         self.set_args()
-        input_shape_with_batch = [self.batch_size] + self.input_shape
-        min_input_shape_with_batch = [1] + self.min_input_shape
+        input_shape_with_batch = [self.batch_size, *self.input_shape]
+        min_input_shape_with_batch = [1, *self.min_input_shape]
         with base.program_guard(self.main_program, self.startup_program):
             data1 = paddle.static.data(
-                name='data1', shape=[-1] + self.input_shape, dtype='float32'
+                name='data1', shape=[-1, *self.input_shape], dtype='float32'
             )
             data2 = paddle.static.data(
-                name='data2', shape=[-1] + self.input_shape, dtype='float32'
+                name='data2', shape=[-1, *self.input_shape], dtype='float32'
             )
             eltwise_out = paddle.add(data1, data2)
             out = paddle.nn.LayerNorm(eltwise_out.shape[-1:])(eltwise_out)

@@ -15,10 +15,10 @@
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include <vector>
 #include "paddle/fluid/framework/ir/quantize_helper.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"

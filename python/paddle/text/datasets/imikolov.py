@@ -178,7 +178,7 @@ class Imikolov(Dataset):
             for l in f:
                 if self.data_type == 'NGRAM':
                     assert self.window_size > -1, 'Invalid gram length'
-                    l = ['<s>'] + l.strip().split() + ['<e>']
+                    l = ["<s>", *l.strip().split(), "<e>"]
                     if len(l) >= self.window_size:
                         l = [self.word_idx.get(w, UNK) for w in l]
                         for i in range(self.window_size, len(l) + 1):
@@ -186,8 +186,8 @@ class Imikolov(Dataset):
                 elif self.data_type == 'SEQ':
                     l = l.strip().split()
                     l = [self.word_idx.get(w, UNK) for w in l]
-                    src_seq = [self.word_idx['<s>']] + l
-                    trg_seq = l + [self.word_idx['<e>']]
+                    src_seq = [self.word_idx["<s>"], *l]
+                    trg_seq = [*l, self.word_idx["<e>"]]
                     if self.window_size > 0 and len(src_seq) > self.window_size:
                         continue
                     self.data.append((src_seq, trg_seq))

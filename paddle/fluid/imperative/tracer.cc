@@ -28,11 +28,11 @@
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/platform/denormal.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/platform/profiler.h"
 #include "paddle/utils/string/string_helper.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
@@ -237,7 +237,7 @@ void Tracer::TraceOpImpl(const std::string& type,
                          paddle::framework::AttributeMap* passed_default_attrs_,
                          bool use_default_attr_map) {
   phi::RecordEvent op_type_record_event(
-      type, platform::TracerEventType::Operator, 1);
+      type, phi::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(4) << "Trace Op: " << type;
   if (FLAGS_use_mkldnn) {
@@ -366,7 +366,7 @@ void Tracer::TraceOpImpl(const std::string& type,
 
   {
     phi::RecordEvent node_creation_record_event(
-        "grad_node_creation", platform::TracerEventType::OperatorInner, 1);
+        "grad_node_creation", phi::TracerEventType::OperatorInner, 1);
 
     if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
       PADDLE_ENFORCE_EQ(

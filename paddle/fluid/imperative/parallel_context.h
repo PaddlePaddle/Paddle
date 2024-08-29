@@ -16,8 +16,8 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 namespace paddle {
 namespace framework {

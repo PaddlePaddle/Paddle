@@ -35,6 +35,7 @@ from .auto_parallel.api import (
     ShardingStage3,
     Strategy,
     dtensor_from_fn,
+    in_auto_parallel_align_mode,  # noqa: F401
     reshard,
     shard_dataloader,
     shard_layer,

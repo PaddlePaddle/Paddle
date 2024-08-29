@@ -80,8 +80,8 @@ def Pmat_to_perm(Pmat_org, cut):
         permmat.append(permlst)
     Pivot = (
         np.array(permmat).reshape(
-            list(shape[:-2])
-            + [
+            [
+                *shape[:-2],
                 rows,
             ]
         )
@@ -107,7 +107,7 @@ def perm_to_Pmat(perm, dim):
         ones = paddle.eye(dim)
         nmat = paddle.scatter(ones, paddle.to_tensor(idlst), ones)
         oneslst.append(nmat)
-    return np.array(oneslst).reshape(list(pshape[:-1]) + [dim, dim])
+    return np.array(oneslst).reshape([*pshape[:-1], dim, dim])
 
 
 # m > n

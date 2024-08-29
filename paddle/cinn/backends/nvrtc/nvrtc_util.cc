@@ -187,9 +187,11 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     std::string log;
     log.resize(log_size);
     NVRTC_CALL(nvrtcGetProgramLog(prog, &log[0]));
-    PADDLE_ENFORCE_EQ(compile_res,
-                      NVRTC_SUCCESS,
-                      ::common::errors::Fatal("NVRTC compilation failed"));
+
+    PADDLE_ENFORCE_EQ(
+        compile_res,
+        NVRTC_SUCCESS,
+        ::common::errors::Fatal("NVRTC compilation failed: %s", log));
   }
 
   size_t size;
@@ -215,7 +217,7 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
     PADDLE_ENFORCE_NE(
         mkdir(dir.c_str(), 7),
         -1,
-        phi::errors::PermissionDenied(
+        ::common::errors::PermissionDenied(
             "Failed to create directory %s. Please check the permissions.",
             dir.c_str()));
   }
@@ -227,7 +229,7 @@ std::string Compiler::CompileWithNvcc(const std::string& cuda_c) {
   std::ofstream ofs(cuda_c_file, std::ios::out);
   PADDLE_ENFORCE_EQ(ofs.is_open(),
                     true,
-                    phi::errors::Unavailable(
+                    ::common::errors::Unavailable(
                         "Failed to open file %s. Please check if the file path "
                         "is correct and the file is accessible.",
                         cuda_c_file.c_str()));
@@ -265,9 +267,9 @@ void Compiler::CompileToPtx() {
   PADDLE_ENFORCE_EQ(
       system(options.c_str()),
       0,
-      phi::errors::InvalidArgument("Failed to execute command: %s. Please "
-                                   "check the command and try again.",
-                                   options.c_str()));
+      ::common::errors::InvalidArgument("Failed to execute command: %s. Please "
+                                        "check the command and try again.",
+                                        options.c_str()));
 }
 
 void Compiler::CompileToCubin() {
@@ -281,9 +283,9 @@ void Compiler::CompileToCubin() {
   PADDLE_ENFORCE_EQ(
       system(options.c_str()),
       0,
-      phi::errors::InvalidArgument("Failed to execute command: %s. Please "
-                                   "check the command and try again.",
-                                   options.c_str()));
+      ::common::errors::InvalidArgument("Failed to execute command: %s. Please "
+                                        "check the command and try again.",
+                                        options.c_str()));
 }
 
 std::string Compiler::GetDeviceArch() {
@@ -306,7 +308,7 @@ std::string Compiler::ReadFile(const std::string& file_name,
   std::ifstream ifs(file_name, mode);
   PADDLE_ENFORCE_EQ(ifs.is_open(),
                     true,
-                    phi::errors::Unavailable(
+                    ::common::errors::Unavailable(
                         "Failed to open file %s. Please check if the file path "
                         "is correct and the file is accessible.",
                         file_name.c_str()));

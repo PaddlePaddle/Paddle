@@ -184,7 +184,7 @@ void Instruction::WaitEvent(const Place& place) const {
 
   for (const EventInter& event_iter : events_to_wait_) {
     phi::RecordEvent record(
-        "WaitStreamEvent", platform::TracerEventType::UserDefined, 10);
+        "WaitStreamEvent", phi::TracerEventType::UserDefined, 10);
     VLOG(6) << "Wait instruction: " << event_iter.instr_id_
             << " 's event with waiter_type: " << event_iter.waiter_type_;
     event_iter.event_->Wait(event_iter.waiter_type_, &dev_ctx_);
@@ -193,7 +193,7 @@ void Instruction::WaitEvent(const Place& place) const {
 
 void Instruction::RecordEvent(const Place& place) const {
   phi::RecordEvent record(
-      "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+      "RecordStreamEvent", phi::TracerEventType::UserDefined, 10);
   if (event_to_record_) {
     VLOG(6) << "Record event at instruction: " << id_;
     event_to_record_->event_->Record(&dev_ctx_);

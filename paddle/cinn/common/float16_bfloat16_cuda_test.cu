@@ -61,7 +61,10 @@ class CudaMem {
   }
 
   void* data() const {
-    CHECK(ptr) << "Try get nullptr!";
+    PADDLE_ENFORCE_NOT_NULL(ptr,
+                            ::common::errors::InvalidArgument(
+                                "Pointer is null; please ensure it is properly "
+                                "initialized before use."));
     return ptr;
   }
 

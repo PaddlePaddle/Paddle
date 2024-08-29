@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
 namespace paddle::inference::tensorrt {
 

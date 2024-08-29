@@ -181,16 +181,16 @@ void Graph::ClearUnlinkedNodes(
     absl::flat_hash_map<std::string, std::string> *layout_dict) {
   PADDLE_ENFORCE_NOT_NULL(
       shape_dict,
-      phi::errors::InvalidArgument("The shpe_dict %s is null,please change",
-                                   shape_dict));
+      ::common::errors::InvalidArgument(
+          "The shpe_dict %s is null,please change", shape_dict));
   PADDLE_ENFORCE_NOT_NULL(
       type_dict,
-      phi::errors::InvalidArgument("The type_dict %s is null,please change ",
-                                   type_dict));
+      ::common::errors::InvalidArgument(
+          "The type_dict %s is null,please change ", type_dict));
   PADDLE_ENFORCE_NOT_NULL(
       layout_dict,
-      phi::errors::InvalidArgument("The layout_dict%s is null,please change",
-                                   layout_dict));
+      ::common::errors::InvalidArgument(
+          "The layout_dict%s is null,please change", layout_dict));
   for (auto it = nodes_.begin(); it < nodes_.end(); ++it) {
     auto node = *it;
     if (node->inlinks().empty() && node->outlinks().empty()) {

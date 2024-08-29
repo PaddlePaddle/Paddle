@@ -49,7 +49,7 @@ _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
 
 if TYPE_CHECKING:
-    from typing import Generator, Sequence
+    from collections.abc import Generator, Sequence
 
     from paddle.static.amp.fp16_utils import AmpOptions
 
@@ -102,6 +102,27 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "atan2": ['X1', 'X2'],
     "atan2_grad": ['X1', 'X2'],
 }
+
+stride_ops = [
+    "pd_op.slice",
+    "pd_op.strided_slice",
+    "pd_op.index_select",
+    "pd_op.split",
+    "pd_op.unsqueeze",
+    "pd_op.unsqueeze2",
+    "pd_op.squeeze",
+    "pd_op.squeeze2",
+    "pd_op.transpose",
+    "pd_op.transpose2",
+    "pd_op.unbind",
+    "pd_op.diagonal",
+    "pd_op.flatten",
+    "pd_op.imag",
+    "pd_op.real",
+    "pd_op.reshape",
+    "pd_op.reshape2",
+    "pd_op.as_real",
+]
 
 
 def _global_flags():
@@ -188,6 +209,7 @@ class GlobalThreadLocal(threading.local):
         """
         global _dygraph_tracer_
         self._in_to_static_mode_ = False
+        self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
         self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
@@ -197,6 +219,9 @@ class GlobalThreadLocal(threading.local):
     def __str__(self):
         strings = []
         strings.append("_in_to_static_mode_:" + str(self._in_to_static_mode_))
+        strings.append(
+            "_in_sot_simulation_mode_:" + str(self._in_sot_simulation_mode_)
+        )
         strings.append(
             "_functional_dygraph_context_manager:"
             + str(self._functional_dygraph_context_manager)
@@ -463,15 +488,13 @@ def ipu_shard_guard(
 @overload
 def set_ipu_shard(
     call_func: Callable[_InputT, _RetT], index: int = ..., stage: int = ...
-) -> Callable[_InputT, _RetT]:
-    ...
+) -> Callable[_InputT, _RetT]: ...
 
 
 @overload
 def set_ipu_shard(
     call_func: paddle.nn.Layer, index: int = ..., stage: int = ...
-) -> paddle.nn.Layer:
-    ...
+) -> paddle.nn.Layer: ...
 
 
 def set_ipu_shard(call_func, index=-1, stage=-1):
@@ -1259,9 +1282,25 @@ def name_struct(prefix=None):
         assert prefix, "namescope prefix can not be empty."
         global _name_struct
         _name_struct = _name_struct.child(prefix)
+        if in_pir_mode():
+            op_num_before = len(
+                paddle.static.default_main_program().global_block().ops
+            )
         try:
             yield
         finally:
+            if in_pir_mode():
+                all_ops = (
+                    paddle.static.default_main_program().global_block().ops
+                )
+                op_num = len(all_ops)
+
+                for idx in reversed(range(op_num_before, op_num)):
+                    op = all_ops[idx]
+                    if op.has_attr("struct_name"):
+                        break
+                    op.set_str_attr("struct_name", _full_name_struct())
+
             _name_struct = _name_struct.parent()
 
 
@@ -3173,9 +3212,9 @@ class Operator:
             op_maker = core.op_proto_and_checker_maker
 
             if op_maker.kOpRoleAttrName() not in op_attrs:
-                op_attrs[
-                    op_maker.kOpRoleAttrName()
-                ] = self.block.program._op_role
+                op_attrs[op_maker.kOpRoleAttrName()] = (
+                    self.block.program._op_role
+                )
 
             role_var_name = op_maker.kOpRoleVarAttrName()
             if (
@@ -3369,8 +3408,8 @@ class Operator:
                     if type in special_op_attrs:
                         attrs = special_op_attrs.get(type, [])
                         for attr in attrs:
-                            a_name = list(attr.keys())[0]
-                            default_value = list(attr.values())[0]
+                            a_name = next(iter(attr.keys()))
+                            default_value = next(iter(attr.values()))
                             if (
                                 a_name in op_attrs.keys()
                                 and default_value != op_attrs[a_name]
@@ -8351,10 +8390,12 @@ def process_type_promotion(program):
                     all_input_name_need_cast.append(input_arg_name)
 
             # only support promote between float
-            if len(all_dtypes) == 2 and core.need_type_promotion(
+            if len(all_dtypes) == 2 and core.need_type_promotion_old_ir(
                 op.type, *all_dtypes
             ):
-                common_dtype = core.get_promote_dtype(op.type, *all_dtypes)
+                common_dtype = core.get_promote_dtype_old_ir(
+                    op.type, *all_dtypes
+                )
                 for input_name_need_cast in all_input_name_need_cast:
                     var_name = op.block._var_recursive(input_name_need_cast)
                     if var_name.dtype != common_dtype:

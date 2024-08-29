@@ -28,20 +28,20 @@ namespace distributed {
 bool GlobalToSubMeshReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
   const TensorDistAttr& in_dist_attr = in.dist_attr();
-  // 1. first dimension(pp) must be replicated
-  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_replicated(0));
-  // 2. out mesh is the value of a certain dimension of global mesh
-  // e.g. global_mesh = [[1, 2], [3, 4]], out_mesh = [1, 2] or [3, 4]
-  //      global_mesh = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
-  //      out_mesh = [[1, 2], [3, 4]] or [[5, 6], [7, 8]]
 
   const ProcessMesh& in_process_mesh = in_dist_attr.process_mesh();
   const ProcessMesh& out_process_mesh = out_dist_attr.process_mesh();
 
-  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() ==
-                            out_process_mesh.ndim() + 1);
+  int sub_mesh_dim = SubMeshDim(in_process_mesh, out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(sub_mesh_dim != -1);
+  // 1. the splitted dimension must be replicated
+  // 2. out mesh is the value of a certain dimension of global mesh
+  // e.g. global_mesh = [[1, 2], [3, 4]], out_mesh = [1, 2] or [3, 4]
+  //      global_mesh = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]
+  //      out_mesh = [[1, 2], [3, 4]] or [[5, 6], [7, 8]]
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_replicated(sub_mesh_dim));
 
-  return IsSubMesh(in_process_mesh, out_process_mesh);
+  return true;
 }
 
 void GlobalToSubMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
@@ -64,16 +64,15 @@ void GlobalToSubMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
 bool SubMeshToGlobalReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
-  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated(0));
-
   const TensorDistAttr& in_dist_attr = in.dist_attr();
   const ProcessMesh& in_process_mesh = in_dist_attr.process_mesh();
   const ProcessMesh& out_process_mesh = out_dist_attr.process_mesh();
 
-  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() ==
-                            out_process_mesh.ndim() - 1);
+  int sub_mesh_dim = SubMeshDim(out_process_mesh, in_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(sub_mesh_dim != -1);
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated(sub_mesh_dim));
 
-  return IsSubMesh(out_process_mesh, in_process_mesh);
+  return true;
 }
 
 void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
@@ -85,14 +84,16 @@ void SubMeshToGlobalReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   const ProcessMesh& in_process_mesh = in_dist_attr.process_mesh();
   const ProcessMesh& out_process_mesh = out_dist_attr.process_mesh();
 
-  std::vector<ProcessMesh> sub_process_meshes = GetSubMeshes(out_process_mesh);
+  int sub_mesh_dim = SubMeshDim(out_process_mesh, in_process_mesh);
+  std::vector<ProcessMesh> sub_process_meshes =
+      SplitMesh(out_process_mesh, sub_mesh_dim);
   const std::vector<int64_t>& in_process_ids = in_process_mesh.process_ids();
   const std::vector<int64_t>& out_process_ids = out_process_mesh.process_ids();
   std::unordered_map<int64_t, std::vector<int64_t>> send2recv_map;
   std::unordered_map<int64_t, int64_t> recv2send_map;
 
   for (const ProcessMesh& sub_mesh : sub_process_meshes) {
-    if (sub_mesh == in_process_mesh) {
+    if (mesh_equal_ignore_shape1(sub_mesh, in_process_mesh, sub_mesh_dim)) {
       continue;
     }
     const std::vector<int64_t>& sub_process_ids = sub_mesh.process_ids();
