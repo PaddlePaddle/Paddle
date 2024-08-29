@@ -115,7 +115,19 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
           "The size of axes must equal size of starts and ends."));
   for (size_t i = 0; i < axes.size(); ++i) {
     int64_t axis = axes.at(i);
+    std::cerr << "dim!!!" << ends.at(i) - starts.at(i) << std::endl;
+
+    symbol::List<symbol::DimExpr> min_lists{in_dims[i], ends.at(i)};
+    std::cerr << "test "
+              << symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})}) -
+                     starts.at(i)
+              << std::endl;
     slice_dims.at(axis) = ends.at(i) - starts.at(i);
+    if (!in_dims[i].isa<int64_t>() || !ends[i].isa<int64_t>()) {
+      slice_dims.at(axis) =
+          symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})}) -
+          starts.at(i);
+    }
   }
 
   return slice_dims;
@@ -163,6 +175,16 @@ inline ShapeOrData SliceRawInferSymbolicShape(
   const auto &in_shapeordata = infer_context->GetShapeOrDataForValue(x);
   ExprVec starts = starts_expr;
   ExprVec ends = ends_expr;
+
+  std::cerr << "start\n";
+  for (auto d : starts) {
+    std::cerr << "s " << d << std::endl;
+  }
+
+  for (auto d : ends) {
+    std::cerr << "e " << d << std::endl;
+  }
+
   std::vector<int64_t> infer_flags = [&infer_flags_raw, &axes_raw] {
     return infer_flags_raw.empty() ? std::vector<int64_t>(axes_raw.size(), 1)
                                    : infer_flags_raw;

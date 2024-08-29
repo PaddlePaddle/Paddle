@@ -54,7 +54,7 @@ Expr AutoSimplify(
   }
   u = CasSimplify(u, s_var_intervals);
   u = detail::ConvertCasToCinn(u);
-  VLOG(6) << "Begin AutoSimplify: " << u;
+  VLOG(6) << "finish AutoSimplify: " << u;
   return u;
 }
 
@@ -1659,7 +1659,9 @@ Expr ConvertCinnToCAS(Expr expr) {
         *expr = a;
         return;
       }
-      *expr = Sum::Make({a, b});
+      // std::cerr << "make sum here! " << a.type() << "\t" << b.type() <<
+      // std::endl; std::cerr << a << "\t" << b << std::endl;
+      // //*expr = Sum::Make({a, b});
     }
     void Visit(const Mul* op, Expr* expr) override {
       auto a = op->a();
@@ -1766,7 +1768,11 @@ Expr ConvertCinnToCAS(Expr expr) {
     }
   };
 
+  // std::cerr << "before mutator\n";
+
   Mutator()(&copied);
+
+  // std::cerr << "after mutator\n";
   return copied;
 }
 

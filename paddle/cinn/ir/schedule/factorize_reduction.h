@@ -114,6 +114,7 @@ class ReduceBlockCreater {
     }
 
     Expr init_stmt = ir::Store::Make(init_tensor, init_value, new_indices);
+    std::cerr << "init_stmt " << init_stmt << std::endl;
 
     new_init_sch_block_ = ScheduleBlock::Make(
         new_init_iter_vars_, {}, {}, new_init_block_name, init_stmt);

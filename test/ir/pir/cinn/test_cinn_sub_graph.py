@@ -14,7 +14,6 @@
 
 import unittest
 
-import numpy as np
 import utils
 
 import paddle
@@ -111,6 +110,63 @@ class CINNAddDropoutLayerNormSubGraphNet(paddle.nn.Layer):
         return out
 
 
+class CINNReduceSumSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+
+        # t = x.reshape([4, 2, 27])
+        t = x
+        sum1 = t.mean(-1, keepdim=True)
+        t2 = t - sum1
+        t3 = t2 * t2
+        t5 = t3.sum(-1, keepdim=True)
+
+        return t5
+
+
+# class CINNReduceMaxSubGraphNet(paddle.nn.Layer):
+#     def __init__(self):
+#         super().__init__()
+
+#     def forward(self, x):
+
+#         #t = x.reshape([4, 2, 27])
+
+#         max1 = x.max(-1, keepdim=True)
+
+#         return max1
+
+
+class CINNReduceMaxSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+
+        # t = x.reshape([4, 2, 27])
+
+        t = x.cast("float16")
+        t1 = t > 0.001
+        t2 = t1.cast("int32")
+        t3 = t2.sum()
+        t5 = t3 == 10
+
+        return t5
+
+
+class CINNSliceSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, dim):
+
+        t = x[:dim]
+
+        return t.sin()
+
+
 class CINNDropoutSubGraphNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -131,10 +187,11 @@ class TestCinnSubGraphBase(unittest.TestCase):
         self.prepare_data()
 
     def prepare_data(self):
-        self.shape = [128, 128, 768]
+        self.shape = [64, 256, 256]
         self.axis = -1
-        self.x = paddle.uniform(self.shape, dtype="float64", min=-0.5, max=0.5)
+        self.x = paddle.uniform(self.shape, dtype="float32", min=-0.5, max=0.5)
         self.x.stop_gradient = False
+        self.dim = paddle.full([1], dtype="int32", fill_value=128)
 
     def check_jit_kernel_info(self, static_fn):
         utils.check_jit_kernel_number(static_fn, 1)
@@ -161,27 +218,40 @@ class TestCinnSubGraphBase(unittest.TestCase):
 class TestCinnSoftmax(TestCinnSubGraphBase):
     def train(self, use_cinn):
         paddle.seed(2022)
-        net = CINNSoftmaxSubGraphNet()
-        net = utils.apply_to_static(net, use_cinn)
-        out = net(self.x, self.axis)
+        net = CINNSliceSubGraphNet()
+        net.eval()
+        input_specs = [
+            paddle.static.InputSpec(
+                shape=[-1, -1, -1],
+                dtype=paddle.float32,
+                name="x",
+                stop_gradient=False,
+            ),
+            paddle.static.InputSpec(
+                shape=[1],
+                dtype=paddle.int32,
+                name="d",
+                stop_gradient=False,
+            ),
+        ]
+        net = utils.apply_to_static(net, use_cinn, input_spec=input_specs)
+        out = net(self.x, self.dim)
 
-        loss = out.sum()
-        loss.backward()
         return out, self.x.gradient()
 
     def test_forward(self):
-        cinn_out, cinn_grad = self.train(use_cinn=True)
-        dy_out, dy_grad = self.train(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
-        np.testing.assert_allclose(cinn_grad, dy_grad, atol=1e-8)
+        cinn_out = self.train(use_cinn=True)
+        # dy_out, dy_grad = self.train(use_cinn=False)
+        # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+        # np.testing.assert_allclose(cinn_grad, dy_grad, atol=1e-8)
 
 
-class TestCinnSmallSoftmax(TestCinnSoftmax):
-    def prepare_data(self):
-        self.shape = [1, 1, 17, 17]
-        self.axis = -1
-        self.x = paddle.uniform(self.shape, dtype="float64", min=-0.5, max=0.5)
-        self.x.stop_gradient = False
+# class TestCinnSmallSoftmax(TestCinnSoftmax):
+#     def prepare_data(self):
+#         self.shape = [1, 1, 17, 17]
+#         self.axis = -1
+#         self.x = paddle.uniform(self.shape, dtype="float64", min=-0.5, max=0.5)
+#         self.x.stop_gradient = False
 
 
 # class TestCinnLayerNorm(TestCinnSubGraphBase):

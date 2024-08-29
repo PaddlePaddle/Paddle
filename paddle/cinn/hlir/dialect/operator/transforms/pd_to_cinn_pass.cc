@@ -114,8 +114,16 @@ class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
                             .dyn_cast<paddle::dialect::DataTypeAttribute>()
                             .data();
 
-    auto cinn_reduce = rewriter.Build<cinn::dialect::ReduceSumOp>(
-        op->operand_source(0), axis, keepdim, dtype);
+    auto in = op->operand_source(0);
+    if (in.type()
+            .dyn_cast<pir::DenseTensorType>()
+            .dtype()
+            .isa<pir::Int32Type>()) {
+      in = rewriter.Build<paddle::dialect::CastOp>(in, phi::DataType::INT64)
+               .result(0);
+    }
+    auto cinn_reduce =
+        rewriter.Build<cinn::dialect::ReduceSumOp>(in, axis, keepdim, dtype);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
     if (axes_full_op->use_empty()) {
