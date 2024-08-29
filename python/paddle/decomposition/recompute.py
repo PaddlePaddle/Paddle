@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import functools
 import math
 import os
 from typing import TYPE_CHECKING
@@ -797,7 +798,10 @@ def cal_value_node_size(value_node):
     # todo(wanghao107) hack for dynamic shape
     if is_dynamic_value_node(value_node):
         return 1
-    return value_node.numel() * _PADDLE_DTYPE_2_NBYTES[value_node.dtype]
+    return (
+        functools.reduce(lambda x, y: x * y, value_node.shape, 1)
+        * _PADDLE_DTYPE_2_NBYTES[value_node.dtype]
+    )
 
 
 def cal_value_nodes_dist_to_backward(all_ops, required_fw_value_nodes):
