@@ -3476,6 +3476,7 @@
   data_transform:
     skip_transform : x
   no_need_buffer : x
+  traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : one_hot

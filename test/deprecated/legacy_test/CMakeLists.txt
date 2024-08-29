@@ -513,7 +513,8 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_communicator_geo_deprecated MODULES
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})
   if(NOT APPLE)
-    py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
+    py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS}
+                    FLAGS_enable_pir_api=0)
     py_test_modules(test_fleet_base_2_deprecated MODULES
                     test_fleet_base_2_deprecated ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_3_deprecated MODULES
