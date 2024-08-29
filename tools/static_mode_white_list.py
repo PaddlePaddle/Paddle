@@ -203,7 +203,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_fleet_rolemaker',
     'test_fleet_rolemaker_3',
     'test_fleet_unitaccessor',
-    'test_fleet_util',
     'test_flip',
     'test_framework_debug_str',
     'test_fsp_op',
