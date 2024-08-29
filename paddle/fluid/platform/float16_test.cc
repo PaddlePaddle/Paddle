@@ -122,7 +122,7 @@ TEST(float16, lod_tensor_cpu) {
   EXPECT_EQ(input_data[3].x, 0x0000);
 
   lod_tensor.Resize({4, 1});
-  lod_tensor.set_lod(framework::LoD({{0, 2, 4}}));
+  lod_tensor.set_lod(phi::LoD({{0, 2, 4}}));
   float16* data_ptr = lod_tensor.mutable_data<float16>(CPUPlace());
 
   EXPECT_NE(data_ptr, nullptr);

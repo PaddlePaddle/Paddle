@@ -266,6 +266,11 @@ class ListVariable(ContainerVariable):
             DummyTracker([self, list_]),
         )
 
+    def inplace_concat(self, list_):
+        assert isinstance(list_, ListVariable)
+        self.extend(list_)
+        return self
+
     def repeat(self, length):
         assert isinstance(length, ConstantVariable)
         return ListVariable(

@@ -990,7 +990,7 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
 size_t FleetWrapper::GetAbsoluteSum(size_t start,
                                     size_t end,
                                     size_t level,
-                                    const framework::LoD& lod) {
+                                    const phi::LoD& lod) {
   if (level >= lod.size() - 1) {
     return end - start;
   }
