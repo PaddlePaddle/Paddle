@@ -93,20 +93,15 @@ class PipelineParallelMicroStepCallback:
 
 class BubbleHook:
     def __init__(self):
-        # self.hooks: dict[int, list[Callable]] = {}
         self.hooks: dict[int, list[Callable]] = defaultdict(list)
 
-    def set_bubble_times(self, bubble_times):
+    def set_bubble_times(self, bubble_times: int):
         self.bubble_times = bubble_times
 
     def register_hook(self, location: int, hook: Callable):
-        # assert (
-        #    location < self.bubble_times
-        # ), f"register hook location[{location}] should be less than or equal bubble_times[{self.bubble_times}]"
         self.hooks[location].append(hook)
 
     def on_location(self, location: int, **kwargs):
-        print(f"on_location: {kwargs}")
         if location not in self.hooks:
             return
 
