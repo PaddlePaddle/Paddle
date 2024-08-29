@@ -748,7 +748,7 @@ std::vector<int> Tensor::shape() const {
 
 void Tensor::SetLoD(const std::vector<std::vector<size_t>> &x) {
   EAGER_GET_TENSOR(phi::DenseTensor);
-  paddle::framework::LoD lod;
+  phi::LoD lod;
   for (auto &level : x) {
     lod.emplace_back(level);
   }

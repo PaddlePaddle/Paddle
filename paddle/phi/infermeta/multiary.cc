@@ -2597,6 +2597,9 @@ void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   MetaTensor* rpn_rois_num) {
   rpn_rois->set_dims(common::make_ddim({-1, 4}));
   rpn_roi_probs->set_dims(common::make_ddim({-1, 1}));
+  if (rpn_rois_num) {
+    rpn_rois_num->set_dims(common::make_ddim({scores.dims()[0]}));
+  }
 }
 
 void LegacyGenerateProposalsInferMeta(const MetaTensor& scores,
@@ -4711,10 +4714,10 @@ void RmsNormInferMeta(const MetaTensor& x,
   }
   PADDLE_ENFORCE_EQ(normalized_dims,
                     norm_weight.dims()[0],
-                    common::errors::InvalidArgument(
-                        "The normalized size of Input(X) must equal to be"
-                        "the size of Weight, but received"
-                        "normalized size of Input(X) is [%d], received size"
+                    phi::errors::InvalidArgument(
+                        "The normalized size of Input(X) must equal to be "
+                        "the size of Weight, but received "
+                        "normalized size of Input(X) is [%d], received size "
                         "of Weight is [%d]",
                         normalized_dims,
                         norm_weight.dims()[0]));
@@ -4741,25 +4744,12 @@ void RmsNormInferMeta(const MetaTensor& x,
     inv_var->set_layout(x.layout());
   }
 
-  residual_out->set_dims(out_dims);
-  residual_out->set_dtype(x.dtype());
-  residual_out->set_layout(x.layout());
-  residual_out->share_lod(x);
-}
-
-void RmsNormGradInferMeta(const MetaTensor& x,
-                          const MetaTensor& norm_weight,
-                          MetaTensor* x_grad,
-                          MetaTensor* norm_weight_grad) {
-  x_grad->set_dtype(x.dtype());
-  x_grad->set_layout(x.layout());
-  x_grad->share_lod(x);
-  x_grad->set_dims(x.dims());
-
-  norm_weight_grad->set_dtype(norm_weight.dtype());
-  norm_weight_grad->set_layout(norm_weight.layout());
-  norm_weight_grad->share_lod(norm_weight);
-  norm_weight_grad->set_dims(norm_weight.dims());
+  if (residual != nullptr) {
+    residual_out->set_dims(out_dims);
+    residual_out->set_dtype(x.dtype());
+    residual_out->set_layout(x.layout());
+    residual_out->share_lod(x);
+  }
 }
 
 void RmspropInferMeta(const MetaTensor& param,
@@ -5408,11 +5398,15 @@ void WarpctcInferMeta(const MetaTensor& logits,
                       MetaTensor* loss,
                       MetaTensor* warpctcgrad) {
   auto logits_dims = logits.dims();
-  int sequence_width = 0;
+  int num_sequences, sequence_width, max_sequence_length;
 
-  if (logits_length) {
+  if (logits_length && labels_length) {
+    max_sequence_length = static_cast<int>(logits_dims[0]);
+    num_sequences = static_cast<int>(logits_dims[1]);
     sequence_width = static_cast<int>(logits_dims[2]);
   } else {
+    max_sequence_length = -1;
+    num_sequences = -1;
     sequence_width =
         static_cast<int>(common::product(logits_dims) / logits_dims[0]);
   }
@@ -5432,8 +5426,10 @@ void WarpctcInferMeta(const MetaTensor& logits,
           "but received %d",
           blank));
 
-  loss->set_dims({-1, 1});
+  loss->set_dims({num_sequences, 1});
   loss->set_dtype(logits.dtype());
+  warpctcgrad->set_dims({max_sequence_length, num_sequences, sequence_width});
+  warpctcgrad->set_dtype(logits.dtype());
 }
 
 void WarprnntInferMeta(const MetaTensor& input,

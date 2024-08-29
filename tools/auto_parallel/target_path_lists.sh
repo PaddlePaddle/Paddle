@@ -30,6 +30,7 @@ target_lists_for_semi_auto_ci=(
     "paddle/fluid/pir/dialect"
     "paddle/fluid/pir/transforms"
     "paddle/fluid/pir/serialize_deserialize"
+    "test/auto_parallel/hybrid_strategy/semi_auto_llama_save_load.py"
 )
 
 target_lists_for_dygraph_ci=(

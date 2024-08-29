@@ -20,10 +20,6 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-if((NOT WITH_GPU) AND (NOT WITH_XPU))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
-endif()
-
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
@@ -88,12 +84,8 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
-  list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
 endif()
 
 if(WIN32)
@@ -453,7 +445,6 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
-  list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
 list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
@@ -702,20 +693,7 @@ endif()
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true)
-endforeach()
-
-set(PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
-
-if(APPLE)
-  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
-endif()
-
-foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
-  py_test_modules(${PIR_COVERAGE_TEST}_pir MODULES ${PIR_COVERAGE_TEST} ENVS
-                  FLAGS_enable_pir_in_executor=true)
-  set_tests_properties(${PIR_COVERAGE_TEST}_pir PROPERTIES TIMEOUT 120)
-  message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
+    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=false)
 endforeach()
 
 set_tests_properties(test_decoupled_py_reader_deprecated_static_build

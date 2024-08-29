@@ -117,12 +117,14 @@ static std::vector<std::vector<phi::DDim>> RunDefaultGradInferShapeFunc(
       // Duplicable forward var must as backward input
       auto iter =
           std::find(grad_op_inputs.begin(), grad_op_inputs.end(), fwd_name);
-      PADDLE_ENFORCE_NE(iter,
-                        grad_op_inputs.end(),
-                        common::errors::NotFound(
-                            "Custom grad operator should have the forward "
-                            "input(%s) as backward input",
-                            fwd_name));
+      PADDLE_ENFORCE_NE(
+          iter,
+          grad_op_inputs.end(),
+          common::errors::NotFound(
+              "Custom grad operator should have the forward "
+              "input(%s) as backward input. Maybe this custom grad op need "
+              "set its own infershape func",
+              fwd_name));
       auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
       std::vector<phi::DDim> tmp;
       for (size_t i = pair.first; i < pair.second; ++i) {
@@ -138,9 +140,11 @@ static std::vector<std::vector<phi::DDim>> RunDefaultGradInferShapeFunc(
         PADDLE_ENFORCE_NE(
             iter,
             grad_op_inputs.end(),
-            common::errors::NotFound("Custom grad operator should have the "
-                                     "forward input(%s) as backward input",
-                                     fwd_name));
+            common::errors::NotFound(
+                "Custom grad operator should have the "
+                "forward input(%s) as backward input. Maybe this custom "
+                "grad op need set its own infershape func",
+                fwd_name));
         auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
         result.push_back({ctx.InputAt(pair.first).dims()});
       }
@@ -309,12 +313,14 @@ static std::vector<std::vector<phi::DataType>> RunDefaultGradInferDtypeFunc(
       // Duplicable forward var must as backward input
       auto iter =
           std::find(grad_op_inputs.begin(), grad_op_inputs.end(), fwd_name);
-      PADDLE_ENFORCE_NE(iter,
-                        grad_op_inputs.end(),
-                        common::errors::NotFound(
-                            "Custom grad operator should have the forward "
-                            "input(%s) as backward input",
-                            fwd_name));
+      PADDLE_ENFORCE_NE(
+          iter,
+          grad_op_inputs.end(),
+          common::errors::NotFound(
+              "Custom grad operator should have the forward "
+              "input(%s) as backward input. Maybe this custom grad op need "
+              "set its own inferdtype func",
+              fwd_name));
       auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
       std::vector<phi::DataType> tmp;
       for (size_t i = pair.first; i < pair.second; ++i) {
@@ -330,9 +336,11 @@ static std::vector<std::vector<phi::DataType>> RunDefaultGradInferDtypeFunc(
         PADDLE_ENFORCE_NE(
             iter,
             grad_op_inputs.end(),
-            common::errors::NotFound("Custom grad operator should have the "
-                                     "forward input(%s) as backward input",
-                                     fwd_name));
+            common::errors::NotFound(
+                "Custom grad operator should have the "
+                "forward input(%s) as backward input. Maybe this custom grad "
+                "op need set its own inferdtype func",
+                fwd_name));
         auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
         result.push_back({ctx.InputAt(pair.first).dtype()});
       }
