@@ -7,16 +7,28 @@ op_patches:
         default :
           - type: pir::BoolAttribute
             default: "false"
+  - op_name : builtin.constant
+    actions:
       - action : modify_attr
-        object : name
-        type : pir::StrAttribute
-        default : "B"
+        object : value
+        type : pir::FloatAttribute
+        default : 1.0
+      # - action : modify_attr_name
+      #   object : value
+      #   default : "val"
+      - action : modify_output_type
+        object : 0
+        type : pir::Float64Type
   - op_name : builtin.parameter
     actions :
       - action : modify_attr
         object : parameter_name
         type : pir::StrAttribute
         default : "fc_0"
+      - action : modify_output_attr
+        object : stop_gradient
+        type: pir::BoolAttribute
+        default : "false"
   - op_name : pd_op.fetch
     actions :
       - action : add_output

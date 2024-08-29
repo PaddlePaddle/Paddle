@@ -12,8 +12,11 @@ if(LINUX)
 endif()
 
 add_definitions(-DPADDLE_ROOT="${PADDLE_SOURCE_DIR}")
+# add_definitions(
+#   -DPATCH_PATH="../../../../../python/paddle/pir/serialize_deserialize/patch")
 add_definitions(
-  -DPATCH_PATH="../../../../../python/paddle/pir/serialize_deserialize/patch")
+  -DPATCH_PATH="${PADDLE_SOURCE_DIR}/python/paddle/pir/serialize_deserialize/patch"
+)
 
 cc_library(
   pir_save_load

@@ -1,5 +1,5 @@
 op_pair_patches:
-  - op_pair : [pd_op.full, pd_op.full_like]
+  - op_pair : [pd_op.full, pd_op.scale]
     actions:
       - action : add_value
         object : [1,2]

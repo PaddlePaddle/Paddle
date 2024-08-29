@@ -93,6 +93,30 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
 
   Json& ops_json = block_json->at(BLOCKOPS);
   if (!ops_json.empty()) {
+    // get value id for op_pair io patch
+    VLOG(6) << "Begin to read value num ...";
+    int64_t max_value_id = 0;
+    for (auto& op_json : ops_json) {
+      if (op_json.at(ID).template get<std::string>() == PARAMETEROP) {
+        int64_t id = op_json.at(OPRESULTS).at(VALUE_ID).template get<int64_t>();
+        max_value_id = std::max(max_value_id, id);
+        continue;
+      }
+      Json& operands_json = op_json.at(OPOPERANDS);
+      for (auto& operand_json : operands_json) {
+        int64_t id = operand_json.at(VALUE_ID).template get<int64_t>();
+        max_value_id = std::max(max_value_id, id);
+      }
+      Json& opresults_json = op_json.at(OPRESULTS);
+      for (auto& opresult_json : opresults_json) {
+        int64_t id = opresult_json.at(VALUE_ID).template get<int64_t>();
+        max_value_id = std::max(max_value_id, id);
+      }
+    }
+    max_value_id += id_value_map.size();
+    VLOG(6) << "max_value_id: " << max_value_id;
+    // Apply op_pair io patch
+    patch_builder->ApplyOpPairPatches(&max_value_id);
     for (auto& op_json : ops_json) {
       block->push_back(ReadOp(&op_json));
     }
@@ -292,9 +316,12 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(
     auto attr_name = attr_json.at(NAME).template get<std::string>();
     if (attr_patch.count(attr_name)) {
       Json patch = attr_patch.at(attr_name);
+      VLOG(8) << attr_name << " has patch: " << patch;
       patch_builder->ApplyAttrPatches(attr_name, &attr_json, patch);
       VLOG(8) << attr_name << " has been patched: " << attr_json;
     }
+    // Get attr_name again after patch
+    attr_name = attr_json.at(NAME).template get<std::string>();
     if (attr_json.contains(ATTR_TYPE)) {
       attributes.insert({attr_name, ReadAttribute(&attr_json)});
     } else {
@@ -312,6 +339,8 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(
       patch_builder->ApplyAttrPatches(attr_name, &attr_json, patch);
       VLOG(8) << attr_name << " has been patched: " << attr_json;
     }
+    // Get attr_name again after patch
+    attr_name = attr_json.at(NAME).template get<std::string>();
     if (attr_json.contains(ATTR_TYPE)) {
       attributes.insert({attr_name, ReadAttribute(&attr_json)});
     } else {
