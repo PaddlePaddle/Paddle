@@ -15,8 +15,8 @@
 import copy
 import unittest
 
-import test_auto_parallel_reshard
-from test_auto_parallel_reshard import mlp_forward
+import test_auto_parallel_reshard_deprecated as test_auto_parallel_reshard_deprecated
+from test_auto_parallel_reshard_deprecated import mlp_forward
 
 import paddle
 from paddle.distributed import fleet
@@ -94,10 +94,10 @@ def get_dist_prog(
 
 class TestDistributedTensor(unittest.TestCase):
     def test_new_local_tensor(self):
-        test_auto_parallel_reshard._global_process_mesh = auto.ProcessMesh(
-            mesh=[0, 1], dim_names=["x"]
+        test_auto_parallel_reshard_deprecated._global_process_mesh = (
+            auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
         )
-        test_auto_parallel_reshard._global_parallel_strategy = "dp"
+        test_auto_parallel_reshard_deprecated._global_parallel_strategy = "dp"
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()

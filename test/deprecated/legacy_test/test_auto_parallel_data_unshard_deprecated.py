@@ -14,12 +14,14 @@
 
 import unittest
 
-from test_parallel_dygraph_dataparallel import TestMultipleAccelerators
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
 class TestAutoParallelDataUnshard(TestMultipleAccelerators):
     def test_auto_parallel_data_unshard(self):
-        self.run_mnist_2accelerators('auto_parallel_data_unshard.py')
+        self.run_mnist_2accelerators('auto_parallel_data_unshard_deprecated.py')
 
 
 if __name__ == "__main__":
