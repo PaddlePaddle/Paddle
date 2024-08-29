@@ -954,18 +954,6 @@ for unary_fn in UNARY_OPS:
             ("TensorVariable",),
             raise_break_graph_fn,
         )
-        Dispatcher.register(
-            unary_fn,
-            ("SymbolicVariable",),
-            partial(
-                lambda fn, var: VariableFactory.from_value(
-                    fn(var.get_py_value()),
-                    var.graph,
-                    tracker=DummyTracker([var]),
-                ),
-                unary_fn,
-            ),
-        )
         continue
 
     if unary_fn is len:
