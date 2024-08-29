@@ -6306,6 +6306,16 @@ def diff(
             Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
             [ 3,  1, -3,  5,  2])
 
+            >>> out = paddle.diff(x, n=2, append=y)
+            >>> out
+            Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [ -2, -4,  8, -3])
+
+            >>> out = paddle.diff(x, n=3, append=y)
+            >>> out
+            Tensor(shape=[5], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [ -2,  12, -11])
+
             >>> z = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
             >>> out = paddle.diff(z, axis=0)
             >>> out
@@ -6450,7 +6460,7 @@ def diff(
     if n > 1:
         for _ in range(n - 1):
             out = _diff_handler(
-                out, n=1, axis=axis, prepend=prepend, append=append, name=name
+                out, n=1, axis=axis, prepend=None, append=None, name=name
             )
     return out
 
