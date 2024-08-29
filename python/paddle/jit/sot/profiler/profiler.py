@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from contextlib import contextmanager
 from functools import wraps
 
 from paddle.framework import core
 
-_event_level = int(os.environ.get("EVENT_LEVEL", "0"))
+from ..utils.envs import ENV_SOT_EVENT_LEVEL
 
 
 class SotProfiler:
@@ -41,7 +40,7 @@ def EventGuard(event_name, event_level=1):
     try:
         global _event_level
         need_pop = False
-        if _event_level >= event_level:
+        if ENV_SOT_EVENT_LEVEL.get() >= event_level:
             core.nvprof_nvtx_push(event_name)
             need_pop = True
         yield
@@ -62,8 +61,7 @@ def event_register(event_name, event_level=1):
     def do_nothing(func):
         return func
 
-    global _event_level
-    if _event_level >= event_level:
+    if ENV_SOT_EVENT_LEVEL.get() >= event_level:
         return event_wrapper
     else:
         return do_nothing
