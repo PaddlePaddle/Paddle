@@ -18,7 +18,6 @@ import sys
 import time
 import warnings
 from collections import defaultdict
-from enum import Enum
 from typing import Callable
 
 import paddle
@@ -49,6 +48,12 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+)
+
+from .pipeline_hooks import (
+    BubbleHook,
+    PipelineParallelMicroStepCallback,
+    PipelineParallelMicroStepLocations,
 )
 
 __all__ = []
@@ -150,68 +155,6 @@ class FakeMicroDataset:
         )
 
 
-# Enum for specifying the pipeline parallel micro-step locations.
-class PipelineParallelMicroStepLocations(Enum):
-    FORWARD_BEGIN = 'forward_begin'
-    FORWARD_END = 'forward_end'
-    BACKWARD_BEGIN = 'backward_begin'
-    BACKWARD_END = 'backward_end'
-
-
-# A callback class for managing hooks at different stages of a pipeline parallel process.
-class PipelineParallelMicroStepCallback:
-    def __init__(self):
-        # Initializes a dictionary to store hooks for each micro-step location in the pipeline.
-        self.hooks: dict[PipelineParallelMicroStepLocations, list[Callable]] = {
-            PipelineParallelMicroStepLocations.FORWARD_BEGIN: [],
-            PipelineParallelMicroStepLocations.FORWARD_END: [],
-            PipelineParallelMicroStepLocations.BACKWARD_BEGIN: [],
-            PipelineParallelMicroStepLocations.BACKWARD_END: [],
-        }
-
-    def register_hook(
-        self, location: PipelineParallelMicroStepLocations, hook: Callable
-    ):
-        """
-        Registers a hook function to be called at a specified pipeline parallel micro-step location.
-
-        Args:
-            location (PipelineParallelMicroStepLocations): The micro-step location where the hook should be registered.
-            hook (Callable): The hook function to be registered. The function should accept the following optional keyword arguments:
-                - input_tensor (paddle.Tensor): The input tensor to the current micro-step.
-                - output_tensor (paddle.Tensor): The output tensor from the current micro-step.
-                - input_tensor_grad (paddle.Tensor): The gradient of the input tensor.
-                - output_tensor_grad (paddle.Tensor): The gradient of the output tensor.
-                - step_id (paddle.Tensor): An identifier for the current step in the pipeline.
-
-        Raises:
-            AssertionError: If the specified location is not a valid micro-step location.
-        """
-        assert (
-            location in self.hooks
-        ), f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
-        self.hooks[location].append(hook)
-
-    def on_location(
-        self, location: PipelineParallelMicroStepLocations, **kwargs
-    ):
-        """
-        Triggers all registered hooks at a specified pipeline parallel micro-step location.
-
-        Args:
-            location (PipelineParallelMicroStepLocations): The micro-step location where the hooks should be triggered.
-            kwargs: Additional keyword arguments to be passed to the hook functions.
-
-        Raises:
-            AssertionError: If the specified location is not a valid micro-step location.
-        """
-        assert (
-            location in self.hooks
-        ), f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
-        for hook in self.hooks[location]:
-            hook(**kwargs)
-
-
 pipeline_parallel_callbacks_ = PipelineParallelMicroStepCallback()
 
 
@@ -226,6 +169,16 @@ def register_global_pipeline_parallel_hook(
     Registering global hooks for pipeline parallelism.
     """
     pipeline_parallel_callbacks_.register_hook(location, hook)
+
+
+pipeline_bubble_hooks_ = BubbleHook()
+
+
+def register_bubble_pipeline_parallel_hook(location: int, hook: Callable):
+    """
+    Registering bubble hooks for pipeline parallelism.
+    """
+    pipeline_bubble_hooks_.register_hook(location, hook)
 
 
 class PipelineParallel(MetaParallelBase):
@@ -382,6 +335,12 @@ class PipelineParallel(MetaParallelBase):
 
         self._compute_loss = True
         self.callbacks = pipeline_parallel_callbacks_
+
+        self.bubble_hooks = pipeline_bubble_hooks_
+        print(f"self.num_stages: {self.num_stages}")
+        print(f"{self.bubble_hooks}, {self.bubble_hooks.set_bubble_times}")
+
+        self.bubble_hooks.set_bubble_times(bubble_times=self.num_stages)
 
         logger.info(
             f"Pipeline Info -- num_stages: {self.num_stages}, stage_id: {self.stage_id}"
@@ -1456,6 +1415,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         steady_steps = num_steps - startup_steps
 
+        bubble_idx = 0
+        for location in range(self.stage_id):
+            bubble_idx += 1
+            self.bubble_hooks.on_location(bubble_idx, step_id=bubble_idx)
+
+        rest_bubble_times = self.num_stages - 1 - self.stage_id
+
         self.set_virtual_pipeline_rank(0)
         if not static_scheduler:
             self.input_tensors[0].append(
@@ -1492,6 +1458,10 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._record_stamp("F", micro_step, '"B"', forward=True)
             output_tensor = self._forward_step_helper(micro_dataset, micro_step)
             self._record_stamp("F", micro_step, '"E"', forward=True)
+
+            if micro_step >= startup_steps - rest_bubble_times:
+                bubble_idx += 1
+                self.bubble_hooks.on_location(bubble_idx, step_id=bubble_idx)
 
             # determine whether recv forward tensor or not
             next_virtual_pp_rank = self._get_virtual_pp_rank(
