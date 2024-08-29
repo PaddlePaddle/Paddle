@@ -1576,12 +1576,38 @@ bool Unpool3dOpInferSymbolicShape(
   return true;
 }
 
-// bool UnpoolOpInferSymbolicShape(pir::Operation *op,
-//                                 pir::InferSymbolicShapeContext
-//                                 *infer_context) {
-//   // pass
-//   return true;
-// }
+bool UnpoolOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &indices_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &indices_shape =
+      indices_shape_or_data.shape();
+
+  for (size_t i = 0; i < x_shape.size(); ++i) {
+    infer_context->AddEqualCstr(x_shape[i], indices_shape[i]);
+  }
+
+  const std::vector<int> &ksize = details::GetVectorAttr<int>(op, "ksize");
+  const std::vector<int> &output_size =
+      details::GetVectorAttr<int>(op, "output_size");
+
+  std::vector<symbol::DimExpr> output_shape = {x_shape[0], x_shape[1]};
+  for (size_t i = 0; i < ksize.size(); ++i) {
+    output_shape.emplace_back(symbol::DimExpr(output_size[i]));
+  }
+
+  if (op->result(0)) {
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(output_shape)});
+  }
+
+  return true;
+}
 
 // bool WeightDequantizeOpInferSymbolicShape(pir::Operation *op,
 //                                           pir::InferSymbolicShapeContext
