@@ -18,6 +18,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+
 #ifdef __MUSACC__
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/musa/mudnn_helper.h"

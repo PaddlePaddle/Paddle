@@ -19,7 +19,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
-#if defined(PADDLE_WITH_FLASHATTN)
+#ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
 #endif
 
@@ -271,8 +271,7 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
   }
 };
 
-
-#if defined(PADDLE_WITH_FLASHATTN)
+#ifndef PADDLE_WITH_FLASHATTN_MUSA
 static void CheckFlashAttnStatus(const bool status) {
   PADDLE_ENFORCE_EQ(status,
                     true,

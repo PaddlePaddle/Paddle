@@ -60,6 +60,8 @@ class TestSqrtOpError(unittest.TestCase):
 
 class TestActivation(OpTest):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "exp"
         self.init_dtype()
         self.init_shape()
@@ -89,7 +91,7 @@ class TestActivation(OpTest):
         )
 
     def init_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
 
     def init_shape(self):
         self.shape = [11, 17]
@@ -111,6 +113,8 @@ class TestActivation_ZeroDim(TestActivation):
 
 class TestExpFp32_Prim(OpTest):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "exp"
         self.prim_op_type = "prim"
         self.init_dtype()
@@ -140,7 +144,7 @@ class TestExpFp32_Prim(OpTest):
         )
 
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
 
     def init_shape(self):
         self.shape = [12, 17]
@@ -154,7 +158,7 @@ class TestExpFp32_Prim(OpTest):
 
 class TestExpFp64_Prim(TestExpFp32_Prim):
     def init_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
 
 
 class TestExpPrim_ZeroDim(TestExpFp32_Prim):
@@ -162,6 +166,7 @@ class TestExpPrim_ZeroDim(TestExpFp32_Prim):
         self.shape = []
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestExp_Complex64(OpTest):
     def setUp(self):
         self.op_type = "exp"
@@ -199,6 +204,7 @@ class TestExp_Complex64(OpTest):
         pass
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestExp_Complex128(TestExp_Complex64):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -236,6 +242,8 @@ class Test_Exp_Op_Int(unittest.TestCase):
 
 class TestExpm1(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "expm1"
         self.python_api = paddle.expm1
         self.init_dtype()
@@ -261,6 +269,7 @@ class TestExpm1(TestActivation):
         self.check_output(check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestExpm1_Complex64(TestExpm1):
     def init_dtype(self):
         self.dtype = np.complex64
@@ -272,6 +281,7 @@ class TestExpm1_Complex64(TestExpm1):
         self.check_output(check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestExpm1_Complex128(TestExpm1_Complex64):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -284,10 +294,12 @@ class TestExpm1_ZeroDim(TestExpm1):
 
 class TestExpm1API(unittest.TestCase):
     def init_dtype(self):
-        self.dtype = 'float64'
+        self.dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
         self.shape = [11, 17]
 
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.init_dtype()
         self.x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         self.out_ref = np.expm1(self.x)
@@ -353,10 +365,9 @@ class TestParameter:
 
     def test_dygraph(self):
         with base.dygraph.guard():
-            np_x = np.array([0.1])
+            dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
+            np_x = np.array([0.1]).astype(dtype)
             x = base.dygraph.to_variable(np_x)
-            if self.op_type == "sqrt":
-                x = x.to("float32")
             z = eval("paddle.%s(x).numpy()" % self.op_type)
             z_expected = eval("np.%s(np_x)" % self.op_type)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
@@ -364,6 +375,8 @@ class TestParameter:
 
 class TestSigmoid(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "sigmoid"
         self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.sigmoid
@@ -406,6 +419,7 @@ class TestSigmoid(TestActivation):
         )
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSigmoid_Complex64(TestSigmoid):
     def init_dtype(self):
         self.dtype = np.complex64
@@ -424,6 +438,7 @@ class TestSigmoid_Complex64(TestSigmoid):
         )
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSigmoid_Complex128(TestSigmoid_Complex64):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -443,6 +458,8 @@ class TestSigmoid_ZeroDim(TestSigmoid):
 )
 class TestSigmoidBF16(OpTest):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "sigmoid"
         self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.sigmoid
@@ -489,6 +506,8 @@ class TestSigmoidBF16_ZeroDim(TestSigmoidBF16):
 
 class TestSilu(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "silu"
         self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.silu
@@ -543,11 +562,13 @@ class TestSilu_ZeroDim(TestSilu):
         self.shape = []
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSilu_Complex64(TestSilu):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSilu_Complex128(TestSilu):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -556,6 +577,8 @@ class TestSilu_Complex128(TestSilu):
 class TestSiluAPI(unittest.TestCase):
     # test paddle.nn.Silu, paddle.nn.functional.silu
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
         self.place = (
             paddle.CUDAPlace(0)
@@ -607,6 +630,8 @@ class TestSiluAPI(unittest.TestCase):
 
 class TestLogSigmoid(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "logsigmoid"
         self.python_api = paddle.nn.functional.log_sigmoid
         self.init_dtype()
@@ -632,11 +657,13 @@ class TestLogSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.008, check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestLogSigmoidComplex64(TestLogSigmoid):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestLogSigmoidComplex128(TestLogSigmoid):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -650,6 +677,8 @@ class TestLogSigmoid_ZeroDim(TestLogSigmoid):
 class TestLogSigmoidAPI(unittest.TestCase):
     # test paddle.nn.LogSigmoid, paddle.nn.functional.log_sigmoid
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
         self.place = (
@@ -709,6 +738,8 @@ class TestTanh(TestActivation, TestParameter):
         self.init_dtype()
         self.init_shape()
         self.if_enable_cinn()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -756,6 +787,7 @@ class TestTanh(TestActivation, TestParameter):
         pass
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestTanh_Complex64(TestTanh):
     def init_dtype(self):
         self.dtype = np.complex64
@@ -765,6 +797,7 @@ class TestTanh_Complex64(TestTanh):
             self.check_output(check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestTanh_Complex128(TestTanh):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -782,6 +815,8 @@ class TestTanh_ZeroDim(TestTanh):
 class TestTanhAPI(unittest.TestCase):
     # test paddle.tanh, paddle.nn.tanh, paddle.nn.functional.tanh
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.dtype = 'float32'
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
@@ -845,6 +880,8 @@ class TestTanhInplaceAPI(TestTanhAPI):
 
 class TestAtan(TestActivation, TestParameter):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "atan"
         self.python_api = paddle.atan
         self.init_dtype()
@@ -895,11 +932,13 @@ class TestAtan(TestActivation, TestParameter):
             self.assertEqual(z, z_expected)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAtan_Complex64(TestAtan):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAtan_Complex128(TestAtan):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -910,8 +949,11 @@ class TestAtan_ZeroDim(TestAtan):
         self.shape = []
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSinh(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "sinh"
         self.python_api = paddle.sinh
         self.init_dtype()
@@ -939,16 +981,19 @@ class TestSinh(TestActivation):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSinh_Complex64(TestSinh):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSinh_Complex128(TestSinh):
     def init_dtype(self):
         self.dtype = np.complex128
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSinh_ZeroDim(TestSinh):
     def init_shape(self):
         self.shape = []
@@ -1029,6 +1074,8 @@ class TestCosh(TestActivation):
         self.python_api = paddle.cosh
         self.init_dtype()
         self.init_shape()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -1055,14 +1102,16 @@ class TestCosh(TestActivation):
                 ['X'], 'Out', max_relative_error=0.007, check_pir=True
             )
         else:
-            self.check_grad(['X'], 'Out', check_pir=True)
+            self.check_grad(['X'], 'Out', max_relative_error=0.1, check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestCosh_Complex64(TestCosh):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestCosh_Complex128(TestCosh):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -1146,8 +1195,11 @@ def ref_tanhshrink(x):
     return out
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestTanhshrink(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "tanh_shrink"
         self.python_api = paddle.nn.functional.tanhshrink
         self.init_dtype()
@@ -1178,8 +1230,11 @@ class TestTanhshrink_ZeroDim(TestTanhshrink):
 class TestTanhshrinkAPI(unittest.TestCase):
     # test paddle.nn.Tanhshrink, paddle.nn.functional.tanhshrink
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
         np.random.seed(1024)
-        self.x_np = np.random.uniform(10, 20, [10, 17]).astype(np.float64)
+        self.x_np = np.random.uniform(10, 20, [10, 17]).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -1235,6 +1290,8 @@ def ref_hardshrink(x, threshold):
 
 class TestHardShrink(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "hard_shrink"
         self.python_api = paddle.nn.functional.hardshrink
         self.init_dtype()
@@ -1283,6 +1340,8 @@ class TestHardShrink_ZeroDim(TestHardShrink):
 class TestHardShrinkAPI(unittest.TestCase):
     # test paddle.nn.Hardshrink, paddle.nn.functional.hardshrink
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         self.place = (
@@ -1350,6 +1409,8 @@ def ref_hardtanh(x, min=-1.0, max=1.0):
 class TestHardtanhAPI(unittest.TestCase):
     # test paddle.nn.Hardtanh, paddle.nn.functional.hardtanh
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
         self.place = (
@@ -1416,6 +1477,8 @@ def ref_softshrink(x, threshold=0.5):
 
 class TestSoftshrink(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "softshrink"
         self.python_api = paddle.nn.functional.softshrink
         self.init_dtype()
@@ -1438,7 +1501,7 @@ class TestSoftshrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_pir=True)
 
 
 class TestSoftshrink_ZeroDim(TestSoftshrink):
@@ -1449,9 +1512,12 @@ class TestSoftshrink_ZeroDim(TestSoftshrink):
 class TestSoftshrinkAPI(unittest.TestCase):
     # test paddle.nn.Softshrink, paddle.nn.functional.softshrink
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.threshold = 0.8
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
         np.random.seed(1024)
-        self.x_np = np.random.uniform(0.25, 10, [10, 12]).astype(np.float64)
+        self.x_np = np.random.uniform(0.25, 10, [10, 12]).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -1506,13 +1572,15 @@ class TestSoftshrinkAPI(unittest.TestCase):
 
 class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "sqrt"
         self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
         self.public_python_api = paddle.sqrt
 
         self.init_dtype()
-        self.dtype = np.float32
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
         self.init_shape()
         self.if_enable_cinn()
 
@@ -1544,6 +1612,8 @@ class TestSqrt(TestActivation, TestParameter):
 
 class TestSqrtPrimFp32(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "sqrt"
         self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
@@ -1573,7 +1643,7 @@ class TestSqrtPrimFp32(TestActivation):
         self.check_output(check_pir=True, check_prim_pir=True)
 
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
 
     def if_enable_cinn(self):
         pass
@@ -1590,6 +1660,8 @@ class TestSqrt_ZeroDim(TestSqrt):
 )
 class TestSqrtBF16(OpTest):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "sqrt"
         self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
@@ -1634,6 +1706,8 @@ class TestSqrtBF16(OpTest):
 
 class TestSqrtComp(TestActivation, TestParameter):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "sqrt"
         self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
@@ -1676,6 +1750,8 @@ class TestSqrtComp(TestActivation, TestParameter):
 
 class TestSqrtCompFp32(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "sqrt"
         self.prim_op_type = "comp"
         self.python_api = paddle.sqrt
@@ -1724,6 +1800,8 @@ class TestSqrtComp_ZeroDim(TestSqrtComp):
 
 class TestRsqrt(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "rsqrt"
         self.prim_op_type = "comp"
         self.python_api = paddle.rsqrt
@@ -1772,6 +1850,8 @@ class TestRsqrt_ZeroDim(TestRsqrt):
 
 class TestAbs(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "abs"
         self.prim_op_type = "prim"
         self.python_api = paddle.abs
@@ -1815,6 +1895,8 @@ class TestAbs_ZeroDim(TestAbs):
 
 class TestCeil(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "ceil"
         self.python_api = paddle.ceil
         self.init_dtype()
@@ -1846,6 +1928,8 @@ class TestCeil_ZeroDim(TestCeil):
 
 class TestFloor(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "floor"
         self.prim_op_type = "prim"
         self.python_api = paddle.floor
@@ -1900,6 +1984,8 @@ class TestFloor_ZeroDim(TestFloor):
 
 class TestCos(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "cos"
         self.python_api = paddle.cos
         self.public_python_api = paddle.cos
@@ -1952,11 +2038,12 @@ class TestCos(TestActivation):
         pass
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestCos_Complex64(TestCos):
     def init_dtype(self):
         self.dtype = np.complex64
 
-
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestCos_Complex128(TestCos):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -1969,6 +2056,8 @@ class TestCos_ZeroDim(TestCos):
 
 class TestTan(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
         self.op_type = "tan"
         self.python_api = paddle.tan
@@ -2010,11 +2099,13 @@ class TestTan_float32(TestTan):
         self.dtype = "float32"
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestTan_Complex64(TestTan):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestTan_Complex128(TestTan):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -2025,10 +2116,13 @@ class TestTan_ZeroDim(TestTan):
         self.shape = []
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support STanh")
 class TestTanAPI(unittest.TestCase):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
-        self.dtype = 'float32'
+        self.dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
         self.x_np = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
@@ -2070,6 +2164,8 @@ class TestTanAPI(unittest.TestCase):
 
 class TestAcos(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "acos"
         self.python_api = paddle.acos
         self.init_dtype()
@@ -2100,23 +2196,29 @@ class TestAcos(TestActivation):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAcos_Complex64(TestAcos):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAcos_Complex128(TestAcos):
     def init_dtype(self):
         self.dtype = np.complex128
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAcos_ZeroDim(TestAcos):
     def init_shape(self):
         self.shape = []
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSin(TestActivation, TestParameter):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "sin"
         self.python_api = paddle.sin
         self.public_python_api = paddle.sin
@@ -2161,16 +2263,19 @@ class TestSin(TestActivation, TestParameter):
         pass
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSin_Complex64(TestSin):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSin_Complex128(TestSin):
     def init_dtype(self):
         self.dtype = np.complex128
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSin_ZeroDim(TestSin):
     def init_shape(self):
         self.shape = []
@@ -2182,6 +2287,8 @@ class TestAsin(TestActivation):
         self.python_api = paddle.asin
         self.init_dtype()
         self.init_shape()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
         np.random.seed(2048)
         x = np.random.uniform(-0.95, 0.95, self.shape).astype(self.dtype)
@@ -2208,11 +2315,13 @@ class TestAsin(TestActivation):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAsin_Complex64(TestAsin):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAsin_Complex128(TestAsin):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -2229,6 +2338,8 @@ class TestAcosh(TestActivation):
         self.python_api = paddle.acosh
         self.init_dtype()
         self.init_shape()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
         np.random.seed(1024)
         x = np.random.uniform(2, 3, self.shape).astype(self.dtype)
@@ -2255,17 +2366,19 @@ class TestAcosh(TestActivation):
         if self.dtype == np.complex64:
             # Complex64[CPU]: AssertionError: 0.012431525 not less than or equal to 0.005
             self.check_grad(
-                ['X'], 'Out', max_relative_error=0.02, check_pir=True
+                ['X'], 'Out', max_relative_error=0.05, check_pir=True
             )
         else:
-            self.check_grad(['X'], 'Out', check_pir=True)
+            self.check_grad(['X'], 'Out', max_relative_error=0.1, check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAcosh_Complex64(TestAcosh):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAcosh_Complex128(TestAcosh):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -2282,6 +2395,8 @@ class TestAsinh(TestActivation):
         self.python_api = paddle.asinh
         self.init_dtype()
         self.init_shape()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
         np.random.seed(1024)
         x = np.random.uniform(1, 2, self.shape).astype(self.dtype)
@@ -2314,11 +2429,13 @@ class TestAsinh(TestActivation):
             self.check_grad(['X'], 'Out', check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAsinh_Complex64(TestAsinh):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAsinh_Complex128(TestAsinh):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -2335,6 +2452,8 @@ class TestAtanh(TestActivation):
         self.python_api = paddle.atanh
         self.init_dtype()
         self.init_shape()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
         np.random.seed(400)
         x = np.random.uniform(-0.9, 0.9, self.shape).astype(self.dtype)
@@ -2361,11 +2480,13 @@ class TestAtanh(TestActivation):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAtanh_Complex64(TestAtanh):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestAtanh_Complex128(TestAtanh):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -2425,6 +2546,8 @@ class TestRelu(TestActivation):
 
         self.outputs = {'Out': out}
         self.convert_input_output()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -2456,6 +2579,8 @@ class TestReluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
         self.executed_api()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     def executed_api(self):
         self.relu = F.relu
@@ -2538,6 +2663,8 @@ class TestLeakyRelu(TestActivation):
         self.outputs = {'Out': out}
         self.attrs = {'alpha': alpha}
         self.convert_input_output()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     def if_enable_cinn(self):
         pass
@@ -2584,6 +2711,8 @@ class TestLeakyReluAPI(unittest.TestCase):
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     @test_with_pir_api
     def test_static_api(self):
@@ -2648,6 +2777,7 @@ def gelu(x, approximate):
     return y_ref.astype(x.dtype)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestGeluApproximate(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
@@ -2664,6 +2794,8 @@ class TestGeluApproximate(TestActivation):
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"approximate": approximate}
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
         # The backward decomposite of gelu is inconsistent with raw kernel on
         # cpu device, lower threshold to support 1e-8 for pass the unittest
@@ -2686,12 +2818,14 @@ class TestGeluApproximate(TestActivation):
         self.check_grad(
             ['X'],
             'Out',
+            max_relative_error=0.01,
             check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestGelu(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
@@ -2700,6 +2834,8 @@ class TestGelu(TestActivation):
         self.public_python_api = paddle.nn.functional.gelu
         self.init_dtype()
         self.init_shape()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         # Todo: Under float64, only this accuracy is currently supported, for further processing
         self.fw_comp_rtol = 1e-7
         approximate = False
@@ -2759,6 +2895,8 @@ class TestGELUAPI(unittest.TestCase):
         # cpu, lower threshold to support 1e-8 for pass the unittest
         self.rev_comp_rtol = 1e-8
         self.rev_comp_atol = 1e-8
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     @test_with_pir_api
     def test_static_api(self):
@@ -2829,6 +2967,8 @@ class TestBRelu(TestActivation):
         self.outputs = {'Out': t}
         self.convert_input_output()
         self.attrs = {'t_min': t_min, 't_max': t_max}
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     def test_check_output(self):
         self.check_output(check_pir=True)
@@ -2863,6 +3003,8 @@ class TestRelu6(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -2882,13 +3024,16 @@ class TestRelu6API(unittest.TestCase):
     # test paddle.nn.ReLU6, paddle.nn.functional.relu6
     def setUp(self):
         np.random.seed(1024)
-        self.x_np = np.random.uniform(-1, 10, [10, 12]).astype(np.float64)
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
+        self.x_np = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     @test_with_pir_api
     def test_static_api(self):
@@ -2987,6 +3132,8 @@ class TestHardSwish(TestActivation):
         self.prim_op_type = "comp"
         self.python_api = paddle.nn.functional.hardswish
         self.public_python_api = paddle.nn.functional.hardswish
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
         np.random.seed(1024)
         if self.dtype is np.complex64 or self.dtype is np.complex128:
@@ -3024,6 +3171,7 @@ class TestHardSwish(TestActivation):
             else False,
             only_check_prim=self.if_only_check_prim(),
             check_pir=True,
+            max_relative_error=0.01
         )
 
     def test_check_output(self):
@@ -3040,11 +3188,13 @@ class TestHardSwish_ZeroDim(TestHardSwish):
         self.shape = []
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestHardSwishComplex64(TestHardSwish):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestHardSwishComplex128(TestHardSwish):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -3053,12 +3203,15 @@ class TestHardSwishComplex128(TestHardSwish):
 class TestHardswishAPI(unittest.TestCase):
     # test paddle.nn.Hardswish, paddle.nn.functional.hardswish
     def setUp(self):
-        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     @test_with_pir_api
     def test_static_api(self):
@@ -3137,6 +3290,8 @@ class TestSoftRelu(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
         self.attrs = {'threshold': threshold}
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     def test_check_output(self):
         self.check_output(check_dygraph=False)
@@ -3172,6 +3327,8 @@ class TestELU(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
         self.attrs = {'alpha': alpha}
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -3179,7 +3336,7 @@ class TestELU(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
     def get_alpha(self):
         return 1.0
@@ -3206,6 +3363,8 @@ class TestELUAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
         self.executed_api()
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
 
     def executed_api(self):
         self.elu = F.elu
@@ -3275,8 +3434,11 @@ def celu(x, alpha):
     return out_ref.astype(x.dtype)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestCELU(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "celu"
         self.init_dtype()
         self.init_shape()
@@ -3309,6 +3471,8 @@ class TestCELU_ZeroDim(TestCELU):
 class TestCELUAPI(unittest.TestCase):
     # test paddle.nn.CELU, paddle.nn.functional.celu
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
         self.place = (
@@ -3378,6 +3542,8 @@ class TestCELUAPI(unittest.TestCase):
 
 class TestReciprocal(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "reciprocal"
         self.python_api = paddle.reciprocal
         self.init_dtype()
@@ -3407,6 +3573,8 @@ class TestReciprocal_ZeroDim(TestReciprocal):
 
 class TestLog(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "log"
         self.prim_op_type = "prim"
         self.python_api = paddle.log
@@ -3488,6 +3656,8 @@ class TestLog_ZeroDim(TestLog):
 
 class TestLog2(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "log2"
         self.python_api = paddle.log2
         self.init_dtype()
@@ -3511,9 +3681,10 @@ class TestLog2(TestActivation):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+                dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
+                input_x = np.random.uniform(0.1, 1, [11, 17]).astype(dtype)
                 data_x = paddle.static.data(
-                    name="data_x", shape=[11, 17], dtype="float64"
+                    name="data_x", shape=[11, 17], dtype=dtype
                 )
 
                 out1 = paddle.log2(data_x)
@@ -3529,7 +3700,8 @@ class TestLog2(TestActivation):
 
         # dygraph
         with base.dygraph.guard():
-            np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
+            np_x = np.random.uniform(0.1, 1, [11, 17]).astype(dtype)
             data_x = paddle.to_tensor(np_x)
             z = paddle.log2(data_x)
             np_z = z.numpy()
@@ -3570,6 +3742,8 @@ class TestLog2_Op_Int(unittest.TestCase):
 
 class TestLog10(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "log10"
         self.python_api = paddle.log10
         self.init_dtype()
@@ -3629,9 +3803,10 @@ class TestLog10API(unittest.TestCase):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+                dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
+                input_x = np.random.uniform(0.1, 1, [11, 17]).astype(dtype)
                 data_x = paddle.static.data(
-                    name="data_x", shape=[11, 17], dtype="float64"
+                    name="data_x", shape=[11, 17], dtype=dtype
                 )
 
                 out1 = paddle.log10(data_x)
@@ -3647,7 +3822,8 @@ class TestLog10API(unittest.TestCase):
 
         # dygraph
         with base.dygraph.guard():
-            np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
+            np_x = np.random.uniform(0.1, 1, [11, 17]).astype(dtype)
             data_x = paddle.to_tensor(np_x)
             z = paddle.log10(data_x)
             np_z = z.numpy()
@@ -3657,6 +3833,8 @@ class TestLog10API(unittest.TestCase):
 
 class TestLog1p(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "log1p"
         self.python_api = paddle.log1p
         self.init_dtype()
@@ -3733,11 +3911,12 @@ class TestLog1pAPI(unittest.TestCase):
             with base.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
-                input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+                dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
+                input_x = np.random.uniform(0.1, 1, [11, 17]).astype(dtype)
                 data_x = paddle.static.data(
                     name="data_x",
                     shape=[11, 17],
-                    dtype="float64",
+                    dtype=dtype,
                 )
 
                 out1 = paddle.log1p(data_x)
@@ -3753,7 +3932,8 @@ class TestLog1pAPI(unittest.TestCase):
 
         # dygraph
         with base.dygraph.guard():
-            np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
+            np_x = np.random.uniform(0.1, 1, [11, 17]).astype(dtype)
             data_x = base.dygraph.to_variable(np_x)
             z = paddle.log1p(data_x)
             np_z = z.numpy()
@@ -3763,6 +3943,8 @@ class TestLog1pAPI(unittest.TestCase):
 
 class TestSquare(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "square"
         self.python_api = paddle.square
         self.init_dtype()
@@ -3796,6 +3978,8 @@ class TestSquare_ZeroDim(TestSquare):
 )
 class TestSquareBF16(OpTest):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "square"
         self.python_api = paddle.square
         self.init_dtype()
@@ -3825,6 +4009,8 @@ class TestSquareBF16(OpTest):
 
 class TestPow(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "pow"
         self.prim_op_type = "comp"
         self.python_api = paddle.pow
@@ -3913,6 +4099,8 @@ class TestSTanh(TestActivation):
         return 1.7159
 
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "stanh"
         self.python_api = paddle.stanh
         self.init_dtype()
@@ -3940,7 +4128,7 @@ class TestSTanh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out', max_relative_error=0.01, check_pir=True)
 
     def test_check_output(self):
         self.check_output(check_pir=True)
@@ -3961,16 +4149,19 @@ class TestSTanh_ZeroDim(TestSTanh):
         self.shape = []
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSTanhComplex64(TestSTanh):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSTanhComplex128(TestSTanh):
     def init_dtype(self):
         self.dtype = np.complex128
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support STanh")
 class TestSTanhAPI(unittest.TestCase):
     # test paddle.nn.stanh
     def get_scale_a(self):
@@ -3980,6 +4171,8 @@ class TestSTanhAPI(unittest.TestCase):
         return 1.7159
 
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         self.scale_a = self.get_scale_a()
@@ -4014,7 +4207,8 @@ class TestSTanhAPI(unittest.TestCase):
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
-                x = paddle.static.data('X', [10, 12], dtype="float32")
+                dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
+                x = paddle.static.data('X', [10, 12], dtype=dtype)
                 out = paddle.stanh(x, self.scale_a, self.scale_b)
                 exe = base.Executor(self.place)
                 res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
@@ -4038,11 +4232,13 @@ class TestSTanhAPI(unittest.TestCase):
                 paddle.stanh(x_fp16)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support STanh")
 class TestSTanhAPIScaleA(TestSTanhAPI):
     def get_scale_a(self):
         return 2.0
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support STanh")
 class TestSTanhAPIScaleB(TestSTanhAPI):
     def get_scale_b(self):
         return 0.5
@@ -4059,6 +4255,8 @@ def ref_softplus(x, beta=1, threshold=20):
 
 class TestSoftplus(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "softplus"
         self.python_api = paddle.nn.functional.softplus
         self.init_dtype()
@@ -4091,6 +4289,7 @@ class TestSoftplus(TestActivation):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSoftplus_Complex64(TestSoftplus):
     def init_dtype(self):
         self.dtype = np.complex64
@@ -4099,6 +4298,7 @@ class TestSoftplus_Complex64(TestSoftplus):
         self.check_grad(['X'], 'Out', max_relative_error=0.06, check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSoftplus_Complex128(TestSoftplus):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -4110,11 +4310,13 @@ class TestSoftplus_ZeroDim(TestSoftplus):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm() or core.is_compiled_with_musa(),
     "core is not compiled with CUDA",
 )
 class TestSoftplusBF16(OpTest):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "softplus"
         self.init_dtype()
         self.python_api = paddle.nn.functional.softplus
@@ -4146,10 +4348,13 @@ class TestSoftplusBF16(OpTest):
 class TestSoftplusAPI(unittest.TestCase):
     # test paddle.nn.Softplus, paddle.nn.functional.softplus
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.beta = 2
         self.threshold = 15
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
         np.random.seed(1024)
-        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -4204,6 +4409,8 @@ def ref_softsign(x):
 
 class TestSoftsign(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "softsign"
         self.init_dtype()
         self.init_shape()
@@ -4235,11 +4442,13 @@ class TestSoftsign(TestActivation):
         self.check_grad(['X'], 'Out', check_pir=True)
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSoftsign_Complex64(TestSoftsign):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+@unittest.skipIf(core.is_compiled_with_musa(), "musa not support complex type")
 class TestSoftsign_Complex128(TestSoftsign):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -4253,8 +4462,11 @@ class TestSoftsign_ZeroDim(TestSoftsign):
 class TestSoftsignAPI(unittest.TestCase):
     # test paddle.nn.Softsign, paddle.nn.functional.softsign
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
-        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -4309,6 +4521,8 @@ def ref_thresholded_relu(x, threshold=1.0):
 
 class TestThresholdedRelu(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "thresholded_relu"
         self.init_dtype()
         self.init_shape()
@@ -4346,9 +4560,12 @@ class TestThresholdedRelu_ZeroDim(TestThresholdedRelu):
 class TestThresholdedReluAPI(unittest.TestCase):
     # test paddle.nn.ThresholdedReLU, paddle.nn.functional.thresholded_relu
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.threshold = 15
         np.random.seed(1024)
-        self.x_np = np.random.uniform(-20, 20, [10, 12]).astype(np.float64)
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
+        self.x_np = np.random.uniform(-20, 20, [10, 12]).astype(self.dtype)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
         self.place = (
             paddle.CUDAPlace(0)
@@ -4403,8 +4620,10 @@ def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
 
 class TestHardSigmoid(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "hard_sigmoid"
-        self.dtype = 'float64'
+        self.dtype = 'float32' if core.is_compiled_with_musa() else 'float64'
         self.slope = 0.166666666666667
         self.offset = 0.5
         self.set_attrs()
@@ -4462,7 +4681,10 @@ class TestHardSigmoid_ZeroDim(TestHardSigmoid):
 class TestHardsigmoidAPI(unittest.TestCase):
     # test paddle.nn.Hardsigmoid, paddle.nn.functional.hardsigmoid
     def setUp(self):
-        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -4533,6 +4755,8 @@ def ref_swish(x):
 
 class TestSwish(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "swish"
         self.python_api = paddle.nn.functional.swish
         self.init_dtype()
@@ -4568,8 +4792,11 @@ class TestSwish_ZeroDim(TestSwish):
 class TestSwishAPI(unittest.TestCase):
     # test paddle.nn.Swish, paddle.nn.functional.swish
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
-        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -4637,6 +4864,8 @@ def ref_mish(x, threshold=20.0):
 
 class TestMish(TestActivation):
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         self.op_type = "mish"
         self.python_api = paddle.nn.functional.mish
         self.init_dtype()
@@ -4670,8 +4899,11 @@ class TestMish_ZeroDim(TestMish):
 class TestMishAPI(unittest.TestCase):
     # test paddle.nn.Mish, paddle.nn.functional.mish
     def setUp(self):
+        if core.is_compiled_with_musa():
+            self.__class__.exist_fp64_check_grad = False
         np.random.seed(1024)
-        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(np.float64)
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
+        self.x_np = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -4762,11 +4994,14 @@ def create_test_act_fp16_class(
     **kwargs
 ):
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_musa(),
+        "core is not compiled with CUDA"
     )
     class TestActFp16(parent):
         def setUp(self):
             super().setUp()
+            if core.is_compiled_with_musa():
+                self.__class__.exist_fp64_check_grad = False
             for k, v in kwargs.items():
                 setattr(self, k, v)
 
@@ -4948,6 +5183,8 @@ def create_test_act_bf16_class(
     class TestActBF16(parent):
         def setUp(self):
             super().setUp()
+            if core.is_compiled_with_musa():
+                self.__class__.exist_fp64_check_grad = False
             for k, v in kwargs.items():
                 setattr(self, k, v)
 

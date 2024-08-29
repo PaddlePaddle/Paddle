@@ -132,6 +132,7 @@ void ActivationGPUImpl(const Context& dev_ctx,
     ActivationGPUImpl<T, Context, funcs::functor_class<T>>( \
         dev_ctx, x, out, functor);                          \
   }
+
 #ifdef __MUSACC__
 DEFINE_MUSA_ACTIVATION_KERNEL(Cos, ::musa::dnn::Unary::Mode::COS, 0.0, 0.0)
 #else
