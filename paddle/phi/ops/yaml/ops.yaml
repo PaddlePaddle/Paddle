@@ -875,6 +875,7 @@
     func : CheckNumericsInferMeta
   kernel :
     func : check_numerics
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cholesky
   args : (Tensor x, bool upper=false)
