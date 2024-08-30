@@ -28,6 +28,7 @@ class TestPlannerReLaunch(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_relaunch_with_planner(self):
+        sys.path.append("../deprecated/auto_parallel")
         from test_auto_parallel_relaunch import cluster_json, mapping_json
 
         cluster_json_path = os.path.join(

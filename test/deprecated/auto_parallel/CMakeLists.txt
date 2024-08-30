@@ -2,6 +2,10 @@
 # string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 if(WITH_DISTRIBUTE AND WITH_GPU)
+  py_test_modules(test_auto_parallel_relaunch_deprecated MODULES
+                  test_auto_parallel_relaunch_deprecated)
+  set_tests_properties(test_auto_parallel_relaunch_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_pass_1F1B_deprecated MODULES test_pass_1F1B_deprecated)
   set_tests_properties(test_pass_1F1B_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)

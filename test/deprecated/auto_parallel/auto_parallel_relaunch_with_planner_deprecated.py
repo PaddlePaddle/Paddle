@@ -23,7 +23,7 @@ from paddle.distributed.auto_parallel.static.dist_context import (
 
 
 def train():
-    from auto_parallel_relaunch_model import (
+    from auto_parallel_relaunch_model_deprecated import (
         batch_generator_creator,
         mlp_pretrain_forward,
     )
