@@ -310,10 +310,9 @@ class VariableCreator(metaclass=Singleton):
                 if isinstance(func, str):
                     # TODO(Aurelius84): Is length of args always greater than 0?
                     # Do we need add condition check here?
-                    out = getattr(args[0], func)(*args[1:], **kwargs)
-                else:
-                    out = func(*args, **kwargs)
-
+                    func = getattr(args[0], func)
+                    args = args[1:]
+                out = func(*args, **kwargs)
         return convert_variable_to_meta_info(out)
 
 
