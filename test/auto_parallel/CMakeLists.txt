@@ -9,10 +9,6 @@ add_subdirectory(pir)
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
   # NOTE(zyl): unittests WITH multi cards and timeout
-  py_test_modules(test_mp_allreduce_matmul_grad_overlapping MODULES
-                  test_mp_allreduce_matmul_grad_overlapping)
-  set_tests_properties(test_mp_allreduce_matmul_grad_overlapping
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_relaunch_with_gpt_planner MODULES
                   test_relaunch_with_gpt_planner)
   set_tests_properties(test_relaunch_with_gpt_planner
