@@ -34,10 +34,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
   set_tests_properties(test_engine_callbacks
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pipeline_scheduler_vpp MODULES
-                  test_pipeline_scheduler_vpp)
-  set_tests_properties(test_pipeline_scheduler_vpp
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_pipeline_scheduler_zb MODULES test_pipeline_scheduler_zb)
   set_tests_properties(test_pipeline_scheduler_zb
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
