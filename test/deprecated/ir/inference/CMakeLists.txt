@@ -36,9 +36,24 @@ foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
 endforeach()
 
 if(WITH_GPU AND TENSORRT_FOUND)
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES test_trt_multiclass_nms_op)
 
   foreach(TRT_CONVERT ${TEST_TRT_CONVERTER})
     list(REMOVE_ITEM TEST_TRT_IR_PASSES ${TRT_CONVERT})
+  endforeach()
+
+  foreach(target ${TEST_TRT_IR_PASSES})
+    if(${target} STREQUAL "test_trt_slice_dynamic_plugin")
+      if("${TENSORRT_MAJOR_VERSION}.${TENSORRT_MINOR_VERSION}" VERSION_GREATER
+         "7.1")
+        py_test_modules(${target} MODULES ${target})
+        set_tests_properties(${target} PROPERTIES TIMEOUT 60)
+        set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+      endif()
+    else()
+      py_test_modules(${target} MODULES ${target})
+      set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+    endif()
   endforeach()
 
   foreach(target ${TEST_TRT_CONVERTER})
