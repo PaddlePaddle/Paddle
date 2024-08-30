@@ -1546,18 +1546,45 @@ def _insert_reduce_op(
     assert (
         root_id >= 0
     ), f"root id should be a positive int, but now root id is {root_id}"
-    new_op = block._insert_op_without_sync(
-        insert_idx,
-        type=op_type,
-        inputs={'X': [reduce_var]},
-        outputs={'Out': [reduce_var]},
-        attrs={
-            'ring_id': ring_id,
-            'root_id': root_id,
-            'use_calc_stream': use_calc_stream,
-            OP_ROLE_KEY: op_role,
-        },
-    )
+
+    attrs = {
+        'ring_id': ring_id,
+        'root_id': root_id,
+        'use_calc_stream': use_calc_stream,
+        OP_ROLE_KEY: op_role,
+    }
+
+    if (
+        op_type == "c_reduce_avg"
+        or op_type == "c_reduce_min"
+        or op_type == "c_reduce_max"
+        or op_type == "c_reduce_prod"
+        or op_type == "c_reduce_sum"
+    ):
+        del attrs['use_calc_stream']
+        op_map = {
+            "c_reduce_avg": paddle.distributed.ReduceOp.AVG,
+            "c_reduce_min": paddle.distributed.ReduceOp.MIN,
+            "c_reduce_max": paddle.distributed.ReduceOp.MAX,
+            "c_reduce_prod": paddle.distributed.ReduceOp.PROD,
+            "c_reduce_sum": paddle.distributed.ReduceOp.SUM,
+        }
+        attrs.update({'reduce_type': op_map[op_type]})
+        new_op = block._insert_op_without_sync(
+            insert_idx,
+            type='reduce',
+            inputs={'x': [reduce_var]},
+            outputs={'out': [reduce_var]},
+            attrs=attrs,
+        )
+    else:
+        new_op = block._insert_op_without_sync(
+            insert_idx,
+            type=op_type,
+            inputs={'X': [reduce_var]},
+            outputs={'Out': [reduce_var]},
+            attrs=attrs,
+        )
 
     dist_attr = dist_context.get_tensor_dist_attr_for_program(
         block.var(reduce_var)

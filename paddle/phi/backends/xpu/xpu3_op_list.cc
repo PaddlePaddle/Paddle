@@ -790,6 +790,7 @@ XPUOpMap& get_kl3_ops() {
       {"reciprocal", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reciprocal_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"reduce", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reduce_all", XPUKernelSet({phi::DataType::BOOL})},
       {"reduce_any", XPUKernelSet({phi::DataType::BOOL})},
       {"reduce_max_grad", XPUKernelSet({phi::DataType::FLOAT32})},
