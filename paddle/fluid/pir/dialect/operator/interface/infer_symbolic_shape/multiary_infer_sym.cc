@@ -2868,7 +2868,6 @@ bool WeightedSampleNeighborsOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
   const auto &eids_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(4)).shape();
-  int sample_size = op->attribute<pir::Int32Attribute>("sample_size").data();
   bool return_eids = op->attribute<pir::BoolAttribute>("return_eids").data();
 
   GSNShapeCheck(row_shape, "row", infer_context);
