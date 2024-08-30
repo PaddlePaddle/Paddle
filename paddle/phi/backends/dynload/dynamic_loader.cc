@@ -696,6 +696,18 @@ void* GetFlashAttnDsoHandle() {
 #endif
 }
 
+void* GetAfsApiDsoHandle() {
+  std::string afsapi_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    afsapi_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__) || defined(_WIN32)
+  return NULL;
+#else
+  return GetDsoHandleFromSearchPath(afsapi_dir, "libafs-api-so.so");
+#endif
+}
+
 void* GetNCCLDsoHandle() {
 #ifdef PADDLE_WITH_HIP
   std::string warning_msg(

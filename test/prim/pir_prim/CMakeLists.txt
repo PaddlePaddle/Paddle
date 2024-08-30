@@ -19,6 +19,10 @@ set(TEST_PRIM_PURE_PIR_CASES
     test_auto_recompute_dy2static
     test_prim_sub_graph_dynamic_shape
     test_prim_sub_graph_backward_dynamic_shape
+    test_prim_sub_graph_abcde_backward_dynamic_shape
+    test_prim_sub_graph_fghij_backward_dynamic_shape
+    test_prim_sub_graph_klmno_backward_dynamic_shape
+    test_prim_sub_graph_pqrst_backward_dynamic_shape
     test_decompose_control_flow
     test_decomp_whole_program
     test_dynamic_combine1

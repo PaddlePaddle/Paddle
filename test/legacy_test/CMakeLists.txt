@@ -15,10 +15,6 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-if((NOT WITH_GPU) AND (NOT WITH_XPU))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
-endif()
-
 # The following unittest is now in deprecated dir, we can delete this code when we move it from deprecated dir to this dir
 ###### start ######
 list(REMOVE_ITEM TEST_OPS test_squared_l2_norm_op)
@@ -103,12 +99,8 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
-  list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
   list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
 endif()
 
@@ -532,7 +524,6 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
-  list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
 list(REMOVE_ITEM TEST_OPS "test_stride")
@@ -744,9 +735,7 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
-  test_sync_batch_norm_op test_distributed_fused_lamb_op_with_clip
-  test_distributed_fused_lamb_op_without_clip
-  test_distributed_fused_lamb_op_with_gradient_merge
+  test_sync_batch_norm_op test_distributed_fused_lamb_op_without_clip
   PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
@@ -776,8 +765,6 @@ if(WITH_DISTRIBUTE)
   set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
                                                                        200)
   set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
-                       PROPERTIES TIMEOUT 60)
   set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
 endif()
 
@@ -855,12 +842,8 @@ set_tests_properties(test_dropout_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_ocr_attention_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_nn_grad PROPERTIES TIMEOUT 180)
 set_tests_properties(test_elementwise_sub_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_distributed_fused_lamb_op_with_clip PROPERTIES TIMEOUT
-                                                                         240)
 set_tests_properties(test_distributed_fused_lamb_op_without_clip
                      PROPERTIES TIMEOUT 120)
-set_tests_properties(test_distributed_fused_lamb_op_with_gradient_merge
-                     PROPERTIES TIMEOUT 240)
 set_tests_properties(test_elementwise_min_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_elementwise_add_op PROPERTIES TIMEOUT 200)
 if(NOT WITH_COVERAGE)
@@ -1178,9 +1161,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   set_tests_properties(
     test_fleet_executor PROPERTIES ENVIRONMENT
                                    "FLAGS_new_executor_micro_batching=False")
-  set_tests_properties(
-    test_fleet_executor_origin_scheduler
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
   set_tests_properties(
     test_fleet_executor_with_task_nodes
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
