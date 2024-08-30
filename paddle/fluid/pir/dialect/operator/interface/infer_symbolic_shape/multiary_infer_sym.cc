@@ -696,7 +696,7 @@ bool BoxCoderInferSymbolicShape(const MetaTensor &prior_box,
                         prior_box_dims[1]));
 
   if (prior_box_var) {
-    const auto &prior_box_var_shape_or_data =
+    const symbol::ShapeOrDataDimExprs &prior_box_var_shape_or_data =
         infer_context->GetShapeOrDataForValue(prior_box_var);
     const std::vector<symbol::DimExpr> prior_box_var_dims =
         prior_box_var_shape_or_data.shape();
