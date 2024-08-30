@@ -4714,10 +4714,10 @@ void RmsNormInferMeta(const MetaTensor& x,
   }
   PADDLE_ENFORCE_EQ(normalized_dims,
                     norm_weight.dims()[0],
-                    common::errors::InvalidArgument(
-                        "The normalized size of Input(X) must equal to be"
-                        "the size of Weight, but received"
-                        "normalized size of Input(X) is [%d], received size"
+                    phi::errors::InvalidArgument(
+                        "The normalized size of Input(X) must equal to be "
+                        "the size of Weight, but received "
+                        "normalized size of Input(X) is [%d], received size "
                         "of Weight is [%d]",
                         normalized_dims,
                         norm_weight.dims()[0]));
@@ -4744,25 +4744,12 @@ void RmsNormInferMeta(const MetaTensor& x,
     inv_var->set_layout(x.layout());
   }
 
-  residual_out->set_dims(out_dims);
-  residual_out->set_dtype(x.dtype());
-  residual_out->set_layout(x.layout());
-  residual_out->share_lod(x);
-}
-
-void RmsNormGradInferMeta(const MetaTensor& x,
-                          const MetaTensor& norm_weight,
-                          MetaTensor* x_grad,
-                          MetaTensor* norm_weight_grad) {
-  x_grad->set_dtype(x.dtype());
-  x_grad->set_layout(x.layout());
-  x_grad->share_lod(x);
-  x_grad->set_dims(x.dims());
-
-  norm_weight_grad->set_dtype(norm_weight.dtype());
-  norm_weight_grad->set_layout(norm_weight.layout());
-  norm_weight_grad->share_lod(norm_weight);
-  norm_weight_grad->set_dims(norm_weight.dims());
+  if (residual != nullptr) {
+    residual_out->set_dims(out_dims);
+    residual_out->set_dtype(x.dtype());
+    residual_out->set_layout(x.layout());
+    residual_out->share_lod(x);
+  }
 }
 
 void RmspropInferMeta(const MetaTensor& param,

@@ -60,7 +60,7 @@ std::pair<std::optional<OpStmt>, List<OpStmt>> FindVisitedOpStmts(
     if (valid) {
       PADDLE_ENFORCE_EQ(opt_anchor_op_stmt.has_value(),
                         false,
-                        phi::errors::InvalidArgument(
+                        ::common::errors::InvalidArgument(
                             "The opt_anchor_op_stmt must not have a value."));
       opt_anchor_op_stmt = op_stmt;
     }
@@ -137,7 +137,7 @@ void MakeGetters4Indexes(
         PADDLE_ENFORCE_EQ(
             index2as_output->emplace(index, as_output).second,
             true,
-            phi::errors::InvalidArgument(
+            ::common::errors::InvalidArgument(
                 "Failed to emplace the new element into index2as_output."));
       };
 
@@ -153,7 +153,7 @@ void MakeGetters4Indexes(
         direction_equation_generator->OutMsgIndex4InMsgIndex(index);
     PADDLE_ENFORCE_EQ(out_msg_index.has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The out_msg_index must not have a value."));
     return out_msg_index.value();
   };
@@ -200,7 +200,7 @@ void VisitProducerConsumerPair(const std::vector<Index>& tensor_indexes,
                                const DoEachT& DoEach) {
   PADDLE_ENFORCE_EQ(tensor_indexes.empty(),
                     false,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The tensor_indexes container must not be empty."));
   if (AsOutput4Index(tensor_indexes.at(0)).value()) {  // Write first
     auto producer = tensor_indexes.at(0);
@@ -215,7 +215,7 @@ void VisitProducerConsumerPair(const std::vector<Index>& tensor_indexes,
       PADDLE_ENFORCE_EQ(
           AsOutput4Index(tensor_index).value(),
           false,
-          phi::errors::InvalidArgument(
+          ::common::errors::InvalidArgument(
               "The value returned by AsOutput4Index(tensor_index).value() must "
               "be false."));
     }
@@ -317,8 +317,9 @@ void UpdateAnchorIndex2AnchorGroup(
       anchor_index2igroup_spec->emplace(igroup_spec.anchor_index, igroup_spec)
           .second,
       true,
-      phi::errors::InvalidArgument("Failed to emplace the element into the "
-                                   "map. The key might already exist."));
+      ::common::errors::InvalidArgument(
+          "Failed to emplace the element into the "
+          "map. The key might already exist."));
 }
 
 void EraseCandidateAnchorIndexes(
@@ -345,7 +346,7 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
         direction_equation_generator) {
   PADDLE_ENFORCE_EQ(op_stmts->empty(),
                     false,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The op_stmts container must not be empty."));
   std::unordered_map<AnchorIndex, AnchorGroup> anchor_index2igroup_spec{};
 
@@ -380,7 +381,7 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
     }
     PADDLE_ENFORCE_EQ(opt_anchor_op_stmt.has_value(),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The opt_anchor_op_stmt must not have a value."));
     all_visited_op_stmts.insert(visited_op_stmts->begin(),
                                 visited_op_stmts->end());
@@ -447,7 +448,7 @@ void CheckEquationSolvable(const AnchorGroup& igroup_spec,
   AggregateAnchorGroupOpStmt(igroup_spec, [&](const auto& op_stmt) {
     PADDLE_ENFORCE_EQ(IsOpSolved(op_stmt),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "The operation statement must be solved."));
     return tBreak<bool>{false};
   });
@@ -461,7 +462,7 @@ std::function<std::size_t(const OpStmt&)> MakeGetterOrderValue4OpStmt(
     PADDLE_ENFORCE_EQ(
         op_stmt2order_value->emplace(op_stmts->at(idx), idx).second,
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Failed to emplace the element into op_stmt2order_value. The key "
             "might already exist."));
   }

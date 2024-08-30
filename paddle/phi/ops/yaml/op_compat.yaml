@@ -4431,12 +4431,6 @@
   outputs:
     out: Out
 
-- op: mp_allreduce_sum
-  inputs :
-    x : X
-  outputs :
-    out: Out
-
 - op: nce
   backward: nce_grad
   inputs:

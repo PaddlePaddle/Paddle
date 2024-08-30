@@ -159,8 +159,8 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     phi::DenseTensor* tensor = fea_var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         tensor,
-        phi::errors::InvalidArgument("Tensor of var %s is null.",
-                                     sparse_key_names_[table_id][i]));
+        common::errors::InvalidArgument("Tensor of var %s is null.",
+                                        sparse_key_names_[table_id][i]));
 
     // skip slots which do not have embedding
     Variable* emb_var =
@@ -186,7 +186,7 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   PADDLE_ENFORCE_EQ(
       global_index,
       feature.size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Expected feature info size does not match the actual global index. "
           "Expected: %d, actual: %d.",
           feature.size(),
@@ -218,9 +218,9 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
       continue;
     }
     phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
-    PADDLE_ENFORCE_NOT_NULL(
-        tensor,
-        phi::errors::InvalidArgument("Tensor of var %s is null.", slot_name));
+    PADDLE_ENFORCE_NOT_NULL(tensor,
+                            common::errors::InvalidArgument(
+                                "Tensor of var %s is null.", slot_name));
     int64_t* ids = tensor->data<int64_t>();
     int len = static_cast<int>(tensor->numel());
     Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
@@ -329,7 +329,7 @@ void DownpourWorker::AdjustInsWeight() {
   // here we assume nid_show slot only has one feasign in each instance
   PADDLE_ENFORCE_EQ(len,
                     nid_show_.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "ins_weight size should be equal to nid_show size. "
                         "Expected: %d, but got: %d.",
                         len,
@@ -445,30 +445,32 @@ void DownpourWorker::CopyDenseVars() {
             << dest_var_name;
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        src_var, phi::errors::InvalidArgument("%s not found.", src_var_name));
+        src_var,
+        common::errors::InvalidArgument("%s not found.", src_var_name));
     phi::DenseTensor* src_tensor = src_var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         src_tensor,
-        phi::errors::InvalidArgument("%s tensor is null.", src_var_name));
+        common::errors::InvalidArgument("%s tensor is null.", src_var_name));
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        dest_var, phi::errors::InvalidArgument("%s not found.", dest_var_name));
+        dest_var,
+        common::errors::InvalidArgument("%s not found.", dest_var_name));
     phi::DenseTensor* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_NOT_NULL(
         dest_tensor,
-        phi::errors::InvalidArgument("%s tensor is null.", dest_var_name));
+        common::errors::InvalidArgument("%s tensor is null.", dest_var_name));
     float* dest_data = dest_tensor->data<float>();
 
-    PADDLE_ENFORCE_EQ(
-        src_tensor->numel(),
-        dest_tensor->numel(),
-        phi::errors::InvalidArgument("Tensor element numbers are not equal. "
-                                     "Source tensor element number: %d, "
-                                     "Destination tensor element number: %d.",
-                                     src_tensor->numel(),
-                                     dest_tensor->numel()));
+    PADDLE_ENFORCE_EQ(src_tensor->numel(),
+                      dest_tensor->numel(),
+                      common::errors::InvalidArgument(
+                          "Tensor element numbers are not equal. "
+                          "Source tensor element number: %d, "
+                          "Destination tensor element number: %d.",
+                          src_tensor->numel(),
+                          dest_tensor->numel()));
     for (int i = 0; i < src_tensor->numel(); i++) {
       dest_data[i] = src_data[i];
     }

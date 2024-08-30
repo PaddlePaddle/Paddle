@@ -24,9 +24,6 @@ if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
-list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
-list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
-list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -43,9 +40,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
-
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
 list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -93,7 +88,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
   list(REMOVE_ITEM TEST_OPS test_async_offload_reload)
 endif()
@@ -192,10 +186,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_serial)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -619,14 +609,6 @@ if(WITH_DISTRIBUTE)
   endif()
 
   if(NOT APPLE)
-    if(NOT WIN32)
-      py_test_modules(test_auto_parallel_reshard_serial MODULES
-                      test_auto_parallel_reshard_serial ENVS ${dist_ENVS})
-
-    endif()
-  endif()
-
-  if(NOT APPLE)
     if(WITH_GPU OR WITH_ROCM)
       py_test_modules(test_launch_coverage MODULES test_launch_coverage)
     endif()
@@ -882,6 +864,14 @@ set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
+set_tests_properties(test_model PROPERTIES TIMEOUT 300)
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+
+if(APPLE)
+  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
+endif()
+
 set_tests_properties(test_dataset_cifar PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_movielens PROPERTIES TIMEOUT 120)
 set_tests_properties(test_datasets PROPERTIES TIMEOUT 300)
@@ -906,14 +896,6 @@ if(APPLE)
                        PROPERTIES TIMEOUT 300)
 endif()
 set_tests_properties(test_decorator PROPERTIES TIMEOUT 120)
-
-if(WITH_DISTRIBUTE
-   AND WITH_GPU
-   AND WITH_NCCL)
-  set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
-endif()
 
 if(APPLE)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)

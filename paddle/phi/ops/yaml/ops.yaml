@@ -875,6 +875,7 @@
     func : CheckNumericsInferMeta
   kernel :
     func : check_numerics
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cholesky
   args : (Tensor x, bool upper=false)
@@ -2277,6 +2278,7 @@
     func : generate_proposals
     data_type : anchors
   optional : rpn_rois_num
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : graph_khop_sampler
   args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, int[] sample_sizes, bool return_eids)
@@ -2310,6 +2312,7 @@
     func : grid_sample
     data_type : x
   backward : grid_sample_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : group_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
@@ -2336,6 +2339,7 @@
   optional: h0, bias
   intermediate: batch_gate, batch_reset_hidden_prev, batch_hidden
   backward: gru_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gru_unit
   args: (Tensor input, Tensor hidden_prev, Tensor weight, Tensor bias, int activation
@@ -2348,6 +2352,7 @@
   optional: bias
   intermediate: gate, reset_hidden_prev
   backward: gru_unit_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
@@ -2420,6 +2425,7 @@
   optional : weight
   kernel :
     func : histogram
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hsigmoid_loss
   args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse)
@@ -3112,7 +3118,7 @@
   optional : roisnum
   kernel :
     func : matrix_nms
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : matrix_power
   args : (Tensor x, int n)
@@ -3476,6 +3482,7 @@
   data_transform:
     skip_transform : x
   no_need_buffer : x
+  traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : one_hot
@@ -3507,7 +3514,7 @@
     func: overlap_add
     data_type : x
   backward: overlap_add_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : p_norm
   args : (Tensor x,  float porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false)
@@ -5201,6 +5208,7 @@
     func: chunk_eval
     data_type: DataType::FLOAT32
   optional: seq_length
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
