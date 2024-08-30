@@ -413,7 +413,7 @@ pir::Attribute AttrTypeReader::ReadPaddleDistAttr(const std::string attr_name,
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s for parse paddle dist dialect attr", attr_name));
   }
   return pir::Attribute();
@@ -649,7 +649,7 @@ pir::Type AttrTypeReader::ReadPaddleDistType(const std::string type_name,
         paddle::dialect::DistDenseTensorType>(type_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type %s for parse paddleoperator dialect type",
                        type_name));
     return pir::Type();

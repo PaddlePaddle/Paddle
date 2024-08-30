@@ -1673,7 +1673,7 @@ void PirInterpreter::TraceRunInstructionList(
     InstructionBase* instr_node = vec_instruction_base_.at(instr_id).get();
 
     VLOG(6) << "Run InstructionBase " << instr_node->Name() << "[" << instr_id
-            << "]";
+            << "], op id: " << instr_node->Operation()->id();
     RunInstructionBase(instr_node);
 
     if (UNLIKELY(exception_holder_.IsCaught())) {

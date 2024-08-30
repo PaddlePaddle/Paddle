@@ -74,7 +74,7 @@ InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 
 
-def global_scope() -> core.Scope:
+def global_scope() -> core._Scope:
     """
     :api_attr: Static Graph
 
@@ -96,7 +96,7 @@ def global_scope() -> core.Scope:
     return g_scope
 
 
-def _switch_scope(scope: core.Scope) -> core.Scope:
+def _switch_scope(scope: core._Scope) -> core._Scope:
     global g_scope
     ex = g_scope
     g_scope = scope
@@ -104,7 +104,7 @@ def _switch_scope(scope: core.Scope) -> core.Scope:
 
 
 @signature_safe_contextmanager
-def scope_guard(scope: core.Scope) -> Generator[None, None, None]:
+def scope_guard(scope: core._Scope) -> Generator[None, None, None]:
     """
 
     This function switches scope through python `with` statement.
@@ -615,7 +615,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
     Args:
         name(str): name of the variable. Typically, only persistable variables
             can be found in the scope used for running the program.
-        scope(core.Scope|None): scope object. It should be the scope where
+        scope(core._Scope|None): scope object. It should be the scope where
             you pass to Executor.run() when running your program.
             If None, global_scope() will be used. Default None.
         return_numpy(bool): whether convert the tensor to numpy.ndarray.
@@ -1110,6 +1110,12 @@ class _ExecutorCache:
                         pir_program, param_mapping, new_program._grad_var_to_var
                     )
 
+                    if core._enable_auto_recompute():
+                        logging.info("apply auto_recompute in executor")
+                        pir_program = decomp.auto_recompute_pir_program(
+                            pir_program, None
+                        )
+
                     if in_cinn_mode():
                         apply_cinn_pass(pir_program)
 
@@ -1218,7 +1224,13 @@ class _ExecutorCache:
 
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
-                decomp.decompose_dist_program(program)
+                pir_grad_var_to_var = decomp.decompose_dist_program(program)
+            if core._enable_auto_recompute():
+                print("apply auto_recompute in executor", flush=True)
+                program = decomp.auto_recompute_pir_program(
+                    program, pir_grad_var_to_var
+                )
+
         if in_cinn_mode():
             apply_cinn_pass(program)
         return program, new_exe, data_op_infos
@@ -1692,7 +1704,7 @@ class Executor:
         fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
-        scope: core.Scope | None = ...,
+        scope: core._Scope | None = ...,
         return_numpy: Literal[True] = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
@@ -1706,7 +1718,7 @@ class Executor:
         fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
-        scope: core.Scope | None = ...,
+        scope: core._Scope | None = ...,
         return_numpy: Literal[False] = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
@@ -1720,7 +1732,7 @@ class Executor:
         fetch_list: str | Tensor | Sequence[str | Tensor] | None = ...,
         feed_var_name: str = ...,
         fetch_var_name: str = ...,
-        scope: core.Scope | None = ...,
+        scope: core._Scope | None = ...,
         return_numpy: bool = ...,
         use_program_cache: bool = ...,
         use_prune: bool = ...,
@@ -3171,7 +3183,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = None,
         dataset: DatasetBase | _FleetDatasetBase | None = None,
-        scope: core.Scope | None = None,
+        scope: core._Scope | None = None,
         thread: int = 0,
         debug: bool = False,
         fetch_list: list[Tensor] | None = None,
@@ -3249,7 +3261,7 @@ class Executor:
     def start_heter_trainer(
         self,
         program: Program | None = None,
-        scope: core.Scope | None = None,
+        scope: core._Scope | None = None,
         debug: bool = False,
         fetch_list: list[Tensor] | None = None,
         fetch_info: list[str] | None = None,
@@ -3294,7 +3306,7 @@ class Executor:
         self,
         program: Program | CompiledProgram | None = None,
         dataset: DatasetBase | _FleetDatasetBase | None = None,
-        scope: core.Scope | None = None,
+        scope: core._Scope | None = None,
         thread: int = 0,
         debug: bool = False,
         fetch_list: list[Tensor] | None = None,

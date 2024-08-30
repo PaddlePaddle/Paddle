@@ -52,6 +52,20 @@ def divide_net(x, y):
     return x / y
 
 
+def dropout_net1(x):
+    return paddle.nn.functional.dropout(
+        x, training=False, mode='downscale_in_infer'
+    )
+
+
+def dropout_net2(x):
+    return paddle.nn.functional.dropout(x)
+
+
+def dropout_net3(x):
+    return paddle.nn.functional.dropout(x, 1.0)
+
+
 def elementwise_pow_net(x, y):
     return paddle.pow(x, y)
 
@@ -505,6 +519,56 @@ class TestPrimDivideWithGrad11(TestPrimTwoWithGrad):
         self.net = divide_net
         self.enable_cinn = False
         self.tol = 1e-5
+
+
+class TestPrimDropoutWithGrad1(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50]
+        self.init_x_shape = [None, None, 50]
+        self.x = np.ones(self.x_shape).astype(self.dtype)
+        self.net = dropout_net1
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimDropoutWithGrad2(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [300, 4096]
+        self.init_x_shape = [None, 4096]
+        self.x = np.ones(self.x_shape).astype(self.dtype)
+        self.net = dropout_net2
+        self.enable_cinn = False
+        self.tol = 0.07
+
+    def test_prim_all_dynamic(self):
+        res_ref, grad_ref = self.base_net()
+        res, grad = self.base_net("prim")
+
+        for ref, actual in zip(res_ref, res):
+            np.testing.assert_allclose(
+                ref.sum(), actual.sum(), rtol=self.tol, atol=self.tol
+            )
+
+        for dr, d in zip(grad_ref, grad):
+            np.testing.assert_allclose(
+                dr.sum(), d.sum(), rtol=self.tol, atol=self.tol
+            )
+
+
+class TestPrimDropoutWithGrad3(TestPrimBaseWithGrad):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [30, 40, 50]
+        self.init_x_shape = [None, None, 50]
+        self.x = np.ones(self.x_shape).astype(self.dtype)
+        self.net = dropout_net3
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimElementwisePowWithGrad1(TestPrimTwoWithGrad):
