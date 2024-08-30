@@ -47,7 +47,6 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
@@ -148,7 +147,6 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
@@ -212,7 +210,11 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
           prev_fp32 = true;
           break;
         }
-        if (op_attr.find("mkldnn_data_type")->second == "float32") {
+        auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
+                                    .dyn_cast<pir::StrAttribute>()
+                                    .AsString();
+
+        if (mkldnn_data_type == "float32") {
           prev_fp32 = true;
           break;
         }
@@ -294,7 +296,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&

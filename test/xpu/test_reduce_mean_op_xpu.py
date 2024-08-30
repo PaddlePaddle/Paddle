@@ -198,5 +198,6 @@ for stype in support_types:
     create_test_class(globals(), XPUTestMeanOp, stype)
     create_test_class(globals(), XPUTestReduce, stype)
 
+
 if __name__ == '__main__':
     unittest.main()

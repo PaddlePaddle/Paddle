@@ -34,8 +34,7 @@ limitations under the License.
 // The following code modified from OneFlow's implementation, and change to use
 // single Pass algorithm. Support Int8 quant, dequant Load/Store implementation.
 
-#include "paddle/phi/kernels/layer_norm_kernel.h"
-
+#include "paddle/phi/kernels/rms_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -57,16 +56,32 @@ void RmsNormKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* residual_out,
                    DenseTensor* inv_var) {
+  if (quant_scale > 0.0f) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Quantization is not supported in XPU rms_norm yet"));
+  }
+  PADDLE_ENFORCE_EQ(
+      begin_norm_axis > 0 && begin_norm_axis <= x.dims().size(),
+      true,
+      phi::errors::InvalidArgument("begin_norm_axis should be in range [1, "
+                                   "%d], but received begin_norm_axis = "
+                                   "%d",
+                                   x.dims().size(),
+                                   begin_norm_axis));
   using XPUType = typename XPUTypeTrait<T>::Type;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   const T* x_data = x.data<T>();
   const T* norm_weight_data = norm_weight.data<T>();
   const T* norm_bias_data = norm_bias ? norm_bias.get().data<T>() : nullptr;
-  // float* inv_var_data = nullptr;
-  // if (inv_var != nullptr) {
-  // inv_var_data = dev_ctx.template Alloc<float>(inv_var);
-  // PD_THROW("rms_norm in XPU kernel does not support inv_var output");
-  // }
+
+  dev_ctx.template Alloc<T>(out);
+  T* out_data = out->data<T>();
+  float* inv_var_data = nullptr;
+  if (inv_var != nullptr) {
+    dev_ctx.template Alloc<float>(inv_var);
+    inv_var_data = inv_var->data<float>();
+  }
 
   int32_t rows = 1;
   int32_t cols = 1;
@@ -78,7 +93,29 @@ void RmsNormKernel(const Context& dev_ctx,
     cols *= x.dims()[i];
   }
 
-  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  PADDLE_ENFORCE_EQ(
+      cols,
+      norm_weight.dims()[0],
+      phi::errors::InvalidArgument(
+          "The product from begin_norm_axis to the last axis of input tensor "
+          "x, "
+          "i.e., cols(%d)"
+          "must be equal to the norm_weight tensor's dimension(%d).",
+          cols,
+          norm_weight.dims()[0]));
+  if (norm_bias) {
+    PADDLE_ENFORCE_EQ(
+        cols,
+        norm_bias.get().dims()[0],
+        phi::errors::InvalidArgument(
+            "The product from begin_norm_axis to the last axis of input tensor "
+            "x, "
+            "i.e., cols(%d)"
+            "must be equal to the norm_bias tensor's dimension(%d).",
+            cols,
+            norm_bias.get().dims()[0]));
+  }
+
   if (residual) {
     // Do RMSNorm(bias_add + residual + x)
     T* residual_out_data = dev_ctx.template Alloc<T>(residual_out);
@@ -89,6 +126,7 @@ void RmsNormKernel(const Context& dev_ctx,
                      reinterpret_cast<const XPUType*>(residual_data),
                      reinterpret_cast<XPUType*>(residual_out_data),
                      x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
     if (bias_data) {
       r = xpu::broadcast_add(dev_ctx.x_context(),
                              reinterpret_cast<XPUType*>(residual_out_data),
@@ -96,49 +134,42 @@ void RmsNormKernel(const Context& dev_ctx,
                              reinterpret_cast<XPUType*>(residual_out_data),
                              {rows, cols},
                              {cols});
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
     }
-    if (quant_scale <= 0.0f) {
-      // No Quantize.
-      T* out_data = dev_ctx.template Alloc<T>(out);
-      r = xpu::rms_layer_norm<XPUType>(
-          dev_ctx.x_context(),
-          reinterpret_cast<XPUType*>(residual_out_data),
-          reinterpret_cast<XPUType*>(out_data),
-          rows,
-          cols,
-          epsilon,
-          reinterpret_cast<const XPUType*>(norm_weight_data),
-          reinterpret_cast<const XPUType*>(norm_bias_data),
-          nullptr);
-    } else {
-      // Quantize and output int8.
-      PD_THROW("RMS NORM Quantize is not supported in XPU kernel now");
-    }
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "rms_norm");
+    r = xpu::rms_layer_norm<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<XPUType*>(residual_out_data),
+        reinterpret_cast<XPUType*>(out_data),
+        rows,
+        cols,
+        epsilon,
+        reinterpret_cast<const XPUType*>(norm_weight_data),
+        reinterpret_cast<const XPUType*>(norm_bias_data),
+        inv_var_data,
+        false);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "rms_layer_norm");
   } else {
-    if (quant_scale <= 0.0f) {
-      // No Quantize.
-      T* out_data = dev_ctx.template Alloc<T>(out);
-      int r = xpu::rms_layer_norm<XPUType>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(x_data),
-          reinterpret_cast<XPUType*>(out_data),
-          rows,
-          cols,
-          epsilon,
-          reinterpret_cast<const XPUType*>(norm_weight_data),
-          reinterpret_cast<const XPUType*>(norm_bias_data),
-          nullptr);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "rms_norm");
-    } else {
-      // Quantize and output int8.
-      PD_THROW("RMS NORM Quantize is not supported in XPU kernel now");
-    }
+    int r = xpu::rms_layer_norm<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x_data),
+        reinterpret_cast<XPUType*>(out_data),
+        rows,
+        cols,
+        epsilon,
+        reinterpret_cast<const XPUType*>(norm_weight_data),
+        reinterpret_cast<const XPUType*>(norm_bias_data),
+        inv_var_data,
+        false);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "rms_layer_norm");
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    rms_norm, XPU, ALL_LAYOUT, phi::RmsNormKernel, float, phi::dtype::float16) {
-}
+PD_REGISTER_KERNEL(rms_norm,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::RmsNormKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -4083,7 +4083,7 @@ def solve(
         .. code-block:: python
 
             >>> # a square system of linear equations:
-            >>> # 2*X0 + X1 = 9
+            >>> # 3*X0 + X1 = 9
             >>> # X0 + 2*X1 = 8
 
             >>> import paddle
