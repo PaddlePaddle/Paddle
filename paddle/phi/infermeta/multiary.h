@@ -908,11 +908,6 @@ void RmsNormInferMeta(const MetaTensor& x,
                       MetaTensor* residual_out,
                       MetaTensor* inv_var);
 
-void RmsNormGradInferMeta(const MetaTensor& x,
-                          const MetaTensor& norm_weight,
-                          MetaTensor* x_grad,
-                          MetaTensor* norm_weight_grad);
-
 void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& mean_square,
                       const MetaTensor& grad,

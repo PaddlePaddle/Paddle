@@ -20,13 +20,12 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-if((NOT WITH_GPU) AND (NOT WITH_XPU))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
-endif()
-
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
+list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert_deprecated)
+list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard_deprecated)
+list(APPEND DIST_TEST_OPS test_auto_parallel_save_load_deprecated)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -44,13 +43,14 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial_deprecated)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -88,12 +88,8 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
-  list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
 endif()
 
 if(WIN32)
@@ -164,12 +160,16 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_serial_deprecated)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -453,7 +453,6 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
-  list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
 list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
@@ -507,7 +506,8 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_communicator_geo_deprecated MODULES
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})
   if(NOT APPLE)
-    py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
+    py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS}
+                    FLAGS_enable_pir_api=0)
     py_test_modules(test_fleet_base_2_deprecated MODULES
                     test_fleet_base_2_deprecated ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_3_deprecated MODULES
@@ -519,18 +519,25 @@ if(WITH_DISTRIBUTE)
       py_test_modules(
         test_auto_parallel_partitioner_gpt_deprecated MODULES
         test_auto_parallel_partitioner_gpt_deprecated ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_searcher MODULES
-                      test_auto_parallel_searcher ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard MODULES
-                      test_auto_parallel_reshard ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_dist_tensor MODULES
-                      test_auto_parallel_dist_tensor ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard_mppp MODULES
-                      test_auto_parallel_reshard_mppp ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard_dpmppp MODULES
-                      test_auto_parallel_reshard_dpmppp ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_cost_model MODULES
-                      test_auto_parallel_cost_model ENVS ${dist_ENVS})
+      py_test_modules(test_auto_parallel_searcher_deprecated MODULES
+                      test_auto_parallel_searcher_deprecated ENVS ${dist_ENVS})
+      py_test_modules(test_auto_parallel_reshard_deprecated MODULES
+                      test_auto_parallel_reshard_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_dist_tensor_deprecated MODULES
+        test_auto_parallel_dist_tensor_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_reshard_mppp_deprecated MODULES
+        test_auto_parallel_reshard_mppp_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_reshard_dpmppp_deprecated MODULES
+        test_auto_parallel_reshard_dpmppp_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_cost_model_deprecated MODULES
+        test_auto_parallel_cost_model_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_reshard_serial_deprecated MODULES
+        test_auto_parallel_reshard_serial_deprecated ENVS ${dist_ENVS})
 
     endif()
   endif()
@@ -646,16 +653,18 @@ set_tests_properties(test_reader_reset_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
-set_tests_properties(test_model PROPERTIES TIMEOUT 300)
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
-
-if(APPLE)
-  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
-endif()
-
 set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
                                                                        120)
+if(WITH_DISTRIBUTE
+   AND WITH_GPU
+   AND WITH_NCCL)
+  set_tests_properties(test_auto_parallel_autoconvert_deprecated
+                       PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_auto_parallel_data_unshard_deprecated
+                       PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_auto_parallel_save_load_deprecated
+                       PROPERTIES TIMEOUT 120)
+endif()
 
 set(TEST_CINN_OPS
     test_slice_op_deprecated test_layer_norm_op_deprecated
