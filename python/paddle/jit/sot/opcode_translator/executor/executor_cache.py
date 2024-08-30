@@ -212,7 +212,6 @@ def start_translate(
         simulator.check_code_simulatable()
         new_custom_code, guard_fn = simulator.transform()
         return new_custom_code, guard_fn
-    # TODO(zrr1999): InnerError maybe place before (FallbackError, BreakGraphError)
     # TODO(0x45f): handle BreakGraphError to trigger fallback
     except BreakGraphError as e:
         raise RuntimeError(
