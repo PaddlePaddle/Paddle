@@ -889,7 +889,7 @@ bool HuberLossOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &label_dims = label.shape();
   PADDLE_ENFORCE_EQ(input_dims.size(),
                     label_dims.size(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Input(input) rank and Input(label) rank should be "
                         "same, but received input rank(%d) != label rank(%d)",
                         input_dims.size(),

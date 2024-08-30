@@ -206,31 +206,31 @@ void DownpourLiteWorker::CopyDenseVars() {
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     PADDLE_ENFORCE_EQ(src_var != nullptr,
                       true,
-                      phi::errors::NotFound("%s not found", src_var_name));
+                      common::errors::NotFound("%s not found", src_var_name));
     phi::DenseTensor* src_tensor = src_var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         src_tensor != nullptr,
         true,
-        phi::errors::InvalidArgument("%s tensor is null", src_var_name));
+        common::errors::InvalidArgument("%s tensor is null", src_var_name));
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     PADDLE_ENFORCE_EQ(dest_var != nullptr,
                       true,
-                      phi::errors::NotFound("%s not found", dest_var_name));
+                      common::errors::NotFound("%s not found", dest_var_name));
     phi::DenseTensor* dest_tensor = dest_var->GetMutable<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         dest_tensor != nullptr,
         true,
-        phi::errors::InvalidArgument("%s tensor is null", dest_var_name));
+        common::errors::InvalidArgument("%s tensor is null", dest_var_name));
     float* dest_data = dest_tensor->data<float>();
 
     PADDLE_ENFORCE_EQ(
         src_tensor->numel(),
         dest_tensor->numel(),
-        phi::errors::InvalidArgument("tensor numel not equal, %d vs %d",
-                                     src_tensor->numel(),
-                                     dest_tensor->numel()));
+        common::errors::InvalidArgument("tensor numel not equal, %d vs %d",
+                                        src_tensor->numel(),
+                                        dest_tensor->numel()));
     for (int i = 0; i < src_tensor->numel(); i++) {
       dest_data[i] = src_data[i];
     }
