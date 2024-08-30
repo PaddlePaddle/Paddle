@@ -201,6 +201,9 @@ class TestDistMPTraining(unittest.TestCase):
             g_shard_split_param
         )
 
+        sharding_config = self.strategy.hybrid_configs["sharding_configs"]
+        sharding_config.comm_overlap = True
+
         fleet.init(is_collective=True, strategy=self.strategy)
         self.data = [
             np.random.randint(
