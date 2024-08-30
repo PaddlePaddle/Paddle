@@ -23,7 +23,15 @@ from paddle import pir
 from paddle.base.core import get_value_shape_range_info
 from paddle.base.log_helper import get_logger
 
-from .impls.core import *  # noqa: F403
+from .impls.activation import *  # noqa: F403
+from .impls.conv import *  # noqa: F403
+from .impls.creation import *  # noqa: F403
+from .impls.linalg import *  # noqa: F403
+from .impls.manipulation import *  # noqa: F403
+from .impls.math import *  # noqa: F403
+from .impls.norm import *  # noqa: F403
+from .impls.pooling import *  # noqa: F403
+from .impls.search import *  # noqa: F403
 from .register import converter_registry
 from .util import map_dtype
 
