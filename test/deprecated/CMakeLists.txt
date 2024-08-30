@@ -14,13 +14,22 @@ function(py_test_modules TARGET_NAME)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
+    string(REGEX MATCH "_deprecated$" DEPRECATED_MODULES
+                 "${py_test_modules_MODULES}")
+    string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+    set(FLAGS_PIR_MODE FLAGS_enable_pir_api=1)
+    if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
+       OR (NOT "${DEPRECATED_TARGET_NAME}" STREQUAL ""))
+      set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+    endif()
+
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       add_test(
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-          ${py_test_modules_ENVS}
+          ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
           ${PYTHON_EXECUTABLE} -m coverage run --branch -p
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
@@ -30,7 +39,7 @@ function(py_test_modules TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-          ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+          ${py_test_modules_ENVS} ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE}
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
@@ -59,14 +68,18 @@ function(bash_test_modules TARGET_NAME)
   if(${bash_test_modules_TIMEOUT})
     set(timeout ${bash_test_modules_TIMEOUT})
   endif()
-
+  string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+  set(FLAGS_PIR_MODE "")
+  if(NOT "${DEPRECATED_TARGET_NAME}" STREQUAL "")
+    set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+  endif()
   if(WITH_COVERAGE)
     add_test(
       NAME ${TARGET_NAME}
       COMMAND
         ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
         TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} WITH_COVERAGE=ON
+        ${FLAGS_PIR_MODE} ${bash_test_modules_ENVS} WITH_COVERAGE=ON
         COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data bash
         ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -76,7 +89,7 @@ function(bash_test_modules TARGET_NAME)
       COMMAND
         ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
         TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} bash
+        ${FLAGS_PIR_MODE} ${bash_test_modules_ENVS} bash
         ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()

@@ -13,7 +13,11 @@
 # limitations under the License.
 """This is unit test of Test data_norm Op."""
 
+import os
 import unittest
+
+print("aaaaaaaaaaaaaaaaaa", os.environ.get("FLAGS_enable_pir_api", "cccc"))
+print("bbbbbbbbbbbb", type(os.environ.get("FLAGS_enable_pir_api", "cccc")))
 
 import numpy as np
 
@@ -22,6 +26,7 @@ from paddle import base
 from paddle.base import Program, program_guard
 
 paddle.enable_static()
+print("dddddddd", paddle.framework.in_dynamic_or_pir_mode())
 
 
 class TestDataNormOpErrorr(unittest.TestCase):
