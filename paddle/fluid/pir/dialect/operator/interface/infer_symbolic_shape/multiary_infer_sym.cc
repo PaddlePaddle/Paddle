@@ -2842,7 +2842,9 @@ bool WarprnntOpInferSymbolicShape(
 
 bool WeightedSampleNeighborsOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  auto GSNShapeCheck = [](const ExprVec &input_shape, std::string tensor_name) {
+  auto GSNShapeCheck = [](const ExprVec &input_shape,
+                          std::string tensor_name,
+                          pir::InferSymbolicShapeContext *infer_context) {
     if (input_shape.size() == 2) {
       infer_context->AddEqualCstr(input_shape[1], symbol::DimExpr(1));
     } else {
@@ -2869,10 +2871,10 @@ bool WeightedSampleNeighborsOpInferSymbolicShape(
   int sample_size = op->attribute<pir::Int32Attribute>("sample_size").data();
   bool return_eids = op->attribute<pir::BoolAttribute>("return_eids").data();
 
-  GSNShapeCheck(row_shape, "row");
-  GSNShapeCheck(col_ptr_shape, "col_ptr");
-  GSNShapeCheck(edge_weight_shape, "edge_weight");
-  GSNShapeCheck(x_shape, "input_nodes");
+  GSNShapeCheck(row_shape, "row", infer_context);
+  GSNShapeCheck(col_ptr_shape, "col_ptr", infer_context);
+  GSNShapeCheck(edge_weight_shape, "edge_weight", infer_context);
+  GSNShapeCheck(x_shape, "input_nodes", infer_context);
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
@@ -2883,7 +2885,7 @@ bool WeightedSampleNeighborsOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
           {infer_context->GetNextSymName()})});
   if (return_eids) {
-    GSNShapeCheck(eids_shape, "eids");
+    GSNShapeCheck(eids_shape, "eids", infer_context);
     infer_context->SetShapeOrDataForValue(
         op->result(2),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
