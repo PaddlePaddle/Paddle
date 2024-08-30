@@ -20,6 +20,7 @@ from get_program import (
 )
 
 from paddle.tensorrt.predictor import (
+    Input,
     TensorRTConfig,
     converter_trt_program,
 )
@@ -33,18 +34,20 @@ class TestConverterBert(unittest.TestCase):
         # Step1: get program and init fake inputs
         program, scope, param_dict = get_bert_program()
 
+        input_config = Input(
+            min_input_shape=(1, 100), max_input_shape=(8, 1000)
+        )
+        input_config.input_data_type = 'int64'
+        input_min_data, input_max_data = input_config.generate_input_data()
+
         trt_config = TensorRTConfig()
-        trt_config.input_data_type = 'int64'
-        trt_config.min_input_shape = [1, 100]
-        trt_config.max_input_shape = [8, 100]
+        trt_config.inputs = [input_config]
         trt_config.is_save_program = False
-        trt_config.generate_input_data()
 
         output_var = program.list_vars()[-1]
         output_expected = predict_program(
-            program, {"input_ids": trt_config.input_min_data}, [output_var]
+            program, {"input_ids": input_min_data}, [output_var]
         )
-        converter_trt_program(program, trt_config, scope)
         program_with_trt, _, _ = converter_trt_program(
             program, trt_config, scope
         )
@@ -53,7 +56,7 @@ class TestConverterBert(unittest.TestCase):
         # Step6: run inference(converted_program)
         output_converted = predict_program(
             program_with_trt,
-            {"input_ids": trt_config.input_min_data},
+            {"input_ids": input_min_data},
             [output_var],
         )
 

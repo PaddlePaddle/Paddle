@@ -220,5 +220,4 @@ def get_program(model_dir, prefix, use_pir=False):
                 params_filename=params_filename,
             )
         )
-
     return program, scope, feed_target_names, fetch_targets

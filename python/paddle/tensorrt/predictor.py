@@ -25,6 +25,65 @@ from paddle.tensorrt.util import (
 )
 
 
+class Input:
+    def __init__(
+        self,
+        min_input_shape,
+        max_input_shape,
+        optim_input_shape=None,
+        input_data_type=None,
+        input_range=None,
+    ):
+
+        self.min_input_shape = min_input_shape
+        self.max_input_shape = max_input_shape
+        self.optim_input_shape = optim_input_shape
+        self.input_data_type = input_data_type
+        self.input_range = input_range
+
+    def generate_input_data(self):
+        if self.min_input_shape is None or self.max_input_shape is None:
+            raise ValueError(
+                "min_input_shape and max_input_shape must be provided and cannot be None."
+            )
+
+        if self.input_data_type and not self.input_range:
+            if 'int' in self.input_data_type:
+                self.input_min_data = np.random.randint(
+                    1, 10, size=self.min_input_shape
+                )
+                self.input_max_data = np.random.randint(
+                    1, 10, size=self.max_input_shape
+                )
+            else:
+                low, high = self.input_range
+                self.input_min_data = np.random.uniform(
+                    low, high, size=self.input_min_data
+                ).astype(self.input_data_type)
+                self.input_max_data = np.random.uniform(
+                    low, high, size=self.input_max_data
+                ).astype(self.input_data_type)
+
+        elif self.input_data_type and self.input_range:
+            low, high = self.input_range
+            self.input_min_data = np.random.uniform(
+                low, high, size=self.min_input_shape
+            ).astype(self.input_data_type)
+            self.input_max_data = np.random.uniform(
+                low, high, size=self.max_input_shape
+            ).astype(self.input_data_type)
+
+        else:
+            self.input_min_data = np.ones(self.min_input_shape).astype(
+                'float32'
+            )
+            self.input_max_data = np.ones(self.max_input_shape).astype(
+                'float32'
+            )
+
+        return self.input_min_data, self.input_max_data
+
+
 class TensorRTConfig:
     """
     TensorRT config.
@@ -46,11 +105,6 @@ class TensorRTConfig:
         trt_parameters_run_bfp16=None,
         tensorrt_transformer_posid=None,
         tensorrt_transformer_maskid=None,
-        min_input_shape=None,
-        max_input_shape=None,
-        optim_input_shape=None,
-        input_data_type=None,
-        input_range=None,
         trt_disabled_ops=None,
         disable_trt_plugin_fp16=None,
         trt_use_inspector=None,
@@ -68,6 +122,7 @@ class TensorRTConfig:
         input_max_data=None,
         input_optim_data=None,
         use_executor=None,
+        inputs=None,
     ):
         self.program = program
         self.use_tensorrt = use_tensorrt
@@ -83,11 +138,6 @@ class TensorRTConfig:
         self.trt_parameters_run_bfp16 = trt_parameters_run_bfp16
         self.tensorrt_transformer_posid = tensorrt_transformer_posid
         self.tensorrt_transformer_maskid = tensorrt_transformer_maskid
-        self.min_input_shape = min_input_shape
-        self.max_input_shape = max_input_shape
-        self.optim_input_shape = optim_input_shape
-        self.input_data_type = input_data_type
-        self.input_range = input_range
         self.trt_disabled_ops = trt_disabled_ops
         self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
         self.trt_use_inspector = trt_use_inspector
@@ -105,43 +155,12 @@ class TensorRTConfig:
         if not self.is_save_program:
             self.save_model_dir = None
             self.save_model_prefix = None
+        self.inputs = inputs
 
     def forbid_op_lower_trt(self, program, trt_disabled_ops):
         for op in program.global_block().ops:
             if op.name() == trt_disabled_ops:
                 op.set_bool_attr("__l_trt__", False)
-
-    def generate_input_data(self):
-
-        if self.min_input_shape is None or self.max_input_shape is None:
-            raise ValueError(
-                "min_input_shape and max_input_shape must be provided and cannot be None."
-            )
-
-        if self.input_data_type:
-            self.input_min_data = np.ones(self.min_input_shape).astype(
-                self.input_data_type
-            )
-            self.input_max_data = np.ones(self.max_input_shape).astype(
-                self.input_data_type
-            )
-
-        elif self.input_data_type and self.input_range:
-            low, high = self.input_range
-            self.input_min_data = np.random.uniform(
-                low, high, size=self.min_input_shape
-            ).astype(self.input_data_type)
-            self.input_max_data = np.random.uniform(
-                low, high, size=self.max_input_shape
-            ).astype(self.input_data_type)
-
-        else:
-            self.input_min_data = np.ones(self.min_input_shape).astype(
-                'float32'
-            )
-            self.input_max_data = np.ones(self.max_input_shape).astype(
-                'float32'
-            )
 
 
 def converter_trt_program(program, trt_config, scope):
@@ -158,38 +177,30 @@ def converter_trt_program(program, trt_config, scope):
             for operand in op.operands():
                 source = operand.source()
                 output_var.append(source)
-            print(f"Found fetch op. Output var updated: {output_var}")
         if op.name() == "pd_op.data" or op.name() == "pd_op.feed":
             param_name = op.attrs()["name"]
             feed_name.append(param_name)
-            print(f"Found data/feed op. Feed name updated: {feed_name}")
 
-    print("Creating PIR Guard.")
     with paddle.pir_utils.IrGuard():
-        input_data_min_shape = trt_config.input_min_data
-        input_data_max_shape = trt_config.input_max_data
+        if trt_config.inputs:
+            for input_instance in trt_config.inputs:
+                min_data, max_data = input_instance.generate_input_data()
+                program_with_output = program.list_vars()[-1]
 
-        print(
-            f"Input data shapes - Min: {input_data_min_shape}, Max: {input_data_max_shape}"
-        )
-
-        print("output_var", output_var)
-        program_with_output = program.list_vars()[-1]
-        print("program_with_output", program_with_output)
-        # Step2: run warmup for collecting shape
-        if trt_config.is_save_program:
-            warmup_shape_infer_v2(
-                program,
-                min_shape_feed={feed_name[0]: input_data_min_shape},
-                max_shape_feed={feed_name[0]: input_data_max_shape},
-                fetch_var_list=program_with_output,
-            )
-        else:
-            warmup_shape_infer(
-                program,
-                min_shape_feed={"input_ids": input_data_min_shape},
-                max_shape_feed={"input_ids": input_data_max_shape},
-            )
+                # Step2: run warmup for collecting shape
+                if trt_config.is_save_program:
+                    warmup_shape_infer_v2(
+                        program,
+                        min_shape_feed={feed_name[0]: min_data},
+                        max_shape_feed={feed_name[0]: max_data},
+                        fetch_var_list=program_with_output,
+                    )
+                else:
+                    warmup_shape_infer(
+                        program,
+                        min_shape_feed={"input_ids": min_data},
+                        max_shape_feed={"input_ids": max_data},
+                    )
 
         if not trt_config.is_save_program:
             program_with_pir = run_pir_pass(
@@ -200,22 +211,15 @@ def converter_trt_program(program, trt_config, scope):
         program_with_pir = run_pir_pass(program, partition_mode=True)
         trt_output_var = []
 
-        print("Processing program_with_pir global block ops.")
         for op in program_with_pir.global_block().ops:
             if op.name() == "pd_op.fetch":
                 for operand in op.operands():
                     source = operand.source()
                     trt_output_var.append(source)
-                print(
-                    f"Found fetch op in program_with_pir. TRT output var updated: {trt_output_var}"
-                )
 
         # Step4: run TRTConverter (would lower group_op into tensorrt_engine_op)
-        print("Running TRTConverter.")
-        print("program_with_pir", program_with_pir)
         converter = PaddleToTensorRTConverter(program_with_pir, scope)
         converter.convert_program_to_trt()
-        print("Conversion to TRT complete.")
 
         # Save PIR program as JSON,using predictor.run requires setting is_save_program to True
         if trt_config.is_save_program:
@@ -231,7 +235,6 @@ def converter_trt_program(program, trt_config, scope):
             trt_save_path = os.path.join(
                 trt_config.save_model_dir, trt_config.save_model_prefix
             )
-            print(f"Saving inference model to {trt_save_path}.")
             paddle.static.save_inference_model(
                 trt_save_path,
                 input_values,
@@ -239,7 +242,6 @@ def converter_trt_program(program, trt_config, scope):
                 exe,
                 program=program_with_pir,
             )
-            print("Model saved.")
 
         return program_with_pir, output_var, trt_output_var
 
