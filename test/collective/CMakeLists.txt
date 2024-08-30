@@ -77,8 +77,12 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_alltoall_api MODULES test_collective_alltoall_api ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+    test_collective_alltoall_api
+    MODULES
+    test_collective_alltoall_api
+    ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+  )
   if((NOT WITH_ROCM) AND ((${CUDA_ARCH_NAME}) STREQUAL "Ampere"))
     set_tests_properties(test_collective_alltoall_api
                          PROPERTIES TIMEOUT "280" LABELS "RUN_TYPE=DIST")
@@ -111,8 +115,12 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_barrier_api MODULES test_collective_barrier_api ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+    test_collective_barrier_api
+    MODULES
+    test_collective_barrier_api
+    ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+  )
   set_tests_properties(test_collective_barrier_api
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
@@ -133,8 +141,12 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_broadcast_api MODULES test_collective_broadcast_api ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+    test_collective_broadcast_api
+    MODULES
+    test_collective_broadcast_api
+    ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+  )
   if((NOT WITH_ROCM) AND ((${CUDA_ARCH_NAME}) STREQUAL "Ampere"))
     set_tests_properties(test_collective_broadcast_api
                          PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=DIST")
@@ -168,15 +180,23 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_global_gather MODULES test_collective_global_gather ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+    test_collective_global_gather
+    MODULES
+    test_collective_global_gather
+    ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+  )
   set_tests_properties(test_collective_global_gather
                        PROPERTIES TIMEOUT "200" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_global_scatter MODULES test_collective_global_scatter ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+    test_collective_global_scatter
+    MODULES
+    test_collective_global_scatter
+    ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+  )
   set_tests_properties(test_collective_global_scatter
                        PROPERTIES TIMEOUT "200" LABELS "RUN_TYPE=DIST")
 endif()
@@ -236,7 +256,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     MODULES
     test_collective_reduce_api
     ENVS
-    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
+    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
   )
   set_tests_properties(test_collective_reduce_api
                        PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=DIST")
@@ -308,8 +328,12 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_sendrecv_api MODULES test_collective_sendrecv_api ENVS
-    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+    test_collective_sendrecv_api
+    MODULES
+    test_collective_sendrecv_api
+    ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;FLAGS_enable_pir_api=0"
+  )
   set_tests_properties(test_collective_sendrecv_api
                        PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=DIST")
 endif()

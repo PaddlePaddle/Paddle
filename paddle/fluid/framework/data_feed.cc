@@ -2276,6 +2276,15 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
             },
             pull_record_func,
             lines);
+#elif defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+        auto afs_reader = ps_gpu_ptr->OpenReader(filename);
+        is_ok = parser->ParseFileInstance(
+            [this, ps_gpu_ptr, afs_reader](char* buf, int len) {
+              return ps_gpu_ptr->AfsRead(afs_reader, buf, len);
+            },
+            pull_record_func,
+            lines);
+        ps_gpu_ptr->CloseReader(afs_reader);
 #endif
       } else {
         int err_no = 0;

@@ -24,8 +24,8 @@ limitations under the License. */
 COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
-#include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device/device_wrapper.h"
 
 namespace paddle {
 namespace memory {

@@ -20,13 +20,12 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-if((NOT WITH_GPU) AND (NOT WITH_XPU))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
-endif()
-
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
+list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert_deprecated)
+list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard_deprecated)
+list(APPEND DIST_TEST_OPS test_auto_parallel_save_load_deprecated)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -44,13 +43,14 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial_deprecated)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -88,16 +88,12 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_origin_scheduler)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
-  list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
 endif()
 
 if(WIN32)
-  list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception_deprecated)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
   list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
@@ -164,12 +160,16 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_serial_deprecated)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -439,7 +439,7 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_slice_op test_slice_op_deprecated)
+set(TEST_OPS_WITH_GC test_slice_op_deprecated)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -453,7 +453,6 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
-  list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
 list(REMOVE_ITEM TEST_OPS "test_graph_reindex")
@@ -507,7 +506,8 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_communicator_geo_deprecated MODULES
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})
   if(NOT APPLE)
-    py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
+    py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS}
+                    FLAGS_enable_pir_api=0)
     py_test_modules(test_fleet_base_2_deprecated MODULES
                     test_fleet_base_2_deprecated ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_3_deprecated MODULES
@@ -519,18 +519,25 @@ if(WITH_DISTRIBUTE)
       py_test_modules(
         test_auto_parallel_partitioner_gpt_deprecated MODULES
         test_auto_parallel_partitioner_gpt_deprecated ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_searcher MODULES
-                      test_auto_parallel_searcher ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard MODULES
-                      test_auto_parallel_reshard ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_dist_tensor MODULES
-                      test_auto_parallel_dist_tensor ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard_mppp MODULES
-                      test_auto_parallel_reshard_mppp ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard_dpmppp MODULES
-                      test_auto_parallel_reshard_dpmppp ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_cost_model MODULES
-                      test_auto_parallel_cost_model ENVS ${dist_ENVS})
+      py_test_modules(test_auto_parallel_searcher_deprecated MODULES
+                      test_auto_parallel_searcher_deprecated ENVS ${dist_ENVS})
+      py_test_modules(test_auto_parallel_reshard_deprecated MODULES
+                      test_auto_parallel_reshard_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_dist_tensor_deprecated MODULES
+        test_auto_parallel_dist_tensor_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_reshard_mppp_deprecated MODULES
+        test_auto_parallel_reshard_mppp_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_reshard_dpmppp_deprecated MODULES
+        test_auto_parallel_reshard_dpmppp_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_cost_model_deprecated MODULES
+        test_auto_parallel_cost_model_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_reshard_serial_deprecated MODULES
+        test_auto_parallel_reshard_serial_deprecated ENVS ${dist_ENVS})
 
     endif()
   endif()
@@ -596,7 +603,7 @@ set_tests_properties(
   test_dataloader_unkeep_order_deprecated PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32)
-  set_tests_properties(test_multiprocess_reader_exception
+  set_tests_properties(test_multiprocess_reader_exception_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_layers_deprecated PROPERTIES TIMEOUT 120)
 endif()
@@ -637,35 +644,31 @@ set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_regularizer_deprecated PROPERTIES TIMEOUT 150)
-set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_slice_op_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader_keep_order_deprecated PROPERTIES TIMEOUT
                                                                       120)
 set_tests_properties(test_dataloader_unkeep_order_deprecated PROPERTIES TIMEOUT
                                                                         120)
-set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
+set_tests_properties(test_reader_reset_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
-set_tests_properties(test_model PROPERTIES TIMEOUT 300)
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
-
-if(APPLE)
-  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
-endif()
-
 set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
                                                                        120)
+if(WITH_DISTRIBUTE
+   AND WITH_GPU
+   AND WITH_NCCL)
+  set_tests_properties(test_auto_parallel_autoconvert_deprecated
+                       PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_auto_parallel_data_unshard_deprecated
+                       PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_auto_parallel_save_load_deprecated
+                       PROPERTIES TIMEOUT 120)
+endif()
 
 set(TEST_CINN_OPS
-    test_softmax_op
-    test_slice_op
-    test_slice_op_deprecated
-    test_layer_norm_op_deprecated
-    test_where_op
-    test_arg_min_max_op
-    test_instance_norm_op_deprecated)
+    test_slice_op_deprecated test_layer_norm_op_deprecated
+    test_instance_norm_op_deprecated test_group_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -685,7 +688,6 @@ set_tests_properties(test_conditional_block_deprecated
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
-    test_arg_min_max_op
     test_batch_norm_op_deprecated
     test_decoupled_py_reader_deprecated
     test_fuse_bn_act_pass_deprecated
@@ -694,7 +696,6 @@ set(STATIC_BUILD_TESTS
     test_momentum_op_deprecated
     test_nce_deprecated
     test_sparse_conv_op
-    test_sparse_norm_op
     test_tensor_array_to_tensor_deprecated
     test_unique
     test_one_hot_v2_op)
@@ -710,20 +711,7 @@ endif()
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true)
-endforeach()
-
-set(PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
-
-if(APPLE)
-  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass_deprecated)
-endif()
-
-foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
-  py_test_modules(${PIR_COVERAGE_TEST}_pir MODULES ${PIR_COVERAGE_TEST} ENVS
-                  FLAGS_enable_pir_in_executor=true)
-  set_tests_properties(${PIR_COVERAGE_TEST}_pir PROPERTIES TIMEOUT 120)
-  message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
+    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=false)
 endforeach()
 
 set_tests_properties(test_decoupled_py_reader_deprecated_static_build
@@ -746,3 +734,5 @@ set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)
+set_tests_properties(test_lbfgs_deprecated PROPERTIES TIMEOUT 100)
+set_tests_properties(test_group_norm_op_deprecated PROPERTIES TIMEOUT 1000)
