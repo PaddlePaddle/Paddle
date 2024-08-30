@@ -41,92 +41,11 @@ from pybind11_stubgen.structs import (
 )
 
 # some invalid attr from pybind11.
-# the line been commented means no mapping can be found.
-PYBIND11_ATTR_MAPPING = {
-    '<Precision.Float32: 0>': 'paddle.base.core.AnalysisConfig.Precision.Float32',
-    '<ReduceOp.SUM: 0>': 'paddle.base.core.ReduceOp.SUM',
-    '<ReduceType.kRedSum: 0>': 'paddle.base.core.ReduceType.kRedSum',
-    'paddle::DistConfig': 'paddle.base.core.DistConfig',
-    'paddle::MkldnnQuantizerConfig': 'paddle.base.core.MkldnnQuantizerConfig',
-    'paddle::PaddlePassBuilder': 'paddle.base.core.PaddlePassBuilder',
-    'paddle::Tensor': 'paddle.Tensor',
-    'paddle::ZeroCopyTensor': 'paddle.base.core.ZeroCopyTensor',
-    'paddle::dialect::AssertOp': 'AssertOp',
-    # paddle::dialect::OperationDistAttribute
-    'paddle::dialect::PyLayerOp': 'PyLayerOp',
-    # paddle::dialect::TensorDistAttribute
-    'paddle::distributed::DistModelDataType': 'paddle.base.core.DistModelDataType',
-    'paddle::distributed::DistModelTensor': 'paddle.base.core.DistModelTensor',
-    'paddle::distributed::TaskNode': 'paddle.base.core.TaskNode',
-    'paddle::distributed::auto_parallel::OperatorDistAttr': 'paddle.base.core.OperatorDistAttr',
-    'paddle::experimental::ScalarBase<paddle::Tensor>': 'paddle.base.core.Scalar',
-    'paddle::framework::BlockDesc': 'paddle.base.core.BlockDesc',
-    'paddle::framework::DataFeedDesc': 'paddle.base.data_feed_desc.DataFeedDesc',
-    'paddle::framework::Dataset': 'paddle.base.core.Dataset',
-    'paddle::framework::Executor': 'paddle.base.core.Executor',
-    'paddle::framework::LoDRankTable': 'paddle.base.core.LodRankTable',
-    'paddle::framework::OpDesc': 'paddle.base.core.OpDesc',
-    'paddle::framework::PhiVector<std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >': 'str',
-    'paddle::framework::ProgramDesc': 'paddle.base.core.ProgramDesc',
-    # paddle::framework::ReaderHolder
-    'paddle::framework::Scope': 'paddle._typing.libs.libpaddle._Scope',
-    'paddle::framework::VarDesc': 'paddle.base.core.VarDesc',
-    'paddle::framework::Vocab': 'dict[str, int]',
-    'paddle::framework::interpreter::Plan': 'Plan',
-    'paddle::framework::ir::Graph': 'paddle.base.core.Graph',
-    'paddle::framework::ir::Node': 'paddle.base.core.Node',
-    'paddle::framework::ir::Node::Dep': 'paddle.base.core.Node.Dep',
-    'paddle::framework::ir::Node::Type': 'paddle.base.core.Node.Type',
-    'paddle::framework::ir::Pass': 'paddle.base.core.Pass',
-    'paddle::framework::ir::PassBuilder': 'paddle.base.core.PassBuilder',
-    'paddle::framework::proto::AttrType': 'paddle.base.core.AttrType',
-    'paddle::framework::proto::VarType_Type': 'paddle.base.core.VarDesc.VarType',
-    'paddle::imperative::AmpAttrs': 'paddle.base.core.AmpAttrs',
-    'paddle::imperative::Tracer': 'paddle.base.core.Tracer',
-    'paddle::imperative::VarBase': 'paddle.Tensor',
-    # paddle::inference::analysis::Argument
-    'paddle::jit::Function': 'paddle.base.core.Function',
-    'paddle::jit::FunctionInfo': 'paddle.base.core.FunctionInfo',
-    'paddle::platform::HostPythonNode': 'paddle.base.core.HostPythonNode',
-    'paddle::platform::ProfilerOptions': 'paddle.base.core.ProfilerOptions',
-    'paddle::pybind::PyIfOp': 'IfOp',
-    'paddle::pybind::PyWhileOp': 'WhileOp',
-    # paddle::small_vector<std::vector<egr::GradSlotMeta, std::allocator<egr::GradSlotMeta> >, 15u>
-    'paddle::variant<phi::DenseTensor': 'paddle.Tensor',
-    'paddle_infer::Tensor': 'paddle.Tensor',
-    'phi::CPUPlace': 'CPUPlace',
-    'phi::CUDAStream': 'CUDAStream',
-    'phi::CudaEvent': 'CUDAEvent',
-    'phi::CustomPlace': 'CustomPlace',
-    'phi::DenseTensor': 'paddle.Tensor',
-    # phi::GPUPinnedPlace
-    # phi::GPUPlace
-    'phi::IPUPlace': 'IPUPlace',
-    'phi::Place': 'Place',
-    'phi::SelectedRows': 'SelectedRows',
-    'phi::SparseCooTensor>': 'paddle.Tensor',
-    'phi::TensorArray': 'paddle.Tensor',
-    'phi::TracerEventType': 'TracerEventType',
-    'phi::TracerMemEventType': 'TracerMemEventType',
-    'phi::XPUPlace': 'XPUPlace',
-    'phi::distributed::ProcessGroup::Task': 'task',
-    'phi::distributed::TensorDistAttr': 'TensorDistAttr',
-    'phi::event::Event': 'paddle.device.Event',
-    'phi::stream::Stream': 'paddle.device.Stream',
-    "pir::Block": 'paddle.base.libpaddle.pir.Block',
-    # pir::DoubleLevelContainer<pir::Operation>
-    'pir::IrMapping': 'paddle.base.libpaddle.pir.IrMapping',
-    'pir::OpOperand': 'paddle.base.libpaddle.pir.OpOperand',
-    'pir::Operation': 'paddle.base.libpaddle.pir.Operation',
-    'pir::PassManager': 'paddle.base.libpaddle.pir.PassManager',
-    'pir::Program': 'paddle.base.libpaddle.pir.Program',
-    'pir::ShapeConstraintIRAnalysis': 'paddle.base.libpaddle.pir.ShapeConstraintIRAnalysis',
-    'pir::TuplePopOp': 'paddle.base.libpaddle.pir.TuplePopOp',
-    'pir::Type': 'paddle.base.libpaddle.pir.Type',
-    'pir::Value': 'paddle.base.libpaddle.pir.Value',
-    'std::vector<paddle::variant<phi::DenseTensor, phi::TensorArray, paddle::framework::Vocab, phi::SparseCooTensor>, std::allocator<paddle::variant<phi::DenseTensor, phi::TensorArray, paddle::framework::Vocab, phi::SparseCooTensor> > >': 'list[Tensor]',
-    # symbol::DimExpr
-}
+# ref:
+# - https://pybind11.readthedocs.io/en/latest/advanced/misc.html#avoiding-cpp-types-in-docstrings
+# - https://pybind11.readthedocs.io/en/latest/advanced/functions.html#default-arguments-revisited
+# we can add some mappings for convertion, e.g. {'paddle::Tensor': 'paddle.Tensor'}
+PYBIND11_ATTR_MAPPING = {}
 
 # some bad full expression pybind11-stubgen can not catch as invalid exp
 PYBIND11_INVALID_FULL_MAPPING = {
@@ -158,6 +77,7 @@ PYBIND11_INVALID_PART_MAPPING: dict[re.Pattern, str] = {
     for k, v in _PYBIND11_INVALID_PART_MAPPING.items()
 }
 
+# data type mapping,
 # ref: paddle/phi/api/generator/api_base.py
 INPUT_TYPES_MAP = {
     'Tensor': 'paddle.Tensor',

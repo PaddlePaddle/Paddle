@@ -1144,6 +1144,27 @@ def get_cinn_config_jsons():
     return json_path_list
 
 
+def extend_type_hints_package_data(package_data):
+    type_hints_files = {
+        'paddle': ['py.typed', '*.pyi'],
+        'paddle.framework': ['*.pyi'],
+        'paddle.base': ['*.pyi'],
+        'paddle.tensor': ['tensor.pyi'],
+        'paddle._typing': ['*.pyi'],
+        'paddle._typing.libs': ['*.pyi', '*.md'],
+        'paddle._typing.libs.libpaddle': ['*.pyi'],
+        'paddle._typing.libs.libpaddle.pir': ['*.pyi'],
+        'paddle._typing.libs.libpaddle.eager': ['*.pyi'],
+        'paddle._typing.libs.libpaddle.eager.ops': ['*.pyi'],
+    }
+    for pkg, files in type_hints_files.items():
+        if pkg not in package_data:
+            package_data[pkg] = []
+        package_data[pkg] += files
+
+    return package_data
+
+
 def get_package_data_and_package_dir():
     if os.name != 'nt':
         package_data = {
@@ -1515,48 +1536,7 @@ def get_package_data_and_package_dir():
         ext_modules = []
 
     # type hints
-    package_data['paddle'] = [
-        *package_data.get('paddle', []),
-        'py.typed',
-        '*.pyi',
-    ]
-    package_data['paddle.framework'] = [
-        *package_data.get('paddle.framework', []),
-        '*.pyi',
-    ]
-    package_data['paddle.base'] = [
-        *package_data.get('paddle.base', []),
-        '*.pyi',
-    ]
-    package_data['paddle.tensor'] = [
-        *package_data.get('paddle.tensor', []),
-        'tensor.pyi',
-    ]
-    package_data['paddle._typing'] = [
-        *package_data.get('paddle._typing', []),
-        '*.pyi',
-    ]
-    package_data['paddle._typing.libs'] = [
-        *package_data.get('paddle._typing.libs', []),
-        '*.pyi',
-        '*.md',
-    ]
-    package_data['paddle._typing.libs.libpaddle'] = [
-        *package_data.get('paddle._typing.libs.libpaddle', []),
-        '*.pyi',
-    ]
-    package_data['paddle._typing.libs.libpaddle.pir'] = [
-        *package_data.get('paddle._typing.libs.libpaddle.pir', []),
-        '*.pyi',
-    ]
-    package_data['paddle._typing.libs.libpaddle.eager'] = [
-        *package_data.get('paddle._typing.libs.libpaddle.eager', []),
-        '*.pyi',
-    ]
-    package_data['paddle._typing.libs.libpaddle.eager.ops'] = [
-        *package_data.get('paddle._typing.libs.libpaddle.eager.ops', []),
-        '*.pyi',
-    ]
+    package_data = extend_type_hints_package_data(package_data)
 
     return package_data, package_dir, ext_modules
 
