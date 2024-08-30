@@ -317,16 +317,11 @@ def _pir_append_gradient_merge_backward_op(
             gard_defining_op.op_role
         )
 
-        print('=-======-=')
-        print('replace with:', param.name + '@GRAD@MERGE')
         opt_ops_use_grad = [
             op
             for op in grad.all_used_ops()
             if op.op_role == int(OpRole.Optimize)
         ]
-        for op in opt_ops_use_grad:
-            print(op.name())
-        print('=-======-=')
         grad.replace_grad_users_with(
             new_gradient_merge_var, set(opt_ops_use_grad)
         )
@@ -467,14 +462,11 @@ def _pir_remove_cast_for_master_grad(main_program, params_grads):
     for _, grad in params_grads:
         if grad is None:
             continue
-        print(grad.get_defining_op().name, 2222)
         if grad.dtype == paddle.float32:
             continue
 
         for op in grad.all_used_ops():
-            print(grad.get_defining_op().name, 3333)
             if is_cast_to_float32(op):
-                print(grad.get_defining_op().name, 4444)
                 op.results()[0].replace_all_uses_with(grad)
                 op.erase()
 
@@ -664,7 +656,6 @@ def _pir_parse_program(
     avg,
     gradient_sync_after_accumulate,
 ):
-    print(main_program)
     # step1: append gradient merge backward op to main_program
     new_params_to_grads = _pir_append_gradient_merge_backward_op(
         main_program, startup_program, params_grads
