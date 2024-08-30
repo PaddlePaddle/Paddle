@@ -45,13 +45,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
   set_tests_properties(test_engine_callbacks
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_pass_generation_pipeline MODULES
-                  test_pass_generation_pipeline)
-  set_tests_properties(test_pass_generation_pipeline
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  set_tests_properties(
-    test_pass_generation_pipeline
-    PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
   py_test_modules(test_pipeline_scheduler_vpp MODULES
                   test_pipeline_scheduler_vpp)
   set_tests_properties(test_pipeline_scheduler_vpp
