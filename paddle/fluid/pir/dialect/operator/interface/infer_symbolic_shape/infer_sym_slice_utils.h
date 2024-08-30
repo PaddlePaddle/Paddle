@@ -114,13 +114,13 @@ inline ExprVec GetSliceDims(const ExprVec &in_dims,
       common::errors::InvalidArgument(
           "The size of axes must equal size of starts and ends."));
   for (size_t i = 0; i < axes.size(); ++i) {
-    int64_t axis = axes.at(i);
-    slice_dims.at(axis) = ends.at(i) - starts.at(i);
-    if (!in_dims[i].isa<int64_t>() || !ends[i].isa<int64_t>()) {
-      symbol::List<symbol::DimExpr> min_lists{in_dims[i], ends.at(i)};
-      slice_dims.at(axis) =
+    int64_t axis = axes[i];
+    slice_dims[axis] = ends[i] - starts[i];
+    if (!in_dims[axis].isa<int64_t>() || !ends[i].isa<int64_t>()) {
+      symbol::List<symbol::DimExpr> min_lists{in_dims[axis], ends[i]};
+      slice_dims[axis] =
           symbol::DimExpr({symbol::Min<symbol::DimExpr>({min_lists})}) -
-          starts.at(i);
+          starts[i];
     }
   }
 
