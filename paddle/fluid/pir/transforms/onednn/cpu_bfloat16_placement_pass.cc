@@ -47,7 +47,6 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
@@ -148,7 +147,6 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&
@@ -298,7 +296,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::Cast_Op>() &&
         !op->isa<paddle::onednn::dialect::ClipOp>() &&
         !op->isa<paddle::onednn::dialect::Clip_Op>() &&
-        !op->isa<paddle::onednn::dialect::ConcatOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeOp>() &&
         !op->isa<paddle::onednn::dialect::Conv2dTransposeBiasOp>() &&

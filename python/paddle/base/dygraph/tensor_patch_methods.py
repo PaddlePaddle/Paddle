@@ -959,7 +959,9 @@ def monkey_patch_tensor():
         return self.__nonzero__()
 
     def __array__(
-        self: Tensor, dtype: npt.DTypeLike | None = None
+        self: Tensor,
+        dtype: npt.DTypeLike | None = None,
+        copy: bool | None = None,
     ) -> npt.NDArray[Any]:
         """
         Returns a numpy array shows the value of current Tensor.

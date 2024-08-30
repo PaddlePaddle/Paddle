@@ -3034,12 +3034,12 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
             box_dims[1],
             score_dims[2]));
   }
-  out->set_dims({box_dims[1], box_dims[2] + 2});
+  out->set_dims({-1, box_dims[2] + 2});
   out->set_dtype(bboxes.dtype());
-  index->set_dims({box_dims[1], 1});
+  index->set_dims({-1, 1});
   index->set_dtype(phi::DataType::INT32);
   if (roisnum != nullptr) {
-    roisnum->set_dims({-1});
+    roisnum->set_dims({score_dims[0]});
     roisnum->set_dtype(phi::DataType::INT32);
   }
 }
