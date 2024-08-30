@@ -674,12 +674,12 @@ bool BoxCoderInferSymbolicShape(const MetaTensor &prior_box,
                                 MetaConfig config) {
   const symbol::ShapeOrDataDimExprs &prior_box_shape_or_data =
       infer_context->GetShapeOrDataForValue(prior_box);
-  const std::vector<symbol::DimExpr> prior_box_dims =
+  const std::vector<symbol::DimExpr> &prior_box_dims =
       prior_box_shape_or_data.shape();
 
   const symbol::ShapeOrDataDimExprs &target_box_shape_or_data =
       infer_context->GetShapeOrDataForValue(target_box);
-  const std::vector<symbol::DimExpr> target_box_dims =
+  const std::vector<symbol::DimExpr> &target_box_dims =
       target_box_shape_or_data.shape();
 
   PADDLE_ENFORCE_EQ(prior_box_dims.size(),
@@ -698,7 +698,7 @@ bool BoxCoderInferSymbolicShape(const MetaTensor &prior_box,
   if (prior_box_var) {
     const symbol::ShapeOrDataDimExprs &prior_box_var_shape_or_data =
         infer_context->GetShapeOrDataForValue(prior_box_var);
-    const std::vector<symbol::DimExpr> prior_box_var_dims =
+    const std::vector<symbol::DimExpr> &prior_box_var_dims =
         prior_box_var_shape_or_data.shape();
 
     PADDLE_ENFORCE_EQ(prior_box_var_dims.size(),
