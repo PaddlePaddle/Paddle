@@ -58,9 +58,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pass_sharding MODULES test_pass_sharding)
   set_tests_properties(test_pass_sharding
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_pass_amp MODULES test_pass_amp)
-  set_tests_properties(test_pass_amp PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                TIMEOUT 80)
   py_test_modules(test_engine_callbacks MODULES test_engine_callbacks)
   set_tests_properties(test_engine_callbacks
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)

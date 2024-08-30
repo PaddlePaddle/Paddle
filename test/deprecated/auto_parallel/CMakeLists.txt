@@ -12,6 +12,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_amp_o2_pass_deprecated)
   set_tests_properties(test_amp_o2_pass_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_amp_deprecated MODULES test_pass_amp_deprecated)
+  set_tests_properties(test_pass_amp_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
 endif()
 
 set_pir_tests_properties()
