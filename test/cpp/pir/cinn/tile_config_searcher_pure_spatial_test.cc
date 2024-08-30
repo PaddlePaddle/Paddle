@@ -192,7 +192,7 @@ void SearchSWindow(bool is_spatial_dynamic,
   objective_funcs.emplace_back(std::move(obj_func_pure_spatial));
   // Step 4: Construct config candidate range and constraints.
   std::vector<std::pair<int, int>> candidate_range{
-      {1, 2}, {1, 1}, {1, 2}};  // {1, 32}, {1, 1}, {1, 32}
+      {1, 1}, {1, 1}, {1, 1}};  // {1, 32}, {1, 1}, {1, 32}
   std::vector<cinn::ir::search::ConstraintFunc> constraints =
       GetSConstraints(s_dimension_lower);
   // Step 5: Construct searcher and search.
