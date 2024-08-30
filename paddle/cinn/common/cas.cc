@@ -1342,9 +1342,12 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
         // case1: (32+(-x))%33 = 32-x%33 (0<=x<=32)
         // case2: (x-32))%33 = x%33 - 32%33 (0<=x<=32)
         Expr result;
-        if (SimplifySpecificSumMod(&result, a, b)) {
-          return result;
-        }
+        // TODO(phlrain): disable this simplify
+        /*
+              if (SimplifySpecificSumMod(&result, a, b)) {
+                return result;
+              }
+        */
       }
       return Mod::Make(a, b);
     }
@@ -2120,9 +2123,10 @@ Expr CasSimplifyMutator::SimplifyFracOp(Expr expr) {
         auto sum_a_prod_a_int = sum_a_prod->operand(0).As<IntImm>();
         auto& interval = var_intervals.at(sum_b_var->name);
         int b_abs = std::abs(bi->value);
-        int sum_prod_a_abs = std::abs(sum_a_prod_a_int->value);
-        if (sum_a_prod_a_int && (b_abs % sum_prod_a_abs == 0)) {
-          if (std::abs(interval.l) < sum_prod_a_abs &&
+        if (sum_a_prod_a_int) {
+          int sum_prod_a_abs = std::abs(sum_a_prod_a_int->value);
+          if (b_abs % sum_prod_a_abs == 0 &&
+              std::abs(interval.l) < sum_prod_a_abs &&
               std::abs(interval.r) < sum_prod_a_abs) {
             return CasSimplify(
                 Sum::Make({CasSimplify(FracOp::Make(a_sum->operands()[0], b),

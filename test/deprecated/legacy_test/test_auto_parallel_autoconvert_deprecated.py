@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+
+sys.path.append("../../legacy_test")
 
 from test_parallel_dygraph_dataparallel import TestMultipleAccelerators
 
 
 class TestAutoParallelAutoConvert(TestMultipleAccelerators):
     def test_auto_parallel_autoconvert(self):
-        self.run_mnist_2accelerators('auto_parallel_autoconvert.py')
+        self.run_mnist_2accelerators('auto_parallel_autoconvert_deprecated.py')
 
 
 if __name__ == "__main__":
