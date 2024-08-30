@@ -36,9 +36,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_iterable_dataset MODULES test_iterable_dataset)
   set_tests_properties(test_iterable_dataset
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
-  py_test_modules(test_pass_grad_clip MODULES test_pass_grad_clip)
-  set_tests_properties(test_pass_grad_clip
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_random_ctrl MODULES test_random_ctrl)
   set_tests_properties(test_random_ctrl PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                    TIMEOUT 50)

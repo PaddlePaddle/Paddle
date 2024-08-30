@@ -23,7 +23,7 @@ class TestGradientClip(unittest.TestCase):
     def test_dp2(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(
-            file_dir, "clip_grad_by_global_norm.py"
+            file_dir, "clip_grad_by_global_norm_deprecated.py"
         )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
