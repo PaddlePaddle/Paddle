@@ -13,9 +13,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_mp_allreduce_matmul_grad_overlapping)
   set_tests_properties(test_mp_allreduce_matmul_grad_overlapping
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-  py_test_modules(test_relaunch_with_planner MODULES test_relaunch_with_planner)
-  set_tests_properties(test_relaunch_with_planner
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_relaunch_with_gpt_planner MODULES
                   test_relaunch_with_gpt_planner)
   set_tests_properties(test_relaunch_with_gpt_planner

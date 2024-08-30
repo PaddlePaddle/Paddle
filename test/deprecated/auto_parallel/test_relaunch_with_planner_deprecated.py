@@ -28,8 +28,10 @@ class TestPlannerReLaunch(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_relaunch_with_planner(self):
-        sys.path.append("../deprecated/auto_parallel")
-        from test_auto_parallel_relaunch import cluster_json, mapping_json
+        from test_auto_parallel_relaunch_deprecated import (
+            cluster_json,
+            mapping_json,
+        )
 
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster.json"
@@ -48,7 +50,7 @@ class TestPlannerReLaunch(unittest.TestCase):
 
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(
-            file_dir, "auto_parallel_relaunch_with_planner.py"
+            file_dir, "auto_parallel_relaunch_with_planner_deprecated.py"
         )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
