@@ -675,12 +675,13 @@ bool BoxCoderInferSymbolicShape(pir::Operation *op,
   const std::vector<symbol::DimExpr> &target_box_dims =
       target_box_shape_or_data.shape();
 
-  const std::string &code_type = op->GetAttr<std::string>("code_type");
-  bool box_normalized = op->GetAttr<bool>("box_normalized");
-  int axis = op->GetAttr<int>("axis");
+  const std::string &code_type =
+      op->attribute<pir::StrAttribute>("code_type").AsString();
+  bool box_normalized =
+      op->attribute<pir::BoolAttribute>("box_normalized").data();
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
   const std::vector<float> &variance =
-      op->GetAttr<std::vector<float>>("variance");
-  pir::MetaTensor *output_box = infer_context->GetOutputTensor(0);
+      paddle::dialect::details::GetVectorAttr<float>(op, "variance");
 
   PADDLE_ENFORCE_EQ(prior_box_dims.size(),
                     2,
@@ -730,7 +731,10 @@ bool BoxCoderInferSymbolicShape(pir::Operation *op,
                           "The second dimension of TargetBox in BoxCoder "
                           "operator must be 4. But received dimension is %d",
                           target_box_dims[1]));
-    output_box->set_dims({target_box_dims[0], prior_box_dims[0], 4});
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+            {target_box_dims[0], prior_box_dims[0], 4})});
   } else if (box_code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
     PADDLE_ENFORCE_EQ(target_box_dims.size(),
                       3,
@@ -765,16 +769,19 @@ bool BoxCoderInferSymbolicShape(pir::Operation *op,
         phi::errors::InvalidArgument("The third dimension of TargetBox "
                                      "in BoxCoder should be equal to the "
                                      "second dimension of PriorBox."));
-    output_box->share_dims(target_box);
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(target_box_dims)});
   }
 
   if (box_code_type == phi::funcs::BoxCodeType::kDecodeCenterSize &&
       axis == 1) {
-    output_box->share_lod(op->operand_source(0));
+    infer_context->ShareLod(op->operand_source(0), op->result(0));
   } else {
-    output_box->share_lod(op->operand_source(2));
+    infer_context->ShareLod(op->operand_source(2), op->result(0));
   }
-  output_box->set_dtype(op->operand_source(2)->dtype());
+  infer_context->SetDtype(op->result(0), op->operand_source(2)->dtype());
 
   return true;
 }
