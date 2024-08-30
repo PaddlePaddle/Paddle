@@ -663,8 +663,8 @@ bool BilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
-bool BoxCoderInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
+bool BoxCoderOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &prior_box_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &prior_box_dims =
