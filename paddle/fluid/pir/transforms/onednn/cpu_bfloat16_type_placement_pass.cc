@@ -112,11 +112,8 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
               dense_type.data_layout(),
               dense_type.lod(),
               dense_type.offset());
-
-          op->result(i).set_type(new_type);
-          std::cout << "set bf16 op tensor output type to bf16" << std::endl;
           // set bf16 op tensor output type to bf16.
-          op_item_inner_output_types.push_back(new_type);
+          op->result(i).set_type(new_type);
         } else if (type.isa<pir::VectorType>()) {
           auto vec_type = type.dyn_cast<pir::VectorType>();
           auto output_num = vec_type.size();
