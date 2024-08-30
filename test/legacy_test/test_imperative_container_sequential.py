@@ -56,6 +56,30 @@ class TestImperativeContainerSequential(unittest.TestCase):
             loss2 = paddle.mean(res2)
             loss2.backward()
 
+    def test_append_insert_extend(self):
+        data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
+        with base.dygraph.guard():
+            data = paddle.to_tensor(data)
+
+            model1 = paddle.nn.Sequential()
+            # test append
+            model1.append(Linear(10, 1))
+            model1.append(Linear(1, 2))
+            res1 = model1(data)
+            self.assertListEqual(res1.shape, [5, 2])
+
+            # test insert
+            model1.insert(0, Linear(10, 10))
+            res1 = model1(data)
+
+            # test extend
+            model1.extend([Linear(2, 3), Linear(3, 4)])
+            res1 = model1(data)
+            self.assertListEqual(res1.shape, [5, 4])
+
+            loss1 = paddle.mean(res1)
+            loss1.backward()
+
     def test_sequential_list_params(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with base.dygraph.guard():

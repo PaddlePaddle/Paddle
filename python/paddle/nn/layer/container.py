@@ -636,3 +636,25 @@ class Sequential(Layer):
         for layer in self._sub_layers.values():
             input = layer(input)
         return input
+
+    def append(self, module: Layer) -> Sequential:
+        self.add_sublayer(str(len(self)), module)
+        return self
+
+    def insert(self, index: int, module: Layer) -> Sequential:
+        if not isinstance(module, Layer):
+            raise AssertionError(f'module should be of type: {Layer}')
+        n = len(self._sub_layers)
+        if not (-n <= index <= n):
+            raise IndexError(f'Index out of range: {index}')
+        if index < 0:
+            index += n
+        for i in range(n, index, -1):
+            self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
+        self._sub_layers[str(index)] = module
+        return self
+
+    def extend(self, sequential) -> Sequential:
+        for layer in sequential:
+            self.append(layer)
+        return self
