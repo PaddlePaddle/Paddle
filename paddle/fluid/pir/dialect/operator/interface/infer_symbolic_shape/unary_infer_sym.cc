@@ -1579,27 +1579,34 @@ bool MaxOpInferSymbolicShape(pir::Operation *op,
                              pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
 
-  const std::vector<int64_t> axis = [&] {
-    pir::Operation *axis_gen_op = op->operand_source(1).defining_op();
-    std::vector<int64_t> axis_vec;
-    if (axis_gen_op->isa<paddle::dialect::FullIntArrayOp>()) {
-      axis_vec = details::GetVectorAttr(
-          axis_gen_op->dyn_cast<paddle::dialect::FullIntArrayOp>(), "value");
+  const auto &attributes = op->attributes();
+  std::vector<int64_t> axis;
+  if (attributes.find("axis") != attributes.end()) {
+    axis = details::GetVectorAttr<int64_t>(op, "axis");
+  } else if (op->operand_source(1)) {
+    const auto &shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    std::vector<symbol::DimExpr> axis_expr;
+    if (shape_or_data.data().has_value()) {
+      axis_expr = shape_or_data.data().value();
     } else {
-      // TODO(lanxianghit): there's other source: pir::VectorType,
-      // paddle::dialect::DenseTensorType, but after PRIM, maybe always
-      // FullIntArrayOp, to be confirmed
-      PADDLE_THROW(common::errors::Unimplemented(
-          "MaxOpInferSymbolicShape: 'axis' only "
-          "support FullIntArrayOp's result now."));
+      axis_expr = shape_or_data.shape();
     }
-    return axis_vec;
-  }();
+    for (const auto &axis_i : axis_expr) {
+      if (axis_i.isa<int64_t>()) {
+        axis.emplace_back(axis_i.dyn_cast<int64_t>());
+      } else {
+        PADDLE_THROW(common::errors::InvalidArgument(
+            "The type of axis must be int64, please check."));
+      }
+    }
+  }
 
   bool reduce_all = axis.size() == 0 ? true : false;
 
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
+
 bool ModeOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
