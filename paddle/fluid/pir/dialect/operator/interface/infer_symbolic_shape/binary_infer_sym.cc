@@ -530,6 +530,14 @@ bool DotOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool DistOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+}
+
 bool DropoutOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
