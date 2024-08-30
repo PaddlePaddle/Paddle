@@ -73,9 +73,21 @@ class TestPTQ(unittest.TestCase):
                 fetch_targets,
             ] = paddle.static.load_inference_model(save_path, exe)
         quantizer_count_in_static_model = 0
-        for _op in inference_program.global_block().ops:
-            if _op.type == "fake_quantize_dequantize_moving_average_abs_max":
-                quantizer_count_in_static_model += 1
+
+        if paddle.base.framework.in_pir_mode():
+            for _op in inference_program.global_block().ops:
+                if (
+                    "fake_quantize_dequantize_moving_average_abs_max"
+                    in _op.name()
+                ):
+                    quantizer_count_in_static_model += 1
+        else:
+            for _op in inference_program.global_block().ops:
+                if (
+                    _op.type
+                    == "fake_quantize_dequantize_moving_average_abs_max"
+                ):
+                    quantizer_count_in_static_model += 1
         self.assertEqual(
             quantizer_count_in_dygraph, quantizer_count_in_static_model
         )
