@@ -60,6 +60,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_pass_gradient_merge_deprecated)
   set_tests_properties(test_pass_gradient_merge_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_optimization_tuner_api_deprecated MODULES
+                  test_optimization_tuner_api_deprecated)
+  set_tests_properties(test_optimization_tuner_api_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
 endif()
 
 set_pir_tests_properties()
