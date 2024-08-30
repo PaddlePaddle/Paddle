@@ -663,6 +663,122 @@ bool BilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
+bool BoxCoderInferSymbolicShape(const MetaTensor &prior_box,
+                                const MetaTensor &prior_box_var,
+                                const MetaTensor &target_box,
+                                const std::string &code_type,
+                                bool box_normalized,
+                                int axis,
+                                const std::vector<float> &variance,
+                                MetaTensor *output_box,
+                                MetaConfig config) {
+  const symbol::ShapeOrDataDimExprs &prior_box_shape_or_data =
+      infer_context->GetShapeOrDataForValue(prior_box);
+  const std::vector<symbol::DimExpr> prior_box_dims =
+      prior_box_shape_or_data.shape();
+
+  const symbol::ShapeOrDataDimExprs &target_box_shape_or_data =
+      infer_context->GetShapeOrDataForValue(target_box);
+  const std::vector<symbol::DimExpr> target_box_dims =
+      target_box_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(prior_box_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input PriorBox in BoxCoder operator "
+                        "must be 2. But received rank = %d",
+                        prior_box_dims.size()));
+  PADDLE_ENFORCE_EQ(prior_box_dims[1],
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of PriorBox in BoxCoder "
+                        "operator must be 4. But received dimension = %d",
+                        prior_box_dims[1]));
+
+  if (prior_box_var) {
+    const auto &prior_box_var_shape_or_data =
+        infer_context->GetShapeOrDataForValue(prior_box_var);
+    const std::vector<symbol::DimExpr> prior_box_var_dims =
+        prior_box_var_shape_or_data.shape();
+
+    PADDLE_ENFORCE_EQ(prior_box_var_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input(PriorBoxVar) in BoxCoder operator "
+                          "should be 2. But received rank = %d",
+                          prior_box_var_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        prior_box_dims,
+        prior_box_var_dims,
+        phi::errors::InvalidArgument(
+            "The dimension of Input(PriorBoxVar) should be equal to "
+            "the dimension of Input(PriorBox) in BoxCoder operator "
+            "when the rank is 2."));
+  }
+
+  auto box_code_type = phi::funcs::GetBoxCodeType(code_type);
+  if (box_code_type == phi::funcs::BoxCodeType::kEncodeCenterSize) {
+    PADDLE_ENFORCE_EQ(target_box_dims.size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input TargetBox in BoxCoder operator "
+                          "must be 2. But received rank is %d",
+                          target_box_dims.size()));
+    PADDLE_ENFORCE_EQ(target_box_dims[1],
+                      4,
+                      phi::errors::InvalidArgument(
+                          "The second dimension of TargetBox in BoxCoder "
+                          "operator must be 4. But received dimension is %d",
+                          target_box_dims[1]));
+    output_box->set_dims({target_box_dims[0], prior_box_dims[0], 4});
+  } else if (box_code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+    PADDLE_ENFORCE_EQ(target_box_dims.size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "The rank of Input TargetBox in BoxCoder operator "
+                          "must be 3. But received rank is %d",
+                          target_box_dims.size()));
+    PADDLE_ENFORCE_EQ(axis == 0 || axis == 1,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "axis in BoxCoder operator must be 0 or 1. "
+                          "But received axis = %d",
+                          axis));
+    if (axis == 0) {
+      PADDLE_ENFORCE_EQ(
+          target_box_dims[1],
+          prior_box_dims[0],
+          phi::errors::InvalidArgument(
+              "When axis is 0, The second dimension of TargetBox in "
+              "BoxCoder should be equal to the first dimension of PriorBox."));
+    } else if (axis == 1) {
+      PADDLE_ENFORCE_EQ(
+          target_box_dims[0],
+          prior_box_dims[0],
+          phi::errors::InvalidArgument(
+              "When axis is 1, The first dimension of TargetBox in BoxCoder "
+              "should be equal to the first dimension of PriorBox."));
+    }
+    PADDLE_ENFORCE_EQ(
+        target_box_dims[2],
+        prior_box_dims[1],
+        phi::errors::InvalidArgument("The third dimension of TargetBox "
+                                     "in BoxCoder should be equal to the "
+                                     "second dimension of PriorBox."));
+    output_box->share_dims(target_box);
+  }
+
+  if (box_code_type == phi::funcs::BoxCodeType::kDecodeCenterSize &&
+      axis == 1) {
+    output_box->share_lod(prior_box);
+  } else {
+    output_box->share_lod(target_box);
+  }
+  output_box->set_dtype(target_box.dtype());
+
+  return true;
+}
+
 bool CheckFiniteAndUnscaleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   // Retrieve the shape information of the input list

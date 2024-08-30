@@ -670,6 +670,7 @@
   kernel :
     func : box_coder
   optional : prior_box_var
+  interfaces: paddle::dialect::InferSymbolicShapeInterface
 
 - op : broadcast_tensors
   args: (Tensor[] input)
