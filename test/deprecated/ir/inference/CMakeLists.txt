@@ -64,40 +64,48 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-  set_tests_properties(test_trt_subgraph_pass PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_trt_conv_pass PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_optimization_level PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 500)
-  set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_trt_subgraph_pass_deprecated PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_trt_conv_pass_deprecated PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_trt_dynamic_shape_deprecated PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_trt_inspector_deprecated PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_trt_inference_predictor_deprecated
+                       PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_trt_optimization_level_deprecated PROPERTIES TIMEOUT
+                                                                         300)
+  set_tests_properties(test_trt_ops_fp32_mix_precision_deprecated
+                       PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_inference_fp16_io_deprecated PROPERTIES TIMEOUT
+                                                                        500)
+  set_tests_properties(test_trt_convert_unary_deprecated PROPERTIES TIMEOUT 600)
 
   if(WITH_NV_JETSON)
     set_tests_properties(
-      test_trt_pool_op
+      test_trt_pool_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
                  450)
     set_tests_properties(
-      test_trt_pool3d_op
+      test_trt_pool3d_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
                  450)
   else()
     set_tests_properties(
-      test_trt_pool_op
+      test_trt_pool_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
                  300)
     set_tests_properties(
-      test_trt_pool3d_op
+      test_trt_pool3d_op_deprecated
       PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT 45)
   endif()
 
-  set_tests_properties(test_trt_tile_op PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT
-                                                                      100)
-  set_tests_properties(test_trt_conv_quant_dequant_pass PROPERTIES TIMEOUT 180)
-  set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 450)
-  set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
-  set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)
+  set_tests_properties(test_trt_tile_op_deprecated PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_trt_fc_fuse_quant_dequant_pass_deprecated
+                       PROPERTIES TIMEOUT 100)
+  set_tests_properties(test_trt_conv_quant_dequant_pass_deprecated
+                       PROPERTIES TIMEOUT 180)
+  set_tests_properties(test_trt_matmul_quant_dequant_deprecated
+                       PROPERTIES TIMEOUT 450)
+  set_tests_properties(test_trt_conv3d_transpose_op_deprecated
+                       PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_trt_nearest_interp_v2_op_deprecated
+                       PROPERTIES TIMEOUT 30)
 endif()
