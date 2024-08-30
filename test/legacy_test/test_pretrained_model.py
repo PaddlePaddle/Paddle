@@ -67,8 +67,9 @@ class TestPretrainedModel(unittest.TestCase):
             'squeezenet1_0',
             'shufflenet_v2_x0_25',
         ]
-        for arch in arches:
-            self.infer(arch)
+        with paddle.pir_utils.OldIrGuard():
+            for arch in arches:
+                self.infer(arch)
 
 
 if __name__ == '__main__':

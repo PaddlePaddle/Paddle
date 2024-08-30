@@ -653,14 +653,6 @@ set_tests_properties(test_reader_reset_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
-set_tests_properties(test_model PROPERTIES TIMEOUT 300)
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
-
-if(APPLE)
-  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
-endif()
-
 set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
                                                                        120)
 if(WITH_DISTRIBUTE
