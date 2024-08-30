@@ -687,12 +687,7 @@ bool BoxCoderOpInferSymbolicShape(
                         "The rank of Input PriorBox in BoxCoder operator "
                         "must be 2. But received rank = %d",
                         prior_box_dims.size()));
-  PADDLE_ENFORCE_EQ(prior_box_dims[1],
-                    4,
-                    phi::errors::InvalidArgument(
-                        "The second dimension of PriorBox in BoxCoder "
-                        "operator must be 4. But received dimension = %d",
-                        prior_box_dims[1]));
+  infer_context->AddEqualCstr(prior_box_dims[1], symbol::DimExpr{4});
 
   if (op->operand_source(1)) {
     const symbol::ShapeOrDataDimExprs &prior_box_var_shape_or_data =
@@ -722,12 +717,8 @@ bool BoxCoderOpInferSymbolicShape(
                           "The rank of Input TargetBox in BoxCoder operator "
                           "must be 2. But received rank is %d",
                           target_box_dims.size()));
-    PADDLE_ENFORCE_EQ(target_box_dims[1],
-                      4,
-                      phi::errors::InvalidArgument(
-                          "The second dimension of TargetBox in BoxCoder "
-                          "operator must be 4. But received dimension is %d",
-                          target_box_dims[1]));
+
+    infer_context->AddEqualCstr(target_box_dims[1], symbol::DimExpr{4});
     infer_context->SetShapeOrDataForValue(
         op->result(0),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
@@ -746,26 +737,11 @@ bool BoxCoderOpInferSymbolicShape(
                           "But received axis = %d",
                           axis));
     if (axis == 0) {
-      PADDLE_ENFORCE_EQ(
-          target_box_dims[1],
-          prior_box_dims[0],
-          phi::errors::InvalidArgument(
-              "When axis is 0, The second dimension of TargetBox in "
-              "BoxCoder should be equal to the first dimension of PriorBox."));
+      infer_context->AddEqualCstr(target_box_dims[1], prior_box_dims[0]);
     } else if (axis == 1) {
-      PADDLE_ENFORCE_EQ(
-          target_box_dims[0],
-          prior_box_dims[0],
-          phi::errors::InvalidArgument(
-              "When axis is 1, The first dimension of TargetBox in BoxCoder "
-              "should be equal to the first dimension of PriorBox."));
+      infer_context->AddEqualCstr(target_box_dims[0], prior_box_dims[0]);
     }
-    PADDLE_ENFORCE_EQ(
-        target_box_dims[2],
-        prior_box_dims[1],
-        phi::errors::InvalidArgument("The third dimension of TargetBox "
-                                     "in BoxCoder should be equal to the "
-                                     "second dimension of PriorBox."));
+    infer_context->AddEqualCstr(target_box_dims[2], prior_box_dims[1]);
     infer_context->SetShapeOrDataForValue(
         op->result(0),
         symbol::ShapeOrDataDimExprs{
