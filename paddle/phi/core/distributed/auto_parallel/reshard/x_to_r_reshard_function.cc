@@ -119,7 +119,7 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
         }
         SetValue(out, result_add_out);
       } else {
-        PADDLE_THROW(phi::errors::Unavailable(
+        PADDLE_THROW(common::errors::Unavailable(
             "The reduce type is not supported, will be supported soon."));
       }
     } else {

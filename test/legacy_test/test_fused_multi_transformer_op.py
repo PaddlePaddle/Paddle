@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 
@@ -205,18 +204,18 @@ class TestFusedMultiTransformerOp(OpTest):
                     random.randint(1, self.cache_length)
                     for _ in range(self.batch_size)
                 ]
-                self.seq_lens[
-                    random.randint(0, self.batch_size)
-                ] = self.cache_length
+                self.seq_lens[random.randint(0, self.batch_size)] = (
+                    self.cache_length
+                )
                 self.seq_lens = np.array(self.seq_lens).astype(np.int32)
             else:
                 self.seq_lens = [
                     random.randint(1, self.query_length)
                     for _ in range(self.batch_size)
                 ]
-                self.seq_lens[
-                    random.randint(0, self.batch_size)
-                ] = self.query_length
+                self.seq_lens[random.randint(0, self.batch_size)] = (
+                    self.query_length
+                )
                 self.seq_lens = np.array(self.seq_lens).astype(np.int32)
 
         if self.has_pre_cache and self.gqa_group_size <= 0:
@@ -1558,12 +1557,6 @@ class TestFusedMultiTransformerOp(OpTest):
             np.testing.assert_allclose(
                 final_out_ref, final_out, rtol=self.rtol, atol=self.atol
             )
-
-
-class TestFusedMultiTransformerOpWithNewComm(TestFusedMultiTransformerOp):
-    def with_new_comm(self):
-        self.remove_padding = True
-        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
 
 @unittest.skipIf(

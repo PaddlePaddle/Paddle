@@ -78,7 +78,7 @@ class GradClipDecorator(ClipGradBase):
         self.clip_after_allreduce = clip_after_allreduce
 
     def _dygraph_clip(self, params_grads):
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _insert_allreduce_ops(self, params_grads):
         world_size = paddle.distributed.get_world_size()
@@ -270,13 +270,7 @@ class TestDistributedFusedLamb(unittest.TestCase):
         paddle.enable_static()
         paddle.set_flags({'FLAGS_cudnn_deterministic': True})
         _clip_by_global_norm_using_mp_type(True)
-        if (
-            os.environ.get("FLAGS_dynamic_static_unified_comm", "false").lower()
-            == "true"
-        ):
-            paddle.distributed.collective._init_parallel_env("nccl")
-        else:
-            fleet.init(role_maker=get_role_maker())
+        paddle.distributed.collective._init_parallel_env("nccl")
 
     def config(self):
         clip_after_allreduce = bool(

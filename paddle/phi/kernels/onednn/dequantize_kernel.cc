@@ -29,17 +29,17 @@ void DeQuantKernel(const Context& dev_ctx,
                    const float quantization_shift,
                    DenseTensor* out) {
   PADDLE_ENFORCE(quantization_scale != 0.0f,
-                 phi::errors::InvalidArgument(
+                 common::errors::InvalidArgument(
                      "Dequantization scale must be different than 0.0f"));
 
   const auto q_shift = static_cast<int32_t>(quantization_shift);
   PADDLE_ENFORCE_GE(q_shift,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Dequantization shift must be greater or equal to 0"));
   PADDLE_ENFORCE_LE(q_shift,
                     255,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Dequantization shift must be lower or equal to 255"));
 
   const bool with_shift = q_shift != 0;

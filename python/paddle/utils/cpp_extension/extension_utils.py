@@ -383,26 +383,25 @@ def prepare_unix_cudaflags(cflags):
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
     if core.is_compiled_with_rocm():
-        cflags = (
-            COMMON_HIPCC_FLAGS
-            + ['-Xcompiler', '-fPIC']
-            + cflags
-            + get_rocm_arch_flags(cflags)
-        )
+        cflags = [
+            *COMMON_HIPCC_FLAGS,
+            '-Xcompiler',
+            '-fPIC',
+            *cflags,
+            *get_rocm_arch_flags(cflags),
+        ]
     else:
-        cflags = (
-            COMMON_NVCC_FLAGS
-            + [
-                '-ccbin',
-                'cc',
-                '-Xcompiler',
-                '-fPIC',
-                '--expt-relaxed-constexpr',
-                '-DNVCC',
-            ]
-            + cflags
-            + get_cuda_arch_flags(cflags)
-        )
+        cflags = [
+            *COMMON_NVCC_FLAGS,
+            '-ccbin',
+            'cc',
+            '-Xcompiler',
+            '-fPIC',
+            '--expt-relaxed-constexpr',
+            '-DNVCC',
+            *cflags,
+            *get_cuda_arch_flags(cflags),
+        ]
 
     return cflags
 
@@ -411,7 +410,7 @@ def prepare_win_cudaflags(cflags):
     """
     Prepare all necessary compiled flags for nvcc compiling CUDA files.
     """
-    cflags = COMMON_NVCC_FLAGS + ['-w'] + cflags + get_cuda_arch_flags(cflags)
+    cflags = [*COMMON_NVCC_FLAGS, '-w', *cflags, *get_cuda_arch_flags(cflags)]
 
     return cflags
 
@@ -442,7 +441,8 @@ def get_rocm_arch_flags(cflags):
     """
     For ROCm platform, amdgpu target should be added for HIPCC.
     """
-    cflags = cflags + [
+    cflags = [
+        *cflags,
         '-fno-gpu-rdc',
         '-amdgpu-target=gfx906',
         '-amdgpu-target=gfx926',
@@ -519,7 +519,7 @@ def _get_include_dirs_when_compiling(compile_dir):
         include_dirs_file
     ), f"File {include_dirs_file} does not exist"
     with open(include_dirs_file, 'r') as f:
-        include_dirs = [line.strip() for line in f.readlines() if line.strip()]
+        include_dirs = [line.strip() for line in f if line.strip()]
 
     extra_dirs = ['paddle/base/platform']
     all_include_dirs = list(include_dirs)
@@ -655,6 +655,37 @@ def create_sym_link_if_not_exist():
 
         # libpaddle without suffix
         return raw_core_name[:-3]
+
+
+def find_ccache_home():
+    """
+    Use heuristic method to find ccache path
+    """
+    ccache_path = None
+    # step 1. find in $PATH environment variable
+    paths = os.environ.get('PATH', '').split(os.pathsep)
+    for path in paths:
+        ccache_candidate = os.path.join(path, 'ccache')
+        if os.path.exists(ccache_candidate):
+            ccache_path = ccache_candidate
+            break
+
+    # step 2. find ccache path by `which ccache` command
+    if ccache_path is None:
+        which_cmd = 'where' if os.name == 'nt' else 'which'
+        try:
+            ccache_path = (
+                subprocess.check_output([which_cmd, 'ccache']).decode().strip()
+            )
+        except:
+            ccache_path = None
+
+    if ccache_path is None:
+        warning_message = "No ccache found. Please be aware that recompiling all source files may be required. "
+        warning_message += "You can download and install ccache from: https://github.com/ccache/ccache/blob/master/doc/INSTALL.md"
+        warnings.warn(warning_message)
+
+    return ccache_path
 
 
 def find_cuda_home():

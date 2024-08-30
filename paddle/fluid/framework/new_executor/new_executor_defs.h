@@ -22,9 +22,9 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
-#include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/platform/device_event_base.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/common/flags.h"

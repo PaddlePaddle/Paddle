@@ -34,14 +34,15 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(
       from,
       to,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Layout transform should transform between different layout."));
   if (from == DataLayout::NCHW && to == DataLayout::NHWC) {
     return {0, 2, 3, 1};
   } else if (from == DataLayout::NHWC && to == DataLayout::NCHW) {
     return {0, 3, 1, 2};
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Unsupported layout transform."));
+    PADDLE_THROW(
+        common::errors::InvalidArgument("Unsupported layout transform."));
   }
 }
 

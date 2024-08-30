@@ -649,6 +649,12 @@ def convert_zip(*args):
     return zip(*args)
 
 
+def convert_super(super_fn):
+    if super_fn is super:
+        return super_fn
+    return lambda cls, instance: super_fn()
+
+
 # TODO(xiongkun): delete when list<variable> is ready.
 class VariableTuple:
     """

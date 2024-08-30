@@ -839,27 +839,30 @@ class TestSumTripleGradCheck(unittest.TestCase):
 
 class TestSumAPIWarnings(unittest.TestCase):
     def test_warnings(self):
-        with warnings.catch_warnings(record=True) as context:
-            warnings.simplefilter("always")
-            paddle.enable_static()
-            helper = LayerHelper("sum")
-            data = paddle.static.data(
-                name='data', shape=[32, 32], dtype='float32'
-            )
-            out = helper.create_variable_for_type_inference(dtype=data.dtype)
-            attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
-            os.environ["FLAGS_print_extra_attrs"] = '1'
-            helper.append_op(
-                type="reduce_sum",
-                inputs={'X': data},
-                outputs={'Out': out},
-                attrs=attrs,
-            )
-            self.assertTrue(
-                "op reduce_sum's attr reduce_all = True is not the default value: False"
-                in str(context[-1].message)
-            )
-            os.environ["FLAGS_print_extra_attrs"] = '0'
+        with paddle.pir_utils.OldIrGuard():
+            with warnings.catch_warnings(record=True) as context:
+                warnings.simplefilter("always")
+                paddle.enable_static()
+                helper = LayerHelper("sum")
+                data = paddle.static.data(
+                    name='data', shape=[32, 32], dtype='float32'
+                )
+                out = helper.create_variable_for_type_inference(
+                    dtype=data.dtype
+                )
+                attrs = {'dim': [1], 'keep_dim': True, 'reduce_all': True}
+                os.environ["FLAGS_print_extra_attrs"] = '1'
+                helper.append_op(
+                    type="reduce_sum",
+                    inputs={'X': data},
+                    outputs={'Out': out},
+                    attrs=attrs,
+                )
+                self.assertTrue(
+                    "op reduce_sum's attr reduce_all = True is not the default value: False"
+                    in str(context[-1].message)
+                )
+                os.environ["FLAGS_print_extra_attrs"] = '0'
 
 
 if __name__ == "__main__":

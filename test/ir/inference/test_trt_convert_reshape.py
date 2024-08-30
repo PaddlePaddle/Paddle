@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import unittest
 from functools import partial
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from program_config import ProgramConfig, TensorConfig
@@ -46,7 +48,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 4:
                 self.input_shape = [1, 2, 4, 6]
                 return np.ones([1, 2, 4, 6]).astype(np.float32)
@@ -60,13 +62,13 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
                 self.input_shape = [48]
                 return np.ones([48]).astype(np.float32)
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
+        def generate_weight1(attrs: list[dict[str, Any]]):
             return np.array([1, 48]).astype(np.int32)
 
-        def generate_shapeT1_data(attrs: List[Dict[str, Any]]):
+        def generate_shapeT1_data(attrs: list[dict[str, Any]]):
             return np.array([2]).astype(np.int32)
 
-        def generate_shapeT2_data(attrs: List[Dict[str, Any]]):
+        def generate_shapeT2_data(attrs: list[dict[str, Any]]):
             return np.array([24]).astype(np.int32)
 
         for dims in [4, 3, 2, 1]:
@@ -114,7 +116,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -209,7 +211,7 @@ class TrtConvertReshapeTest2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 4:
                 return np.random.random([1, 2, 4, 6]).astype(np.float32)
             elif self.dims == 3:
@@ -278,7 +280,7 @@ class TrtConvertReshapeTest2(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape():
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -332,7 +334,7 @@ class TrtConvertReshapeTest3(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims == 4:
                 return np.random.random([1, 2, 12, 6]).astype(np.float32)
             elif self.dims == 3:
@@ -391,7 +393,7 @@ class TrtConvertReshapeTest3(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape():
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -444,7 +446,7 @@ class TrtConvertReshapeZeroDimsTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(attrs: List[Dict[str, Any]]):
+        def generate_input1(attrs: list[dict[str, Any]]):
             if self.dims > 0:
                 self.input_shape = [1] * self.dims
                 return np.random.random(self.input_shape).astype(np.float32)
@@ -489,7 +491,7 @@ class TrtConvertReshapeZeroDimsTest(TrtLayerAutoScanTest):
 
     def sample_predictor_configs(
         self, program_config
-    ) -> (paddle_infer.Config, List[int], float):
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "reshape_input": self.input_shape

@@ -131,8 +131,8 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
             ->MoveMemoryHolder(),
         event,
         ctx);
-  } else if (var->IsType<LoDTensorArray>()) {
-    auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+  } else if (var->IsType<phi::TensorArray>()) {
+    auto* tensor_arr = var->GetMutable<phi::TensorArray>();
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), event, ctx);
     }

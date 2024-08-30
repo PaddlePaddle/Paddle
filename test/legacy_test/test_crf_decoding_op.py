@@ -192,7 +192,7 @@ class TestCRFDecodingOp4(TestCRFDecodingOp2):
 
 def seq_pad(data, length):
     max_len = np.max(length)
-    shape = [len(length), max_len] + list(data.shape[1:])
+    shape = [len(length), max_len, *data.shape[1:]]
     padded = np.zeros(shape).astype(data.dtype)
     offset = 0
     for i, l in enumerate(length):

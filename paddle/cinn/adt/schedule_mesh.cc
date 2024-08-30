@@ -388,7 +388,7 @@ ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
     PADDLE_ENFORCE_EQ(
         dim.Has<std::int64_t>(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Each dimension in 'origin_shape' must have an int64_t value."));
     origin_numel *= dim.Get<std::int64_t>();
   }
@@ -397,13 +397,13 @@ ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
   bool dynamic_shape = false;
   for (const auto& dim : shape) {
     if (dim < 0) {
-      PADDLE_ENFORCE_EQ(
-          dim == -1 && !dynamic_shape,
-          true,
-          phi::errors::InvalidArgument("Negative dimension in 'shape' must be "
-                                       "-1 to represent dynamic shape. "
-                                       "But received: %d",
-                                       dim));
+      PADDLE_ENFORCE_EQ(dim == -1 && !dynamic_shape,
+                        true,
+                        ::common::errors::InvalidArgument(
+                            "Negative dimension in 'shape' must be "
+                            "-1 to represent dynamic shape. "
+                            "But received: %d",
+                            dim));
       dynamic_shape = true;
     } else {
       numel *= dim;
@@ -411,7 +411,7 @@ ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
   }
   PADDLE_ENFORCE_EQ(dynamic_shape || numel == origin_numel,
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The total number of elements must match between "
                         "'shape' and 'origin_shape' "
                         "unless there is a dynamic shape. "
@@ -485,7 +485,7 @@ ScheduleMesh MeshPaddingRoundUp(
     PADDLE_ENFORCE_EQ(
         shape->at(i).Has<std::int64_t>(),
         true,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Each dimension in 'shape' must have an int64_t value. "
             "But the dimension at index %d does not.",
             i));

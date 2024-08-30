@@ -53,10 +53,8 @@ fused_attention_dygraph_function(
     const paddle::Tensor& Ln2Scale,
     const paddle::Tensor& Ln2Bias,
     const paddle::framework::AttributeMap& attr_map) {
-  paddle::platform::RecordEvent dygraph_entrance_record_event(
-      "fused_attention dygraph",
-      paddle::platform::TracerEventType::Operator,
-      1);
+  phi::RecordEvent dygraph_entrance_record_event(
+      "fused_attention dygraph", phi::TracerEventType::Operator, 1);
   VLOG(3) << "Running Eager Forward Op: fused_attention";
   // Dygraph Forward Pass
 
@@ -323,10 +321,8 @@ fused_attention_dygraph_function(
   egr::EagerUtils::GetOutput(outs["Y"][0], &Y);
 
   {
-    paddle::platform::RecordEvent node_creation_record_event(
-        "fused_attention node_creation",
-        paddle::platform::TracerEventType::Operator,
-        1);
+    phi::RecordEvent node_creation_record_event(
+        "fused_attention node_creation", phi::TracerEventType::Operator, 1);
     egr::AutogradMeta* p_autograd_LnMean =
         egr::EagerUtils::autograd_meta(&LnMean);
     egr::AutogradMeta* p_autograd_LnVariance =

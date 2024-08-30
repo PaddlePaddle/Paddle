@@ -327,6 +327,12 @@ if [ "${HAS_MODIFIED_DY2ST_TEST_TENSOR_ATTR_CONSISTENCY}" != "" ] && [ "${GIT_PR
     check_approval 1 SigureMo Aurelius84 2742195759 gouzil
 fi
 
+HAS_USED_AUTO_PARALLEL_ALIGN_MODE=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "auto_parallel_align_mode" || true`
+if [ ${HAS_USED_AUTO_PARALLEL_ALIGN_MODE} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (sneaxiy, zhiqiu, ForFishes, or From00) approval for the usage of auto-parallel align mode.\n"
+    check_approval 1 sneaxiy zhiqiu ForFishes From00
+fi
+
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
 PHI_INCLUDE_FLUID_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do

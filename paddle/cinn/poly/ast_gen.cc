@@ -70,7 +70,10 @@ struct AstGen::Impl {
 isl::union_set AstGen::domain() const { return impl_->domain(); }
 
 isl::union_set AstGen::Impl::domain() const {
-  CHECK(!stages_.empty());
+  PADDLE_ENFORCE_NE(stages_.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Stages vector is empty in AstGen::Impl::domain()."));
   auto sets = utils::Map<std::vector<Shared<Stage>>, isl::set>(
       stages_, [](const Shared<Stage>& e) { return e->domain(); });
   return isl_sets_to_union_set(sets);
@@ -79,7 +82,10 @@ isl::union_set AstGen::Impl::domain() const {
 isl::ctx AstGen::ctx() const { return impl_->ctx(); }
 
 isl::ctx AstGen::Impl::ctx() const {
-  CHECK(!stages_.empty());
+  PADDLE_ENFORCE_NE(stages_.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Stages vector is empty in AstGen::Impl::ctx()."));
   return stages_.front()->domain().ctx();
 }
 
@@ -153,8 +159,10 @@ isl::ast_node AstGen::Build() {
   std::vector<isl::map> maps;
   for (auto& stage : impl_->stages_) {
     auto it = schedule_map.find(stage->id());
-    CHECK(it != std::end(schedule_map))
-        << "stage " << stage->id() << " not found in the map";
+    PADDLE_ENFORCE_EQ(it != std::end(schedule_map),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "Stage %s not found in the map.", stage->id()));
     maps.push_back(it->second);
   }
   auto schedule = isl_maps_to_union_map(maps);
@@ -188,7 +196,11 @@ isl::ast_node AstGen::Build() {
         impl_->stages_.begin(),
         impl_->stages_.end(),
         [&name](const Shared<Stage>& ele) { return ele->id() == name; });
-    CHECK(ele_it != std::end(impl_->stages_));
+    PADDLE_ENFORCE_EQ(
+        ele_it != std::end(impl_->stages_),
+        true,
+        ::common::errors::InvalidArgument(
+            "Stage with name %s not found in the stages vector.", name));
     return (*ele_it)->domain();
   };
 
@@ -255,7 +267,10 @@ AstGen::Impl::ExtractIslTransformedIndiceMap(const isl::set& iterator_domain,
 const std::map<std::string, isl::ast_expr>& AstGen::axis2ast(
     const std::string& tuple_name) const {
   auto it = impl_->transformed_indice_map_.find(tuple_name);
-  CHECK(it != impl_->transformed_indice_map_.end()) << "no id " << tuple_name;
+  PADDLE_ENFORCE_EQ(it != impl_->transformed_indice_map_.end(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "No id named %s, please check.", tuple_name));
   return it->second;
 }
 
@@ -273,7 +288,10 @@ const std::map<std::string, Expr> AstGen::axis2expr(
 
 isl::ast_expr CreateIslAstIndexExpression(isl_ast_build* build,
                                           const isl::map& access) {
-  CHECK(build);
+  PADDLE_ENFORCE_NOT_NULL(
+      build,
+      ::common::errors::InvalidArgument(
+          "The isl_ast_build pointer is null in CreateIslAstIndexExpression."));
   isl::map schedule =
       isl::manage(isl_map_from_union_map(isl_ast_build_get_schedule(build)));
 
@@ -335,8 +353,14 @@ void EatIf(const isl::ast_node& node, ir::Expr* expr);
 void EatMark(const isl::ast_node& node, ir::Expr* expr);
 
 void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
-  CHECK(!node.is_null());
-  CHECK(expr);
+  PADDLE_ENFORCE_EQ(!node.is_null(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The isl::ast_node is null in IslAstNodeToCinnExpr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      expr,
+      ::common::errors::InvalidArgument(
+          "The ir::Expr pointer is null in IslAstNodeToCinnExpr."));
 
   switch (isl_ast_node_get_type(node.get())) {
     case isl_ast_node_block: {
@@ -370,8 +394,13 @@ void IslAstNodeToCinnExpr(const isl::ast_node& node, ir::Expr* expr) {
 // Eat an isl block node.
 void EatBlock(const isl::ast_node& node, ir::Expr* expr) {
   VLOG(2) << "get isl ast body node";
-  CHECK(!node.is_null());
-  CHECK(expr);
+  PADDLE_ENFORCE_EQ(!node.is_null(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "The isl::ast_node is null in EatBlock."));
+  PADDLE_ENFORCE_NOT_NULL(expr,
+                          ::common::errors::InvalidArgument(
+                              "The ir::Expr pointer is null in EatBlock."));
   PADDLE_ENFORCE_EQ(isl_ast_node_get_type(node.get()),
                     isl_ast_node_block,
                     ::common::errors::InvalidArgument(
@@ -558,7 +587,12 @@ void IslAstExprToCinnExpr(const isl::ast_expr& node, ir::Expr* expr) {
         case isl_ast_op_call: {
           ir::Expr caller_expr = ops.front();
           // TODO(Superjomn) make it an string
-          CHECK(caller_expr.node_type() == ir::IrNodeTy::_Var_);
+          PADDLE_ENFORCE_EQ(
+              caller_expr.node_type() == ir::IrNodeTy::_Var_,
+              true,
+              ::common::errors::InvalidArgument(
+                  "Expected caller_expr to be of type _Var_, but got %s.",
+                  caller_expr.node_type()));
           std::string caller = caller_expr.As<ir::_Var_>()->name;
           ops.erase(ops.begin());
           // NOTE the type here is not important.

@@ -31,7 +31,7 @@ void StackKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_GE(
         x_dims[i],
         0,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The dims of Input(X) should be greater than or equal to 0"));
   }
   // zero sized tensor case

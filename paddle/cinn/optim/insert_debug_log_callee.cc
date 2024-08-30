@@ -133,7 +133,7 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
     auto *body_block = node->body.As<ir::Block>();
     PADDLE_ENFORCE_NOT_NULL(
         body_block,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "Expected 'body_block' to be non-null, but got null."));
 
     auto msg = StringFormat("running : %s", GetDebugString(*expr).c_str());

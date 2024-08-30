@@ -41,7 +41,7 @@ inline FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
     return FFTNormMode::by_sqrt_n;
   }
 
-  PADDLE_THROW(phi::errors::InvalidArgument(
+  PADDLE_THROW(common::errors::InvalidArgument(
       "FFT norm string must be 'forward' or 'backward' or 'ortho', "
       "received %s",
       norm));
@@ -67,7 +67,7 @@ inline FFTTransformType GetFFTTransformType(DataType input_dtype,
     return FFTTransformType::R2C;
   }
   PADDLE_THROW(
-      phi::errors::InvalidArgument("Real to real FFTs are not supported"));
+      common::errors::InvalidArgument("Real to real FFTs are not supported"));
 }
 
 template <typename DeviceContext, typename Ti, typename To>

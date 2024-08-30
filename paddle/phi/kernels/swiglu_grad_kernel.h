@@ -45,13 +45,13 @@ void SwiGLUGradKernel(const Context &ctx,
   if (y) {
     const auto &y_tensor = y.get();
     const auto &y_dims = y_tensor.dims();
-    PADDLE_ENFORCE_EQ(
-        y_dims,
-        dims,
-        phi::errors::InvalidArgument("The shape of Input(Y):[%s] must be equal "
-                                     "to the shape of Input(X):[%s].",
-                                     y_dims,
-                                     dims));
+    PADDLE_ENFORCE_EQ(y_dims,
+                      dims,
+                      common::errors::InvalidArgument(
+                          "The shape of Input(Y):[%s] must be equal "
+                          "to the shape of Input(X):[%s].",
+                          y_dims,
+                          dims));
     SwiGLUGradKernelImpl<T, Context>(
         ctx, x_ptr, y_tensor.data<T>(), dz_ptr, dx_ptr, dy_ptr, x.numel(), 1);
   } else {
@@ -59,7 +59,7 @@ void SwiGLUGradKernel(const Context &ctx,
     int64_t m = dims_2d[0], n = dims_2d[1];
     PADDLE_ENFORCE_EQ(n % 2,
                       0,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The last dim of Input(X) should be exactly divided "
                           "by 2 when Input(Y) is None, but got %d",
                           n));

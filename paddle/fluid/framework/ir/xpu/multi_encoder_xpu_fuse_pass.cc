@@ -1361,7 +1361,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
       auto q_cos_emb_shape = q_cos_embedding->Var()->GetShape();
       PADDLE_ENFORCE_GE(static_cast<int>(q_cos_emb_shape.size()),
                         2,
-                        phi::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The rank of q_cos_embedding should be greater "
                             "than or equal to 2"));
 
@@ -1369,7 +1369,7 @@ int MultiEncoderXPUFusePass::ApplySingleEncoderXPUFuse(
       PADDLE_ENFORCE_EQ(
           size_per_head,
           q_cos_emb_shape[q_cos_emb_shape.size() - 1],
-          phi::errors::InvalidArgument(
+          common::errors::InvalidArgument(
               "The last dimension of q_cos_embedding should be %d "
               "equal to size_per_head, but received %d.",
               size_per_head,

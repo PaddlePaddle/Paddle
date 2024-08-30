@@ -126,10 +126,10 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
                    static_cast<T>(0.f),
                    dkey);
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("backward of 'sparse.nn.functional.attention' "
-                                 "use 'cusparseCsrSetStridedBatch', which is "
-                                 "completed supported from CUDA 11.8"));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "backward of 'sparse.nn.functional.attention' "
+      "use 'cusparseCsrSetStridedBatch', which is "
+      "completed supported from CUDA 11.8"));
 #endif
 }
 

@@ -69,6 +69,33 @@ def group_case_for_parallel(rootPath):
     print(f"case_file: {case_file}")
 
     all_group_case = []
+    cinn_case_file_list = ['pr_ci_cinn_ut_list', 'pr_ci_cinn_gpu_ut_list']
+    for filename in cinn_case_file_list:
+        if not os.path.exists(f'{rootPath}/build/{filename}'):
+            continue
+        cinn_tests_file = open(f'{rootPath}/build/{filename}', 'r')
+        cinn_cases = cinn_tests_file.read().strip().split('\n')
+        cinn_tests_file.close()
+        new_cinn_cases_list = list(
+            set(all_need_run_cases).intersection(set(cinn_cases))
+        )
+        if len(new_cinn_cases_list) != 0:
+            all_group_case += new_cinn_cases_list
+            all_need_run_cases = list(
+                set(all_need_run_cases).difference(set(all_group_case))
+            )
+        cases = '$|^'.join(new_cinn_cases_list)
+        cases = f'^job$|^{cases}$'
+        cinn_f = open(f'{rootPath}/tools/new_{filename}', 'w')
+        cinn_f.write(cases + '\n')
+        cinn_f.close()
+        print(
+            f"new_{filename} is same as {filename}: ",
+            len(new_cinn_cases_list) == len(cinn_cases),
+            f"case num of new_{filename}is: ",
+            len(new_cinn_cases_list),
+        )
+
     for filename in parallel_case_file_list:
         fi = open(filename, 'r')
         new_f = open(f'{filename}_new', 'w')

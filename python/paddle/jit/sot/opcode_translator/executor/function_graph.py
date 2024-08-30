@@ -799,9 +799,9 @@ class FunctionGraph:
                     return retval
             return []
 
-        output_tensors: OrderedSet[
-            TensorVariable | SymbolicVariable
-        ] = OrderedSet()
+        output_tensors: OrderedSet[TensorVariable | SymbolicVariable] = (
+            OrderedSet()
+        )
         # Find Tensor Variables from outputs.
         for output in outputs:
             if isinstance(

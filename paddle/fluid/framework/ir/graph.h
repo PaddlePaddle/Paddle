@@ -160,8 +160,8 @@ class Graph {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Invalid attribute type of %s, expected: %s, received: %s.",
           attr_name,
-          platform::demangle(typeid(AttrType *).name()),  // NOLINT
-          platform::demangle(attrs_.at(attr_name).type().name())));
+          common::demangle(typeid(AttrType *).name()),  // NOLINT
+          common::demangle(attrs_.at(attr_name).type().name())));
     }
   }
 
