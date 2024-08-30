@@ -2845,7 +2845,6 @@ bool WeightOnlyLinearOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(3));
   const std::string &weight_dtype =
       op->attribute<pir::StrAttribute>("weight_dtype").AsString();
-  const int arch = op->attribute<pir::Int32Attribute>("arch").data();
   const int group_size =
       op->attribute<pir::Int32Attribute>("group_size").data();
 
