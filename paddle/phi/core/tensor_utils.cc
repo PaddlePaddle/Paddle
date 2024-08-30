@@ -101,7 +101,10 @@ void Copy(const Context& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-  CHECK(dst->layout() == src.layout());
+  PADDLE_ENFORCE_EQ(dst->layout(),
+                    src.layout(),
+                    common::errors::PreconditionNotMet(
+                        "dst's layout differs from src's layout"));
 
   if (src_place.GetType() == AllocationType::CPU &&
       dst_place.GetType() == AllocationType::CPU) {
