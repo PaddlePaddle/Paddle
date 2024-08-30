@@ -3119,6 +3119,7 @@ bool TransLayoutOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return TransposeOpInferSymbolicShape(op, infer_context);
 }
+
 bool SqueezeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   PADDLE_ENFORCE_EQ(
@@ -3131,7 +3132,7 @@ bool SqueezeOpInferSymbolicShape(
 
   auto x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  auto axes_shape_or_data =
+  auto axis_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
 
   std::vector<symbol::DimExpr> in_dims_sym;
@@ -3142,23 +3143,33 @@ bool SqueezeOpInferSymbolicShape(
   }
 
   std::vector<symbol::DimExpr> squeeze_dims_sym;
-  if (axes_shape_or_data.data().has_value()) {
-    squeeze_dims_sym = axes_shape_or_data.data().value();
-  } else {
-    squeeze_dims_sym = axes_shape_or_data.shape();
-  }
-
   std::vector<int> squeeze_dims;
-  for (auto squeeze_dim : squeeze_dims_sym) {
-    PADDLE_ENFORCE_EQ(
-        squeeze_dim.Has<std::int64_t>(),
-        true,
-        common::errors::InvalidArgument(
-            "in SqueezeOpInferSymbolicShape, axes must be known int type, "
-            "but got: %s",
-            symbol::ToString(squeeze_dim)));
-    squeeze_dims.emplace_back(
-        static_cast<int>(squeeze_dim.Get<std::int64_t>()));
+  const auto &attributes = op->attributes();
+  if (attributes.find("axis") != attributes.end()) {
+    std::vector<int64_t> axis =
+        op->attribute<paddle::dialect::IntArrayAttribute>("axis")
+            .data()
+            .GetData();
+    for (int i = 0; i < axis.size(); ++i) {
+      squeeze_dims.emplace_back(static_cast<int>(axis[i]));
+    }
+  } else {
+    if (axis_shape_or_data.data().has_value()) {
+      squeeze_dims_sym = axis_shape_or_data.data().value();
+    } else {
+      squeeze_dims_sym = axis_shape_or_data.shape();
+    }
+    for (auto squeeze_dim : squeeze_dims_sym) {
+      PADDLE_ENFORCE_EQ(
+          squeeze_dim.Has<std::int64_t>(),
+          true,
+          common::errors::InvalidArgument(
+              "in SqueezeOpInferSymbolicShape, axis must be known int type, "
+              "but got: %s",
+              symbol::ToString(squeeze_dim)));
+      squeeze_dims.emplace_back(
+          static_cast<int>(squeeze_dim.Get<std::int64_t>()));
+    }
   }
 
   // GetOutputSqueezeShape

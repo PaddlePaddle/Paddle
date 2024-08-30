@@ -4483,13 +4483,13 @@ void L1NormInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void SqueezeInferMeta(const MetaTensor& x,
-                      const IntArray& axes,
+                      const IntArray& axis,
                       MetaTensor* out,
                       MetaConfig config) {
   const auto& x_dims = x.dims();
-  if (!config.is_runtime && axes.FromTensor()) {
+  if (!config.is_runtime && axis.FromTensor()) {
     // compile time infershape, set all elements to -1.
-    int output_size = static_cast<int>(x.dims().size() - axes.GetData().size());
+    int output_size = static_cast<int>(x.dims().size() - axis.GetData().size());
     if (x.dims().size() == 0 && output_size == -1) {
       output_size = 0;
     }
@@ -4498,9 +4498,9 @@ void SqueezeInferMeta(const MetaTensor& x,
     out->set_dims(common::make_ddim(vec_out_dims));
   } else {
     std::vector<int32_t> tmp;
-    tmp.reserve(axes.GetData().size());
-    std::for_each(axes.GetData().begin(),
-                  axes.GetData().end(),
+    tmp.reserve(axis.GetData().size());
+    std::for_each(axis.GetData().begin(),
+                  axis.GetData().end(),
                   [&tmp](const int64_t& t) { tmp.push_back(t); });  // NOLINT
     auto out_dims = funcs::GetOutputSqueezeShape(tmp, x_dims, false);
     out->set_dims(out_dims);
