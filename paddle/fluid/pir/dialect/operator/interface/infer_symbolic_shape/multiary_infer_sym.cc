@@ -663,24 +663,24 @@ bool BilinearInterpOpInferSymbolicShape(
   return BicubicInterpOpInferSymbolicShape(op, infer_context);
 }
 
-bool BoxCoderInferSymbolicShape(const MetaTensor &prior_box,
-                                const MetaTensor &prior_box_var,
-                                const MetaTensor &target_box,
-                                const std::string &code_type,
-                                bool box_normalized,
-                                int axis,
-                                const std::vector<float> &variance,
-                                MetaTensor *output_box,
-                                MetaConfig config) {
+bool BoxCoderInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &prior_box_shape_or_data =
-      infer_context->GetShapeOrDataForValue(prior_box);
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &prior_box_dims =
       prior_box_shape_or_data.shape();
 
   const symbol::ShapeOrDataDimExprs &target_box_shape_or_data =
-      infer_context->GetShapeOrDataForValue(target_box);
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
   const std::vector<symbol::DimExpr> &target_box_dims =
       target_box_shape_or_data.shape();
+
+  const std::string &code_type = op->GetAttr<std::string>("code_type");
+  bool box_normalized = op->GetAttr<bool>("box_normalized");
+  int axis = op->GetAttr<int>("axis");
+  const std::vector<float> &variance =
+      op->GetAttr<std::vector<float>>("variance");
+  pir::MetaTensor *output_box = infer_context->GetOutputTensor(0);
 
   PADDLE_ENFORCE_EQ(prior_box_dims.size(),
                     2,
@@ -695,9 +695,9 @@ bool BoxCoderInferSymbolicShape(const MetaTensor &prior_box,
                         "operator must be 4. But received dimension = %d",
                         prior_box_dims[1]));
 
-  if (prior_box_var) {
+  if (op->operand_source(1)) {
     const symbol::ShapeOrDataDimExprs &prior_box_var_shape_or_data =
-        infer_context->GetShapeOrDataForValue(prior_box_var);
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
     const std::vector<symbol::DimExpr> &prior_box_var_dims =
         prior_box_var_shape_or_data.shape();
 
@@ -770,11 +770,11 @@ bool BoxCoderInferSymbolicShape(const MetaTensor &prior_box,
 
   if (box_code_type == phi::funcs::BoxCodeType::kDecodeCenterSize &&
       axis == 1) {
-    output_box->share_lod(prior_box);
+    output_box->share_lod(op->operand_source(0));
   } else {
-    output_box->share_lod(target_box);
+    output_box->share_lod(op->operand_source(2));
   }
-  output_box->set_dtype(target_box.dtype());
+  output_box->set_dtype(op->operand_source(2)->dtype());
 
   return true;
 }
