@@ -1790,8 +1790,9 @@ bool MaskedMultiheadAttentionOpInferSymbolicShape(
       (x_shape[x_shape.size() - 1] / dim_head - k_num_head - v_num_head);
   std::vector<symbol::DimExpr> out_dims = {bsz, num_head * dim_head};
 
-  infer_context->SetShapeOrDataForValue(op->result(0),
-                                        symbol::ShapeOrDataDimExprs{out_dims});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
 
   infer_context->SetShapeOrDataForValue(op->result(1), cache_kv_shape);
 
