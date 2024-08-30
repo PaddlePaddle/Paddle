@@ -749,7 +749,6 @@ def forward_complete_op_role(main_program):
 def _split_program_into_forward_backward_optimize(
     main_program, enable_send_recv_overlap=False
 ):
-    print(main_program)
     forward_complete_op_role(main_program)
     complete_ops = main_program.global_block().ops
 
