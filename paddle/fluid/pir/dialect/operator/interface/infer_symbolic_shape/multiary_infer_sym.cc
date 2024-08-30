@@ -2041,6 +2041,76 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
 
   return true;
 }
+
+bool NllLossOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const symbol::ShapeOrDataDimExprs &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &label_shape = label_shape_or_data.shape();
+  PADDLE_ENFORCE_EQ(x_shape.size() == 2 || x_shape.size() == 4,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The tensor rank of Input(X) must be 2 or 4."));
+  PADDLE_ENFORCE_EQ(
+      x_shape[0],
+      label_shape[0],
+      common::errors::InvalidArgument(
+          "ShapeError: Expected input batch_size to match label batch_size,"
+          "But received: the Input(x) batch_size is [%s], the Input(label) "
+          " batch_size is [%s].",
+          x_shape[0],
+          label_shape[0]));
+  if (op->operand_source(2)) {
+    const symbol::ShapeOrDataDimExprs &w_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const std::vector<symbol::DimExpr> &w_shape = w_shape_or_data.shape();
+    PADDLE_ENFORCE_EQ(w_shape.size(),
+                      1,
+                      common::errors::InvalidArgument(
+                          "Input(Weight) should be a 1D tensor."));
+    PADDLE_ENFORCE_EQ(
+        x_shape[1],
+        w_shape[0],
+        common::errors::InvalidArgument(
+            "Expected input tensor Weight's size should equal "
+            "to the first dimension of the input tensor X. But received "
+            "Weight's "
+            "size is %d, the first dimension of input X is %d",
+            w_shape[0],
+            x_shape[1]));
+  }
+
+  const std::string &reduction =
+      op->attribute<pir::StrAttribute>("reduction").AsString();
+
+  if (x_shape.size() == 2) {
+    if (reduction == "none") {
+    } else {
+    }
+  } else if (x_shape.size() == 4) {
+    PADDLE_ENFORCE_EQ(label_shape.size(),
+                      3,
+                      common::errors::InvalidArgument(
+                          "Expected Input(Label) dimensions=3, received %d.",
+                          label_shape.size()));
+    auto input0 = x_shape[0];
+    auto input2 = x_shape[2];
+    auto input3 = x_shape[3];
+    auto label0 = label_shape[0];
+    auto label1 = label_shape[1];
+    auto label2 = label_shape[2];
+    PADDLE_ENFORCE_EQ(
+        input0 == label0 && input2 == label1 && input3 == label2,
+        true,
+        phi::errors::InvalidArgument("Input(X) tensor shape should "
+                                     "match to Input(Label) tensor "
+                                     "shape."));
+  }
+}
+
 bool RoiPoolOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =
