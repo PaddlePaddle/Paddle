@@ -1788,19 +1788,25 @@ bool MaskedMultiheadAttentionOpInferSymbolicShape(
   symbol::DimExpr v_num_head = k_num_head;
   symbol::DimExpr num_head =
       (x_shape[x_shape.size() - 1] / dim_head - k_num_head - v_num_head);
-  std::vector<symbol::DimExpr> out_dims = {bsz, num_head * dim_head};
+  std::vector<symbol::DimExpr> out_shape = {bsz, num_head * dim_head};
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
 
-  infer_context->SetShapeOrDataForValue(op->result(1), cache_kv_shape);
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(cache_kv_shape)});
 
   if (!beam_cache_offset_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
     const std::vector<symbol::DimExpr> &beam_cache_offset_shape =
         beam_cache_offset_shape_or_data.shape();
-    infer_context->SetShapeOrDataForValue(op->result(2),
-                                          beam_cache_offset_shape);
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(beam_cache_offset_shape)});
   }
 
   return true;
