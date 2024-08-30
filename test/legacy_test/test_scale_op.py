@@ -30,7 +30,7 @@ class TestScaleOp(OpTest):
     def setUp(self):
         self.op_type = "scale"
         self.python_api = paddle.scale
-        self.dtype = np.float32
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
         self.attrs = {'scale': -2.3}

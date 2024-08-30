@@ -1809,7 +1809,7 @@ class TestRsqrt(TestActivation):
         self.init_dtype()
         self.init_shape()
         self.if_enable_cinn()
-        self.dtype = np.float32
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         out = 1.0 / np.sqrt(x)
@@ -1993,7 +1993,7 @@ class TestCos(TestActivation):
         self.init_dtype()
         self.init_shape()
         self.if_enable_cinn()
-        self.dtype = np.float32
+        self.dtype = np.float32 if core.is_compiled_with_musa() else np.float64
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         if self.dtype == np.complex64 or self.dtype == np.complex128:
@@ -2026,13 +2026,7 @@ class TestCos(TestActivation):
                 check_pir=True,
             )
         else:
-            self.check_grad(
-                ['X'],
-                'Out',
-                max_relative_error=0.010,
-                check_prim=True,
-                check_pir=True,
-            )
+            self.check_grad(['X'], 'Out', max_relative_error=0.01, check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass
