@@ -72,6 +72,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_pipeline_scheduler_zb_deprecated)
   set_tests_properties(test_pipeline_scheduler_zb_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pass_recompute_deprecated MODULES
+                  test_pass_recompute_deprecated)
+  set_tests_properties(test_pass_recompute_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
 endif()
 
 set_pir_tests_properties()
