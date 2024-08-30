@@ -717,8 +717,7 @@ bool BoxCoderInferSymbolicShape(pir::Operation *op,
             "when the rank is 2."));
   }
 
-  auto box_code_type = phi::funcs::GetBoxCodeType(code_type);
-  if (box_code_type == phi::funcs::BoxCodeType::kEncodeCenterSize) {
+  if (code_type == "encode_center_size") {
     PADDLE_ENFORCE_EQ(target_box_dims.size(),
                       2,
                       phi::errors::InvalidArgument(
@@ -735,7 +734,7 @@ bool BoxCoderInferSymbolicShape(pir::Operation *op,
         op->result(0),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
             {target_box_dims[0], prior_box_dims[0], 4})});
-  } else if (box_code_type == phi::funcs::BoxCodeType::kDecodeCenterSize) {
+  } else if (code_type == "decode_center_size") {
     PADDLE_ENFORCE_EQ(target_box_dims.size(),
                       3,
                       phi::errors::InvalidArgument(
@@ -774,14 +773,6 @@ bool BoxCoderInferSymbolicShape(pir::Operation *op,
         symbol::ShapeOrDataDimExprs{
             symbol::TensorShapeOrDataDimExprs(target_box_dims)});
   }
-
-  if (box_code_type == phi::funcs::BoxCodeType::kDecodeCenterSize &&
-      axis == 1) {
-    infer_context->ShareLod(op->operand_source(0), op->result(0));
-  } else {
-    infer_context->ShareLod(op->operand_source(2), op->result(0));
-  }
-  infer_context->SetDtype(op->result(0), op->operand_source(2)->dtype());
 
   return true;
 }
