@@ -2889,6 +2889,8 @@ bool WeightedSampleNeighborsOpInferSymbolicShape(
         op->result(2),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
             {infer_context->GetNextSymName()})});
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(2));
   }
   return true;
 }
