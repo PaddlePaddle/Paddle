@@ -5102,7 +5102,7 @@
     data_type : x
   optional : bias
   backward : weight_only_linear_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : weight_quantize
   args : (Tensor x, str algo = "weight_only_int8", int arch = 80, int group_size = -1)
