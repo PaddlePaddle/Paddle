@@ -2852,7 +2852,7 @@ bool WeightedSampleNeighborsOpInferSymbolicShape(
           phi::errors::InvalidArgument(
               "The %s should be 1D, when it is not 2D, but we get %d",
               tensor_name,
-              dims.size()));
+              input_shape.size()));
     }
   };
 
