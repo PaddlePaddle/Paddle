@@ -2848,20 +2848,21 @@ bool WeightOnlyLinearOpInferSymbolicShape(
   const int group_size =
       op->attribute<pir::Int32Attribute>("group_size").data();
 
-  PADDLE_ENFORCE((group_size == -1 || group_size == 64 || group_size == 128),
-                 errors::InvalidArgument("group_size must be -1, 64 or 128."));
+  PADDLE_ENFORCE(
+      (group_size == -1 || group_size == 64 || group_size == 128),
+      common::errors::InvalidArgument("group_size must be -1, 64 or 128."));
 
   auto weight_scale_shape = weight_scale_shape_or_data.shape();
   auto x_shape = x_shape_or_data.shape();
   auto weight_shape = weight_shape_or_data.shape();
   auto n = group_size == -1 ? weight_scale_shape[0] : weight_scale_shape[1];
-  PADDLE_ENFORCE(
-      weight_dtype == "int8" || weight_dtype == "int4",
-      errors::InvalidArgument("quant_method must be 'int8' or 'int4'."));
-  PADDLE_ENFORCE_EQ(
-      weight_shape.size(),
-      2UL,
-      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+  PADDLE_ENFORCE(weight_dtype == "int8" || weight_dtype == "int4",
+                 common::errors::InvalidArgument(
+                     "quant_method must be 'int8' or 'int4'."));
+  PADDLE_ENFORCE_EQ(weight_shape.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "The input(weight) must be a 2D Tensor."));
   PADDLE_ENFORCE_EQ(
       weight_shape[0] % 16,
       0,
@@ -2877,7 +2878,7 @@ bool WeightOnlyLinearOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       x_shape[x_shape.size() - 1],
       weight_shape[1],
-      errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "Input(X) dim[-1] and Input(Weight) dim[1] should be equal."
           "But received Input(X) dim[-1](%s) != Input(Weight) dim[1](%s)",
           x_shape[x_shape.size() - 1],
@@ -2887,26 +2888,26 @@ bool WeightOnlyLinearOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(
         bias_shape.size(),
         1UL,
-        errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The size of Input(Bias)'s dimension should equal to 1UL.",
             bias_shape.size()));
   }
 
   if (group_size == -1) {
-    PADDLE_ENFORCE_EQ(
-        weight_scale_shape.size(),
-        1UL,
-        errors::InvalidArgument("The input(weight_scale) must be a 1D Tensor."
-                                "in per-channel mode."));
+    PADDLE_ENFORCE_EQ(weight_scale_shape.size(),
+                      1UL,
+                      common::errors::InvalidArgument(
+                          "The input(weight_scale) must be a 1D Tensor."
+                          "in per-channel mode."));
   } else {
-    PADDLE_ENFORCE_EQ(
-        weight_scale_shape.size(),
-        2UL,
-        errors::InvalidArgument("The input(weight_scale) must be a 2D Tensor"
-                                " in groupwise mode."));
+    PADDLE_ENFORCE_EQ(weight_scale_shape.size(),
+                      2UL,
+                      common::errors::InvalidArgument(
+                          "The input(weight_scale) must be a 2D Tensor"
+                          " in groupwise mode."));
     PADDLE_ENFORCE_EQ(weight_scale_shape[0],
                       (weight_shape[1] + (group_size - 1)) / group_size,
-                      errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The input(weight_scale) dim[0] must be equal "
                           "to Input(weight) dim[1] / group_size"
                           "But receive %d and %d",
