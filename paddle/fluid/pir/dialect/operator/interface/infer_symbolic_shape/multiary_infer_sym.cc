@@ -1776,7 +1776,7 @@ bool MaskedMultiheadAttentionOpInferSymbolicShape(
       op->attribute<pir::FloatAttribute>("quant_min_bound").data();
 
   PADDLE_ENFORCE_EQ(
-      cache_kv_dims.size(),
+      cache_kv_shape.size(),
       5,
       phi::errors::InvalidArgument("The cache_kv must be 5 dims."));
   infer_context->AddEqualCstr(cache_kv_shape[0], symbol::DimExpr(2));
@@ -1786,9 +1786,8 @@ bool MaskedMultiheadAttentionOpInferSymbolicShape(
   symbol::DimExpr dim_head = cache_kv_shape[4];
   symbol::DimExpr k_num_head = cache_kv_shape[2];
   symbol::DimExpr v_num_head = k_num_head;
-  int num_head =
-      (x_shape[x_shape.size() - 1] / dim_head - k_num_head - v_num_head)
-          .AsInt();
+  symbol::DimExpr num_head =
+      (x_shape[x_shape.size() - 1] / dim_head - k_num_head - v_num_head);
   std::vector<symbol::DimExpr> out_dims = {bsz, num_head * dim_head};
 
   infer_context->SetShapeOrDataForValue(op->result(0),
