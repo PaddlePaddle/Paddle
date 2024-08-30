@@ -36,4 +36,4 @@ def non_zero_converter(network, paddle_op, inputs):
     cast_layer = network.add_cast(input_tensor, trt.float32)
     non_zero_layer = network.add_non_zero(cast_layer.get_output(0))
 
-    return non_zero_layer
+    return non_zero_layer.get_output(0)

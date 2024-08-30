@@ -36,15 +36,15 @@ _logger = get_logger(
 def full_int_array_converter(network, paddle_op, inputs):
     shape = paddle_op.attrs()["value"]
     shape_weight = trt.Weights(np.array(shape, dtype=np.int32))
-    full_int_array_tensor = network.add_constant([len(shape)], shape_weight)
-    return full_int_array_tensor
+    full_int_array_layer = network.add_constant([len(shape)], shape_weight)
+    return full_int_array_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.full", trt_version="8.x")
 def full_converter(network, paddle_op, inputs):
     shape = paddle_op.attrs()["shape"]
     value = paddle_op.attrs().get("value", 1.0)  # 默认值为1.0
-    full_tensor = network.add_constant(
+    full_layer = network.add_constant(
         shape, np.full(shape, value, dtype=np.float32)
     )
-    return full_tensor
+    return full_layer.get_output(0)

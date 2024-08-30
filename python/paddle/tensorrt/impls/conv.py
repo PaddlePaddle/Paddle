@@ -51,4 +51,4 @@ def conv2d_converter(network, paddle_op, inputs):
     conv_layer.dilation_nd = dilation
     conv_layer.num_groups = groups
 
-    return conv_layer
+    return conv_layer.get_output(0)

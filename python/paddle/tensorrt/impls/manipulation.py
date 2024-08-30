@@ -59,7 +59,7 @@ def reshape_converter(network, paddle_op, inputs):
     except Exception:
         shuffle_layer.set_input(1, shape_tensor)
 
-    return shuffle_layer
+    return shuffle_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.gather_nd", trt_version="8.x")
@@ -71,7 +71,7 @@ def gather_nd_converter(network, paddle_op, inputs):
     non_zero_layer = network.add_gather_v2(
         input_tensor, shuffle_layer.get_output(0), trt.GatherMode.ND
     )
-    return non_zero_layer
+    return non_zero_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.flatten", trt_version="8.x")
@@ -155,7 +155,7 @@ def flatten_converter(network, paddle_op, inputs):
         final_shape_layer.name = f"{input_val.name}_final_shape"
         flatten_layer.set_input(1, final_shape_layer.get_output(0))
 
-    return flatten_layer
+    return flatten_layer.get_output(0)
 
 
 # In the converter, pd_op.concat has three inputs, because builtin.combine has two inputs.
@@ -171,7 +171,7 @@ def concat_converter(network, paddle_op, inputs):
         axis = len(input_tensors[0].shape) + axis
     concat_layer.axis = axis
 
-    return concat_layer
+    return concat_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.unsqueeze", trt_version="8.x")
@@ -191,7 +191,7 @@ def unsqueeze_converter(network, paddle_op, inputs):
     layer.reshape_dims = (
         tuple(input_val.shape)[:axis] + (1,) + tuple(input_val.shape)[axis:]
     )
-    return layer
+    return layer.get_output(0)
 
 
 @converter_registry.register("pd_op.squeeze", trt_version="8.x")
@@ -216,4 +216,4 @@ def squeeze_converter(network, paddle_op, inputs):
 
     layer = network.add_shuffle(input_val)
     layer.reshape_dims = tuple(output_shape)
-    return layer
+    return layer.get_output(0)

@@ -37,8 +37,8 @@ from paddle.tensorrt.converter_utils import (
 
 @converter_registry.register("pd_op.relu", trt_version="8.x")
 def relu_converter(network, paddle_op, inputs):
-    out = network.add_activation(inputs[0], trt.ActivationType.RELU)
-    return out
+    relu_layer = network.add_activation(inputs[0], trt.ActivationType.RELU)
+    return relu_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.softmax", trt_version="8.x")
@@ -49,7 +49,7 @@ def softmax_converter(network, paddle_op, inputs):
 
     softmax_layer = network.add_softmax(inputs[0])
     softmax_layer.axes = 1 << axis
-    return softmax_layer
+    return softmax_layer.get_output(0)
 
 
 @converter_registry.register("pd_op.gelu", trt_version="8.x")
@@ -72,4 +72,4 @@ def gelu_converter(network, paddle_op, inputs):
     plugin = get_trt_plugin(plugin_name, filed_collection, plugin_version)
 
     layer = network.add_plugin_v2([input_val], plugin)
-    return layer
+    return layer.get_output(0)

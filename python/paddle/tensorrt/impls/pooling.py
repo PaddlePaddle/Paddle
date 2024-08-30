@@ -97,4 +97,4 @@ def pool2d_converter(network, paddle_op, inputs):
         if ceil_mode:
             pool_layer.padding_mode = trt.PaddingMode.EXPLICIT_ROUND_UP
 
-    return pool_layer
+    return pool_layer.get_output(0)

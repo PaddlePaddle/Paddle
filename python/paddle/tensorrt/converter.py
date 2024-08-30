@@ -208,12 +208,12 @@ class PaddleToTensorRTConverter:
                             f'{source_id} not found in value_to_trt_tensor'
                         )
 
-            layer = self.convert(network, op, operands)
+            trt_outs = self.convert(network, op, operands)
 
             for idx, result in enumerate(op.results()):
                 # TODO In some cases, the output index (idx) of a Paddle OP may not necessarily be the same as the output index of TensorRT
-                if idx < layer.num_outputs:
-                    value_to_trt_tensor[result.id] = layer.get_output(idx)
+                if idx < len(trt_outs):
+                    value_to_trt_tensor[result.id] = trt_outs[idx]
                 else:
                     value_to_trt_tensor[result.id] = None
         out_shapes = []
@@ -315,8 +315,12 @@ class PaddleToTensorRTConverter:
                 raise NotImplementedError(
                     f"Converter for {op_name} not implemented."
                 )
-            out = converter_func(network, paddle_op, inputs)
-        return out
+            outs = converter_func(network, paddle_op, inputs)
+        if isinstance(outs, tuple):
+            return outs
+        else:
+            return tuple(outs)
+        return outs
 
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:

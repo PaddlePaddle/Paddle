@@ -60,7 +60,7 @@ def matmul_converter(network, paddle_op, inputs):
     out = network.add_matrix_multiply(
         lhs_val, self_matrix_op, rhs_val, other_matrix_op
     )
-    return out
+    return out.get_output(0)
 
 
 @converter_registry.register("pd_op.transpose", trt_version="8.x")
@@ -68,4 +68,4 @@ def transpose_converter(network, paddle_op, inputs):
     perm = paddle_op.attrs()["perm"]
     transposed_tensor = network.add_shuffle(inputs[0])
     transposed_tensor.second_transpose = perm
-    return transposed_tensor
+    return transposed_tensor.get_output(0)

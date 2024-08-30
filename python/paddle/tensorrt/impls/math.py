@@ -62,7 +62,7 @@ def add_converter(network, paddle_op, inputs):
     out = network.add_elementwise(
         lhs_val, rhs_val, trt.ElementWiseOperation.SUM
     )
-    return out
+    return out.get_output(0)
 
 
 @converter_registry.register("pd_op.scale", trt_version="8.x")
@@ -83,4 +83,4 @@ def scale_converter(network, paddle_op, inputs):
         scale=scale_weight,
         power=power_weight,
     )
-    return scale_layer
+    return scale_layer.get_output(0)

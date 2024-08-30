@@ -77,7 +77,7 @@ def layernorm_converter(network, paddle_op, inputs):
     layer_norm.epsilon = epsilon
     layer_norm.compute_precision = trt.float32
 
-    return layer_norm
+    return layer_norm.get_output(0)
 
 
 @converter_registry.register("pd_op.batch_norm", trt_version="8.x")
@@ -129,4 +129,4 @@ def batch_norm_converter(network, paddle_op, inputs):
         reshape_output_layer.reshape_dims = tuple(output_shape)
         batch_norm_layer = reshape_output_layer
 
-    return batch_norm_layer
+    return batch_norm_layer.get_output(0)
