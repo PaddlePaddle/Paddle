@@ -2840,11 +2840,57 @@ bool WarprnntOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool WeightedSampleNeighborsOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool WeightedSampleNeighborsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  auto GSNShapeCheck = [](const ExprVec &input_shape, std::string tensor_name) {
+    if (input_shape.size() == 2) {
+      infer_context->AddEqualCstr(input_shape[1], symbol::DimExpr(1));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          input_shape.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  const auto &row_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &col_ptr_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &edge_weight_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
+  const auto &eids_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4)).shape();
+  int sample_size = op->attribute<pir::Int32Attribute>("sample_size").data();
+  bool return_eids = op->attribute<pir::BoolAttribute>("return_eids").data();
+
+  GSNShapeCheck(row_shape, "row");
+  GSNShapeCheck(col_ptr_shape, "col_ptr");
+  GSNShapeCheck(edge_weight_shape, "edge_weight");
+  GSNShapeCheck(x_shape, "input_nodes");
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {infer_context->GetNextSymName()})});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {infer_context->GetNextSymName()})});
+  if (return_eids) {
+    GSNShapeCheck(eids_shape, "eids");
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+            {infer_context->GetNextSymName()})});
+  }
+  return true;
+}
 
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {
