@@ -1454,7 +1454,7 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
  * operation.
  */
 PHI_DEFINE_EXPORTED_bool(dataloader_use_file_descriptor,
-                         false,
+                         true,
                          "Use file descriptor in mmap_allocator.");
 
 /**
