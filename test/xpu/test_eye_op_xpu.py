@@ -24,6 +24,7 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 
+
 class XPUTestEyeOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'eye'
@@ -50,7 +51,7 @@ class XPUTestEyeOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             place = paddle.XPUPlace(0)
-            self.check_output_with_place(place, atol=0.01)
+            self.check_output_with_place(place)
 
     class TestXPUEyeOp1(TestXPUEyeOp):
         def init_shape(self):
