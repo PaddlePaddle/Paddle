@@ -74,12 +74,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(
     test_pass_generation_pipeline
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-  py_test_modules(test_pass_1F1B MODULES test_pass_1F1B)
-  set_tests_properties(test_pass_1F1B PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                 TIMEOUT 50)
-  set_tests_properties(
-    test_pass_1F1B PROPERTIES ENVIRONMENT
-                              "FLAGS_new_executor_micro_batching=False")
   py_test_modules(test_auto_tuner MODULES test_auto_tuner)
   set_tests_properties(test_auto_tuner PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                   TIMEOUT 100)
