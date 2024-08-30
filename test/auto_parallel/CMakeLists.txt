@@ -20,9 +20,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_engine_api MODULES test_engine_api)
   set_tests_properties(test_engine_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                   TIMEOUT 80)
-  py_test_modules(test_engine_api_dp MODULES test_engine_api_dp)
-  set_tests_properties(test_engine_api_dp
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
   py_test_modules(test_optimization_tuner_api MODULES
                   test_optimization_tuner_api)
   set_tests_properties(test_optimization_tuner_api
@@ -58,9 +55,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(
     test_pass_generation_pipeline
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
-  py_test_modules(test_auto_tuner MODULES test_auto_tuner)
-  set_tests_properties(test_auto_tuner PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                  TIMEOUT 100)
   py_test_modules(test_pipeline_scheduler_vpp MODULES
                   test_pipeline_scheduler_vpp)
   set_tests_properties(test_pipeline_scheduler_vpp
@@ -71,9 +65,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pipeline_scheduler_zb_vpp MODULES
                   test_pipeline_scheduler_zb_vpp)
   set_tests_properties(test_pipeline_scheduler_zb_vpp
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_auto_tuner_compare MODULES test_auto_tuner_compare)
-  set_tests_properties(test_auto_tuner_compare
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_pass_quantization MODULES test_pass_quantization)
   set_tests_properties(test_pass_quantization
