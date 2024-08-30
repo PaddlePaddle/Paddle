@@ -19,8 +19,8 @@ import shlex  # noqa: F401
 import sys
 import unittest
 
-sys.path.append("../distributed_passes")
-from dist_pass_test_base import remove_path_if_exists
+sys.path.append("../deprecated/distributed_passes")
+from dist_pass_test_base_deprecated import remove_path_if_exists
 
 
 class FlPsTest(unittest.TestCase):

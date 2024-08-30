@@ -17,7 +17,9 @@ import shlex
 import sys
 import unittest
 
-from dist_pass_test_base import (  # noqa: F401
+sys.path.append("../deprecated/distributed_passes")
+
+from dist_pass_test_base_deprecated import (  # noqa: F401
     prepare_python_path_and_return_module,
     remove_path_if_exists,
 )

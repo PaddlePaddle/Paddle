@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from dist_pass_test_base import DistPassTestBase
+from dist_pass_test_base_deprecated import DistPassTestBase
 
 import paddle
 from paddle import nn
@@ -26,7 +26,7 @@ from paddle.distributed.passes import PassManager, new_pass
 paddle.enable_static()
 
 
-class DemoNet(nn.Layer):
+class BatchNormActNet(nn.Layer):
     def __init__(self):
         super().__init__()
 
@@ -42,7 +42,7 @@ class DemoNet(nn.Layer):
         return out
 
 
-class TestFuseAdamPass(DistPassTestBase):
+class TestFuseBatchNormActPass(DistPassTestBase):
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
@@ -52,7 +52,7 @@ class TestFuseAdamPass(DistPassTestBase):
             shape=[batch_size, *image_shape], dtype='float32', name='image'
         )
 
-        model = DemoNet()
+        model = BatchNormActNet()
         pred_out = model(image)
         loss = paddle.mean(pred_out)
         optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
@@ -60,6 +60,11 @@ class TestFuseAdamPass(DistPassTestBase):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.fuse_all_reduce_ops = False
         dist_strategy.without_graph_optimization = True
+        dist_strategy.amp = True
+        dist_strategy.amp_configs = {
+            "init_loss_scaling": 32768,
+            "use_dynamic_loss_scaling": True,
+        }
         fleet.init(is_collective=True, strategy=dist_strategy)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(loss)
@@ -78,25 +83,17 @@ class TestFuseAdamPass(DistPassTestBase):
         return main_program, startup_program, [image], [loss], reader
 
     def apply_passes(self, main_prog, startup_prog):
-        pass_manager = PassManager([new_pass("fuse_optimizer")])
+        pass_manager = PassManager([new_pass("fuse_bn_act")])
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 
         op_type = []
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
-            if op.type == "adam":
-                self.assertTrue(
-                    "@FUSEDVAR@_adam_Param_batch_norm2d_0.b_0"
-                    in op.input("Param")
-                )
-                self.assertTrue(
-                    "@FUSEDVAR@_adam_Grad_batch_norm2d_0.b_0@GRAD"
-                    in op.input("Grad")
-                )
-        self.assertTrue("coalesce_tensor" in op_type)
+        self.assertTrue("fused_batch_norm_act" in op_type)
+        self.assertTrue("fused_batch_norm_act_grad" in op_type)
 
-    def test_fuse_adam(self):
+    def test_fuse_bn_act(self):
         self.check_main()
 
 

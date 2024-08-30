@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from dist_pass_test_base import DistPassTestBase
+from dist_pass_test_base_deprecated import DistPassTestBase
 
 import paddle
 from paddle import nn
@@ -55,7 +55,7 @@ class TestFuseAdamPass(DistPassTestBase):
         model = DemoNet()
         pred_out = model(image)
         loss = paddle.mean(pred_out)
-        optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
+        optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
 
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.fuse_all_reduce_ops = False
@@ -85,13 +85,13 @@ class TestFuseAdamPass(DistPassTestBase):
         op_type = []
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
-            if op.type == "sgd":
+            if op.type == "adam":
                 self.assertTrue(
-                    "@FUSEDVAR@_sgd_Param_batch_norm2d_0.b_0"
+                    "@FUSEDVAR@_adam_Param_batch_norm2d_0.b_0"
                     in op.input("Param")
                 )
                 self.assertTrue(
-                    "@FUSEDVAR@_sgd_Grad_batch_norm2d_0.b_0@GRAD"
+                    "@FUSEDVAR@_adam_Grad_batch_norm2d_0.b_0@GRAD"
                     in op.input("Grad")
                 )
         self.assertTrue("coalesce_tensor" in op_type)

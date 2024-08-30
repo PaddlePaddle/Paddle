@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from dist_pass_test_base import DistPassTestBase
+from dist_pass_test_base_deprecated import DistPassTestBase
 
 import paddle
 from paddle import nn

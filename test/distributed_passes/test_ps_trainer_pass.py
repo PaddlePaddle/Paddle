@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
-sys.path.append("../../distributed_passes")
 from ps_pass_test_base import PsPassTestBase, remove_path_if_exists
 
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir

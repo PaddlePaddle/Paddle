@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from dist_pass_test_base import DistPassTestBase
+from dist_pass_test_base_deprecated import DistPassTestBase
 
 import paddle
 from paddle import nn
@@ -26,23 +26,27 @@ from paddle.distributed.passes import PassManager, new_pass
 paddle.enable_static()
 
 
-class BatchNormActNet(nn.Layer):
+class BatchNormAddActNet(nn.Layer):
     def __init__(self):
         super().__init__()
 
         self.conv1 = nn.Conv2D(3, 8, (3, 3), data_format="NHWC")
+        self.conv2 = nn.Conv2D(3, 8, (3, 3), data_format="NHWC")
         self.bn1 = nn.BatchNorm2D(8, data_format="NHWC")
+        self.bn2 = nn.BatchNorm2D(8, data_format="NHWC")
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        out = self.conv1(x)
-        out = self.bn1(out)
+        y = self.conv1(x)
+        y = self.bn1(y)
+        out = self.conv2(x)
+        out = self.bn2(out) + y
         out = self.relu(out)
         out = paddle.flatten(out, 1)
         return out
 
 
-class TestFuseBatchNormActPass(DistPassTestBase):
+class TestFuseBatchNormAddActPass(DistPassTestBase):
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
@@ -52,7 +56,7 @@ class TestFuseBatchNormActPass(DistPassTestBase):
             shape=[batch_size, *image_shape], dtype='float32', name='image'
         )
 
-        model = BatchNormActNet()
+        model = BatchNormAddActNet()
         pred_out = model(image)
         loss = paddle.mean(pred_out)
         optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
@@ -83,17 +87,17 @@ class TestFuseBatchNormActPass(DistPassTestBase):
         return main_program, startup_program, [image], [loss], reader
 
     def apply_passes(self, main_prog, startup_prog):
-        pass_manager = PassManager([new_pass("fuse_bn_act")])
+        pass_manager = PassManager([new_pass("fuse_bn_add_act")])
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 
         op_type = []
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
-        self.assertTrue("fused_batch_norm_act" in op_type)
-        self.assertTrue("fused_batch_norm_act_grad" in op_type)
+        self.assertTrue("fused_bn_add_activation" in op_type)
+        self.assertTrue("fused_bn_add_activation_grad" in op_type)
 
-    def test_fuse_bn_act(self):
+    def test_fuse_bn_add_act(self):
         self.check_main()
 
 

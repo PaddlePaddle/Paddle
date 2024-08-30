@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from dist_pass_test_base import DistPassTestBase
+from dist_pass_test_base_deprecated import DistPassTestBase
 
 import paddle
 from paddle import nn
@@ -26,27 +26,23 @@ from paddle.distributed.passes import PassManager, new_pass
 paddle.enable_static()
 
 
-class BatchNormAddActNet(nn.Layer):
+class DemoNet(nn.Layer):
     def __init__(self):
         super().__init__()
 
         self.conv1 = nn.Conv2D(3, 8, (3, 3), data_format="NHWC")
-        self.conv2 = nn.Conv2D(3, 8, (3, 3), data_format="NHWC")
         self.bn1 = nn.BatchNorm2D(8, data_format="NHWC")
-        self.bn2 = nn.BatchNorm2D(8, data_format="NHWC")
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        y = self.conv1(x)
-        y = self.bn1(y)
-        out = self.conv2(x)
-        out = self.bn2(out) + y
+        out = self.conv1(x)
+        out = self.bn1(out)
         out = self.relu(out)
         out = paddle.flatten(out, 1)
         return out
 
 
-class TestFuseBatchNormAddActPass(DistPassTestBase):
+class TestFuseAdamPass(DistPassTestBase):
     def init(self):
         self.atol = 1e-4
         self.rtol = 1e-4
@@ -56,19 +52,14 @@ class TestFuseBatchNormAddActPass(DistPassTestBase):
             shape=[batch_size, *image_shape], dtype='float32', name='image'
         )
 
-        model = BatchNormAddActNet()
+        model = DemoNet()
         pred_out = model(image)
         loss = paddle.mean(pred_out)
-        optimizer = paddle.optimizer.Adam(learning_rate=1e-3)
+        optimizer = paddle.optimizer.Momentum(learning_rate=1e-3)
 
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.fuse_all_reduce_ops = False
         dist_strategy.without_graph_optimization = True
-        dist_strategy.amp = True
-        dist_strategy.amp_configs = {
-            "init_loss_scaling": 32768,
-            "use_dynamic_loss_scaling": True,
-        }
         fleet.init(is_collective=True, strategy=dist_strategy)
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(loss)
@@ -87,17 +78,25 @@ class TestFuseBatchNormAddActPass(DistPassTestBase):
         return main_program, startup_program, [image], [loss], reader
 
     def apply_passes(self, main_prog, startup_prog):
-        pass_manager = PassManager([new_pass("fuse_bn_add_act")])
+        pass_manager = PassManager([new_pass("fuse_optimizer")])
         pass_manager.apply([main_prog], [startup_prog])
         print(pass_manager.names)
 
         op_type = []
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
-        self.assertTrue("fused_bn_add_activation" in op_type)
-        self.assertTrue("fused_bn_add_activation_grad" in op_type)
+            if op.type == "momentum":
+                self.assertTrue(
+                    "@FUSEDVAR@_momentum_Param_batch_norm2d_0.b_0"
+                    in op.input("Param")
+                )
+                self.assertTrue(
+                    "@FUSEDVAR@_momentum_Grad_batch_norm2d_0.b_0@GRAD"
+                    in op.input("Grad")
+                )
+        self.assertTrue("coalesce_tensor" in op_type)
 
-    def test_fuse_bn_add_act(self):
+    def test_fuse_adam(self):
         self.check_main()
 
 

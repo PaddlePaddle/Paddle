@@ -221,7 +221,7 @@ class DistPassTestBase(unittest.TestCase):
                 output_dir,
                 "--gpus",
                 gpus,
-                os.path.join(file_dir, "pass_run_main.py"),
+                os.path.join(file_dir, "pass_run_main_deprecated.py"),
                 "--file_path",
                 inspect.getfile(type(self)),
                 "--class_name",

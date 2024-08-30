@@ -16,17 +16,17 @@ import random
 import unittest
 
 import numpy as np
-from auto_parallel_pass_test_base import AutoParallelPassTestBase
+from auto_parallel_pass_test_base_deprecated import AutoParallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
 
 
-class TestShardingPass(AutoParallelPassTestBase):
+class TestRecomputePass(AutoParallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
-        self.rtol = 1e-5
+        self.rtol = 1e-6
         self.atol = 1e-8
 
         rank = paddle.distributed.get_rank()
@@ -36,18 +36,18 @@ class TestShardingPass(AutoParallelPassTestBase):
 
     def apply_passes(self):
         dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.semi_auto = True
-        dist_strategy.sharding = True
-        dist_strategy.sharding_configs = {
-            "sharding_degree": 2,
-            "stage": 2,
+        dist_strategy.recompute = True
+        dist_strategy.recompute_configs = {
+            "checkpoints": ["tmp_3", "tmp_6"],
+            "refined_ops_patterns": [
+                {
+                    "main_ops": ["matmul_v2", "elementwise_add"],
+                    "num": -1,
+                    "pre_ops": [],
+                    "suf_ops": [],
+                }
+            ],
         }
-        fleet.init(is_collective=True, strategy=dist_strategy)
-
-    def apply_no_passes(self):
-        dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.pipeline = False
-        dist_strategy.recompute = False
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
 
@@ -58,7 +58,14 @@ class TestShardingPass(AutoParallelPassTestBase):
 
     def get_model(self, place, batch_size, sequence_len, vocab_size):
         return self.get_gpt_model(
-            'dp', place, batch_size, sequence_len, vocab_size
+            "mp", place, batch_size, sequence_len, vocab_size
+        )
+
+
+class TestRecomputePassDP(TestRecomputePass):
+    def get_model(self, place, batch_size, sequence_len, vocab_size):
+        return self.get_gpt_model(
+            "dp", place, batch_size, sequence_len, vocab_size
         )
 
 
