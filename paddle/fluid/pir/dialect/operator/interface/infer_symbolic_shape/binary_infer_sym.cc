@@ -1596,7 +1596,8 @@ bool UnpoolOpInferSymbolicShape(pir::Operation *op,
   std::vector<int64_t> output_size;
   if (attributes.find("output_size") != attributes.end()) {
     output_size = details::GetVectorAttr<int64_t>(op, "output_size");
-  } else if (op->operand_source(5)) {
+  }
+  else if (op->operand_source(5)) {
     const auto &shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(5));
     std::vector<symbol::DimExpr> output_size_expr;
@@ -1613,6 +1614,7 @@ bool UnpoolOpInferSymbolicShape(pir::Operation *op,
             "The type of output_size must be int64, please check."));
       }
     }
+  }
 
   std::vector<symbol::DimExpr> output_shape = {x_shape[0], x_shape[1]};
   for (size_t i = 0; i < ksize.size(); ++i) {
