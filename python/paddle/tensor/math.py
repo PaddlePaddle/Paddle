@@ -951,10 +951,10 @@ def divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
-    Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward zero. The equation is:
+    Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward negative infinite. The equation is:
 
     .. math::
-        out = trunc(x / y)
+        out = floor(x / y)
 
     - :math:`x`: Multidimensional Tensor.
     - :math:`y`: Multidimensional Tensor.
@@ -964,7 +964,6 @@ def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
-        Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
 
     Args:
         x (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
@@ -987,6 +986,12 @@ def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
             [2, 0, 2, 2])
 
+            >>> x = paddle.to_tensor([2, 3, 8, 7])
+            >>> y = paddle.to_tensor([1, -5, -3, -3])
+            >>> z = paddle.floor_divide(x, y)
+            >>> print(z)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, -1, -3, -3])
     """
     if in_dynamic_or_pir_mode():
         return _C_ops.floor_divide(x, y)
@@ -5031,7 +5036,7 @@ def all(
     Computes the ``logical and`` of tensor elements over the given dimension.
 
     Args:
-        x (Tensor): An N-D Tensor, the input data type should be `bool`.
+        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64'.
         axis (int|list|tuple|None, optional): The dimensions along which the ``logical and`` is compute. If
             :attr:`None`, and all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
@@ -5122,7 +5127,7 @@ def any(
     Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
 
     Args:
-        x (Tensor): An N-D Tensor, the input data type should be `bool`.
+        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64'.
         axis (int|list|tuple|None, optional): The dimensions along which the ``logical or`` is compute. If
             :attr:`None`, and all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the

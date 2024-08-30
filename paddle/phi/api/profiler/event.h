@@ -196,6 +196,20 @@ class CudaEvent {
     return false;
   }
 
+  float ElapsedTime(CudaEvent *end_event) {
+    float milliseconds = 0;
+#ifdef PADDLE_WITH_HIP
+    hipEventSynchronize(end_event->GetRawCudaEvent());
+    PADDLE_ENFORCE_GPU_SUCCESS(hipEventElapsedTime(
+        &milliseconds, event_, end_event->GetRawCudaEvent()));
+#else
+    cudaEventSynchronize(end_event->GetRawCudaEvent());
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(
+        &milliseconds, event_, end_event->GetRawCudaEvent()));
+#endif
+    return milliseconds;
+  }
+
   void Synchronize() {
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipEventSynchronize(event_));
