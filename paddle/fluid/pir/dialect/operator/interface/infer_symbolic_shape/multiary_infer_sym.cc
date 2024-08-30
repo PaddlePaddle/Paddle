@@ -1760,20 +1760,8 @@ bool MaskedMultiheadAttentionOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &cache_kv_shape =
       cache_kv_shape_or_data.shape();
 
-  int seq_len = op->attribute<pir::Int32Attribute>("seq_len").data();
-  int rotary_emb_dims =
-      op->attribute<pir::Int32Attribute>("rotary_emb_dims").data();
-  bool use_neox_rotary_style =
-      op->attribute<pir::BoolAttribute>("use_neox_rotary_style").data();
   std::string compute_dtype =
       op->attribute<pir::StrAttribute>("compute_dtype").AsString();
-  float out_scale = op->attribute<pir::FloatAttribute>("out_scale").data();
-  int quant_round_type =
-      op->attribute<pir::Int32Attribute>("quant_round_type").data();
-  float quant_max_bound =
-      op->attribute<pir::FloatAttribute>("quant_max_bound").data();
-  float quant_min_bound =
-      op->attribute<pir::FloatAttribute>("quant_min_bound").data();
 
   PADDLE_ENFORCE_EQ(
       cache_kv_shape.size(),
