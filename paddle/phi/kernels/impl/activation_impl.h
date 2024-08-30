@@ -24,7 +24,10 @@
 #include "paddle/phi/backends/gpu/musa/mudnn_helper.h"
 #endif
 namespace phi {
+
+#ifdef __MUSACC__
 using GPUDNNDataLayout = phi::backends::gpu::DataLayout;
+#endif
 
 #define ToString(x) #x
 
