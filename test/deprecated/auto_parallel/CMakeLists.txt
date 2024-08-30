@@ -31,6 +31,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_engine_api_dp_deprecated)
   set_tests_properties(test_engine_api_dp_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
+  py_test_modules(test_engine_api_deprecated MODULES test_engine_api_deprecated)
+  set_tests_properties(test_engine_api_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 80)
   py_test_modules(test_auto_tuner_compare_deprecated MODULES
                   test_auto_tuner_compare_deprecated)
   set_tests_properties(test_auto_tuner_compare_deprecated

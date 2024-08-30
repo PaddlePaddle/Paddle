@@ -17,9 +17,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_relaunch_with_gpt_planner)
   set_tests_properties(test_relaunch_with_gpt_planner
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 240)
-  py_test_modules(test_engine_api MODULES test_engine_api)
-  set_tests_properties(test_engine_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
-                                                  TIMEOUT 80)
   py_test_modules(test_optimization_tuner_api MODULES
                   test_optimization_tuner_api)
   set_tests_properties(test_optimization_tuner_api
