@@ -1782,9 +1782,9 @@ bool MaskedMultiheadAttentionOpInferSymbolicShape(
   infer_context->AddEqualCstr(cache_kv_shape[0], symbol::DimExpr(2));
   // TODO(Luohongzhige, Buaa): add constrain for the num_head and k_num_head
 
-  symbol::DimExpr bsz = x_dims[0];
-  symbol::DimExpr dim_head = cache_kv_dims[4];
-  symbol::DimExpr k_num_head = cache_kv_dims[2];
+  symbol::DimExpr bsz = x_shape[0];
+  symbol::DimExpr dim_head = cache_kv_shape[4];
+  symbol::DimExpr k_num_head = cache_kv_shape[2];
   symbol::DimExpr v_num_head = k_num_head;
   int num_head =
       (x_shape[x_shape.size() - 1] / dim_head - k_num_head - v_num_head)
