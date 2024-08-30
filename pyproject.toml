@@ -111,7 +111,7 @@ select = [
     "RSE",
 
     # Flake8-quotes
-    # "Q003",
+    "Q003",
     "Q004",
 
     # Refurb

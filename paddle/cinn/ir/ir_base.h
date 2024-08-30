@@ -198,7 +198,11 @@ class IrNodeRef : public cinn::common::Shared<IrNode> {
   template <typename T>
   const T* As() const {
     static_assert(std::is_base_of<IrNode, T>());
-    CHECK(get()) << "IrNodeRef holds null";
+    PADDLE_ENFORCE_NOT_NULL(
+        get(),
+        phi::errors::InvalidArgument(
+            "IrNodeRef holds null. "
+            "The get() method should return a non-null value."));
     if (node_type() == T::_node_type_) return static_cast<const T*>(get());
     return nullptr;
   }
@@ -255,10 +259,23 @@ struct IntImm : public ExprNode<IntImm> {
   IntImm(Type t, int64_t v) : ExprNode<IntImm>(t), value(v) { Verify(); }
 
   void Verify() const override {
-    CHECK(type().is_int());
-    CHECK(type().is_scalar());
-    CHECK(type().bits() == 8 || type().bits() == 16 || type().bits() == 32 ||
-          type().bits() == 64);
+    PADDLE_ENFORCE_EQ(
+        type().is_int(),
+        true,
+        phi::errors::InvalidArgument("The type must be an integer type."));
+    PADDLE_ENFORCE_EQ(
+        type().is_scalar(),
+        true,
+        phi::errors::InvalidArgument("The type must be scalar type."));
+    if (type().bits() != 8)
+      if (type().bits() != 16)
+        if (type().bits() != 32)
+          PADDLE_ENFORCE_EQ(type().bits(),
+                            64,
+                            "The type must be one of the following bit sizes: "
+                            "8, 16, 32, or 64. "
+                            "But got bit size: %d",
+                            type().bits());
   }
 
   static const IrNodeTy _node_type_ = IrNodeTy::IntImm;
@@ -270,10 +287,24 @@ struct UIntImm : public ExprNode<UIntImm> {
   UIntImm(Type t, uint64_t v) : ExprNode<UIntImm>(t), value(v) { Verify(); }
 
   void Verify() const override {
-    CHECK(type().is_uint());
-    CHECK(type().is_scalar());
-    CHECK(type().bits() == 1 /*bool*/ || type().bits() == 8 ||
-          type().bits() == 16 || type().bits() == 32 || type().bits() == 64);
+    PADDLE_ENFORCE_EQ(type().is_uint(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The type must be an unsigned integer type."));
+    PADDLE_ENFORCE_EQ(
+        type().is_scalar(),
+        true,
+        phi::errors::InvalidArgument("The type must be scalar type."));
+    if (type().bits() != 1)
+      if (type().bits() != 8)
+        if (type().bits() != 16)
+          if (type().bits() != 32)
+            PADDLE_ENFORCE_EQ(type().bits(),
+                              64,
+                              "The type must be one of the following bit "
+                              "sizes: 1, 8, 16, 32, or 64. "
+                              "But got bit size: %d",
+                              type().bits());
   }
 
   static const IrNodeTy _node_type_ = IrNodeTy::UIntImm;
@@ -285,8 +316,14 @@ struct FloatImm : public ExprNode<FloatImm> {
   FloatImm(Type t, double v) : ExprNode<FloatImm>(t), value(v) { Verify(); }
 
   void Verify() const override {
-    CHECK(type().is_float());
-    CHECK(type().is_scalar());
+    PADDLE_ENFORCE_EQ(
+        type().is_float(),
+        true,
+        phi::errors::InvalidArgument("The type must be float type."));
+    PADDLE_ENFORCE_EQ(
+        type().is_scalar(),
+        true,
+        phi::errors::InvalidArgument("The type must be scalar type."));
   }
 
   static const IrNodeTy _node_type_ = IrNodeTy::FloatImm;
@@ -398,13 +435,19 @@ template <typename T>
 struct UnaryOpNode : public ExprNode<T> {
   UnaryOpNode() { operands().resize(1); }
   UnaryOpNode(Type type, Expr v) : ExprNode<T>(type) {
-    CHECK(v.defined());
+    PADDLE_ENFORCE_EQ(
+        v.defined(),
+        true,
+        phi::errors::InvalidArgument("The variable must be defined."));
     operands().resize(1);
     this->v() = v;
   }
 
   Type type() const override {
-    CHECK(v().defined());
+    PADDLE_ENFORCE_EQ(
+        v().defined(),
+        true,
+        phi::errors::InvalidArgument("The variable must be defined."));
     return v().type();
   }
 
@@ -426,9 +469,17 @@ template <typename T>
 struct BinaryOpNode : public ExprNode<T> {
   BinaryOpNode() { operands().resize(2); }
   BinaryOpNode(Type type, Expr a, Expr b) : ExprNode<T>(type) {
-    CHECK(type.valid());
-    CHECK(a.defined());
-    CHECK(b.defined());
+    PADDLE_ENFORCE_EQ(type.valid(),
+                      true,
+                      phi::errors::InvalidArgument("The type must be valid."));
+    PADDLE_ENFORCE_EQ(
+        a.defined(),
+        true,
+        phi::errors::InvalidArgument("The object 'a' must be defined."));
+    PADDLE_ENFORCE_EQ(
+        b.defined(),
+        true,
+        phi::errors::InvalidArgument("The object 'b' must be defined."));
     operands().resize(2);
     this->a() = a;
     this->b() = b;

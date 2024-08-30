@@ -22,14 +22,13 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/lock_guard_ptr.h"
-#include "paddle/fluid/platform/monitor.h"
-#include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/memory.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/lock_guard_ptr.h"
+#include "paddle/phi/core/platform/profiler/mem_tracing.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_HIP
@@ -237,7 +236,7 @@ class RecordedGpuMallocHelper {
       platform::RecordMemEvent(ptr,
                                GPUPlace(dev_id_),
                                size,
-                               platform::TracerMemEventType::ReservedAllocate);
+                               phi::TracerMemEventType::ReservedAllocate);
 #ifdef PADDLE_WITH_TESTING
       std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
       gpu_ptrs.insert(*ptr);
@@ -306,7 +305,7 @@ class RecordedGpuMallocHelper {
       platform::RecordMemEvent(ptr,
                                GPUPlace(dev_id_),
                                size,
-                               platform::TracerMemEventType::ReservedAllocate);
+                               phi::TracerMemEventType::ReservedAllocate);
 #ifdef PADDLE_WITH_TESTING
       std::lock_guard<std::mutex> lock_guard(gpu_ptrs_mutex);
       gpu_ptrs.insert(*ptr);
@@ -349,10 +348,8 @@ class RecordedGpuMallocHelper {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
-      platform::RecordMemEvent(ptr,
-                               GPUPlace(dev_id_),
-                               size,
-                               platform::TracerMemEventType::ReservedFree);
+      platform::RecordMemEvent(
+          ptr, GPUPlace(dev_id_), size, phi::TracerMemEventType::ReservedFree);
     } else {
       platform::GpuGetLastError();  // clear the error flag when
                                     // cudaErrorCudartUnloading /
@@ -385,10 +382,8 @@ class RecordedGpuMallocHelper {
       PADDLE_ENFORCE_GPU_SUCCESS(err);
       cur_size_.fetch_sub(size);
       DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, -size);
-      platform::RecordMemEvent(ptr,
-                               GPUPlace(dev_id_),
-                               size,
-                               platform::TracerMemEventType::ReservedFree);
+      platform::RecordMemEvent(
+          ptr, GPUPlace(dev_id_), size, phi::TracerMemEventType::ReservedFree);
     } else {
       platform::GpuGetLastError();  // clear the error flag when
                                     // cudaErrorCudartUnloading /
