@@ -694,6 +694,86 @@ bool CheckFiniteAndUnscale_OpInferSymbolicShape(
   return CheckFiniteAndUnscaleOpInferSymbolicShape(op, infer_context);
 }
 
+bool ChunkEvalOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &inference_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const symbol::ShapeOrDataDimExprs &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  const std::vector<symbol::DimExpr> &inference_shape =
+      inference_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &label_shape = label_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      inference_shape.size(),
+      label_shape.size(),
+      common::errors::InvalidArgument(
+          "Input(Inference)'s rank must be the same as Input(Label)'s rank, "
+          "but received [%s] (Inference) vs [%s] (Label).",
+          inference_shape.size(),
+          label_shape.size()));
+
+  for (size_t i = 0; i < inference_shape.size(); ++i) {
+    infer_context->AddEqualCstr(inference_shape[i], label_shape[i]);
+  }
+
+  if (op->operand_source(2)) {
+    const symbol::ShapeOrDataDimExprs &seq_length_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
+    const std::vector<symbol::DimExpr> &seq_length_shape =
+        seq_length_shape_or_data.shape();
+
+    PADDLE_ENFORCE_EQ(
+        inference_shape.size() == 3 || inference_shape.size() == 2,
+        true,
+        common::errors::InvalidArgument(
+            "when Input(SeqLength) is provided, Input(Inference) "
+            "should be of dim 3 or dim 2 "
+            "but received [%s].",
+            inference_shape));
+
+    if (inference_shape.size() == 3) {
+      infer_context->AddEqualCstr(inference_shape[2], symbol::DimExpr(1));
+    }
+
+    PADDLE_ENFORCE_LE(
+        seq_length_shape.size(),
+        2,
+        common::errors::InvalidArgument("Input(SeqLength)'s rank should not be "
+                                        "greater than 2, but received %d.",
+                                        seq_length_shape.size()));
+  }
+
+  std::vector<symbol::DimExpr> scalar_shape{symbol::DimExpr(1)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scalar_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scalar_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scalar_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scalar_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(4),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scalar_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(5),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scalar_shape)});
+
+  return true;
+}
+
 bool CrfDecodingOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &emission_shape_or_data =
