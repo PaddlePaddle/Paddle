@@ -38,5 +38,17 @@ SpmdInfo LogSumExpInferSpmdReverse(const DistMetaTensor& x,
   return ReductionInferSpmdReverse(x, out, new_axis, keepdims);
 }
 
+SpmdInfo LogSumExpGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& out,
+                                const DistMetaTensor& out_grad,
+                                const std::vector<int>& axis,
+                                bool keepdims,
+                                bool reduce_all) {
+  VLOG(4) << "LogSumExpGradInferSpmd Call ReductionGradInferSpmd";
+  std::vector<int64_t> new_axis(axis.begin(), axis.end());
+  return ReductionGradInferSpmd(
+      x, out, out_grad, new_axis, keepdims, reduce_all);
+}
+
 }  // namespace distributed
 }  // namespace phi
