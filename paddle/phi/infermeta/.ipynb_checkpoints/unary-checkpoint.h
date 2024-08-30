@@ -98,12 +98,6 @@ void AsRealInferMeta(const MetaTensor& input, MetaTensor* output);
 
 void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output);
 
-void AsStridedInferMeta(const MetaTensor& input,
-                        const std::vector<int64_t>& dims,
-                        const std::vector<int64_t>& stride,
-                        int64_t offset,
-                        MetaTensor* out);
-
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
                             int x_batch_size_dim,

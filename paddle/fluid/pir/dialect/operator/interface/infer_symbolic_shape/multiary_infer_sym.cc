@@ -2331,10 +2331,8 @@ bool RankAttentionOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
-  const auto &x_fea = x_shape[1];
-  int64_t x_fea_value = static_cast<int64_t>(x_fea.Get<std::int64_t>());
   std::vector<symbol::DimExpr> x_help_shape = {x_shape[0],
-                                               max_rank * x_fea_value};
+                                               max_rank * x_shape[1]};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{

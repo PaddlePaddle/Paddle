@@ -310,7 +310,7 @@
   args : (Tensor input, int64_t[] dims = {}, int64_t[] stride = {}, int64_t offset = 0)
   output : Tensor
   infer_meta :
-    func : AsStridedInferMeta
+    func : StridedUnchangedInferMeta
     param : [input]
   kernel :
     func : as_strided

@@ -441,16 +441,6 @@ void AsComplexInferMeta(const MetaTensor& input, MetaTensor* output) {
   output->set_dtype(dtype::ToComplex(input.dtype()));
 }
 
-void AsStridedInferMeta(const MetaTensor& input,
-                        const std::vector<int64_t>& dims,
-                        const std::vector<int64_t>& stride,
-                        int64_t offset,
-                        MetaTensor* out) {
-  out->set_dims(common::make_ddim(dims));
-  out->set_strides(common::make_ddim(stride));
-  out->set_dtype(input.dtype());
-}
-
 void BatchSizeLikeInferMeta(const MetaTensor& x,
                             const std::vector<int>& shape,
                             int x_batch_size_dim,
