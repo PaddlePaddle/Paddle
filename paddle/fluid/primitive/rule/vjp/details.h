@@ -1899,7 +1899,7 @@ void batch_norm_grad(const Tensor& x,
   auto dtype = x_data.dtype();
 
   if (use_global_stats) {
-    if (has_dynamic_shape_for_x) {
+    if (has_dynamic_shape(run_var.shape())) {
       auto eps = backend::full_with_tensor<T>(
           shape<T>(run_var), epsilon, run_var.dtype());
       mean_data = run_mean;
