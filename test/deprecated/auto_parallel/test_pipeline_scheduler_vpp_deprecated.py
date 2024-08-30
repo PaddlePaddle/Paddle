@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@ import tempfile
 import unittest
 
 
-class TestZBH1Pass(unittest.TestCase):
+class TestVPPPass(unittest.TestCase):
     def test_pp2(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(
-            file_dir, "pipeline_scheduler_zb_unittest.py"
+            file_dir, "pipeline_scheduler_vpp_unittest_deprecated.py"
         )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":

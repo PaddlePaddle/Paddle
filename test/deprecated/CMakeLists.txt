@@ -149,6 +149,7 @@ if(WITH_TESTING)
   add_subdirectory(sequence)
 
   if(WITH_DISTRIBUTE)
+    add_subdirectory(auto_parallel)
     add_subdirectory(collective)
   endif()
 

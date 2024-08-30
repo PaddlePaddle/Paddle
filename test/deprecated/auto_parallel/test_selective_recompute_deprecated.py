@@ -17,12 +17,14 @@ import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../auto_parallel")
 from get_gpt_model import FakeDataset
 
 import paddle
 from paddle.distributed.fleet import auto
 
-sys.path.append("..")
+sys.path.append("../..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,
