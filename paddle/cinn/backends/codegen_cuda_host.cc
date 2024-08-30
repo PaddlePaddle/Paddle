@@ -32,7 +32,7 @@ using cinn::common::float16;
 
 const int kArgsArrayMaxLen = 20;
 
-llvm::Value* CodeGenCudaHost::LowerGPUKernelLauncher(
+llvm::Value* CodeGenGpuHost::LowerGPUKernelLauncher(
     const ir::_LoweredFunc_* func) {
   auto body = func->body;
   auto* call_ir = body.As<ir::Call>();
@@ -202,7 +202,7 @@ llvm::Value* CodeGenCudaHost::LowerGPUKernelLauncher(
   return function;
 }
 
-llvm::Value* CodeGenCudaHost::LowerGPUKernelCall(const ir::Call* call_ir) {
+llvm::Value* CodeGenGpuHost::LowerGPUKernelCall(const ir::Call* call_ir) {
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
                  f_->arg_end(),
