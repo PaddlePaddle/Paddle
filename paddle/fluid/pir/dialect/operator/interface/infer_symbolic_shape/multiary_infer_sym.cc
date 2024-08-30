@@ -677,8 +677,6 @@ bool BoxCoderOpInferSymbolicShape(
 
   const std::string &code_type =
       op->attribute<pir::StrAttribute>("code_type").AsString();
-  bool box_normalized =
-      op->attribute<pir::BoolAttribute>("box_normalized").data();
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
   const std::vector<float> &variance =
       paddle::dialect::details::GetVectorAttr<float>(op, "variance");
