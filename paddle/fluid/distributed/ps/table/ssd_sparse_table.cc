@@ -58,7 +58,7 @@ void SSDSparseTable::SetDayId(int day_id) { _day_id = day_id; }
 int32_t SSDSparseTable::Pull(TableContext& context) {
   PADDLE_ENFORCE_EQ(context.value_type,
                     Sparse,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value type of context must be Sparse."));
   if (context.use_ptr) {
     char** pull_values = context.pull_context.ptr_values;
@@ -75,7 +75,7 @@ int32_t SSDSparseTable::Pull(TableContext& context) {
 int32_t SSDSparseTable::Push(TableContext& context) {
   PADDLE_ENFORCE_EQ(context.value_type,
                     Sparse,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The value type of context must be Sparse."));
   if (context.use_ptr) {
     return PushSparse(context.push_context.keys,
@@ -1702,7 +1702,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           PADDLE_ENFORCE_EQ(
               false,
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "The condition is false, but it must be true."));
         }
         region->reset();
@@ -1758,7 +1758,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
     _afs_wrapper.CloseWriter(afs_writer);
 #endif
     // write_channel->close();
-  };
+  };  // NOLINT
 
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(save_func, i);
@@ -2038,7 +2038,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           PADDLE_ENFORCE_EQ(
               false,
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "The condition is false, but it must be true."));
         }
         region->reset();
@@ -2074,7 +2074,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           PADDLE_ENFORCE_EQ(
               false,
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "The condition is false, but it must be true."));
         }
         region_for_slot_feature->reset();
