@@ -1032,12 +1032,94 @@ bool KronOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool LstsqOpInferSymbolicShape(pir::Operation *op,
-//                                pir::InferSymbolicShapeContext *infer_context)
-//                                {
-//   // pass
-//   return true;
-// }
+bool LstsqOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
+  const symbol::ShapeOrDataDimExprs &y_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &y_shape = y_shape_or_data.shape();
+  size_t ndim_x = x_shape.size();
+  size_t ndim_y = y_shape.size();
+  PADDLE_ENFORCE_GE(ndim_x,
+                    2,
+                    common::errors::InvalidArgument(
+                        "Expects input tensor x to be not less than "
+                        "2 dimensions, but got dimension %d",
+                        ndim_x));
+  PADDLE_ENFORCE_GE(ndim_y,
+                    2,
+                    common::errors::InvalidArgument(
+                        "Expects input tensor y to be not less than "
+                        "2 dimensions, but got dimension %d",
+                        ndim_y));
+  const symbol::DimExpr m = x_shape[ndim_x - 2];
+  const symbol::DimExpr n = x_shape[ndim_x - 1];
+  const symbol::DimExpr nrhs = y_shape[ndim_x - 1];
+
+  PADDLE_ENFORCE_EQ(
+      ndim_x,
+      ndim_y,
+      common::errors::InvalidArgument(
+          "Expects input tensor x and y to have the same dimension "
+          "but got x's dimension [%d] and y's dimension [%d]",
+          ndim_x,
+          ndim_y));
+
+  std::vector<symbol::DimExpr> batch_dims;
+
+  for (size_t i = 0; i < ndim_x - 2; ++i) {
+    infer_context->AddEqualCstr(x_shape[i], y_shape[i]);
+    batch_dims.emplace_back(x_shape[i]);
+  }
+
+  infer_context->AddEqualCstr(x_shape[ndim_x - 2], y_shape[ndim_y - 2]);
+
+  symbol::ShapeOrDataDimExprs batch_shape_or_data{
+      symbol::TensorShapeOrDataDimExprs(batch_dims)};
+  infer_context->SetShapeOrDataForValue(op->result(2), batch_shape_or_data);
+  symbol::DimExprBuilder builder;
+  if (m.isa<int64_t>() && n.isa<int64_t>()) {
+    int m_value = static_cast<int>(m.Get<std::int64_t>());
+    int n_value = static_cast<int>(n.Get<std::int64_t>());
+    if (m_value > n_value) {
+      batch_dims.emplace_back(nrhs);
+      symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
+          symbol::TensorShapeOrDataDimExprs(batch_dims)};
+      infer_context->SetShapeOrDataForValue(op->result(1),
+                                            residuals_batch_shape_or_data);
+      batch_dims.pop_back();
+    } else {
+      symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
+          symbol::TensorShapeOrDataDimExprs({symbol::DimExpr{0}})};
+      infer_context->SetShapeOrDataForValue(op->result(1),
+                                            residuals_batch_shape_or_data);
+    }
+  } else {
+      symbol::DimExpr out_shape =
+        infer_context->GetNextSymName();
+      symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
+          symbol::TensorShapeOrDataDimExprs({out_shape})};
+      infer_context->SetShapeOrDataForValue(op->result(1),
+                                            residuals_batch_shape_or_data);
+  }
+
+  batch_dims.emplace_back(builder.Min(m, n));
+  symbol::ShapeOrDataDimExprs singular_batch_shape_or_data{
+      symbol::TensorShapeOrDataDimExprs(batch_dims)};
+  infer_context->SetShapeOrDataForValue(op->result(3),
+                                        singular_batch_shape_or_data);
+
+  batch_dims[ndim_x - 2] = n;
+  batch_dims.emplace_back(nrhs);
+  symbol::ShapeOrDataDimExprs solution_batch_shape_or_data{
+      symbol::TensorShapeOrDataDimExprs(batch_dims)};
+  infer_context->SetShapeOrDataForValue(op->result(0),
+                                        solution_batch_shape_or_data);
+
+  return true;
+}
 
 bool LuUnpackOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

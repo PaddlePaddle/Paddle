@@ -3042,6 +3042,7 @@
     func : lstsq
     data_type : x
   optional : residuals
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lu
   args : (Tensor x, bool pivot = true)
