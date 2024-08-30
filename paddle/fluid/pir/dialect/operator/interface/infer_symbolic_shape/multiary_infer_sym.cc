@@ -1818,7 +1818,7 @@ bool LlmInt8LinearOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       w_shape.size(),
       2UL,
-      errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
+      common::errors::InvalidArgument("The input(weight) must be a 2D Tensor."));
   infer_context->AddEqualCstr(x_shape[rank - 1], w_shape[1]);
 
   const auto &m = w_shape[0];
