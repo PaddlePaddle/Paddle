@@ -711,7 +711,7 @@ endif()
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=false)
+    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=0)
 endforeach()
 
 set_tests_properties(test_decoupled_py_reader_deprecated_static_build
