@@ -1596,9 +1596,9 @@ bool UnpoolOpInferSymbolicShape(pir::Operation *op,
   std::vector<int64_t> output_size;
   if (attributes.find("output_size") != attributes.end()) {
     output_size = details::GetVectorAttr<int64_t>(op, "output_size");
-  } else if (op->operand_source(5)) {
+  } else if (op->operand_source(2)) {
     const auto &shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(5));
+        infer_context->GetShapeOrDataForValue(op->operand_source(2));
     std::vector<symbol::DimExpr> output_size_expr;
     if (shape_or_data.data().has_value()) {
       output_size_expr = shape_or_data.data().value();
