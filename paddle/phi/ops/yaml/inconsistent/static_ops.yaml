@@ -431,6 +431,7 @@
   kernel :
     func : hardswish
   backward : hardswish_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hash
   args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000, bool runtime_shape = true)
@@ -864,6 +865,7 @@
   kernel :
     func : soft_relu
   backward : soft_relu_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softmax
   args : (Tensor x, int axis)
