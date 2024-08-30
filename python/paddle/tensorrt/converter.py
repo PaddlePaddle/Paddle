@@ -211,7 +211,6 @@ class PaddleToTensorRTConverter:
             trt_outs = self.convert(network, op, operands)
 
             for idx, result in enumerate(op.results()):
-                # TODO In some cases, the output index (idx) of a Paddle OP may not necessarily be the same as the output index of TensorRT
                 if idx < len(trt_outs):
                     value_to_trt_tensor[result.id] = trt_outs[idx]
                 else:
