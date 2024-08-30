@@ -319,7 +319,6 @@ class PaddleToTensorRTConverter:
             return outs
         else:
             return tuple(outs)
-        return outs
 
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:
