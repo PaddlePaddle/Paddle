@@ -48,6 +48,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(
     test_pass_generation_pipeline_deprecated
     PROPERTIES ENVIRONMENT "FLAGS_new_executor_micro_batching=False")
+  py_test_modules(test_gpt_with_prim_deprecated MODULES
+                  test_gpt_with_prim_deprecated)
+  set_tests_properties(test_gpt_with_prim_deprecated
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
 endif()
 
 set_pir_tests_properties()

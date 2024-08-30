@@ -166,9 +166,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_static_reshard_api MODULES test_static_reshard_api)
   set_tests_properties(test_static_reshard_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
-  py_test_modules(test_gpt_with_prim MODULES test_gpt_with_prim)
-  set_tests_properties(test_gpt_with_prim
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_dist_checkpoint_utils MODULES test_dist_checkpoint_utils)
   set_tests_properties(test_dist_checkpoint_utils
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
