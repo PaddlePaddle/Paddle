@@ -72,11 +72,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_optimization_level_deprecated PROPERTIES TIMEOUT
                                                                          300)
-  set_tests_properties(test_trt_ops_fp32_mix_precision_deprecated
-                       PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_inference_fp16_io_deprecated PROPERTIES TIMEOUT
                                                                         500)
-  set_tests_properties(test_trt_convert_unary_deprecated PROPERTIES TIMEOUT 600)
 
   if(WITH_NV_JETSON)
     set_tests_properties(
