@@ -75,18 +75,18 @@ EquationGraphTopoWalker<VT, FT> GetSubgraph(
       };
   const auto& VisitInputVariables =
       [graph, IsSelected](FT function, const std::function<void(VT)>& Visit) {
-        PADDLE_ENFORCE_EQ(
-            IsSelected(function),
-            true,
-            phi::errors::PreconditionNotMet("The function must be selected."));
+        PADDLE_ENFORCE_EQ(IsSelected(function),
+                          true,
+                          ::common::errors::PreconditionNotMet(
+                              "The function must be selected."));
         graph.VisitInputVariables(function, Visit);
       };
   const auto& VisitOutputVariables =
       [graph, IsSelected](FT function, const std::function<void(VT)>& Visit) {
-        PADDLE_ENFORCE_EQ(
-            IsSelected(function),
-            true,
-            phi::errors::PreconditionNotMet("The function must be selected."));
+        PADDLE_ENFORCE_EQ(IsSelected(function),
+                          true,
+                          ::common::errors::PreconditionNotMet(
+                              "The function must be selected."));
         graph.VisitOutputVariables(function, Visit);
       };
   return EquationGraphTopoWalker<VT, FT>(

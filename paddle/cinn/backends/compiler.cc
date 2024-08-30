@@ -330,10 +330,10 @@ void Compiler::RegisterCudaModuleSymbol() {
   nvrtc::Compiler compiler;
   std::string source_code = CodeGenCudaDev::GetSourceHeader() + device_fn_code_;
   auto ptx = compiler(source_code);
-  PADDLE_ENFORCE_EQ(
-      !ptx.empty(),
-      true,
-      phi::errors::InvalidArgument("Compile PTX failed from source code\n"));
+  PADDLE_ENFORCE_EQ(!ptx.empty(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Compile PTX failed from source code\n"));
   using runtime::cuda::CUDAModule;
   cuda_module_.reset(new CUDAModule(ptx,
                                     compiler.compile_to_cubin()
@@ -343,9 +343,9 @@ void Compiler::RegisterCudaModuleSymbol() {
   RuntimeSymbols symbols;
   for (const auto& kernel_fn_name : device_fn_name_) {
     auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        fn_kernel,
-        phi::errors::InvalidArgument("Fail to get CUfunction kernel_fn_name"));
+    PADDLE_ENFORCE_NOT_NULL(fn_kernel,
+                            ::common::errors::InvalidArgument(
+                                "Fail to get CUfunction kernel_fn_name"));
     fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
     symbols.RegisterVar(kernel_fn_name + "_ptr_",
                         reinterpret_cast<void*>(fn_kernel));
@@ -365,8 +365,8 @@ void Compiler::RegisterHipModuleSymbol() {
   PADDLE_ENFORCE_EQ(
       !hsaco.empty(),
       true,
-      phi::errors::Fatal("Compile hsaco failed from source code:\n%s",
-                         source_code));
+      ::common::errors::Fatal("Compile hsaco failed from source code:\n%s",
+                              source_code));
   using runtime::hip::HIPModule;
   hip_module_.reset(new HIPModule(hsaco));
   // get device id
@@ -378,7 +378,7 @@ void Compiler::RegisterHipModuleSymbol() {
     auto fn_kernel = hip_module_->GetFunction(device_id, kernel_fn_name);
     PADDLE_ENFORCE_NOT_NULL(
         fn_kernel,
-        phi::errors::Fatal("HIP GetFunction Error: get valid kernel."));
+        ::common::errors::Fatal("HIP GetFunction Error: get valid kernel."));
     fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
     symbols.RegisterVar(kernel_fn_name + "_ptr_",
                         reinterpret_cast<void*>(fn_kernel));
@@ -413,7 +413,7 @@ void Compiler::CompileCudaModule(const Module& module,
 
   PADDLE_ENFORCE_EQ(!source_code.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Compile CUDA C code failed from device module"));
   VLOG(3) << "[CUDA] C:\n" << source_code;
   SourceCodePrint::GetInstance()->write(source_code);
@@ -451,8 +451,8 @@ void Compiler::CompileHipModule(const Module& module, const std::string& code) {
   PADDLE_ENFORCE_EQ(
       !source_code.empty(),
       true,
-      phi::errors::Fatal("Compile HIP code failed from device module:\n%s",
-                         device_module));
+      ::common::errors::Fatal("Compile HIP code failed from device module:\n%s",
+                              device_module));
   VLOG(3) << "[HIP]:\n" << source_code;
   SourceCodePrint::GetInstance()->write(source_code);
   device_fn_code_ += source_code;
@@ -476,7 +476,7 @@ void Compiler::ExportObject(const std::string& path) {
 
 void* Compiler::Lookup(absl::string_view fn_name) {
   PADDLE_ENFORCE_NOT_NULL(
-      engine_, phi::errors::InvalidArgument("Sorry, engine_ is nullptr"));
+      engine_, ::common::errors::InvalidArgument("Sorry, engine_ is nullptr"));
   if (engine_->Lookup(fn_name) != nullptr) {
     return engine_->Lookup(fn_name);
   }

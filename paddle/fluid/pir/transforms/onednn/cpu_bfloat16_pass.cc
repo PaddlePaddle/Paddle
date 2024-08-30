@@ -2047,7 +2047,6 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
 
     // op with two inputs and one output
     const std::vector<std::string> bfloat16_ops_two_one{
-        paddle::onednn::dialect::ConcatOp::name(),
         paddle::onednn::dialect::Conv2dOp::name(),
         paddle::onednn::dialect::MatmulOp::name(),
         paddle::onednn::dialect::Pool2dOp::name(),
