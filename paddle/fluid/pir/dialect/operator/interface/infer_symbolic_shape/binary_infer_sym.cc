@@ -671,12 +671,62 @@ bool FusedSoftmaxMaskOpInferSymbolicShape(
   return true;
 }
 
-// bool GridSampleOpInferSymbolicShape(pir::Operation *op,
-//                                     pir::InferSymbolicShapeContext
-//                                     *infer_context) {
-//   // pass
-//   return true;
-// }
+bool GridSampleOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  auto x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  auto grid_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+
+  PADDLE_ENFORCE_GE(x_shape.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Input(X) of GridSampleOp should be 4-D Tensor, but "
+                        "received X dimension size(%d)",
+                        x_shape.size()));
+  PADDLE_ENFORCE_LE(x_shape.size(),
+                    5,
+                    common::errors::InvalidArgument(
+                        "Input(X) of GridSampleOp should be 4-D Tensor, but "
+                        "received X dimension size(%d)",
+                        x_shape.size()));
+  PADDLE_ENFORCE_GE(grid_shape.size(),
+                    4,
+                    common::errors::InvalidArgument(
+                        "Input(Grid) of GridSampleOp should be 4-D Tensor, "
+                        "but received Grid dimension size(%d)",
+                        grid_shape.size()));
+  PADDLE_ENFORCE_LE(grid_shape.size(),
+                    5,
+                    common::errors::InvalidArgument(
+                        "Input(Grid) of GridSampleOp should be 4-D Tensor, "
+                        "but received Grid dimension size(%d)",
+                        grid_shape.size()));
+
+  if (grid_shape.size() == 4) {
+    infer_context->AddEqualCstr(grid_shape[3], symbol::DimExpr(2));
+  }
+  if (grid_shape.size() == 5) {
+    infer_context->AddEqualCstr(grid_shape[4], symbol::DimExpr(3));
+  }
+
+  infer_context->AddEqualCstr(grid_shape[0], x_shape[0]);
+
+  std::vector<symbol::DimExpr> out_shape;
+  if (grid_shape.size() == 4) {
+    out_shape = {x_shape[0], x_shape[1], grid_shape[1], grid_shape[2]};
+  } else {
+    out_shape = {
+        x_shape[0], x_shape[1], grid_shape[1], grid_shape[2], grid_shape[3]};
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  return true;
+}
 
 bool GatherOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
