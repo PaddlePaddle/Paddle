@@ -848,7 +848,11 @@ def monkey_patch_tensor():
     def __bool__(self):
         return self.__nonzero__()
 
-    def __array__(self, dtype=None):
+    def __array__(
+        self,
+        dtype=None,
+        copy=None,
+    ):
         """
         Returns a numpy array shows the value of current Tensor.
 
