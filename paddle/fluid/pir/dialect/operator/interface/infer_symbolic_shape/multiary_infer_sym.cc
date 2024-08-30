@@ -2863,18 +2863,19 @@ bool WeightOnlyLinearOpInferSymbolicShape(
                     2UL,
                     common::errors::InvalidArgument(
                         "The input(weight) must be a 2D Tensor."));
-  PADDLE_ENFORCE_EQ(
-      weight_shape[0] % 16,
-      0,
-      common::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 16, but got[%d]",
-          weight_shape[0]));
-  PADDLE_ENFORCE_EQ(
-      weight_shape[1] % 16,
-      0,
-      common::errors::InvalidArgument(
-          "The second dimension of input must be divisible by 16, but got[%d]",
-          weight_shape[1]));
+  // can not use % between symbol::DimExpr and int
+  // PADDLE_ENFORCE_EQ(
+  //     weight_shape[0] % 16,
+  //     0,
+  //     common::errors::InvalidArgument(
+  //         "The first dimension of input must be divisible by 16, but
+  //         got[%d]", weight_shape[0]));
+  // PADDLE_ENFORCE_EQ(
+  //     weight_shape[1] % 16,
+  //     0,
+  //     common::errors::InvalidArgument(
+  //         "The second dimension of input must be divisible by 16, but
+  //         got[%d]", weight_shape[1]));
   PADDLE_ENFORCE_EQ(
       x_shape[x_shape.size() - 1],
       weight_shape[1],
