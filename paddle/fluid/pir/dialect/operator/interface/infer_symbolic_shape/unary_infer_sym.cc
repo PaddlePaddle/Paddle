@@ -456,13 +456,15 @@ bool ClassCenterSampleOpInferSymbolicShape(
       op->result(0),
       symbol::TensorShapeOrDataDimExprs(label_shape_or_data.shape()));
 
-  symbol::DimExpr out_unknown = infer_context->GetNextSymName();
-  const std::vector<symbol::DimExpr> out_dims = {out_unknown};
+  int num_samples = op->attribute<pir::Int32Attribute>("num_samples").data();
 
-  symbol::ShapeOrDataDimExprs sampled_local_class_center_dims{
-      symbol::TensorShapeOrDataDimExprs(out_dims)};
-  infer_context->SetShapeOrDataForValue(op->result(1),
-                                        sampled_local_class_center_dims);
+  std::vector<symbol::DimExpr> sampled_local_class_center_shape;
+  sampled_local_class_center_shape.emplace_back(symbol::DimExpr(num_samples));
+  
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(sampled_local_class_center_shape)});
 
   return true;
 }
