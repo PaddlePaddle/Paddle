@@ -2109,7 +2109,7 @@ bool NllLossOpInferSymbolicShape(
                                      "shape."));
 
     if (reduction == "none") {
-      out_shape = {x_dims[0], x_dims[2], x_dims[3]};
+      out_shape = {x_shape[0], x_shape[2], x_shape[3]};
     } else {
       out_shape = std::vector<symbol::DimExpr>{};
     }
