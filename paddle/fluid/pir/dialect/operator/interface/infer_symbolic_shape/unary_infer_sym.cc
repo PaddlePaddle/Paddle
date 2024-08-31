@@ -980,13 +980,13 @@ bool FrameOpInferSymbolicShape(pir::Operation *op,
     end_axis = x_rank - 2;
   }
 
-  PADDLE_ENFORCE_LE(frame_length.dyn_cast<pir::Int32Attribute>().data(),
-                    seq_length.dyn_cast<pir::Int32Attribute>().data(),
+  PADDLE_ENFORCE_LE(static_cast<int>(frame_length),
+                    static_cast<int>(seq_length),
                     phi::errors::InvalidArgument(
                         "Attribute(frame_length) of FrameOp should be less "
                         "equal than sequence length, but got (%s) > (%s).",
-                        frame_length.dyn_cast<pir::Int32Attribute>().data(),
-                        seq_length.dyn_cast<pir::Int32Attribute>().data()));
+                        static_cast<int>(frame_length),
+                        static_cast<int>(seq_length)));
 
   for (int i = start_axis; i <= end_axis; i++) {
     output_shape.push_back(x_shape[i]);
