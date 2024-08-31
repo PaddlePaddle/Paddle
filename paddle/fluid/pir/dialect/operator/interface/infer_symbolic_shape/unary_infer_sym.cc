@@ -414,9 +414,9 @@ bool AsStridedOpInferSymbolicShape(
 
 bool BatchSizeLikeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  const symbol::ShapeOrDataDimExprs &x_shape =
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  const auto &x_dims = x_shape.shape();
+  const auto &x_dims = x_shape_or_data.shape();
 
   std::vector<int> shape =
       paddle::dialect::details::GetVectorAttr<int>(op, "shape");
@@ -431,7 +431,7 @@ bool BatchSizeLikeOpInferSymbolicShape(
       common::errors::InvalidArgument(
           "Shape size must be larger than 0, but received: %d.", shape.size()));
 
-  std::vector<symbol::DimExpr> shape_exprs(shape.size());
+  std::vector<symbol::DimExpr> shape_exprs(shape.size(), 0);
   std::transform(shape.begin(), shape.end(), shape_exprs.begin(), [](int dim) {
     return symbol::DimExpr(dim);
   });
@@ -441,11 +441,19 @@ bool BatchSizeLikeOpInferSymbolicShape(
       0,
       common::errors::InvalidArgument(
           "Input dimension index must be larger than or equal to 0."));
+  size_t input_dim_size = x_dims.size();
   PADDLE_ENFORCE_GE(
       out_batch_size_dim,
       0,
       common::errors::InvalidArgument(
           "Output dimension index must be larger than or equal to 0."));
+  PADDLE_ENFORCE(input_dim_size > x_batch_size_dim || input_dim_size == -1,
+                 common::errors::InvalidArgument(
+                     "Input dimension size must be larger than "
+                     "input dimension index, but received input "
+                     "dimension size: %s, input dimension index: %s.",
+                     input_dim_size,
+                     x_batch_size_dim));
 
   size_t output_dim_size = shape.size();
   PADDLE_ENFORCE_GT(
@@ -2543,9 +2551,13 @@ bool SetValueWithTensor_OpInferSymbolicShape(
 bool SquaredL2NormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   auto dtype = infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  std::vector<symbol::DimExpr> batch_dims;
+  batch_dims.append(symbol::DimExpr(1));
   infer_context->SetShapeOrDataForValue(
-      op->result(0), symbol::ShapeOrDataDimExprs({symbol::DimExpr(1)}));
-  infer_context->SetShapeOrDataForValue(op->result(0), dtype);
+      op->result(0),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs(batch_dims)));
+
   return true;
 }
 
@@ -2583,7 +2595,9 @@ bool TemporalShiftOpInferSymbolicShape(
           "Attr(shift_ratio) should be less than 0.5, but received %f",
           shift_ratio));
 
-  infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs(symbol::TensorShapeOrDataDimExprs(x_shape)));
 
   return true;
 }
