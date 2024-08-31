@@ -2378,8 +2378,8 @@ bool PartialSumOpInferSymbolicShape(
     VLOG(3) << "Warning: partial_sum op have only one input, may be useless";
   }
 
-  for (size_t i = 0; i < inputs_num; i++) {
-    const std::vector<symbol::DimExpr> x_shape = xs_shapes[i]->dims();
+  for (int i = 0; i < inputs_num; i++) {
+    const std::vector<symbol::DimExpr> x_shape = xs_shapes[i].shape();
     PADDLE_ENFORCE_EQ(
         x_shape.size(),
         2,
@@ -2397,11 +2397,11 @@ bool PartialSumOpInferSymbolicShape(
   int length = op->attribute<pir::Int32Attribute>("length").data();
 
   PADDLE_ENFORCE_GT(
-      static_cast<int>(input_len.Get<std::int64_t>())),
+      static_cast<int>(input_len.Get<std::int64_t>()),
       start_index,
       phi::errors::OutOfRange("start_index must be less than input len"));
   if (length > 0) {
-    PADDLE_ENFORCE_GE(static_cast<int>(input_len.Get<std::int64_t>())),
+    PADDLE_ENFORCE_GE(static_cast<int>(input_len.Get<std::int64_t>()),
                       start_index + length,
                       phi::errors::OutOfRange(
                           "start_index + length is larger than input length"));
