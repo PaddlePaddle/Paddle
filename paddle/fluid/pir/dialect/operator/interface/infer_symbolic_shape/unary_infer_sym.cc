@@ -447,12 +447,13 @@ bool BatchSizeLikeOpInferSymbolicShape(
       0,
       common::errors::InvalidArgument(
           "Output dimension index must be larger than or equal to 0."));
-  PADDLE_ENFORCE(input_dim_size > x_batch_size_dim || input_dim_size == -1,
+  PADDLE_ENFORCE(static_cast<int>(input_dim_size) > x_batch_size_dim ||
+                     static_cast<int>(input_dim_size) == -1,
                  common::errors::InvalidArgument(
                      "Input dimension size must be larger than "
                      "input dimension index, but received input "
                      "dimension size: %s, input dimension index: %s.",
-                     input_dim_size,
+                     static_cast<int>(input_dim_size),
                      x_batch_size_dim));
 
   size_t output_dim_size = shape.size();
