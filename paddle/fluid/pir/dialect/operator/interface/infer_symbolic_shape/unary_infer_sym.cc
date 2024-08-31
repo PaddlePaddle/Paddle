@@ -947,7 +947,6 @@ bool FrameOpInferSymbolicShape(pir::Operation *op,
                         "at least 1 dimension, but got rank %s.",
                         x_rank));
 
-  int frame_length = op->attribute<pir::Int32Attribute>("frame_length").data();
   int hop_length = op->attribute<pir::Int32Attribute>("hop_length").data();
   int axis = op->attribute<pir::Int32Attribute>("axis").data();
 
@@ -964,8 +963,9 @@ bool FrameOpInferSymbolicShape(pir::Operation *op,
           "Attribute(axis) of FrameOp should 0 or -1, but got %s.", axis));
 
   std::vector<symbol::DimExpr> output_shape;
-  symbol::DimExpr seq_length;
   symbol::DimExpr n_frames;
+  symbol::DimExpr frame_length;
+  symbol::DimExpr seq_length;
 
   int start_axis = 0;
   int end_axis = 0;
@@ -995,7 +995,8 @@ bool FrameOpInferSymbolicShape(pir::Operation *op,
   if (seq_length == -1) {
     n_frames = -1;
   } else {
-    n_frames = 1 + (seq_length - frame_length) / hop_length;
+    n_frames = symbol::DimExpr(1) +
+               (seq_length - frame_length) / symbol::DimExpr(hop_length);
   }
 
   if (axis == 0) {
