@@ -452,15 +452,15 @@ bool ClassCenterSampleOpInferSymbolicShape(
                         "but the value given is %d.",
                         label_shape_or_data.size().shape()));
 
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::TensorShapeOrDataDimExprs(label_shape_or_data.shape()));
-
   int num_samples = op->attribute<pir::Int32Attribute>("num_samples").data();
 
   std::vector<symbol::DimExpr> sampled_local_class_center_shape;
   sampled_local_class_center_shape.emplace_back(symbol::DimExpr(num_samples));
-  
+
+  infer_context->SetShapeOrDataForValue(
+    op->result(0),
+    symbol::TensorShapeOrDataDimExprs(label_shape_or_data.shape()));
+
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
