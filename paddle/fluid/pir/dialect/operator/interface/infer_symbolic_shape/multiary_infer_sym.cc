@@ -2071,16 +2071,8 @@ bool NllLossOpInferSymbolicShape(
         w_shape.size(),
         1,
         phi::errors::InvalidArgument("Input(Weight) should be a 1D tensor."));
-    PADDLE_ENFORCE_EQ(
-        x_shape[1],
-        w_shape[0],
-        phi::errors::InvalidArgument(
-            "Expected input tensor Weight's size should equal "
-            "to the first dimension of the input tensor X. But received "
-            "Weight's "
-            "size is %d, the first dimension of input X is %d",
-            w_shape[0],
-            x_shape[1]));
+
+    infer_context->AddEqualCstr(x_shape[1], w_shape[0]);
   }
 
   const std::string &reduction =
@@ -2100,15 +2092,15 @@ bool NllLossOpInferSymbolicShape(
   } else if (x_shape.size() == 4) {
     PADDLE_ENFORCE_EQ(label_shape.size(),
                       3,
-                      common::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Expected Input(Label) dimensions=3, received %d.",
                           label_shape.size()));
-    auto input0 = x_shape[0];
-    auto input2 = x_shape[2];
-    auto input3 = x_shape[3];
-    auto label0 = label_shape[0];
-    auto label1 = label_shape[1];
-    auto label2 = label_shape[2];
+    symbol::DimExpr input0 = x_shape[0];
+    symbol::DimExpr input2 = x_shape[2];
+    symbol::DimExpr input3 = x_shape[3];
+    symbol::DimExpr label0 = label_shape[0];
+    symbol::DimExpr label1 = label_shape[1];
+    symbol::DimExpr label2 = label_shape[2];
     PADDLE_ENFORCE_EQ(
         input0 == label0 && input2 == label1 && input3 == label2,
         true,
@@ -2117,7 +2109,7 @@ bool NllLossOpInferSymbolicShape(
                                      "shape."));
 
     if (reduction == "none") {
-      out->set_dims({x_dims[0], x_dims[2], x_dims[3]});
+      out_shape = {x_dims[0], x_dims[2], x_dims[3]};
     } else {
       out_shape = std::vector<symbol::DimExpr>{};
     }
