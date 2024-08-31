@@ -120,7 +120,7 @@ class TraceBackFrameRange(OriginInfo):
                 hint_msg = '~' * len(self.source_code[-1]) + ' <--- HERE'
                 self.source_code.append(hint_msg)
                 blank_count.append(blank_count[-1])
-        linecache.clearcache()
+        # linecache.clearcache()
         # remove top and bottom empty line in source code
         while len(self.source_code) > 0 and not self.source_code[0]:
             self.source_code.pop(0)
