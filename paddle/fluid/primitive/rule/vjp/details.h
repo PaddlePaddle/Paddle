@@ -2430,6 +2430,170 @@ void softsign_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void put_along_axis_grad(const Tensor& x,
+                         const Tensor& index,
+                         const Tensor& value,
+                         const Tensor& out,
+                         const Tensor& out_grad,
+                         int axis,
+                         const std::string& reduce,
+                         bool include_self,
+                         Tensor* x_grad,
+                         Tensor* value_grad) {
+  if (x_grad) {
+    Tensor x_grad_tmp = out_grad;
+    if (include_self == false || reduce == "assign") {
+      // 如果没有特殊说明，要替换的位置全部指在x这个tensor上的对应位置
+      // 对应位置的计算见文件paddle\phi\kernels\funcs\gather_scatter_functor.cc的L293-L319
+      // 将要替换的位置全部赋值为0
+      Tensor zero_tensor = full<T>(index.shape(), 0, out_grad.dtype());
+      x_grad_tmp = put_along_axis<T>(out_grad, index, zero_tensor, axis);
+    } else if (reduce == "multiply" || reduce == "mul") {
+      // 首先用一个vector称为num，维度等于x的dim，默认全0用于记录原tensor在对应位置上被索引的次数
+      /* 如果是multiply和mul
+       * 在要替换的位置做：out_grad * out / x
+       */
+      Tensor zero_tensor_x = full<T>(x.shape(), 0, x.dtype());
+      Tensor one_tensor_idx = full<T>(index.shape(), 1, x.dtype());
+      Tensor mask =
+          put_along_axis<T>(zero_tensor_x, index, one_tensor_idx, axis);
+      x_grad_tmp = where<T>(mask > zero_tensor_x, out_grad * out / x, out_grad);
+    } else if (reduce == "amin" || reduce == "amax") {
+      /*
+       * 假设当前在x上要替换的位置称为index_grad,
+       * 替换的值对应value中的位置为index_value
+       * 如果out[index_grad]和x[index_grad]的值不相等，那么就设置他的x_grad[index_grad]为0
+       * 否则，当out[index_grad]和value[index_value]相等时
+       * num[index_grad] += 1 (但其实num只有0和1两种情况)
+       * x_grad_tmp =  out_grad / (num+1)
+       */
+      Tensor zero_tensor = full<T>(x.shape(), 0, x.dtype());
+      Tensor one_tensor = full<T>(x.shape(), 1, x.dtype());
+
+      auto zero_result = cast<T>(equal<T>(out, x), x.dtype());
+
+      Tensor num = zero_tensor;
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      for (int64_t i = 0; i < select_num; i++) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor sub_value = slice<T>(value, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor sub_out = take_along_axis<T>(out, sub_index, axis);
+        Tensor sub_count = cast<T>(equal<T>(sub_out, sub_value), x.dtype());
+        num = num + put_along_axis<T>(zero_tensor, sub_index, sub_count, axis);
+      }
+      x_grad_tmp = zero_result * out_grad / (num + 1);
+    } else if (reduce == "mean") {
+      // 继续使用vector num
+      /*
+       * 记录每个要替换的位置被索引的次数到num中
+       * 如果num的位置不为0，就设置x_grad_tmp = out_grad / (num+1)
+       */
+      Tensor zero_tensor_x = full<T>(x.shape(), 0, x.dtype());
+
+      Tensor num = zero_tensor_x;
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      for (int64_t i = 0; i < select_num; i++) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor sub_one_tensor = full<T>(sub_index.shape(), 1, x.dtype());
+        num = num +
+              put_along_axis<T>(zero_tensor_x, sub_index, sub_one_tensor, axis);
+      }
+      x_grad_tmp =
+          where<T>(num > zero_tensor_x, out_grad / (num + 1), out_grad);
+    }
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+  if (value_grad) {
+    // 默认为全0
+    Tensor value_grad_tmp = full<T>(index.shape(), 0, x.dtype());
+    /*
+     * 假设当前在x上要替换的位置称为index_self,
+     * 替换的值对应value中的位置为index_grad
+     * 具体计算方式见文件：paddle\phi\kernels\funcs\gather_scatter_functor.cc的L457-L494
+     */
+    if (reduce == "assign") {
+      // 设置一个vector称为is_self_grad_used，全为false，维度和x的dim相同
+      // 用于记录value对应的索引位置是否被使用
+      // 如果index_self是第一次被使用，value_grad_tmp[index_grad] =
+      // out_grad[index_self] 并且is_self_grad_used[index_self] = true
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      Tensor mask = full<T>(out_grad.shape(), 1, out_grad.dtype());
+      Tensor zero = full<T>(out_grad.shape(), 0, out_grad.dtype());
+      std::vector<Tensor> res(select_num);
+      for (int64_t i = select_num - 1; i >= 0; i--) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor tmp_grad = out_grad * mask;
+        res[i] = take_along_axis<T>(tmp_grad, sub_index, axis);
+        mask = put_along_axis<T>(out_grad, sub_index, zero, axis);
+      }
+      value_grad_tmp = concat<T>(res, axis);
+    } else if (reduce == "add") {
+      // value_grad_tmp[index_grad] = self_data[index_self]
+      value_grad_tmp = take_along_axis<T>(out_grad, index, axis);
+    } else if (reduce == "mean") {
+      /* 设置一个vector称为num，如果include_self
+       * =true则全为1，否则全为0，维度和x的dim相同
+       * 记录index_self被索引的次数到num中
+       * 计算value_grad_tmp[index_grad] = out_grad[index_self] / num
+       */
+      Tensor one_tensor = full<T>(out_grad.shape(), 1, out_grad.dtype());
+      Tensor zero_tensor = full<T>(out_grad.shape(), 0, out_grad.dtype());
+      Tensor num = include_self ? one_tensor : zero_tensor;
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      for (int64_t i = 0; i < select_num; i++) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        num = num + put_along_axis<T>(zero_tensor, sub_index, one_tensor, axis);
+      }
+      Tensor grad_result = out_grad / num;
+      value_grad_tmp = take_along_axis<T>(grad_result, index, axis);
+    } else if (reduce == "mul" || reduce == "multiply") {
+      /*
+       * 计算value_grad_tmp[index_grad] = out_grad[index_self] *
+       * (out[index_self] / value[index_value])
+       */
+      Tensor out_grad_select = take_along_axis<T>(out_grad, index, axis);
+      Tensor out_select = take_along_axis<T>(out, index, axis);
+      value_grad_tmp = out_grad_select * (out_select / value);
+    } else if (reduce == "amin" || reduce == "amax") {
+      /* 设置一个vector称为num，全为0，维度和x的dim相同
+       * 如果out[index_self] == value[index_grad], 则num[index_self] += 1
+       * 计算好num后
+       * 条件1：out[index_self] == value[index_grad]
+       * 条件2：out[index_self] == x[index_self]
+       * 同时满足条件1,2时，value_grad_tmp[index_grad] = out_grad[index_self] /
+       * (num+1) 满足条件1不满足条件2时，value_grad_tmp[index_grad] =
+       * out_grad[index_self] / num
+       */
+      Tensor one_tensor_out = full<T>(out_grad.shape(), 1, out_grad.dtype());
+      Tensor zero_tensor_out = full<T>(out_grad.shape(), 0, out_grad.dtype());
+      Tensor num = zero_tensor_out;
+      int64_t select_num = static_cast<int64_t>(index.shape()[axis]);
+      for (int64_t i = 0; i < select_num; i++) {
+        Tensor sub_index = slice<T>(index, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor sub_value = slice<T>(value, {axis}, {i}, {i + 1}, {1}, {});
+        Tensor one_tensor_idx = full<T>(sub_index.shape(), 1, out_grad.dtype());
+        Tensor sub_mask =
+            put_along_axis<T>(zero_tensor_out, sub_index, one_tensor_idx, axis);
+        Tensor sub_put_res =
+            put_along_axis<T>(zero_tensor_out, sub_index, sub_value, axis);
+        num = num +
+              cast<T>(equal<T>(out, sub_put_res), out_grad.dtype()) * sub_mask;
+      }
+      Tensor select_out = take_along_axis<T>(out, index, axis);
+      Tensor mask = cast<T>(equal<T>(select_out, value), out_grad.dtype());
+      Tensor select_out_grad = take_along_axis<T>(out_grad, index, axis);
+      Tensor select_cnt = take_along_axis<T>(num, index, axis);
+      Tensor select_x = take_along_axis<T>(x, index, axis);
+      Tensor res = where<T>(select_out == select_x,
+                            select_out_grad / (select_cnt + 1),
+                            select_out_grad / select_cnt);
+      value_grad_tmp = res * mask;
+    }
+    set_output<T>(value_grad_tmp, value_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
