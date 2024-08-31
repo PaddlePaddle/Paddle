@@ -2057,7 +2057,7 @@ bool NllLossOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       x_shape[0],
       label_shape[0],
-      common::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "ShapeError: Expected input batch_size to match label batch_size,"
           "But received: the Input(x) batch_size is [%s], the Input(label) "
           " batch_size is [%s].",
@@ -2067,14 +2067,14 @@ bool NllLossOpInferSymbolicShape(
     const symbol::ShapeOrDataDimExprs &w_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
     const std::vector<symbol::DimExpr> &w_shape = w_shape_or_data.shape();
-    PADDLE_ENFORCE_EQ(w_shape.size(),
-                      1,
-                      common::errors::InvalidArgument(
-                          "Input(Weight) should be a 1D tensor."));
+    PADDLE_ENFORCE_EQ(
+        w_shape.size(),
+        1,
+        phi::errors::InvalidArgument("Input(Weight) should be a 1D tensor."));
     PADDLE_ENFORCE_EQ(
         x_shape[1],
         w_shape[0],
-        common::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Expected input tensor Weight's size should equal "
             "to the first dimension of the input tensor X. But received "
             "Weight's "
@@ -2086,10 +2086,17 @@ bool NllLossOpInferSymbolicShape(
   const std::string &reduction =
       op->attribute<pir::StrAttribute>("reduction").AsString();
 
+  std::vector<symbol::DimExpr> out_shape;
   if (x_shape.size() == 2) {
     if (reduction == "none") {
+      out_shape = {x_shape[0]};
     } else {
+      out_shape = std::vector<symbol::DimExpr>{};
     }
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
   } else if (x_shape.size() == 4) {
     PADDLE_ENFORCE_EQ(label_shape.size(),
                       3,
@@ -2108,7 +2115,21 @@ bool NllLossOpInferSymbolicShape(
         phi::errors::InvalidArgument("Input(X) tensor shape should "
                                      "match to Input(Label) tensor "
                                      "shape."));
+
+    if (reduction == "none") {
+      out->set_dims({x_dims[0], x_dims[2], x_dims[3]});
+    } else {
+      out_shape = std::vector<symbol::DimExpr>{};
+    }
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_shape)});
   }
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{})});
 }
 
 bool RoiPoolOpInferSymbolicShape(
