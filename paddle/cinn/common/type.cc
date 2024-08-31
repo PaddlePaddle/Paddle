@@ -146,7 +146,7 @@ void Type::CheckTypeValid() const {
     PADDLE_ENFORCE_EQ((GetStorage().specific_type_ == specific_type_t::FP16 ||
                        GetStorage().specific_type_ == specific_type_t::BF16),
                       true,
-                      phi::errors::InvalidArgument(
+                      ::common::errors::InvalidArgument(
                           "When creating a 16-bit Float, the 'specific_type_t' "
                           "must be FP16 or BF16. "
                           "Received: specific_type_t = %d.",
@@ -157,10 +157,10 @@ void Type::CheckTypeValid() const {
 Type Type::PointerOf() const {
   CheckTypeValid();
   auto x = *this;
-  PADDLE_ENFORCE_EQ(
-      x.is_cpp_handle2(),
-      false,
-      phi::errors::InvalidArgument("Not support three levels of PointerOf."));
+  PADDLE_ENFORCE_EQ(x.is_cpp_handle2(),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Not support three levels of PointerOf."));
   if (x.is_cpp_handle())
     x.set_cpp_handle2();
   else
@@ -194,7 +194,7 @@ Type Type::with_bits(int x) const {
   PADDLE_ENFORCE_EQ(
       is_primitive(),
       true,
-      phi::errors::InvalidArgument(
+      ::common::errors::InvalidArgument(
           "The type must be primitive to set the number of bits."));
   Type type = *this;
   type.GetStorage().bits_ = x;
@@ -210,7 +210,7 @@ Type Type::with_type(Type::type_t x) const {
 Type Type::with_lanes(int x) const {
   PADDLE_ENFORCE_EQ(valid(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The type must be valid to set the number of lanes."));
   Type type = *this;
   type.GetStorage().lanes_ = x;
@@ -262,10 +262,11 @@ Type::Type(Type::type_t t, int b, int w, specific_type_t st)
     PADDLE_ENFORCE_EQ(
         (st == specific_type_t::FP16 || st == specific_type_t::BF16),
         true,
-        phi::errors::InvalidArgument("When creating a 16-bit Float, the "
-                                     "'specific_type_t' must be FP16 or BF16. "
-                                     "Received: specific_type_t = %d.",
-                                     static_cast<int>(st)));
+        ::common::errors::InvalidArgument(
+            "When creating a 16-bit Float, the "
+            "'specific_type_t' must be FP16 or BF16. "
+            "Received: specific_type_t = %d.",
+            static_cast<int>(st)));
   }
 }
 bool Type::is_primitive() const {
@@ -286,7 +287,7 @@ bool Type::is_float(int bits, specific_type_t st) const {
     PADDLE_ENFORCE_NE(
         st,
         specific_type_t::None,
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "When calling is_float(16), 'st' can't be specific_type_t::None to "
             "distinguish FP16/BF16. Use is_float16() or is_bfloat16() for "
             "short."));
@@ -357,14 +358,14 @@ Type &Type::operator=(const Type &other) {
 
 Type::Storage &Type::GetStorage() {
   PADDLE_ENFORCE_NOT_NULL(storage_,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The type is not initialized! Please check."));
   return *storage_;
 }
 
 const Type::Storage &Type::GetStorage() const {
   PADDLE_ENFORCE_NOT_NULL(storage_,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The type is not initialized! Please check."));
   return *storage_;
 }
@@ -591,8 +592,8 @@ Type Str2Type(const std::string &type) {
   PADDLE_ENFORCE_NE(
       str2type_map.find(type),
       str2type_map.end(),
-      phi::errors::InvalidArgument("Not supported type [%s]! Please check.",
-                                   type.c_str()));
+      ::common::errors::InvalidArgument(
+          "Not supported type [%s]! Please check.", type.c_str()));
   return str2type_map.at(type);
 }
 

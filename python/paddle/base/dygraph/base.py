@@ -64,6 +64,14 @@ def in_to_static_mode() -> bool:
     return global_var._in_to_static_mode_
 
 
+def in_sot_simulation_mode() -> bool:
+    """
+    Return a bool value that indicates whether running code under SOT simulation context.
+
+    """
+    return global_var._in_sot_simulation_mode_
+
+
 # TODO(Aurelius84): Need to remove this alias after clean usage in PaddleX
 in_declarative_mode = in_to_static_mode
 
@@ -99,7 +107,7 @@ switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
 
 
 @signature_safe_contextmanager
-def _to_static_mode_guard_(
+def to_static_mode_guard(
     is_to_static: bool = True,
 ) -> Generator[None, None, None]:
     global global_var
@@ -109,6 +117,19 @@ def _to_static_mode_guard_(
         yield
     finally:
         global_var._in_to_static_mode_ = original_val
+
+
+@signature_safe_contextmanager
+def sot_simulation_mode_guard(
+    is_sot_simulation: bool = True,
+) -> Generator[None, None, None]:
+    global global_var
+    original_val = global_var._in_sot_simulation_mode_
+    global_var._in_sot_simulation_mode_ = is_sot_simulation
+    try:
+        yield
+    finally:
+        global_var._in_sot_simulation_mode_ = original_val
 
 
 @signature_safe_contextmanager
