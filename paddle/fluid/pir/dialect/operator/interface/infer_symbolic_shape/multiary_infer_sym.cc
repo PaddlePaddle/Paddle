@@ -2122,6 +2122,7 @@ bool NllLossOpInferSymbolicShape(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(std::vector<symbol::DimExpr>{})});
+  return true;
 }
 
 bool RoiPoolOpInferSymbolicShape(
