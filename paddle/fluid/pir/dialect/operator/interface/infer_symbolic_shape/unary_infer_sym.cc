@@ -2552,7 +2552,7 @@ bool SquaredL2NormOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   auto dtype = infer_context->GetShapeOrDataForValue(op->operand_source(0));
   std::vector<symbol::DimExpr> batch_dims;
-  batch_dims.append(symbol::DimExpr(1));
+  batch_dims.push_back(symbol::DimExpr(1));
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs(
@@ -2597,7 +2597,7 @@ bool TemporalShiftOpInferSymbolicShape(
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
-      symbol::ShapeOrDataDimExprs(symbol::TensorShapeOrDataDimExprs(x_shape)));
+      symbol::ShapeOrDataDimExprs(symbol::TensorShapeOrDataDimExprs(x_dims)));
 
   return true;
 }
