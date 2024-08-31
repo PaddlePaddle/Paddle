@@ -985,16 +985,30 @@ void dropout_grad(const Tensor& mask,
     if (mode == "upscale_in_train") {
       by_pass<T>(out_grad, x_grad);
     } else {
-      set_output<T>(out_grad * (1.0 - p.to<float>()), x_grad);
+      Tensor scalar = full_scalar<T>(1.0 - p.to<float>(), out_grad.dtype());
+      set_output<T>(out_grad * scalar, x_grad);
     }
   } else {
     if (mode == "upscale_in_train") {
-      if (p.to<float>() == 1.0f) {
-        set_output<T>(scale<T>(out_grad, 0.0), x_grad);
+      if (has_dynamic_shape(out_grad.shape())) {
+        if (p.to<float>() == 1.0f) {
+          Tensor zero = full_scalar<T>(0.0, out_grad.dtype());
+          set_output<T>(backend::scale<T>(out_grad, zero), x_grad);
+        } else {
+          Tensor scalar =
+              full_scalar<T>(1.0 / (1.0 - p.to<float>()), out_grad.dtype());
+          set_output<T>(backend::scale<T>(
+                            out_grad * cast<T>(mask, out_grad.dtype()), scalar),
+                        x_grad);
+        }
       } else {
-        set_output<T>(scale<T>(out_grad * cast<T>(mask, out_grad.dtype()),
-                               1.0 / (1.0 - p.to<float>())),
-                      x_grad);
+        if (p.to<float>() == 1.0f) {
+          set_output<T>(scale<T>(out_grad, 0.0), x_grad);
+        } else {
+          set_output<T>(scale<T>(out_grad * cast<T>(mask, out_grad.dtype()),
+                                 1.0 / (1.0 - p.to<float>())),
+                        x_grad);
+        }
       }
     } else {
       set_output<T>(out_grad * cast<T>(mask, out_grad.dtype()), x_grad);

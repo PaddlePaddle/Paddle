@@ -141,8 +141,7 @@ void SimpleJIT::Link(ir::Module module, bool optimize) {
 }
 
 template void SimpleJIT::Link<CodeGenLLVM>(ir::Module module, bool optimize);
-template void SimpleJIT::Link<CodeGenCudaHost>(ir::Module module,
-                                               bool optimize);
+template void SimpleJIT::Link<CodeGenGpuHost>(ir::Module module, bool optimize);
 
 }  // namespace backends
 
