@@ -720,7 +720,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 
-
 if(NOT WIN32 AND NOT APPLE)
   set_tests_properties(test_imperative_signal_handler
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
