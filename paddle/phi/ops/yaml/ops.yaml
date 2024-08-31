@@ -4355,10 +4355,11 @@
   args : (Tensor x)
   output : Tensor
   infer_meta :
-    func : UnchangedInferMeta
+    func : SlogdetInferMeta
   kernel :
     func : slogdet
   backward : slogdet_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softplus
   args : (Tensor x, float beta = 1.0, float threshold = 20.0f)
