@@ -2217,7 +2217,7 @@ bool SliceOpInferSymbolicShape(pir::Operation *op,
 }
 
 bool SlogdetOpInferSymbolicShape(
-  pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
