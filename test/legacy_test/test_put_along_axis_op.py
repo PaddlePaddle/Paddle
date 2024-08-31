@@ -53,16 +53,12 @@ class TestPutAlongAxisOp(OpTest):
         self.outputs = {'Result': self.target}
 
     def test_check_output(self):
-        print(f" input : f{self.inputs['Input'].shape}")
-        print(f" Index : f{self.inputs['Index'].shape}")
-        print(f" Value : f{self.inputs['Value'].shape}")
-        print(f" reduce_op tpye : {self.reduce_op}")
-        print(f" axis : {self.axis}")
-        pass
-        # self.check_output(check_pir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["Input", "Value"], "Result", check_pir=True, check_prim_pir=True)
+        self.check_grad(
+            ["Input", "Value"], "Result", check_pir=True, check_prim_pir=True
+        )
 
     def init_data(self):
         self.dtype = 'float64'
@@ -239,14 +235,6 @@ class TestPutAlongAxisOpAdd(TestPutAlongAxisOp):
                     self.target[i, self.index[i, j, k], k] += self.value[
                         i, j, k
                     ]
-        print(f"____________Input : {self.xnp.shape}")
-        print(f"____________Index : {self.index.shape}")
-        print(f"____________Value : {self.value.shape}")
-        print(f"___________ Target : {self.target.shape}")
-        print(f"____________Axis : {self.axis}")
-        print(f"____________Reduce : {self.reduce_op}")
-        print(f"____________Include_self : True")
-        print(f"____________Broadcast : False")
         self.inputs = {
             'Input': self.xnp,
             'Index': self.index,
@@ -539,12 +527,6 @@ class TestPutAlongAxisOpMax(TestPutAlongAxisOp):
                         self.target[i, self.index[i, j, k], k],
                         self.value[i, j, k],
                     )
-        print(f"____________Input : {self.xnp.shape}")
-        print(f"____________Index : {self.index.shape}")
-        print(f"____________Value : {self.value.shape}")
-        print(f"___________ Target : {self.target.shape}")
-        print(f"____________Axis : {self.axis}")
-        print(f"____________Reduce : {self.reduce_op}")
         self.inputs = {
             'Input': self.xnp,
             'Index': self.index,
@@ -662,7 +644,11 @@ class TestPutAlongAxisBF16Op(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ["Input", "Value"], "Result", check_pir=True, check_prim_pir=True
+            self.place,
+            ["Input", "Value"],
+            "Result",
+            check_pir=True,
+            check_prim_pir=True,
         )
 
     def init_data(self):
