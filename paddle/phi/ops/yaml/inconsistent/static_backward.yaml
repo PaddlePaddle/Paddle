@@ -210,6 +210,36 @@
     func: fused_feedforward_grad
   optional: linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln1_out, ln1_mean, ln1_variance, ln2_scale, ln2_bias, ln2_mean, ln2_variance, dropout2_out, ln1_scale_grad, ln1_bias_grad, ln2_scale_grad, ln2_bias_grad,  linear2_bias_grad
 
+- backward_op : fused_gate_attention_grad
+  forward: fused_gate_attention(Tensor query, Tensor key, Tensor query_weight, Tensor key_weight, Tensor
+    value_weight, Tensor qkv_weight, Tensor nonbatched_bias, Tensor src_mask, Tensor
+    gate_weight, Tensor gate_bias, Tensor out_linear_weight, Tensor out_linear_bias,
+    bool has_gating = true, bool merge_qkv = true, bool use_flash_attn = false) ->
+    Tensor (query_transpose_out), Tensor (key_transpose_out), Tensor (value_transpose_out),
+    Tensor (qkv_transpose_out), Tensor (softmax_out), Tensor (softmax_lse), Tensor
+    (fmha_out), Tensor (gate_out), Tensor (out)
+  args: (Tensor query, Tensor key, Tensor query_weight, Tensor key_weight, Tensor
+    value_weight, Tensor qkv_weight, Tensor nonbatched_bias, Tensor src_mask, Tensor
+    gate_weight, Tensor gate_bias, Tensor out_linear_weight, Tensor out_linear_bias,
+    Tensor query_transpose_out, Tensor key_transpose_out, Tensor value_transpose_out,
+    Tensor qkv_transpose_out,
+    Tensor softmax_out, Tensor softmax_lse, Tensor fmha_out, Tensor gate_out, Tensor out_grad,
+    bool has_gating = true, bool merge_qkv = true, bool use_flash_attn = false)
+  output: Tensor (query_grad), Tensor (key_grad), Tensor (query_weight_grad),
+    Tensor (key_weight_grad), Tensor (value_weight_grad), Tensor (qkv_weight_grad),
+    Tensor (nonbatched_bias_grad), Tensor (gate_weight_grad), Tensor (gate_bias_grad),
+    Tensor (out_linear_weight_grad), Tensor (out_linear_bias_grad)
+  infer_meta:
+    func: FusedGateAttentionGradInferMeta
+  kernel:
+    func: fused_gate_attention_grad
+    data_type: query
+  optional: key, query_weight, key_weight, value_weight, qkv_weight, nonbatched_bias, src_mask,
+    gate_weight, gate_bias, query_transpose_out, key_transpose_out, value_transpose_out,
+    qkv_transpose_out, softmax_out, softmax_lse, gate_out
+  data_transform :
+    skip_transform : softmax_lse
+
 - backward_op : hardswish_grad
   forward : hardswish (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)
