@@ -409,12 +409,16 @@ bool RandintOpInferSymbolicShape(
   }
 }
 
-// bool ReadFileOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+bool ReadFileOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  std::vector<symbol::DimExpr> output_shape = {symbol::DimExpr(1),
+                                               symbol::DimExpr(-1)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_shape)});
+  return true;
+}
 
 // bool RecvV2OpInferSymbolicShape(pir::Operation *op,
 //                                 pir::InferSymbolicShapeContext
