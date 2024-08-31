@@ -1246,21 +1246,23 @@ bool StftOpInferSymbolicShape(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &window_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  const std::vector<symbol::DimExpr> &x_shapes = x_shape_or_data.shape();
-  const std::vector<symbol::DimExpr> &window_shapes =
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const std::vector<symbol::DimExpr> &window_shape =
       window_shape_or_data.shape();
 
   int n_fft = op->attribute<pir::Int32Attribute>("n_fft").data();
   int hop_length = op->attribute<pir::Int32Attribute>("hop_length").data();
   bool onesided = op->attribute<pir::BoolAttribute>("onesided").data();
 
+  const int x_rank = x_shape.size();
+
   PADDLE_ENFORCE_EQ(
-      x_shapes.size(),
+      x_rank,
       2,
       common::errors::InvalidArgument(
           "Input(X) of StftOp should be a tensor with shape [N, T], "
           "but got rank %s.",
-          x_shapes.size()));
+          x_rank));
 
   PADDLE_ENFORCE_GT(
       hop_length,
@@ -1269,63 +1271,32 @@ bool StftOpInferSymbolicShape(pir::Operation *op,
           "Attribute(hop_length) should be greater than 0, but got %s.",
           hop_length));
 
-  infer_context->AddEqualCstr(window_shapes[0], symbol::DimExpr{n_fft});
+  infer_context->AddEqualCstr(window_shape[0], symbol::DimExpr{n_fft});
 
-  symbol::DimExpr seq_length = x_shapes[1];
+  int seq_length = x_shape[x_rank - 1].Get<std::int64_t>();
   symbol::DimExpr n_frames = 1 + (seq_length - n_fft) / hop_length;
 
-  infer_context->AddEqualCstr(seq_length, symbol::DimExpr{n_fft});
+  PADDLE_ENFORCE_LE(n_fft,
+                    seq_length,
+                    common::errors::InvalidArgument(
+                        "Attribute(frame_length) should be less equal than "
+                        "sequence length, but got (%s) > (%s).",
+                        n_fft,
+                        seq_length));
 
   std::vector<symbol::DimExpr> output_shape;
-  output_shape.push_back(x_shapes[0]);
+  output_shape.push_back(x_shape[0]);
   if (onesided) {
-    output_shape.push_back(n_fft / 2 + 1);
+    output_shape.push_back(symbol::DimExpr{n_fft / 2 + 1});
   } else {
-    output_shape.push_back(n_fft);
+    output_shape.push_back(symbol::DimExpr{n_fft});
   }
-  output_shape.push_back(n_frames);
+  output_shape.push_back(symbol::DimExpr{n_frames});
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(output_shape)});
-  return true;
-}
-
-bool SwigluOpInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
-  const auto &x_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
-  size_t rank = x_shape_or_data.shape().size();
-  if (op->operand_source(1)) {
-    const auto &y_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    for (size_t i = 0; i < rank; ++i) {
-      infer_context->AddEqualCstr(x_shape_or_data.shape()[i],
-                                  y_shape_or_data.shape()[i]);
-    }
-    infer_context->SetShapeOrDataForValue(op->result(0), x_shape_or_data);
-  } else {
-    std::vector<symbol::DimExpr> x_shape = x_shape_or_data.shape();
-    // TODO(CINN): Add distribute constraint
-    x_shape[rank - 1] = x_shape[rank - 1] / symbol::DimExpr{2};
-    infer_context->SetShapeOrDataForValue(
-        op->result(0),
-        symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(x_shape)});
-  }
-  return true;
-}
-
-bool IscloseOpInferSymbolicShape(
-    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  // The shape of output is the same as input `values` (op->operand_source(1))
-  const symbol::ShapeOrDataDimExprs &operand_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  infer_context->SetShapeOrDataForValue(
-      op->result(0),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(operand_shape_or_data.shape())});
   return true;
 }
 
