@@ -550,13 +550,13 @@ def insert_fused_reduce_ops(
         for fused_var in fused_vars:
             block._insert_op_without_sync(
                 insert_idx + insert_num,
-                type='c_reduce_sum',
-                inputs={'X': fused_var},
-                outputs={'Out': fused_var},
+                type='reduce',
+                inputs={'x': fused_var},
+                outputs={'out': fused_var},
                 attrs={
                     'ring_id': ring_id,
                     'root_id': root_id,
-                    'use_calc_stream': use_calc_stream,
+                    'reduce_type': paddle.distributed.ReduceOp.SUM,
                     OP_ROLE_KEY: op_role,
                 },
             )
@@ -622,13 +622,13 @@ def insert_reduce_ops(
             grad_in_this_device.append(var)
         block._insert_op_without_sync(
             insert_idx,
-            type='c_reduce_sum',
-            inputs={'X': var},
-            outputs={'Out': var},
+            type='reduce',
+            inputs={'x': var},
+            outputs={'out': var},
             attrs={
                 'ring_id': ring_id,
                 'root_id': root_id,
-                'use_calc_stream': use_calc_stream,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
                 OP_ROLE_KEY: op_role,
             },
         )
