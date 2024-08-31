@@ -857,6 +857,15 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
     }
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
+    const auto &fuse_alpha = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("full_1_value");
+        });
+    const auto &fuse_beta = res.ComputeAttr(
+        [](const paddle::drr::MatchContext &match_ctx) -> float {
+          return match_ctx.Attr<double>("full_2_value");
+        });
+
     std::vector<const paddle::drr::Tensor *> combine_result_in;
     for (size_t i = 1; i <= concat_count_; i++) {
       const auto &fused_conv =
@@ -877,8 +886,8 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                         {"fuse_activation", res.StrAttr("clip")},
                         {"fuse_residual_connection", res.BoolAttr(false)},
                         {"force_fp32_output", res.BoolAttr(false)},
-                        {"fuse_alpha", pat.Attr("full_1_value")},
-                        {"fuse_beta", pat.Attr("full_2_value")},
+                        {"fuse_alpha", fuse_alpha},
+                        {"fuse_beta", fuse_beta},
                         {"scale_in", res.Float32Attr(1.0f)},
                         {"scale_out", res.Float32Attr(1.0f)},
                         {"scale_in_eltwise", res.Float32Attr(1.0f)},
@@ -904,8 +913,8 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
                                   std::to_string(i))},
                         {"force_fp32_output",
                          pat.Attr("force_fp32_output" + std::to_string(i))},
-                        {"fuse_alpha", pat.Attr("full_1_value")},
-                        {"fuse_beta", pat.Attr("full_2_value")},
+                        {"fuse_alpha", fuse_alpha},
+                        {"fuse_beta", fuse_beta},
                         {"scale_in", pat.Attr("scale_in" + std::to_string(i))},
                         {"scale_out",
                          pat.Attr("scale_out" + std::to_string(i))},

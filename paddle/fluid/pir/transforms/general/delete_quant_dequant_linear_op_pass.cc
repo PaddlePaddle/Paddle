@@ -76,8 +76,8 @@ class DeleteQuantDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
       auto* input_scale_var = this->scope_->FindVar(input_scale_name);
       PADDLE_ENFORCE_NOT_NULL(
           input_scale_var,
-          phi::errors::InvalidArgument("Persistable var [%s] not in scope.",
-                                       input_scale_name));
+          common::errors::InvalidArgument("Persistable var [%s] not in scope.",
+                                          input_scale_name));
       if (!input_scale_dtype.isa<pir::Float16Type>() &&
           !input_scale_dtype.isa<pir::Float32Type>()) {
         return false;
@@ -107,7 +107,7 @@ class DeleteQuantDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
       PADDLE_ENFORCE_EQ(
           this->pass_state_.get().has_value(),
           true,
-          phi::errors::InvalidArgument("pass state has no value"));
+          common::errors::InvalidArgument("pass state has no value"));
 
       auto& quant_analysis =
           this->pass_state_.get()->am.GetAnalysis<pir::pass::QuantAnalysis>();
@@ -117,7 +117,7 @@ class DeleteQuantDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
           this->pass_state_.get()
               ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
           true,
-          phi::errors::InvalidArgument("QuantAnalysis should be Preserved"));
+          common::errors::InvalidArgument("QuantAnalysis should be Preserved"));
 
       quant_analysis.scale_map[match_ctx.Tensor("x")] =
           std::vector<float>({input_scale});
@@ -141,14 +141,14 @@ class DeleteQuantDequantLinearOpPass : public pir::PatternRewritePass {
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     PADDLE_ENFORCE_EQ(Has(pir::Pass::kParamScopeAttr),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "Pass initialize failed."
                           "When using DeleteQuantDequantLinearOpPass, scope "
                           "attribute is required!"
                           "Use Set method to set the scope attribute."));
     scope_ = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
     PADDLE_ENFORCE_NOT_NULL(
-        scope_, phi::errors::InvalidArgument("scope can not be nullptr"));
+        scope_, common::errors::InvalidArgument("scope can not be nullptr"));
     pir::RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<DeleteQuantDequantLinearOpPattern>(
         context, scope_, std::ref(pass_state())));

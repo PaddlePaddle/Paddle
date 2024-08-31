@@ -41,7 +41,7 @@ class FlattenContiguousRangeOpConverter : public OpConverter {
           int dim_i = input_dim.d[i];
           PADDLE_ENFORCE_GT(dim_i,
                             0,
-                            platform::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "flatten_contiguous_range input dim "
                                 "should be > 0, but got %d.",
                                 dim_i));

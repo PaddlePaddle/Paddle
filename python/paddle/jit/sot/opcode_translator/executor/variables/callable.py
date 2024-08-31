@@ -15,16 +15,22 @@
 from __future__ import annotations
 
 import inspect
+import itertools
 import operator
 import types
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Callable
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+)
 
 import paddle
 
 from .... import psdb
 from ....profiler import EventGuard
 from ....utils import (
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     ENV_SOT_EXPORT,
     get_static_function,
     is_break_graph_api,
@@ -33,8 +39,13 @@ from ....utils import (
     is_not_supported_paddle_layer,
     is_paddle_api,
     magic_method_builtin_dispatch,
+    map_if,
 )
-from ....utils.exceptions import BreakGraphError, FallbackError, SotErrorBase
+from ....utils.exceptions import (
+    BreakGraphError,
+    FallbackError,
+    SotErrorBase,
+)
 from ..dispatcher import Dispatcher
 from ..guard import (
     StringifiedExpression,
@@ -270,7 +281,14 @@ class TensorFunctionVariable(FunctionVariable):
     def __init__(
         self, method_name: str, graph: FunctionGraph, tracker: Tracker
     ):
-        fn = getattr(paddle.static.Variable, method_name)
+        fn = getattr(
+            (
+                paddle.pir.Value
+                if paddle.framework.use_pir_api()
+                else paddle.static.Variable
+            ),
+            method_name,
+        )
         super().__init__(fn, graph, tracker)
         self.method_name = method_name
 
@@ -619,10 +637,57 @@ class BuiltinVariable(FunctionVariable):
         self.value = fn
 
     def call_function(self, /, *args, **kwargs):
+        from .basic import SymbolicVariable
+
         # Lookup the handler from dispatcher
         handler = Dispatcher.dispatch(self.value, *args, **kwargs)
+
         if handler is not None:
             return handler(*args, **kwargs)
+
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and any(
+            isinstance(var, SymbolicVariable)
+            for var in itertools.chain(args, kwargs.values())
+        ):
+            fake_args, fake_kwargs = map_if(
+                (args, kwargs),
+                pred=lambda x: isinstance(x, SymbolicVariable),
+                # this is a fake args, we don't need to care about the value of the args
+                true_fn=lambda x: ConstantVariable.wrap_literal(
+                    None, graph=self.graph
+                ),
+                false_fn=lambda x: x,
+            )
+            handler = Dispatcher.dispatch(self.value, *fake_args, **fake_kwargs)
+            if handler is not None:
+                from ..executor_cache import (
+                    OpcodeExecutorCache,
+                )
+
+                symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+                    self.graph.pycode_gen._origin_code
+                )
+
+                for var in itertools.chain(args, kwargs.values()):
+                    if isinstance(var, SymbolicVariable):
+                        if var.tracker.is_traceable():
+                            tracker_expr = (
+                                var.tracker.trace_value_from_frame().inlined_expr
+                            )
+                            symbolic_inputs[tracker_expr] = None
+                        else:
+                            for traceable_var in var.get_traceable_inputs():
+                                tracker_expr = (
+                                    traceable_var.tracker.trace_value_from_frame().inlined_expr
+                                )
+                                symbolic_inputs[tracker_expr] = None
+                args, kwargs = map_if(
+                    (args, kwargs),
+                    pred=lambda x: isinstance(x, SymbolicVariable),
+                    true_fn=lambda x: x.to_constant(),
+                    false_fn=lambda x: x,
+                )
+                return handler(*args, **kwargs)
 
         # Try to inline call the magic function
         magic_methods = magic_method_builtin_dispatch(self.value)
@@ -654,7 +719,7 @@ class BuiltinVariable(FunctionVariable):
                 return VariableFactory.from_value(
                     True,
                     self.graph,
-                    DummyTracker([self] + list(args) + list(kwargs.values())),
+                    DummyTracker([self, *list(args), *list(kwargs.values())]),
                 )
 
         # Break graph if neither of the above conditions is met
@@ -724,7 +789,13 @@ class ClassVariable(CallableVariable):
         return self.value
 
     def call_function(self, /, *args, **kwargs):
-        new_object = self.value.__new__(self.value)
+        from ..function_graph import convert_to_py_value
+
+        new_object = self.value.__new__(
+            self.value,
+            *convert_to_py_value(args),
+            **convert_to_py_value(kwargs),
+        )
 
         # do not have init function
         if self.value.__init__ is object.__init__:
@@ -749,7 +820,7 @@ class ClassVariable(CallableVariable):
         new_object_variable = VariableFactory.from_value(
             new_object,
             self.graph,
-            DummyTracker([self] + list(args) + list(kwargs.values())),
+            DummyTracker([self, *list(args), *list(kwargs.values())]),
         )
         fn_var(new_object_variable, *args, **kwargs)
         return new_object_variable

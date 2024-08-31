@@ -406,8 +406,7 @@ class Conv2dTransposeEltwiseBnOneDNNFusePattern
 class ConvTransposeEltwiseaddBnOneDNNFusePass : public pir::PatternRewritePass {
  public:
   ConvTransposeEltwiseaddBnOneDNNFusePass()
-      : pir::PatternRewritePass("conv2d_transpose_eltwiseadd_bn_fuse_pass", 3) {
-  }
+      : pir::PatternRewritePass("conv2d_transpose_bias_bn_fuse_pass", 3) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

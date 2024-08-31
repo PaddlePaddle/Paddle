@@ -28,7 +28,7 @@ limitations under the License. */
      defined PADDLE_WITH_XPU_BKCL) &&                        \
     (defined PADDLE_WITH_PSLIB)
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
 namespace paddle {
@@ -263,7 +263,7 @@ void PSGPUTrainer::RegisterHeterCallback() {
 }
 
 void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                  const platform::Place& place) {
+                                  const phi::Place& place) {
   for (size_t i = 0; i < places_.size(); ++i) {
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program

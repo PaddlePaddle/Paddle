@@ -59,7 +59,7 @@ def to_dlpack(x: Tensor) -> CapsuleType:
     """
 
     if in_dygraph_mode():
-        if not isinstance(x, (paddle.Tensor, paddle.base.core.eager.Tensor)):
+        if not isinstance(x, paddle.Tensor):
             raise TypeError(
                 "The type of 'x' in to_dlpack must be paddle.Tensor,"
                 f" but received {type(x)}."

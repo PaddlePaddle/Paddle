@@ -54,7 +54,7 @@ void DGCMomentumKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       nranks,
       1,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "DGC is not useful when num_trainers <= 1, but now nranks=%d",
           nranks));
 

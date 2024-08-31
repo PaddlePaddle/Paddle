@@ -38,7 +38,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
  public:
   ProgramInterpreter(
-      const platform::Place& place,
+      const phi::Place& place,
       const BlockDesc& block,
       Scope* scope,
       const ExecutionConfig& execution_config = ExecutionConfig());
@@ -91,7 +91,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   const Scope* local_scope() const override;
 
-  const platform::Place& GetPlace() const override { return place_; }
+  const phi::Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
     output_hookfuncs_ = hookfuncs;

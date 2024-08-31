@@ -16,8 +16,6 @@ from __future__ import annotations
 from functools import cached_property
 from typing import TypeVar
 
-from typing_extensions import Self
-
 import paddle
 from paddle.amp.auto_cast import amp_state
 from paddle.base.data_feeder import convert_dtype
@@ -31,17 +29,35 @@ from paddle.utils import flatten, is_sequence
 from .utils import Cache, Singleton, map_if_extend, meta_str
 
 DynamicSymbolT = TypeVar("DynamicSymbolT")
+SOT_INFER_META_INNER_VAR = "___SOT_INFER_META_INNER_VAR"
 
 
-class SymbolicInt(metaclass=Singleton):
+class SymbolicValue(metaclass=Singleton):
     def __repr__(self) -> str:
-        return "SymbolicInt()"
+        return f"{self.__class__.__name__}()"
 
-    def __str__(self) -> str:
-        return "SymbolicInt()"
+    def get_static_type(self) -> type:
+        raise NotImplementedError("get_py_type is not implemented.")
+
+
+class SymbolicBool(SymbolicValue):
+    def get_static_type(self) -> type[bool]:
+        return bool
+
+
+class SymbolicInt(SymbolicValue):
+    def get_static_type(self) -> type[int]:
+        return int
+
+
+class SymbolicFloat(SymbolicValue):
+    def get_static_type(self) -> type[float]:
+        return float
 
 
 class MetaInfo:
+    shape: list[int | SymbolicInt]
+
     def __init__(
         self,
         shape,
@@ -59,7 +75,7 @@ class MetaInfo:
         self.persistable = persistable
         self.type = type
         self.place = place
-        self.shape: list[int | SymbolicInt] = shape
+        self.shape = shape
         self.dtype = dtype
         self.stop_gradient = stop_gradient
 
@@ -67,11 +83,11 @@ class MetaInfo:
         self, dynamic_symbol: DynamicSymbolT = -1
     ) -> list[int | DynamicSymbolT]:
         return [
-            dim if not isinstance(dim, SymbolicInt) else dynamic_symbol
+            dynamic_symbol if isinstance(dim, SymbolicInt) else dim
             for dim in self.shape
         ]
 
-    def with_dynamic_axes(self, dynamic_axes: list[int]) -> Self:
+    def with_dynamic_axes(self, dynamic_axes: list[int]) -> MetaInfo:
         shape = [
             SymbolicInt() if i in dynamic_axes else dim
             for i, dim in enumerate(self.shape)
@@ -144,10 +160,7 @@ class MetaInfo:
 
     @staticmethod
     def from_value(value) -> MetaInfo:
-        if isinstance(value, paddle.pir.Value):
-            name = "Value@NoName"
-        else:
-            name = value.name
+        name = SOT_INFER_META_INNER_VAR
         dtype = MetaInfo._handle_legacy_ir_amp_dtype(value.dtype)
         shape = [SymbolicInt() if dim == -1 else dim for dim in value.shape]
         return MetaInfo(
@@ -159,6 +172,9 @@ class MetaInfo:
             value.type,
             value.place,
         )
+
+    def is_inner_var(self):
+        return self.name == SOT_INFER_META_INNER_VAR
 
     def is_dynamic_shape(self):
         """
@@ -202,7 +218,7 @@ class VariableCreator(metaclass=Singleton):
         # self.var_cache = {}
         # self.main_program = paddle.static.Program()
         # self.startup_program = paddle.static.Program()
-        self.var_name_generator = UniqueNameGenerator("infer_meta_variable_")
+        self.var_name_generator = UniqueNameGenerator(SOT_INFER_META_INNER_VAR)
 
     def gen_name(self, meta):
         name = f"{meta.dtype}_{meta.stop_gradient}"
@@ -294,10 +310,9 @@ class VariableCreator(metaclass=Singleton):
                 if isinstance(func, str):
                     # TODO(Aurelius84): Is length of args always greater than 0?
                     # Do we need add condition check here?
-                    out = getattr(args[0], func)(*args[1:], **kwargs)
-                else:
-                    out = func(*args, **kwargs)
-
+                    func = getattr(args[0], func)
+                    args = args[1:]
+                out = func(*args, **kwargs)
         return convert_variable_to_meta_info(out)
 
 

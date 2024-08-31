@@ -110,7 +110,7 @@ class FusedDotProductAttentionPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("q_scale_value");
+          return match_ctx.Attr<double>("q_scale_value");
         });
 
     const auto &dot_product_attention =
@@ -265,7 +265,7 @@ class FusedDotProductAttentionGradPattern : public paddle::drr::DrrPatternBase {
     paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("q_scale_value");
+          return match_ctx.Attr<double>("q_scale_value");
         });
 
     const auto &dot_product_attention =
@@ -403,7 +403,7 @@ class FusedDotProductAttentionWithDropoutPattern
     paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("q_scale_value");
+          return match_ctx.Attr<double>("q_scale_value");
         });
 
     const auto &dot_product_attention =
@@ -573,7 +573,7 @@ class FusedDotProductAttentionGradWithDropoutPattern
     paddle::drr::ResultPattern res = src.ResultPattern();
     const auto &scaling_factor = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> float {
-          return match_ctx.Attr<float>("q_scale_value");
+          return match_ctx.Attr<double>("q_scale_value");
         });
 
     const auto &dot_product_attention =

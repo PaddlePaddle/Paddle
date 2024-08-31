@@ -23,8 +23,8 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/platform/device_context.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
@@ -48,7 +48,7 @@ class NaiveExecutor {
   using PirHookFunc =
       std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
 
-  explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+  explicit NaiveExecutor(const phi::Place& place) : place_(place) {}
 
   ~NaiveExecutor();
 

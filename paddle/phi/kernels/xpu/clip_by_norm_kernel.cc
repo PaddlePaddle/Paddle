@@ -29,7 +29,7 @@ void ClipByNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(output);
 
   PADDLE_ENFORCE_NOT_NULL(input,
-                          phi::errors::InvalidArgument(
+                          common::errors::InvalidArgument(
                               "Input(X) of ClipByNormOp should not be null. "
                               "Please check if it is created correctly."));
 

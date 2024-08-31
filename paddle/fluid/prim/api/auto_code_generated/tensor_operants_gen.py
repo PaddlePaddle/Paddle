@@ -344,10 +344,7 @@ class PrimTensorAPI(BaseAPI):
         input_args = []
         for name in self.inputs['names']:
             name = name.split('@')[0]
-            if inplace_flag and name in self.inplace_map.values():
-                input_args.append(name)
-            else:
-                input_args.append(name)
+            input_args.append(name)
         return input_args
 
     def get_func_args(self, inplace_flag=False):

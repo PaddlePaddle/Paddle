@@ -145,7 +145,7 @@ ProgramDesc GetLmMainProgram() {
 }
 
 TEST(StandaloneExecutor, run) {
-  auto place = platform::CUDAPlace(0);
+  auto place = phi::GPUPlace(0);
   std::shared_ptr<ProgramDesc> p_startup_prog =
       std::make_shared<ProgramDesc>(load_from_file("lm_startup_program"));
   std::shared_ptr<ProgramDesc> p_main_prog =
@@ -186,7 +186,7 @@ TEST(StandaloneExecutor, run) {
 }
 
 TEST(InterpreterCore, skip_gc_vars) {
-  auto place = platform::CUDAPlace(0);
+  auto place = phi::GPUPlace(0);
   ProgramDesc startup_prog = load_from_file("lm_startup_program");
   ProgramDesc main_prog = GetLmMainProgram();
 
@@ -244,7 +244,7 @@ void TestShareWorkQueue(const ProgramDesc& prog,
                         const std::vector<phi::DenseTensor>& feed_tensors,
                         const std::vector<std::string>& fetch_names,
                         const std::vector<float>& fetch_results) {
-  const platform::CPUPlace place = platform::CPUPlace();
+  const phi::CPUPlace place = phi::CPUPlace();
 
   Scope scope;
   std::shared_ptr<InterpreterCore> core1 = std::make_shared<InterpreterCore>(
@@ -289,7 +289,7 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   std::array<float, 4> data_b = {0.0, 0.1, 0.2, 0.3};
 
   phi::DDim dims = common::make_ddim({2, 2});
-  const platform::CPUPlace place = platform::CPUPlace();
+  const phi::CPUPlace place = phi::CPUPlace();
 
   phi::DenseTensor tensor_a = phi::DenseTensor();
   phi::DenseTensor tensor_b = phi::DenseTensor();

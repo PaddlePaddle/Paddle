@@ -43,50 +43,50 @@ void AddmmKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_GE(
       rank,
       2,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the dims size of input must be greater than or equal to 2."));
 
   PADDLE_ENFORCE_EQ(
       x_dim.size(),
       rank,
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The dims size of Input(input) and Input(x) must be equal."));
 
   PADDLE_ENFORCE_GE(
       y_dim.size(),
       rank,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "the dims size of Input(input) and Input(y) must be equal."));
 
   for (size_t i = 0; i < rank - 2; ++i) {
     PADDLE_ENFORCE_EQ(input_dim[i],
                       x_dim[i],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "input.dim[%d] and x.dim[%d] must be eaqul.", i, i));
     PADDLE_ENFORCE_EQ(input_dim[i],
                       y_dim[i],
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "input.dim[%d] and y.dim[%d] must be eaqul.", i, i));
   }
 
   PADDLE_ENFORCE_GE(
       input_dim[rank - 2],
       x_dim[rank - 2],
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The shape of Input(input) and Input(x) is not suitable for matmul "
           "opetation, input_dim[-2] must be equal to x_dim[-2]."));
 
   PADDLE_ENFORCE_GE(
       input_dim[rank - 1],
       y_dim[rank - 1],
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The shape of Input(input) and Input(y) is not suitable for matmul "
           "opetation, input_dim[-1] must be equal to y_dim[-1]."));
 
   PADDLE_ENFORCE_GE(
       x_dim[rank - 1],
       y_dim[rank - 2],
-      phi::errors::PreconditionNotMet(
+      common::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
           "opetation, x_dim[-1] must be equal to y_dim[-2]."));
 
@@ -96,9 +96,9 @@ void AddmmKernelImpl(const Context& dev_ctx,
   sparse_blas.SPMM(
       false, false, static_cast<T>(alpha), x, y, static_cast<T>(beta), out);
 #else
-  PADDLE_THROW(
-      phi::errors::Unimplemented("forward of 'sparse.addmm' use cusparseSpMM, "
-                                 "which is supported from CUDA 11.0"));
+  PADDLE_THROW(common::errors::Unimplemented(
+      "forward of 'sparse.addmm' use cusparseSpMM, "
+      "which is supported from CUDA 11.0"));
 #endif
 }
 

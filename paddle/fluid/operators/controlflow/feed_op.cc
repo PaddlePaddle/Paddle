@@ -34,7 +34,7 @@ const framework::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
                                                int col) {
   PADDLE_ENFORCE_GE(col,
                     0,
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Expected the column index (the attribute 'col' of "
                         "operator 'Feed') of current feeding variable to be "
                         "no less than 0. But received column index = %d.",
@@ -43,7 +43,7 @@ const framework::FeedType& CheckAndGetFeedItem(const phi::ExtendedTensor& x,
   PADDLE_ENFORCE_LT(
       static_cast<size_t>(col),
       feed_list->size(),
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The column index of current feeding variable is expected to be "
           "less than the length of feeding list. But received column index = "
           "%d, the length of feeding list = %d",
@@ -60,12 +60,12 @@ void FeedDenseTensorKernel(const Context& dev_ctx,
                            phi::DenseTensor* out) {
   PADDLE_ENFORCE_NOT_NULL(
       out,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Output cannot be found in scope for operator 'Feed'"));
   const auto& feed_item = CheckAndGetFeedItem(x, col);
   const auto& in_tensor = paddle::get<phi::DenseTensor>(feed_item);
   const auto& place = dev_ctx.GetPlace();
-  if (platform::is_same_place(in_tensor.place(), place)) {
+  if (phi::is_same_place(in_tensor.place(), place)) {
     out->ShareDataWith(in_tensor);
   } else {
     framework::TensorCopy(in_tensor, place, dev_ctx, out);
@@ -81,12 +81,12 @@ void FeedSparseCooTensorKernel(const Context& dev_ctx,
                                phi::SparseCooTensor* out) {
   PADDLE_ENFORCE_NOT_NULL(
       out,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Output cannot be found in scope for operator 'Feed'"));
   const auto& feed_item = CheckAndGetFeedItem(x, col);
   const auto& in_tensor = paddle::get<phi::SparseCooTensor>(feed_item);
   const auto& place = dev_ctx.GetPlace();
-  if (platform::is_same_place(in_tensor.place(), place)) {
+  if (phi::is_same_place(in_tensor.place(), place)) {
     *out = in_tensor;
   } else {
     phi::DenseTensor indices, values;
@@ -103,7 +103,7 @@ void FeedStringsKernel(const Context& dev_ctx UNUSED,
                        phi::ExtendedTensor* out) {
   PADDLE_ENFORCE_NOT_NULL(
       out,
-      phi::errors::NotFound(
+      common::errors::NotFound(
           "Output cannot be found in scope for operator 'Feed'"));
   const auto& feed_item = CheckAndGetFeedItem(x, col);
   auto strs_out = static_cast<framework::Strings*>(out);
@@ -156,9 +156,9 @@ class FeedOp : public framework::OperatorWithKernel {
         out_var->GetMutable<phi::SparseCooTensor>()->SetKmaps(
             feed_sparse_tensor.GetKmaps());
       } else {
-        PADDLE_THROW(
-            phi::errors::Unimplemented("Only support DenseTensor, Strings, and "
-                                       "SparseCooTensor for feed op now."));
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Only support DenseTensor, Strings, and "
+            "SparseCooTensor for feed op now."));
       }
     }
   }

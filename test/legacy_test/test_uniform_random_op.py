@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -254,7 +255,13 @@ class TestUniformRandomOpWithDiagInit(TestUniformRandomOp):
 
 class TestUniformRandomOpSelectedRows(unittest.TestCase):
     def get_places(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places
@@ -333,14 +340,12 @@ class TestUniformRandomOpApi(unittest.TestCase):
             y = linear(x)
 
             place = base.CPUPlace()
-            x_tensor = base.create_lod_tensor(
-                np.random.rand(3, 16).astype("float32"), [[1, 2]], place
-            )
+            x_data = np.random.rand(3, 16).astype("float32")
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             ret = exe.run(
                 paddle.static.default_main_program(),
-                feed={'x': x_tensor},
+                feed={'x': x_data},
                 fetch_list=[y],
                 return_numpy=False,
             )
@@ -438,7 +443,13 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
 
 class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
     def get_places(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places
@@ -469,7 +480,13 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
 
 class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
     def get_places(self):
-        places = [core.CPUPlace()]
+        places = []
+        if (
+            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
+            in ['1', 'true', 'on']
+            or not core.is_compiled_with_cuda()
+        ):
+            places.append(core.CPUPlace())
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places

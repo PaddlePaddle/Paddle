@@ -16,17 +16,17 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/memory/allocation/allocator_facade.h"
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
+#include "paddle/phi/core/memory/memory.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/stream.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
 #endif
 
 namespace paddle {
@@ -63,7 +63,7 @@ TEST(CUDAMallocAsyncInterfaceTest, AllocInterfaceTest) {
   allocation_implicit_stream.reset();
   gpuStream_t default_stream =
       dynamic_cast<phi::GPUContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(place))
+          phi::DeviceContextPool::Instance().Get(place))
           ->stream();
   allocation::AllocationPtr allocation_unique =
       Alloc(place,
@@ -106,11 +106,10 @@ TEST(CUDAMallocAsyncInterfaceTest, GetAllocatorWithDefaultStreamTest) {
   const std::shared_ptr<Allocator> allocator_implicit_stream =
       instance.GetAllocator(place);
   const std::shared_ptr<Allocator> allocator_default_stream =
-      instance.GetAllocator(
-          place,
-          static_cast<phi::GPUContext *>(
-              platform::DeviceContextPool::Instance().Get(place))
-              ->stream());
+      instance.GetAllocator(place,
+                            static_cast<phi::GPUContext *>(
+                                phi::DeviceContextPool::Instance().Get(place))
+                                ->stream());
   EXPECT_EQ(allocator_implicit_stream.get(), allocator_default_stream.get());
 }
 
@@ -133,7 +132,7 @@ TEST(CUDAMallocAsyncInterfaceTest, GetStreamInterfaceTest) {
 
   gpuStream_t default_stream =
       dynamic_cast<phi::GPUContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(place))
+          phi::DeviceContextPool::Instance().Get(place))
           ->stream();
   std::shared_ptr<Allocation> allocation_implicit_stream =
       AllocShared(place, alloc_size);

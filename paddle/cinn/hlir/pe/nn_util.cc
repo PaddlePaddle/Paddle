@@ -410,7 +410,7 @@ std::vector<ir::Tensor> winograd_transform_matrices(const int& tile_size,
       get_winograd_val(tile_size, kernel_size);
   PADDLE_ENFORCE_EQ(vals.size(),
                     3U,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "vals_size of winograd is not 3! Please check."));
 
   std::vector<std::vector<float>> A = vals[0];
@@ -467,10 +467,10 @@ std::vector<int> GetFirstStepReduceShape(const std::vector<int>& shape,
   // the size to unfold las reduce axis
   int unfold_size =
       cinn::common::GetMaxThreads() / GetParallelSize(shape, axes);
-  PADDLE_ENFORCE_GT(
-      unfold_size,
-      1,
-      phi::errors::InvalidArgument("unfold_size should be greater than 1!"));
+  PADDLE_ENFORCE_GT(unfold_size,
+                    1,
+                    ::common::errors::InvalidArgument(
+                        "unfold_size should be greater than 1!"));
 
   // fuse reduce axis.
   int insert_zero_num = 0;

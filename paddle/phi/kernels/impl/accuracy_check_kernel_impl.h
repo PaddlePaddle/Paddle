@@ -83,7 +83,7 @@ struct AccuracyCheckFunctor<phi::CPUContext, T> {
     }
     PADDLE_ENFORCE_EQ(val,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Accuracy check failed, kernel name %s, res index %d",
                           fn_name,
                           res_index));
@@ -129,7 +129,7 @@ struct AccuracyCheckFunctor<phi::CPUContext, phi::dtype::complex<T>> {
     }
     PADDLE_ENFORCE_EQ(val,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Accuracy check failed, kernel name %s, res index %d",
                           fn_name,
                           res_index));
@@ -257,7 +257,7 @@ struct AccuracyCheckFunctor<phi::GPUContext, T> {
 
     PADDLE_ENFORCE_EQ(*data_ptr,
                       true,
-                      phi::errors::PreconditionNotMet(
+                      common::errors::PreconditionNotMet(
                           "Accuracy check failed, kernel name %s", fn_name));
   }
 };

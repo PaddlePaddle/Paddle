@@ -36,7 +36,7 @@ void AllCloseKernel(const Context& dev_ctx,
   } else if (rtol.dtype() == DataType::FLOAT32) {
     rtol_v = rtol.to<float>();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input (Rtol) type must be double or float, but get %s.",
         rtol.dtype()));
   }
@@ -45,7 +45,7 @@ void AllCloseKernel(const Context& dev_ctx,
   } else if (atol.dtype() == DataType::FLOAT32) {
     atol_v = atol.to<float>();
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Input (Atol) type must be double or float, but get %s.",
         atol.dtype()));
   }

@@ -24,7 +24,7 @@ namespace operators {
 
 TEST(op_debug_str, test_unknown_dtype) {
   phi::Place place = phi::CPUPlace();
-  framework::DDim dim{3, 4, 5, 6};
+  phi::DDim dim{3, 4, 5, 6};
   const std::string unknown_dtype = "unknown_dtype";
 
   framework::OpDesc desc;
@@ -62,7 +62,7 @@ TEST(op_debug_str, test_unknown_dtype) {
   ASSERT_TRUE(before_run_str.find(unknown_dtype) != std::string::npos);
 
   op->Run(scope, place);
-  platform::DeviceContextPool::Instance().Get(place)->Wait();
+  phi::DeviceContextPool::Instance().Get(place)->Wait();
 
   auto after_run_str = op->DebugStringEx(&scope);
   LOG(INFO) << after_run_str;

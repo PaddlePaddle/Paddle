@@ -1008,7 +1008,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 
     if (mask_ptr != nullptr) {
       if (d_dropout_src_ptr == nullptr) {
-        PADDLE_THROW(phi::errors::InvalidArgument(
+        PADDLE_THROW(common::errors::InvalidArgument(
             "To compute fused_dropout_residual_ln grad, d_dropout_src_ptr "
             "can't be null"));
       }
@@ -1121,7 +1121,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
     // Note: it is not supported for double type.
     if (sizeof(U) > 4) {
       PADDLE_THROW(
-          phi::errors::InvalidArgument("Only support float and fp16 type"));
+          common::errors::InvalidArgument("Only support float and fp16 type"));
     } else {
       int gridx_2 = 0;
 
@@ -1154,7 +1154,7 @@ void ln_bwd_fast_kernel_driver(const phi::GPUContext &dev_ctx,
 #undef LAUNCH_LN_BWD_BETA_GAMMMA_KERNEL
     }
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Fast layer_norm kernel is only used when feature_size is 1024"));
   }
 }

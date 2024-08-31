@@ -211,7 +211,7 @@ std::string PlaceHelper::GetDeviceType(const Place &place) {
   } else if (is_custom_place(place)) {
     return place.GetDeviceType();
   } else {
-    PADDLE_THROW(phi::errors::Fatal(
+    PADDLE_THROW(common::errors::Fatal(
         "Unknown device type. Please check available devices by "
         "paddle.device.get_available_device()"));
   }

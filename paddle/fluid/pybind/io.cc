@@ -51,8 +51,8 @@ void BindIO(pybind11::module *m) {
            PADDLE_ENFORCE_EQ(
                static_cast<bool>(fout),
                true,
-               platform::errors::Unavailable(
-                   "Cannot open %s to save variables.", str_file_name));
+               common::errors::Unavailable("Cannot open %s to save variables.",
+                                           str_file_name));
            paddle::framework::SerializeToStream(fout, tensor);
 
            int64_t tellp = fout.tellp();
@@ -66,8 +66,8 @@ void BindIO(pybind11::module *m) {
            PADDLE_ENFORCE_EQ(
                static_cast<bool>(fin),
                true,
-               platform::errors::Unavailable(
-                   "Cannot open %s to load variables.", str_file_name));
+               common::errors::Unavailable("Cannot open %s to load variables.",
+                                           str_file_name));
 
            paddle::framework::DeserializeFromStream(fin, &tensor);
            int64_t tellg = fin.tellg();
@@ -82,7 +82,7 @@ void BindIO(pybind11::module *m) {
            PADDLE_ENFORCE_EQ(
                static_cast<bool>(fout),
                true,
-               platform::errors::Unavailable(
+               common::errors::Unavailable(
                    "Cannot open %s to save SelectedRows.", str_file_name));
 
            paddle::framework::SerializeToStream(fout, selected_rows);
@@ -98,8 +98,8 @@ void BindIO(pybind11::module *m) {
         PADDLE_ENFORCE_EQ(
             static_cast<bool>(fin),
             true,
-            platform::errors::Unavailable(
-                "Cannot open %s to load SelectedRows.", str_file_name));
+            common::errors::Unavailable("Cannot open %s to load SelectedRows.",
+                                        str_file_name));
 
         paddle::framework::DeserializeFromStream(fin, &selected_rows);
         int64_t tellg = fin.tellg();
@@ -169,7 +169,11 @@ void BindIO(pybind11::module *m) {
          py::arg("overwrite") = true,
          py::arg("readable") = false,
          py::arg("trainable") = true);
-  m->def("deserialize_pir_program", &pir::ReadModule);
+  m->def("deserialize_pir_program",
+         &pir::ReadModule,
+         py::arg("file_path"),
+         py::arg("program"),
+         py::arg("pir_version") = -1);
 }
 }  // namespace pybind
 }  // namespace paddle

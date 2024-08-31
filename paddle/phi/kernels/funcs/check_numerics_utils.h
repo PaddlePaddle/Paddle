@@ -87,7 +87,7 @@ HOSTDEVICE static void PrintAndThrowError(const char* debug_info,
                                           int64_t num_inf,
                                           int64_t num_zero) {
 #if !defined(__HIPCC__) && !defined(__CUDA_ARCH__)
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
+  PADDLE_THROW(common::errors::PreconditionNotMet(
       "There are NAN or INF (num_nan=%lld, num_inf=%lld, num_zero=%lld) in "
       "%s.",
       static_cast<long long>(num_nan),   // NOLINT
@@ -150,13 +150,13 @@ void WriteToFileForDifferentLevel(const char* debug_info,
   MKDIR(output_dir.c_str());
   std::string filename = output_dir + "worker_" + log_name;
   std::ofstream outfile(filename, std::ios::app);
-  PADDLE_ENFORCE_EQ(
-      outfile.is_open(),
-      true,
-      phi::errors::Unavailable("Fail to open output file %s, please check the "
-                               "specified output_dir (%s).",
-                               filename,
-                               output_dir));
+  PADDLE_ENFORCE_EQ(outfile.is_open(),
+                    true,
+                    common::errors::Unavailable(
+                        "Fail to open output file %s, please check the "
+                        "specified output_dir (%s).",
+                        filename,
+                        output_dir));
 
   if (num_nan > 0 || num_inf > 0) {
     outfile << "[PRECISION] [ERROR] in " << debug_info
@@ -351,8 +351,8 @@ void CheckNumericsCpuImpl(const T* value_ptr,
       std::isinf(imag_sum)) {
     // hot fix for compile failed in gcc4.8
     // here also need print detail info of nan or inf later
-    PADDLE_THROW(phi::errors::PreconditionNotMet("There are NAN or INF in %s.",
-                                                 cpu_hint_str));
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "There are NAN or INF in %s.", cpu_hint_str));
   }
 }
 

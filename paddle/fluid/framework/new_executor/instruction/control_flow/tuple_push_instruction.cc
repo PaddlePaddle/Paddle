@@ -43,7 +43,7 @@ bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
       }
     }
   } else {
-    PADDLE_THROW(phi::errors::PreconditionNotMet(
+    PADDLE_THROW(common::errors::PreconditionNotMet(
         "Only support AllocatedDenseTensorType and "
         "AllocatedDenseTensorArrayType in vectortype now, but get: %s",
         type));
@@ -52,7 +52,7 @@ bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
 }
 
 TuplePushInstruction::TuplePushInstruction(size_t id,
-                                           const platform::Place& place,
+                                           const phi::Place& place,
                                            ::pir::Operation* op,
                                            ValueExecutionInfo* value_exe_info)
     : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {

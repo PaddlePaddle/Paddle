@@ -31,9 +31,6 @@ class TestCollectiveScatterAPI(TestDistBase):
         )
 
     def test_scatter_nccl(self):
-        self.check_with_place("collective_scatter_api.py", "scatter", "nccl")
-
-    def test_scatter_nccl_with_new_comm(self):
         dtypes_to_test = [
             "float16",
             "float32",
@@ -47,7 +44,6 @@ class TestCollectiveScatterAPI(TestDistBase):
                 "scatter",
                 "nccl",
                 dtype=dtype,
-                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_scatter_nccl_dygraph(self):

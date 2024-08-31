@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence, overload
+from typing import TYPE_CHECKING, Literal, overload
 
 from typing_extensions import TypeAlias
 
@@ -32,6 +32,8 @@ from .math import _get_reduce_axis_with_tensor
 from .search import where
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from paddle import Tensor
 
 _Interpolation: TypeAlias = Literal[
@@ -303,8 +305,7 @@ def nanmedian(
     keepdim: bool = ...,
     mode: Literal['min'] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -314,8 +315,7 @@ def nanmedian(
     keepdim: bool = ...,
     mode: Literal['avg', 'min'] = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 def nanmedian(
@@ -448,8 +448,7 @@ def median(
     keepdim: bool = ...,
     mode: Literal['min'] = ...,
     name: str | None = ...,
-) -> tuple[Tensor, Tensor]:
-    ...
+) -> tuple[Tensor, Tensor]: ...
 
 
 @overload
@@ -459,8 +458,7 @@ def median(
     keepdim: bool = ...,
     mode: Literal['avg', 'min'] = ...,
     name: str | None = ...,
-) -> Tensor:
-    ...
+) -> Tensor: ...
 
 
 def median(
@@ -740,7 +738,7 @@ def _compute_quantile(
     elif isinstance(q, (list, tuple)):
         if len(q) <= 0:
             raise ValueError("q should not be empty")
-    elif isinstance(q, Variable):
+    elif isinstance(q, (Variable, paddle.pir.Value)):
         if len(q.shape) > 1:
             raise ValueError("q should be a 0-D tensor or a 1-D tensor")
         if len(q.shape) == 0:
@@ -751,7 +749,9 @@ def _compute_quantile(
         )
     for q_num in q:
         # we do not validate tensor q in static mode
-        if not in_dynamic_or_pir_mode() and isinstance(q_num, Variable):
+        if not in_dynamic_mode() and isinstance(
+            q_num, (Variable, paddle.pir.Value)
+        ):
             break
         if q_num < 0 or q_num > 1:
             raise ValueError("q should be in range [0, 1]")

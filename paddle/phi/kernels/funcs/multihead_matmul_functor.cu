@@ -572,7 +572,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &context,
 #if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
           PADDLE_ENFORCE_EQ(bias_is_mask,
                             false,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "QK_bias is mask can't be supported on rocm or "
                                 "cuda_arch<700"));
 #else
@@ -614,7 +614,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &context,
 #if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 700)
           PADDLE_ENFORCE_EQ(bias_is_mask,
                             false,
-                            phi::errors::InvalidArgument(
+                            common::errors::InvalidArgument(
                                 "QK_bias is mask can't be supported on rocm or "
                                 "cuda_arch<700"));
 #else
@@ -627,7 +627,7 @@ inline void MatmulWithHeadQK(const phi::GPUContext &context,
           } else if (block.x <= 4096) {
             SOFTMAX_KERNEL_WITH_MASK(4);
           } else {
-            PADDLE_THROW(phi::errors::InvalidArgument(
+            PADDLE_THROW(common::errors::InvalidArgument(
                 "Cannot support the length of attention > 8192."));
           }
 #endif

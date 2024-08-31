@@ -19,13 +19,13 @@ limitations under the License. */
 #include <vector>
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/phi/core/platform/cuda_device_guard.h"
 #endif
 
 #ifdef PADDLE_WITH_XPU_KP
 #include <xpu/runtime.h>  // NOLINT
 
-#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/core/platform/device/xpu/xpu_info.h"
 #endif
 
 #include "paddle/fluid/platform/enforce.h"
@@ -94,7 +94,7 @@ using AnyDeviceGuard = platform::CUDADeviceGuard;
 #elif defined(PADDLE_WITH_XPU_KP)
 using DevResource = XPUResource;
 using DevPlace = phi::XPUPlace;
-using AnyDeviceGuard = platform::XPUDeviceGuard;
+using AnyDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 #endif
 
 #if defined(PADDLE_WITH_CUDA)

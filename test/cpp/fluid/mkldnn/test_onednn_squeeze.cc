@@ -31,7 +31,7 @@ namespace tensorrt {
 template <typename DataType>
 void AddVarToScope(const std::string var_name,
                    paddle::framework::Scope* scope,
-                   const paddle::framework::DDim& dims) {
+                   const phi::DDim& dims) {
   std::random_device seed;
   std::default_random_engine engine(seed());
   std::uniform_real_distribution<float> dist(0, 100);

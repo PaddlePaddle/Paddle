@@ -48,7 +48,7 @@ phi::funcs::MatmulFusedType GetFwdFusedEpilogueType(
         ctx.template Alloc<T>(reserve_space, reserve_size);
       }
     } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
+      PADDLE_THROW(common::errors::InvalidArgument(
           "fused_gemm_epilogue's activate should be one of {none, relu, gelu},"
           " but received %s, please check",
           activation));
@@ -70,7 +70,7 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
                              DenseTensor* out,
                              DenseTensor* reserve_space) {
 #if CUDA_VERSION < 11060
-  PADDLE_THROW(phi::errors::Unimplemented(
+  PADDLE_THROW(common::errors::Unimplemented(
       "The fused_gemm_epilogue operator only support CUDA 11.6 "
       "or higher version."));
 #endif

@@ -38,13 +38,13 @@ class PirInterpreter : public InterpreterBaseImpl {
                           InstructionSchedulingPriorityLess>;
 
  public:
-  PirInterpreter(const platform::Place& place,
+  PirInterpreter(const phi::Place& place,
                  const std::vector<std::string>& fetch_var_names,
                  const ::pir::Block* ir_block,
                  Scope* scope,
                  const ExecutionConfig& execution_config = ExecutionConfig());
 
-  PirInterpreter(const platform::Place& place,
+  PirInterpreter(const phi::Place& place,
                  const std::vector<std::string>& fetch_var_names,
                  const ::pir::Block* ir_block,
                  Scope* scope,
@@ -94,7 +94,7 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   Scope* InnerScope() const;
 
-  const platform::Place& GetPlace() const override { return place_; }
+  const phi::Place& GetPlace() const override { return place_; }
 
   void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {}
 

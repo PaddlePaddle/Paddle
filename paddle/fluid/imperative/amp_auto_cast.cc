@@ -46,7 +46,7 @@ OpSupportedInfos(const std::string& place,
                  place.end(),
                  std::back_inserter(query_place),
                  [](unsigned char c) { return std::toupper(c); });
-  using fn_type = std::add_pointer<bool(const platform::Place&)>::type;
+  using fn_type = std::add_pointer<bool(const phi::Place&)>::type;
   std::unordered_map<std::string, fn_type> is_target_place{
       {"GPU", &phi::is_gpu_place},
       {"CPU", &phi::is_cpu_place},
@@ -58,7 +58,7 @@ OpSupportedInfos(const std::string& place,
   };
   PADDLE_ENFORCE_NE(is_target_place.count(query_place),
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The argument `place` should be 'GPU', 'CPU', 'XPU' or "
                         "other Custom Device, but got '%s'.",
                         place));
@@ -180,7 +180,7 @@ AmpOperators::GetMutableUnsupportedOps(const phi::DataType& data_type) {
       data_type == phi::DataType::FLOAT16 ||
           data_type == phi::DataType::BFLOAT16,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The data_type mismatch. It should be FLOAT16 or BFLOAT16."));
   if (data_type == phi::DataType::FLOAT16) {  // NOLINT
     return unsupported_fp16_ops_;

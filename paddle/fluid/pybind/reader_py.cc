@@ -31,13 +31,13 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/place.h"
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(reader_queue_speed_test_mode);
 
 // disable auto conversion to list in Python
-PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
+PYBIND11_MAKE_OPAQUE(phi::TensorArray);
 
 namespace paddle {
 namespace pybind {
@@ -63,7 +63,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShape(
 
   PADDLE_ENFORCE_GE(tensor_shape[0],
                     0,
-                    platform::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "Tensor shape at dim 0 must not be less than 0"));
 
   if (!tensor.lod().empty()) {
@@ -90,7 +90,7 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShape(
     PADDLE_ENFORCE_GE(
         tensor_shape[idx],
         0,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Tensor shape at dim %d must not be less than 0", idx));
     if (target_shape[idx] >= 0 &&
         tensor_shape[static_cast<int>(idx)] != target_shape[idx]) {
@@ -128,7 +128,7 @@ class MultiDeviceFeedReader {
  public:
   using ResultDictList =
       std::vector<std::unordered_map<std::string, phi::DenseTensor>>;
-  using ResultList = std::vector<paddle::framework::LoDTensorArray>;
+  using ResultList = std::vector<phi::TensorArray>;
 
   static constexpr bool kKeepOrder =
       std::is_same<QueueType,
@@ -140,7 +140,7 @@ class MultiDeviceFeedReader {
       const std::vector<std::vector<int>> &shapes,
       const std::vector<framework::proto::VarType::Type> &dtypes,
       const std::vector<bool> &need_check_feed,
-      const std::vector<platform::Place> &dst_places,
+      const std::vector<phi::Place> &dst_places,
       bool use_double_buffer,
       bool drop_last,
       bool pin_memory = false)
@@ -182,8 +182,8 @@ class MultiDeviceFeedReader {
             framework::MakeDecoratedReader<operators::reader::BufferedReader>(
                 reader, p, 2, pin_memory_));
       } else {
-        if (platform::is_gpu_place(p)) {
-          PADDLE_THROW(platform::errors::PermissionDenied(
+        if (phi::is_gpu_place(p)) {
+          PADDLE_THROW(common::errors::PermissionDenied(
               "Place cannot be CUDAPlace when use_double_buffer is False"));
         }
         holder->Reset(reader);
@@ -213,7 +213,7 @@ class MultiDeviceFeedReader {
       auto &ret = result.back();
       PADDLE_ENFORCE_EQ(names_.size(),
                         item.size(),
-                        platform::errors::InvalidArgument(
+                        common::errors::InvalidArgument(
                             "The sample number of reader's input data and the "
                             "input number of feed list are not equal.\n"
                             "Possible reasons are:\n"
@@ -271,9 +271,9 @@ class MultiDeviceFeedReader {
         if (UNLIKELY(each_status == Status::kException)) {
           PADDLE_ENFORCE_NOT_NULL(
               exceptions_[i],
-              platform::errors::NotFound("exceptions_[%d] is NULL, but the "
-                                         "result status is Status::kException",
-                                         i));
+              common::errors::NotFound("exceptions_[%d] is NULL, but the "
+                                       "result status is Status::kException",
+                                       i));
           *e = exceptions_[i];
           exceptions_[i] = nullptr;
         }
@@ -318,7 +318,7 @@ class MultiDeviceFeedReader {
     if (UNLIKELY(e)) {
       PADDLE_ENFORCE_EQ(status,
                         Status::kException,
-                        platform::errors::NotFound(
+                        common::errors::NotFound(
                             "The exception raised is not NULL, but "
                             "the result status is not Status::kException"));
       std::rethrow_exception(e);
@@ -330,11 +330,11 @@ class MultiDeviceFeedReader {
       throw py::stop_iteration();
     }
 
-    PADDLE_ENFORCE_EQ(status,
-                      Status::kSuccess,
-                      platform::errors::NotFound(
-                          "The function executed successfully, but "
-                          "the result status is not Status::kSuccess"));
+    PADDLE_ENFORCE_EQ(
+        status,
+        Status::kSuccess,
+        common::errors::NotFound("The function executed successfully, but "
+                                 "the result status is not Status::kSuccess"));
   }
 
   std::shared_ptr<QueueType> queue_;
@@ -346,7 +346,7 @@ class MultiDeviceFeedReader {
   std::vector<std::future<Status>> futures_;
   std::vector<std::exception_ptr> exceptions_;
 
-  std::vector<paddle::framework::LoDTensorArray> ret_;
+  std::vector<phi::TensorArray> ret_;
   bool drop_last_;
   bool pin_memory_;
 };
@@ -453,7 +453,7 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::LoDTensorBlockingQueue &self,
-             const paddle::framework::LoDTensorArray &lod_tensor_vec) {
+             const phi::TensorArray &lod_tensor_vec) {
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())
@@ -471,7 +471,7 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::OrderedMultiDeviceLoDTensorBlockingQueue &self,
-             const paddle::framework::LoDTensorArray &lod_tensor_vec) {
+             const phi::TensorArray &lod_tensor_vec) {
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())
@@ -496,7 +496,7 @@ void BindReader(py::module *module) {
          const std::vector<std::vector<int>> &shapes,
          const std::vector<framework::proto::VarType::Type> &dtypes,
          const std::vector<bool> &need_check_feed,
-         const std::vector<platform::Place> &dst_places,
+         const std::vector<phi::Place> &dst_places,
          bool use_double_buffer,
          bool drop_last,
          bool pin_memory) {
@@ -521,7 +521,7 @@ void BindReader(py::module *module) {
          const std::vector<std::vector<int>> &shapes,
          const std::vector<framework::proto::VarType::Type> &dtypes,
          const std::vector<bool> &need_check_feed,
-         const std::vector<platform::Place> &dst_places,
+         const std::vector<phi::Place> &dst_places,
          bool use_double_buffer,
          bool drop_last,
          bool pin_memory) {

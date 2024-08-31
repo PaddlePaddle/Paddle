@@ -115,7 +115,7 @@ struct GraphTraits {
     PADDLE_ENFORCE_EQ(
         start_points.empty(),
         false,
-        platform::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Start points of topological sorting should not be empty!"));
     NodesTSIterator x(start_points);
     return iterator_range<NodesTSIterator>(NodesTSIterator(start_points),

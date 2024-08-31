@@ -27,7 +27,7 @@ struct FakeException {
   void pd_exception(int a) const {
     PADDLE_ENFORCE_NE(a,
                       a,
-                      paddle::platform::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "This is a preset error message used to verify "
                           "whether the exception meets expectations: %d, %d.",
                           a,
@@ -40,10 +40,23 @@ struct FakeException {
 TEST(Status, pd_exception) {
   FakeException e;
   Status status = get_status([&]() { e.pd_exception(1); });
-  CHECK(!status.ok());
-  CHECK(status == status);
-  CHECK(!(status != status));
-  CHECK_EQ(status.code(), paddle::platform::error::INVALID_ARGUMENT + 1);
+  PADDLE_ENFORCE_EQ(
+      status.ok(),
+      false,
+      common::errors::PreconditionNotMet("Status should not be OK."));
+  PADDLE_ENFORCE_EQ(
+      status == status,
+      true,
+      common::errors::PreconditionNotMet("Status should be equal to itself."));
+  PADDLE_ENFORCE_EQ(status != status,
+                    false,
+                    common::errors::PreconditionNotMet(
+                        "Status should not be different from itself."));
+  PADDLE_ENFORCE_EQ(
+      status.code(),
+      common::ErrorCode::INVALID_ARGUMENT + 1,
+      common::errors::InvalidArgument(
+          "Required status.code() should be equal to INVALID_ARGUMENT + 1. "));
   LOG(INFO) << status.error_message();
 }
 
@@ -51,7 +64,10 @@ TEST(Status, basic_exception) {
   FakeException e;
   Status status;
   status = get_status([&]() { e.base_exception(); });
-  CHECK(!status.ok());
+  PADDLE_ENFORCE_EQ(
+      status.ok(),
+      false,
+      common::errors::PreconditionNotMet("Status should not be OK."));
   LOG(INFO) << status.error_message();
 }
 
@@ -59,7 +75,9 @@ TEST(Status, no_exception) {
   FakeException e;
   Status status;
   status = get_status([&]() { e.no_exception(); });
-  CHECK(status.ok());
+  PADDLE_ENFORCE_EQ(status.ok(),
+                    true,
+                    common::errors::PreconditionNotMet("Status should be OK."));
 }
 
 TEST(Status, copy) {

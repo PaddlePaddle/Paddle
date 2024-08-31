@@ -48,13 +48,11 @@ __all__ = []
 
 
 @overload
-def _npairs(x: _T_Padding, n: int) -> _T_Padding:
-    ...
+def _npairs(x: _T_Padding, n: int) -> _T_Padding: ...
 
 
 @overload
-def _npairs(x: int, n: int) -> int:
-    ...
+def _npairs(x: int, n: int) -> int: ...
 
 
 def _npairs(x, n):
@@ -1701,6 +1699,9 @@ class Embedding(Layer):
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
+        max_norm(float, optional): If provided, will renormalize the embedding vectors to have a norm larger than
+            :attr:`max\_norm` . It will inplace update the input embedding weight in dynamic graph mode. Default: None.
+        norm_type(float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
         sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizer does not support sparse update,
@@ -1765,6 +1766,8 @@ class Embedding(Layer):
         num_embeddings: int,
         embedding_dim: int,
         padding_idx: float | None = None,
+        max_norm: float | None = None,
+        norm_type: float = 2.0,
         sparse: bool = False,
         weight_attr: ParamAttrLike | None = None,
         name: str | None = None,
@@ -1774,6 +1777,8 @@ class Embedding(Layer):
         self._embedding_dim = embedding_dim
         self._sparse = sparse
         self._is_distributed = False
+        self._max_norm = max_norm
+        self._norm_type = norm_type
         self._padding_idx = padding_idx
 
         if self._num_embeddings <= 0:
@@ -1819,6 +1824,8 @@ class Embedding(Layer):
             x,
             weight=self.weight,
             padding_idx=self._padding_idx,
+            max_norm=self._max_norm,
+            norm_type=self._norm_type,
             sparse=self._sparse,
             name=self._name,
         )

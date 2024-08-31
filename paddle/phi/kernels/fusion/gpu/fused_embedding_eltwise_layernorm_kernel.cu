@@ -39,12 +39,12 @@ void EmbeddingEltWiseLayerNormKernel(
   PADDLE_ENFORCE_GE(
       epsilon,
       0.0f,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'epsilon' is %f, but it should be between 0.0 and 0.001", epsilon));
   PADDLE_ENFORCE_LE(
       epsilon,
       0.001f,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "'epsilon' is %f, but it should be between 0.0 and 0.001.", epsilon));
   int input_num = static_cast<int>(ids.size());
 

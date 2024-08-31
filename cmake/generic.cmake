@@ -474,7 +474,6 @@ function(cc_test_run TARGET_NAME)
       TEST ${TARGET_NAME}
       PROPERTY
         ENVIRONMENT
-        FLAGS_cpu_deterministic=true
         FLAGS_init_allocated_mem=true
         FLAGS_cudnn_deterministic=true
         LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
@@ -718,8 +717,6 @@ function(nv_test TARGET_NAME)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
@@ -828,8 +825,6 @@ function(hip_test TARGET_NAME)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
@@ -932,8 +927,6 @@ function(xpu_test TARGET_NAME)
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
@@ -1154,13 +1147,20 @@ function(py_test TARGET_NAME)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
+    string(REGEX MATCH "_deprecated\.py$" DEPRECATED_MODULES "${py_test_SRCS}")
+    string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+    set(FLAGS_PIR_MODE "")
+    if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
+       OR (NOT "${DEPRECATED_TARGET_NAME}" STREQUAL ""))
+      set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+    endif()
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       add_test(
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true FLAGS_cpu_deterministic=true
+          FLAGS_cudnn_deterministic=true ${FLAGS_PIR_MODE}
           PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
           COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
           ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS}
@@ -1171,9 +1171,8 @@ function(py_test TARGET_NAME)
         NAME ${TARGET_NAME}
         COMMAND
           ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true FLAGS_cpu_deterministic=true
-          ${py_test_ENVS} ${PYTHON_EXECUTABLE} -u ${py_test_SRCS}
-          ${py_test_ARGS}
+          FLAGS_cudnn_deterministic=true ${FLAGS_PIR_MODE} ${py_test_ENVS}
+          ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
@@ -1320,7 +1319,7 @@ function(math_library TARGET)
   set(cc_srcs)
   set(cu_srcs)
   set(hip_srcs)
-  set(math_common_deps device_context framework_proto enforce)
+  set(math_common_deps device_context framework_proto phi common)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
       list(APPEND math_common_deps cub)

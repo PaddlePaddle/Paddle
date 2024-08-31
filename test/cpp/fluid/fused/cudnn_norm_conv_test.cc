@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cu.h"
@@ -238,7 +238,7 @@ class CudnnNormConvolutionTester {
 
   void CheckForward(float diff, bool is_relative_atol = false) {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
     phi::DenseTensor cpu_output_base;
     phi::DenseTensor cpu_sum_base;
@@ -260,7 +260,7 @@ class CudnnNormConvolutionTester {
 
   void CheckBackward(float diff, bool is_relative_atol = false) {
     phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-        platform::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
+        phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
     phi::DenseTensor cpu_input_grad_base;
     phi::DenseTensor cpu_filter_nchw_grad_base;
@@ -427,15 +427,15 @@ TEST(CudnnNormConvFp16, K1S1) {
   int output_channels = 32;
   int kernel_size = 1;
   int stride = 1;
-  CudnnNormConvolutionTester<paddle::platform::float16> test(batch_size,
-                                                             height,
-                                                             width,
-                                                             input_channels,
-                                                             output_channels,
-                                                             kernel_size,
-                                                             stride);
+  CudnnNormConvolutionTester<phi::dtype::float16> test(batch_size,
+                                                       height,
+                                                       width,
+                                                       input_channels,
+                                                       output_channels,
+                                                       kernel_size,
+                                                       stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
+      phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
   if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
@@ -457,15 +457,15 @@ TEST(CudnnNormConvFp16, K3S1) {
   int output_channels = 32;
   int kernel_size = 3;
   int stride = 1;
-  CudnnNormConvolutionTester<paddle::platform::float16> test(batch_size,
-                                                             height,
-                                                             width,
-                                                             input_channels,
-                                                             output_channels,
-                                                             kernel_size,
-                                                             stride);
+  CudnnNormConvolutionTester<phi::dtype::float16> test(batch_size,
+                                                       height,
+                                                       width,
+                                                       input_channels,
+                                                       output_channels,
+                                                       kernel_size,
+                                                       stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
+      phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
   if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
@@ -487,15 +487,15 @@ TEST(CudnnNormConvFp16, K1S1O4) {
   int output_channels = 128;
   int kernel_size = 1;
   int stride = 1;
-  CudnnNormConvolutionTester<paddle::platform::float16> test(batch_size,
-                                                             height,
-                                                             width,
-                                                             input_channels,
-                                                             output_channels,
-                                                             kernel_size,
-                                                             stride);
+  CudnnNormConvolutionTester<phi::dtype::float16> test(batch_size,
+                                                       height,
+                                                       width,
+                                                       input_channels,
+                                                       output_channels,
+                                                       kernel_size,
+                                                       stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
+      phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
   if (ctx->GetComputeCapability() < 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),
@@ -517,15 +517,15 @@ TEST(CudnnNormConvFp16, K1S2O4) {
   int output_channels = 128;
   int kernel_size = 1;
   int stride = 2;
-  CudnnNormConvolutionTester<paddle::platform::float16> test(batch_size,
-                                                             height,
-                                                             width,
-                                                             input_channels,
-                                                             output_channels,
-                                                             kernel_size,
-                                                             stride);
+  CudnnNormConvolutionTester<phi::dtype::float16> test(batch_size,
+                                                       height,
+                                                       width,
+                                                       input_channels,
+                                                       output_channels,
+                                                       kernel_size,
+                                                       stride);
   phi::GPUContext *ctx = static_cast<phi::GPUContext *>(
-      platform::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
+      phi::DeviceContextPool::Instance().Get(phi::GPUPlace(0)));
 
   if (ctx->GetComputeCapability() <= 70 || ctx->GetComputeCapability() >= 90) {
     ASSERT_THROW(test.CheckForward(1e-3, true),

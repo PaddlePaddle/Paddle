@@ -108,7 +108,11 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_multihead_matmul_fuse_pass_v2",                        //
       "trt_multihead_matmul_fuse_pass_v3",                        //
       "multihead_matmul_roformer_fuse_pass",                      //
-      "constant_folding_pass",                                    //
+#if defined _WIN32  // Windows does not support sparse_conv3d_implicit_gemm
+#else
+      "sparse_conv_optim_pass",                //
+#endif
+      "constant_folding_pass",  //
 #ifdef PADDLE_WITH_TENSORRT
 #if !IS_TRT_VERSION_GE(8610)
       "trt_flash_multihead_matmul_fuse_pass",  //
@@ -615,6 +619,7 @@ const std::vector<std::string> kPirGpuPasses{
     "transpose_flatten_concat_fuse_pass",
     "remove_redundant_transpose_pass",
     "transfer_layout_pass",
+    "horizontal_fuse_pass",
 };
 
 const std::vector<std::string> kPirXpuPasses{
@@ -624,6 +629,7 @@ const std::vector<std::string> kPirXpuPasses{
     "map_op_to_another_pass",
     "identity_op_clean_pass",
     // Operator fusion pass
+    "add_activation_xpu_fuse_pass",
     "add_layernorm_xpu_fuse_pass",
     "conv2d_bn_xpu_fuse_pass",
     "conv2d_add_xpu_fuse_pass",
@@ -650,6 +656,7 @@ const std::vector<std::string> kPirMkldnnPasses {
       "reshape_transpose_matmul_fuse_pass",       //
       "matmul_transpose_reshape_fuse_pass",       //
       "matmul_add_act_fuse_pass",                 //
+      "matmul_reshape_add_fuse_pass",             //
       "fc_onednn_enable_pass",                    //
       "matmul_elementwise_add_fuse_pass",         //
       "matmul_activation_fuse_pass",              //
@@ -667,7 +674,14 @@ const std::vector<std::string> kPirMkldnnPasses {
       "operator_scale_onednn_fuse_pass",      //
       "operator_unsqueeze_onednn_fuse_pass",  //
       "operator_reshape_onednn_fuse_pass",    //
-      "onednn_placement_pass"                 //
+      "onednn_placement_pass",                //
+};
+
+const std::vector<std::string> kPirMkldnnBf16Passes{
+    "cpu_bfloat16_placement_pass",
+    "cpu_bfloat16_pass",
+    "cpu_bfloat16_type_placement_pass",
+    "cpu_bf16_quantize_squash_pass",
 };
 
 const std::vector<std::string> kPirCpuPasses{

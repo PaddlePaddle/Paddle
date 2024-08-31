@@ -229,10 +229,10 @@ def _reduce_lodtensor(lodtensor):
     else:
         raise RuntimeError("We only support pass cpu/gpu lodtensor for now!")
 
-    return (rebuild, (type(lodtensor),) + metadata)
+    return (rebuild, (type(lodtensor), *metadata))
 
 
-def init_reductions():
+def init_reductions() -> None:
     if not _supported_check():
         return
 

@@ -62,7 +62,7 @@ namespace jit {
 using DenseTensor = phi::DenseTensor;
 
 std::vector<Tensor> PrepareInputs(const phi::Place& place) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(place);
 
   DenseTensor t;

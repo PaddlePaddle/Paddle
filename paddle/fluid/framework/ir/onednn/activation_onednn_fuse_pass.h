@@ -61,7 +61,7 @@ inline void SetActivationAttrs(paddle::framework::OpDesc* fused_op,
                                const std::string& act_type) {
   if (fused_op->HasAttr("use_mkldnn")) {
     PADDLE_ENFORCE(PADDLE_GET_CONST(bool, fused_op->GetAttr("use_mkldnn")),
-                   phi::errors::PreconditionNotMet(
+                   common::errors::PreconditionNotMet(
                        "oneDNN activation fuses require use_mkldnn=True"));
   }
   fused_op->SetAttr("use_mkldnn", true);

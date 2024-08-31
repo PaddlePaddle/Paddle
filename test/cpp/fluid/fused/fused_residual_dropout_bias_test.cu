@@ -67,7 +67,7 @@ struct FusedResidualDropoutBiasTester {
     dropout_prob = 0.0;
     is_upscale_in_train = false;
     is_test = false;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
@@ -84,7 +84,7 @@ struct FusedResidualDropoutBiasTester {
         dropout_prob(dropout_prob),
         is_upscale_in_train(is_upscale_in_train),
         is_test(is_test) {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto device_ctx = pool.Get(place);
     ctx = reinterpret_cast<phi::GPUContext *>(device_ctx);
   }
@@ -299,7 +299,7 @@ template <typename T>
 static void BaseTest() {
   const int rows = 16;
   T max_diff = static_cast<T>(0);
-  if (std::is_same<T, paddle::platform::float16>::value) {
+  if (std::is_same<T, phi::dtype::float16>::value) {
     max_diff = static_cast<T>(1e-1);
   } else {
     max_diff = static_cast<T>(1e-5);
@@ -320,7 +320,7 @@ TEST(FusedDropout, GPUFusedResidualDropoutBias) { BaseTest<float>(); }
 TEST(FusedDropout, GPUFusedResidualDropoutBiasDouble) { BaseTest<double>(); }
 
 TEST(FusedDropout, GPUFusedResidualDropoutBiasFp16) {
-  BaseTest<platform::float16>();
+  BaseTest<phi::dtype::float16>();
 }
 
 TEST(FusedDropout, GPUFusedResidualDropoutBiasIsUpscaleInTrain) {
@@ -388,9 +388,9 @@ TEST(FusedDropout, GPUFusedResidualDropoutBiasLargeShapeFp16) {
   if (std::getenv("_cols") != nullptr) {
     cols = atoi(std::getenv("_cols"));
   }
-  FusedResidualDropoutBiasTester<platform::float16> test(
+  FusedResidualDropoutBiasTester<phi::dtype::float16> test(
       rows, cols, 0, 0.0, true, true);
   test.Run();
-  test.CheckOut(static_cast<platform::float16>(1e-1));
-  test.CheckGrad(static_cast<platform::float16>(1e-1));
+  test.CheckOut(static_cast<phi::dtype::float16>(1e-1));
+  test.CheckGrad(static_cast<phi::dtype::float16>(1e-1));
 }

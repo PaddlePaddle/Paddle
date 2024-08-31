@@ -12,7 +12,7 @@
     param : [grad_out]
   kernel :
     func : add_double_grad
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x_grad, grad_y_grad, grad_out_grad
   backward : add_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
   composite : add_double_grad(y, grad_out, grad_x_grad, grad_y_grad, axis, grad_out_grad)
@@ -126,7 +126,7 @@
   kernel :
     func : divide_double_grad
     data_type : out
-  optional : grad_x, grad_x_grad, grad_y_grad
+  optional : grad_x, grad_x_grad, grad_y_grad, grad_out_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : divide_grad
@@ -171,6 +171,7 @@
   infer_meta :
     func : EmbeddingGradSparseInferMeta
     param : [x,weight]
+    spmd_rule : EmbeddingGradInferSpmd
   kernel :
     func : embedding_grad {dense, dense, dense -> dense}
            embedding_sparse_grad {dense, dense, dense -> selected_rows}
@@ -244,6 +245,7 @@
     func : matmul_double_grad
   composite : matmul_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, transpose_x=false, transpose_y=false)
   optional : grad_x_grad, grad_y_grad
+  backward : matmul_triple_grad
 
 - backward_op : matmul_grad
   forward : matmul (Tensor x, Tensor y, bool transpose_x=false, bool transpose_y=false) -> Tensor(out)
@@ -257,6 +259,16 @@
     func : matmul_grad
   composite: matmul_grad(x, y, out_grad, transpose_x, transpose_y, x_grad, y_grad)
   backward : matmul_double_grad
+
+- backward_op : matmul_triple_grad
+  forward : matmul_double_grad (Tensor x, Tensor y, Tensor grad_out, Tensor grad_grad_x, Tensor grad_grad_y, bool transpose_x=false, bool transpose_y=false) -> Tensor(grad_x), Tensor(grad_y), Tensor(grad_grad_out)
+  args : (Tensor x, Tensor y, Tensor grad_out, Tensor grad_grad_x, Tensor grad_grad_y, Tensor grad_x_grad, Tensor grad_y_grad, Tensor grad_grad_out_grad, bool transpose_x=false, bool transpose_y=false)
+  output : Tensor(x_grad), Tensor(y_grad), Tensor(grad_out_grad), Tensor(grad_grad_x_grad), Tensor(grad_grad_y_grad)
+  infer_meta :
+    func : GeneralQuinaryGradInferMeta
+    param : [x, y, grad_out, grad_grad_x, grad_grad_y]
+  kernel :
+    func : matmul_triple_grad
 
 - backward_op : matmul_with_flatten_grad
   forward : matmul_with_flatten (Tensor x, Tensor y, int x_num_col_dims=1, int y_num_col_dims=1) -> Tensor(out)
@@ -310,7 +322,7 @@
     param : [x, y, grad_out]
   kernel :
     func : multiply_double_grad
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x_grad, grad_y_grad, grad_out_grad
   inplace : (grad_x_grad -> grad_out_grad)
   backward : multiply_triple_grad
   composite : multiply_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, axis, x_grad, y_grad, grad_out_grad)
@@ -340,14 +352,15 @@
   optional : fwd_grad_grad_x, fwd_grad_grad_y, grad_x_grad, grad_y_grad, grad_grad_out_grad
 
 - backward_op : nce_grad
-  forward: nec (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false) ->  Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
+  forward: nce (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false) ->  Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
   args: (Tensor input, Tensor label, Tensor bias, Tensor weight, Tensor sample_logits, Tensor sample_labels, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, Tensor cost_grad, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)
   output: Tensor(input_grad), Tensor(bias_grad), Tensor(weight_grad)
   infer_meta:
     func: NceGradInferMeta
     param: [input, bias, weight]
   kernel:
-    func: nce_grad
+    func : nce_grad {dense, dense, dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense}
+           nce_sr_grad {dense, dense, dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, selected_rows}
     data_type: input
   optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
 
@@ -362,35 +375,6 @@
     func : push_box_sparse
     data_type : out_grad_in
   inplace : (out_grad_in -> out_grad_out)
-
-- backward_op : reshape_double_grad
-  forward : reshape_grad (Tensor xshape, Tensor grad_out) -> Tensor(grad_x)
-  args : (Tensor grad_out, Tensor grad_x_grad)
-  output : Tensor(grad_out_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [grad_out]
-  kernel :
-    func : reshape_double_grad
-  no_need_buffer : grad_out
-  inplace : (grad_x_grad -> grad_out_grad)
-
-- backward_op : reshape_grad
-  forward : reshape (Tensor x, IntArray shape) -> Tensor(out), Tensor(xshape)
-  args : (Tensor xshape, Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : KernelWithXShapeInferMeta
-    param : [xshape, out_grad]
-    spmd_rule: StaticReshapeGradInferSpmd
-  kernel :
-    func : reshape_grad
-    param : [out_grad]
-    data_type: out_grad
-    backend: out_grad
-    layout: out_grad
-  backward : reshape_double_grad
-  inplace : (out_grad -> x_grad)
 
 - backward_op : row_conv_grad
   forward: row_conv (Tensor x, Tensor filter) -> Tensor(out)
@@ -467,7 +451,7 @@
     param : [grad_out]
   kernel :
     func : subtract_double_grad
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x_grad, grad_y_grad, grad_out_grad
   no_need_buffer : y, grad_out
   inplace : (grad_x_grad -> grad_out_grad)
   composite : subtract_double_grad(y, grad_out, grad_x_grad, grad_y_grad, axis, grad_out_grad)

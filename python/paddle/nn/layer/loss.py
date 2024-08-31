@@ -2530,7 +2530,7 @@ class AdaptiveLogSoftmaxWithLoss(Layer):
 
         self.in_features = in_features
         self.n_classes = n_classes
-        self.cutoffs = cutoffs + [n_classes]
+        self.cutoffs = [*cutoffs, n_classes]
         self.div_value = div_value
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr

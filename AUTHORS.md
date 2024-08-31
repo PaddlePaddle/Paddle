@@ -27,10 +27,13 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | Guo Sheng | Sheng Guo |
 | [grygielski](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg)| Adam Grygielski |
 | Haichao-Zhang | Hai-Chao Zhang |
+| HarperCy | Sicheng Hao |
 | hedaoyuan | Dao-Yuan He |
 | helinwang | He-Lin Wang |
 | heliqi | Li-Qi He |
 | houj04 | HOU Jue |
+| [runzhech](https://github.com/runzhech) | Runzhe Chen |
+| [dynamicheart](https://github.com/dynamicheart) | Jianbang Yang |
 | HulekJakub | Jakub Hulek |
 | jacquesqiao | Long-Fei Qiao |
 | [jakpiase](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Jakub Piasecki |
@@ -43,13 +46,16 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | [lidanqing](https://raw.githubusercontent.com/jczaja/Paddle/paddle-poland-team/doc/images/paddle_poland_team.jpg) | DanQing Li |
 | lcy-seso | Ying Cao |
 | cjld | Dun Liang |
+| lj970926 | Jin Li |
 | lipeng-unisound | Peng Li |
 | gavin1332 | Yi Liu |
+| cqulilujia | Lujia Li |
 | liuyuan | Yuan Liu |
 | livc | Zhao Li |
 | llxxxll | Yong-Feng Liu |
 | luotao01 | Tao Luo |
 | lzhao4ever | Liang Zhao |
+| [RuohengMa](https://github.com/RuohengMa) | Ruoheng Ma |
 | mozga-intel | Mateusz Ozga |
 | NHZlX | Zhao-Long Xing |
 | Noplz | Yuan Gao |
@@ -71,6 +77,7 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | Superjom | Chun-Wei Yan |
 | tensor-tang | Jian Tang |
 | tianbingsz | Tian-Bing Xu |
+| tizhou86 | Ti Zhou |
 | tpatejko | Tomasz Patejko |
 | [tsocha](https://raw.githubusercontent.com/jakpiase/Paddle/new_paddle_intel_authors/img/img.jpg) | Tomasz Socha |
 | typhoonzero | Yi Wu |
@@ -124,3 +131,4 @@ This is an incomplete list of authors of [Paddle](https://github.com/PaddlePaddl
 | [zrr1999](https://github.com/zrr1999) | Rongrui Zhan |
 | [will-jl944](https://github.com/will-jl944) | Jiafeng Lu |
 | [gouzil](https://github.com/gouzil) | Chuan Tian |
+| [skywalker2012](https://github.com/skywalker2012) | Yong Wei |

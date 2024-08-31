@@ -30,29 +30,50 @@ from paddle.base.wrapped_decorator import signature_safe_contextmanager
 # TODO(CZ): to be removed when we support dynamic shape by default.
 ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.abs",
+    "pd_op.add",
     "pd_op.assign",
-    "pd_op.sin",
-    "pd_op.cos",
-    "pd_op.tanh",
     "pd_op.cast",
-    "pd_op.log",
+    "pd_op.concat",
+    "pd_op.cos",
+    "pd_op.cumsum",
+    "pd_op.divide",
+    "pd_op.dropout",
+    "pd_op.elementwise_pow",
+    "pd_op.erf",
     "pd_op.exp",
-    "pd_op.sqrt",
+    "pd_op.expand",
+    "pd_op.floor",
+    "pd_op.gelu",
+    "pd_op.hardswish",
+    "pd_op.leaky_relu",
+    "pd_op.log",
+    "pd_op.matmul",
+    "pd_op.max",
+    "pd_op.maximum",
+    "pd_op.mean",
+    "pd_op.minimum",
+    "pd_op.multiply",
+    "pd_op.pad",
+    "pd_op.pow",
+    "pd_op.reduce_as",
+    "pd_op.relu",
+    "pd_op.reshape",
     "pd_op.rsqrt",
+    "pd_op.scale",
     "pd_op.sigmoid",
     "pd_op.silu",
-    "pd_op.sum",
-    "pd_op.mean",
-    "pd_op.add",
+    "pd_op.sin",
     "pd_op.subtract",
-    "pd_op.concat",
+    "pd_op.sum",
+    "pd_op.softmax",
+    "pd_op.softsign",
     "pd_op.split",
-    "pd_op.multiply",
-    "pd_op.relu",
-    "pd_op.sigmoid",
-    "pd_op.divide",
-    "pd_op.pow",
-    "pd_op.elementwise_pow",
+    "pd_op.sqrt",
+    "pd_op.square",
+    "pd_op.stack",
+    "pd_op.swiglu",
+    "pd_op.transpose",
+    "pd_op.tanh",
 ]
 
 
@@ -61,7 +82,10 @@ class ValueWrapper:
         if isinstance(value, ValueWrapper):
             assert isinstance(value._value, (type(None), pir.Value))
         else:
-            assert isinstance(value, (type(None), pir.Value))
+            if not isinstance(value, (type(None), pir.Value)):
+                raise TypeError(
+                    "Value Wrapper is onlys support None and pir.Value"
+                )
         self._value = value._value if isinstance(value, ValueWrapper) else value
 
     def __hash__(self) -> int:
@@ -590,6 +614,8 @@ def get_grad_semantic_info(op):
         "pd_op.while",
         "pd_op.pylayer",
         "cf.tuple_push",
+        "dist_op.moe_global_mesh_tensor",
+        "dist_op.moe_sub_mesh_tensors",
     ]:
         grad_semantic_info = [True for _ in range(len(get_real_op_inputs(op)))]
         if op.name() == "pd_op.if":

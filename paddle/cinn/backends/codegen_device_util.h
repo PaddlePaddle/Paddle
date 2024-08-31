@@ -22,6 +22,9 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #endif
+#ifdef CINN_WITH_HIP
+#include "paddle/cinn/backends/hip/codegen_hip_dev.h"
+#endif
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
@@ -46,6 +49,12 @@ namespace backends {
  * first module, add a device kernel function to the second module.
  */
 std::tuple<ir::Module, ir::Module> SplitDeviceAndHostModule(ir::Module module);
+
+ir::Module CreateSwitchWithBroadcastConditionModule(
+    const std::vector<ir::Expr>& broadcast_conditions,
+    const std::vector<std::string>& case_func_names,
+    const std::string& wrapper_func_name,
+    const std::unordered_map<int, ir::Var>& symbolic_shape_var_index);
 
 namespace detail {
 
@@ -109,7 +118,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
     ir::Var kernel_stream(KERNEL_STREAM, type_of<void*>());
 
     // shared_mem_bytes Can be calculated after codegen_cuda_dev buffer creation
-    // however, this make CodeGenCUDA_Dev before spliting the host and device
+    // however, this make CodeGenCudaDev before spliting the host and device
     // module Maybe we could reorder the process.
     std::optional<Expr> shared_mem_bytes;
     cinn::common::DefaultDeviceTarget().arch.Match(
@@ -118,14 +127,18 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-          CodeGenCUDA_Dev codegen_dev(cinn::common::DefaultNVGPUTarget());
+          CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
           codegen_dev.Compile(ir::LoweredFunc(func));
           shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
 #endif
         },
         [&](common::HygonDCUArchHIP) {
-          PADDLE_THROW(phi::errors::Unimplemented(
-              "CINN todo: new hardware HygonDCUArchHIP"));
+#ifdef CINN_WITH_HIP
+          hip::CodeGenHipDevice codegen_dev(
+              cinn::common::DefaultHygonDcuHipTarget());
+          codegen_dev.Compile(ir::LoweredFunc(func));
+          shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#endif
         });
 
     VLOG(6) << "Add a call node for func->name " << func->name << "\n"
@@ -146,8 +159,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },
         [&](common::HygonDCUArchHIP) {
-          PADDLE_THROW(phi::errors::Unimplemented(
-              "CINN todo: new hardware HygonDCUArchHIP"));
+          call_kernel = runtime::intrinsic::call_hip_kernel;
         });
 
     auto call_extern_api =
@@ -220,12 +232,12 @@ struct CollectBucketStrategyHostFunctionVisitor
     PADDLE_ENFORCE_EQ(
         op->functions.size(),
         op->predicates.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of functions and predicates should be equal"));
     PADDLE_ENFORCE_EQ(
         op->functions.size(),
         op->priorities.size(),
-        phi::errors::InvalidArgument(
+        ::common::errors::InvalidArgument(
             "The size of functions and priorities should be equal"));
     // Sort funcitons and predicates according to the priority
     std::vector<std::pair<Expr, Expr>> func_predicate;

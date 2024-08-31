@@ -31,7 +31,7 @@
 namespace symbol {
 
 #define SYMBOL_NOT_IMPLEMENTED \
-  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"))
+  PADDLE_THROW(common::errors::Unimplemented("Not Implemented"))
 
 template <typename T>
 struct UnaryDimExpr {

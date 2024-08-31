@@ -26,7 +26,6 @@ import paddle
 # from op import Operator
 # from op_test_xpu import XPUOpTest
 from paddle import _C_ops, _legacy_C_ops
-from paddle.base.framework import in_dygraph_mode
 
 
 def run_adam_op(
@@ -91,47 +90,21 @@ def run_adam_op(
                 False,
             )
     else:
-        if in_dygraph_mode():
-            _, _, _, _, _, _ = _C_ops.merged_adam_(
-                param_vars,
-                grad_vars,
-                lr_vars,
-                moment1_vars,
-                moment2_vars,
-                beta1_pow_vars,
-                beta2_pow_vars,
-                master_param_vars,
-                beta1,
-                beta2,
-                epsilon,
-                False,
-                False,
-            )
-        else:
-            _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
-                param_vars,
-                grad_vars,
-                lr_vars,
-                moment1_vars,
-                moment2_vars,
-                beta1_pow_vars,
-                beta2_pow_vars,
-                master_param_vars,
-                param_vars,
-                moment1_vars,
-                moment2_vars,
-                beta1_pow_vars,
-                beta2_pow_vars,
-                master_param_vars,
-                'epsilon',
-                epsilon,
-                'beta1',
-                beta1,
-                'beta2',
-                beta2,
-                'multi_precision',
-                multi_precision,
-            )
+        _, _, _, _, _, _ = _C_ops.merged_adam_(
+            param_vars,
+            grad_vars,
+            lr_vars,
+            moment1_vars,
+            moment2_vars,
+            beta1_pow_vars,
+            beta2_pow_vars,
+            master_param_vars,
+            beta1,
+            beta2,
+            epsilon,
+            False,
+            False,
+        )
 
     outputs = {
         'ParamOut': param_vars,

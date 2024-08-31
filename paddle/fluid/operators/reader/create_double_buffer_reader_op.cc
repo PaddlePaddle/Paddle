@@ -33,9 +33,9 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
           dynamic_cast<framework::DecoratedReader*>(out->Get().get());
       PADDLE_ENFORCE_NOT_NULL(
           decorated_reader,
-          phi::errors::NotFound("The inited reader should be a "
-                                "DecoratedReader when running "
-                                "create_double_buffer_reader op."));
+          common::errors::NotFound("The inited reader should be a "
+                                   "DecoratedReader when running "
+                                   "create_double_buffer_reader op."));
       if (decorated_reader->UnderlyingReader() == underlying_reader.Get()) {
         return;
       }
