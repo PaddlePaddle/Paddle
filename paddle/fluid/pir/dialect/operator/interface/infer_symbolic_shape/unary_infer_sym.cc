@@ -2397,11 +2397,11 @@ bool PartialSumOpInferSymbolicShape(
   int length = op->attribute<pir::Int32Attribute>("length").data();
 
   PADDLE_ENFORCE_GT(
-      static_cast<int>(input_len),
+      static_cast<int>(input_len.Get<std::int64_t>())),
       start_index,
       phi::errors::OutOfRange("start_index must be less than input len"));
   if (length > 0) {
-    PADDLE_ENFORCE_GE(static_cast<int>(input_len),
+    PADDLE_ENFORCE_GE(static_cast<int>(input_len.Get<std::int64_t>())),
                       start_index + length,
                       phi::errors::OutOfRange(
                           "start_index + length is larger than input length"));
