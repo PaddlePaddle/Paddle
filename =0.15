@@ -1,4 +1,0 @@
-Defaulting to user installation because normal site-packages is not writeable
-Looking in indexes: https://mirrors.aliyun.com/pypi/simple/
-Requirement already satisfied: ruamel.yaml in /home/aistudio/.local/lib/python3.8/site-packages (0.18.6)
-Requirement already satisfied: ruamel.yaml.clib>=0.2.7 in /home/aistudio/.local/lib/python3.8/site-packages (from ruamel.yaml) (0.2.8)
