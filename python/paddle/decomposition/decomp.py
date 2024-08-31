@@ -987,26 +987,6 @@ def auto_recompute_pir_program(pir_program, outputs=None):
     fwd_op_end_idx = max(get_defining_op_indices(pir_program, outputs))
     backward_op_start_idx = fwd_op_end_idx + 1
 
-    # print("Information is:")
-    # print(f"inputs: {len(inputs)}", inputs)
-    # print(f"outputs: {len(outputs)}", outputs)
-
-    # def getIdx(op):
-    #     for idx, op_iter in enumerate(pir_program.global_block().ops):
-    #         if op == op_iter:
-    #             return idx
-    #     raise RuntimeError("op not found in program")
-
-    # for grad_output in grad_outputs:
-    #     print(
-    #         "Grad_outputs: ",
-    #         grad_output,
-    #         getIdx(grad_output.get_defining_op()),
-    #     )
-
-    # print("fwd_op_end_idx: ", fwd_op_end_idx)
-    # print("backward_op_start_idx: ", backward_op_start_idx)
-    # do auto recompute pass
     program, _ = auto_recompute(
         pir_program,
         inputs,

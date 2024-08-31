@@ -363,9 +363,9 @@ class TensorVariable(VariableBase):
                 1,
                 f"Start analyse dynamic axes for {tracker.trace_value_from_frame().inlined_expr} in {self.graph.pycode_gen._origin_code}\n",
             )
-            for key in symbolic_inputs:
+            for key, symbolic_input in symbolic_inputs.items():
                 if key.startswith(tracker_expr):
-                    log(1, f"  {key}: {symbolic_inputs[key]}\n")
+                    log(1, f"  {key}: {symbolic_input}\n")
             log(
                 1,
                 f"  -> Tensor {tracker_expr} with dynamic axes {dynamic_axes}\n",
@@ -666,6 +666,7 @@ class SymbolicVariable(VariableBase):
 
     var_name_generator = NameGenerator("symint_")
     value: int | SymbolicValue
+    mutable_attrs = ["need_guard_value"]
 
     def __init__(
         self,
@@ -685,6 +686,12 @@ class SymbolicVariable(VariableBase):
                 [], paddle.int64, True, self.var_name, False, None, None
             )
         self.need_guard_value = False
+        self.graph.side_effects.record_mutable_variable(self)
+
+    def to_constant(self):
+        return ConstantVariable(
+            self.get_py_value(), self.graph, DummyTracker([self])
+        )
 
     def get_py_value(self, allow_tensor: bool = False) -> bool | int | float:
         self.need_guard_value = True
@@ -748,11 +755,6 @@ class SymbolicVariable(VariableBase):
 
         assert frame_value_tracer.inlined_expr in symbolic_inputs
 
-        # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
-        if isinstance(self.value, int):
-            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
-            symbolic_input.setdefault(self.value, 0)
-            symbolic_input[self.value] += 1
         if self.need_guard_value:
             return super().make_stringified_guard()
         return [
@@ -765,12 +767,16 @@ class SymbolicVariable(VariableBase):
 
     @staticmethod
     def should_create_symbolic_variable(
-        value: Any, tracker: Tracker, symbolic_inputs: dict[str, dict[int, int]]
+        value: Any,
+        tracker: Tracker,
+        symbolic_inputs: dict[str, dict[int, int] | None],
     ):
         tracker_expr = tracker.trace_value_from_frame().inlined_expr
         symbolic_inputs.setdefault(tracker_expr, {})
         if tracker_expr in symbolic_inputs:
             symbolic_input = symbolic_inputs[tracker_expr]
+            if symbolic_input is None:
+                return False
             symbolic_input.setdefault(value, 0)
             symbolic_input[value] += 1
             if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
