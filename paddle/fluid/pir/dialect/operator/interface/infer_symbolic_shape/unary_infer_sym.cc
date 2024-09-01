@@ -444,6 +444,7 @@ bool ClassCenterSampleOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &label_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  int num_samples = op->attribute<pir::Int32Attribute>("num_samples").data();
 
   PADDLE_ENFORCE_EQ(label_shape_or_data.size().shape(),
                     1,
@@ -452,14 +453,12 @@ bool ClassCenterSampleOpInferSymbolicShape(
                         "but the value given is %d.",
                         label_shape_or_data.size().shape()));
 
-  int num_samples = op->attribute<pir::Int32Attribute>("num_samples").data();
-
   std::vector<symbol::DimExpr> sampled_local_class_center_shape;
   sampled_local_class_center_shape.emplace_back(symbol::DimExpr(num_samples));
 
   infer_context->SetShapeOrDataForValue(
-    op->result(0),
-    symbol::TensorShapeOrDataDimExprs(label_shape_or_data.shape()));
+      op->result(0),
+      symbol::TensorShapeOrDataDimExprs(label_shape_or_data.shape()));
 
   infer_context->SetShapeOrDataForValue(
       op->result(1),
