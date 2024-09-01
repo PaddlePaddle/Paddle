@@ -94,16 +94,6 @@ class TestGradientMergePass(unittest.TestCase):
         )
         gm_losses = np.array(history.history["loss"])
 
-        # avg_loss = 0
-        # pass_avg_ret_list = []
-        # for i, pass_ret in enumerate(gm_losses):
-        #     if (i + 1) % 4 == 0:
-        #         avg_loss += pass_ret
-        #         pass_avg_ret_list.append(avg_loss / 4)
-        #         avg_loss = 0
-        #     else:
-        #         avg_loss += pass_ret
-
         # NOTE: every sample data from dataset is all the same
         self.check_results(dp_losses, gm_losses)
 
