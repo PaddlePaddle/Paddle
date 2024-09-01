@@ -622,7 +622,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_pipeline',
     'test_weight_decay',
     'test_fleet_base_2',
-    'test_fleet_pipeline_meta_optimizer',
     'test_fleet_checkpoint',
     'test_ir_fusion_group_pass',
     'test_trt_pad_op',
