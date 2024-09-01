@@ -446,12 +446,12 @@ bool ClassCenterSampleOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   int num_samples = op->attribute<pir::Int32Attribute>("num_samples").data();
 
-  PADDLE_ENFORCE_EQ(label_shape_or_data.size().shape(),
+  PADDLE_ENFORCE_EQ(label_shape_or_data.shape().size(),
                     1,
                     common::errors::InvalidArgument(
                         "Rank of Input(Label) should be equal to 1, "
                         "but the value given is %d.",
-                        label_shape_or_data.size().shape()));
+                        label_shape_or_data.shape().size()));
 
   std::vector<symbol::DimExpr> sampled_local_class_center_shape;
   sampled_local_class_center_shape.emplace_back(symbol::DimExpr(num_samples));
