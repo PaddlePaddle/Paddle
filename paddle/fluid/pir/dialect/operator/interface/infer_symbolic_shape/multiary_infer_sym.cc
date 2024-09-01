@@ -662,7 +662,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
   // 1. Find Output rank = max(Inputs rank)
   for (const auto &input_shape_or_data : input_shape_or_data_list) {
     target_rank = std::max(
-        target_rank, static_cast<int>(input_shape_or_data.shape().size()));
+        target_rank, input_shape_or_data.shape().size().Get<std::int64_t>());
   }
 
   symbol::DimExprBuilder builder;
