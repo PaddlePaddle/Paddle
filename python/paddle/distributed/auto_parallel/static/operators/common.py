@@ -529,16 +529,28 @@ def sync_and_scale_gradients(dist_ctx, op, groups, allreduce_var_names):
         for var_name in allreduce_var_names:
             added_ops = []
             grad_var = main_block.var(var_name)
-            allreduce_op = main_block.append_op(
-                type=allreduce_type,
-                inputs={'X': [grad_var]},
-                outputs={'Out': [grad_var]},
-                attrs={
-                    'ring_id': group.id,
-                    'use_calc_stream': True,
-                    OP_ROLE_KEY: OpRole.Backward,
-                },
-            )
+            if allreduce_type == "c_allreduce_avg":
+                allreduce_op = main_block.append_op(
+                    type='all_reduce',
+                    inputs={'x': [grad_var]},
+                    outputs={'out': [grad_var]},
+                    attrs={
+                        'ring_id': group.id,
+                        'reduce_type': paddle.distributed.ReduceOp.AVG,
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
+            else:
+                allreduce_op = main_block.append_op(
+                    type=allreduce_type,
+                    inputs={'X': [grad_var]},
+                    outputs={'Out': [grad_var]},
+                    attrs={
+                        'ring_id': group.id,
+                        'use_calc_stream': True,
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
             allreduce_op._set_attr(
                 'op_namescope', '/' + ParallelMode.DataParallel
             )
