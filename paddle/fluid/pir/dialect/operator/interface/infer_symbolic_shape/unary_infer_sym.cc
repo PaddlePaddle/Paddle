@@ -2601,16 +2601,17 @@ bool SvdOpInferSymbolicShape(pir::Operation *op,
   bool full_matrices =
       op->attribute<pir::BoolAttribute>("full_matrices").data();
 
-  int x_rank = x_shapes.size();
+  const int x_rank = x_shapes.size();
   PADDLE_ENFORCE_GE(
       x_rank,
       2,
       common::errors::InvalidArgument(
           "the rank of input must be greater than or equal to 2"));
 
-  symbol::DimExpr m = x_shapes[x_rank - 2];
-  symbol::DimExpr n = x_shapes[x_rank - 1];
-  symbol::DimExpr k = std::min(m, n);
+  const symbol::DimExpr m = x_shapes[x_rank - 2];
+  const symbol::DimExpr n = x_shapes[x_rank - 1];
+  const symbol::DimExpr k =
+      std::min(m.Get<std::int64_t>(), n..Get<std::int64_t>());
 
   auto UDDim = [&](const std::vector<symbol::DimExpr> &x_shapes,
                    const symbol::DimExpr &k) {
