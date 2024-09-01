@@ -120,7 +120,9 @@ class TraceBackFrameRange(OriginInfo):
                 hint_msg = '~' * len(self.source_code[-1]) + ' <--- HERE'
                 self.source_code.append(hint_msg)
                 blank_count.append(blank_count[-1])
+        # Note: It is not possible to modify the contents of the file in the meantime, so there is no need to clear the cache
         # linecache.clearcache()
+
         # remove top and bottom empty line in source code
         while len(self.source_code) > 0 and not self.source_code[0]:
             self.source_code.pop(0)
