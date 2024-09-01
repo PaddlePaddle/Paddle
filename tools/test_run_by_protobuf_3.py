@@ -56,8 +56,6 @@ PROTOBUF3_NEEDED_TESTING_LIST = [
     'test_dist_inplace_addto_pass',
     'test_communicator_half_async',
     'test_fleet_graph_executor',
-    'test_communicator_half_async',
-    'test_fleet_graph_executor',
     'test_fleet_with_asp_sharding',
 ]
 
