@@ -269,6 +269,10 @@
 
 - op : sigmoid_grad
 
+- op : soft_relu
+
+- op : soft_relu_grad
+
 - op : slice
   extra_args : str mkldnn_data_type="float32"
 
