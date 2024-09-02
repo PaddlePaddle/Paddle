@@ -20,33 +20,56 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SplitKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const IntArray& sections,
-                 const Scalar& axis_scalar,
-                 std::vector<DenseTensor*> outs) {
+void SplitKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const IntArray& sections,  // assuming this holds sizes for each section
+    const Scalar& axis_scalar,
+    std::vector<DenseTensor*> outs) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   int axis = axis_scalar.to<int>();
   auto in_dims = x.dims();
   auto input_shape = common::vectorize<int>(in_dims);
   std::vector<XPUType*> out_ptrs;
   std::vector<int> split_lists;
+
+  // Vectors to keep track of zero-sized and non-zero-sized outputs
+  std::vector<XPUType*> non_zero_out_ptrs;
+  std::vector<int> non_zero_split_lists;
+
   for (size_t j = 0; j < outs.size(); ++j) {
-    dev_ctx.template Alloc<T>(outs[j]);
+    dev_ctx.template Alloc<T>(
+        outs[j]);  // Allocate memory for each output tensor
     out_ptrs.push_back(reinterpret_cast<XPUType*>(outs[j]->data<T>()));
-    split_lists.push_back(axis < outs[j]->dims().size() ? outs[j]->dims()[axis]
-                                                        : 1);
+    int section_size =
+        axis < outs[j]->dims().size() ? outs[j]->dims()[axis] : 1;
+    split_lists.push_back(section_size);
+
+    if (section_size > 0) {
+      non_zero_out_ptrs.push_back(
+          reinterpret_cast<XPUType*>(outs[j]->data<T>()));
+      non_zero_split_lists.push_back(section_size);
+    } else {
+      // Handle zero-dimension tensor creation
+      outs[j]->Resize(phi::make_ddim(
+          {0}));  // Resize tensor to zero-dimension if section size is zero
+    }
   }
+
   if (x.numel() == 0) {
-    return;
+    return;  // Early exit if the input tensor is empty
   }
-  int r = xpu::split<XPUType>(dev_ctx.x_context(),
-                              reinterpret_cast<const XPUType*>(x.data<T>()),
-                              out_ptrs,
-                              input_shape,
-                              split_lists,
-                              axis);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "split");
+
+  // Perform the split operation only on non-zero sections
+  if (!non_zero_split_lists.empty()) {
+    int r = xpu::split<XPUType>(dev_ctx.x_context(),
+                                reinterpret_cast<const XPUType*>(x.data<T>()),
+                                non_zero_out_ptrs,
+                                input_shape,
+                                non_zero_split_lists,
+                                axis);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "split");
+  }
 }
 
 template <typename T, typename Context>
