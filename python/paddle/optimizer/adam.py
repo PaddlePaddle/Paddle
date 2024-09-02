@@ -759,7 +759,7 @@ class Adam(Optimizer):
                         _, _, _, _, _, _ = _C_ops.merged_adam_(
                             self._param_dict[key][param_group_idx],
                             grad_dict[key],
-                            lr_dict[key].clone(),
+                            lr_dict[key],
                             self._moment1_dict[key][param_group_idx],
                             self._moment2_dict[key][param_group_idx],
                             self._beta1_pow_acc_dict[key][param_group_idx],
@@ -781,7 +781,7 @@ class Adam(Optimizer):
                     _, _, _, _, _, _ = _C_ops.merged_adam_(
                         self._param_dict[key][param_group_idx],
                         grad_dict[key],
-                        lr_dict[key].clone(),
+                        lr_dict[key],
                         self._moment1_dict[key][param_group_idx],
                         self._moment2_dict[key][param_group_idx],
                         self._beta1_pow_acc_dict[key][param_group_idx],

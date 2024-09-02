@@ -518,7 +518,7 @@ class Momentum(Optimizer):
                             self._param_dict[key][param_group_idx],
                             grad_dict[key],
                             self._velocity_dict[key][param_group_idx],
-                            lr_dict[key].clone(),
+                            lr_dict[key],
                             master_weight,
                             self._momentum,
                             self._use_nesterov,
