@@ -2660,7 +2660,7 @@ bool RankAttentionOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &param_shape =
       rank_param_shape_or_data.shape();
 
-  int max_rank = op->attribute<pir::Int64Attribute>("max_rank").data();
+  int max_rank = op->attribute<pir::Int32Attribute>("max_rank").data();
   infer_context->AddEqualCstr((offset_shape[1] - 1) / 2,
                               symbol::DimExpr(max_rank));
 
@@ -2671,7 +2671,7 @@ bool RankAttentionOpInferSymbolicShape(
           symbol::TensorShapeOrDataDimExprs(out_shape)});
 
   std::vector<symbol::DimExpr> x_help_shape = {x_shape[0],
-                                               max_rank * x_shape[1]};
+                                               x_shape[1] * max_rank};
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{
