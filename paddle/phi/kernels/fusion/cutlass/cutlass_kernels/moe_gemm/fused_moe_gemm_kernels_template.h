@@ -1016,17 +1016,31 @@ void MoeGemmRunner<T, WeightType>::moe_gemm_bias_act(
     std::string activation_type,
     cudaStream_t stream) {
   if (activation_type == "none") {
-    run_gemm<EpilogueOpBias>(A,
-                             B,
-                             weight_scales,
-                             biases,
-                             C,
-                             total_rows_before_expert,
-                             total_rows,
-                             gemm_n,
-                             gemm_k,
-                             num_experts,
-                             stream);
+    if (biases) {
+      run_gemm<EpilogueOpBias>(A,
+                               B,
+                               weight_scales,
+                               biases,
+                               C,
+                               total_rows_before_expert,
+                               total_rows,
+                               gemm_n,
+                               gemm_k,
+                               num_experts,
+                               stream);
+    } else {
+      run_gemm<EpilogueOpNoBias>(A,
+                                 B,
+                                 weight_scales,
+                                 nullptr,
+                                 C,
+                                 total_rows_before_expert,
+                                 total_rows,
+                                 gemm_n,
+                                 gemm_k,
+                                 num_experts,
+                                 stream);
+    }
   }
 }
 

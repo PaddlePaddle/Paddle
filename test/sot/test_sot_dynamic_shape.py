@@ -22,7 +22,10 @@ from test_case_base import (
 )
 
 import paddle
-from paddle.jit.sot.utils import with_allow_dynamic_shape_guard
+from paddle.jit.sot.psdb import check_no_breakgraph
+from paddle.jit.sot.utils import (
+    with_allow_dynamic_shape_guard,
+)
 
 
 def dynamic_shape_input_func1(x):
@@ -123,23 +126,34 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 )
                 self.assertEqual(ctx.translate_count, 2)
 
-    # def test_dynamic_shape_in_list(self):
-    #     with with_allow_dynamic_shape_guard(
-    #         True
-    #     ), test_instruction_translator_cache_context() as ctx:
-    #         self.assert_results(
-    #             dynamic_shape_in_list,
-    #             paddle.randn([1, 4, 5]),
-    #             [4, 5],
-    #         )
-    #         self.assertEqual(ctx.translate_count, 1)
-    #         for i in range(2, 6):
-    #             self.assert_results(
-    #                 dynamic_shape_in_list,
-    #                 paddle.randn([i, 4, 5]),
-    #                 [i * 4, 5],
-    #             )
-    #             self.assertEqual(ctx.translate_count, 2)
+    def test_dynamic_shape_cast(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            func1 = check_no_breakgraph(lambda n: bool(n))
+            func2 = check_no_breakgraph(lambda n: int(n))
+            func3 = check_no_breakgraph(lambda n: float(n))
+            for func in [func1, func2, func3]:
+                self.assert_results(func, 1)
+                self.assert_results(func, 2)
+
+    def test_dynamic_shape_in_list(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            self.assert_results(
+                dynamic_shape_in_list,
+                paddle.randn([1, 4, 5]),
+                [4, 5],
+            )
+            self.assertEqual(ctx.translate_count, 1)
+            for i in range(2, 6):
+                self.assert_results(
+                    dynamic_shape_in_list,
+                    paddle.randn([i, 4, 5]),
+                    [i * 4, 5],
+                )
+                self.assertEqual(ctx.translate_count, 2)
 
 
 if __name__ == '__main__':

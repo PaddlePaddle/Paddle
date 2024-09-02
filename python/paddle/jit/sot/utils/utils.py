@@ -23,7 +23,7 @@ import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
 from enum import Enum
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np
@@ -44,9 +44,13 @@ from .paddle_api_config import (
 )
 
 if TYPE_CHECKING:
+    from paddle._typing import NestedStructure
     from paddle.framework import Program
 
 T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+T3 = TypeVar("T3")
 ConstTypes = (int, float, str, bool, type(None))
 
 
@@ -199,7 +203,12 @@ def is_break_graph_api(func):
     return func in break_graph_set
 
 
-def map_if(*structures, pred, true_fn, false_fn):
+def map_if(
+    *structures: NestedStructure[T1],
+    pred: Callable[[T1], bool],
+    true_fn: Callable[[T1], T2],
+    false_fn: Callable[[T1], T3],
+) -> NestedStructure[T2 | T3]:
     def replace(*args):
         if pred(*args):
             return true_fn(*args)

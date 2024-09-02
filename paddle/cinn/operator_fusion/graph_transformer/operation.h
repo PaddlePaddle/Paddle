@@ -44,6 +44,8 @@ struct MergeTrivialPatternOperation {
 
       if (can_fuse) {
         auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
+        merged_node->set_fusion_iters(
+            SingleDownstreamItersFusion(upstream, downstream, true));
         graph->RemoveNode(downstream);
         VLOG(4) << "Spliting trivial pattern: \nupstream "
                 << upstream->DebugStr() << "\ndownstream "
@@ -71,6 +73,8 @@ struct MergeReduceTreeOperation {
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
     auto merged_node = graph->MergeNode(node, downstream, MergePattern);
+    merged_node->set_fusion_iters(
+        SingleDownstreamItersFusion(node, downstream, true));
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
@@ -103,6 +107,8 @@ struct MergeReduceTreeAndTrivialOperation {
     };
     PatternNodePtr merged_node =
         graph->MergeNode(node, downstream, merge_pattern_fn);
+    merged_node->set_fusion_iters(
+        SingleDownstreamItersFusion(node, downstream, false));
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "

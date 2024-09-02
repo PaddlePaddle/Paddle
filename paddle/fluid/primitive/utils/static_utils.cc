@@ -45,7 +45,7 @@ void SetEmptyGrad(const std::vector<std::vector<Tensor>>& outputs,
                   const std::vector<std::vector<bool>>& stop_gradients) {
   for (size_t i = 0; i < outputs.size(); ++i) {
     for (size_t j = 0; j < outputs[i].size(); ++j) {
-      if (stop_gradients[i][j]) {
+      if (stop_gradients[i][j] && outputs[i][j].impl()) {
         std::static_pointer_cast<primitive::LazyTensor>(outputs[i][j].impl())
             ->set_empty();
       }

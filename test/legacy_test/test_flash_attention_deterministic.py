@@ -54,6 +54,12 @@ def attention_naive(q, k, v, causal=False):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
+is_sm80 = (
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] == 8
+    and paddle.device.cuda.get_device_capability()[1] == 0
+)
+
 is_sm8x = (
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] == 8
@@ -180,7 +186,10 @@ class TestFlashAttentionAPIFlagTest1(TestFlashAttentionAPIFlag):
 class TestFlashAttentionAPIFlagTest2(TestFlashAttentionAPIFlag):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.shape = (8, 1024, 16, 256)
+        # Flash attention backward kernel only supports SM80 or SM90 for head dimension > 192
+        self.shape = (
+            (8, 1024, 16, 256) if (is_sm80 or is_sm90) else (8, 1024, 16, 192)
+        )
         self.dtype = paddle.float16
         self.dropout = 0.0
         self.causal = False

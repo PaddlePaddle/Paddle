@@ -400,7 +400,10 @@ Dispatcher.register(
 )
 Dispatcher.register(
     list.extend,
-    ("ListVariable", "ListVariable | TupleVariable"),
+    (
+        "ListVariable",
+        "ListVariable | TupleVariable",
+    ),
     lambda var, other: var.extend(other),
 )
 Dispatcher.register(
@@ -640,13 +643,14 @@ Dispatcher.register(
 # bool
 Dispatcher.register(
     bool,
-    ("ContainerVariable | SymbolicVariable",),
+    ("ContainerVariable",),
     lambda var: var.bool(),
 )
+
 Dispatcher.register(
     operator.truth,
-    ("ConstantVariable | SymbolicVariable",),
-    lambda var: var.bool(),
+    ("ConstantVariable",),
+    lambda var: Dispatcher.call(bool, var),
 )
 
 # str
@@ -936,7 +940,7 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
             ),
         )
-# Tensor
+# Tensor and Symbolic
 fallback_tensor_unary_method = {
     int,
     bool,
@@ -947,11 +951,10 @@ fallback_tensor_unary_method = {
 Dispatcher.register(tensor_numel, ("TensorVariable",), lambda x: x.numel())
 
 for unary_fn in UNARY_OPS:
-    # TODO(zrr1999): SymbolicVariable should have special dispatch for fallback_tensor_unary_method
     if unary_fn in fallback_tensor_unary_method:
         Dispatcher.register(
             unary_fn,
-            ("TensorVariable | SymbolicVariable",),
+            ("TensorVariable",),
             raise_break_graph_fn,
         )
         continue
@@ -1035,7 +1038,7 @@ for binary_fn in BINARY_OPS:
                         magic_method.name,
                     ),
                 )
-# Symbolic
+
 for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
         if magic_method.name not in get_tensor_methods():
