@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import numpy as np
-
-sys.path.append("../deprecated/distributed_passes")
-from dist_pass_test_base_deprecated import DistPassTestBase
+from dist_pass_test_base import DistPassTestBase
 
 import paddle
 from paddle import nn

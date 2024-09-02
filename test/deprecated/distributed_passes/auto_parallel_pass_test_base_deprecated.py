@@ -18,7 +18,9 @@ import sys
 from collections import OrderedDict
 
 import numpy as np
-from dist_pass_test_base_deprecated import DistPassTestBase
+
+sys.path.append("../../distributed_passes")
+from dist_pass_test_base import DistPassTestBase
 
 import paddle
 from paddle.distributed import fleet

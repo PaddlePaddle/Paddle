@@ -17,7 +17,7 @@ import importlib
 import os
 import pickle
 
-from dist_pass_test_base_deprecated import (
+from dist_pass_test_base import (
     DistPassTestBase,
     prepare_python_path_and_return_module,
 )
