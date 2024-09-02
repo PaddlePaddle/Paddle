@@ -38,34 +38,32 @@ namespace ir {
 
 void DyScheduleImpl::MergeExprs() {
   CINN_IR_SCHEDULE_BEGIN();
-  std::string primitive = "MergeExprs";
-  std::ostringstream os;
   auto exprs = this->GetModule().GetExprs();
   if (exprs.size() <= 1U) return;
-  if (!exprs[0].As<ir::Block>()) {
-    os << "Expr[0] of module_expr should be a Block!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  if (exprs[0].As<ir::Block>()->stmts.size() != 1U) {
-    os << "Expr[0] of module_expr should have only one stmt!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  if (!exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>()) {
-    os << "Expr[0] of module_expr should be Block with only one stmt which is "
-          "a "
-          "ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  if (!exprs[0]
-           .As<ir::Block>()
-           ->stmts[0]
-           .As<ir::ScheduleBlockRealize>()
-           ->schedule_block.As<ir::ScheduleBlock>()) {
-    os << "Expr[0] of module_expr should be Block with only one stmt which is "
-          "a "
-          "ScheduleBlockRealize with a defined ScheduleBlock!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(exprs[0].As<ir::Block>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Expr[0] of module_expr should be a Block!"));
+  PADDLE_ENFORCE_EQ(exprs[0].As<ir::Block>()->stmts.size(),
+                    1U,
+                    common::errors::InvalidArgument(
+                        "Expr[0] of module_expr should have only one stmt!"));
+  PADDLE_ENFORCE_EQ(
+      exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>(),
+      true,
+      common::errors::InvalidArgument(
+          "Expr[0] of module_expr should be Block with only one stmt which is "
+          "a ScheduleBlockRealize!"));
+  PADDLE_ENFORCE_EQ(
+      exprs[0]
+          .As<ir::Block>()
+          ->stmts[0]
+          .As<ir::ScheduleBlockRealize>()
+          ->schedule_block.As<ir::ScheduleBlock>(),
+      true,
+      common::errors::InvalidArgument(
+          "Expr[0] of module_expr should be Block with only one stmt which is "
+          "a ScheduleBlockRealize with a defined ScheduleBlock!"));
 
   std::vector<Expr> merged_block;
   merged_block.push_back(exprs[0]
@@ -186,18 +184,16 @@ void DyScheduleImpl::Annotate(const Expr& block,
                               const std::string& key,
                               const attr_t& value) {
   CINN_IR_SCHEDULE_BEGIN();
-  std::string primitive = "Annotate";
-  std::ostringstream os;
-  if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block) must be a ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  if (!block.As<ir::ScheduleBlockRealize>()
-           ->schedule_block.As<ScheduleBlock>()) {
-    os << "Expr param(block) must be a ScheduleBlockRealize with a "
-          "defined ScheduleBlock!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(block.As<ir::ScheduleBlockRealize>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Expr param(block) must be a ScheduleBlockRealize!"));
+  PADDLE_ENFORCE_EQ(
+      block.As<ir::ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
+      true,
+      common::errors::InvalidArgument(
+          "Expr param(block) must be a ScheduleBlockRealize with a defined "
+          "ScheduleBlock!"));
 
   auto copied_block = ir::ir_utils::IRCopy(block);
   auto* schedule_block = copied_block.As<ir::ScheduleBlockRealize>()
@@ -210,18 +206,16 @@ void DyScheduleImpl::Annotate(const Expr& block,
 void DyScheduleImpl::Unannotate(Expr& block,
                                 const std::string& ann_key) {  // NOLINT
   CINN_IR_SCHEDULE_BEGIN();
-  std::string primitive = "Unannotate";
-  std::ostringstream os;
-  if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block) must be a ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  if (!block.As<ir::ScheduleBlockRealize>()
-           ->schedule_block.As<ScheduleBlock>()) {
-    os << "Expr param(block) must be a ScheduleBlockRealize with "
-          "a defined ScheduleBlock!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(block.As<ir::ScheduleBlockRealize>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Expr param(block) must be a ScheduleBlockRealize!"));
+  PADDLE_ENFORCE_EQ(
+      block.As<ir::ScheduleBlockRealize>()->schedule_block.As<ScheduleBlock>(),
+      true,
+      common::errors::InvalidArgument(
+          "Expr param(block) must be a ScheduleBlockRealize with a defined "
+          "ScheduleBlock!"));
 
   auto* schedule_block = block.As<ir::ScheduleBlockRealize>()
                              ->schedule_block.As<ir::ScheduleBlock>();
@@ -240,21 +234,15 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   std::string primitive = "CopyTransformAndLoopInfo";
   std::ostringstream os;
 
-  if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block) must be a "
-          "ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  if (!block_target.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr param(block_target) must be a "
-          "ScheduleBlockRealize!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(block.As<ir::ScheduleBlockRealize>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Expr param(block) must be a ScheduleBlockRealize!"));
   auto exprs = this->GetModule().GetExprs();
-  if (exprs.size() != 1U) {
-    os << "Size of exprs of current module must be 1!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(exprs.size(),
+                    1U,
+                    common::errors::InvalidArgument(
+                        "Size of exprs of current module must be 1!"));
 
   auto expr = exprs[0];
   auto vars = block.As<ir::ScheduleBlockRealize>()
@@ -268,12 +256,12 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
       block_target.As<ir::ScheduleBlockRealize>()->iter_values;
   std::vector<Expr> new_iter_values;
   for (int i = 0; i < vars.size() && i < vars_target.size(); ++i) {
-    if (!(vars[i]->upper_bound.defined() &&
-          vars_target[i]->upper_bound.defined())) {
-      os << "Upper bound of iter_vars in both Expr param(block) and Expr "
-            "param(block_target) must be defined!\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
+    PADDLE_ENFORCE_EQ(
+        vars[i]->upper_bound.defined() && vars_target[i]->upper_bound.defined(),
+        true,
+        common::errors::InvalidArgument(
+            "Upper bound of iter_vars in both Expr param(block) and Expr "
+            "param(block_target) must be defined!"));
     if (vars[i]->upper_bound.is_constant() &&
         vars_target[i]->upper_bound.is_constant() &&
         vars[i]->upper_bound.get_constant() ==
@@ -286,12 +274,11 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
     }
   }
 
-  if (new_iter_values.empty()) {
-    os << "Cannot CopyTransformAndLoopInfo since shape[0] of source "
-          "and target is not equal! "
-       << vars[0]->upper_bound << " v.s " << vars_target[0]->upper_bound;
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(!new_iter_values.empty(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Cannot CopyTransformAndLoopInfo since shape[0] of "
+                        "source and target is not equal!"));
 
   int changed_loop_num = new_iter_values.size();
   std::set<std::string> used_target_loop_vars;
@@ -302,11 +289,12 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
           return x->as_var();
         });
   }
-  if (used_target_loop_vars.empty()) {
-    os << "Cannot CopyTransformAndLoopInfo since there is no loop var in the "
-          "new_iter_values!";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      !used_target_loop_vars.empty(),
+      true,
+      common::errors::InvalidArgument(
+          "Cannot CopyTransformAndLoopInfo since there is no loop "
+          "var in the new_iter_values!"));
 
   std::vector<Expr> used_target_loops;
   auto expr_copy = ir::ir_utils::IRCopy(expr);
@@ -318,12 +306,13 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                  Contains(*x, block_target);
         },
         true);
-    if (find_loop_var.size() != 1U) {
-      os << "Number of loop with iter_var which is used in "
-            "ScheduleBlockRealize for indexing in Exprs[0] of module_exprs "
-            "must be 1!\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
+    PADDLE_ENFORCE_EQ(
+        find_loop_var.size(),
+        1U,
+        common::errors::InvalidArgument(
+            "Number of loop with iter_var which is used in "
+            "ScheduleBlockRealize "
+            "for indexing in Exprs[0] of module_exprs must be 1!"));
     used_target_loops.push_back(*find_loop_var.begin());
     VLOG(3) << "used_target_loops push_back " << used_target_loops.back();
   }
@@ -332,10 +321,11 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         return (utils::GetStreamCnt(i).size() > utils::GetStreamCnt(j).size());
       });
   for (int i = new_iter_values.size(); i < old_iter_values.size(); ++i) {
-    if (!old_iter_values[i].as_var()) {
-      os << "iter_vars[" << i << "] in Expr param(block) must be vars!\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
+    PADDLE_ENFORCE_EQ(old_iter_values[i].as_var(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "iter_vars[" + std::to_string(i) +
+                          "] in Expr param(block) must be vars!"));
     new_iter_values.push_back(old_iter_values[i]);
   }
   Expr new_loop;
@@ -345,11 +335,11 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
     new_loop = ir::ir_utils::IRCopy(block);
     new_loop.As<ir::ScheduleBlockRealize>()->iter_values = new_iter_values;
   } else {
-    if (!old_iter_values[changed_loop_num].as_var()) {
-      os << "iter_vars[" << changed_loop_num
-         << "] in Expr param(block) must be vars!\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
+    PADDLE_ENFORCE_EQ(old_iter_values[changed_loop_num].as_var(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "iter_vars[" + std::to_string(changed_loop_num) +
+                          "] in Expr param(block) must be vars!"));
 
     auto old_var = old_iter_values[changed_loop_num].as_var_ref();
     auto find_partial_loop = ir::ir_utils::CollectIRNodesWithoutTensor(
@@ -360,30 +350,34 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                  Contains(*x, block);
         },
         true);
-    if (find_partial_loop.size() != 1U) {
-      os << "Number of loop with iter_var which is " << old_var->name
-         << " should be 1 in Exprs[0] of module_expr!\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
+    PADDLE_ENFORCE_EQ(
+        find_partial_loop.size(),
+        1U,
+        common::errors::InvalidArgument(
+            "Number of loop with iter_var which is " + old_var->name +
+            " must be 1 in Exprs[0] of module_expr!"));
     new_loop = ir::ir_utils::IRCopy(*find_partial_loop.begin());
     auto find_schedule_block = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_loop,
         [&](const Expr* x) { return x->As<ir::ScheduleBlockRealize>(); },
         true);
-    if (find_schedule_block.size() != 1U) {
-      os << "Number of ScheduleBlockRealize in partial_loop should be 1!\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
+    PADDLE_ENFORCE_EQ(find_schedule_block.size(),
+                      1U,
+                      common::errors::InvalidArgument(
+                          "Number of ScheduleBlockRealize in partial_loop "
+                          "should be 1!"));
 
     Expr sch_block = (*find_schedule_block.begin());
     sch_block.As<ir::ScheduleBlockRealize>()->iter_values = new_iter_values;
   }
   VLOG(3) << "new_loop is : " << new_loop;
-  if (used_target_loops.empty()) {
-    os << "Cannot CopyTransformAndLoopInfo since there is no loop which use "
-          "vars in the new_iter_values in Expr[0] of module_expr!";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      !used_target_loops.empty(),
+      true,
+      common::errors::InvalidArgument(
+          "Cannot CopyTransformAndLoopInfo since there is no loop "
+          "which use vars in the new_iter_values in Expr[0] of "
+          "module_expr!"));
 
   Expr res;
   if (used_target_loops.size() == 1) {
@@ -404,11 +398,12 @@ void DyScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   }
   VLOG(3) << "res is : " << res;
   std::vector<Expr> all_loops = this->GetLoops(block);
-  if (all_loops.empty()) {
-    os << "Cannot CopyTransformAndLoopInfo since there is no loop in Expr "
-          "param(block)!";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      !all_loops.empty(),
+      true,
+      common::errors::InvalidArgument(
+          "Cannot CopyTransformAndLoopInfo since there is no loop in Expr "
+          "param(block)!"));
   this->Replace(all_loops[0], res);
   CINN_IR_SCHEDULE_END(this->err_msg_level_);
 }
@@ -431,11 +426,12 @@ Expr DyScheduleImpl::SampleCategorical(
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SampleCategorical";
   std::ostringstream os;
-  if (candidates.size() != probs.size()) {
-    os << "vector<int> params(candidates) and vector<int> params(probs) must "
-          "have same size in SampleCategorical!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      candidates.size() == probs.size(),
+      true,
+      common::errors::InvalidArgument(
+          "vector<int> params(candidates) and vector<int> "
+          "params(probs) must have same size in SampleCategorical!"));
 
   int seed_idx = utils::SampleDiscreteFromDistribution(probs, rand_seed);
   auto result = candidates[seed_idx];
@@ -452,25 +448,29 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SamplePerfectTile";
   std::ostringstream os;
-  if (!loop.As<ir::For>()) {
-    os << "Expr param(loop) should be a For loop";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      loop.As<ir::For>(),
+      true,
+      common::errors::InvalidArgument(
+          "Expr param(loop) should be a For loop in SamplePerfectTile!"));
 
-  if (n < 2) {
-    os << "The number of tile factors should be at least 2";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(n >= 2,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The number of tile factors should be at least 2 in "
+                        "SamplePerfectTile!"));
 
-  if (max_innermost_factor < 1) {
-    os << "The max innermost factor should be at least 1";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(max_innermost_factor >= 1,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The max innermost factor should be at least 1 in "
+                        "SamplePerfectTile!"));
 
-  if (!cinn::common::is_zero(loop.As<ir::For>()->min)) {
-    os << "The For loop should start from 0";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(
+      cinn::common::is_zero(loop.As<ir::For>()->min),
+      true,
+      common::errors::InvalidArgument(
+          "The For loop should start from 0 in SamplePerfectTile!"));
 
   int loop_extent = GetLoopExtent(loop);
   std::vector<int> innermost_factors;
@@ -479,10 +479,11 @@ std::vector<Expr> DyScheduleImpl::SamplePerfectTile(
       innermost_factors.push_back(i);
     }
   }
-  if (innermost_factors.empty()) {
-    os << "No innermost factor found";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
+  PADDLE_ENFORCE_EQ(!innermost_factors.empty(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "No innermost factor found in SamplePerfectTile!"));
+
   int innermost_factor = innermost_factors[utils::SampleUniformInt(
       0, innermost_factors.size(), rand_seed)];
   auto result = SampleTile(rand_seed, n - 1, loop_extent / innermost_factor);
