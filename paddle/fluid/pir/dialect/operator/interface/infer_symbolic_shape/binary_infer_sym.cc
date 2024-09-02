@@ -1339,12 +1339,77 @@ bool MvOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool PriorBoxOpInferSymbolicShape(pir::Operation *op,
-//                                   pir::InferSymbolicShapeContext
-//                                   *infer_context) {
-//   // pass
-//   return true;
-// }
+bool PriorBoxOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  const auto &image_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const std::vector<symbol::DimExpr> &image_shape = image_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(
+      x_shape.size(),
+      4,
+      common::errors::InvalidArgument(
+          "The Input(Input) of Op(PriorBoxOp) should be a 4-D Tensor "
+          "and data format is NCHW. But received Input's dimensions = %d, "
+          "shape = [%s].",
+          x_shape.size(),
+          x_shape));
+  PADDLE_ENFORCE_EQ(
+      image_shape.size(),
+      4,
+      common::errors::InvalidArgument(
+          "The Input(Image) of Op(PriorBoxOp) should be a 4-D Tensor "
+          "and data format is NCHW. But received Image's dimensions = %d, "
+          "shape = [%s].",
+          image_shape.size(),
+          image_shape));
+
+  const std::vector<float> &aspect_ratios =
+      paddle::dialect::details::GetVectorAttr<float>(op, "aspect_ratios");
+  bool flip = op->attribute<pir::BoolAttribute>("flip").data();
+  std::vector<float> aspect_ratios_vec;
+  constexpr float epsilon = 1e-6;
+  aspect_ratios_vec.push_back(1.0f);
+  for (auto ar : aspect_ratios) {
+    bool already_exist = false;
+    for (auto item : aspect_ratios_vec) {
+      if (fabs(ar - item) < epsilon) {
+        already_exist = true;
+        break;
+      }
+    }
+    if (!already_exist) {
+      aspect_ratios_vec.push_back(ar);
+      if (flip) {
+        aspect_ratios_vec.push_back(1.0f / ar);
+      }
+    }
+  }
+  const std::vector<float> &min_sizes =
+      paddle::dialect::details::GetVectorAttr<float>(op, "min_sizes");
+  const std::vector<float> &max_sizes =
+      paddle::dialect::details::GetVectorAttr<float>(op, "max_sizes");
+  int num_priors = aspect_ratios_vec.size() * min_sizes.size();
+  if (!max_sizes.empty()) {
+    num_priors += max_sizes.size();
+  }
+
+  std::vector<symbol::DimExpr> out_shape = {
+      x_shape[2], x_shape[3], symbol::DimExpr(num_priors), symbol::DimExpr(4)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+
+  return true;
+}
 
 // bool PullBoxSparseOpInferSymbolicShape(pir::Operation *op,
 //                                        pir::InferSymbolicShapeContext
