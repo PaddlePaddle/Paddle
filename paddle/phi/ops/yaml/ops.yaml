@@ -3360,6 +3360,7 @@
   backward : multiplex_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -5229,3 +5230,4 @@
   kernel:
      func: number_count
      data_type: numbers
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
