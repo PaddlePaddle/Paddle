@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import functools
 import math
 from typing import TYPE_CHECKING, Any, Literal, overload
 
@@ -4459,8 +4460,9 @@ def tile(
         else:
             for elem in repeat_times:
                 if isinstance(elem, (Variable, paddle.pir.Value)):
+                    numel = functools.reduce(lambda x, y: x * y, elem.shape, 1)
                     assert (
-                        elem.numel() == 1
+                        numel == 1
                     ), 'Elements in repeat_times must be Tensor with one element or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)

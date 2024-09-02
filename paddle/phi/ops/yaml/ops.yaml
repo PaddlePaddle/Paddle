@@ -875,6 +875,7 @@
     func : CheckNumericsInferMeta
   kernel :
     func : check_numerics
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cholesky
   args : (Tensor x, bool upper=false)
@@ -1282,7 +1283,7 @@
     func : depthwise_conv2d
     data_type : input
   backward : depthwise_conv2d_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
@@ -2277,6 +2278,7 @@
     func : generate_proposals
     data_type : anchors
   optional : rpn_rois_num
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : graph_khop_sampler
   args : (Tensor row, Tensor colptr, Tensor x, Tensor eids, int[] sample_sizes, bool return_eids)
@@ -2310,6 +2312,7 @@
     func : grid_sample
     data_type : x
   backward : grid_sample_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : group_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW")
@@ -2336,6 +2339,7 @@
   optional: h0, bias
   intermediate: batch_gate, batch_reset_hidden_prev, batch_hidden
   backward: gru_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gru_unit
   args: (Tensor input, Tensor hidden_prev, Tensor weight, Tensor bias, int activation
@@ -2348,6 +2352,7 @@
   optional: bias
   intermediate: gate, reset_hidden_prev
   backward: gru_unit_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
@@ -2420,6 +2425,7 @@
   optional : weight
   kernel :
     func : histogram
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : hsigmoid_loss
   args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse)
@@ -3112,7 +3118,7 @@
   optional : roisnum
   kernel :
     func : matrix_nms
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : matrix_power
   args : (Tensor x, int n)
@@ -3354,6 +3360,7 @@
   backward : multiplex_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -3476,6 +3483,7 @@
   data_transform:
     skip_transform : x
   no_need_buffer : x
+  traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : one_hot
@@ -3507,7 +3515,7 @@
     func: overlap_add
     data_type : x
   backward: overlap_add_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : p_norm
   args : (Tensor x,  float porder=2,  int axis=-1,  float epsilon=1.0e-12f,  bool keepdim=false,  bool asvector=false)
@@ -3659,7 +3667,7 @@
     func : prior_box
     data_type : input
   traits : paddle::dialect::ForwardOnlyTrait
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : prod
   args : (Tensor x, IntArray axis, bool keepdim, bool reduce_all)
@@ -3729,7 +3737,7 @@
   kernel :
     func : qr
   backward : qr_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : radam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor beta1_pow, Tensor beta2_pow, Tensor rho, Tensor moment1, Tensor moment2, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
@@ -4548,6 +4556,7 @@
   kernel :
     func : stanh
   backward : stanh_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stft
   args: (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided)
@@ -5201,6 +5210,7 @@
     func: chunk_eval
     data_type: DataType::FLOAT32
   optional: seq_length
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
@@ -5220,3 +5230,4 @@
   kernel:
      func: number_count
      data_type: numbers
+  interfaces : paddle::dialect::InferSymbolicShapeInterface

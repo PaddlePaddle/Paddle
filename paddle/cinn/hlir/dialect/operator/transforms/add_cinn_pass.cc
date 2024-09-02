@@ -52,10 +52,13 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/remove_assign_out_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/shape_ops_fallback_to_phi_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/specify_input_dynamic_dim_util.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 
+COMMON_DECLARE_bool(cinn_specify_input_dynamic_dim);
+COMMON_DECLARE_string(cinn_input_dynamic_dim_spec_file);
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_debug);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
@@ -97,6 +100,16 @@ void ApplyShapeOptimizationPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   bool has_dynamic_shape = HasDynamicShape(*program);
   if (has_dynamic_shape) {
+    if (FLAGS_cinn_specify_input_dynamic_dim) {
+      PADDLE_ENFORCE_NE(
+          FLAGS_cinn_input_dynamic_dim_spec_file,
+          "",
+          ::common::errors::InvalidArgument(
+              "'FLAGS_cinn_input_dynamic_dim_spec_file' should not be empty "
+              "when using FLAGS_cinn_specify_input_dynamic_dim."));
+      SpecifyInputDynamicDimFromFile(program,
+                                     FLAGS_cinn_input_dynamic_dim_spec_file);
+    }
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
   pass_manager->Run(program);
