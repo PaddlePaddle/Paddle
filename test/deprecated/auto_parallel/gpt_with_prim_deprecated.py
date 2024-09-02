@@ -14,9 +14,13 @@
 
 import os
 import random
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../auto_parallel")
+
 from get_gpt_model import FakeDataset, generate_model
 
 import paddle
