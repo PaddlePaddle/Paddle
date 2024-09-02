@@ -32,7 +32,8 @@ void EyeKernel(const Context& ctx,
   int64_t num_rows_data = num_rows.to<int64_t>();
   int64_t num_columns_data = num_columns.to<int64_t>();
 
-  int r = xpu::eye<XPUType>(ctx.x_context(), out_data, num_rows_data, num_columns_data);
+  int r = xpu::eye<XPUType>(
+      ctx.x_context(), out_data, num_rows_data, num_columns_data);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "eye");
 }
 
