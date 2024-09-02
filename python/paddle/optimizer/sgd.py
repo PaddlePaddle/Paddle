@@ -152,7 +152,7 @@ class SGD(Optimizer):
         if in_dynamic_or_pir_mode():
             _C_ops.sgd_(
                 param_and_grad[0],
-                lr,
+                lr.clone(),
                 param_and_grad[1],
                 master_weight,
                 find_master,

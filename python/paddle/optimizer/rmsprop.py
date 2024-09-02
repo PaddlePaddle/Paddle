@@ -287,7 +287,7 @@ class RMSProp(Optimizer):
                 mean_square_acc,
                 param_and_grad[1],
                 momentum_acc,
-                self._create_param_lr(param_and_grad),
+                self._create_param_lr(param_and_grad).clone(),
                 mean_grad_acc,
                 master_weight,
                 self._epsilon,

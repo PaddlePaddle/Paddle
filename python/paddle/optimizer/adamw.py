@@ -495,7 +495,7 @@ class AdamW(Optimizer):
             _, _, _, _, _, _ = _C_ops.adamw_(
                 param_and_grad[0],
                 param_and_grad[1],
-                lr,
+                lr.clone(),
                 moment1,
                 moment2,
                 beta1_pow_acc,

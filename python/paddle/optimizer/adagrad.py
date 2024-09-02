@@ -223,7 +223,7 @@ class Adagrad(Optimizer):
                 param_and_grad[0],
                 param_and_grad[1],
                 moment_acc,
-                self._create_param_lr(param_and_grad),
+                self._create_param_lr(param_and_grad).clone(),
                 master_weight if find_master else None,
                 self._epsilon,
                 find_master,

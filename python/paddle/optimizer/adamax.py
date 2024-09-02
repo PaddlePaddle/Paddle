@@ -270,7 +270,7 @@ class Adamax(Optimizer):
             _C_ops.adamax_(
                 param_and_grad[0],
                 param_and_grad[1],
-                self._create_param_lr(param_and_grad),
+                self._create_param_lr(param_and_grad).clone(),
                 moment,
                 inf_norm,
                 beta1_pow_acc,
