@@ -203,8 +203,16 @@ void BindTensor(pybind11::module &m) {  // NOLINT
   g_framework_tensor_pytype =
       reinterpret_cast<PyTypeObject *>(framework_tensor.ptr());
   framework_tensor
-      .def("__array__",
-           [](phi::DenseTensor &self) { return TensorToPyArray(self); })
+      .def(
+          // TODO(risemeup): Modify the logic of
+          // TensorToPyArray() according to the dtype and copy
+          // parameters.
+          "__array__",
+          [](phi::DenseTensor &self, py::object dtype, py::object copy) {
+            return TensorToPyArray(self);
+          },
+          py::arg("dtype") = py::none(),
+          py::arg("copy") = py::none())
       .def("_ptr",
            [](const phi::DenseTensor &self) {
              return reinterpret_cast<uintptr_t>(self.data());
@@ -729,7 +737,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              auto dtype =
                  static_cast<phi::DataType>(t[1].cast<int>());
              auto dims = common::make_ddim(t[2].cast<std::vector<int>>());
-             auto lod_info = t[3].cast<framework::LoD>();
+             auto lod_info = t[3].cast<phi::LoD>();
              auto device_id = t[4].cast<int>();
 
              auto shared_reader_holder =
@@ -840,7 +848,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  shared_reader_holder,
                  static_cast<phi::DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
-             tensor.set_lod(t[5].cast<framework::LoD>());
+             tensor.set_lod(t[5].cast<phi::LoD>());
 
              return tensor;
            },
@@ -975,7 +983,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  shared_holder,
                  static_cast<phi::DataType>(t[3].cast<int>()));
              tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
-             tensor.set_lod(t[5].cast<framework::LoD>());
+             tensor.set_lod(t[5].cast<phi::LoD>());
 
              return tensor;
            },
@@ -1063,7 +1071,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                 shared_reader_holder,
                 static_cast<phi::DataType>(t[2].cast<int>()));
             tensor.Resize(common::make_ddim(t[3].cast<std::vector<int>>()));
-            tensor.set_lod(t[4].cast<framework::LoD>());
+            tensor.set_lod(t[4].cast<phi::LoD>());
 
             return tensor;
           }));

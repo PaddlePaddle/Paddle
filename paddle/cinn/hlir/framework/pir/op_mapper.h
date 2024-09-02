@@ -58,7 +58,7 @@ class OpMapper {
     PADDLE_ENFORCE_EQ(
         has(op, MapperType::OPERAND),
         true,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "Not register OperandIndexsFunction for %s", op.name().c_str()));
     std::vector<::pir::Value> inputs;
     for (auto idx : operand_funcs_.at(op.name())()) {
@@ -72,7 +72,7 @@ class OpMapper {
     PADDLE_ENFORCE_EQ(
         has(op, MapperType::ATTRIBUTE),
         true,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "Not register AppendAttrFunction for %s", op.name().c_str()));
     attr_funcs_.at(op.name())(op, attrs);
   }

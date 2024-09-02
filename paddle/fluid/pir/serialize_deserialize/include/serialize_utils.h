@@ -649,7 +649,7 @@ Json AttrTypeWriter::WritePaddleDistType(const pir::Type& type) {
         type.dyn_cast<paddle::dialect::DistDenseTensorType>());
   } else {
     PADDLE_ENFORCE(false,
-                   phi::errors::InvalidArgument(
+                   common::errors::InvalidArgument(
                        "Unknown Type when write paddle.dist_dialect type"));
     return Json::object();
   }
@@ -671,7 +671,7 @@ Json AttrTypeWriter::WritePaddleDistAttr(const pir::Attribute& attr) {
   } else {
     PADDLE_ENFORCE(
         false,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "Unknown Attr %s when write paddle.operatordialect attr"));
   }
   return Json::object();

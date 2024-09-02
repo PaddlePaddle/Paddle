@@ -58,14 +58,16 @@ class OpcodeExecutorCache(metaclass=Singleton):
     MAX_CACHE_SIZE = 20
     cache: dict[types.CodeType, GuardedFunctions]
     translate_count: int
-    code_symbolic_inputs: dict[types.CodeType, dict[str, dict[int, int]]]
+    code_symbolic_inputs: dict[types.CodeType, dict[str, None | dict[int, int]]]
 
     def __init__(self):
         self.cache = {}
         self.translate_count = 0
         self.code_symbolic_inputs = {}
 
-    def get_symbolic_inputs(self, code: types.CodeType):
+    def get_symbolic_inputs(
+        self, code: types.CodeType
+    ) -> dict[str, dict[int, int] | None]:
         self.code_symbolic_inputs.setdefault(code, {})
         return self.code_symbolic_inputs[code]
 

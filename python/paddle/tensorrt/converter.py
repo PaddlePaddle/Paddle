@@ -40,7 +40,6 @@ def get_cache_path():
     return cache_path
 
 
-paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
@@ -67,7 +66,7 @@ class PaddleToTensorRTConverter:
         self.trt_output_value_map = {}
 
     def find_graph_inputs_outputs(self, group_op):
-        operations = next(iter(group_op.blocks())).ops
+        operations = list(group_op.blocks())[0].ops
         all_values = {}
         output_values = {}
 
@@ -88,7 +87,10 @@ class PaddleToTensorRTConverter:
                     graph_output_values.append(result)
             for operand in op.operands():
                 source = operand.source()
-                all_values[source.id] = source
+                if not source.initialized():
+                    continue
+                else:
+                    all_values[source.id] = source
 
         # Input values are those that are in all_values but not in output_values
         input_values = [
@@ -101,9 +103,9 @@ class PaddleToTensorRTConverter:
 
     def convert_subgraph_to_trt(self, program, group_op):
         _logger.info(f"start process {group_op}")
-        operations = next(iter(group_op.blocks())).ops
+        operations = list(group_op.blocks())[0].ops
         input_values, output_values = self.find_graph_inputs_outputs(group_op)
-        builder = trt.Builder(trt.Logger(trt.Logger.VERBOSE))
+        builder = trt.Builder(trt.Logger(trt.Logger.ERROR))
         network = builder.create_network(
             1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
         )
@@ -179,27 +181,30 @@ class PaddleToTensorRTConverter:
             operands = []
             for operand in op.operands():
                 source = operand.source()
-                define_op_name = source.get_defining_op().name()
-                if define_op_name == "builtin.combine":
-                    for combined_operand in source.get_defining_op().operands():
-                        combined_source = combined_operand.source()
-                        combined_source_id = combined_source.id
-                        if combined_source_id in value_to_trt_tensor:
-                            operands.append(
-                                value_to_trt_tensor[combined_source_id]
-                            )
+                if not source.initialized():
+                    continue
+                else:
+                    define_op_name = source.get_defining_op().name()
+                    if define_op_name == "builtin.combine":
+                        for combined_operand in source.get_defining_op().operands():
+                            combined_source = combined_operand.source()
+                            combined_source_id = combined_source.id
+                            if combined_source_id in value_to_trt_tensor:
+                                operands.append(
+                                    value_to_trt_tensor[combined_source_id]
+                                )
+                            else:
+                                raise RuntimeError(
+                                    f'{combined_source_id} not found in value_to_trt_tensor'
+                                )
+                    else:
+                        source_id = source.id
+                        if source_id in value_to_trt_tensor:
+                            operands.append(value_to_trt_tensor[source_id])
                         else:
                             raise RuntimeError(
-                                f'{combined_source_id} not found in value_to_trt_tensor'
+                                f'{source_id} not found in value_to_trt_tensor'
                             )
-                else:
-                    source_id = source.id
-                    if source_id in value_to_trt_tensor:
-                        operands.append(value_to_trt_tensor[source_id])
-                    else:
-                        raise RuntimeError(
-                            f'{source_id} not found in value_to_trt_tensor'
-                        )
 
             layer = self.convert(network, op, operands)
 
@@ -212,12 +217,21 @@ class PaddleToTensorRTConverter:
         out_shapes = []
         out_names = []
         out_types = []
-        for result_value in output_values:
+        for out_index in range(len(output_values)):
+            result_value = output_values[out_index]
             output_tensor = value_to_trt_tensor[result_value.id]
+            if output_tensor is None:
+                out_names.append("")
+                out_shapes.append([])
+                out_types.append(None)
+                continue
             network.mark_output(output_tensor)
             out_names.append(output_tensor.name)
             out_shapes.append(result_value.shape)
             out_types.append(result_value.dtype)
+            if group_op.result(out_index).use_empty():
+                # if result value is not used, it doesn't need get shape, continue
+                continue
             min_shape = get_value_shape_range_info(
                 result_value, False, paddle.base.core.ShapeMode.kMIN
             )
@@ -235,10 +249,9 @@ class PaddleToTensorRTConverter:
 
         config = builder.create_builder_config()
         config.add_optimization_profile(profile)
-
         if version_list[0] > 8 or (
             version_list[0] == 8 and version_list[1] >= 6
-        ):
+        ):  # trt version >= 8.6
             config.builder_optimization_level = 5
         config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, 1 << 30)
         trt_engine = builder.build_engine(network, config)
@@ -273,6 +286,9 @@ class PaddleToTensorRTConverter:
             )
 
             for out_index in range(len(out)):
+                if group_op.result(out_index).use_empty():
+                    # if result value is not been used, it doesn't need get shape, continue
+                    continue
                 ori_value = output_values[out_index]
                 current_value = out[out_index]
                 orin_min_shape = self.shape_map[ori_value.id]["min_shape"]

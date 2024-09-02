@@ -38,46 +38,38 @@ def map_dtype(pd_dtype):
         raise TypeError(f"Unsupported dtype: {pd_dtype}")
 
 
-def run_pir_pass(program, partition_mode=False, trt_config=None):
-    print("Running run_pir_pass")
+def run_pir_pass(program, partition_mode=False):
     pm = pir.PassManager(opt_level=4)
     pm.enable_print_statistics()
     # pm.enable_ir_printing()
     paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
     passes = [
-        {'multihead_matmul_fuse_pass': {}},
-        {'transpose_flatten_concat_fuse_pass': {}},
-        {'fused_dropout_add_pass': {}},
-        {'fused_linear_param_grad_add_pass': {}},
-        {'fuse_allreduce_split_to_reducescatter_pass': {}},
-        {'inplace_pass': {}},
-        {'identity_op_clean_pass': {}},
-        {'map_op_to_another_pass': {}},
-        {'matmul_scale_fuse_pass': {}},
-        {'matmul_transpose_fuse_pass': {}},
-        {'silu_fuse_pass': {}},
-        {'group_norm_silu_fuse_pass': {}},
-        {'fused_dot_product_attention_pass': {}},
-        {'fused_flash_attn_pass': {}},
-        {'remove_redundant_transpose_pass': {}},
-        {'fused_rotary_position_embedding_pass': {}},
+        # {'multihead_matmul_fuse_pass': {}},
+        # {'transpose_flatten_concat_fuse_pass': {}},
+        # {'fused_dropout_add_pass': {}},
+        # {'fused_linear_param_grad_add_pass': {}},
+        # {'fuse_allreduce_split_to_reducescatter_pass': {}},
+        # {'inplace_pass': {}},
+        # {'identity_op_clean_pass': {}},
+        # {'map_op_to_another_pass': {}},
+        # {'matmul_scale_fuse_pass': {}},
+        # {'matmul_transpose_fuse_pass': {}},
+        # {'silu_fuse_pass': {}},
+        # {'group_norm_silu_fuse_pass': {}},
+        # {'fused_dot_product_attention_pass': {}},
+        # {'fused_flash_attn_pass': {}},
+        # {'remove_redundant_transpose_pass': {}},
+        # {'fused_rotary_position_embedding_pass': {}},
+        {'trt_op_marker_pass': {}},
+       
     ]
     if partition_mode:
-        passes = [
-            {'trt_op_marker_pass': {}},
-            {
-                'trt_sub_graph_extract_pass': {
-                    'min_group_size': trt_config.min_group_size
-                }
-            },
-        ]
+        passes = [{'trt_sub_graph_extract_pass': {}}]
 
     for pass_item in passes:
         for pass_name, pass_attr in pass_item.items():
             pm.add_pass(pass_name, pass_attr)
-            print("pass_name", pass_name)
     pm.run(program)
-    print("Finished run_pir_pass")
     return program
 
 
@@ -104,38 +96,35 @@ def predict_program(program, feed_data, fetch_var_list):
             return output
 
 
-def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
+def warmup_shape_infer(program, min_shape_feed, max_shape_feed,fetch_var_list=None):
+    paddle.framework.set_flags({"FLAGS_enable_collect_shape": True})
     with paddle.pir_utils.IrGuard():
         with paddle.static.program_guard(program):
             executor = paddle.static.Executor()
             output_var = program.list_vars()[-1]
             # Run the program with input_data
-            for _ in range(1):
-                output_original = executor.run(
-                    program, feed=min_shape_feed, fetch_list=[output_var]
-                )
+            if fetch_var_list is None:       
+                for _ in range(1):
+                    output_original = executor.run(
+                        program, feed=min_shape_feed, fetch_list=[output_var]
+                    )
 
-            # Run the program with input_data_max_shape (fake max_shape input)
-            for _ in range(1):
-                executor.run(
-                    program, feed=max_shape_feed, fetch_list=[output_var]
-                )
+                # Run the program with input_data_max_shape (fake max_shape input)
+                for _ in range(1):
+                    executor.run(
+                        program, feed=max_shape_feed, fetch_list=[output_var]
+                    )
+            else:
+                for _ in range(1):
+                    output_original = executor.run(
+                        program, feed=min_shape_feed, fetch_list=fetch_var_list
+                    )
+                
+                    # Run the program with input_data_max_shape (fake max_shape input)
+                for _ in range(1):
+                    executor.run(
+                        program, feed=max_shape_feed, fetch_list=fetch_var_list
+                    )
+    paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
 
 
-def warmup_shape_infer_v2(
-    program, min_shape_feed, max_shape_feed, fetch_var_list
-):
-    with paddle.pir_utils.IrGuard():
-        with paddle.static.program_guard(program):
-            executor = paddle.static.Executor()
-            # Run the program with input_data
-            for _ in range(1):
-                output_original = executor.run(
-                    program, feed=min_shape_feed, fetch_list=fetch_var_list
-                )
-
-            # Run the program with input_data_max_shape (fake max_shape input)
-            for _ in range(1):
-                executor.run(
-                    program, feed=max_shape_feed, fetch_list=fetch_var_list
-                )
