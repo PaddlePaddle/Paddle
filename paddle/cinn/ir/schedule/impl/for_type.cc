@@ -91,7 +91,7 @@ void DyScheduleImpl::Vectorize(const Expr& loop, int factor) {
   std::string primitive = "Vectorize";
   std::ostringstream os;
 
-  PADDLE_ENFORCE_LE(factor,
+  PADDLE_ENFORCE_GT(factor,
                     0,
                     common::errors::InvalidArgument(
                         "[IRScheduleError] An error occurred in the schedule "
