@@ -39,6 +39,11 @@ void SplitAndRelocateKernel(const Context& dev_ctx,
   auto axis_val = phi::funcs::ComputeAxis(-1, concated_input.dims().size());
   SplitWithNumKernel<T, Context>(
       dev_ctx, concated_input, output.size(), axis_val, output);
+  for (size_t i = 0; i < output.size(); ++i) {
+    const_cast<phi::DenseTensor*>(input[i])
+        ->ShareDataWith(*output[i])
+        .Resize(output[i]->dims());
+  }
 }
 
 }  // namespace phi

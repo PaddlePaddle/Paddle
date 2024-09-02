@@ -95,6 +95,9 @@ void ConcatAndRelocateKernel(const Context& dev_ctx,
             static_cast<int64_t>(offset),
             static_cast<int64_t>(offset) + static_cast<int64_t>(len)))
         .Resize(dim);
+    const_cast<phi::DenseTensor*>(input[i])
+        ->ShareDataWith(*output[i])
+        .Resize(dim);
     offset += len;
   }
   concated_out->Resize(concated_out_dims);
