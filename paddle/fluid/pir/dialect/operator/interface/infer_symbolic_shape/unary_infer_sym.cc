@@ -3236,10 +3236,7 @@ bool SqueezeOpInferSymbolicShape(
   std::vector<int> squeeze_dims;
   const auto &attributes = op->attributes();
   if (attributes.find("axis") != attributes.end()) {
-    std::vector<int64_t> axis =
-        op->attribute<paddle::dialect::IntArrayAttribute>("axis")
-            .data()
-            .GetData();
+    std::vector<int64_t> axis = details::GetVectorAttr<int64_t>(op, "axis");
     for (int i = 0; i < axis.size(); ++i) {
       squeeze_dims.emplace_back(static_cast<int>(axis[i]));
     }
