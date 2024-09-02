@@ -24,7 +24,7 @@ from paddle.incubate.nn.functional import fused_linear_activation
 
 
 def is_fused_gemm_epilogue_supported():
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+    if paddle.is_compiled_with_cuda():
         return hasattr(paddle._C_ops, 'fused_gemm_epilogue')
     else:
         return False

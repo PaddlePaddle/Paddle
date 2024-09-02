@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include <hip/hip_runtime.h>
-#include <hip/hip_runtime_api.h>
+#include <hip/hip_runtime.h>      // NOLINT
+#include <hip/hip_runtime_api.h>  // NOLINT
 #include "paddle/phi/backends/dynload/hipblasLt.h"
 #include "paddle/phi/backends/gpu/rocm/rocm_helper.h"
 
@@ -52,9 +52,9 @@ enum MatmulFusedType {
   kMatmulRelu = 4,
   kMatmulBiasRelu = 5,
   kMatmulBiasGelu = 6,
-  // kMatmulBiasReluWithReservedData = 7, // unsupport on rocm
+  kMatmulBiasReluWithReservedData = 7,  // unsupport on rocm
   kMatmulBiasGeluWithReservedData = 8,
-  // kMatmulReluGrad = 9,                 // unsupport on rocm
+  kMatmulReluGrad = 9,  // unsupport on rocm
   kMatmulGeluGrad = 10,
   kMatmulBiasGradToA = 11,
   kMatmulBiasGradToB = 12
@@ -368,6 +368,14 @@ struct MatmulDescriptor {
                                                  &hipblas_trans_y,
                                                  sizeof(hipblas_trans_y)));
     MatmulFusedType fused_type = planner->GetFusedType();
+    if (fused_type == MatmulFusedType::kMatmulBiasReluWithReservedData) {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "kMatmulBiasReluWithReservedData is not supported on HIP platform."));
+    }
+    if (fused_type == MatmulFusedType::kMatmulReluGrad) {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "kMatmulReluGrad is not supported on HIP platform."));
+    }
     if (fused_type != MatmulFusedType::kMatmul) {
       hipblasLtEpilogue_t hipblaslt_fused_type = ConvertFusedType(fused_type);
       PADDLE_ENFORCE_GPU_SUCCESS(dynload::hipblasLtMatmulDescSetAttribute(
@@ -494,10 +502,10 @@ struct CublasLtBase {
     MT beta = planner->UseAddTo() ? static_cast<MT>(1) : static_cast<MT>(0);
     hipblasLtHandle_t hipblaslt_handle = ctx.cublaslt_handle();
 
-    // NOTE(limingshu): As workspace_size varies from different DL framework,
-    // I wonder is there any smarter idea for workspace setting, currently I
-    // just followed the settings from the NVIDIA colleague`s setting.
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    // NOTE(wangyanpeng04): For gfx928, the blaslt is paddling due to memory
+    // access conflicts, and the corresponding blas workspace size needs to be
+    // increased by 512MB. Otherwise, blaslt memory alloc will fail
+    size_t workspace_size = static_cast<size_t>(512) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace = GetWorkspace(ctx, workspace_size);
 
     if (planner != nullptr) {
@@ -689,7 +697,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
         planner->UseAddTo() ? static_cast<int32_t>(1) : static_cast<int32_t>(0);
     hipblasLtHandle_t hipblaslt_handle = ctx.cublaslt_handle();
 
-    size_t workspace_size = static_cast<size_t>(4) * 1024 * 1024;
+    size_t workspace_size = static_cast<size_t>(512) * 1024 * 1024;
     phi::Allocator::AllocationPtr workspace = nullptr;
 
     PADDLE_ENFORCE_NOT_NULL(planner,
