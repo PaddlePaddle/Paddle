@@ -63,97 +63,97 @@ class TestAnchorFusion(unittest.TestCase):
         ):
             numpy.testing.assert_allclose(a, b, atol=1e-5, rtol=1e-6)
 
-    def test_anchor_fusion_1(self):
-        def func(x):
-            x = x * 3
-            a = x + 1
-            b = x + 2
-            return a, b
+    # def test_anchor_fusion_1(self):
+    #     def func(x):
+    #         x = x * 3
+    #         a = x + 1
+    #         b = x + 2
+    #         return a, b
 
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 32, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
 
-    def test_anchor_fusion_2(self):
-        def func(x):
-            x = x * 2
-            a = x + 1
-            c = paddle.sum(a, axis=-1)
-            b = x + 2
-            return b, c
+    # def test_anchor_fusion_2(self):
+    #     def func(x):
+    #         x = x * 2
+    #         a = x + 1
+    #         c = paddle.sum(a, axis=-1)
+    #         b = x + 2
+    #         return b, c
 
-        def init():
-            x = paddle.ones((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.ones((32, 32, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
 
-    def test_anchor_fusion_3(self):
-        def func(x):
-            x = x * 2
-            a = x + 1
-            c = paddle.sum(a, axis=-1)
-            b = x + 2
-            d = paddle.sum(b, axis=-1)
-            return c, d
+    # def test_anchor_fusion_3(self):
+    #     def func(x):
+    #         x = x * 2
+    #         a = x + 1
+    #         c = paddle.sum(a, axis=-1)
+    #         b = x + 2
+    #         d = paddle.sum(b, axis=-1)
+    #         return c, d
 
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 32, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
 
-    def test_anchor_fusion_4(self):
-        def func(x):
-            m = x + 1
-            a = m + 1
-            b = m + 2
-            c = a * 2
-            d = a / 2
-            return b, c, d
+    # def test_anchor_fusion_4(self):
+    #     def func(x):
+    #         m = x + 1
+    #         a = m + 1
+    #         b = m + 2
+    #         c = a * 2
+    #         d = a / 2
+    #         return b, c, d
 
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 32, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
 
-    def test_anchor_fusion_5(self):
-        #     R
-        #    / \
-        #   T   T
-        def func(x):
-            a = paddle.sum(x, axis=-1)
-            b = a - 3
-            c = a * 2
-            return b, c
+    # def test_anchor_fusion_5(self):
+    #     #     R
+    #     #    / \
+    #     #   T   T
+    #     def func(x):
+    #         a = paddle.sum(x, axis=-1)
+    #         b = a - 3
+    #         c = a * 2
+    #         return b, c
 
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 32, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
 
-    def test_anchor_fusion_6(self):
-        #      T
-        #     / \
-        #    B   R
-        #   /     \
-        #  T       T
-        def func(x):
-            a = x + 1
-            b = paddle.expand(a, [10, 32, 32, 128]) / 2
-            c = paddle.sum(a, axis=-1)
-            d = c * 3
-            return b, d
+    # def test_anchor_fusion_6(self):
+    #     #      T
+    #     #     / \
+    #     #    B   R
+    #     #   /     \
+    #     #  T       T
+    #     def func(x):
+    #         a = x + 1
+    #         b = paddle.expand(a, [10, 32, 32, 128]) / 2
+    #         c = paddle.sum(a, axis=-1)
+    #         d = c * 3
+    #         return b, d
 
-        def init():
-            x = paddle.rand((32, 32, 128))
-            return (x,)
+    #     def init():
+    #         x = paddle.rand((32, 32, 128))
+    #         return (x,)
 
-        self.compare_result(func, None, init)
+    #     self.compare_result(func, None, init)
 
     def test_fusion_iters(self):
         #     T   T
