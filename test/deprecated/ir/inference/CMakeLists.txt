@@ -85,8 +85,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
                          PROPERTIES TIMEOUT 500)
   endif()
   set_tests_properties(test_trt_convert_conv2d_deprecated PROPERTIES 400)
-  set_directory_properties(
-    test_trt_convert_depthwise_conv2d_transpose_deprecated PROPERTIES 400)
+  set_tests_properties(test_trt_convert_depthwise_conv2d_transpose_deprecated
+                       PROPERTIES 400)
   if(WITH_NV_JETSON)
     set_tests_properties(
       test_trt_pool_op_deprecated
