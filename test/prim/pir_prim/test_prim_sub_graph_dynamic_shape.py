@@ -300,6 +300,10 @@ def unstack_net6(x):
     return paddle.unstack(x, axis=-1)
 
 
+def addmm_net(input, x, y):
+    return paddle.addmm(input, x, y, beta=2.0, alpha=0.5)
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -1424,6 +1428,48 @@ class TestPrimUnstack6(TestPrimBase):
         self.x = np.random.random(self.shape_x).astype(self.dtype_x)
         self.net = unstack_net6
         self.necessary_ops = "pd_op.unstack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimAddmm1(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 50]
+        self.shape_y = [30, 100]
+        self.shape_z = [100, 50]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.init_z_shape = [None, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = addmm_net
+        self.necessary_ops = "pd_op.addmm"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimAddmm2(TestPrimThree):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [30, 1]
+        self.shape_y = [30, 100]
+        self.shape_z = [100, 50]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.dtype_z = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, 100]
+        self.init_z_shape = [100, None]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.y = np.random.random(self.shape_y).astype(self.dtype_y)
+        self.z = np.random.random(self.shape_z).astype(self.dtype_z)
+        self.net = addmm_net
+        self.necessary_ops = "pd_op.addmm"
         self.enable_cinn = False
         self.tol = 1e-6
 
