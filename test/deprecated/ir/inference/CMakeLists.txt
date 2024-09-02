@@ -74,7 +74,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_subgraph_pass_deprecated PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_conv_pass_deprecated PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_dynamic_shape_deprecated PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_trt_inspector_deprecated PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_predictor_deprecated
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_optimization_level_deprecated PROPERTIES TIMEOUT
