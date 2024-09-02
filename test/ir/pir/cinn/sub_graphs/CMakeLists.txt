@@ -1,7 +1,6 @@
 if(WITH_GPU)
-  set(STATIC_BUILD_TESTS
-      test_sub_graph_42 test_sub_graph_squeeze_unsqueeze test_sub_graph_56
-      test_sub_graph_73 test_sub_graph_79 test_sub_graph_82)
+  set(STATIC_BUILD_TESTS test_sub_graph_42 test_sub_graph_56 test_sub_graph_79
+                         test_sub_graph_82)
 
   file(
     GLOB DYNAMIC_BUILD_TESTS

@@ -34,11 +34,11 @@ void RmsNormGradKernel(const Context& dev_ctx,
                        DenseTensor* norm_weight_grad,
                        DenseTensor* norm_bias_grad) {
   if (bias || residual) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "bias or residual is not supported in XPU rms_norm_grad yet"));
   }
   if (quant_scale > 0.0f) {
-    PADDLE_THROW(phi::errors::Unimplemented(
+    PADDLE_THROW(common::errors::Unimplemented(
         "quantization is not supported in XPU rms_norm_grad yet"));
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -77,7 +77,7 @@ void RmsNormGradKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       cols,
       norm_weight.dims()[0],
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The product from begin_norm_axis to last_axis of input tensor x, "
           "i.e., cols(%d)"
           "must be equal to the norm_weight tensor's dimension(%d).",
@@ -88,7 +88,7 @@ void RmsNormGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_EQ(
         cols,
         norm_bias.get().dims()[0],
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "The product from begin_norm_axis to the last axis of input tensor "
             "x, "
             "i.e., cols(%d)"
@@ -99,7 +99,7 @@ void RmsNormGradKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_EQ(rows,
                     inv_var.numel(),
-                    phi::errors::InvalidArgument(
+                    common::errors::InvalidArgument(
                         "The product from begin_norm_axis to the last axis of "
                         "input tensor x, "
                         "i.e., rows(%d) "
