@@ -276,48 +276,6 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
   return false;
 }
 
-bool CanRunOnCpuKernel(const std::vector<::pir::Value>& vec_inputs,
-                       ::pir::Operation* op) {
-  bool can_run_cpu = true;
-  for (size_t i = 0; i < vec_inputs.size(); ++i) {
-    auto tmp_in = vec_inputs[i];
-    if (!tmp_in) {
-      continue;
-    }
-
-    if (tmp_in.type().isa<AllocatedDenseTensorType>()) {
-      auto type = tmp_in.type().dyn_cast<AllocatedDenseTensorType>();
-      if (type.place().GetType() != phi::AllocationType::CPU) {
-        can_run_cpu = false;
-        break;
-      }
-
-      if (phi::product(type.dims()) > 4) {
-        can_run_cpu = false;
-        break;
-      }
-    }
-  }
-
-  for (size_t i = 0; i < op->num_results(); ++i) {
-    auto out = op->result(i);
-
-    if (!out || !out.type()) {
-      continue;
-    }
-
-    if (out.type().isa<DenseTensorType>()) {
-      auto type = out.type().dyn_cast<DenseTensorType>();
-      if (phi::product(type.dims()) > 4) {
-        can_run_cpu = false;
-        break;
-      }
-    }
-  }
-
-  return can_run_cpu;
-}
-
 static phi::Backend DeriveBackend(const std::string& op,
                                   const phi::Place& place,
                                   const OpYamlInfoParser* op_info_parser,
@@ -2098,7 +2056,7 @@ void HandleForSpecialOp(
 
     auto dst_backend = phi::TransToPhiBackend(place);
     auto exec_backend = paddle::dialect::PlaceAttribute::get(ctx, place);
-    if (CanRunOnCpuKernel(in_temps, op_item)) {
+    if (CanGroupOpRunCpuKernel(in_temps, op_item->results())) {
       // change dst_backend to cpu
       dst_backend = phi::Backend::CPU;
 

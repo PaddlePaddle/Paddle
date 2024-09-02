@@ -183,5 +183,8 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap();
 
 const std::unordered_map<std::string, phi::DataLayout>& StringToDataLayoutMap();
 
+bool CanGroupOpRunCpuKernel(const std::vector<::pir::Value>& vec_inputs,
+                            const std::vector<::pir::Value>& vec_output);
+
 }  // namespace dialect
 }  // namespace paddle
