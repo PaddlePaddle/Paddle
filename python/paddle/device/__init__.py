@@ -500,7 +500,7 @@ class Event:
         interprocess: bool = False,
     ) -> None:
         if device is None:
-            self.device = paddle.framework._current_expected_place()
+            self.device = paddle.framework._current_expected_place_()
         elif isinstance(device, str):
             self.device = paddle.device._convert_to_place(device)
         else:
@@ -686,7 +686,7 @@ class Stream:
             return
 
         if device is None:
-            self.device = paddle.framework._current_expected_place()
+            self.device = paddle.framework._current_expected_place_()
         elif isinstance(device, str):
             self.device = paddle.device._convert_to_place(device)
         else:
@@ -885,7 +885,7 @@ def current_stream(device: PlaceLike | None = None) -> Stream:
 
     '''
     if device is None:
-        place = paddle.framework._current_expected_place()
+        place = paddle.framework._current_expected_place_()
     elif isinstance(device, str):
         place = paddle.device._convert_to_place(device)
     else:
@@ -996,7 +996,7 @@ class stream_guard:
 
         self.src_prev_stream = current_stream(cur_stream.device)
         if self.src_prev_stream.device != cur_stream.device:
-            self.tmp_place = paddle.base.framework._current_expected_place()
+            self.tmp_place = paddle.base.framework._current_expected_place_()
             paddle.base.framework._set_expected_place(cur_stream.device)
             self.dst_prev_stream = current_stream(cur_stream.device)
             set_stream(cur_stream)
@@ -1046,7 +1046,7 @@ def synchronize(device: PlaceLike | None = None) -> None:
     """
 
     if device is None:
-        place = paddle.framework._current_expected_place()
+        place = paddle.framework._current_expected_place_()
     elif isinstance(device, str):
         place = paddle.device._convert_to_place(device)
     else:
