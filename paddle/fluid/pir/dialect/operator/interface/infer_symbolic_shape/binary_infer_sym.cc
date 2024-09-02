@@ -313,12 +313,78 @@ bool BmmOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool CholeskySolveOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+
+static inline std::vector<DimExpr> MatrixGetBroadcastBatchPortion(
+    const std::vector<DimExpr>& x, const std::vector<DimExpr>& y) {
+  size_t size_x = x.size();
+  size_t size_y = y.size();
+  size_t size = std::max(size_x, size_y);
+  std::vector<DimExpr> batchPortion(size);
+
+  ptrdiff_t i = (ptrdiff_t)size - 1;
+  for (; i >= 0; --i) {
+    ptrdiff_t offset = size - i - 1;
+    ptrdiff_t dim_x = size_x - offset - 1;
+    ptrdiff_t dim_y = size_y - offset - 1;
+    DimExpr x_size = (dim_x >= 0) ? x[dim_x] : 1;
+    DimExpr y_size = (dim_y >= 0) ? y[dim_y] : 1;
+
+    PADDLE_ENFORCE_EQ(
+        (x_size == y_size || x_size == 1 || y_size == 1),
+        true,
+        common::errors::PreconditionNotMet(
+            "The size of tensor x (%d) must match the size of tensor y "
+            "(%d) at non-singleton dimension %d.",
+            x_size,
+            y_size,
+            i));
+
+    batchPortion[i] = x_size != 1 ? x_size : y_size;
+  }
+  return batchPortion;
+}
+
+bool CholeskySolveOpInferSymbolicShape(pir::Operation *op,
+                                       pir::InferSymbolicShapeContext
+                                       *infer_context) {
+  const std::vector<DimExpr> &x_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const std::vector<DimExpr> &y_dims =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  
+  auto x_dims_n = x_dims.size();
+  auto y_dims_n = y_dims.size();
+
+  PADDLE_ENFORCE_GE(x_dims_n,
+                    2,
+                    common::errors::InvalidArgument(
+                        "the rank of input Y must greater or equal to 2"));
+  PADDLE_ENFORCE_GE(y_dims_n,
+                    2,
+                    common::errors::InvalidArgument(
+                        "the rank of input X must greater or equal to 2"));
+  
+  // input Matrix Y should be square matrix
+  infer_context->AddEqualCstr(y_dims[y_dims_n - 1], y_dims[y_dims_n - 2]);
+  // the first dim of Matrix X must be equal to the first dim of Matrix Y
+  infer_context->AddEqualCstr(x_dims[x_dims_n - 2],  y_dims[y_dims_n - 2]);
+
+  // Output size is batch size+ last two dims of x
+  std::vector<DimExpr> x_batch_dims(x_dims.begin(), x_dims.end() - 2);
+  std::vector<DimExpr> y_batch_dims(y_dims.begin(), y_dims.end() - 2);
+
+  // Batch dimensions should be broadcastable
+  // Get batch size, which is possibly broadcasted
+  std::vector<DimExpr> expand_batch_portion =
+      MatrixGetBroadcastBatchPortion(x_batch_dims, y_batch_dims);
+
+  // append the size of x to batch dimentions
+  std::vector<DimExpr> result({expand_batch_portion});
+  result.insert(result.end(),
+                          {x_dims_vec[x_dims_n - 2], x_dims_vec[x_dims_n - 1]});
+  infer_context->SetShapeOrDataForValue(op->result(0), result);
+
+}
 
 bool CtcAlignOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
