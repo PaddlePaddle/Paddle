@@ -323,7 +323,6 @@ def modify_extended_args(instructions: list[Instruction]) -> bool:
 
 
 def modify_vars(instructions: list[Instruction], code_options):
-    co_names = code_options['co_names']
     co_varnames = code_options['co_varnames']
     co_freevars = code_options['co_freevars']
     for instrs in instructions:
