@@ -367,7 +367,7 @@ class Adam(Optimizer):
             _, _, _, _, _, _ = _C_ops.adam_(
                 param_and_grad[0],
                 param_and_grad[1],
-                lr.clone(),
+                lr,
                 moment1,
                 moment2,
                 beta1_pow_acc,
