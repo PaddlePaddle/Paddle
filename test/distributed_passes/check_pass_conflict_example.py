@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
-sys.path.append("../deprecated/distributed_passes")
-
-from dist_pass_test_base_deprecated import PassConflictChecker
+from dist_pass_test_base import PassConflictChecker
 from model_zoo import resnet_model
 
 from paddle.distributed.passes import new_pass
