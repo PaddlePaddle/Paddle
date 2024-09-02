@@ -131,7 +131,11 @@ void BindDistUtils(pybind11::module *m) {
   m->def("create_tensor_dist_attribute", CreateTensorDistAttribute);
   m->def("create_op_dist_attribute", CreateOperationDistAttribute);
   m->def("get_sub_meshes", phi::distributed::GetSubMeshes);
-  m->def("cvt_to_dist_type", &dialect::CvtToPirDistType);
+  m->def("cvt_to_dist_type",
+         &dialect::CvtToPirDistType,
+         py::arg("global_type"),
+         py::arg("dist_attr"),
+         py::arg("local_ddim") = std::vector<int64_t>());
 }
 
 void BindDistPassAPI(pybind11::module *module) {

@@ -49,8 +49,9 @@ class SToRReshardFunction(ReshardFunction):
         # may be shard and it will call this 1-D s_to_r function on each
         # axis. In this case, we should recompute the local and global shape.
         out_local_shape = list(in_value.shape)
-        out_local_shape[split_axis] = (
-            in_value.shape[split_axis] // mesh.shape[split_mesh_dim]
+        out_local_shape[split_axis] = int(
+            (in_value.shape[split_axis] + mesh.shape[split_mesh_dim] - 1)
+            / mesh.shape[split_mesh_dim]
         )
         out_global_shape = list(out_local_shape)
         out_global_shape[0] *= mesh.shape[split_mesh_dim]
@@ -111,15 +112,7 @@ class SToRReshardFunction(ReshardFunction):
             )
             return new_value
         else:
-            # TODO(ywt01) support unbalanced split
             # raise NotImplementedError("unbalanced split is not implemented")
-            print(
-                "in SToRReshardFunction.reshard Unbalanced reshard from shard to replicated"
-            )
-            print(src_value.shape)
-            print(src_dist_attr)
-            print(dst_dist_attr)
-            print(src_value._local_shape)
             # find the last one
             need_padding = (
                 paddle.distributed.get_rank()
@@ -140,7 +133,7 @@ class SToRReshardFunction(ReshardFunction):
                 local_shape_at_split_axis = src_value.shape[
                     split_axis
                 ] - avg_size_on_split_axis * (num_of_process - 1)
-                local_shape = src_value.shape
+                local_shape = src_value._local_shape
                 local_shape[split_axis] = local_shape_at_split_axis
                 tmp_src_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
                     src_value.type(), src_dist_attr, list(local_shape)
@@ -153,6 +146,16 @@ class SToRReshardFunction(ReshardFunction):
                     0.0,
                     src_value.dtype,
                 )
+                tmp_src_type1 = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    padding_tensor.type(), dst_dist_attr
+                )
+                padding_tensor.set_type(tmp_src_type1)
+                padding_tensor.get_defining_op().dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        dst_dist_attr.process_mesh, [], [dst_dist_attr]
+                    )
+                )
+
                 concat_value = paddle._C_ops.concat(
                     [src_value, padding_tensor], split_axis
                 )
@@ -167,7 +170,6 @@ class SToRReshardFunction(ReshardFunction):
                 )
                 return new_value
             else:
-                # update src_value shape?
                 new_value = self.reshard_s_to_r_with_padding(
                     src_value,
                     split_axis,
@@ -196,8 +198,6 @@ class SToRReshardFunction(ReshardFunction):
         )
         allgather_type = self.infer_allgather_dist_type(src_value, split_axis)
         allgather_value.set_type(allgather_type)
-        print("in SToRReshardFunction.reshard_s_to_r_with_padding")
-        print(allgather_value)
 
         # set op_dist_attr
         new_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
@@ -242,13 +242,7 @@ class SToRReshardFunction(ReshardFunction):
                     split_axis,
                 )
                 split_values[-1] = tmp_split_values[0]
-                # may be set some op_dist_attr
-                # ......
                 concat_value = paddle._C_ops.concat(split_values, split_axis)
-                print(
-                    "in SToRReshardFunction.reshard_s_to_r_with_padding with padding_num"
-                )
-                print(concat_value)
                 return concat_value
             else:
                 concat_value = paddle._C_ops.concat(split_values, split_axis)
