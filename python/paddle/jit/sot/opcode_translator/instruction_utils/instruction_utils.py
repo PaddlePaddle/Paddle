@@ -327,7 +327,12 @@ def modify_vars(instructions: list[Instruction], code_options):
     co_varnames = code_options['co_varnames']
     co_freevars = code_options['co_freevars']
     for instrs in instructions:
-        if instrs.opname in ['LOAD_FAST', 'LOAD_FAST_CHECK', 'STORE_FAST']:
+        if instrs.opname in [
+            'LOAD_FAST',
+            'LOAD_FAST_CHECK',
+            'STORE_FAST',
+            'DELETE_FAST',
+        ]:
             assert (
                 instrs.argval in co_varnames
             ), f"`{instrs.argval}` not in {co_varnames}"
