@@ -701,13 +701,10 @@ bool BoxCoderOpInferSymbolicShape(
                           "The rank of Input(PriorBoxVar) in BoxCoder operator "
                           "should be 2. But received rank = %d",
                           prior_box_var_shape.size()));
-    PADDLE_ENFORCE_EQ(
-        prior_box_shape,
-        prior_box_var_shape,
-        phi::errors::InvalidArgument(
-            "The dimension of Input(PriorBoxVar) should be equal to "
-            "the dimension of Input(PriorBox) in BoxCoder operator "
-            "when the rank is 2."));
+
+    for (size_t i = 0; i < prior_box_shape.size(); i++) {
+      infer_context->AddEqualCstr(prior_box_shape[i], prior_box_var_shape[i]);
+    }
   }
 
   if (code_type == "encode_center_size") {
@@ -722,7 +719,7 @@ bool BoxCoderOpInferSymbolicShape(
     infer_context->SetShapeOrDataForValue(
         op->result(0),
         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
-            {target_box_shape[0], prior_box_shape[0], 4})});
+            {target_box_shape[0], prior_box_shape[0], symbol::DimExpr(4)})});
   } else if (code_type == "decode_center_size") {
     PADDLE_ENFORCE_EQ(target_box_shape.size(),
                       3,
