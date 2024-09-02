@@ -113,7 +113,7 @@ pir::DoubleAttribute deserializeAttrFromJson<pir::DoubleAttribute, double>(
   double data = attr_json->at(DATA).template get<double>();
   return pir::DoubleAttribute::get(ctx, data);
 }
-// NOLINK
+
 template <>
 pir::Complex64Attribute deserializeAttrFromJson<pir::Complex64Attribute, float>(
     Json* attr_json, pir::IrContext* ctx) {
