@@ -2361,9 +2361,6 @@ bool PNormOpInferSymbolicShape(pir::Operation *op,
 
 bool PartialSumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  symbol::DimExpr batch_size;
-  symbol::DimExpr input_len;
-
   const symbol::TensorListShapeOrDataDimExprs &xs_shapes =
       infer_context->GetShapeOrDataForValue(op->operand_source(0))
           .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
@@ -2378,16 +2375,17 @@ bool PartialSumOpInferSymbolicShape(
     VLOG(3) << "Warning: partial_sum op have only one input, may be useless";
   }
 
+  symbol::DimExpr batch_size = x_shape[0];
+  symbol::DimExpr input_len = x_shape[1];
+
   for (int i = 0; i < inputs_num; i++) {
     const std::vector<symbol::DimExpr> x_shape = xs_shapes[i].shape();
     PADDLE_ENFORCE_EQ(
         x_shape.size(),
         2,
         phi::errors::InvalidArgument("Only support two dimensions input now."));
-    if (i == 0) {
-      batch_size = x_shape[0];
-      input_len = x_shape[1];
-    } else {
+
+    if (i > 0) {
       infer_context->AddEqualCstr(x_shape[0], batch_size);
       infer_context->AddEqualCstr(x_shape[1], input_len);
     }
@@ -2396,16 +2394,6 @@ bool PartialSumOpInferSymbolicShape(
   int start_index = op->attribute<pir::Int32Attribute>("start_index").data();
   int length = op->attribute<pir::Int32Attribute>("length").data();
 
-  PADDLE_ENFORCE_GT(
-      static_cast<int>(input_len.Get<std::int64_t>()),
-      start_index,
-      phi::errors::OutOfRange("start_index must be less than input len"));
-  if (length > 0) {
-    PADDLE_ENFORCE_GE(static_cast<int>(input_len.Get<std::int64_t>()),
-                      start_index + length,
-                      phi::errors::OutOfRange(
-                          "start_index + length is larger than input length"));
-  }
   std::vector<symbol::DimExpr> output_shape(2);
   output_shape[0] = batch_size;
   output_shape[1] = (length == -1) ? input_len - symbol::DimExpr(start_index)
