@@ -20,8 +20,11 @@ string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass" "test_mul_gru_fuse_pass")
 
 list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_inspector_deprecated")
+list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_inspector_deprecated")
 
 if(WIN32)
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
+       "test_trt_inference_fp16_io_deprecated")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_inference_fp16_io_deprecated")
 endif()
 
