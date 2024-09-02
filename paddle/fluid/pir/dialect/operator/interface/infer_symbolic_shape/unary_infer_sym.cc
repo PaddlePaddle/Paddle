@@ -2967,6 +2967,9 @@ bool SplitWithNumOpInferSymbolicShape(
   const auto &out_s_d = [&](int64_t split_axis, int64_t res_num) {
     symbol::DimExpr input_axis_dim = x_s_or_d.shape().at(split_axis);
     symbol::DimExpr axis_shape = input_axis_dim / symbol::DimExpr{res_num};
+    if (res_num > 1) {
+      infer_context->AddGreatThanOneCstr(input_axis_dim);
+    }
 
     std::vector<symbol::DimExpr> res_s_d;
     for (size_t i = 0; i < x_s_or_d.shape().size(); ++i) {
