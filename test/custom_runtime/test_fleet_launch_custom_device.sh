@@ -18,7 +18,7 @@ set -e
 
 temp_dir=$(mktemp --directory)
 pushd ${temp_dir} \
-&& git clone --depth 1 ${PLUGIN_URL} \
+&& git clone --depth 1 ${PLUGIN_URL} -b ${PLUGIN_TAG} \
 && pushd PaddleCustomDevice/ \
 && git fetch origin \
 && git checkout ${PLUGIN_TAG} -b dev \

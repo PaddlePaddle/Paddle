@@ -39,12 +39,24 @@ int64_t PD_MetaTensorGetDim(const PD_MetaTensor *tensor,
                             size_t index,
                             PD_Status *status);
 
+int64_t PD_MetaTensorGetNumStrides(const PD_MetaTensor *tensor,
+                                   PD_Status *status);
+
+int64_t PD_MetaTensorGetStride(const PD_MetaTensor *tensor,
+                               size_t index,
+                               PD_Status *status);
+
 bool PD_MetaTensorIsValid(const PD_MetaTensor *tensor, PD_Status *status);
 
 void PD_MetaTensorSetDims(PD_MetaTensor *tensor,
                           int64_t ndims,
                           const int64_t *dims,
                           PD_Status *status);
+
+void PD_MetaTensorSetStrides(PD_MetaTensor *tensor,
+                             int64_t nstrides,
+                             const int64_t *strides,
+                             PD_Status *status);
 
 void PD_MetaTensorSetDataType(PD_MetaTensor *tensor,
                               PD_DataType dtype,

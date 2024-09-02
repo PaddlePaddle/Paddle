@@ -80,6 +80,7 @@ class TrtConvertLookupTableV2Test(TrtLayerAutoScanTest):
                     )
                 },
                 outputs=["out_data"],
+                no_cast_list=["indices"],
             )
 
             yield program_config

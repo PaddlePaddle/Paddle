@@ -256,6 +256,18 @@ void PrepareWeight(Graph* graph,
   }
 }
 
+template void PrepareWeight<float, float>(
+    Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    Node* weight,
+    Node** dst_weight,
+    Node** dst_weight_max,
+    Node** dst_scale_max,
+    bool transpose,
+    const std::vector<float>& weight_scales,
+    bool per_channel_quant = false);
+
 template void PrepareWeight<float, int16_t>(
     Graph* graph,
     Scope* scope,

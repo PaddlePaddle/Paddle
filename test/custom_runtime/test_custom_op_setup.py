@@ -104,7 +104,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         self.cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
         cmd = 'cd {} \
-            && git clone --depth 1 {} \
+            && git clone --depth 1 {} -b {} \
             && cd PaddleCustomDevice \
             && git fetch origin \
             && git checkout {} -b dev \
@@ -113,6 +113,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             && cd {}'.format(
             self.temp_dir.name,
             os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'),
             os.getenv('PLUGIN_TAG'),
             sys.executable,
             self.cur_dir,

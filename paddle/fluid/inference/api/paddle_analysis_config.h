@@ -111,6 +111,7 @@ struct PD_INFER_DECL XpuConfig {
   bool conv_autotune_file_writeback{false};
 
   // Fc autotune level. The Optional values are 0-9. Default 0 means no
+  // autotune.
   int fc_autotune_level{0};
   // Base fc autotune info is read from fc_autotune_file.
   std::string fc_autotune_file;
@@ -367,7 +368,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableXpu(int l3_size = 0xfffc00,
                  bool l3_locked = false,
-                 bool conv_autotune = true,
+                 bool conv_autotune = false,
                  const std::string& conv_autotune_file = "",
                  const std::string& transformer_encoder_precision = "int16",
                  bool transformer_encoder_adaptive_seqlen = false,

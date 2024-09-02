@@ -573,6 +573,19 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                     weight_scale,
                                     true);
     } else if (quant_post_type.find("fc") != quant_post_type.end() &&
+               quant_post_type.find("fc")->second == 4) {
+      VLOG(5) << "Use int31 per-tensor weight";
+      PrepareWeight<float, float>(graph,
+                                  scope,
+                                  block,
+                                  mul_w_replicated_node,
+                                  &filter_intx,
+                                  &filter_max,
+                                  &scale_max,
+                                  !transpose_w,
+                                  weight_scale,
+                                  false);
+    } else if (quant_post_type.find("fc") != quant_post_type.end() &&
                    quant_post_type.find("fc")->second == 0 ||
                quant_post_type.find("fc") != quant_post_type.end() &&
                    quant_post_type.find("fc")->second == 1) {

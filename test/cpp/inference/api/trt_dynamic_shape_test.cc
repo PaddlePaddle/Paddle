@@ -191,6 +191,7 @@ void TestTunedDynamic() {
     output_t->copy_to_cpu(out_data.data());
   };
   check_func(predictor_tuned.get());
+  predictor_tuned.reset(nullptr);
 
   // check tuned_dynamic_shape
   AnalysisConfig config;
