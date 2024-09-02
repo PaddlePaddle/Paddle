@@ -2054,15 +2054,8 @@ bool NllLossOpInferSymbolicShape(
                     true,
                     phi::errors::InvalidArgument(
                         "The tensor rank of Input(X) must be 2 or 4."));
-  PADDLE_ENFORCE_EQ(
-      x_shape[0],
-      label_shape[0],
-      phi::errors::InvalidArgument(
-          "ShapeError: Expected input batch_size to match label batch_size,"
-          "But received: the Input(x) batch_size is [%s], the Input(label) "
-          " batch_size is [%s].",
-          x_shape[0],
-          label_shape[0]));
+  infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
+
   if (op->operand_source(2)) {
     const symbol::ShapeOrDataDimExprs &w_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(2));
@@ -2095,18 +2088,10 @@ bool NllLossOpInferSymbolicShape(
                       phi::errors::InvalidArgument(
                           "Expected Input(Label) dimensions=3, received %d.",
                           label_shape.size()));
-    symbol::DimExpr input0 = x_shape[0];
-    symbol::DimExpr input2 = x_shape[2];
-    symbol::DimExpr input3 = x_shape[3];
-    symbol::DimExpr label0 = label_shape[0];
-    symbol::DimExpr label1 = label_shape[1];
-    symbol::DimExpr label2 = label_shape[2];
-    PADDLE_ENFORCE_EQ(
-        input0 == label0 && input2 == label1 && input3 == label2,
-        true,
-        phi::errors::InvalidArgument("Input(X) tensor shape should "
-                                     "match to Input(Label) tensor "
-                                     "shape."));
+
+    infer_context->AddEqualCstr(x_shape[0], label_shape[0]);
+    infer_context->AddEqualCstr(x_shape[2], label_shape[1]);
+    infer_context->AddEqualCstr(x_shape[3], label_shape[2]);
 
     if (reduction == "none") {
       out_shape = {x_shape[0], x_shape[2], x_shape[3]};
