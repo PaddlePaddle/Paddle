@@ -1097,12 +1097,11 @@ bool LstsqOpInferSymbolicShape(pir::Operation *op,
                                             residuals_batch_shape_or_data);
     }
   } else {
-      symbol::DimExpr out_shape =
-        infer_context->GetNextSymName();
-      symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
-          symbol::TensorShapeOrDataDimExprs({out_shape})};
-      infer_context->SetShapeOrDataForValue(op->result(1),
-                                            residuals_batch_shape_or_data);
+    symbol::DimExpr out_shape = infer_context->GetNextSymName();
+    symbol::ShapeOrDataDimExprs residuals_batch_shape_or_data{
+        symbol::TensorShapeOrDataDimExprs({out_shape})};
+    infer_context->SetShapeOrDataForValue(op->result(1),
+                                          residuals_batch_shape_or_data);
   }
 
   batch_dims.emplace_back(builder.Min(m, n));
