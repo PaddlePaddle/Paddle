@@ -17,10 +17,10 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
@@ -88,10 +88,7 @@ void PartialSendCUDAKernel(const Context& dev_ctx,
                                       peer,
                                       nranks));
 
-  ncclDataType_t dtype = phi::ToNCCLDataType(x->dtype());
-
   auto send_buf = distributed::GetPartialTensor(*x, offset, send_numel);
-
   comm_ctx->Send(send_buf, send_numel, peer, stream);
 
   VLOG(3) << "rank " << rank << " send " << send_numel << " from offset["
