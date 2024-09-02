@@ -76,11 +76,8 @@ void PartialAllGatherOpCUDAKernel(const Context& dev_ctx,
   int64_t send_numel = numel / nranks;
   int offset = send_numel * rank;
 
-  auto map = distributed::ProcessGroupMapFromGid::getInstance();
   auto send_buf = distributed::GetPartialTensor(*in, offset, send_numel);
-
   comm_ctx->AllGather(out, send_buf, stream);
-
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(
       "PaddlePaddle should compile with GPU."));
