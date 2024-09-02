@@ -1273,8 +1273,10 @@ bool StftOpInferSymbolicShape(pir::Operation *op,
 
   infer_context->AddEqualCstr(window_shape[0], symbol::DimExpr{n_fft});
 
-  int seq_length = x_shape[x_rank - 1].Get<std::int64_t>();
-  symbol::DimExpr n_frames = 1 + (seq_length - n_fft) / hop_length;
+  if (x_shape[x_rank - 1].isa<int64_t>()) {
+    int seq_length = x_shape[x_rank - 1].Get<std::int64_t>();
+    int n_frames = 1 + (seq_length - n_fft) / hop_length;
+  }
 
   PADDLE_ENFORCE_LE(n_fft,
                     seq_length,
