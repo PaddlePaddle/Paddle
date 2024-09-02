@@ -2900,6 +2900,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : logical_and
     data_type : x
@@ -2913,6 +2914,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalNotInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : logical_not
     data_type : x
@@ -2926,6 +2928,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : logical_or
     data_type : x
@@ -2939,6 +2942,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : logical_xor
     data_type : x
