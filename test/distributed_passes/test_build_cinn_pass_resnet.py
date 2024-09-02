@@ -12,24 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
-from ps_pass_test_base_deprecated import PsPassTestBase
+sys.path.append("../deprecated/distributed_passes")
+
+from dist_pass_test_base_deprecated import DistPassTestBase
+
+from paddle.distributed.passes import PassManager, new_pass
 
 
-class TestPsServerPass(PsPassTestBase):
+class TestBuildCINNPass(DistPassTestBase):
     def init(self):
-        pass
+        self.atol = 0.5
+        self.rtol = 0.0
 
-    def setUp(self):
-        print('TestPsServerPass setUp...')
+    def apply_passes(self, main_prog, startup_prog):
+        pass_manager = PassManager(
+            [
+                new_pass("build_cinn"),
+                new_pass("fuse_elewise_add_act"),
+            ]
+        )
+        pass_manager.apply([main_prog], [startup_prog])
+        print(pass_manager.names)
 
-    def tearDown(self):
-        print('TestPsServerPass tearDown...')
 
-    def test_add_lr_decay_table_passs(self):
-        pass
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

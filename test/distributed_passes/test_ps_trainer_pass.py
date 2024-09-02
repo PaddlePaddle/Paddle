@@ -15,7 +15,7 @@
 import os
 import unittest
 
-from ps_pass_test_base_deprecated import PsPassTestBase, remove_path_if_exists
+from ps_pass_test_base import PsPassTestBase, remove_path_if_exists
 
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
 
