@@ -111,7 +111,7 @@ if "%WITH_PYTHON%" == "ON" (
     where pip
     python -m pip install --upgrade pip
     python -m pip install -r %work_dir%\paddle\scripts\compile_requirements.txt
-    python -m pip install -r %work_dir%\python\requirements.txt
+    python -m pip install -r %work_dir%\python\requirements.txt --no-cache-dir --force-reinstall
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 5

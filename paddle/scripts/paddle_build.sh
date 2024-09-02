@@ -3544,7 +3544,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.8/include/python3.8/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.8/lib/libpython3.8.dylib
-                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.8 install --user -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
             else
                 exit 1
             fi
@@ -3557,7 +3557,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.9/include/python3.9/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.9/lib/libpython3.9.dylib
-                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install --user -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
             else
                 exit 1
             fi
@@ -3570,7 +3570,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.10/include/python3.10/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.10/lib/libpython3.10.dylib
-                pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install --user -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
             else
                 exit 1
             fi
@@ -3583,7 +3583,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.11/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.11/include/python3.11/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.11/lib/libpython3.11.dylib
-                pip3.11 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install --user -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
             else
                 exit 1
             fi
@@ -3596,7 +3596,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.12/bin/python3
                 export PYTHON_INCLUDE_DIR=/Library/Frameworks/Python.framework/Versions/3.12/include/python3.12/
                 export PYTHON_LIBRARY=/Library/Frameworks/Python.framework/Versions/3.12/lib/libpython3.12.dylib
-                pip3.12 install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.12 install --user -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
             else
                 exit 1
             fi
@@ -3611,7 +3611,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.8.0/bin/python3.8
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.8.0/include/python3.8
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.8.0/lib/libpython3.so
-                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.8 install -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
                 pip3.8 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp39-cp39" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.9.0/lib/:${LD_LIBRARY_PATH}
@@ -3620,7 +3620,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.9.0/bin/python3.9
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.9.0/include/python3.9
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.9.0/lib/libpython3.so
-                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.9 install -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
                 pip3.9 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp310-cp310" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.10.0/lib/:${LD_LIBRARY_PATH}
@@ -3629,7 +3629,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.10.0/bin/python3.10
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.10.0/include/python3.10
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.10.0/lib/libpython3.so
-                pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.10 install -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
                 pip3.10 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp311-cp311" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.11.0/lib/:${LD_LIBRARY_PATH}
@@ -3638,7 +3638,7 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.11.0/bin/python3.11
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.11.0/include/python3.11
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.11.0/lib/libpython3.so
-                pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt
+                pip3.11 install -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
                 pip3.11 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
             elif [ "$1" == "cp312-cp312" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.12.0/lib/:${LD_LIBRARY_PATH}
@@ -3647,13 +3647,14 @@ function run_setup(){
                 export PYTHON_EXECUTABLE=/opt/_internal/cpython-3.12.0/bin/python3.12
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.12.0/include/python3.12
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.12.0/lib/libpython3.so
-                pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt
-                pip3.12 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt
+                pip3.12 install -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
+                pip3.12 install -r ${PADDLE_ROOT}/paddle/scripts/compile_requirements.txt --no-cache-dir --force-reinstall
            fi
         else
-            pip install -r ${PADDLE_ROOT}/python/requirements.txt
+            pip install -r ${PADDLE_ROOT}/python/requirements.txt --no-cache-dir --force-reinstall
         fi
     fi
+
 
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE="OFF"
