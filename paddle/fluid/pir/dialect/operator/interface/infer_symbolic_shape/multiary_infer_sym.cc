@@ -3092,6 +3092,71 @@ bool Where_OpInferSymbolicShape(pir::Operation *op,
   return WhereOpInferSymbolicShape(op, infer_context);
 }
 
+bool MultiplexOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &inputs_shape_or_data_list =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0))
+          .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+  PADDLE_ENFORCE_NE(
+      inputs_shape_or_data_list.empty(),
+      true,
+      common::errors::InvalidArgument("MultiInput(X) shouldn't be empty."));
+
+  const auto &ids_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
+  PADDLE_ENFORCE_EQ(ids_shape_or_data.shape().size(),
+                    2,
+                    common::errors::PreconditionNotMet(
+                        "The index tensor must be a vector with 2 dimensions"));
+
+  infer_context->AddEqualCstr(ids_shape_or_data.shape()[1], symbol::DimExpr(1));
+
+  PADDLE_ENFORCE_GT(
+      inputs_shape_or_data_list.size(),
+      1,
+      common::errors::InvalidArgument("multiplex operator should have more "
+                                      "than one candidate input tensors."));
+
+  size_t num_inputs = inputs_shape_or_data_list.size();
+  std::vector<symbol::DimExpr> first_input_shape =
+      inputs_shape_or_data_list[0].shape();
+  PADDLE_ENFORCE_GE(
+      first_input_shape.size(),
+      2,
+      common::errors::InvalidArgument(
+          "The rank of candidate tensors must be not less than 2."));
+
+  for (size_t i = 1; i < num_inputs; ++i) {
+    std::vector<symbol::DimExpr> element_shape =
+        inputs_shape_or_data_list[i].shape();
+
+    PADDLE_ENFORCE_EQ(first_input_shape.size(),
+                      element_shape.size(),
+                      common::errors::PreconditionNotMet(
+                          "All the candidate tensors must have the same dim."));
+
+    for (size_t j = 0; j < first_input_shape.size(); ++j)
+      infer_context->AddEqualCstr(first_input_shape[j], element_shape[j]);
+    // all of the input Tensors should have the same shape
+  }
+
+  if (first_input_shape[0].isa<int64_t>() &&
+      ids_shape_or_data.shape()[0].isa<int64_t>()) {
+    PADDLE_ENFORCE_GE(first_input_shape[0].dyn_cast<int64_t>(),
+                      ids_shape_or_data.shape()[0].dyn_cast<int64_t>(),
+                      common::errors::InvalidArgument(
+                          "The 2nd-dim of input cannot be smaller than "
+                          "batchSize of the index tensor."));
+  }
+  std::vector<symbol::DimExpr> &output_shape = first_input_shape;
+  output_shape[0] = ids_shape_or_data.shape()[0];
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrData{symbol::TensorShapeOrDataDimExprs(output_shape)});
+  return true;
+}
 bool YoloLossOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape =

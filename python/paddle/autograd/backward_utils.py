@@ -55,6 +55,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.multiply",
     "pd_op.pad",
     "pd_op.pow",
+    "pd_op.prod",
     "pd_op.reduce_as",
     "pd_op.relu",
     "pd_op.reshape",

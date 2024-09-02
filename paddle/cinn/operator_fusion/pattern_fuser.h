@@ -163,7 +163,7 @@ static StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
   int insert_num = InsertUpstreamIntoTree(upstream, result);
   PADDLE_ENFORCE_EQ(insert_num,
                     1,
-                    phi::errors::PreconditionNotMet(
+                    ::common::errors::PreconditionNotMet(
                         "Must insert only once, but insert %d", insert_num));
   return result;
 }
@@ -582,8 +582,8 @@ static StmtPattern MergePattern(const StmtPattern& first,
         return MergePatternImpl(lhs, rhs);
       },
       [&](const auto& lhs, const auto& rhs) -> StmtPattern {
-        PADDLE_THROW(
-            phi::errors::Unimplemented("Not support for MergePatternImpl"));
+        PADDLE_THROW(::common::errors::Unimplemented(
+            "Not support for MergePatternImpl"));
       },
   };
   return std::visit(PatternMatch, first, second);
