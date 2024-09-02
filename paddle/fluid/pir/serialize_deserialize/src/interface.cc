@@ -94,8 +94,9 @@ bool ReadModule(const std::string& file_path,
   }
 
   ProgramReader reader(pir_version);
+  std::cout << "44444" << std::endl;
   reader.RecoverProgram(&(data[PROGRAM]), program, &builder);
-
+  std::cout << "5555" << std::endl;
   if (data[BASE_CODE].contains(TRAINABLE)) {
     return data[BASE_CODE][TRAINABLE].get<bool>();
   } else {
