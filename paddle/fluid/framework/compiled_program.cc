@@ -672,7 +672,7 @@ void CompiledProgram::BCastParamsToDevices(const std::vector<std::string> &vars,
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
       auto dtype = framework::TransToProtoVarType(main_tensor.dtype());
-      BKCLDataType data_type = platform::ToBKCLDataType(dtype);
+      BKCLDataType data_type = phi::ToBKCLDataType(main_tensor.dtype());
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
