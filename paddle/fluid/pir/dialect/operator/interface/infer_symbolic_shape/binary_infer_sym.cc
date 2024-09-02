@@ -1617,7 +1617,7 @@ bool UnpoolOpInferSymbolicShape(pir::Operation *op,
 
   std::vector<symbol::DimExpr> output_shape = {x_shape[0], x_shape[1]};
   for (size_t i = 0; i < ksize.size(); ++i) {
-    output_shape.emplace_back(symbol::DimExpr(output_size[i]));
+    output_shape.emplace_back(output_size[i]);
   }
 
   if (op->result(0)) {
