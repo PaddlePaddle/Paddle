@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import os
+
+os.environ['FLAGS_enable_pir_api'] = '0'
+
 import unittest
 
 from ps_pass_test_base import PsPassTestBase, remove_path_if_exists
 
 from paddle.distributed.ps.utils.public import logger, ps_log_root_dir
-
-os.environ['FLAGS_enable_pir_api'] = '0'
 
 
 class TestPsTrainerPass(PsPassTestBase):
