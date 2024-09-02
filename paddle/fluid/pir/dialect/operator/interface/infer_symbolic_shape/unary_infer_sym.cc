@@ -2502,11 +2502,68 @@ bool ProdOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-// bool QrOpInferSymbolicShape(pir::Operation *op,
-//                             pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool QrOpInferSymbolicShape(pir::Operation *op,
+                            pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  int x_rank = x_shape.size();
+
+  PADDLE_ENFORCE_GE(
+      x_rank,
+      2,
+      common::errors::InvalidArgument("the rank of input must greater than 2"));
+
+  bool compute_q = false;
+  bool reduced = false;
+  const std::string &mode = op->attribute<pir::StrAttribute>("mode").AsString();
+  if (mode == "reduced") {
+    compute_q = true;
+    reduced = true;
+  } else if (mode == "complete") {
+    compute_q = true;
+    reduced = false;
+  } else if (mode == "r") {
+    compute_q = false;
+    reduced = true;
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "QR received unrecognized mode '%s'"
+        " but expected one of 'reduced' (default), 'r', or 'complete'",
+        mode));
+  }
+
+  symbol::DimExpr m = x_shape[x_rank - 2];
+  symbol::DimExpr n = x_shape[x_rank - 1];
+  symbol::DimExprBuilder builder;
+  symbol::DimExpr min_mn = builder.Min(m, n);
+
+  if (compute_q) {
+    symbol::DimExpr k = reduced ? min_mn : m;
+    std::vector<symbol::DimExpr> q_shape = x_shape;
+    q_shape[x_rank - 1] = k;
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(q_shape)});
+  } else {
+    std::vector<symbol::DimExpr> q_shape = {0};
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(q_shape)});
+  }
+
+  symbol::DimExpr k = reduced ? min_mn : m;
+  std::vector<symbol::DimExpr> r_shape = x_shape;
+  r_shape[x_rank - 2] = k;
+  r_shape[x_rank - 1] = n;
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(r_shape)});
+
+  return true;
+}
 
 bool RepeatInterleaveOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

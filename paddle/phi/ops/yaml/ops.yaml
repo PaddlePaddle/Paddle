@@ -3360,6 +3360,7 @@
   backward : multiplex_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -3666,7 +3667,7 @@
     func : prior_box
     data_type : input
   traits : paddle::dialect::ForwardOnlyTrait
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : prod
   args : (Tensor x, IntArray axis, bool keepdim, bool reduce_all)
@@ -3736,7 +3737,7 @@
   kernel :
     func : qr
   backward : qr_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : radam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor beta1_pow, Tensor beta2_pow, Tensor rho, Tensor moment1, Tensor moment2, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
@@ -4555,6 +4556,7 @@
   kernel :
     func : stanh
   backward : stanh_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stft
   args: (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided)
@@ -5228,3 +5230,4 @@
   kernel:
      func: number_count
      data_type: numbers
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
