@@ -1360,7 +1360,7 @@ void ConcatAndRelocateInferMeta(const std::vector<const MetaTensor*>& input,
 void SplitAndRelocateInferMeta(const MetaTensor& concated_input,
                                const std::vector<const MetaTensor*>& input,
                                std::vector<MetaTensor*> output) {
-  phi::SplitWithNumInferMeta(concated_input, 3, -1, output);
+  phi::SplitWithNumInferMeta(concated_input, input.size(), -1, output);
 }
 
 void CrfDecodingInferMeta(const MetaTensor& emission,

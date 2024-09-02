@@ -36,9 +36,9 @@ void SplitAndRelocateKernel(const Context& dev_ctx,
                         "input number is %u, output number is %u.",
                         input.size(),
                         output.size()));
-
+  auto axis_val = phi::funcs::ComputeAxis(-1, concated_input.dims().size());
   SplitWithNumKernel<T, Context>(
-      dev_ctx, concated_input, output.size(), -1, output);
+      dev_ctx, concated_input, output.size(), axis_val, output);
 }
 
 }  // namespace phi
