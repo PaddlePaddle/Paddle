@@ -1316,18 +1316,10 @@ bool MatmulWithFlattenOpInferSymbolicShape(
   int x_num = op->attribute<pir::Int32Attribute>("x_num_col_dims").data();
   int y_num = op->attribute<pir::Int32Attribute>("y_num_col_dims").data();
 
-  PADDLE_ENFORCE_GT(
-      x_shape.size(),
-      x_num,
-      phi::errors::InvalidArgument(
-          "The input tensor X's dimensions of MulOp "
-          "should be larger than x_num_col_dims. ");
-  PADDLE_ENFORCE_GT(
-      y_shape.size(),
-      y_num,
-      phi::errors::InvalidArgument(
-          "The input tensor Y's dimensions of MulOp "
-          "should be larger than y_num_col_dims. ");
+  infer_context->AddGreatThanOneCstr(
+      symbol::DimExpr(x_shape.size() - x_num + 1));
+  infer_context->AddGreatThanOneCstr(
+      symbol::DimExpr(y_shape.size() - y_num + 1));
   PADDLE_ENFORCE_EQ(
       x_shape.size() - x_num,
       y_num,
