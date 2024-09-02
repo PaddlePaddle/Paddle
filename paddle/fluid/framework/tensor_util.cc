@@ -862,10 +862,11 @@ phi::DenseTensor from_blob(void* data,
   auto alloc =
       std::make_shared<phi::Allocation>(data, size, alloc_deleter, data_place);
 
-  return std::move(phi::DenseTensor(alloc, meta));
+  return phi::DenseTensor(alloc, meta);
 }
 
 void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
+  std::cout << "call DLTensor version" << std::endl;
   phi::CPUPlace dst_place = phi::CPUPlace();
   phi::CPUPlace src_place = phi::CPUPlace();
 
@@ -906,6 +907,7 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
 }
 
 void TensorFromDLPack(DLManagedTensor* src, phi::DenseTensor* dst) {
+  std::cout << "call DLManagedTensor version" << std::endl;
   std::vector<int64_t> vec;
   std::copy(src->dl_tensor.shape,
             src->dl_tensor.shape + src->dl_tensor.ndim,
@@ -916,35 +918,37 @@ void TensorFromDLPack(DLManagedTensor* src, phi::DenseTensor* dst) {
   if (src->dl_tensor.device.device_type == kDLCPU) {
     phi::CPUPlace dst_place = phi::CPUPlace();
 
-    auto deleter = [src](void* self [[maybe_unused]]) {
-      if (src->deleter) {
-        src->deleter(src);
-      }
-    };
+    // auto deleter = [src](void* self [[maybe_unused]]) {
+    //   if (src->deleter) {
+    //     std::cout<< "delete ptr 1" << std::endl;
+    //     src->deleter(src);
+    //   }
+    // };
 
     *dst = from_blob(src_ptr,
                      vddim,
                      dst->dtype(),
                      phi::DataLayout::NCHW,
                      dst_place,
-                     deleter);
+                     nullptr);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (src->dl_tensor.device.device_type == kDLGPU) {
     phi::GPUPlace dst_place = phi::GPUPlace(src->dl_tensor.device.device_id);
 
-    auto deleter = [src](void* self [[maybe_unused]]) {
-      if (src->deleter) {
-        src->deleter(src);
-      }
-    };
+    // auto deleter = [src](void* self [[maybe_unused]]) {
+    //   if (src->deleter) {
+    //     std::cout << "delete ptr 2" << std::endl;
+    //     src->deleter(src);
+    //   }
+    // };
 
     *dst = from_blob(src_ptr,
                      vddim,
                      dst->dtype(),
                      phi::DataLayout::NCHW,
                      dst_place,
-                     deleter);
+                     nullptr);
   }
 #endif
 #ifdef PADDLE_WITH_XPU
