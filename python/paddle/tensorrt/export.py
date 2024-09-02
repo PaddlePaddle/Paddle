@@ -19,9 +19,9 @@ import numpy as np
 import paddle
 from paddle.tensorrt.converter import PaddleToTensorRTConverter
 from paddle.tensorrt.util import (
+    forbid_op_lower_trt,
     run_pir_pass,
     warmup_shape_infer,
-    warmup_shape_infer_v2,
 )
 
 
@@ -47,30 +47,27 @@ class Input:
                 "min_input_shape and max_input_shape must be provided and cannot be None."
             )
 
-        if self.input_data_type and not self.input_range:
-            if 'int' in self.input_data_type:
-                self.input_min_data = np.random.randint(
-                    1, 10, size=self.min_input_shape
-                )
-                self.input_optim_data = np.random.randint(
-                    1, 10, size=self.optim_input_shape
-                )
-                self.input_max_data = np.random.randint(
-                    1, 10, size=self.max_input_shape
-                )
-            else:
-                self.input_min_data = np.random.random(
-                    size=self.min_input_shape
-                ).astype(self.input_data_type)
-                self.input_optim_data = np.ramdom.random(
-                    size=self.optim_input_shape
-                ).astype(self.input_data_type)
-                self.input_max_data = np.random.random(
-                    size=self.max_input_shape
-                ).astype(self.input_data_type)
+        if self.input_data_type is None:
+            self.input_data_type = 'float32'
 
-        elif self.input_data_type and self.input_range:
+        if self.input_range is None:
+            self.input_range = (
+                (0.0, 1.0) if 'float' in self.input_data_type else (1, 10)
+            )
+
+        if 'int' in self.input_data_type:
             low, high = self.input_range
+            self.input_min_data = np.random.randint(
+                low, high, size=self.min_input_shape
+            )
+            self.input_optim_data = np.random.randint(
+                low, high, size=self.optim_input_shape
+            )
+            self.input_max_data = np.random.randint(
+                low, high, size=self.max_input_shape
+            )
+        else:
+            low, high = self.input_range if self.input_range else (0, 1)
             self.input_min_data = np.random.uniform(
                 low, high, size=self.min_input_shape
             ).astype(self.input_data_type)
@@ -80,17 +77,6 @@ class Input:
             self.input_max_data = np.random.uniform(
                 low, high, size=self.max_input_shape
             ).astype(self.input_data_type)
-
-        else:
-            self.input_min_data = np.ones(self.min_input_shape).astype(
-                'float32'
-            )
-            self.input_optim_data = np.ones(self.optim_input_shape).astype(
-                'float32'
-            )
-            self.input_max_data = np.ones(self.max_input_shape).astype(
-                'float32'
-            )
 
         return self.input_min_data, self.input_optim_data, self.input_max_data
 
@@ -174,7 +160,7 @@ class TensorRTConfig:
                 op.set_bool_attr("__l_trt__", False)
 
 
-def converter_trt_program(program, trt_config, scope):
+def converter_to_trt(program, trt_config, scope):
     if not isinstance(program, paddle.base.libpaddle.pir.Program):
         raise TypeError(
             f"program type must be paddle.base.libpaddle.pir.Program, but received {type(program)}"
@@ -198,29 +184,19 @@ def converter_trt_program(program, trt_config, scope):
                 min_data, _, max_data = input_instance.generate_input_data()
                 program_with_output = program.list_vars()[-1]
 
-                # Step2: run warmup for collecting shape
-                if trt_config.is_save_program:
-                    warmup_shape_infer_v2(
-                        program,
-                        min_shape_feed={feed_name[0]: min_data},
-                        max_shape_feed={feed_name[0]: max_data},
-                        fetch_var_list=program_with_output,
-                    )
-                else:
-                    warmup_shape_infer(
-                        program,
-                        min_shape_feed={"input_ids": min_data},
-                        max_shape_feed={"input_ids": max_data},
-                    )
+                warmup_shape_infer(
+                    program,
+                    min_shape_feed={feed_name[0]: min_data},
+                    max_shape_feed={feed_name[0]: max_data},
+                    fetch_var_list=program_with_output,
+                )
 
         if not trt_config.is_save_program:
-            print("trt_config.min_group_size", trt_config.min_group_size)
-            program_with_pir = run_pir_pass(program, trt_config=trt_config)
+            program_with_pir = run_pir_pass(program, partition_mode=False)
         # Step3: run pir pass (including trt_op_marker_pass)
+        forbid_op_lower_trt(program, "pd_op.dropout")
 
-        program_with_pir = run_pir_pass(
-            program, partition_mode=True, trt_config=trt_config
-        )
+        program_with_pir = run_pir_pass(program, partition_mode=True)
         trt_output_var = []
 
         for op in program_with_pir.global_block().ops:
@@ -283,5 +259,5 @@ def get_trt_program(model_dir, prefix, trt_config, load_json=True):
             )
         )
 
-    program_with_trt, _, _ = converter_trt_program(program, trt_config, scope)
-    return program_with_trt
+    program_with_trt, _, _ = converter_to_trt(program, trt_config, scope)
+    return program_with_trt, scope, feed_target_names, fetch_targets

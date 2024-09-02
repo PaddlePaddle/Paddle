@@ -31,7 +31,7 @@ from paddle.tensorrt.util import (
 )
 
 
-class TestConverterResNet50(unittest.TestCase):
+class TestConverterCumsumOp(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -43,7 +43,7 @@ class TestConverterResNet50(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
-    def test_paddle_to_tensorrt_conversion_r50_v2(self):
+    def test_paddle_to_tensorrt_conversion_cumsum(self):
         # Step1: get program and init fake inputs
         paddle.enable_static()
         np_x = np.random.randn(9, 10, 11).astype('float32')
@@ -112,20 +112,20 @@ class TestConverterResNet50(unittest.TestCase):
                 fetch_var_list=output_var,
             )
 
-            # # Step2: run warmup for collecting shape
+            # Step2: run warmup for collecting shape
             warmup_shape_infer_v2(
                 program,
                 min_shape_feed={feed_name[0]: input_data_min_shape},
-                max_shape_feed={feed_name[0]: input_data_min_shape},
+                max_shape_feed={feed_name[0]: input_data_max_shape},
                 fetch_var_list=output_var,
             )
 
-            # # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
+            # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
             # program_with_pir = run_pir_pass(program, partition_mode=False)
 
             program_with_pir = run_pir_pass(program, partition_mode=True)
 
-            output_var = program_with_pir.list_vars()[-2]
+            # output_var = program_with_pir.list_vars()[-2]
 
             trt_output_var = []
 
