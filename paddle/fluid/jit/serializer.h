@@ -20,6 +20,9 @@
 #include <unordered_map>
 
 #include "paddle/phi/common/place.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 
 namespace paddle {
 
@@ -64,6 +67,8 @@ class Deserializer {
   // void ReadExtraInfo(const std::string& file_name) const;
 
   // void ReadByteCode(const std::string& file_name) const;
+
+  std::shared_ptr<pir::Program> LoadPirProgram(const std::string& file_name);
 
   framework::ProgramDesc LoadProgram(const std::string& file_name);
 };

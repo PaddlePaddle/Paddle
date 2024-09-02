@@ -32,20 +32,20 @@ class Variable;
 
 namespace jit {
 class CompilationUnit;
-class FunctionInfo;
+class BaseFunctionInfo;
 
 using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::Tensor;
 using Variable = paddle::framework::Variable;
 using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
-using FunctionInfoMap =
-    std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
+using BaseFunctionInfoMap =
+    std::unordered_map<std::string, std::shared_ptr<BaseFunctionInfo>>;
 
 class Layer {
  public:
   Layer(const std::shared_ptr<VariableMap>& params_map,
         const std::shared_ptr<VariableMap>& attrs_map_,
-        const FunctionInfoMap& info_map,
+        const BaseFunctionInfoMap& info_map,
         const phi::Place& place);
 
   jit::Function Function(const std::string& name) const;
@@ -62,7 +62,7 @@ class Layer {
   void SetEngine(const std::string& name,
                  const std::shared_ptr<BaseEngine>& engine);
 
-  const std::shared_ptr<jit::FunctionInfo>& FunctionInfo(
+  const std::shared_ptr<jit::BaseFunctionInfo>& FunctionInfo(
       const std::string& name) const;
 
   std::vector<std::string> FunctionNames() const;
@@ -72,7 +72,7 @@ class Layer {
  private:
   std::shared_ptr<VariableMap> params_map_;
   std::shared_ptr<VariableMap> attrs_map_;
-  FunctionInfoMap info_map_;
+  BaseFunctionInfoMap info_map_;
   phi::Place place_;
   std::shared_ptr<CompilationUnit> unit_;
 };

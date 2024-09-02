@@ -20,6 +20,7 @@
 
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/pir/include/core/program.h"
 
 #include "paddle/fluid/jit/function_schema.h"
 
@@ -63,6 +64,14 @@ std::shared_ptr<T> MakeEngine(const std::shared_ptr<FunctionInfo> &info,
                               const std::shared_ptr<VariableMap> &params_dict,
                               const phi::Place &place) {
   return std::make_shared<T>(info, params_dict, place);
+}
+
+template <typename T>
+std::shared_ptr<T> MakePirEngine(const std::shared_ptr<PirFunctionInfo> &info,
+                              const std::shared_ptr<VariableMap> &params_dict,
+                              const phi::Place &place,
+                              const std::shared_ptr<pir::Program> &prog) {
+  return std::make_shared<T>(info, params_dict, place, prog);
 }
 
 }  // namespace utils

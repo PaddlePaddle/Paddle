@@ -102,14 +102,14 @@ class PirFunctionInfo : public BaseFunctionInfo {
  public:
   PirFunctionInfo(const std::string& func_name,
                   const std::vector<std::string>& param_names,
-                  pir::Program* program);
+                  std::shared_ptr<pir::Program> program);
 
-  pir::Program* Program() const;
+  std::shared_ptr<pir::Program> Program() const;
 
   void RemoveFeedFetch();
 
  private:
-  pir::Program* program_;
+  std::shared_ptr<pir::Program> program_;
 };
 
 }  // namespace jit

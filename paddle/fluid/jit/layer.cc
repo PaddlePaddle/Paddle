@@ -27,7 +27,7 @@ namespace paddle::jit {
 
 Layer::Layer(const std::shared_ptr<VariableMap>& params_map,
              const std::shared_ptr<VariableMap>& attrs_map,
-             const FunctionInfoMap& info_map,
+             const BaseFunctionInfoMap& info_map,
              const phi::Place& place)
     : params_map_(params_map),
       attrs_map_(attrs_map),
@@ -55,10 +55,12 @@ void Layer::to(const phi::Place& place) {}
 
 void Layer::SetEngine(const std::string& name,
                       const std::shared_ptr<BaseEngine>& engine) {
+  LOG(INFO) << "set engine begin";
   unit_->SetEngine(name, engine);
+  LOG(INFO) << "set engine end";
 }
 
-const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
+const std::shared_ptr<jit::BaseFunctionInfo>& Layer::FunctionInfo(
     const std::string& name) const {
   PADDLE_ENFORCE_EQ(
       info_map_.count(name),

@@ -70,7 +70,9 @@ void ShareIntoScope(const std::vector<std::string> &ordered_input_names,
 void ShareParamsIntoScope(const std::vector<std::string> &param_names,
                           const std::shared_ptr<VariableMap> &params_dict,
                           framework::Scope *scope) {
+  LOG(INFO) << "21";
   for (auto name : param_names) {
+    LOG(INFO) << "211";
     PADDLE_ENFORCE_EQ(params_dict->count(name),
                       1,
                       common::errors::InvalidArgument(
@@ -83,6 +85,7 @@ void ShareParamsIntoScope(const std::vector<std::string> &param_names,
     auto *var = scope->Var(name);
     auto *dst_tensor = var->GetMutable<DenseTensor>();
     *dst_tensor = dense_tensor;
+    LOG(INFO) << "22";
   }
 }
 
@@ -102,13 +105,28 @@ void RemoveFeedFetch(framework::ProgramDesc *program_desc) {
       } else if (op->Type() == "fetch") {
         VLOG(3) << "remove op type: " << op->Type() << ", index: " << i
                 << ", var name: " << op->Output("Out")[0];
-        block->RemoveVar(op->Output("Out")[0]);
+        block->RemoveVar(op->Output("Out")[0]); 
         block->RemoveOp(i, i + 1);
       }
     }
   }
 }
 
-void RemoveFeedFetch(pir::Program *program) {}
+void RemoveFeedFetch(pir::Program *program) {
+  auto block = program->block();
+  const auto& ops = block->ops();
 
+  std::list<pir::Operation*> ops_copy(ops.begin(), ops.end());
+
+  for (auto it = ops_copy.begin(); it != ops_copy.end();) {
+    pir::Operation* op = *it;
+    LOG(INFO) << "op type: " << op->name();
+    if(op->name() == "pd_op.fetch") {
+      it = ops_copy.erase(it);
+      op->Erase();
+    }else{
+      ++ it;
+    }
+  }
+}
 }  // namespace paddle::jit::utils

@@ -105,21 +105,21 @@ void FunctionInfo::RemoveDescFeedFetch() {
 /* pirFunctionInfo*/
 PirFunctionInfo::PirFunctionInfo(const std::string& func_name,
                                  const std::vector<std::string>& param_names,
-                                 pir::Program* program)
+                                 std::shared_ptr<pir::Program> program)
     : BaseFunctionInfo(func_name, param_names) {
   program_ = program;
   // Parse FunctionSchema
-  for (auto& in_name : GetFeedTargetNames(program_)) {
+  for (auto& in_name : GetFeedTargetNames(program_.get())) {
     schema_.AddInputArg(in_name);
   }
-  for (auto& out_name : GetFetchTargetNames(program_)) {
+  for (auto& out_name : GetFetchTargetNames(program_.get())) {
     schema_.AddOutputArg(out_name);
   }
 }
 
-pir::Program* PirFunctionInfo::Program() const {
+std::shared_ptr<pir::Program> PirFunctionInfo::Program() const {
   return program_;  // NOLINT
 }
 
-void PirFunctionInfo::RemoveFeedFetch() { utils::RemoveFeedFetch(program_); }
+void PirFunctionInfo::RemoveFeedFetch() { utils::RemoveFeedFetch(program_.get()); }
 }  // namespace paddle::jit
