@@ -35,14 +35,17 @@ class TestConverterBert(unittest.TestCase):
         program, scope, param_dict = get_bert_program()
 
         input_config = Input(
-            min_input_shape=(1, 100), max_input_shape=(8, 1000)
+            min_input_shape=(1, 100),
+            optim_input_shape=(4, 1000),
+            max_input_shape=(8, 1000),
         )
         input_config.input_data_type = 'int64'
-        input_min_data, input_max_data = input_config.generate_input_data()
+        input_min_data, _, input_max_data = input_config.generate_input_data()
 
         trt_config = TensorRTConfig()
         trt_config.inputs = [input_config]
         trt_config.is_save_program = False
+        trt_config.min_group_size = 2
 
         output_var = program.list_vars()[-1]
         output_expected = predict_program(

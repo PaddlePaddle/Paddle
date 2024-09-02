@@ -52,22 +52,30 @@ class Input:
                 self.input_min_data = np.random.randint(
                     1, 10, size=self.min_input_shape
                 )
+                self.input_optim_data = np.random.randint(
+                    1, 10, size=self.optim_input_shape
+                )
                 self.input_max_data = np.random.randint(
                     1, 10, size=self.max_input_shape
                 )
             else:
-                low, high = self.input_range
-                self.input_min_data = np.random.uniform(
-                    low, high, size=self.input_min_data
+                self.input_min_data = np.random.random(
+                    size=self.min_input_shape
                 ).astype(self.input_data_type)
-                self.input_max_data = np.random.uniform(
-                    low, high, size=self.input_max_data
+                self.input_optim_data = np.ramdom.random(
+                    size=self.optim_input_shape
+                ).astype(self.input_data_type)
+                self.input_max_data = np.random.random(
+                    size=self.max_input_shape
                 ).astype(self.input_data_type)
 
         elif self.input_data_type and self.input_range:
             low, high = self.input_range
             self.input_min_data = np.random.uniform(
                 low, high, size=self.min_input_shape
+            ).astype(self.input_data_type)
+            self.input_optim_data = np.random.uniform(
+                low, high, size=self.optim_input_shape
             ).astype(self.input_data_type)
             self.input_max_data = np.random.uniform(
                 low, high, size=self.max_input_shape
@@ -77,11 +85,14 @@ class Input:
             self.input_min_data = np.ones(self.min_input_shape).astype(
                 'float32'
             )
+            self.input_optim_data = np.ones(self.optim_input_shape).astype(
+                'float32'
+            )
             self.input_max_data = np.ones(self.max_input_shape).astype(
                 'float32'
             )
 
-        return self.input_min_data, self.input_max_data
+        return self.input_min_data, self.input_optim_data, self.input_max_data
 
 
 class TensorRTConfig:
@@ -94,7 +105,7 @@ class TensorRTConfig:
         program=None,
         use_tensorrt=None,
         workspace_size=None,
-        min_subgraph_size=None,
+        min_group_size=3,
         precision_mode=None,
         tensorrt_use_cuda_graph=None,
         tensorrt_with_interleaved=None,
@@ -127,7 +138,7 @@ class TensorRTConfig:
         self.program = program
         self.use_tensorrt = use_tensorrt
         self.workspace_size = workspace_size
-        self.min_subgraph_size = min_subgraph_size
+        self.min_group_size = min_group_size
         self.precision_mode = precision_mode
         self.tensorrt_use_cuda_graph = tensorrt_use_cuda_graph
         self.tensorrt_with_interleaved = tensorrt_with_interleaved
@@ -184,7 +195,7 @@ def converter_trt_program(program, trt_config, scope):
     with paddle.pir_utils.IrGuard():
         if trt_config.inputs:
             for input_instance in trt_config.inputs:
-                min_data, max_data = input_instance.generate_input_data()
+                min_data, _, max_data = input_instance.generate_input_data()
                 program_with_output = program.list_vars()[-1]
 
                 # Step2: run warmup for collecting shape
@@ -203,12 +214,13 @@ def converter_trt_program(program, trt_config, scope):
                     )
 
         if not trt_config.is_save_program:
-            program_with_pir = run_pir_pass(
-                program, partition_mode=False, use_executor=True
-            )
+            print("trt_config.min_group_size", trt_config.min_group_size)
+            program_with_pir = run_pir_pass(program, trt_config=trt_config)
         # Step3: run pir pass (including trt_op_marker_pass)
 
-        program_with_pir = run_pir_pass(program, partition_mode=True)
+        program_with_pir = run_pir_pass(
+            program, partition_mode=True, trt_config=trt_config
+        )
         trt_output_var = []
 
         for op in program_with_pir.global_block().ops:
