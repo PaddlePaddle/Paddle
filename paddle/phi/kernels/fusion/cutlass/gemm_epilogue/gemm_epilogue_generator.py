@@ -35,7 +35,7 @@ fba_header = '''
 #include "cutlass/epilogue/thread/linear_combination_silu.h"
 #include "cutlass/epilogue/thread/linear_combination_bias_relu.h"
 #include "cutlass/epilogue/thread/linear_combination_sigmoid.h"
-#include "../../fast_gelu.h"
+#include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/fast_gelu.h"
 #include "cutlass/util/device_memory.h"
 #include "paddle/phi/kernels/fusion/cutlass/gemm_epilogue/gemm_epilogue_util.h"
 
