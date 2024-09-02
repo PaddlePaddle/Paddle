@@ -794,6 +794,77 @@ void* GetDstPtrByDLDataType(DLDataType type,
   }
 }
 
+phi::Place GetPlaceFromPtr(void* data) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
+#if CUDA_VERSION >= 10000
+  cudaPointerAttributes attr = {};
+  cudaError_t status = cudaPointerGetAttributes(&attr, data);
+  if (status == cudaSuccess && attr.type == cudaMemoryTypeDevice) {
+    return phi::GPUPlace(attr.device);
+  }
+#else
+  PADDLE_THROW(
+      phi::errors::Unimplemented("The GetPlaceFromPtr() method is only "
+                                 "supported when CUDA version >= 10.0."));
+#endif
+#else
+  hipPointerAttribute_t attr = {};
+  hipError_t status = hipPointerGetAttributes(&attr, data);
+  if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
+    return phi::GPUPlace(attr.device);
+  }
+#endif
+#endif
+  return phi::CPUPlace();
+}
+
+using Deleter = std::function<void(void*)>;
+
+phi::DenseTensor from_blob(void* data,
+                           const phi::DDim& shape,
+                           phi::DataType dtype,
+                           phi::DataLayout layout,
+                           const phi::Place& place,
+                           const Deleter& deleter) {
+  PADDLE_ENFORCE_NOT_NULL(
+      data, phi::errors::InvalidArgument("data can not be nullptr."));
+
+  using AllocationDeleter = void (*)(phi::Allocation*);
+  phi::Place data_place;
+  if (place.GetType() == phi::AllocationType::UNDEFINED ||
+      place.GetType() == phi::AllocationType::CPU ||
+      place.GetType() == phi::AllocationType::GPU) {
+    data_place = GetPlaceFromPtr(data);
+    if (place.GetType() != phi::AllocationType::UNDEFINED) {
+      PADDLE_ENFORCE_EQ(data_place,
+                        place,
+                        phi::errors::InvalidArgument(
+                            "Specified place does not match place of data. ",
+                            "Specified: %s, Expected: %s.",
+                            data_place.DebugString(),
+                            place.DebugString()));
+    }
+  } else {
+    data_place = place;
+  }
+
+  auto meta = phi::DenseTensorMeta(dtype, shape, layout);
+
+  size_t size = SizeOf(dtype) * (meta.is_scalar ? 1 : product(meta.dims));
+
+  AllocationDeleter alloc_deleter = nullptr;
+  if (deleter) {
+    static thread_local Deleter g_deleter = deleter;
+    alloc_deleter = [](phi::Allocation* p) { g_deleter(p->ptr()); };
+  }
+
+  auto alloc =
+      std::make_shared<phi::Allocation>(data, size, alloc_deleter, data_place);
+
+  return std::move(phi::DenseTensor(alloc, meta));
+}
+
 void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
   phi::CPUPlace dst_place = phi::CPUPlace();
   phi::CPUPlace src_place = phi::CPUPlace();
@@ -834,41 +905,48 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, phi::DenseTensor* dst) {
 #endif
 }
 
-void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst) {
+void TensorFromDLPack(DLManagedTensor* src, phi::DenseTensor* dst) {
   std::vector<int64_t> vec;
   std::copy(src->dl_tensor.shape,
             src->dl_tensor.shape + src->dl_tensor.ndim,
             std::back_inserter(vec));
 
   phi::DDim vddim = common::make_ddim(vec);
-  dst->Resize(vddim);
-  ::DLDataType type = src->dl_tensor.dtype;
-
-  auto src_ptr = static_cast<const void*>(src->dl_tensor.data);
-  auto size = common::product(vddim) * type.bits / 8;
-
+  auto src_ptr = static_cast<void*>(src->dl_tensor.data);
   if (src->dl_tensor.device.device_type == kDLCPU) {
     phi::CPUPlace dst_place = phi::CPUPlace();
-    phi::CPUPlace src_place = phi::CPUPlace();
-    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
-    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+
+    auto deleter = [src](void* self [[maybe_unused]]) {
+      if (src->deleter) {
+        src->deleter(src);
+      }
+    };
+
+    *dst = from_blob(src_ptr,
+                     vddim,
+                     dst->dtype(),
+                     phi::DataLayout::NCHW,
+                     dst_place,
+                     deleter);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (src->dl_tensor.device.device_type == kDLGPU) {
     phi::GPUPlace dst_place = phi::GPUPlace(src->dl_tensor.device.device_id);
-    phi::GPUPlace src_place = phi::GPUPlace(src->dl_tensor.device.device_id);
-    void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
-    auto* ctx = phi::DeviceContextPool::Instance().GetByPlace(dst_place);
-    // Fix copy by share allocation.
-    memory::Copy(dst_place,
-                 dst_ptr,
-                 src_place,
-                 src_ptr,
-                 size,
-                 reinterpret_cast<const phi::GPUContext&>(*ctx).stream());
+
+    auto deleter = [src](void* self [[maybe_unused]]) {
+      if (src->deleter) {
+        src->deleter(src);
+      }
+    };
+
+    *dst = from_blob(src_ptr,
+                     vddim,
+                     dst->dtype(),
+                     phi::DataLayout::NCHW,
+                     dst_place,
+                     deleter);
   }
 #endif
-  src->deleter(const_cast<DLManagedTensor*>(src));
 #ifdef PADDLE_WITH_XPU
   PADDLE_THROW(phi::errors::Unimplemented("XPUPlace is not supported"));
 #endif

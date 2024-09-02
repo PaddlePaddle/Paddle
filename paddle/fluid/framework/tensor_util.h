@@ -109,7 +109,7 @@ void TensorToVector(const phi::DenseTensor& src, std::vector<T>* dst);
 
 TEST_API void TensorFromDLPack(const ::DLTensor& dl_tensor,
                                phi::DenseTensor* dst);
-void TensorFromDLPack(const DLManagedTensor* src, phi::DenseTensor* dst);
+void TensorFromDLPack(DLManagedTensor* src, phi::DenseTensor* dst);
 
 //
 // The implementation of template functions.
