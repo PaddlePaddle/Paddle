@@ -914,44 +914,29 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
   // XX_0, XX_1, so we log them in tmp_tensor_info;
   std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
 
-  auto need_lower_x86 = [&]() -> bool {
-    for (auto* op : ops) {
-      for (size_t i = 0; i < op->num_operands(); ++i) {
-        auto in = op->operand_source(i);
-        if (!in || !in.type()) {
-          continue;
-        }
-        auto type_info = in.type().dyn_cast<paddle::dialect::DenseTensorType>();
-        auto dtype = type_info.dtype();
-        const auto& dims = type_info.dims();
-        std::vector<ir::Dim> sym_shape;
-        // 1. dynamic shape not need lower x86
-        if (::common::contain_unknown_dim(dims)) {
-          return false;
-        }
-        // 2. size < 4 not need lower x86
-        int64_t sym_shape_size = 1;
-        for (int i = 0; i < dims.size(); ++i) {
-          sym_shape_size *= dims[i];
-          if (sym_shape_size > 4) {
-            return false;
-          }
-        }
+  std::vector<::pir::Value> vec_inputs;
+  std::vector<::pir::Value> vec_outputs;
+  for (auto* op : ops) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      auto in = op->operand_source(i);
+      if (!in || !in.type()) {
+        continue;
       }
 
-      std::vector<Type> out_types;
-      std::vector<std::vector<ir::Dim>> out_shapes;
-      CollectOutputInfo(op, &out_types, &out_shapes, group);
-      for (const auto& tt : out_types) {
-        // 3. float16 not need lower x86
-        if (tt.is_float16()) {
-          return false;
-        }
-      }
+      vec_inputs.push_back(in);
     }
-    return true;
-  };
-  if (!need_lower_x86()) {
+
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto out = op->result(i);
+      if (!out || !out.type()) {
+        continue;
+      }
+
+      vec_outputs.push_back(out);
+    }
+  }
+
+  if (!paddle::dialect::CanGroupOpRunCpuKernel(vec_inputs, vec_outputs)) {
     return ir::Expr(-1);
   }
 

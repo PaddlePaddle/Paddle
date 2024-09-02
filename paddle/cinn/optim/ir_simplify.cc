@@ -383,6 +383,9 @@ CastType NormCastValue(T value) {
   }
 
   if (std::isinf(value)) {
+    if (CastType(value) == -std::numeric_limits<CastType>::infinity()) {
+      return -std::numeric_limits<CastType>::infinity();
+    }
     return std::numeric_limits<CastType>::infinity();
   } else if (std::isnan(value)) {
     return std::numeric_limits<CastType>::signaling_NaN();
@@ -400,6 +403,7 @@ struct SimplifyCastMutator : public ir::IRMutator<> {
   void Visit(const ir::Cast* op, Expr* expr) {
     auto* node = expr->As<ir::Cast>();
 
+    std::cerr << "cast !!! " << *expr << std::endl;
     ir::IRMutator<ir::Expr*>::Visit(&node->v(), &node->v());
 
     if (op->type() == op->v().type()) {

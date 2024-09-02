@@ -1661,7 +1661,7 @@ Expr ConvertCinnToCAS(Expr expr) {
       }
       // std::cerr << "make sum here! " << a.type() << "\t" << b.type() <<
       // std::endl; std::cerr << a << "\t" << b << std::endl;
-      // //*expr = Sum::Make({a, b});
+      *expr = Sum::Make({a, b});
     }
     void Visit(const Mul* op, Expr* expr) override {
       auto a = op->a();
