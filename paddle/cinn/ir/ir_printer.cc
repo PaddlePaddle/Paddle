@@ -53,6 +53,11 @@ void IrPrinter::Visit(const IntImm *x) {
     str_ += std::to_string(x->value);
     str_ += "ll";
   } else if (x->type().is_int(32)) {
+    // The min int32_t constant(-2147483648) will be recognized as long
+    // and max(long, int32_t) is illegal, so we need to add cast here.
+    if (x->value == std::numeric_limits<std::int32_t>::min()) {
+      str_ += "(int32_t)";
+    }
     str_ += std::to_string(x->value);
   } else if (x->type().is_int(16)) {
     str_ += "(int16_t)";
