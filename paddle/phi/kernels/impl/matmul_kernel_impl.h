@@ -21,10 +21,13 @@ limitations under the License. */
 #include "paddle/phi/kernels/autotune/cache_base.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/cublaslt.h"
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/phi/kernels/funcs/blas/blaslt_impl.hip.h"
+#include "paddle/phi/kernels/funcs/hipblaslt.h"
 #endif
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"

@@ -59,6 +59,7 @@ extern void *hipblasLt_dso_handle;
   __macro(hipblasLtMatmulDescCreate);             \
   __macro(hipblasLtMatmulDescDestroy);            \
   __macro(hipblasLtMatmulDescSetAttribute);       \
+  __macro(hipblasLtMatmulDescGetAttribute);       \
   __macro(hipblasLtMatrixLayoutCreate);           \
   __macro(hipblasLtMatrixLayoutDestroy);          \
   __macro(hipblasLtMatrixLayoutSetAttribute);     \
