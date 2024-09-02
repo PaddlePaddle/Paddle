@@ -185,13 +185,17 @@ void TensorRTEngineOp::Build(pir::Builder &builder,             // NOLINT
   std::vector<pir::Type> argument_outputs;
   std::vector<pir::Type> out_types;
   for (size_t i = 0; i < static_cast<size_t>(outputs_shape.size()); i++) {
-    out_types.push_back(pir::DenseTensorType::get(
-        pir::IrContext::Instance(),
-        TransToIrDataType(outputs_dtype[i]),
-        phi::DDim(outputs_shape[i].data(), outputs_shape[i].size()),
-        phi::DataLayout::ALL_LAYOUT,
-        phi::LoD(),
-        0));
+    if (outputs_dtype[i] == phi::DataType::UNDEFINED) {
+      out_types.push_back(pir::Type());
+    } else {
+      out_types.push_back(pir::DenseTensorType::get(
+          pir::IrContext::Instance(),
+          TransToIrDataType(outputs_dtype[i]),
+          phi::DDim(outputs_shape[i].data(), outputs_shape[i].size()),
+          phi::DataLayout::ALL_LAYOUT,
+          phi::LoD(),
+          0));
+    }
   }
   pir::Type out_vector_type =
       pir::VectorType::get(pir::IrContext::Instance(), out_types);
@@ -259,14 +263,6 @@ void TensorRTEngineOp::VerifySig() {
                       true,
                       common::errors::InvalidArgument(
                           "Type validation failed for the 0th output."));
-    if (auto vec_type = output_type.dyn_cast<pir::VectorType>()) {
-      for (size_t i = 0; i < vec_type.size(); i++) {
-        PADDLE_ENFORCE_EQ(vec_type[i].isa<pir::DenseTensorType>(),
-                          true,
-                          common::errors::InvalidArgument(
-                              "Type validation failed for the 0th output."));
-      }
-    }
   }
   VLOG(4) << "End Verifying for: TensorRTEngineOp.";
 }

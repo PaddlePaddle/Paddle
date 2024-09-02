@@ -26,9 +26,11 @@ import numpy as np
 
 import paddle
 import paddle.distributed.auto_parallel.static.utils as auto_utils
-from paddle import static, utils
+from paddle import pir, static, utils
 from paddle.base.executor import _to_name_str
+from paddle.base.framework import auto_complete_op_role
 from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.distributed.passes.pass_base import new_pass
 from paddle.distributed.passes.pass_utils import (
     _split_program_into_forward_backward_optimize,
@@ -66,7 +68,6 @@ from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
-    complete_op_role,
     pipeline_pass,
     remove_other_rank_input_output_pass,
     remove_other_rank_op_pass,
@@ -74,6 +75,7 @@ from .pir_pass import (
 )
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
+from .utils import set_all_ops_op_role
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -695,9 +697,9 @@ class Engine:
         # TODO(JZ-LIANG) regulization pass with pass management.
         dist_program = mix_fw_program.clone()
         apply_mix2dist_pass(dist_program)
+        set_all_ops_op_role(dist_program, OpRole.Forward)
 
         # Step 1.2: pir backward
-        last_forward_op = dist_program.global_block().ops[-1]
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
             if loss.initialized():
@@ -711,6 +713,7 @@ class Engine:
                             custom_black_list=self._strategy.amp.custom_black_list,
                             dtype=self._strategy.amp.dtype,
                         )
+                        self._optimizer._sorted = False
                         self._optimizer = paddle.static.amp.decorator.OptimizerWithMixedPrecision(
                             optimizer=self._optimizer,
                             amp_lists=amp_lists,
@@ -738,60 +741,24 @@ class Engine:
                             and self._strategy.amp.dtype != 'bfloat16',
                         )
                         scaled = scaler.scale(loss)
-                        last_forward_op = dist_program.global_block().ops[-1]
                         optimizer_ops, params_grads = scaler.minimize(
                             self._optimizer, scaled
                         )
-                        first_opt_op = optimizer_ops[0]
-                        backward_op_start_idx = (
-                            dist_program.global_block().ops.index(
-                                last_forward_op
-                            )
-                            + 1
-                        )
-                        opt_op_start_idx = (
-                            dist_program.global_block().ops.index(first_opt_op)
-                        )
-                        # print('after minimize', dist_program, flush=1)
-                        complete_op_role(
-                            dist_program,
-                            [
-                                [forward_op_start_idx, backward_op_start_idx],
-                                [backward_op_start_idx, opt_op_start_idx],
-                                [opt_op_start_idx, dist_program.num_ops()],
-                            ],
-                        )
                     else:
-                        params_grads = (
-                            paddle.autograd.ir_backward.append_backward(loss)
-                        )
-                        last_backward_op = dist_program.global_block().ops[-1]
-                        self._optimizer._apply_optimize(
-                            loss, startup_program, params_grads=params_grads
-                        )
-
-                        backward_op_start_idx = (
-                            dist_program.global_block().ops.index(
-                                last_forward_op
+                        with auto_complete_op_role(
+                            dist_program, OpRole.Backward
+                        ):
+                            params_grads = (
+                                paddle.autograd.ir_backward.append_backward(
+                                    loss
+                                )
                             )
-                            + 1
-                        )
-                        opt_op_start_idx = (
-                            dist_program.global_block().ops.index(
-                                last_backward_op
+                        with auto_complete_op_role(
+                            dist_program, OpRole.Optimize
+                        ):
+                            self._optimizer._apply_optimize(
+                                loss, startup_program, params_grads=params_grads
                             )
-                            + 1
-                        )
-                        complete_op_role(
-                            dist_program,
-                            [
-                                [forward_op_start_idx, backward_op_start_idx],
-                                [backward_op_start_idx, opt_op_start_idx],
-                                [opt_op_start_idx, dist_program.num_ops()],
-                            ],
-                        )
-                        # self._optimizer.minimize(loss, startup_program=startup_program)
-
             else:
                 self._logger.info(
                     "loss value is not found, skip append backward."
@@ -1298,6 +1265,7 @@ class Engine:
             self.program_helper.init_pir(
                 self._pir_dist_main_progs[mode], self._place
             )
+            changed_ouput_op_list = []
             if self._executor is None:
                 self._executor = paddle.static.Executor(self._place)
                 startup_prog = self._startup_progs[mode].clone()
@@ -1334,18 +1302,33 @@ class Engine:
                         if local_shape != global_shape:
                             src_value = op.operand_source(0)
                             assert src_value.shape == global_shape
-                            initial_op = src_value.get_defining_op()
-                            if initial_op.name() == "pd_op.full":
-                                initial_op.set_int_array_attr(
-                                    "shape", local_shape
+                            dst_dist_attr = name_map_value[var_name].dist_attr()
+                            if not src_value.is_dist():
+                                src_dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                                    dst_dist_attr.process_mesh,
+                                    [-1] * len(src_value.shape),
+                                    {},
                                 )
                                 src_value.set_type(
-                                    name_map_value[var_name].type()
+                                    paddle.base.libpaddle.pir.cvt_to_dist_type(
+                                        src_value.type(), src_dist_attr
+                                    )
                                 )
-                            # initial_op.name() == "pd_op.cast": # master_weight
-
+                            pir.set_insertion_point_after(
+                                src_value.get_defining_op()
+                            )
+                            reshard_var = paddle._C_ops.reshard_v2(
+                                src_value, dst_dist_attr
+                            )
+                            if src_value.persistable:
+                                src_value.persistable = False
+                                changed_ouput_op_list.append(op)
+                            op.operand(0).set_source(reshard_var)
                 for del_op in del_ops:
                     del_op.erase()
+                apply_reshard_pass(startup_prog)
+                for op in changed_ouput_op_list:
+                    op.operand_source(0).persistable = True
                 self._executor.run(startup_prog)
                 if self._job_plan is not None:
                     # pipeline scheduling should be enabled after running
@@ -2114,7 +2097,7 @@ class Engine:
             loss_value = program_for_executor.get_output_value_by_name(
                 self._loss_names[0]
             )
-            if paddle.pir.is_fake_value(loss_value):
+            if pir.is_fake_value(loss_value):
                 no_fetch = True
                 fetch_names = []
             else:

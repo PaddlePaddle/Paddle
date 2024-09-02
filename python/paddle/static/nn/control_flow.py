@@ -753,6 +753,25 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             # Create a fake value for create WhileOp, it's type will be reset after body is executed.
             return paddle.full(shape=[], fill_value=0)
 
+        def cast_value_in_amp(in_vars, out_vars, idx):
+            amp_attrs = core._get_amp_attrs()
+            amp_level = amp_attrs._amp_level
+            apply_amp_level_list = [
+                core.AmpLevel.O1,
+                core.AmpLevel.O2,
+            ]
+            if amp_level not in apply_amp_level_list:
+                return out_vars
+            assert len(in_vars) == len(out_vars)
+            ret = []
+            for i, (in_var, out_var) in enumerate(zip(in_vars, out_vars)):
+                if i not in idx and in_var.dtype != out_var.dtype:
+                    cast_out_var = paddle.cast(out_var, in_var.dtype)
+                    ret.append(cast_out_var)
+                else:
+                    ret.append(out_var)
+            return ret
+
         flattened_loop_vars = flatten(loop_vars)
 
         undefined_var_mapping = {
@@ -804,6 +823,11 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             unified_next_vars = create_container_by_items_and_indices(
                 (variable_next_vars, variable_next_var_indices),
                 (fake_constant_next_vars, constant_next_var_indices),
+            )
+            unified_next_vars = cast_value_in_amp(
+                unified_loop_vars,
+                unified_next_vars,
+                undefined_var_mapping.keys(),
             )
             cf_yield([next_cond, *unified_next_vars])
 
