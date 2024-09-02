@@ -63,7 +63,7 @@ void DyScheduleImpl::MutateForType(const Expr& loop,
   auto loop_copy = ir::ir_utils::IRCopy(loop, /* copy_buffer_node = */ false);
   auto* new_for_node = loop_copy.As<ir::For>();
   PADDLE_ENFORCE_NOT_NULL(new_for_node,
-                          ::phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The newly created For node is null. "
                               "Please ensure the loop_copy is valid."));
   new_for_node->set_for_type(for_type);
