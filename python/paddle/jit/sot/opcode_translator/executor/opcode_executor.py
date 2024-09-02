@@ -1074,12 +1074,15 @@ class OpcodeExecutorBase:
             )
         )
 
+    @call_break_graph_decorator(push_n=1)
     def BUILD_TUPLE_UNPACK_WITH_CALL(self, instr: Instruction):
         self.build_seq_unpack(instr)
 
+    @call_break_graph_decorator(push_n=1)
     def BUILD_TUPLE_UNPACK(self, instr: Instruction):
         self.build_seq_unpack(instr)
 
+    @call_break_graph_decorator(push_n=1)
     def BUILD_LIST_UNPACK(self, instr: Instruction):
         self.build_seq_unpack(instr)
 
@@ -1564,6 +1567,7 @@ class OpcodeExecutorBase:
             self.stack.peek[instr.arg], key, value
         )
 
+    @call_break_graph_decorator(push_n=0)
     def LIST_EXTEND(self, instr: Instruction):
         list_value = self.stack.pop()
         assert isinstance(instr.arg, int)
