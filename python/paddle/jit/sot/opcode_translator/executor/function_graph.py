@@ -48,7 +48,7 @@ from ...utils import (
     log,
     log_do,
     map_if,
-    tmp_name_guard,
+    switch_symbol_registry,
 )
 from ..instruction_utils import get_instructions
 from .guard import Guard, StringifiedExpression, make_guard
@@ -299,7 +299,7 @@ class FunctionGraph:
     @property
     @event_register("guard_fn")
     def guard_fn(self) -> Guard:
-        with tmp_name_guard():
+        with switch_symbol_registry():
             guards: list[StringifiedExpression] = []
             with EventGuard("guard_fn: find vars and make stringified guard"):
                 for variable in find_traceable_vars(
