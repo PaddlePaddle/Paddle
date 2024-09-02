@@ -1117,13 +1117,16 @@ bool LstmOpInferSymbolicShape(pir::Operation *op,
   std::vector<symbol::DimExpr> out_dims;
   out_dims.push_back(input_shape[0]);
   out_dims.push_back(frame_size);
-  symbol::ShapeOrDataDimExprs shape_data{
+  symbol::ShapeOrDataDimExprs output_shape_data{
       symbol::TensorShapeOrDataDimExprs(out_dims)};
-  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
-  infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
+  infer_context->SetShapeOrDataForValue(op->result(0), output_shape_data);
+  infer_context->SetShapeOrDataForValue(op->result(1), output_shape_data);
   if (!is_test) {
-    infer_context->SetShapeOrDataForValue(op->result(2), input_shape_or_data);
-    infer_context->SetShapeOrDataForValue(op->result(3), shape_data);
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(input_shape)});
+    infer_context->SetShapeOrDataForValue(op->result(3), output_shape_data);
   }
   return true;
 }
@@ -2285,13 +2288,6 @@ bool SpectralNormOpInferSymbolicShape(
 
   return true;
 }
-// bool LstmOpInferSymbolicShape(pir::Operation *op,
-//                               pir::InferSymbolicShapeContext
-//                               *infer_context)
-//                               {
-//   // pass
-//   return true;
-// }
 
 // bool MergedAdamOpInferSymbolicShape(pir::Operation *op,
 //                                     pir::InferSymbolicShapeContext
