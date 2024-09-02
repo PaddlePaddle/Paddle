@@ -100,7 +100,6 @@ struct PatternNode {
   FusionItersSignature fusion_iters() const { return fusion_iters_; }
   void set_fusion_iters(const FusionItersSignature& fusion_iters) {
     fusion_iters_ = fusion_iters;
-    VLOG(4) << "set_fusion_iters";
   }
 
  private:
