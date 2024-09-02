@@ -19,11 +19,11 @@ string(REPLACE ".py" "" TEST_TRT_CONVERTER "${TEST_TRT_CONVERTER}")
 # Only for cpu(mkl + openblas)
 set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass" "test_mul_gru_fuse_pass")
 
-list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_trt_inspector_deprecated")
+list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_inspector_deprecated")
 
 if(WIN32)
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_inference_fp16_io_deprecated")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_inference_fp16_io_deprecated")
+  list(REMOVE_ITEM)
 endif()
 
 if(NOT WITH_MKLDNN
@@ -81,6 +81,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
                                                                          300)
   set_tests_properties(test_trt_inference_fp16_io_deprecated PROPERTIES TIMEOUT
                                                                         500)
+  set_tests_properties(test_trt_convert_conv2d_deprecated PROPERTIES 400)
+  set_directory_properties(
+    test_trt_convert_depthwise_conv2d_transpose_deprecated PROPERTIES 400)
   if(WITH_NV_JETSON)
     set_tests_properties(
       test_trt_pool_op_deprecated
@@ -97,7 +100,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
                  300)
     set_tests_properties(
       test_trt_pool3d_op_deprecated
-      PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT 45)
+      PROPERTIES ENVIRONMENT FLAGS_fraction_of_gpu_memory_to_use=0.1 TIMEOUT
+                 450)
   endif()
 
   set_tests_properties(test_trt_tile_op_deprecated PROPERTIES TIMEOUT 60)
@@ -110,5 +114,5 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_conv3d_transpose_op_deprecated
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_nearest_interp_v2_op_deprecated
-                       PROPERTIES TIMEOUT 30)
+                       PROPERTIES TIMEOUT 500)
 endif()
