@@ -621,7 +621,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_fleet_base_2',
     'test_fleet_checkpoint',
     'test_ir_fusion_group_pass',
-    'test_sync_batch_norm_op',
     'test_multiprocess_dataloader_iterable_dataset_static',
     'test_multiprocess_dataloader_static',
     'test_load_op_xpu',
