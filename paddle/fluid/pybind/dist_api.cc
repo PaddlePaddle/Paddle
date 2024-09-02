@@ -83,13 +83,6 @@ void BindTensorDistAttribute(py::module *m) {
                                return self.process_mesh_attr().process_mesh();
                              })
       .def_property_readonly(
-          "process_mesh_attr",
-          [](TensorDistAttribute &self) { return self.process_mesh_attr(); })
-      .def_property_readonly("process_mesh_name",
-                             [](TensorDistAttribute &self) {
-                               return self.process_mesh_attr().dim_names();
-                             })
-      .def_property_readonly(
           "dims_mapping",
           [](TensorDistAttribute &self) { return self.dims_mapping(); })
       .def_property_readonly(

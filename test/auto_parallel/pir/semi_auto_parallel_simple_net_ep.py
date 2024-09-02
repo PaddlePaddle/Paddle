@@ -31,11 +31,8 @@ class Config:
         self.hidden_size = 16
         self.class_num = 10
         self.run_ep = False
-        # self.mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self.mesh = dist.ProcessMesh([0, 1])
         self.expert_mesh_list = []
-        # self.expert_mesh_list.append(dist.ProcessMesh([0], dim_names=["x"]))
-        # self.expert_mesh_list.append(dist.ProcessMesh([1], dim_names=["x"]))
         self.expert_mesh_list.append(dist.ProcessMesh([0]))
         self.expert_mesh_list.append(dist.ProcessMesh([1]))
 
@@ -204,7 +201,7 @@ class TestSimpleNetForEP:
         model, train_dataloader, criterion, optimizer = self.build(config)
 
         dist_dataloader = dist.shard_dataloader(
-            train_dataloader, config.mesh, shard_dims=[dist.Shard(0)]
+            train_dataloader, config.mesh, shard_dims=0
         )
         loss = self.train(config, model, dist_dataloader, criterion, optimizer)
 
@@ -226,7 +223,7 @@ class TestSimpleNetForEP:
         model, train_dataloader, criterion, optimizer = self.build(config)
 
         dist_dataloader = dist.shard_dataloader(
-            train_dataloader, config.mesh, shard_dims="d0"
+            train_dataloader, config.mesh, shard_dims=0
         )
 
         mode = "train"

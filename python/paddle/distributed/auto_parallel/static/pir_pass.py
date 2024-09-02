@@ -86,8 +86,6 @@ def reshard_combine_value(program, op, operand, attr):
 
 def apply_partition_pass(program):
     for op in program.global_block().ops:
-        # if op.name() == "pd_op.matmul_grad":
-        #     breakpoint()
         if op.name() in partition_skip_op_list:
             continue
 

@@ -1533,10 +1533,6 @@ void BindAttribute(py::module *m) {
              }
              return py::cast<py::none>(Py_None);
            })
-      .def("as_int64",
-           [](Attribute &self) {
-             return reinterpret_cast<int64_t>(static_cast<const void *>(self));
-           })
       .def("as_array_attr", [](Attribute &self) -> py::object {
         if (auto array_attr = self.dyn_cast<ArrayAttribute>()) {
           return py::cast(array_attr);
