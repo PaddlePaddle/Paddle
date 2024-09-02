@@ -176,14 +176,14 @@ class AfsWrapper {
   }
 
   std::vector<std::string> List(const std::string& path) {
-    int list_size = 0;
+    size_t list_size = 0;
     char** lists = phi::dynload::afs_list(handle_, path.c_str(), &list_size);
     std::vector<std::string> ret_lists(list_size);
-    for (int i = 0; i < list_size; i++) {
+    for (size_t i = 0; i < list_size; i++) {
       ret_lists[i] = std::string(lists[i]);
     }
 
-    for (int i = 0; i < list_size; i++) {
+    for (size_t i = 0; i < list_size; i++) {
       phi::dynload::afs_free(reinterpret_cast<void*>(lists[i]));
     }
     phi::dynload::afs_free(reinterpret_cast<void*>(lists));
@@ -191,8 +191,11 @@ class AfsWrapper {
   }
 
   std::string Cat(const std::string& path) {
-    auto ret = phi::dynload::afs_cat(handle_, path.c_str());
-    return std::string(ret);
+    size_t file_len = 0;
+    char* ret = phi::dynload::afs_cat(handle_, path.c_str(), &file_len);
+    auto ret_str = std::string(ret, file_len);
+    phi::dynload::afs_free(reinterpret_cast<void*>(ret));
+    return ret_str;
   }
 
   int Exist(const std::string& path) {
@@ -1048,7 +1051,6 @@ class PSGPUWrapper {
                const char* data,
                size_t len,
                bool direct) {
-    VLOG(1) << "CALL AfsWrite: " << len << ", direct:" << direct;
     return phi::dynload::afs_writer_write(handle, data, len, direct);
   }
 
