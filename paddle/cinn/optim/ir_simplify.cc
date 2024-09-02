@@ -471,6 +471,7 @@ void Simplify(Expr* expr) {
   SimplifyLoadMutator()(expr);
   SimplifyStoreMutator()(expr);
   SimplifyIfThenElseMutator()(expr);
+
   cinn::common::cas_intervals_t var_intervals;
   SimplifyNoPureMathMutator mutator(var_intervals);
   mutator(expr);
