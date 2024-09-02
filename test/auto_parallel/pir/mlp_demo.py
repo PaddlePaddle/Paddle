@@ -170,11 +170,12 @@ class TestMLPPipelineParallel(unittest.TestCase):
         schedule_mode="FThenB",
         accumulate_steps=1,
         grad_merge=False,
+        enable_amp=True,
     ):
         self.init_env()
         paddle.set_flags({'FLAGS_enable_pir_api': 1})
         mesh1 = dist.ProcessMesh([0], dim_names=["x"])
-        mesh2 = dist.ProcessMesh([1], dim_names=["y"])
+        mesh2 = dist.ProcessMesh([1], dim_names=["x"])
         pp_layer = PPDemoNet(mesh1, mesh2)
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=pp_layer.parameters()
@@ -187,6 +188,16 @@ class TestMLPPipelineParallel(unittest.TestCase):
         strategy.pipeline.enable = enable_schedule
         strategy.pipeline.schedule_mode = schedule_mode
         strategy.pipeline.accumulate_steps = accumulate_steps
+
+        if enable_amp:
+            amp = strategy.amp
+            amp.enable = True
+            amp.dtype = 'float16'
+            amp.level = 'O2'
+            amp.use_master_weight = True
+            amp.use_master_grad = True
+            amp.use_promote = True
+            amp.init_loss_scaling = 1024.0
 
         if grad_merge:
             gradient_merge = strategy.gradient_merge
@@ -202,8 +213,6 @@ class TestMLPPipelineParallel(unittest.TestCase):
 
         loss = None
         for batch_id, (image, label) in enumerate(dist_loader()):
-            if batch_id > 2:
-                break
             loss = dist_model(image, label)
 
             if accumulate_steps > 1 and loss is not None:
@@ -231,6 +240,32 @@ class TestMLPPipelineParallel(unittest.TestCase):
             ret_1 = np.allclose(
                 loss_split_prog_acc4,
                 ref_loss,
+                rtol=1e-3,
+                atol=1e-2,
+                equal_nan=True,
+            )
+            self.assertEqual(ret_1, True)
+
+    def test_pp_pass_amp(self):
+        loss_split_prog_acc1 = self._pipeline_schedule(
+            enable_schedule=False,
+            schedule_mode="FThenB",
+            accumulate_steps=1,
+            enable_amp=True,
+        )
+        loss_split_prog_acc4 = self._pipeline_schedule(
+            enable_schedule=True,
+            schedule_mode="FThenB",
+            accumulate_steps=4,
+            grad_merge=True,
+            enable_amp=True,
+        )
+
+        cur_rank = paddle.distributed.get_rank()
+        if cur_rank == 1:
+            ret_1 = np.allclose(
+                loss_split_prog_acc4,
+                loss_split_prog_acc1,
                 rtol=1e-3,
                 atol=1e-2,
                 equal_nan=True,
