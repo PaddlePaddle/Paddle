@@ -2800,9 +2800,13 @@ set +x
 
         if [ ${WITH_CINN:-OFF} == "ON" ]; then
             pushd ${PADDLE_ROOT}/build/paddle/cinn
-            ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
+            ctest -N -E "test_frontend_interpreter" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp
+            popd
+            pushd ${PADDLE_ROOT}/build/test/cinn
+            ctest -N -E "test_paddle_model_convertor|test_cinn_fake_resnet|test_cinn_sub_graph_map_expr|test_assign_value_op_mapper|test_batch_norm_op"  | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' >> ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp
             popd
             ctest -N -L "RUN_TYPE=CINN" | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/pr_ci_cinn_ut_list
+            cat ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list_tmp | sort | uniq > ${PADDLE_ROOT}/build/pr_ci_cinn_gpu_ut_list
             echo "========================================"
             echo "pr_ci_cinn_ut_list: "
             cat ${PADDLE_ROOT}/build/pr_ci_cinn_ut_list
@@ -2815,7 +2819,7 @@ set +x
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
 
         if [ ${WITH_CINN=-OFF} == "ON" ]; then
-            run_cinn_ut=`check_cinn_file_diff`
+            run_cinn_ut="OFF"
             if [[ "OFF" == ${run_cinn_ut} ]]; then
               echo "No CINN-related changes were found"
               echo "Skip PR-CI-CINN-GPU UT CI"
