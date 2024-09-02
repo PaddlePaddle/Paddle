@@ -91,10 +91,11 @@ Expr RampRelatedAdd(ir::Broadcast *broadcast, Expr other) {
 // ramp + ramp
 Expr RampRelatedAdd(ir::Ramp *ramp, ir::Ramp *other) {
   PADDLE_ENFORCE_NOT_NULL(
-      ramp, phi::errors::InvalidArgument("Ramp pointer should not be null."));
-  PADDLE_ENFORCE_NOT_NULL(
-      other,
-      phi::errors::InvalidArgument("Other ramp pointer should not be null."));
+      ramp,
+      ::common::errors::InvalidArgument("Ramp pointer should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(other,
+                          ::common::errors::InvalidArgument(
+                              "Other ramp pointer should not be null."));
   if (ramp->lanes == other->lanes) {
     Expr base_add = cinn::common::AutoSimplify(ramp->base + other->base);
     Expr stride_add = cinn::common::AutoSimplify(ramp->stride + other->stride);
@@ -282,7 +283,7 @@ Expr select(Expr cond, Expr true_value, Expr false_value) {
 Expr and_all(const std::vector<Expr> &conds) {
   PADDLE_ENFORCE_NE(conds.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The conditions vector should not be empty."));
   Expr res = conds.front();
   for (int i = 1; i < conds.size(); i++) {
@@ -294,7 +295,7 @@ Expr and_all(const std::vector<Expr> &conds) {
 Expr or_all(const std::vector<Expr> &conds) {
   PADDLE_ENFORCE_NE(conds.empty(),
                     true,
-                    phi::errors::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "The conditions vector should not be empty."));
   Expr res = conds.front();
   for (int i = 1; i < conds.size(); i++) {
@@ -413,7 +414,7 @@ std::vector<std::string> GatherItersToTensorProducer(
       if (op->tensor.as_tensor()->name == target_tensor_name) {
         PADDLE_ENFORCE_EQ(iters.empty(),
                           true,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "The iterators vector should be empty."));
         for (auto &e : for_stack) {
           auto *for_n = e->As<ir::For>();

@@ -26,7 +26,6 @@ os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_cinn_bucket_compile'] = '1'
 os.environ['FLAGS_cinn_new_cluster_op_method'] = '1'
-os.environ['FLAGS_deny_cinn_ops'] = 'slice;'
 
 import paddle
 
@@ -153,6 +152,37 @@ class TestAnchorFusion(unittest.TestCase):
         def init():
             x = paddle.rand((32, 32, 128))
             return (x,)
+
+        self.compare_result(func, None, init)
+
+    def test_fusion_iters(self):
+        #     T   T
+        #      \ /
+        #       T
+        #       |
+        #   Transpose
+        #      / \
+        #     S   R
+        #    /     \
+        #   B       B
+        #            \
+        #             R
+        def func(x, y):
+            a = x + 1
+            b = y * 2
+            c = a + b
+            d = paddle.transpose(c, [1, 0])
+            e = d[0, :]
+            f = paddle.expand(e, [16, 16])
+            g = paddle.max(d, axis=0)
+            h = paddle.expand(g, [32, 16])
+            i = paddle.sum(h, axis=0)
+            return f, i
+
+        def init():
+            x = paddle.rand((16, 32))
+            y = paddle.rand((16, 32))
+            return (x, y)
 
         self.compare_result(func, None, init)
 

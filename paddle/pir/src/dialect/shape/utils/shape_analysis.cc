@@ -32,7 +32,7 @@ static std::string GetValueId(Value val) {
 }
 
 void InferSymbolicShapeContext::Init(
-    const std::vector<ConstraintsForInputDimExpr>& input_shape_constraints) {
+    const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec) {
   value_id_to_shape_or_data_.clear();
   next_sym_idx_ = sym_idx_begin_;
   constraints_manager_.SetEqualCallbackFunc(
@@ -40,24 +40,34 @@ void InferSymbolicShapeContext::Init(
         return SubstituteDimExpr(lhs, rhs);
       });
 
-  const auto& InitBindInfoForInputDim =
-      [&](const std::vector<std::pair<std::string, int>>& bind_info,
+  const auto& CreateDimExprForInputDynamicDim = [&]() {
+    for (const auto& item : input_dynamic_dim_spec) {
+      input_dynamic_dim_name_spec_to_dimexpr_map_[item.dim_name] =
+          symbol::DimExpr{GetNextSymName()};
+    }
+  };
+
+  const auto& SetDynamicShapeInputBind =
+      [&](const std::vector<std::pair<std::string, int>>& input_bind,
           const symbol::DimExpr& dim_expr) {
-        for (const auto& item : bind_info) {
+        for (const auto& item : input_bind) {
           predefined_dimexpr_map_for_inputs_[item.first].emplace_back(
               DimIndexAndExpr(item.second, dim_expr));
         }
       };
 
-  const auto& InitRangeForInputDim =
+  const auto& SetDynamicShapeInputRange =
       [&](const symbol::ConstraintsManager::Range& range,
           const symbol::DimExpr& dim_expr) {
         constraints_manager_.AddInputRangeCstr(dim_expr, range);
       };
 
-  for (const auto& item : input_shape_constraints) {
-    InitBindInfoForInputDim(item.bind_info, item.dim_expr);
-    InitRangeForInputDim(item.range, item.dim_expr);
+  CreateDimExprForInputDynamicDim();
+  for (const auto& item : input_dynamic_dim_spec) {
+    const auto& dim_expr =
+        input_dynamic_dim_name_spec_to_dimexpr_map_.at(item.dim_name);
+    SetDynamicShapeInputBind(item.input_bind, dim_expr);
+    SetDynamicShapeInputRange(item.range, dim_expr);
   }
 }
 
@@ -409,7 +419,7 @@ InferSymbolicShapeContext::GetPredefinedDimExprForInputName(
 }
 
 void ShapeConstraintIRAnalysis::InitInferContext() {
-  context_.Init(input_shape_constraints_);
+  context_.Init(input_dynamic_dim_spec_);
 }
 
 void ShapeConstraintIRAnalysis::RegisterSymbolConstraintFromShapeAnalysis(
@@ -743,6 +753,11 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() {
     printer.os << "\t(op_" << op->id() << ")";
   };
   return print_hook;
+}
+
+void ShapeConstraintIRAnalysis::SetInputDynamicDimSpec(
+    const std::vector<InputDynamicDimSpec>& input_dynamic_dim_spec) {
+  input_dynamic_dim_spec_ = input_dynamic_dim_spec;
 }
 
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {
