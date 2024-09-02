@@ -582,7 +582,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       PADDLE_ENFORCE_EQ(
           static_cast<bool>(strategy),
           true,
-          phi::errors::PreconditionNotMet(
+          ::common::errors::PreconditionNotMet(
               "cinn_op_name: %s has no CINNStrategySymbolic registered.",
               cinn_op_name));
       op_impl = OpStrategy::SelectImpl(strategy(node_attrs,
@@ -713,7 +713,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     PADDLE_ENFORCE_EQ(
         pack[idx].is_tensor(),
         true,
-        phi::errors::PreconditionNotMet(
+        ::common::errors::PreconditionNotMet(
             "The element at index %d in pack must be a tensor.", idx));
     op_func_arg_tensors->push_back(
         pack[idx].operator ir::Expr().as_tensor_ref());

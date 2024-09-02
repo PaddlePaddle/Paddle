@@ -418,7 +418,7 @@ TUPLE_OUTPUT_NAME_TEMPLATE = """
 KERNEL_CALL_TEMPLATE = """
       phi::RecordEvent* kernel_record_event = nullptr;
       if(phi::RecordEvent::IsEnabled()){{
-        kernel_record_event = new phi::RecordEvent(\"{} dist compute\", phi::TracerEventType::OperatorInner, 1);
+        kernel_record_event = new phi::RecordEvent(\"{} dist compute\", phi::TracerEventType::DygraphKernelLaunch, 1);
       }}
       using kernel_signature = {};
       auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();

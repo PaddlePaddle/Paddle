@@ -12,7 +12,7 @@
     param : [grad_out]
   kernel :
     func : add_double_grad
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x_grad, grad_y_grad, grad_out_grad
   backward : add_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
   composite : add_double_grad(y, grad_out, grad_x_grad, grad_y_grad, axis, grad_out_grad)
@@ -126,7 +126,7 @@
   kernel :
     func : divide_double_grad
     data_type : out
-  optional : grad_x, grad_x_grad, grad_y_grad
+  optional : grad_x, grad_x_grad, grad_y_grad, grad_out_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : divide_grad
@@ -322,7 +322,7 @@
     param : [x, y, grad_out]
   kernel :
     func : multiply_double_grad
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x_grad, grad_y_grad, grad_out_grad
   inplace : (grad_x_grad -> grad_out_grad)
   backward : multiply_triple_grad
   composite : multiply_double_grad(x, y, grad_out, grad_x_grad, grad_y_grad, axis, x_grad, y_grad, grad_out_grad)
@@ -451,7 +451,7 @@
     param : [grad_out]
   kernel :
     func : subtract_double_grad
-  optional : grad_x_grad, grad_y_grad
+  optional : grad_x_grad, grad_y_grad, grad_out_grad
   no_need_buffer : y, grad_out
   inplace : (grad_x_grad -> grad_out_grad)
   composite : subtract_double_grad(y, grad_out, grad_x_grad, grad_y_grad, axis, grad_out_grad)

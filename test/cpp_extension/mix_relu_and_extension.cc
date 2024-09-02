@@ -29,7 +29,7 @@ void relu_cpu_forward_kernel(const data_t* x_data,
   PADDLE_ENFORCE_NE(
       x_data, nullptr, common::errors::Fatal("x_data is nullptr."));
   PADDLE_ENFORCE_NE(
-      out_data, nullptr, phi::errors::Fatal("out_data is nullptr."));
+      out_data, nullptr, common::errors::Fatal("out_data is nullptr."));
   for (int64_t i = 0; i < x_numel; ++i) {
     out_data[i] = std::max(static_cast<data_t>(0.), x_data[i]);
   }

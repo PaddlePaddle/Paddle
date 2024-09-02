@@ -249,11 +249,16 @@ OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE = """
         optional_{name} = paddle::make_optional<std::vector<pir::Value>>(optional_{name}_slice_op.outputs());
     }}"""
 
-SET_NULL_TYPE_TEMPLATE = """
+SET_NULL_TYPE_WITH_INPLACE_TEMPLATE = """
     if (!{input}) {{
         {op_name}_op.result({index}).set_type(pir::Type());
     }}"""
 
+SET_NULL_TYPE_TEMPLATE = """
+    pir::Type {op_name}_op_result_{index}_type = {op_name}_op.result({index}).type();
+    if ({op_name}_op_result_{index}_type.isa<paddle::dialect::DenseTensorType>() && {op_name}_op_result_{index}_type.dyn_cast<paddle::dialect::DenseTensorType>().dims().size() == -1) {{
+        {op_name}_op.result({index}).set_type(pir::Type());
+    }}"""
 
 COMBINE_OP_TEMPLATE = """
     auto {op_name} = ApiBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
@@ -342,6 +347,27 @@ class CodeGen:
         return False
 
     def _is_optional_output(self, op_info, output_name):
+        output_optional_list = op_info.output_optional_list
+        output_name_list = op_info.output_name_list
+        intermediate_list = op_info.output_intermediate_list
+        output_index = output_name_list.index(output_name)
+        if (
+            intermediate_list[output_index] == 'false'
+            and op_info.output_optional_list[output_index] == 'true'
+        ):
+            return True
+        else:
+            return False
+
+    def _is_backward_op(self, op_info):
+        op_names = op_info.op_phi_name
+        for name in op_names:
+            if name.endswith(('_grad', '_grad_')):
+                return True
+        else:
+            return False
+
+    def _is_optional_inplace_output(self, op_info, output_name):
         op_names = op_info.op_phi_name
         for name in op_names:
             if name.endswith(('_grad', '_grad_')):
@@ -356,6 +382,15 @@ class CodeGen:
             input_index = input_name_list.index(inplace_map[output_name])
             if input_optional_list[input_index] == 'true':
                 return True
+        return False
+
+    def _need_optional_output(self, op_info, name):
+        if self._is_optional_inplace_output(op_info, name):
+            return True
+        if self._is_backward_op(op_info) and self._is_optional_output(
+            op_info, name
+        ):
+            return True
         return False
 
     # =====================================
@@ -433,7 +468,7 @@ class CodeGen:
             ):
                 if intermediate == 'true':
                     continue
-                if self._is_optional_output(op_info, name):
+                if self._need_optional_output(op_info, name):
                     ret.append(OPTIONAL_VALUE_TYPE_MAP[type])
                 else:
                     ret.append(VALUE_TYPE_MAP[type])
@@ -441,7 +476,7 @@ class CodeGen:
         elif output_num == 1:
             index = intermediate_list.index('false')
             name = name_list[index]
-            if self._is_optional_output(op_info, name):
+            if self._need_optional_output(op_info, name):
                 return OPTIONAL_VALUE_TYPE_MAP[type_list[index]]
             else:
                 return VALUE_TYPE_MAP[type_list[index]]
@@ -510,7 +545,7 @@ class CodeGen:
                     ret += OPTIONAL_VALUE_INPUT_TEMPLATE.format(name=name)
         return ret
 
-    def _gen_handle_optional_outputs(self, op_info, op_name):
+    def _gen_handle_optional_inplace_outputs(self, op_info, op_name):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
@@ -520,7 +555,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_output(op_info, name):
+            if self._need_optional_output(op_info, name):
                 if VECTOR_TYPE in type:
                     ret += OPTIONAL_VECTOR_VALUE_OUTPUT_TEMPLATE.format(
                         name=name,
@@ -538,16 +573,16 @@ class CodeGen:
     def _gen_set_null_type(self, op_info, op_name):
         name_list = op_info.output_name_list
         inplace_map = op_info.inplace_map
-        if inplace_map is None:
-            return ""
 
         ret = ""
         for i, out_name in enumerate(name_list):
-            if self._is_optional_output(op_info, out_name):
+            if self._is_optional_inplace_output(op_info, out_name):
                 in_name = inplace_map[out_name]
-                ret += SET_NULL_TYPE_TEMPLATE.format(
+                ret += SET_NULL_TYPE_WITH_INPLACE_TEMPLATE.format(
                     input=in_name, op_name=op_name, index=i
                 )
+            elif self._is_optional_output(op_info, out_name):
+                ret += SET_NULL_TYPE_TEMPLATE.format(op_name=op_name, index=i)
         return ret
 
     def _gen_in_combine(self, op_info, is_mutable_attr, is_vector_mutable_attr):
@@ -651,7 +686,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optional_output(op_info, name):
+            if self._need_optional_output(op_info, name):
                 ret_list.append(f'optional_{name}')
             elif VECTOR_TYPE in type:
                 split_op_name = f'{name}_split_op'
@@ -1003,7 +1038,7 @@ class CodeGen:
                     ),
                     in_combine=in_combine,
                     compute_op=compute_op,
-                    handle_optional_outputs=self._gen_handle_optional_outputs(
+                    handle_optional_outputs=self._gen_handle_optional_inplace_outputs(
                         op_info, kernel_name
                     ),
                     set_null_type=self._gen_set_null_type(op_info, kernel_name),
@@ -1065,7 +1100,7 @@ class CodeGen:
                 ),
                 in_combine=in_combine,
                 compute_op=compute_op,
-                handle_optional_outputs=self._gen_handle_optional_outputs(
+                handle_optional_outputs=self._gen_handle_optional_inplace_outputs(
                     op_info, op_name
                 ),
                 set_null_type=self._gen_set_null_type(op_info, op_name),
