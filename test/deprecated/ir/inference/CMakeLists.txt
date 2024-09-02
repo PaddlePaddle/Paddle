@@ -23,7 +23,6 @@ list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_inspector_deprecated")
 
 if(WIN32)
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_inference_fp16_io_deprecated")
-  list(REMOVE_ITEM)
 endif()
 
 if(NOT WITH_MKLDNN
@@ -78,8 +77,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
                        PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_optimization_level_deprecated PROPERTIES TIMEOUT
                                                                          300)
-  set_tests_properties(test_trt_inference_fp16_io_deprecated PROPERTIES TIMEOUT
-                                                                        500)
+  if(NOT WIN32)
+    set_tests_properties(test_trt_inference_fp16_io_deprecated
+                         PROPERTIES TIMEOUT 500)
+  endif()
   set_tests_properties(test_trt_convert_conv2d_deprecated PROPERTIES 400)
   set_directory_properties(
     test_trt_convert_depthwise_conv2d_transpose_deprecated PROPERTIES 400)
