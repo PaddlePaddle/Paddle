@@ -53,11 +53,6 @@ void IrPrinter::Visit(const IntImm *x) {
     str_ += std::to_string(x->value);
     str_ += "ll";
   } else if (x->type().is_int(32)) {
-    // The min int32_t constant(-2147483648) will be recognized as long
-    // and max(long, int32_t) is illegal, so we need to add cast here.
-    if (x->value == std::numeric_limits<std::int32_t>::min()) {
-      str_ += "(int32_t)";
-    }
     str_ += std::to_string(x->value);
   } else if (x->type().is_int(16)) {
     str_ += "(int16_t)";
@@ -143,18 +138,34 @@ void IrPrinter::Visit(const FloatImm *x) {
       ss << static_cast<bfloat16>(x->value) << "f";
     }
   } else if (x->type().is_float(32)) {
-    float v = TruncateInfinity<float>(x->value);
-    if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
-    ss << std::setprecision(std::numeric_limits<float>::max_digits10);
-    ss << std::showpoint;
-    ss << v;
-    if (std::isfinite(v)) {
-      ss << "f";
+    if (std::isinf(x->value)) {
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "__int_as_float(0x7f800000)";
+      } else {
+        ss << "__int_as_float(0xff800000)";
+      }
+    } else {
+      float v = TruncateInfinity<float>(x->value);
+      if (IsCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
+      ss << std::setprecision(std::numeric_limits<float>::max_digits10);
+      ss << std::showpoint;
+      ss << v;
+      if (std::isfinite(v)) {
+        ss << "f";
+      }
     }
   } else if (x->type().is_float(64)) {
-    ss << std::setprecision(std::numeric_limits<double>::max_digits10);
-    ss << std::showpoint;
-    ss << x->value;
+    if (std::isinf(x->value)) {
+      if (x->value == std::numeric_limits<double>::infinity()) {
+        ss << "__int_as_float(0x7f800000)";
+      } else {
+        ss << "__int_as_float(0xff800000)";
+      }
+    } else {
+      ss << std::setprecision(std::numeric_limits<double>::max_digits10);
+      ss << std::showpoint;
+      ss << x->value;
+    }
   } else {
     std::stringstream ss;
     ss << "Not support float type: " << x->type();
