@@ -116,6 +116,7 @@ OTHER_PRIM_VJP_OPS = [
     'tile_grad',
     'topk_grad',
     'unsqueeze_grad',
+    'where_grad',
 ]
 
 # whole vjp list of primitive op vjp

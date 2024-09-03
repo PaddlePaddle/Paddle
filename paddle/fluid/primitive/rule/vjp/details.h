@@ -2519,6 +2519,31 @@ void softsign_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   }
 }
 
+template <typename T>
+void where_grad(const Tensor& condition,
+                const Tensor& x,
+                const Tensor& y,
+                const Tensor& out_grad,
+                Tensor* x_grad,
+                Tensor* y_grad) {
+  Tensor zero;
+  if (has_dynamic_shape(out_grad.shape())) {
+    zero =
+        backend::full_with_tensor<T>(shape<T>(out_grad), 0.0, out_grad.dtype());
+  } else {
+    zero = full<T>(common::vectorize(out_grad.dims()), 0.0, out_grad.dtype());
+  }
+
+  if (x_grad) {
+    Tensor x_grad_tmp = where<T>(condition, out_grad, zero);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+  if (y_grad) {
+    Tensor y_grad_tmp = where<T>(condition, zero, out_grad);
+    set_output<T>(y_grad_tmp, y_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle
