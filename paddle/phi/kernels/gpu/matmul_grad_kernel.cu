@@ -74,9 +74,3 @@ PD_REGISTER_KERNEL(legacy_matmul_grad,
                    float,
                    double,
                    phi::dtype::float16) {}
-
-PD_REGISTER_KERNEL(legacy_matmul_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LegacyMatmulGradEmptyKernel,
-                   int8_t) {}
