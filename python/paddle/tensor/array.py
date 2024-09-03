@@ -276,7 +276,8 @@ def array_write(
         if array is None:
             array = paddle._pir_ops.create_array(x.dtype)
 
-        x = paddle.cast(x, array.dtype)
+        if array.dtype != paddle.base.libpaddle.DataType.UNDEFINED:
+            x = paddle.cast(x, array.dtype)
         paddle._pir_ops.array_write_(array, x, i)
         return array
     else:
