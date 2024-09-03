@@ -172,13 +172,7 @@ class TestIndexAddBF16Op(XPUOpTest):
 
     def test_check_grad_normal(self):
         if paddle.is_compiled_with_xpu():
-            self.check_grad_with_place(
-                self.place,
-                ['X', 'AddValue'],
-                'Out',
-                max_relative_error=1e-2,
-                check_dygraph=False,
-            )
+            self.check_grad_with_place(self.place, ['X', 'AddValue'], 'Out')
 
 
 class TestIndexAddAPI(unittest.TestCase):
