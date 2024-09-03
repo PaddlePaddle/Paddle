@@ -29,26 +29,32 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
     def setUp(self):
         with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
-                name="data", shape=[-1, 6, 64, 64], dtype="float32"
+                name="data", shape=[-1, 8], dtype="float32"
             )
             flatten_data = paddle.nn.Flatten()(data)
-            fc_out = paddle.nn.Linear(flatten_data.shape[-1], 1000)(
-                flatten_data
-            )
-            reshape_out = paddle.reshape(x=fc_out, shape=[1, 1000])
+            fc_out = paddle.nn.Linear(flatten_data.shape[-1], 10)(flatten_data)
+            reshape_out = paddle.reshape(x=fc_out, shape=[1, 10])
         self.feeds = {
-            "data": np.random.random([1, 6, 64, 64]).astype("float32"),
+            "data": np.random.random([1, 8]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassFcTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassFcTest.DynamicShapeParam(
+                {'data': [1, 8]},
+                {'data': [32, 8]},
+                {'data': [1, 8]},
+                False,
+            )
         )
         self.fetch_list = [reshape_out]
 
     def test_check_output(self):
         if paddle.is_compiled_with_cuda():
             use_gpu = True
-            # TRT output shape of fc is (1, 1000, 1, 1). To compare the output value only, flatten the results.
+            # TRT output shape of fc is (1, 100, 1, 1). To compare the output value only, flatten the results.
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
@@ -73,6 +79,14 @@ class TensorRTSubgraphPassConcatTest(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassConcatTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassConcatTest.DynamicShapeParam(
+                {'data1': [1, 3, 64, 64], 'data2': [1, 3, 64, 64]},
+                {'data1': [32, 3, 64, 64], 'data2': [32, 3, 64, 64]},
+                {'data1': [1, 3, 64, 64], 'data2': [1, 3, 64, 64]},
+                False,
+            )
         )
         self.fetch_list = [out]
 
@@ -100,6 +114,14 @@ class TensorRTSubgraphPassSplitTest(InferencePassTest):
         self.trt_parameters = TensorRTSubgraphPassSplitTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
         )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassSplitTest.DynamicShapeParam(
+                {'data': [1, 3, 64, 64]},
+                {'data': [32, 3, 64, 64]},
+                {'data': [1, 3, 64, 64]},
+                False,
+            )
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -123,8 +145,18 @@ class TensorRTSubgraphPassSplitSerializeTest(InferencePassTest):
             "data": np.random.random([1, 3, 64, 64]).astype("float32"),
         }
         self.enable_trt = True
-        self.trt_parameters = TensorRTSubgraphPassSplitTest.TensorRTParam(
-            1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False
+        self.trt_parameters = (
+            TensorRTSubgraphPassSplitSerializeTest.TensorRTParam(
+                1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False
+            )
+        )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassSplitSerializeTest.DynamicShapeParam(
+                {'data': [1, 3, 64, 64]},
+                {'data': [32, 3, 64, 64]},
+                {'data': [1, 3, 64, 64]},
+                False,
+            )
         )
         self.fetch_list = [out]
 
@@ -203,6 +235,14 @@ class TensorRTSubgraphPassInstanceNormTest(InferencePassTest):
                 1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
             )
         )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassInstanceNormTest.DynamicShapeParam(
+                {'data': [1, 3, 64, 64]},
+                {'data': [32, 3, 64, 64]},
+                {'data': [1, 3, 64, 64]},
+                False,
+            )
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -228,6 +268,14 @@ class TensorRTSubgraphPassTransposeTest(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassTransposeTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassTransposeTest.DynamicShapeParam(
+                {'data': [1, 6, 64, 64]},
+                {'data': [32, 6, 64, 64]},
+                {'data': [1, 6, 64, 64]},
+                False,
+            )
         )
         self.fetch_list = [out]
 
@@ -257,6 +305,14 @@ class TensorRTSubgraphPassLayerNormTest(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassLayerNormTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassLayerNormTest.DynamicShapeParam(
+                {'data': [1, 3, 64, 64]},
+                {'data': [32, 3, 64, 64]},
+                {'data': [1, 3, 64, 64]},
+                False,
+            )
         )
         self.fetch_list = [out]
 
@@ -377,6 +433,14 @@ class TensorRTSubgraphPassElementwiseTest(InferencePassTest):
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassElementwiseTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+        )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassElementwiseTest.DynamicShapeParam(
+                {'data1': [1, 3, 64, 64], 'data2': [1, 3, 64, 64]},
+                {'data1': [32, 3, 64, 64], 'data2': [32, 3, 64, 64]},
+                {'data1': [1, 3, 64, 64], 'data2': [1, 3, 64, 64]},
+                False,
+            )
         )
         self.fetch_list = [out]
 

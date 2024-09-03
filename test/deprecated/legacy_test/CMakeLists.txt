@@ -23,6 +23,9 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
+list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert_deprecated)
+list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard_deprecated)
+list(APPEND DIST_TEST_OPS test_auto_parallel_save_load_deprecated)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -40,13 +43,14 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
+list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial_deprecated)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -77,14 +81,11 @@ list(REMOVE_ITEM TEST_OPS test_fused_dot_product_attention_op_static)
 list(REMOVE_ITEM TEST_OPS test_fuse_dot_product_attention_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
-  list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
-  list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_with_task_nodes)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_multi_devices)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
 endif()
 
@@ -156,12 +157,16 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load_deprecated)
+  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_serial_deprecated)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -232,6 +237,15 @@ function(py_test_modules TARGET_NAME)
     cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
 
+    string(REGEX MATCH "_deprecated\.py$" DEPRECATED_MODULES
+                 "${py_test_modules_MODULES}")
+    string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+    set(FLAGS_PIR_MODE "")
+    if((NOT "${DEPRECATED_MODULES}" STREQUAL "")
+       OR (NOT "${DEPRECATED_TARGET_NAME}" STREQUAL ""))
+      set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+    endif()
+
     if(WITH_COVERAGE AND NOT (WITH_INCREMENTAL_COVERAGE
                               AND "$ENV{PADDLE_GIT_DIFF_PY_FILE}" STREQUAL ""))
       if(WITH_ASCEND_CL)
@@ -240,7 +254,7 @@ function(py_test_modules TARGET_NAME)
           COMMAND
             ${CMAKE_COMMAND} -E env
             PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
             COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             ${PYTHON_EXECUTABLE} -m coverage run --branch -p
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
@@ -250,7 +264,7 @@ function(py_test_modules TARGET_NAME)
           NAME ${TARGET_NAME}
           COMMAND
             ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE}
             COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
             ${PYTHON_EXECUTABLE} -m coverage run --branch -p
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
@@ -263,7 +277,7 @@ function(py_test_modules TARGET_NAME)
           COMMAND
             ${CMAKE_COMMAND} -E env
             PYTHONPATH=${PADDLE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE}
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
       else()
@@ -271,7 +285,7 @@ function(py_test_modules TARGET_NAME)
           NAME ${TARGET_NAME}
           COMMAND
             ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-            ${py_test_modules_ENVS} ${PYTHON_EXECUTABLE}
+            ${py_test_modules_ENVS} ${FLAGS_PIR_MODE} ${PYTHON_EXECUTABLE}
             ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
       endif()
@@ -302,13 +316,19 @@ function(bash_test_modules TARGET_NAME)
     set(timeout ${bash_test_modules_TIMEOUT})
   endif()
 
+  string(REGEX MATCH "_deprecated$" DEPRECATED_TARGET_NAME "${TARGET_NAME}")
+  set(FLAGS_PIR_MODE "")
+  if(NOT "${DEPRECATED_TARGET_NAME}" STREQUAL "")
+    set(FLAGS_PIR_MODE FLAGS_enable_pir_api=0)
+  endif()
+
   if(WITH_COVERAGE)
     add_test(
       NAME ${TARGET_NAME}
       COMMAND
         ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
         TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} WITH_COVERAGE=ON
+        ${bash_test_modules_ENVS} WITH_COVERAGE=ON ${FLAGS_PIR_MODE}
         COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data bash
         ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -318,7 +338,7 @@ function(bash_test_modules TARGET_NAME)
       COMMAND
         ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
         TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout}
-        ${bash_test_modules_ENVS} bash
+        ${bash_test_modules_ENVS} ${FLAGS_PIR_MODE} bash
         ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_START_BASH}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
@@ -498,7 +518,8 @@ if(WITH_DISTRIBUTE)
   py_test_modules(test_communicator_geo_deprecated MODULES
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})
   if(NOT APPLE)
-    py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
+    py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS}
+                    FLAGS_enable_pir_api=0)
     py_test_modules(test_fleet_base_2_deprecated MODULES
                     test_fleet_base_2_deprecated ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_3_deprecated MODULES
@@ -510,18 +531,25 @@ if(WITH_DISTRIBUTE)
       py_test_modules(
         test_auto_parallel_partitioner_gpt_deprecated MODULES
         test_auto_parallel_partitioner_gpt_deprecated ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_searcher MODULES
-                      test_auto_parallel_searcher ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard MODULES
-                      test_auto_parallel_reshard ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_dist_tensor MODULES
-                      test_auto_parallel_dist_tensor ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard_mppp MODULES
-                      test_auto_parallel_reshard_mppp ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_reshard_dpmppp MODULES
-                      test_auto_parallel_reshard_dpmppp ENVS ${dist_ENVS})
-      py_test_modules(test_auto_parallel_cost_model MODULES
-                      test_auto_parallel_cost_model ENVS ${dist_ENVS})
+      py_test_modules(test_auto_parallel_searcher_deprecated MODULES
+                      test_auto_parallel_searcher_deprecated ENVS ${dist_ENVS})
+      py_test_modules(test_auto_parallel_reshard_deprecated MODULES
+                      test_auto_parallel_reshard_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_dist_tensor_deprecated MODULES
+        test_auto_parallel_dist_tensor_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_reshard_mppp_deprecated MODULES
+        test_auto_parallel_reshard_mppp_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_reshard_dpmppp_deprecated MODULES
+        test_auto_parallel_reshard_dpmppp_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_cost_model_deprecated MODULES
+        test_auto_parallel_cost_model_deprecated ENVS ${dist_ENVS})
+      py_test_modules(
+        test_auto_parallel_reshard_serial_deprecated MODULES
+        test_auto_parallel_reshard_serial_deprecated ENVS ${dist_ENVS})
 
     endif()
   endif()
@@ -637,16 +665,18 @@ set_tests_properties(test_reader_reset_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
-set_tests_properties(test_model PROPERTIES TIMEOUT 300)
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
-
-if(APPLE)
-  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
-endif()
-
 set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
                                                                        120)
+if(WITH_DISTRIBUTE
+   AND WITH_GPU
+   AND WITH_NCCL)
+  set_tests_properties(test_auto_parallel_autoconvert_deprecated
+                       PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_auto_parallel_data_unshard_deprecated
+                       PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_auto_parallel_save_load_deprecated
+                       PROPERTIES TIMEOUT 120)
+endif()
 
 set(TEST_CINN_OPS
     test_slice_op_deprecated test_layer_norm_op_deprecated
@@ -693,7 +723,7 @@ endif()
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
     ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
-    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=false)
+    FLAGS_new_executor_static_build=true FLAGS_enable_pir_api=0)
 endforeach()
 
 set_tests_properties(test_decoupled_py_reader_deprecated_static_build
