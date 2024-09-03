@@ -1496,17 +1496,18 @@ bool GenerateProposalsOpInferSymbolicShape(
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(rpn_roi_probs_shape)});
 
-  const symbol::ShapeOrDataDimExprs &score_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  if (paddle::dialect::details::IsFakeValue(op->result(2))) {
+    const std::vector<symbol::DimExpr> &score_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+    std::vector<symbol::DimExpr> rpn_rois_num_shape = {score_shape[0]};
 
-  std::vector<symbol::DimExpr> score_shape = score_shape_or_data.shape();
-  auto rpn_rois_num_shape = std::vector<symbol::DimExpr>{score_shape[0]};
-
-  infer_context->SetShapeOrDataForValue(
-      op->result(2),
-      symbol::ShapeOrDataDimExprs{
-          symbol::TensorShapeOrDataDimExprs(rpn_rois_num_shape)});
-
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(rpn_rois_num_shape)});
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(2));
+  }
   return true;
 }
 
