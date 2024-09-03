@@ -44,9 +44,8 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::string primitive = "Split";
   std::ostringstream os;
 
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       loop.As<ir::For>(),
-      true,
       common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
@@ -225,9 +224,8 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::string primitive = "Split";
   std::ostringstream os;
 
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       loop.As<ir::For>(),
-      true,
       common::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<Split>.\n"
@@ -343,9 +341,8 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
           module_expr_.GetExprs()));
 
   for (const Expr& it_loop : loops) {
-    PADDLE_ENFORCE_EQ(
+    PADDLE_ENFORCE_NOT_NULL(
         it_loop.As<ir::For>(),
-        true,
         common::errors::InvalidArgument(
             "[IRScheduleError] An error occurred in the schedule primitive "
             "<Fuse>.\n"
