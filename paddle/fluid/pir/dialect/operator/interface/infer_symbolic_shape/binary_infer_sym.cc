@@ -1275,17 +1275,15 @@ bool StftOpInferSymbolicShape(pir::Operation *op,
 
   if (x_shape[x_rank - 1].isa<int64_t>()) {
     int seq_length = x_shape[x_rank - 1].Get<std::int64_t>();
-  } else {
-    int seq_length = n_fft - 1;
+    int n_frames = 1 + (seq_length - n_fft) / hop_length;
+    PADDLE_ENFORCE_LE(n_fft,
+                      seq_length,
+                      common::errors::InvalidArgument(
+                          "Attribute(frame_length) should be less equal than "
+                          "sequence length, but got (%s) > (%s).",
+                          n_fft,
+                          seq_length));
   }
-  PADDLE_ENFORCE_LE(n_fft,
-                    seq_length,
-                    common::errors::InvalidArgument(
-                        "Attribute(frame_length) should be less equal than "
-                        "sequence length, but got (%s) > (%s).",
-                        n_fft,
-                        seq_length));
-  int n_frames = 1 + (seq_length - n_fft) / hop_length;
 
   std::vector<symbol::DimExpr> output_shape;
   output_shape.push_back(x_shape[0]);
