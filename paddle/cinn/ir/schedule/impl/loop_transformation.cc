@@ -352,9 +352,8 @@ Expr DyScheduleImpl::Fuse(const std::vector<Expr>& loops) {
             module_expr_.GetExprs()));
 
     if (!for_nodes.empty()) {
-      PADDLE_ENFORCE_EQ(
+      PADDLE_ENFORCE_NOT_NULL(
           for_nodes.back()->body.As<ir::Block>(),
-          true,
           phi::errors::InvalidArgument(
               "[IRScheduleError] An error occurred in the schedule primitive "
               "<Fuse>.\n"
