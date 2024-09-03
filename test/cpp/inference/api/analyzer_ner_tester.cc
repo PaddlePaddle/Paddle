@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,42 +18,22 @@ namespace paddle {
 namespace inference {
 
 struct DataRecord {
-  std::vector<std::vector<int64_t>> title1, title2, title3, l1;
-  std::vector<size_t> lod1, lod2, lod3, l1_lod;
+  std::vector<std::vector<int64_t>> word, mention;
+  std::vector<size_t> lod;  // two inputs have the same lod info.
   size_t batch_iter{0}, batch_size{1}, num_samples;  // total number of samples
-  DataRecord()
-      : title1(),
-        title2(),
-        title3(),
-        l1(),
-        lod1(),
-        lod2(),
-        lod3(),
-        l1_lod(),
-        batch_size(0),
-        num_samples(0) {}
+  DataRecord() : word(), mention(), lod(), num_samples(0) {}
   explicit DataRecord(const std::string &path, int batch_size = 1)
-      : title1(),
-        title2(),
-        title3(),
-        l1(),
-        lod1(),
-        lod2(),
-        lod3(),
-        l1_lod(),
-        batch_size(batch_size),
-        num_samples(0) {
+      : word(), mention(), lod(), batch_size(batch_size), num_samples(0) {
     Load(path);
   }
   DataRecord NextBatch() {
     DataRecord data;
     size_t batch_end = batch_iter + batch_size;
     // NOTE skip the final batch, if no enough data is provided.
-    if (batch_end <= title1.size()) {
-      GetInputPerBatch(title1, &data.title1, &data.lod1, batch_iter, batch_end);
-      GetInputPerBatch(title2, &data.title2, &data.lod2, batch_iter, batch_end);
-      GetInputPerBatch(title3, &data.title3, &data.lod3, batch_iter, batch_end);
-      GetInputPerBatch(l1, &data.l1, &data.l1_lod, batch_iter, batch_end);
+    if (batch_end <= word.size()) {
+      GetInputPerBatch(word, &data.word, &data.lod, batch_iter, batch_end);
+      GetInputPerBatch(
+          mention, &data.mention, &data.lod, batch_iter, batch_end);
     }
     batch_iter += batch_size;
     return data;
@@ -65,54 +45,49 @@ struct DataRecord {
     while (std::getline(file, line)) {
       num_lines++;
       std::vector<std::string> data;
-      split(line, '\t', &data);
-      PADDLE_ENFORCE_GT(data.size(),
-                        4,
-                        common::errors::Fatal("The size of data is invaild."));
-      // load title1 data
-      std::vector<int64_t> title1_data;
-      split_to_int64(data[0], ' ', &title1_data);
-      // load title2 data
-      std::vector<int64_t> title2_data;
-      split_to_int64(data[1], ' ', &title2_data);
-      // load title3 data
-      std::vector<int64_t> title3_data;
-      split_to_int64(data[2], ' ', &title3_data);
-      // load l1 data
-      std::vector<int64_t> l1_data;
-      split_to_int64(data[3], ' ', &l1_data);
-      title1.push_back(std::move(title1_data));
-      title2.push_back(std::move(title2_data));
-      title3.push_back(std::move(title3_data));
-      l1.push_back(std::move(l1_data));
+      split(line, ';', &data);
+      // load word data
+      std::vector<int64_t> word_data;
+      split_to_int64(data[1], ' ', &word_data);
+      // load mention data
+      std::vector<int64_t> mention_data;
+      split_to_int64(data[3], ' ', &mention_data);
+      word.push_back(std::move(word_data));
+      mention.push_back(std::move(mention_data));
     }
     num_samples = num_lines;
   }
 };
 
-void PrepareInputs(std::vector<PaddleTensor> *input_slots,
-                   DataRecord *data,
-                   int batch_size) {
-  PaddleTensor title1_tensor, title2_tensor, title3_tensor, l1_tensor;
-  title1_tensor.name = "title1";
-  title2_tensor.name = "title2";
-  title3_tensor.name = "title3";
-  l1_tensor.name = "l1";
+void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data) {
+  PaddleTensor lod_word_tensor, lod_mention_tensor;
+  lod_word_tensor.name = "word";
+  lod_mention_tensor.name = "mention";
   auto one_batch = data->NextBatch();
   // assign data
-  TensorAssignData<int64_t>(&title1_tensor, one_batch.title1, one_batch.lod1);
-  TensorAssignData<int64_t>(&title2_tensor, one_batch.title2, one_batch.lod2);
-  TensorAssignData<int64_t>(&title3_tensor, one_batch.title3, one_batch.lod3);
-  TensorAssignData<int64_t>(&l1_tensor, one_batch.l1, one_batch.l1_lod);
+  TensorAssignData<int64_t>(&lod_word_tensor, one_batch.word, one_batch.lod);
+  TensorAssignData<int64_t>(
+      &lod_mention_tensor, one_batch.mention, one_batch.lod);
   // Set inputs.
-  input_slots->assign({title1_tensor, title2_tensor, title3_tensor, l1_tensor});
+  input_slots->assign({lod_word_tensor, lod_mention_tensor});
   for (auto &tensor : *input_slots) {
     tensor.dtype = PaddleDType::INT64;
   }
 }
 
-void SetConfig(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_infer_model);
+void SetConfig(AnalysisConfig *cfg, bool memory_load = false) {
+  if (memory_load) {
+    std::string buffer_prog, buffer_param;
+    ReadBinaryFile(FLAGS_infer_model + "/__model__", &buffer_prog);
+    ReadBinaryFile(FLAGS_infer_model + "/param", &buffer_param);
+    cfg->SetModelBuffer(&buffer_prog[0],
+                        buffer_prog.size(),
+                        &buffer_param[0],
+                        buffer_param.size());
+  } else {
+    cfg->SetModel(FLAGS_infer_model + "/__model__",
+                  FLAGS_infer_model + "/param");
+  }
   cfg->DisableGpu();
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
@@ -125,15 +100,15 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
       FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;  // NOLINT
   LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
   for (int bid = 0; bid < epoch; ++bid) {
-    PrepareInputs(&input_slots, &data, FLAGS_batch_size);
+    PrepareInputs(&input_slots, &data);
     (*inputs).emplace_back(input_slots);
   }
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_seq_conv1, profile) {
+void profile(bool memory_load = false) {
   AnalysisConfig cfg;
-  SetConfig(&cfg);
+  SetConfig(&cfg, memory_load);
   std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -145,6 +120,8 @@ TEST(Analyzer_seq_conv1, profile) {
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
     // the first inference result
+    const std::array<int, 11> chinese_ner_result_data = {
+        30, 45, 41, 48, 17, 26, 48, 39, 38, 16, 25};
     PADDLE_ENFORCE_GT(
         outputs.size(),
         0,
@@ -153,37 +130,43 @@ TEST(Analyzer_seq_conv1, profile) {
     PADDLE_ENFORCE_EQ(
         output.size(),
         1UL,
-        common::errors::Fatal("The size of output should be equal to 0."));
+        common::errors::Fatal("The size of output should be equal to 1."));
     size_t size = GetSize(output[0]);
     PADDLE_ENFORCE_GT(
         size,
         0,
         common::errors::Fatal("The size of output should be greater than 0."));
-    float *result = static_cast<float *>(output[0].data.data());
-    // output is probability, which is in (0, 1).
-    for (size_t i = 0; i < size; i++) {
-      EXPECT_GT(result[i], 0);
-      EXPECT_LT(result[i], 1);
+    int64_t *result = static_cast<int64_t *>(output[0].data.data());
+    for (size_t i = 0; i < std::min<size_t>(11, size); i++) {
+      EXPECT_EQ(result[i], chinese_ner_result_data[i]);
     }
   }
 }
 
+TEST(Analyzer_Chinese_ner, profile) { profile(); }
+
+TEST(Analyzer_Chinese_ner, profile_memory_load) {
+  profile(true /* memory_load */);
+}
+
 // Check the fuse status
-TEST(Analyzer_seq_conv1, fuse_statis) {
+TEST(Analyzer_Chinese_ner, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
+
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-
-  auto fuse_statis = GetFuseStatis(predictor.get(), &num_ops);
-  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-  ASSERT_TRUE(fuse_statis.count("seqconv_eltadd_relu_fuse"));
-  EXPECT_EQ(fuse_statis.at("fc_fuse"), 2);
-  EXPECT_EQ(fuse_statis.at("seqconv_eltadd_relu_fuse"), 6);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  // pir not support
+  // ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  // ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
+  // EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+  // EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 2);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_seq_conv1, compare) {
+TEST(Analyzer_Chinese_ner, compare) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
@@ -194,7 +177,7 @@ TEST(Analyzer_seq_conv1, compare) {
 }
 
 // Compare Deterministic result
-TEST(Analyzer_seq_conv1, compare_determine) {
+TEST(Analyzer_Chinese_ner, compare_determine) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
