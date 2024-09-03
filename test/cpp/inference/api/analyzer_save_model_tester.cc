@@ -22,6 +22,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim(true);
   cfg->SwitchIrDebug();
+  cfg->DeletePass("constant_folding_pass");
 }
 
 int GetNumOps(const AnalysisConfig &cfg) {
@@ -41,9 +42,6 @@ TEST(Analyzer, save_model) {
   SetConfig(&cfg);
   cfg.SetModel(FLAGS_infer_model + "/__model__", FLAGS_infer_model + "/param");
 
-  auto pass_builder = cfg.pass_builder();
-  pass_builder->DeletePass("constant_folding_pass");
-
   //  ensure the path being unique
   std::string optimModelPath = FLAGS_infer_model + "/only_for_save_model_test";
   MKDIR(optimModelPath.c_str());
@@ -58,8 +56,6 @@ TEST(Analyzer, save_model) {
 
   AnalysisConfig cfg3;
   SetConfig(&cfg3);
-  auto pass_builder3 = cfg3.pass_builder();
-  pass_builder3->DeletePass("constant_folding_pass");
   cfg3.SetModel(optimModelPath + "/model", optimModelPath + "/params");
   int fused_num_ops = GetNumOps(cfg3);
   PADDLE_ENFORCE_LE(

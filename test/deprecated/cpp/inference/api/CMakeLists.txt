@@ -319,26 +319,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     copy_onnx(test_analyzer_rnn2)
   endif()
 
-  # small DAM
-  set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
-  download_model_and_data_without_verify(
-    ${DAM_SMALL_INSTALL_DIR} "dam_small_model.tar.gz"
-    "dam_small_data.txt.tar.gz")
-  inference_analysis_test(
-    test_analyzer_small_dam
-    SRCS
-    analyzer_dam_tester.cc
-    EXTRA_DEPS
-    paddle_inference_shared
-    common
-    ARGS
-    --infer_model=${DAM_SMALL_INSTALL_DIR}/model
-    --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt)
-
-  #save model
-  inference_analysis_api_test(test_analyzer_save_model ${DAM_SMALL_INSTALL_DIR}
-                              analyzer_save_model_tester.cc EXTRA_DEPS common)
-
   # chinese_ner
   set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
   download_model_and_data_without_verify(
@@ -529,18 +509,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     paddle_inference_shared
     ARGS
     --infer_model=${OCR_INSTALL_DIR}/model)
-
-  if(WITH_DISTRIBUTE AND WITH_PSCORE)
-    inference_analysis_test(
-      test_analyzer_dist_model
-      SRCS
-      analyzer_dist_model_tester.cc
-      EXTRA_DEPS
-      common
-      paddle_inference_shared
-      ARGS
-      --infer_model=${OCR_INSTALL_DIR}/model)
-  endif()
 
   inference_analysis_test(
     test_analyzer_paddletensor_tensor

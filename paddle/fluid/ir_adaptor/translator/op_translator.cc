@@ -1091,6 +1091,16 @@ struct Conv2dOpTranscriber : public OpTranscriber {
   }
 };
 
+struct Conv3dOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "padding_algorithm") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "EXPLICIT");
+    }
+  }
+};
+
 using ValueInfo =
     std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::Value>;
 
@@ -2633,6 +2643,22 @@ struct Pool2dOpTranscriber : public OpTranscriber {
   }
 };
 
+struct Pool3dOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "exclusive") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
+    }
+    if (info.name == "adaptive") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+    if (info.name == "padding_algorithm") {
+      (*attribute_map)[info.name] = pir::StrAttribute::get(ctx, "EXPLICIT");
+    }
+  }
+};
+
 pir::Attribute TranslateDtypeForArange(pir::IrContext* ctx,
                                        const OpDesc& op_desc,
                                        const OpAttributeInfo& attr_info) {
@@ -3836,6 +3862,7 @@ OpTranslator::OpTranslator() {
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["conv2d"] = Conv2dOpTranscriber();
+  special_handlers["conv3d"] = Conv3dOpTranscriber();
   special_handlers["cross_entropy_with_softmax"] =
       CrossEntropyWithSoftmaxOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
@@ -3863,6 +3890,7 @@ OpTranslator::OpTranslator() {
   special_handlers["lookup_table"] = EmbeddingOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["pool2d"] = Pool2dOpTranscriber();
+  special_handlers["pool3d"] = Pool3dOpTranscriber();
   special_handlers["randint"] = RandIntOpTranscriber();
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();

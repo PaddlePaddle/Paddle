@@ -1020,7 +1020,29 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     paddle_inference_c_shared
     ARGS
     --infer_model=${CHINESE_NER_INSTALL_DIR}/model)
+  
+  # small DAM
+  set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
+  download_model_and_data_without_verify(
+    ${DAM_SMALL_INSTALL_DIR} "dam_small_model.tar.gz"
+    "dam_small_data.txt.tar.gz")
+  inference_analysis_test(
+    test_analyzer_small_dam_gzy
+    SRCS
+    analyzer_dam_tester.cc
+    EXTRA_DEPS
+    paddle_inference_shared
+    common
+    ARGS
+    --infer_model=${DAM_SMALL_INSTALL_DIR}/model
+    --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt)
 
+  # save model
+  inference_analysis_api_test(test_analyzer_save_model_gzy ${DAM_SMALL_INSTALL_DIR}
+                              analyzer_save_model_tester.cc EXTRA_DEPS common)
+  
+  set_tests_properties(test_analyzer_small_dam_gzy PROPERTIES TIMEOUT 120)
+  
   # resnet50
   set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
   download_data_without_verify(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
