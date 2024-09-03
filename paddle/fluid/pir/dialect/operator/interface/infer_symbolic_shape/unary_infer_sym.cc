@@ -2375,8 +2375,8 @@ bool PartialSumOpInferSymbolicShape(
     VLOG(3) << "Warning: partial_sum op have only one input, may be useless";
   }
 
-  symbol::DimExpr batch_size = xs_shape[0].shape()[0];
-  symbol::DimExpr input_len = xs_shape[1].shape()[1];
+  symbol::DimExpr batch_size = xs_shapes[0].shape()[0];
+  symbol::DimExpr input_len = xs_shapes[1].shape()[1];
 
   for (int i = 0; i < inputs_num; i++) {
     const std::vector<symbol::DimExpr> x_shape = xs_shapes[i].shape();
