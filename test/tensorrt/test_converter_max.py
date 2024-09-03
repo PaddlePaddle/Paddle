@@ -20,17 +20,14 @@ from tensorrt_test_base import TensorRTBaseTest
 import paddle
 
 
-class TestAddTRTPattern(TensorRTBaseTest):
+class TestMaxTRTPattern(TensorRTBaseTest):
     def setUp(self):
         self.python_api = paddle.max
         self.api_args = {
             "x": np.array([[0.2, 0.3, 0.5, 0.9], [0.1, 0.2, 0.6, 0.7]]).astype(
                 "float32"
             ),
-            # "axis":[0,1]
-            # "x": np.array([[[1.0, 2.0], [3.0, 4.0]],
-            #                [[5.0, 6.0], [7.0, 8.0]]]).astype("float32"),
-            # "axis":[1,2]
+            "axis": [0, 1],
         }
         self.program_config = {"feed_list": ["x"]}
         self.min_shape = {"x": [1, 4], "y": [1, 4]}
