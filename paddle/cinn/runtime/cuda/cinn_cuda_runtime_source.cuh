@@ -651,6 +651,48 @@ EXPAND_REDUCE_FP16_MACRO(CINN_DISCRETE_REDUCE_INTERNAL_SHM_MACRO)
 #undef CINN_DISCRETE_REDUCE_INTERNAL_SHM_IMPL
 #undef CINN_DISCRETE_REDUCE_INTERNAL_SHM_MACRO
 
+#define CINN_BLOCK_REDUCE_ROW_INTERNAL_SHM_IMPL(TYPE, value, init_value, cinn_warp_shuffle_internal) \
+  int tid = threadIdx.y * blockDim.x + threadIdx.x;                                          \
+  int warp_id = tid / 32;                                                                    \
+  int row_dim =  blockDim.x / 32;                                                            \
+  TYPE tmp_val = cinn_warp_shuffle_internal(value);                                          \
+  if ( return_warp ) return tmp_val;                                                         \
+  if (blockDim.x <= 32) {                                                                    \
+    return tmp_val;                                                                          \
+  }                                                                                          \
+  __syncthreads();                                                                           \
+  if ((tid & 31) == 0) {                                                                     \
+    shm[warp_id] = tmp_val;                                                                  \
+  }                                                                                          \
+  __syncthreads();                                                                           \
+  if ((threadIdx.x / 32) == 0 ) {                                                            \
+    tmp_val = (threadIdx.x < row_dim) ? shm[threadIdx.y * row_dim + threadIdx.x ] : init_value;   \
+    shm[warp_id] = cinn_warp_shuffle_internal(tmp_val);                                      \
+  }                                                                                          \
+  __syncthreads();                                                                           \
+  return shm[threadIdx.y * row_dim];
+
+#define CINN_BLOCK_REDUCE_ROW_INTERNAL_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                            \
+  __device__ inline DTYPE cinn_block_reduce_row_##REDUCE_TYPE##_internal(const DTYPE value) {                              \
+    CINN_BLOCK_REDUCE_ROW_INTERNAL_IMPL(DTYPE, value, (DTYPE)(INITIAL_VALUE), cinn_warp_shuffle_##REDUCE_TYPE##_internal); \
+  }
+
+EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_ROW_INTERNAL_MACRO)
+EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_ROW_INTERNAL_MACRO)
+EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_ROW_INTERNAL_MACRO)
+EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_ROW_INTERNAL_MACRO)
+EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_ROW_INTERNAL_MACRO)
+
+#ifdef CINN_CUDA_BF16
+EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_ROW_INTERNAL_MACRO)
+#endif
+
+#ifdef CINN_CUDA_FP16
+EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_ROW_INTERNAL_MACRO)
+#endif
+
+#undef CINN_BLOCK_REDUCE_ROW_INTERNAL_SHM_IMPL
+#undef CINN_BLOCK_REDUCE_ROW_INTERNAL_MACRO
 
 #define CINN_BLOCK_REDUCE_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                     \
   __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE(const DTYPE *buf, int offset, int extend) { \
