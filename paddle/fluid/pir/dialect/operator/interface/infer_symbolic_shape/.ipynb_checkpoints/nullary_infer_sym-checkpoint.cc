@@ -430,7 +430,8 @@ bool RecvV2OpInferSymbolicShape(pir::Operation *op,
                           "but the value given is %d.",
                           out.size()));
     std::vector<symbol::DimExpr> out_shape;
-    for (int i = 0; i < out.size(); ++i) {
+    int rank = out.size();
+    for (int i = 0; i < rank; ++i) {
       PADDLE_ENFORCE_GE(out[i],
                         1,
                         common::errors::InvalidArgument(
