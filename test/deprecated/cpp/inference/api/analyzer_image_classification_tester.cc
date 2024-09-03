@@ -1,4 +1,4 @@
-/* Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -99,7 +99,7 @@ void compare(bool use_mkldnn = false) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
-// TEST(Analyzer_resnet50, compare) { compare(); }
+TEST(Analyzer_resnet50, compare) { compare(); }
 #ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_resnet50, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
