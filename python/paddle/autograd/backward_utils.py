@@ -35,6 +35,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.cast",
     "pd_op.concat",
     "pd_op.cos",
+    "pd_op.cumprod",
     "pd_op.cumsum",
     "pd_op.divide",
     "pd_op.dropout",
