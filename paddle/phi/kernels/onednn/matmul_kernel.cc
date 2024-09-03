@@ -604,8 +604,6 @@ PD_REGISTER_KERNEL(legacy_matmul,
                    ONEDNN,
                    phi::LegacyMatmulKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   int8_t,
-                   uint8_t) {
+                   phi::dtype::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::MatmulGetkernelTypeForVar;
 }
