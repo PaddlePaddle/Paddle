@@ -165,7 +165,7 @@ class TestFFTC2COp(OpTest):
             ).astype(np.complex128),
             [0, 1],
             'forward',
-            True,
+            False,
             26,
         ),
         (
@@ -195,7 +195,7 @@ class TestFFTC2COp(OpTest):
             ).astype(np.complex128),
             (0,),
             "backward",
-            True,
+            False,
             22,
         ),
         (
@@ -256,7 +256,7 @@ class TestFFTC2ROp(OpTest):
             (0, 1),
             "backward",
             False,
-            True,
+            False,
         ),
         (
             'test_norm_forward',

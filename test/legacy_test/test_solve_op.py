@@ -67,7 +67,11 @@ class TestSolveOpBatched_case0(OpTest):
             'X': np.random.random((11, 11)).astype(self.dtype),
             'Y': np.random.random((2, 11, 7)).astype(self.dtype),
         }
-        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
+        result = np.empty_like(self.inputs['Y'])
+        for i in range(self.inputs['X'].shape[0]):
+            result[i] = np.linalg.solve(
+                self.inputs['X'][i], self.inputs['Y'][i]
+            )
         self.outputs = {'Out': result}
 
     def test_check_output(self):

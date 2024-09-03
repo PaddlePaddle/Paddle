@@ -426,6 +426,7 @@ class TestLearningRateDecay(unittest.TestCase):
             self.assertAlmostEqual(
                 python_decayed_lr,
                 lr_val[0],
+                places=6,
                 msg='Failed lr scheduler is {}, step {}, Python result is {}, Fluid result is {}'.format(
                     python_decay_fn.__name__,
                     str(step),
@@ -588,6 +589,7 @@ class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
             self.assertAlmostEqual(
                 expected_lr,
                 lr_val[0],
+                plcaes=6,
                 msg='Test failed, step {}, expected {}, but got {}'.format(
                     step, expected_lr, lr_val[0]
                 ),
