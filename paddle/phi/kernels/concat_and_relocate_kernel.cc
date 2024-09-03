@@ -79,6 +79,7 @@ void ConcatAndRelocateKernel(const Context& dev_ctx,
     for (size_t i = 0; i < input.size(); ++i) {
       auto input_ptr = const_cast<DenseTensor*>(input[i]);
       input_ptr->clear();
+      output[i]->clear();
     }
   }
 
