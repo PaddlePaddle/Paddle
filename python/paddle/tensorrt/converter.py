@@ -31,7 +31,9 @@ from .impls.manipulation import *  # noqa: F403
 from .impls.math import *  # noqa: F403
 from .impls.norm import *  # noqa: F403
 from .impls.pooling import *  # noqa: F403
+from .impls.reduce import *  # noqa: F403
 from .impls.search import *  # noqa: F403
+from .impls.unary import *  # noqa: F403
 from .register import converter_registry
 from .util import map_dtype
 
