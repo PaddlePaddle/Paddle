@@ -181,6 +181,14 @@
 - op : matmul_with_flatten_grad
   extra_args : float scale_x=1.0, float[] scale_y={1.0}, float scale_out=1.0, bool force_fp32_output=false
 
+- op : legacy_matmul
+  extra_args : str mkldnn_data_type="float32"
+  data_format_tensors : x, y
+
+- op : legacy_matmul_grad
+  extra_args : str mkldnn_data_type="float32"
+  data_format_tensors : x, y, out_grad
+
 - op : max
   dynamic_fallback : True
 
