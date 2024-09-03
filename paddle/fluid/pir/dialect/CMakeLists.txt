@@ -236,17 +236,17 @@ set(generated_files_pir
     ${generated_files_pd_op} ${generated_files_onednn_pd_op}
     ${generated_files_pd_api} ${generated_files_python_c}
     ${generated_files_ops_api} ${cache_grad_op_symbol_shape_file})
-foreach(generated_file ${generated_files_pir})
-  if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                            "${generated_file}.tmp" "${generated_file}")
-    message("copy if different ${generated_file}.tmp ${generated_file}")
-  elseif(EXISTS "${generated_file}.tmp")
-    execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
-                            "${generated_file}")
-    message("copy ${generated_file}.tmp ${generated_file}")
-  endif()
-endforeach()
+# foreach(generated_file ${generated_files_pir})
+#   if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
+#     execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#                             "${generated_file}.tmp" "${generated_file}")
+#     message("copy if different ${generated_file}.tmp ${generated_file}")
+#   elseif(EXISTS "${generated_file}.tmp")
+#     execute_process(COMMAND ${CMAKE_COMMAND} -E copy "${generated_file}.tmp"
+#                             "${generated_file}")
+#     message("copy ${generated_file}.tmp ${generated_file}")
+#   endif()
+# endforeach()
 
 add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 

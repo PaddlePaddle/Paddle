@@ -315,7 +315,12 @@ def _switch_tracer_mode_guard_(
         finally:
             tracer._has_grad = has_grad
     else:
-        yield
+        has_grad = core._get_g_has_grad()
+        core._set_g_has_grad(is_train)
+        try:
+            yield
+        finally:
+            core._set_g_has_grad(has_grad)
 
 
 @overload

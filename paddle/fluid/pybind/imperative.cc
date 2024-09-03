@@ -629,6 +629,11 @@ void BindImperative(py::module *m_ptr) {
           egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
+  m.def("_get_g_has_grad",
+        []() { return egr::Controller::Instance().GetGHasGrad(); });
+  m.def("_set_g_has_grad", [](bool has_grad) {
+    return egr::Controller::Instance().SetGHasGrad(has_grad);
+  });
   m.def("_get_amp_attrs",
         []() { return egr::Controller::Instance().GetCurrentAmpAttrs(); });
   m.def("_set_amp_op_list",

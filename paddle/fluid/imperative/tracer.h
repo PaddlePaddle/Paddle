@@ -194,5 +194,8 @@ void IncreaseVarbaseReferenceCountUntilCopyComplete(
 
 void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad);
 
+bool GetGHasGrad();
+void SetGHasGrad(bool has_grad);
+
 }  // namespace imperative
 }  // namespace paddle

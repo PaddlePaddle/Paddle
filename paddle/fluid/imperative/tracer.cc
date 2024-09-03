@@ -53,6 +53,8 @@ static thread_local std::shared_ptr<Tracer> g_current_tracer(nullptr);
 static thread_local std::shared_ptr<AmpAttrs> g_current_amp_attrs =
     std::make_shared<AmpAttrs>();
 
+static thread_local bool g_has_grad = true;
+
 TEST_API void Tracer::DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 TEST_API void Tracer::EnableLayoutAutoTune() {
   use_layout_autotune_ = true;
@@ -648,6 +650,10 @@ phi::KernelSignature Tracer::GetExpectedKernelSignature(
         opbase_with_kernel->GetExpectedPhiKernelArgs(dygraph_exe_ctx));
   }
 }
+
+bool GetGHasGrad() { return g_has_grad; }
+
+void SetGHasGrad(bool has_grad) { g_has_grad = has_grad; }
 
 }  // namespace imperative
 }  // namespace paddle
