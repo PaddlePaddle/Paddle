@@ -352,7 +352,7 @@ static void CheckFlashAttnStatus(const mcflashattnStatus_t status) {
   PADDLE_ENFORCE_EQ(
       status,
       MCFLASHATTN_STATUS_SUCCESS,
-      phi::errors::External("Error in McFlashAttention, error code is %d",
+      phi::errors::External("Error in McFlashAttn, error code is %d",
                             status));
 }
 #endif
