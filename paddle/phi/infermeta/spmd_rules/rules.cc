@@ -650,6 +650,12 @@ PD_REGISTER_SPMD_RULE(scatter,
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ScatterInferSpmdReverse));
 
+// scatter_nd_add
+PD_REGISTER_SPMD_RULE(
+    scatter_nd_add,
+    PD_INFER_SPMD(phi::distributed::ScatterNdAddInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ScatterNdAddInferSpmdReverse));
+
 // gather
 PD_REGISTER_SPMD_RULE(
     gather,
