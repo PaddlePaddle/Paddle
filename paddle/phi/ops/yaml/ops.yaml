@@ -5134,7 +5134,7 @@
   kernel :
     func : weighted_sample_neighbors
   optional : eids
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
