@@ -685,7 +685,7 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
 
   PADDLE_ENFORCE_EQ(shape.size(),
                     x_shape.size(),
-                    errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The number of elements (%d) of attribute 'shape' for "
                         "CropTensor must be equal to the number of "
                         "dimensions (%d) of the input.",
@@ -695,7 +695,7 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
   PADDLE_ENFORCE_EQ(
       offsets.size(),
       x_shape.size(),
-      errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The number of elements (%d) of attribute 'offsets' for "
           "CropTensor must be equal to the number of "
           "dimensions (%d) of the input.",
