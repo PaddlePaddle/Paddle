@@ -1637,6 +1637,13 @@ def flip(
     """
     Reverse the order of a n-D tensor along given axis in axis.
 
+    The image below illustrates how ``flip`` works.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/flip.png
+        :width: 500
+        :alt: legend of flip API
+        :align: center
+
     Args:
         x (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor x
             should be float32, float64, int32, int64, bool.
