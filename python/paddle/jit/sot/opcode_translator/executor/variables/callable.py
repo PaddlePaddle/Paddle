@@ -674,7 +674,6 @@ class BuiltinVariable(FunctionVariable):
                     true_fn=lambda x: x.to_constant(),
                     false_fn=lambda x: x,
                 )
-                self.graph.need_cache = False
                 return handler(*args, **kwargs)
 
         # Try to inline call the magic function

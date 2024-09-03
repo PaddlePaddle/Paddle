@@ -705,6 +705,7 @@ class SymbolicVariable(VariableBase):
                     traceable_var.tracker.trace_value_from_frame().inlined_expr
                 )
                 symbolic_inputs[tracker_expr] = None
+        self.graph.need_cache = False
         return ConstantVariable(
             self.get_py_value(), self.graph, DummyTracker([self])
         )

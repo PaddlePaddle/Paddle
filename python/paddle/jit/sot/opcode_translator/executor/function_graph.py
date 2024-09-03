@@ -662,7 +662,6 @@ class FunctionGraph:
 
                 metas = convert_to_meta(args)
                 kwmetas = convert_to_meta(kwargs)
-                self.need_cache = True
                 return args, kwargs, infer_meta_fn(func, *metas, **kwmetas)
 
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
