@@ -1283,7 +1283,7 @@
     func : depthwise_conv2d
     data_type : input
   backward : depthwise_conv2d_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : depthwise_conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
@@ -2850,6 +2850,7 @@
     func : log10
   inplace: (x -> out)
   backward: log10_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : log1p
   args : (Tensor x)
@@ -2871,6 +2872,7 @@
     func : log2
   inplace: (x -> out)
   backward: log2_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : log_loss
   args : (Tensor input, Tensor label, float epsilon)
@@ -2906,6 +2908,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : logical_and
     data_type : x
@@ -2919,6 +2922,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalNotInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : logical_not
     data_type : x
@@ -2932,6 +2936,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : logical_or
     data_type : x
@@ -2945,6 +2950,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : logical_xor
     data_type : x
@@ -2993,6 +2999,7 @@
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
+    spmd_rule : LogSumExpInferSpmd
   kernel :
     func : logsumexp
   backward : logsumexp_grad
@@ -3138,6 +3145,15 @@
     param : [x, use_default_tol, hermitian]
   kernel :
     func : matrix_rank
+
+- op : matrix_rank_atol_rtol
+  args : (Tensor x, Tensor atol, Tensor rtol, bool hermitian=false)
+  output : Tensor(out)
+  infer_meta :
+    func : MatrixRankAtolRtolInferMeta
+  kernel :
+    func : matrix_rank_atol_rtol
+  optional : rtol
 
 - op : matrix_rank_tol
   args : (Tensor x, Tensor atol_tensor, bool use_default_tol=true, bool hermitian=false)
@@ -3360,6 +3376,7 @@
   backward : multiplex_grad
   data_transform :
     skip_transform : index
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mv
   args : (Tensor x, Tensor vec)
@@ -3666,7 +3683,7 @@
     func : prior_box
     data_type : input
   traits : paddle::dialect::ForwardOnlyTrait
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : prod
   args : (Tensor x, IntArray axis, bool keepdim, bool reduce_all)
@@ -3736,7 +3753,7 @@
   kernel :
     func : qr
   backward : qr_grad
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : radam_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor beta1_pow, Tensor beta2_pow, Tensor rho, Tensor moment1, Tensor moment2, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
@@ -4555,6 +4572,7 @@
   kernel :
     func : stanh
   backward : stanh_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : stft
   args: (Tensor x, Tensor window, int n_fft, int hop_length, bool normalized, bool onesided)
@@ -5130,7 +5148,7 @@
   kernel :
     func : weighted_sample_neighbors
   optional : eids
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
@@ -5228,3 +5246,4 @@
   kernel:
      func: number_count
      data_type: numbers
+  interfaces : paddle::dialect::InferSymbolicShapeInterface

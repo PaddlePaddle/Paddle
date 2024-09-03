@@ -49,6 +49,14 @@ class TensorRTSubgraphPassConvTest(InferencePassTest):
         self.trt_parameters = TensorRTSubgraphPassConvTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
         )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassConvTest.DynamicShapeParam(
+                {'data': [1, 6, 64, 64]},
+                {'data': [32, 6, 64, 64]},
+                {'data': [1, 6, 64, 64]},
+                False,
+            )
+        )
         self.fetch_list = [conv_out]
 
     def set_params(self):
@@ -126,6 +134,14 @@ class TensorRTSubgraphPassConvTransposeTest(InferencePassTest):
         self.trt_parameters = (
             TensorRTSubgraphPassConvTransposeTest.TensorRTParam(
                 1 << 30, 32, 0, AnalysisConfig.Precision.Float32, False, False
+            )
+        )
+        self.dynamic_shape_params = (
+            TensorRTSubgraphPassConvTest.DynamicShapeParam(
+                {'data': [1, 6, 64, 64]},
+                {'data': [32, 6, 64, 64]},
+                {'data': [1, 6, 64, 64]},
+                False,
             )
         )
         self.fetch_list = [conv_out]

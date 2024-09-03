@@ -847,7 +847,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : soft_relu
-  args : (Tensor x, float threshold = 20.0f)
+  args : (Tensor x, float threshold = 40.0f)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
