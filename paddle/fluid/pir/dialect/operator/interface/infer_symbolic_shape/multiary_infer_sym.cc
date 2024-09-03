@@ -667,7 +667,7 @@ bool BroadcastTensorsOpInferSymbolicShape(
   std::vector<symbol::DimExpr> out_shape;
   for (int i = 0; i < target_rank; i++) {
     symbol::DimExpr tmp_dim = input_shape_or_data_list[0].shape()[i];
-    for (int j = 1; j < input_shape_or_data_list.size(); j++) {
+    for (size_t j = 1; j < input_shape_or_data_list.size(); j++) {
       tmp_dim =
           builder.Broadcast(input_shape_or_data_list[j].shape()[i], tmp_dim);
     }
