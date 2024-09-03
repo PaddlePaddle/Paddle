@@ -1347,11 +1347,7 @@ void ExpandInferMeta(const MetaTensor& x,
       for (int x_idx = x_rank - 1, out_idx = out_rank - 1; out_idx >= 0;
            x_idx--, out_idx--) {
         if (res[out_idx] == -2) {
-          if (x_idx >= 0 && x_dims[x_idx] > 1) {
-            res[out_idx] = x_dims[x_idx];
-          } else {
-            res[out_idx] = -1;
-          }
+          res[out_idx] = -1;
         }
       }
     };
