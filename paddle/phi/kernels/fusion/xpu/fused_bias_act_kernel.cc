@@ -78,7 +78,8 @@ static void ComputeImpl(const phi::XPUContext *xpu_ctx,
         xpu_ctx->x_context(),
         reinterpret_cast<const XPUType *>(x.data<T>()),
         reinterpret_cast<XPUType *>(out->data<T>()),
-        rows * cols);
+        rows * cols,
+        false);
     PADDLE_ENFORCE_EQ(
         r, 0, common::errors::Fatal("baidu::xpu::api::gelu failed."));
   } else if (act_method == "relu") {

@@ -263,10 +263,10 @@ void FFNGrad(const phi::XPUContext& dev_ctx,
   if (act_method == "gelu") {
     r = xpu::gelu_grad(xpu_ctx,
                        linear1_out_ptr,
-                       linear1_out_ptr,
                        d_dropout1_out_ptr,
                        d_act_out_ptr,
-                       bsz_seq * dim_feedforward);
+                       bsz_seq * dim_feedforward,
+                       false);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
   } else if (act_method == "relu") {
     r = xpu::relu_grad(xpu_ctx,
