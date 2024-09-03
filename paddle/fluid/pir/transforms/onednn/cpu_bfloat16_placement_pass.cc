@@ -72,7 +72,6 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::SliceOp>() &&
         !op->isa<paddle::onednn::dialect::SoftmaxOp>() &&
         !op->isa<paddle::onednn::dialect::Softmax_Op>() &&
-        !op->isa<paddle::onednn::dialect::SplitOp>() &&
         !op->isa<paddle::onednn::dialect::SqueezeOp>() &&
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&
@@ -172,7 +171,6 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::SliceOp>() &&
         !op->isa<paddle::onednn::dialect::SoftmaxOp>() &&
         !op->isa<paddle::onednn::dialect::Softmax_Op>() &&
-        !op->isa<paddle::onednn::dialect::SplitOp>() &&
         !op->isa<paddle::onednn::dialect::SqueezeOp>() &&
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&
@@ -321,7 +319,6 @@ class RemoveUnsupportedOpPattern : public pir::RewritePattern {
         !op->isa<paddle::onednn::dialect::SliceOp>() &&
         !op->isa<paddle::onednn::dialect::SoftmaxOp>() &&
         !op->isa<paddle::onednn::dialect::Softmax_Op>() &&
-        !op->isa<paddle::onednn::dialect::SplitOp>() &&
         !op->isa<paddle::onednn::dialect::SqueezeOp>() &&
         !op->isa<paddle::onednn::dialect::Squeeze_Op>() &&
         !op->isa<paddle::onednn::dialect::SumOp>() &&

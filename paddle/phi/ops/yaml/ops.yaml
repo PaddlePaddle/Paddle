@@ -2850,6 +2850,7 @@
     func : log10
   inplace: (x -> out)
   backward: log10_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : log1p
   args : (Tensor x)
@@ -2871,6 +2872,7 @@
     func : log2
   inplace: (x -> out)
   backward: log2_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : log_loss
   args : (Tensor input, Tensor label, float epsilon)
@@ -5132,7 +5134,7 @@
   kernel :
     func : weighted_sample_neighbors
   optional : eids
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)

@@ -2083,7 +2083,6 @@ class CpuBfloat16Pass : public pir::PatternRewritePass {
     const std::vector<std::string> bfloat16_ops_three_one{
         paddle::onednn::dialect::FcOp::name(),
         paddle::onednn::dialect::SliceOp::name(),
-        paddle::onednn::dialect::SplitOp::name(),
         paddle::onednn::dialect::FusedMatmulOp::name(),
         paddle::onednn::dialect::ClipOp::name(),
         paddle::onednn::dialect::Clip_Op::name(),
