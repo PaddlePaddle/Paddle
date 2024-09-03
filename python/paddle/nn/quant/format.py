@@ -202,6 +202,7 @@ class LinearQuanter(Layer):
                 initializer=paddle.nn.initializer.Constant(0.0),
                 stop_gradient=True,
             )
+            # TODO(xiaoluomi): need to add only observer pass for quantize_linear
             quant_out, out_state, out_accum, out_scale = _C_ops.quantize_linear(
                 input,
                 self._scales,
@@ -357,6 +358,7 @@ class LinearDequanter(Layer):
                 initializer=paddle.nn.initializer.Constant(0.0),
                 stop_gradient=True,
             )
+            # TODO(xiaoluomi): need to add only observer pass for dequantize_linear
             dequant_out, out_state, out_accum, out_scale = (
                 _C_ops.dequantize_linear(
                     input,
