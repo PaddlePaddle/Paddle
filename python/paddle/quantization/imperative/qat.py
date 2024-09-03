@@ -16,7 +16,7 @@ import os
 
 import paddle
 from paddle.base.framework import IrGraph
-from paddle.framework import core, in_pir_mode
+from paddle.framework import core
 from paddle.nn.quant import quant_layers
 
 from ...static.quantization.quantization_pass import (
@@ -551,7 +551,6 @@ class ImperativeQuantizeOutputs:
         dirname = os.path.dirname(path)
         basename = os.path.basename(path)
         model_filename = basename + INFER_MODEL_SUFFIX
-        params_filename = basename + INFER_PARAMS_SUFFIX
         params_filename = basename + INFER_PARAMS_SUFFIX
 
         [
