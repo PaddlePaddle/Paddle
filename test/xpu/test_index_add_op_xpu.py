@@ -22,6 +22,7 @@ from op_test import OpTest, convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -68,6 +69,10 @@ class XPUTestIndexAdd(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'index_add'
 
+    @unittest.skipIf(
+        core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+        "run test when xpu's compute capability >= xpu3.",
+    )
     class XPUTestIndexAddOp(XPUOpTest):
         def setUp(self):
             self.python_api = raw_index_add
@@ -116,6 +121,10 @@ class XPUTestIndexAdd(XPUOpTestWrapper):
                     paddle.XPUPlace(0), ['X', 'AddValue'], 'Out'
                 )
 
+    @unittest.skipIf(
+        core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+        "run test when xpu's compute capability >= xpu3.",
+    )
     class TestIndexAddFP16Op(XPUTestIndexAddOp):
         def init_dtype_type(self):
             self.axis = 0
@@ -127,6 +136,10 @@ class XPUTestIndexAdd(XPUOpTestWrapper):
             self.dtype = np.float16
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestIndexAddBF16Op(XPUOpTest):
     def setUp(self):
         self.python_api = raw_index_add
@@ -175,6 +188,10 @@ class TestIndexAddBF16Op(XPUOpTest):
             self.check_grad_with_place(self.place, ['X', 'AddValue'], 'Out')
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestIndexAddAPI(unittest.TestCase):
     def setUp(self):
         self.setType()
@@ -276,12 +293,20 @@ class TestIndexAddAPI(unittest.TestCase):
         self.run_imperative()
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestIndexAddAPIMoreType(TestIndexAddAPI):
     def setType(self):
         self.x_type = np.float64
         self.index_type = np.int64
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestIndexAddAPICase2(TestIndexAddAPI):
     def config(self):
         self.axis = 1
@@ -290,6 +315,10 @@ class TestIndexAddAPICase2(TestIndexAddAPI):
         self.add_value_shape = (100, 20, 5)
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestIndexAddAPICase3(TestIndexAddAPI):
     def config(self):
         self.axis = 2
@@ -298,6 +327,10 @@ class TestIndexAddAPICase3(TestIndexAddAPI):
         self.add_value_shape = (100, 100, 20)
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestIndexAddAPICase4(TestIndexAddAPI):
     def config(self):
         self.axis = 0
@@ -306,6 +339,10 @@ class TestIndexAddAPICase4(TestIndexAddAPI):
         self.add_value_shape = (4,)
 
 
+@unittest.skipIf(
+    core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestIndexAddAPICase5(TestIndexAddAPI):
     def config(self):
         self.axis = -1
