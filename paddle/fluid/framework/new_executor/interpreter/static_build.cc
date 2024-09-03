@@ -228,11 +228,6 @@ bool TensorShouldBeFakeInitialized(const OperatorBase& op,
     return false;
   }
 
-  if (op_type == "distributed_fused_lamb" && parameter_name == "ParamOut") {
-    VLOG(2) << "Skip fake initialization for: " << parameter_name;
-    return false;
-  }
-
   if (op_type == "fused_bias_residual_layernorm" &&
       parameter_name == "residual_out") {
     if (op.HasInputs("residual")) {

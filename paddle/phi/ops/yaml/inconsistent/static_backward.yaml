@@ -421,8 +421,8 @@
     param: [out_grad]
 
 - backward_op : soft_relu_grad
-  forward : soft_relu (Tensor x, float threshold) -> Tensor(out)
-  args : (Tensor out, Tensor out_grad, float threshold)
+  forward : soft_relu (Tensor x, float threshold = 40.0f) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, float threshold = 40.0f)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
