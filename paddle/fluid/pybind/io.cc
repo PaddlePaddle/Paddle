@@ -169,7 +169,11 @@ void BindIO(pybind11::module *m) {
          py::arg("overwrite") = true,
          py::arg("readable") = false,
          py::arg("trainable") = true);
-  m->def("deserialize_pir_program", &pir::ReadModule);
+  m->def("deserialize_pir_program",
+         &pir::ReadModule,
+         py::arg("file_path"),
+         py::arg("program"),
+         py::arg("pir_version") = -1);
 }
 }  // namespace pybind
 }  // namespace paddle

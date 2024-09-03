@@ -32,7 +32,7 @@ from ..utils.hybrid_parallel_util import (
     broadcast_sep_parameters,
     broadcast_sharding_parameters,
 )
-from ..utils.log_util import logger
+from ..utils.log_util import logger, sync_rotate_logger
 from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
 
@@ -900,6 +900,7 @@ class PipelineParallel(MetaParallelBase):
     def _forward_step(
         self, input_tensor, micro_dataset, chunk_id=None, step_id=None
     ):
+        sync_rotate_logger().info("Before forward_step")
         if self._enable_timer:
             self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
@@ -957,6 +958,7 @@ class PipelineParallel(MetaParallelBase):
             self.micro_batch_id += 1
         if self._enable_timer:
             self.timers("forward_step").stop()
+        sync_rotate_logger().info("After forward_step")
         if self.is_pipeline_last_stage() and self._compute_loss:
             return backward_loss_tensor
         return output_tensor
@@ -966,6 +968,7 @@ class PipelineParallel(MetaParallelBase):
     ):
         if self._enable_timer:
             self.timers("backward_step").start()
+        sync_rotate_logger().info("Before backward_step")
         with paddle.amp.auto_cast(enable=False):
             self.callbacks.on_location(
                 PipelineParallelMicroStepLocations.BACKWARD_BEGIN,
@@ -1012,6 +1015,8 @@ class PipelineParallel(MetaParallelBase):
                 output_tensor_grad=output_tensor_grad,
                 step_id=step_id,
             )
+
+            sync_rotate_logger().info("After backward_step")
             return input_tensor_grad
 
     def _check_micro_batch_data_valid(self, micro_batch_data):
@@ -1355,6 +1360,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         static_scheduler=False,
         return_micro_batch_loss=False,
     ):
+        sync_rotate_logger().info("start forward_backward_pipeline")
         # use interleave scheduling strategy.
         # this strategy is inspired by:
         # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
@@ -1532,6 +1538,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         recv_prev=recv_prev,
                         recv_next=recv_next,
                         batch_p2p_comm=self._use_batch_p2p_comm,
+                        skip_check_meta=not self.training,
                     )
                     # output_tensor_grad is not none if recv_next
                     # append output_tensor_grad no matter none or not
@@ -1543,6 +1550,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         output_tensor,
                         recv_prev=recv_prev,
                         batch_p2p_comm=self._use_batch_p2p_comm,
+                        skip_check_meta=not self.training,
                     )
                 # append input_tensor no matter none or not
                 self.input_tensors[next_virtual_pp_rank].append(input_tensor)
@@ -1555,6 +1563,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     recv_prev=recv_prev,
                     batch_p2p_comm=self._use_batch_p2p_comm,
                     overlap_p2p_comm=True,
+                    skip_check_meta=not self.training,
                 )
                 if (
                     micro_step == (startup_steps - 1)
@@ -1665,6 +1674,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     recv_prev=recv_prev,
                     batch_p2p_comm=self._use_batch_p2p_comm,
                     overlap_p2p_comm=True,
+                    skip_check_meta=not self.training,
                 )
 
                 if bwd_wait_handles is not None:
@@ -1796,6 +1806,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     recv_prev=recv_prev,
                     recv_next=recv_next,
                     batch_p2p_comm=self._use_batch_p2p_comm,
+                    skip_check_meta=not self.training,
                 )
             # append input_tensor no matter none or not
             self.input_tensors[next_forward_virtual_pp_rank].append(
@@ -1903,6 +1914,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self._p2p_helper.clear_meta_cache()
 
         self.timer_printer()
+        sync_rotate_logger().info("end forward_backward_pipeline")
+
         return train_loss
 
     def train_batch(
@@ -2101,6 +2114,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
                 output_tensor,
                 recv_prev=recv_prev,
                 batch_p2p_comm=self._use_batch_p2p_comm,
+                skip_check_meta=not self.training,
             )
             self.input_tensors[next_virtual_pp_rank].append(input_tensor)
 

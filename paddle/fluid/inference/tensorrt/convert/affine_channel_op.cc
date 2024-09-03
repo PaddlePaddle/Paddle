@@ -48,7 +48,7 @@ class AffineChannelOpConverter : public OpConverter {
 
     // tensorrt scalend layer only support spatial dims >= 2,
     // so nhwc is not available (spatial dims == 0)
-    const int channel_axis = engine_->with_dynamic_shape();
+    const int channel_axis = 1;
 
     TensorRTEngine::Weight scale_weights{
         nvinfer1::DataType::kFLOAT,

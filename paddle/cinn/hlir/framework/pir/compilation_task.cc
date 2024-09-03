@@ -90,7 +90,7 @@ void GroupCompilationContext::PrepareModuleBuilder() {
 /**
  * For functions belonging to different broadcast groups, int args and the name
  * of the tensor args may be variate, but the number of the tensor args should
- * be fixed. So we need to unify the tensor args and int args. For exmaple,
+ * be fixed. So we need to unify the tensor args and symbol args. For exmaple,
  * func1(_var, _var_1, S4, S5); func2(_var, _var_2, S1) would be unified to
  * func1(_var, _var_1, S4, S5, S1); func2(_var, _var_2, S4, S5, S1).
  */
@@ -98,17 +98,18 @@ void UnifyBroadcastGroupFuncArgs(
     std::vector<GroupCompilationContext>* contexts,
     pir::OpLoweringGroupPtr origin_group,
     std::unordered_map<int, ir::Var>* symbolic_shape_var_index) {
-  std::unordered_map<ir::Var, pir::CINNKernelInfo::ArgDimIdx> new_args_map;
+  std::unordered_map<ir::Var, pir::CINNKernelInfo::SymbolArgBindInfo>
+      new_args_map;
   std::vector<ir::Argument> new_args_vec;
   int total_args_num = 0;
 
   const auto& AddTensorArgs = [&](GroupCompilationContext& context) {
     const auto& func_args = context.lowered_funcs_[0]->args;
-    const auto& origin_int_args = context.group_->int_args_map();
+    const auto& origin_symbol_args = context.group_->symbol_args_map();
     for (size_t arg_idx = 0; arg_idx < func_args.size(); ++arg_idx) {
       if (func_args[arg_idx].is_var()) {
         new_args_map[func_args[arg_idx].var_arg()] =
-            origin_int_args.at(arg_idx);
+            origin_symbol_args.at(arg_idx);
       } else {
         new_args_vec.emplace_back(func_args[arg_idx]);
       }
@@ -123,25 +124,26 @@ void UnifyBroadcastGroupFuncArgs(
     new_args_vec.clear();
   }
 
-  origin_group->mut_int_args_map().clear();
-  const auto& new_int_args_vec = [&]() -> std::vector<ir::Argument> {
+  origin_group->mut_symbol_args_map().clear();
+  const auto& new_symbol_args_vec = [&]() -> std::vector<ir::Argument> {
     std::vector<ir::Argument> res;
     for (const auto& [arg, idx_info] : new_args_map) {
       symbolic_shape_var_index->insert({total_args_num, arg});
-      origin_group->mut_int_args_map()[total_args_num++] = idx_info;
+      origin_group->mut_symbol_args_map()[total_args_num++] = idx_info;
       res.emplace_back(ir::Argument{arg});
     }
     return res;
   }();
 
-  const auto& AddUnifiedIntArgs = [&](GroupCompilationContext& context) {
+  const auto& AddUnifiedSymbolArgs = [&](GroupCompilationContext& context) {
     for (ir::LoweredFunc& func : context.lowered_funcs_) {
-      func->args.insert(
-          func->args.end(), new_int_args_vec.begin(), new_int_args_vec.end());
+      func->args.insert(func->args.end(),
+                        new_symbol_args_vec.begin(),
+                        new_symbol_args_vec.end());
     }
   };
   for (int i = 0; i < contexts->size(); ++i) {
-    AddUnifiedIntArgs((*contexts)[i]);
+    AddUnifiedSymbolArgs((*contexts)[i]);
   }
 }
 
@@ -218,7 +220,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
       context_->target_,
       context_->group_->FuncName(),
       context_->group_->FuncName() + "_infer_shape",
-      context_->group_->int_args_map());
+      context_->group_->symbol_args_map());
   VLOG(5) << "Start to compile module into cuda kernel...";
   backend_resource->GetBackendCompiler()->Build(module, "");
   backend_resource->GetBackendCompiler()->AppendCX86(CX86module);
@@ -238,7 +240,7 @@ CompilationTask::CompileBroadcastModules(
       context_->target_,
       context_->group_->FuncName(),
       context_->group_->FuncName() + "_infer_shape",
-      context_->group_->int_args_map());
+      context_->group_->symbol_args_map());
 
   std::vector<std::string> case_func_names;
   std::vector<ir::Expr> broadcast_conditions;

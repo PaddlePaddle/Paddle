@@ -18,6 +18,8 @@ import dis
 from functools import partial
 from typing import TYPE_CHECKING
 
+from paddle.base.dygraph.base import sot_simulation_mode_guard
+
 from ..profiler import EventGuard
 from ..utils import log_do, log_format
 from .executor.executor_cache import OpcodeExecutorCache
@@ -66,7 +68,8 @@ def eval_frame_callback(frame, **kwargs) -> CustomCode:
         )
         log_do(3, lambda: dis.dis(frame.f_code))
 
-        custom_code = OpcodeExecutorCache()(frame, **kwargs)
+        with sot_simulation_mode_guard(True):
+            custom_code = OpcodeExecutorCache()(frame, **kwargs)
 
         if custom_code.code is None:
             log_format(

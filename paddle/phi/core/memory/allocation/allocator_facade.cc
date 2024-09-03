@@ -1893,6 +1893,12 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
   }
   return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
+void AllocatorFacade::SetDefaultStream(const phi::XPUPlace& place,
+                                       XPUStream stream) {
+  if (m_->IsStreamSafeCUDAAllocatorUsed()) {
+    m_->SetDefaultStream(place, stream);
+  }
+}
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

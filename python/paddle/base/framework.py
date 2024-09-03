@@ -103,6 +103,27 @@ SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
     "atan2_grad": ['X1', 'X2'],
 }
 
+stride_ops = [
+    "pd_op.slice",
+    "pd_op.strided_slice",
+    "pd_op.index_select",
+    "pd_op.split",
+    "pd_op.unsqueeze",
+    "pd_op.unsqueeze2",
+    "pd_op.squeeze",
+    "pd_op.squeeze2",
+    "pd_op.transpose",
+    "pd_op.transpose2",
+    "pd_op.unbind",
+    "pd_op.diagonal",
+    "pd_op.flatten",
+    "pd_op.imag",
+    "pd_op.real",
+    "pd_op.reshape",
+    "pd_op.reshape2",
+    "pd_op.as_real",
+]
+
 
 def _global_flags():
     return _global_flags_
@@ -188,6 +209,7 @@ class GlobalThreadLocal(threading.local):
         """
         global _dygraph_tracer_
         self._in_to_static_mode_ = False
+        self._in_sot_simulation_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
         self._use_pir_api_ = get_flags("FLAGS_enable_pir_api")[
@@ -197,6 +219,9 @@ class GlobalThreadLocal(threading.local):
     def __str__(self):
         strings = []
         strings.append("_in_to_static_mode_:" + str(self._in_to_static_mode_))
+        strings.append(
+            "_in_sot_simulation_mode_:" + str(self._in_sot_simulation_mode_)
+        )
         strings.append(
             "_functional_dygraph_context_manager:"
             + str(self._functional_dygraph_context_manager)
@@ -8365,10 +8390,12 @@ def process_type_promotion(program):
                     all_input_name_need_cast.append(input_arg_name)
 
             # only support promote between float
-            if len(all_dtypes) == 2 and core.need_type_promotion(
+            if len(all_dtypes) == 2 and core.need_type_promotion_old_ir(
                 op.type, *all_dtypes
             ):
-                common_dtype = core.get_promote_dtype(op.type, *all_dtypes)
+                common_dtype = core.get_promote_dtype_old_ir(
+                    op.type, *all_dtypes
+                )
                 for input_name_need_cast in all_input_name_need_cast:
                     var_name = op.block._var_recursive(input_name_need_cast)
                     if var_name.dtype != common_dtype:
@@ -8383,3 +8410,33 @@ def process_type_promotion(program):
                         idx += 1
             idx += 1
     return program
+
+
+# complete the op_role of the new added ops
+@signature_safe_contextmanager
+def auto_complete_op_role(program, op_role, insert_point=None):
+    if paddle.framework.in_pir_mode():
+        initial_num_ops = program.num_ops()
+        origin_insert_point = insert_point
+
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode():
+            if insert_point is None:
+                paddle.pir.set_insertion_point_to_block_end(
+                    program.global_block()
+                )
+                insert_point = paddle.pir.get_current_insertion_point()
+            current_num_ops = program.num_ops()
+            if op_role is not None and current_num_ops > initial_num_ops:
+                for _ in range(current_num_ops - initial_num_ops):
+                    new_added_op = insert_point.prev()
+                    if new_added_op.op_role is not None:
+                        continue
+
+                    new_added_op.op_role = op_role
+                    paddle.pir.set_insertion_point(new_added_op)
+                    insert_point = paddle.pir.get_current_insertion_point()
+            if origin_insert_point:
+                paddle.pir.set_insertion_point(origin_insert_point)

@@ -48,8 +48,8 @@ class PatternGraph {
   PatternNodePtr MergeNode(const PatternNodePtr& upstream,
                            const PatternNodePtr& downstream,
                            MergePatternFn merge_pattern_fn);
-  std::vector<PatternNodePtr> SortByTopoOrder();
-  std::vector<PatternNodePtr> SortByReverseTopoOrder();
+  std::vector<PatternNodePtr> SortByTopoOrder() const;
+  std::vector<PatternNodePtr> SortByReverseTopoOrder() const;
 
   const PatternNodePtrSet& all_pattern_nodes() const {
     return all_pattern_nodes_;

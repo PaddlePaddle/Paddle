@@ -399,10 +399,10 @@ struct StaticDimToDynamicConverter {
   template <typename DoEachT>
   void ForEachConstantToSymbol(const DoEachT& DoEach) {
     const auto& map = *GetGlobalStaticDimToDynamicMap();
-    PADDLE_ENFORCE_EQ(
-        map.has_value(),
-        true,
-        phi::errors::InvalidArgument("map is empty, it should have value"));
+    PADDLE_ENFORCE_EQ(map.has_value(),
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "map is empty, it should have value"));
     for (const auto& [constant, symbol] : map.value()) {
       DoEach(constant, symbol);
     }

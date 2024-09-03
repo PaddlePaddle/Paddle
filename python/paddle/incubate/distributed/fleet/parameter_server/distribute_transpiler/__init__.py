@@ -554,7 +554,7 @@ class FleetTranspiler(Fleet):
                 optimizer.type, varname
             )
 
-            for var_name in [varname] + reshaped_varnames + origin_varnames:
+            for var_name in [varname, *reshaped_varnames, *origin_varnames]:
                 var = self._origin_main_program.global_block().vars[var_name]
                 block.append_op(
                     type='recv_save',
