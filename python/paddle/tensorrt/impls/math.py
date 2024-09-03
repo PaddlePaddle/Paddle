@@ -109,4 +109,4 @@ def max_converter(network, paddle_op, inputs):
         axes=get_axes_for_reduce_op(axis),
         keep_dims=keepdim,
     )
-    return layer
+    return layer.get_output(0)
