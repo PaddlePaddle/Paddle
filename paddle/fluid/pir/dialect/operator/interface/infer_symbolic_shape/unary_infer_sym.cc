@@ -1281,12 +1281,45 @@ bool Flatten_OpInferSymbolicShape(
   return FlattenOpInferSymbolicShape(op, infer_context);
 }
 
-// bool FrobeniusNormOpInferSymbolicShape(pir::Operation *op,
-//                                        pir::InferSymbolicShapeContext
-//                                        *infer_context) {
-//   // pass
-//   return true;
-// }
+bool FrobeniusNormOpInferSymbolicShape(pir::Operation *op,
+                                            pir::InferSymbolicShapeContext *infer_context) {
+  // 获取输入张量的符号形状
+  const symbol::ShapeOrDataDimExprs &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &x_shape = x_shape_or_data.shape();
+  
+  // 获取属性
+  bool keep_dim = op->attribute<pir::BoolAttribute>("keep_dim").data();
+  bool reduce_all = op->attribute<pir::BoolAttribute>("reduce_all").data();
+
+  std::vector<int64_t> axis = paddle::dialect::details::GetVectorAttr<int64_t>(op, "axis");
+
+  std::vector<symbol::DimExpr> vec_dim;
+  if (reduce_all) {
+    if (keep_dim) {
+      vec_dim = std::vector<symbol::DimExpr>(x_shape.shape().size(), symbol::DimExpr(1));
+    } else {
+      vec_dim = {};
+    }
+  } else {
+    if (keep_dim) {
+      vec_dim = std::vector<symbol::DimExpr>(x_shape.shape().size(), symbol::DimExpr(-1));
+    } else {
+      size_t x_rank = x_shape.shape().size();
+      if (axis.size() > x_rank) {
+        vec_dim = {symbol::DimExpr(-1)};
+      } else {
+        vec_dim = std::vector<symbol::DimExpr>(x_shape.shape().size() - axis.size(), symbol::DimExpr(-1));
+      }
+    }
+  }
+
+  // 设置输出符号形状
+  infer_context->SetShapeOrDataForValue(op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(vec_dim)});
+
+  return true;
+}
 
 bool FoldOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
