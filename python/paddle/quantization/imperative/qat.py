@@ -551,8 +551,6 @@ class ImperativeQuantizeOutputs:
         dirname = os.path.dirname(path)
         basename = os.path.basename(path)
         model_filename = basename + INFER_MODEL_SUFFIX
-        if in_pir_mode():
-            model_filename = basename + '.json'
         params_filename = basename + INFER_PARAMS_SUFFIX
         params_filename = basename + INFER_PARAMS_SUFFIX
 
