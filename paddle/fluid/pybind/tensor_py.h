@@ -411,7 +411,7 @@ void SetTensorFromPyArrayT(
                  static_cast<void *>(dst),
                  platform::CPUPlace(),
                  static_cast<const void *>(array.data()),
-                 array.nbytes());
+                 array.size()*sizeof(T));
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Cannot use XPUPlace in CPU/GPU version, "
@@ -447,7 +447,7 @@ void SetTensorFromPyArrayT(
     phi::DeviceManager::GetDeviceWithPlace(tmp_place)->MemoryCopyH2D(
         reinterpret_cast<void *>(dst),
         const_cast<void *>(reinterpret_cast<const void *>(array.data())),
-        array.nbytes());
+        array.size()*sizeof(T));
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(place);
     ctx.Wait();
@@ -465,10 +465,10 @@ void SetTensorFromPyArrayT(
       auto dst = self->mutable_data<T>(place);
 #ifdef PADDLE_WITH_HIP
       paddle::platform::GpuMemcpySync(
-          dst, array.data(), array.nbytes(), hipMemcpyHostToDevice);
+          dst, array.data(),array.size()*sizeof(T), hipMemcpyHostToDevice); //NOLINT
 #else
       paddle::platform::GpuMemcpySync(
-          dst, array.data(), array.nbytes(), cudaMemcpyHostToDevice);
+          dst, array.data(), array.size()*sizeof(T), cudaMemcpyHostToDevice);
 #endif
 
     } else if (paddle::platform::is_cuda_pinned_place(place)) {
@@ -617,7 +617,7 @@ void SetUVATensorFromPyArrayImpl(
   cudaHostAlloc(reinterpret_cast<void **>(&data_ptr),
                 need_allocate_size,
                 cudaHostAllocWriteCombined | cudaHostAllocMapped);
-  std::memcpy(data_ptr, array.data(), array.nbytes());
+  std::memcpy(data_ptr, array.data(), array.size()*sizeof(T));
 
   void *cuda_device_pointer = nullptr;
   cudaHostGetDevicePointer(reinterpret_cast<void **>(&cuda_device_pointer),
