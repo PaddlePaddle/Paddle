@@ -19,6 +19,8 @@ import sys
 import tempfile
 import unittest
 
+sys.path.append("../../auto_parallel")
+
 
 class TestPlannerReLaunch(unittest.TestCase):
     def setUp(self):
