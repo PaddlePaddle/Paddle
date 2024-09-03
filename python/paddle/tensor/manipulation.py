@@ -2387,6 +2387,13 @@ def vstack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     Stacks all the input tensors ``x`` along vertical axis.
     All tensors must be of the same dtype.
 
+    The image below illustrates how ``vstack`` works.
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/vstack.png
+        :width: 500
+        :alt: legend of vstack API
+        :align: center
+
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x`` must be of the same
             shape and dtype. Supported data types: ``float16``, ``float32``, ``float64``, ``int8``, ``int32``, ``int64`` or ``bfloat16``.
