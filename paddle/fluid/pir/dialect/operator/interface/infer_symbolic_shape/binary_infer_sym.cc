@@ -1320,13 +1320,8 @@ bool MatmulWithFlattenOpInferSymbolicShape(
       symbol::DimExpr(x_shape.size() - x_num + 1));
   infer_context->AddGreatThanOneCstr(
       symbol::DimExpr(y_shape.size() - y_num + 1));
-  PADDLE_ENFORCE_EQ(
-      x_shape.size() - x_num,
-      y_num,
-      phi::errors::InvalidArgument(
-          "After flatten the input tensor X and Y to 2-D dimensions matrix "
-          "X1 and Y1, the matrix X1's width must be equal with matrix Y1's "
-          "height. ");
+  infer_context->AddEqualCstr(symbol::DimExpr(x_shape.size() - x_num),
+                              symbol::DimExpr(y_num));
   for (int i = 0; i < y_num; ++i) {
     infer_context->AddEqualCstr(x_shape[x_num + i], y_shape[i]);
   }
