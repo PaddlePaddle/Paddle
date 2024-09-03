@@ -2506,6 +2506,7 @@ bool PsroiPoolOpInferSymbolicShape(
 
   return true;
 }
+
 bool PyramidHashOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
@@ -2591,10 +2592,15 @@ bool PyramidHashOpInferSymbolicShape(
 
   // Set the output shapes
   std::vector<symbol::DimExpr> out_shape = {-1, symbol::DimExpr(num_emb)};
+  std::vector<symbol::DimExpr> drop_pos = infer_context->GetNextSymName();
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{
           symbol::TensorShapeOrDataDimExprs(out_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(drop_pos)});
   infer_context->SetShapeOrDataForValue(op->result(2), x_shape_or_data);
 
   return true;
