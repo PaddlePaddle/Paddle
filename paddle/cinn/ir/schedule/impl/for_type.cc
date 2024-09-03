@@ -44,9 +44,8 @@ void DyScheduleImpl::MutateForType(const Expr& loop,
   std::string primitive = "MutateForType";
   std::ostringstream os;
   auto* for_node = loop.As<ir::For>();
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_NOT_NULL(
       for_node,
-      true,
       phi::errors::InvalidArgument(
           "[IRScheduleError] An error occurred in the schedule primitive "
           "<MutateForType>.\n"
