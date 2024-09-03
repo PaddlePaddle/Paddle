@@ -20,12 +20,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SplitKernel(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const IntArray& sections,  // assuming this holds sizes for each section
-    const Scalar& axis_scalar,
-    std::vector<DenseTensor*> outs) {
+void SplitKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const IntArray& sections,
+                 const Scalar& axis_scalar,
+                 std::vector<DenseTensor*> outs) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   int axis = axis_scalar.to<int>();
   auto in_dims = x.dims();
@@ -38,8 +37,7 @@ void SplitKernel(
   std::vector<int> non_zero_split_lists;
 
   for (size_t j = 0; j < outs.size(); ++j) {
-    dev_ctx.template Alloc<T>(
-        outs[j]);  // Allocate memory for each output tensor
+    dev_ctx.template Alloc<T>(outs[j]);
     out_ptrs.push_back(reinterpret_cast<XPUType*>(outs[j]->data<T>()));
     int section_size =
         axis < outs[j]->dims().size() ? outs[j]->dims()[axis] : 1;
@@ -50,14 +48,14 @@ void SplitKernel(
           reinterpret_cast<XPUType*>(outs[j]->data<T>()));
       non_zero_split_lists.push_back(section_size);
     } else {
-      // Handle zero-dimension tensor creation
-      outs[j]->Resize(phi::make_ddim(
-          {0}));  // Resize tensor to zero-dimension if section size is zero
+      auto zero_dims = in_dims;
+      zero_dims[axis] = 0;
+      outs[j]->Resize(zero_dims);
     }
   }
 
   if (x.numel() == 0) {
-    return;  // Early exit if the input tensor is empty
+    return;
   }
 
   // Perform the split operation only on non-zero sections
