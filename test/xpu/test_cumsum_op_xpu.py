@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -42,13 +43,19 @@ class XPUTestCumsumOP(XPUOpTestWrapper):
             self.op_type = 'cumsum'
             self.init_config()
 
-            self.data = np.random.uniform(-1.0, 1.0, self.input_shape).astype(
-                self.dtype
-            )
+            if self.dtype == np.uint16:
+                self.data = np.random.uniform(
+                    -1.0, 1.0, self.input_shape
+                ).astype('float32')
+                self.inputs = {'X': convert_float_to_uint16(self.data)}
+            else:
+                self.data = np.random.uniform(
+                    -1.0, 1.0, self.input_shape
+                ).astype(self.dtype)
+                self.inputs = {
+                    'X': self.data,
+                }
             reference_out = np.cumsum(self.data, axis=self.axis)
-            self.inputs = {
-                'X': self.data,
-            }
             self.attrs = {
                 'use_xpu': True,
                 'axis': self.axis,
