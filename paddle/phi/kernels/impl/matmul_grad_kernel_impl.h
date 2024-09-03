@@ -2037,14 +2037,14 @@ void LegacyMatmulGradKernel(const Context& dev_ctx,
   }
 }
 
-template <typename Context>
-void LegacyMatmulGradKernel<int8_t, Context>(const Context& dev_ctx,
-                                             const DenseTensor& x,
-                                             const DenseTensor& y,
-                                             const DenseTensor& out_grad,
-                                             bool transpose_x,
-                                             bool transpose_y,
-                                             float alpha,
-                                             DenseTensor* dx,
-                                             DenseTensor* dy) {}
+template <typename T, typename Context>
+void LegacyMatmulGradEmptyKernel(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 const DenseTensor& out_grad,
+                                 bool transpose_x,
+                                 bool transpose_y,
+                                 float alpha,
+                                 DenseTensor* dx,
+                                 DenseTensor* dy) {}
 }  // namespace phi
