@@ -518,11 +518,11 @@ class FusedCommBuffer:
 
     def _reset_grad_storage(self, slice_grad_buffer):
         self.grad_storage._clear_dataptr()
-        self.grad_storage = None
         for param in self._params:
             self._sharding_param_grad_view[param.name]._reset_grad_buffer(
                 slice_grad_buffer
             )
+        self.grad_storage = slice_grad_buffer
 
     def _init_step_dict(self):
         for p in self._params:
