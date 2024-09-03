@@ -168,6 +168,7 @@ def converter_to_trt(program, trt_config, scope):
 
     output_var = []
     feed_name = []
+    trt_save_path = None
 
     for op in program.global_block().ops:
         if op.name() == "pd_op.fetch":
@@ -184,15 +185,22 @@ def converter_to_trt(program, trt_config, scope):
                 min_data, _, max_data = input_instance.generate_input_data()
                 program_with_output = program.list_vars()[-1]
 
-                warmup_shape_infer(
-                    program,
-                    min_shape_feed={feed_name[0]: min_data},
-                    max_shape_feed={feed_name[0]: max_data},
-                    fetch_var_list=program_with_output,
-                )
+                if trt_config.is_save_program:
+                    warmup_shape_infer(
+                        program,
+                        min_shape_feed={feed_name[0]: min_data},
+                        max_shape_feed={feed_name[0]: max_data},
+                        fetch_var_list=output_var,
+                    )
+                else:
+                    warmup_shape_infer(
+                        program,
+                        min_shape_feed={feed_name[0]: min_data},
+                        max_shape_feed={feed_name[0]: max_data},
+                        fetch_var_list=program_with_output,
+                    )
 
-        if not trt_config.is_save_program:
-            program_with_pir = run_pir_pass(program, partition_mode=False)
+        program_with_pir = run_pir_pass(program, partition_mode=False)
         # Step3: run pir pass (including trt_op_marker_pass)
         forbid_op_lower_trt(program, "pd_op.dropout")
 
@@ -231,7 +239,7 @@ def converter_to_trt(program, trt_config, scope):
                 program=program_with_pir,
             )
 
-        return program_with_pir, output_var, trt_output_var
+        return program_with_pir, trt_save_path
 
 
 def get_trt_program(model_dir, prefix, trt_config, load_json=True):
@@ -259,5 +267,7 @@ def get_trt_program(model_dir, prefix, trt_config, load_json=True):
             )
         )
 
-    program_with_trt, _, _ = converter_to_trt(program, trt_config, scope)
-    return program_with_trt, scope, feed_target_names, fetch_targets
+    program_with_trt, trt_save_path = converter_to_trt(
+        program, trt_config, scope
+    )
+    return program_with_trt, trt_save_path

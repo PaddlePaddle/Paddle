@@ -51,7 +51,7 @@ class TestConverterBert(unittest.TestCase):
             program, {"input_ids": input_min_data}, [output_var]
         )
 
-        program_with_trt, _, _ = converter_to_trt(program, trt_config, scope)
+        program_with_trt, _ = converter_to_trt(program, trt_config, scope)
         output_var = program_with_trt.list_vars()[-1]
 
         # Step6: run inference(converted_program)

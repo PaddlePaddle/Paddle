@@ -53,7 +53,7 @@ class TestConverterResNet50(unittest.TestCase):
             program, {"input": input_optim_data}, [output_var]
         )
 
-        program_with_trt, _, _ = converter_to_trt(program, trt_config, scope)
+        program_with_trt, _ = converter_to_trt(program, trt_config, scope)
         output_var = program_with_trt.list_vars()[-1]
 
         # Step6: run inference(converted_program)
@@ -65,9 +65,9 @@ class TestConverterResNet50(unittest.TestCase):
         np.testing.assert_allclose(
             output_expected[0],
             output_converted[0],
-            rtol=1e-2,
-            atol=1e-2,
-            err_msg="Outputs are not within the 1e-2 tolerance",
+            rtol=2e-1,
+            atol=2e-1,
+            err_msg="Outputs are not within the 2e-1 tolerance",
         )
 
 

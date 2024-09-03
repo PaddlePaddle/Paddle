@@ -74,7 +74,7 @@ class PaddleToTensorRTConverter:
         self.trt_output_value_map = {}
 
     def find_graph_inputs_outputs(self, group_op):
-        operations = list(group_op.blocks())[0].ops
+        operations = next(iter(group_op.blocks())).ops
         all_values = {}
         output_values = {}
 
@@ -96,6 +96,7 @@ class PaddleToTensorRTConverter:
             for operand in op.operands():
                 source = operand.source()
                 if not source.initialized():
+                    _logger.warning(f"Skipping uninitialized source: {source}")
                     continue
                 else:
                     all_values[source.id] = source
@@ -111,7 +112,7 @@ class PaddleToTensorRTConverter:
 
     def convert_subgraph_to_trt(self, program, group_op):
         _logger.info(f"start process {group_op}")
-        operations = list(group_op.blocks())[0].ops
+        operations = next(iter(group_op.blocks())).ops
         input_values, output_values = self.find_graph_inputs_outputs(group_op)
         builder = trt.Builder(trt.Logger(trt.Logger.ERROR))
         network = builder.create_network(
@@ -190,11 +191,14 @@ class PaddleToTensorRTConverter:
             for operand in op.operands():
                 source = operand.source()
                 if not source.initialized():
+                    _logger.warning(f"Skipping uninitialized source: {source}")
                     continue
                 else:
                     define_op_name = source.get_defining_op().name()
                     if define_op_name == "builtin.combine":
-                        for combined_operand in source.get_defining_op().operands():
+                        for (
+                            combined_operand
+                        ) in source.get_defining_op().operands():
                             combined_source = combined_operand.source()
                             combined_source_id = combined_source.id
                             if combined_source_id in value_to_trt_tensor:
@@ -323,8 +327,12 @@ class PaddleToTensorRTConverter:
             outs = converter_func(network, paddle_op, inputs)
         if isinstance(outs, tuple):
             return outs
+        elif isinstance(outs, trt.ITensor):
+            return (outs,)
         else:
-            return tuple(outs)
+            raise TypeError(
+                f"Expected outputs to be a tuple or ITensor, but got {type(outs)}"
+            )
 
     def convert_program_to_trt(self):
         for op in self.program.global_block().ops:

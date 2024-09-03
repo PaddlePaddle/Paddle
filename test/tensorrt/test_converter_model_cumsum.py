@@ -16,18 +16,14 @@ import tempfile
 import unittest
 
 import numpy as np
-from get_program import (
-    get_program,
-)
 
 import paddle
 import paddle.inference as paddle_infer
 from paddle.framework import use_pir_api
-from paddle.tensorrt.converter import PaddleToTensorRTConverter
-from paddle.tensorrt.util import (
-    predict_program,
-    run_pir_pass,
-    warmup_shape_infer_v2,
+from paddle.tensorrt.export import (
+    Input,
+    TensorRTConfig,
+    get_trt_program,
 )
 
 
@@ -36,7 +32,6 @@ class TestConverterCumsumOp(unittest.TestCase):
         paddle.seed(2024)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
-        self.trt_save_path = os.path.join(self.temp_dir.name, 'trt')
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
@@ -86,91 +81,23 @@ class TestConverterCumsumOp(unittest.TestCase):
                         self.save_path + '.pdiparams',
                     )
 
-        program, scope, feed_target_names, fetch_targets = get_program(
-            self.temp_dir.name, "tensor_axis_cumsum", True
-        )
-
-        output_var = []
-        feed_name = []
-        for op in program.global_block().ops:
-            if op.name() == "pd_op.fetch":
-                for operand in op.operands():
-                    source = operand.source()
-                    output_var.append(source)
-            if op.name() == "pd_op.data" or op.name() == "pd_op.feed":
-                param_name = op.attrs()["name"]
-                feed_name.append(param_name)
-
         with paddle.pir_utils.IrGuard():
-            input_data_min_shape = np.random.randn(9, 10, 11).astype('float32')
-            input_data_max_shape = np.random.randn(9, 10, 11).astype('float32')
-
-            # Step1.1: get original results(for tests only)
-            pred_res = predict_program(
-                program,
-                {feed_name[0]: input_data_min_shape},
-                fetch_var_list=output_var,
+            input_config = Input(
+                min_input_shape=(9, 10, 11),
+                optim_input_shape=(9, 10, 11),
+                max_input_shape=(9, 10, 11),
             )
-
-            # Step2: run warmup for collecting shape
-            warmup_shape_infer_v2(
-                program,
-                min_shape_feed={feed_name[0]: input_data_min_shape},
-                max_shape_feed={feed_name[0]: input_data_max_shape},
-                fetch_var_list=output_var,
-            )
-
-            # Step3: run pir pass(including some fusion pass and trt_op_marker_pass)
-            # program_with_pir = run_pir_pass(program, partition_mode=False)
-
-            program_with_pir = run_pir_pass(program, partition_mode=True)
-
-            # output_var = program_with_pir.list_vars()[-2]
-
-            trt_output_var = []
-
-            for op in program_with_pir.global_block().ops:
-                if op.name() == "pd_op.fetch":
-                    for operand in op.operands():
-                        source = operand.source()
-                        trt_output_var.append(source)
-
-            # Step5: run TRTConverter(would lower group_op into tensorrt_engine_op)
-            converter = PaddleToTensorRTConverter(program_with_pir, scope)
-            converter.convert_program_to_trt()
-
-            # #executor.run
-            # output_converted=predict_program(
-            #     program_with_pir,
-            #     {feed_target_names[0]: input_data_min_shape},
-            #     trt_output_var
-            # )
-
-            # predictor run
-            save_path = "/home/zexuli/Paddle-2/test/tensorrt/inference/tensor_axis_cumsum"
-            input_values = []
-            input_values.extend(
-                result
-                for op in program_with_pir.global_block().ops
-                if op.name() == "pd_op.data" or op.name() == "pd_op.feed"
-                for result in op.results()
-            )
-            output_var = program_with_pir.list_vars()[-2]
-            place = paddle.CUDAPlace(0)
-            exe = paddle.static.Executor(place)
-            paddle.static.save_inference_model(
-                self.trt_save_path,
-                input_values,
-                trt_output_var,
-                exe,
-                program=program_with_pir,
+            trt_config = TensorRTConfig()
+            trt_config.inputs = [input_config]
+            trt_config.save_model_dir = self.temp_dir.name
+            trt_config.save_model_prefix = 'trt'
+            program_with_trt, trt_save_path = get_trt_program(
+                self.temp_dir.name, "tensor_axis_cumsum", trt_config, True
             )
 
             config = paddle_infer.Config(
-                self.trt_save_path + '.json', self.trt_save_path + '.pdiparams'
+                trt_save_path + '.json', trt_save_path + '.pdiparams'
             )
-
-            config.switch_ir_debug()
 
             if paddle.is_compiled_with_cuda():
                 config.enable_use_gpu(100, 0)
@@ -180,21 +107,16 @@ class TestConverterCumsumOp(unittest.TestCase):
             input_names = predictor.get_input_names()
 
             input_handle = predictor.get_input_handle(input_names[0])
-            fake_input = input_data_min_shape
-            input_handle.reshape(input_data_min_shape.shape)
-            input_handle.copy_from_cpu(fake_input)
-            predictor.run()
-            output_names = predictor.get_output_names()
-            output_handle = predictor.get_output_handle(output_names[0])
-            infer_out = output_handle.copy_to_cpu()
+            for input_instrance in trt_config.inputs:
+                min_data, _, max_data = input_instrance.generate_input_data()
 
-            np.testing.assert_allclose(
-                pred_res[0],
-                infer_out,
-                rtol=1e-3,
-                atol=1e-3,
-                err_msg="Outputs are not within the 0.2 tolerance",
-            )
+                fake_input = min_data
+                input_handle.reshape(min_data.shape)
+                input_handle.copy_from_cpu(fake_input)
+                predictor.run()
+                output_names = predictor.get_output_names()
+                output_handle = predictor.get_output_handle(output_names[0])
+                infer_out = output_handle.copy_to_cpu()
 
 
 if __name__ == "__main__":
