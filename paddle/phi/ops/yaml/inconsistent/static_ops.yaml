@@ -847,7 +847,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : soft_relu
-  args : (Tensor x, float threshold = 20.0f)
+  args : (Tensor x, float threshold = 40.0f)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -916,7 +916,7 @@
 - op : unique
   args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)
   output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
-  optional : counts
+  optional : indices, counts
   infer_meta :
     func : UniqueRawInferMeta
   kernel :

@@ -127,6 +127,10 @@ UniqueFlattendCUDATensor(const Context& context,
   DenseTensor in_hat;
   phi::Copy(context, in, context.GetPlace(), false, &in_hat);
   auto* in_data_hat = context.template Alloc<InT>(&in_hat);
+  DenseTensor tmp;
+  if (!indices) {
+    indices = &tmp;
+  }
 
   indices->Resize(common::make_ddim({num_input}));
   auto* indices_data = context.template Alloc<IndexT>(indices);
@@ -260,6 +264,11 @@ UniqueFlattendCUDATensor(const Context& context,
   const InT* in_data = in_resize.data<InT>();
   auto equal = BinaryEqual<InT>(1, in_data);
   auto not_equal = BinaryNotEqual<InT>(1, in_data);
+
+  DenseTensor tmp;
+  if (!indices) {
+    indices = &tmp;
+  }
 
   indices->Resize(common::make_ddim({num_input}));
   auto* indices_data = context.template Alloc<IndexT>(indices);
@@ -456,6 +465,11 @@ static void UniqueDimsCUDATensor(const Context& context,
   int64_t col = in_trans.dims()[1];
   int64_t row = in_trans.dims()[0];
   const InT* in_trans_data = in_trans.data<InT>();
+
+  DenseTensor tmp;
+  if (!indices) {
+    indices = &tmp;
+  }
 
   indices->Resize(common::make_ddim({row}));
   auto* sorted_indices_data = context.template Alloc<IndexT>(indices);
