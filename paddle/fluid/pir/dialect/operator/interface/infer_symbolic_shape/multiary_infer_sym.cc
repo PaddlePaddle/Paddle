@@ -1788,7 +1788,7 @@ bool MaskedMultiheadAttentionOpInferSymbolicShape(
 
   if (op->operand_source(7) != nullptr) {
     const symbol::ShapeOrDataDimExprs &beam_cache_offset_shape_or_data =
-        infer_context->GetShapeOrDataForValue(op->operand_source(7));
+        infer_context->GetShapeOrDataForValue(op->operand_source(6));
     const std::vector<symbol::DimExpr> &beam_cache_offset_shape =
         beam_cache_offset_shape_or_data.shape();
     infer_context->SetShapeOrDataForValue(
