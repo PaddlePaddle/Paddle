@@ -174,6 +174,11 @@ static void ComputeUniqueConsecutiveDims(const Context& context,
                                          DenseTensor* inverse,
                                          DenseTensor* counts) {
   // 1. inverse indices: 'inverse'
+  DenseTensor tmp;
+  if (!inverse) {
+    inverse = &tmp;
+  }
+
   inverse->Resize(common::make_ddim({row}));
   auto inverse_data = context.template Alloc<IndexT>(inverse);
   DenseTensor inv_loc;
@@ -214,11 +219,15 @@ static void ComputeUniqueConsecutiveDims(const Context& context,
   sorted_indices->Resize(common::make_ddim({num_out}));
 
   // 3. counts: 'counts'
-  counts->Resize(common::make_ddim({num_out}));
-  auto count_data = context.template Alloc<IndexT>(counts);
-  thrust::fill(thrust::device, count_data, count_data + row, 0);
-  thrust::adjacent_difference(
-      thrust::device, range_data_ptr + 1, range_data_ptr + row + 1, count_data);
+  if (return_counts) {
+    counts->Resize(common::make_ddim({num_out}));
+    auto count_data = context.template Alloc<IndexT>(counts);
+    thrust::fill(thrust::device, count_data, count_data + row, 0);
+    thrust::adjacent_difference(thrust::device,
+                                range_data_ptr + 1,
+                                range_data_ptr + row + 1,
+                                count_data);
+  }
 }
 
 // Binary function 'equal_to'

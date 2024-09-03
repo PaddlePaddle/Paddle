@@ -79,55 +79,48 @@ static std::vector<int64_t> GetAttnMaskDims(const DenseTensor* attn_mask) {
 }
 
 static std::vector<int64_t> GetAttnSparseMaskDims(
-    const DenseTensor* attn_mask_start_row_indices,
-    int64_t attn_mask_start_row,
-    int max_seqlen_q) {
-  std::vector<int64_t> mask_dim_3d;
-  if (attn_mask_start_row_indices) {
-    const auto& dtype = attn_mask_start_row_indices->dtype();
-    const auto& origin_dims = attn_mask_start_row_indices->dims();
+    const DenseTensor* startend_row_indices, int max_seqlen_q) {
+  std::vector<int64_t> mask_dim_4d;
+  if (startend_row_indices) {
+    const auto& dtype = startend_row_indices->dtype();
+    const auto& origin_dims = startend_row_indices->dims();
     auto rank = origin_dims.size();
-    PADDLE_ENFORCE_EQ(dtype,
-                      DataType::INT32,
-                      common::errors::InvalidArgument(
-                          "dtype of attn_mask_start_row_indices must be "
-                          "int32, but recieved %d",
-                          dtype));
+    PADDLE_ENFORCE_EQ(
+        dtype,
+        DataType::INT32,
+        common::errors::InvalidArgument("dtype of startend_row_indices must be "
+                                        "int32, but recieved %d",
+                                        dtype));
     PADDLE_ENFORCE_GE(
         rank,
-        3,
+        4,
         common::errors::InvalidArgument(
-            "The number of dimenstions of attn_mask_start_row_indices is "
-            "expected to be greater or "
-            "equal to 3, but recieved %d. The shape of "
-            "attn_mask_start_row_indices is [%s]",
+            "The number of dimenstions of startend_row_indices is expected to "
+            "be greater or equal to 4, but recieved %d. The shape of "
+            "startend_row_indices is [%s]",
             rank,
             origin_dims));
-    PADDLE_ENFORCE_EQ(origin_dims[rank - 1],
+    PADDLE_ENFORCE_EQ(origin_dims[rank - 2],
                       max_seqlen_q,
                       common::errors::InvalidArgument(
                           "The sparse_mask_dims[%d] of "
                           "attn_mask_start_row_indices is expected to be "
                           "equal to %d, but recieved %d.",
-                          rank - 1,
+                          rank - 2,
                           max_seqlen_q,
                           origin_dims[2]));
-    PADDLE_ENFORCE_GE(attn_mask_start_row,
-                      0,
-                      common::errors::InvalidArgument(
-                          "attn_mask_start_row should be greater or equal than "
-                          "0 when using attn_mask_start_row_indices, "
-                          "but recieved %d.",
-                          attn_mask_start_row));
 
     int64_t first_dim = 1;
-    for (int i = 0; i < rank - 2; i++) {
+    for (int i = 0; i < rank - 3; i++) {
       first_dim *= origin_dims[i];
     }
-    mask_dim_3d = {first_dim, origin_dims[rank - 2], origin_dims[rank - 1]};
+    mask_dim_4d = {first_dim,
+                   origin_dims[rank - 3],
+                   origin_dims[rank - 2],
+                   origin_dims[rank - 1]};
   }
 
-  return mask_dim_3d;
+  return mask_dim_4d;
 }
 
 struct FlashAttnParamsBase {
@@ -152,23 +145,20 @@ struct FlashAttnParamsBase {
   std::vector<int64_t> mask_dims;
   const DenseTensor* attn_mask_tensor;
 
-  const DenseTensor* attn_mask_start_row_indices_tensor;
-  std::vector<int64_t> attn_mask_start_row_indices_dims;
-  int attn_mask_start_row;
+  const DenseTensor* startend_row_indices;
+  std::vector<int64_t> startend_row_indices_dims;
 
-  FlashAttnParamsBase(
-      const int _batch_size,
-      const int64_t _max_seqlen_q,
-      const int64_t _max_seqlen_k,
-      const int _num_heads,
-      const int _num_heads_k,
-      const int _head_size,
-      const float _scale,
-      const bool _causal,
-      const int _attn_mask_start_row,
-      const DataType q_dtype,
-      const paddle::optional<DenseTensor>& attn_mask,
-      const paddle::optional<DenseTensor>& attn_mask_start_row_indices)
+  FlashAttnParamsBase(const int _batch_size,
+                      const int64_t _max_seqlen_q,
+                      const int64_t _max_seqlen_k,
+                      const int _num_heads,
+                      const int _num_heads_k,
+                      const int _head_size,
+                      const float _scale,
+                      const bool _causal,
+                      const DataType q_dtype,
+                      const paddle::optional<DenseTensor>& attn_mask,
+                      const paddle::optional<DenseTensor>& startend_row_indices)
       : batch_size(_batch_size),
         max_seqlen_q(_max_seqlen_q),
         max_seqlen_k(_max_seqlen_k),
@@ -177,10 +167,8 @@ struct FlashAttnParamsBase {
         head_size(_head_size),
         softmax_scale(_scale),
         causal(_causal),
-        attn_mask_start_row(_attn_mask_start_row),
         attn_mask_tensor(attn_mask.get_ptr()),
-        attn_mask_start_row_indices_tensor(
-            attn_mask_start_row_indices.get_ptr()) {
+        startend_row_indices(startend_row_indices.get_ptr()) {
     is_bf16 = q_dtype == DataType::BFLOAT16;
 
     auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
@@ -205,14 +193,18 @@ struct FlashAttnParamsBase {
       mask_dims = GetAttnMaskDims(attn_mask_tensor);
     }
 
-    attn_mask_start_row_indices_dims = GetAttnSparseMaskDims(
-        attn_mask_start_row_indices_tensor, attn_mask_start_row, max_seqlen_q);
+    startend_row_indices_dims = GetAttnSparseMaskDims(
+        startend_row_indices ? startend_row_indices.get_ptr() : nullptr,
+        max_seqlen_q);
 
-    PADDLE_ENFORCE_NE(attn_mask_tensor && attn_mask_start_row_indices,
-                      true,
-                      common::errors::InvalidArgument(
-                          "attn_mask and attn_mask_start_row_indices cannot be "
-                          "set at same time."));
+    if (startend_row_indices.is_initialized()) {
+      PADDLE_ENFORCE_EQ(
+          attn_mask_tensor,
+          nullptr,
+          common::errors::InvalidArgument(
+              "attn_mask and attn_mask_start_row_indices cannot be "
+              "set at same time."));
+    }
   }
 };
 
@@ -242,10 +234,9 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
       const DataType q_dtype,
       const bool is_test,
       const std::string& rng_name,
-      const int _attn_mask_start_row,
       const paddle::optional<DenseTensor>& fixed_seed_offset,
       const paddle::optional<DenseTensor>& attn_mask,
-      const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+      const paddle::optional<DenseTensor>& startend_row_indices,
       DenseTensor* _softmax,
       DenseTensor* _softmax_lse,
       DenseTensor* _seed_offset)
@@ -257,10 +248,9 @@ struct FlashAttnFwdParamsV2 : public FlashAttnParamsBase {
                             _head_size,
                             _scale,
                             _causal,
-                            _attn_mask_start_row,
                             q_dtype,
                             attn_mask,
-                            attn_mask_start_row_indices),
+                            startend_row_indices),
         dropout(_dropout),
         return_softmax(_return_softmax),
         softmax(_softmax),
@@ -318,10 +308,9 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
       const float _dropout,
       const float _scale,
       const bool _causal,
-      const int _attn_mask_start_row,
       const DataType q_dtype,
       const paddle::optional<DenseTensor>& attn_mask,
-      const paddle::optional<DenseTensor>& attn_mask_start_row_indices,
+      const paddle::optional<DenseTensor>& startend_row_indices,
       const int64_t* seed_offset_data)
       : FlashAttnParamsBase(_batch_size,
                             _max_seqlen_q,
@@ -331,10 +320,9 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
                             _head_size,
                             _scale,
                             _causal,
-                            _attn_mask_start_row,
                             q_dtype,
                             attn_mask,
-                            attn_mask_start_row_indices),
+                            startend_row_indices),
         dropout(_dropout) {
     seed = static_cast<uint64_t>(seed_offset_data[0]);
     offset = static_cast<uint64_t>(seed_offset_data[1]);

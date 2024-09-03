@@ -376,6 +376,32 @@ void BindCudaStream(py::module *m_ptr) {
 
           )DOC")
       .def(
+          "elapsed_time",
+          [](phi::CudaEvent &self, phi::CudaEvent &end_event) {
+            return self.ElapsedTime(&end_event);
+          },
+          R"DOC(
+          Returns the time elapsed in milliseconds after the event was
+          recorded and before the end_event was recorded.
+
+          Returns: A int which indicates the elapsed time.
+
+          Examples:
+              .. code-block:: python
+
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+
+                  >>> paddle.set_device('gpu')
+                  >>> e1 = paddle.device.Event(enable_timing=True)
+                  >>> e1.record()
+
+                  >>> e2 = paddle.device.Event(enable_timing=True)
+                  >>> e2.record()
+                  >>> e1.elapsed_time(e2)
+
+          )DOC")
+      .def(
           "synchronize",
           [](phi::CudaEvent &self) { self.Synchronize(); },
           R"DOC(

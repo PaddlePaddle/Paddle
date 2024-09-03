@@ -34,7 +34,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
     const paddle::framework::AttributeMap& attr_map) {
   phi::RecordEvent dygraph_entrance_record_event(
       "fused_bias_dropout_residual_layer_norm dygraph",
-      paddle::platform::TracerEventType::Operator,
+      phi::TracerEventType::Operator,
       1);
   VLOG(3) << "Running Eager Forward Op: fused_bias_dropout_residual_layer_norm";
   // Dygraph Forward Pass
@@ -164,7 +164,7 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
   {
     phi::RecordEvent node_creation_record_event(
         "fused_bias_dropout_residual_layer_norm node_creation",
-        paddle::platform::TracerEventType::OperatorInner,
+        phi::TracerEventType::OperatorInner,
         1);
     egr::AutogradMeta* p_autograd_BiasDropoutResidualOut =
         egr::EagerUtils::autograd_meta(&BiasDropoutResidualOut);
