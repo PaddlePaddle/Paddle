@@ -31,11 +31,11 @@ void do_sum(std::vector<std::future<void>>* fs,
 }
 
 TEST(ThreadPool, ConcurrentInit) {
-  framework::ThreadPool* pool;
+  phi::ThreadPool* pool;
   int n = 50;
   std::vector<std::thread> threads;
   for (int i = 0; i < n; ++i) {
-    std::thread t([&pool]() { pool = framework::ThreadPool::GetInstance(); });
+    std::thread t([&pool]() { pool = phi::ThreadPool::GetInstance(); });
     threads.push_back(std::move(t));
   }
   for (auto& t : threads) {
