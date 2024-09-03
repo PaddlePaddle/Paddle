@@ -691,7 +691,7 @@ class FusedCommBuffer:
             begin = shard_size * self._comm_group.rank
             end = begin + shard_size
             reduce_scattered = (
-                self.grad_storage._slice(begin, end).clone()
+                paddle.empty_like(self.grad_storage._slice(begin, end))
                 if self._free_grads_in_comm
                 else self.grad_storage._slice(begin, end)
             )
