@@ -258,6 +258,6 @@ std::vector<symbol::DimExpr> GetSymShapeForInputValue(
 }
 
 bool IsFakeValue(const pir::Value &value) {
-  return value.impl() == nullptr || !value.type();
+  return value.impl() == nullptr || value.type() == pir::Type();
 }
 }  // namespace paddle::dialect::details
