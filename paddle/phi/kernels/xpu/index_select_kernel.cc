@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_select_kernel.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -21,25 +22,20 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSelectKernel(const Context& ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& index,
-                       int dim,
-                       DenseTensor* output) {
+void IndexSelectKernel(const Context& ctx, const DenseTensor& x,
+                       const DenseTensor& index, int dim, DenseTensor* output) {
   auto input_dim = x.dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();
   const auto& index_type = index.dtype();
 
   bool index_type_match =
       index_type == phi::DataType::INT32 || index_type == phi::DataType::INT64;
-  PADDLE_ENFORCE_EQ(index_type_match,
-                    true,
-                    common::errors::InvalidArgument(
-                        "Input(Index) holds the wrong type, it holds %s, but "
-                        "desires to be %s or %s",
-                        index_type,
-                        phi::DataType::INT32,
-                        phi::DataType::INT64));
+  PADDLE_ENFORCE_EQ(
+      index_type_match, true,
+      common::errors::InvalidArgument(
+          "Input(Index) holds the wrong type, it holds %s, but "
+          "desires to be %s or %s",
+          index_type, phi::DataType::INT32, phi::DataType::INT64));
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* in_data = x.data<T>();
   std::vector<int> in_shape = common::vectorize<int>(input_dim);
@@ -58,25 +54,18 @@ void IndexSelectKernel(const Context& ctx,
     } else if (index_type == phi::DataType::INT32) {
       cpu_idx_data = reinterpret_cast<const void*>(index.data<int>());
     }
-    memory_utils::Copy(ctx.GetPlace(),
-                       reinterpret_cast<void*>(index_ptr),
-                       CPUPlace(),
-                       cpu_idx_data,
-                       byte_times * index.numel());
+    memory_utils::Copy(ctx.GetPlace(), reinterpret_cast<void*>(index_ptr),
+                       CPUPlace(), cpu_idx_data, byte_times * index.numel());
   }
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data =
         index_ptr ? reinterpret_cast<const int64_t*>(index_ptr)
                   : index.template data<int64_t>();
-    r = xpu::gather<XPUType, int64_t>(ctx.x_context(),
-                                      reinterpret_cast<const XPUType*>(in_data),
-                                      reinterpret_cast<const int64_t*>
-                                      (index_data),
-                                      reinterpret_cast<XPUType*>
-                                      (output->data<T>()),
-                                      in_shape,
-                                      index_len,
-                                      dim);
+    r = xpu::gather<XPUType, int64_t>(
+        ctx.x_context(), reinterpret_cast<const XPUType*>(in_data),
+        reinterpret_cast<const int64_t*>(index_data),
+        reinterpret_cast<XPUType*>(output->data<T>()), in_shape, index_len,
+        dim);
   } else {
     const int* index_data = index_ptr ? reinterpret_cast<const int*>(index_ptr)
                                       : index.template data<int>();
@@ -84,21 +73,12 @@ void IndexSelectKernel(const Context& ctx,
                                   reinterpret_cast<const XPUType*>(in_data),
                                   reinterpret_cast<const int*>(index_data),
                                   reinterpret_cast<XPUType*>(output->data<T>()),
-                                  in_shape,
-                                  index_len,
-                                  dim);
+                                  in_shape, index_len, dim);
   }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather");
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(index_select,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::IndexSelectKernel,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(index_select, XPU, ALL_LAYOUT, phi::IndexSelectKernel, float,
+                   phi::dtype::float16, phi::dtype::bfloat16, int, int64_t) {}
