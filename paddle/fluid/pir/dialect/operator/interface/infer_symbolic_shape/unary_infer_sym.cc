@@ -673,12 +673,51 @@ bool ChannelShuffleOpInferSymbolicShape(
   return true;
 }
 
-// bool CropOpInferSymbolicShape(pir::Operation *op,
-//                               pir::InferSymbolicShapeContext *infer_context)
-//                               {
-//   // pass
-//   return true;
-// }
+bool CropOpInferSymbolicShape(pir::Operation *op,
+                              pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  auto shape = paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
+  auto offsets =
+      paddle::dialect::details::GetVectorAttr<int64_t>(op, "offsets");
+
+  PADDLE_ENFORCE_EQ(shape.size(),
+                    x_shape.size(),
+                    errors::InvalidArgument(
+                        "The number of elements (%d) of attribute 'shape' for "
+                        "CropTensor must be equal to the number of "
+                        "dimensions (%d) of the input.",
+                        shape.size(),
+                        x_shape.size()));
+
+  PADDLE_ENFORCE_EQ(
+      offsets.size(),
+      x_shape.size(),
+      errors::InvalidArgument(
+          "The number of elements (%d) of attribute 'offsets' for "
+          "CropTensor must be equal to the number of "
+          "dimensions (%d) of the input.",
+          offsets.size(),
+          x_shape.size()));
+
+  std::vector<symbol::DimExpr> out_dims(shape.size());
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (shape[i] > 0) {
+      out_dims[i] = symbol::DimExpr(shape[i]);
+    } else {
+      if (shape[i] == -1 && offsets[i] != -1 && x_shape[i] != -1) {
+        out_dims[i] = x_shape[i] - symbol::DimExpr(offsets[i]);
+      }
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
+  return true;
+}
 
 bool DecodeJpegOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {

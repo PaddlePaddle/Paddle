@@ -1110,6 +1110,7 @@
     func : crop
     data_type : x
   backward : crop_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : cross
   args : (Tensor x, Tensor y, int axis = 9)
