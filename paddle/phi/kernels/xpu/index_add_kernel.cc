@@ -20,19 +20,23 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexAddKernel(const Context& ctx, const DenseTensor& x,
-                    const DenseTensor& index, const DenseTensor& add_value,
-                    int axis, DenseTensor* out) {
+void IndexAddKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& index,
+                    const DenseTensor& add_value,
+                    int axis,
+                    DenseTensor* out) {
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match, true,
-      errors::InvalidArgument(
-          "Input(Index) holds the wrong type, it holds %s, but "
-          "desires to be %s or %s",
-          DataTypeToString(index_type), DataTypeToString(DataType::INT32),
-          DataTypeToString(DataType::INT64)));
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    errors::InvalidArgument(
+                        "Input(Index) holds the wrong type, it holds %s, but "
+                        "desires to be %s or %s",
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
 
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dim = x.dims();
@@ -44,25 +48,39 @@ void IndexAddKernel(const Context& ctx, const DenseTensor& x,
   int r = 0;
   if (index_type == phi::DataType::INT64) {
     r = xpu::index_add<XPUType, int64_t>(
-        ctx.x_context(), reinterpret_cast<const XPUType*>(x.data<T>()),
+        ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<const XPUType*>(add_value.data<T>()),
         reinterpret_cast<XPUType*>(out->data<T>()),
-        reinterpret_cast<const int64_t*>(index.data<int64_t>()), input_vector,
-        index.numel(), dim, (XPUType)(1.0f));
+        reinterpret_cast<const int64_t*>(index.data<int64_t>()),
+        input_vector,
+        index.numel(),
+        dim,
+        (XPUType)(1.0f));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_add");
   } else if (index_type == phi::DataType::INT32) {
     r = xpu::index_add<XPUType, int>(
-        ctx.x_context(), reinterpret_cast<const XPUType*>(x.data<T>()),
+        ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<const XPUType*>(add_value.data<T>()),
         reinterpret_cast<XPUType*>(out->data<T>()),
-        reinterpret_cast<const int*>(index.data<int>()), input_vector,
-        index.numel(), dim, (XPUType)(1.0f));
+        reinterpret_cast<const int*>(index.data<int>()),
+        input_vector,
+        index.numel(),
+        dim,
+        (XPUType)(1.0f));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_add");
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(index_add, XPU, ALL_LAYOUT, phi::IndexAddKernel,
-                   phi::dtype::float16, phi::dtype::bfloat16, float, int64_t,
+PD_REGISTER_KERNEL(index_add,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::IndexAddKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   float,
+                   int64_t,
                    int32_t) {}
