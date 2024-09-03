@@ -85,18 +85,17 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
   std::string primitive = "CacheWrite";
   std::ostringstream os;
 
-  PADDLE_ENFORCE_EQ(!block.As<ScheduleBlockRealize>(),
-                    false,
-                    ::common::errors::InvalidArgument(
-                        "Expr param(block) is not a ScheduleBlockRealize!\n"));
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ScheduleBlockRealize>(),
+      ::common::errors::InvalidArgument(
+          "Expr param(block) is not a ScheduleBlockRealize!\n"));
 
   auto root = GetRootBlock(block);
   ChangeBodyToBlock::Change(&root);
   Expr write_expr = GetNthAccessExpr(block, write_buffer_index, true);
 
-  PADDLE_ENFORCE_EQ(
-      !write_expr.As<ir::Store>(),
-      false,
+  PADDLE_ENFORCE_NOT_NULL(
+      write_expr.As<ir::Store>(),
       ::common::errors::InvalidArgument("The write_expr is not a Store!\n"));
 
   Tensor write_tensor = write_expr.As<ir::Store>()->tensor.as_tensor_ref();
@@ -128,8 +127,8 @@ Expr DyScheduleImpl::CacheWrite(const Expr& block,
       true);
 
   PADDLE_ENFORCE_EQ(
-      !info.write_tensor->buffer.defined(),
-      false,
+      info.write_tensor->buffer.defined(),
+      true,
       ::common::errors::InvalidArgument(
           "The buffer of current write_tensor is not defined!\n"));
 
@@ -162,8 +161,8 @@ void DyScheduleImpl::SyncThreads(const Expr& ir_node, bool after_node) {
   std::ostringstream os;
 
   PADDLE_ENFORCE_EQ(
-      !(ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>()),
-      false,
+      (ir_node.As<ScheduleBlockRealize>() || ir_node.As<ir::For>()),
+      true,
       ::common::errors::InvalidArgument(
           "Expr param(ir_node) should be a ScheduleBlockRealize or For!\n"));
 
@@ -181,10 +180,10 @@ void DyScheduleImpl::SetBuffer(Expr& block,  // NOLINT
   CINN_IR_SCHEDULE_BEGIN();
   std::string primitive = "SetBuffer";
   std::ostringstream os;
-  PADDLE_ENFORCE_EQ(!block.As<ir::ScheduleBlockRealize>(),
-                    false,
-                    ::common::errors::InvalidArgument(
-                        "Expr param(block) is not a ScheduleBlockRealize!\n"));
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ir::ScheduleBlockRealize>(),
+      ::common::errors::InvalidArgument(
+          "Expr param(block) is not a ScheduleBlockRealize!\n"));
 
   auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
