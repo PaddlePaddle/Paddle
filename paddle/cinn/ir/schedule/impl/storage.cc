@@ -43,18 +43,17 @@ Expr DyScheduleImpl::CacheRead(const Expr& block,
   std::string primitive = "CacheRead";
   std::ostringstream os;
 
-  PADDLE_ENFORCE_EQ(!block.As<ScheduleBlockRealize>(),
-                    false,
-                    ::common::errors::InvalidArgument(
-                        "Expr param(block) is not a ScheduleBlockRealize!\n"));
+  PADDLE_ENFORCE_NOT_NULL(
+      block.As<ScheduleBlockRealize>(),
+      ::common::errors::InvalidArgument(
+          "Expr param(block) is not a ScheduleBlockRealize!\n"));
 
   auto root = GetRootBlock(block);
   ChangeBodyToBlock::Change(&root);
   Expr read_expr = GetNthAccessExpr(block, read_buffer_index, false);
 
-  PADDLE_ENFORCE_EQ(
-      !read_expr.As<ir::Load>(),
-      false,
+  PADDLE_ENFORCE_NOT_NULL(
+      read_expr.As<ir::Load>(),
       ::common::errors::InvalidArgument("The read_expr is not a Load!\n"));
 
   auto tensor_indices = read_expr.As<ir::Load>()->indices;

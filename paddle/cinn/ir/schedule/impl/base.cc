@@ -51,7 +51,7 @@ void DyScheduleImpl::MergeExprs() {
                     ::common::error::InvalidArgument(
                         "Expr[0] of module_expr should have only one stmt!\n"));
   PADDLE_ENFORCE_NOT_NULL(
-      !exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>(),
+      exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>(),
       ::common::error
       : InvalidArgument("Expr[0] of module_expr should be Block with only one "
                         "stmt which is a ScheduleBlockRealize!\n"));
