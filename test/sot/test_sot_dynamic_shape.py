@@ -62,7 +62,7 @@ class CustomConv(paddle.nn.Conv2D):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=False)
     def forward(self, x):
         return paddle.nn.functional.conv2d(
             x,
