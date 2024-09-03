@@ -112,7 +112,6 @@ class SToRReshardFunction(ReshardFunction):
             )
             return new_value
         else:
-            # raise NotImplementedError("unbalanced split is not implemented")
             # find the last one
             need_padding = (
                 paddle.distributed.get_rank()
@@ -159,6 +158,36 @@ class SToRReshardFunction(ReshardFunction):
                 concat_value = paddle._C_ops.concat(
                     [src_value, padding_tensor], split_axis
                 )
+                # set concat dist_attr
+                axis_dist_attr = (
+                    paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+                        src_dist_attr.process_mesh, [-1], {}
+                    )
+                )
+                concat_value.get_defining_op().dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        src_dist_attr.process_mesh,
+                        [
+                            paddle.base.libpaddle.pir.create_array_attribute(
+                                [src_dist_attr, dst_dist_attr]
+                            ),
+                            axis_dist_attr,
+                        ],
+                        [src_dist_attr],
+                    )
+                )
+                # set concat_value type
+                concat_global_shape = list(src_value.shape)
+                concat_global_shape[split_axis] = (
+                    avg_size_on_split_axis * num_of_process
+                )
+                concat_type = paddle.pir.create_shaped_type(
+                    src_value.type(), concat_global_shape
+                )
+                concat_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+                    concat_type, src_dist_attr
+                )
+                concat_value.set_type(concat_type)
 
                 new_value = self.reshard_s_to_r_with_padding(
                     concat_value,
