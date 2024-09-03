@@ -150,6 +150,20 @@ def transpose_converter(network, paddle_op, inputs):
     transposed_tensor.second_transpose = perm
     return transposed_tensor
 
+@converter_registry.register("pd_op.mean", trt_version="8.x")
+def mean_converter(network, paddle_op, inputs):
+    input_tensor = inputs[0]
+    keep_dim = paddle_op.attrs().get("keepdim")
+    dim = paddle_op.attrs().get("axis")
+
+    mean_layer = network.add_reduce(
+            input_tensor,
+            trt.ReduceOperation.AVG,
+            axes=get_axes_for_reduce_op(dim, network.has_implicit_batch_dimension),
+            keep_dims=keep_dim,
+        )
+    return mean_layer
+
 
 @converter_registry.register("pd_op.full", trt_version="8.x")
 def full_converter(network, paddle_op, inputs):

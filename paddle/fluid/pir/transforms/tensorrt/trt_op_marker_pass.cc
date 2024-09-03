@@ -1088,6 +1088,52 @@ class RemainderOpPattern
     return true;
   }
 };
+
+class MeanOpPattern
+    : public pir::OpRewritePattern<paddle::dialect::MeanOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MeanOp>::OpRewritePattern;
+  bool MatchAndRewrite(paddle::dialect::MeanOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
+      return false;
+    }
+
+    if (!op->HasAttribute("axis")) {
+      VLOG(3) << "The axis attribute does not exist";
+      return false;
+    }
+
+    if (!op->HasAttribute("keepdim")) {
+      VLOG(3) << "The keepdim attribute does not exist";
+      return false;
+    }
+
+    paddle::dialect::IntArrayAttribute dim_attr = op->attribute<paddle::dialect::IntArrayAttribute>("axis");
+    pir::Value input = op.operand_source(0);
+    auto input_shape_type = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
+    auto input_shape = input_shape_type.dims();
+
+    std::vector<int64_t> dims = dim_attr.data().GetData();
+    for (auto x : dims) {
+      if (x == 0 || (x + input_shape.size() == 0)) return false;
+    }
+    
+    auto input_type = pir::GetDataTypeFromValue(input);
+    if (!input_type.isa<pir::Int32Type>() &&
+        !input_type.isa<pir::Int64Type>()  &&
+        !input_type.isa<pir::Float32Type>() &&
+        !input_type.isa<pir::Float64Type>()) {
+      VLOG(3) << "The type of input is not int32 or int64 or float32 or float64";
+      return false;
+    }
+
+    op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    return true;
+  }
+};
+
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
   TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
@@ -1152,6 +1198,7 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
     ps.Add(std::make_unique<MinimumOpPattern>(context));
     ps.Add(std::make_unique<MaximumOpPattern>(context));
     ps.Add(std::make_unique<FloorDivideOpPattern>(context));
+    ps.Add(std::make_unique<MeanOpPattern>(context));
     ps.Add(std::make_unique<RemainderOpPattern>(context));
     return ps;
   }
