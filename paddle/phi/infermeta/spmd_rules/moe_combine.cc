@@ -39,12 +39,20 @@ SpmdInfo MoECombineFwdInferSpmd(const DistMetaTensor& x,
   EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(combine_weights);
   EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(scatter_index);
 
-  PADDLE_ENFORCE_EQ(x_shape.size(), 2, "x should be a 2-D tensor");
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    2,
+                    "x should be a 2-D tensor, but got x_shape.size() == %d",
+                    x_shape.size());
   PADDLE_ENFORCE_EQ(combine_weights_shape.size(),
                     2,
-                    "combine_weights should be a 2-D tensor");
-  PADDLE_ENFORCE_EQ(
-      scatter_index_shape.size(), 2, "scatter_index should be a 2-D tensor");
+                    "combine_weights should be a 2-D tensor, but got "
+                    "combine_weights_shape.size() == %d",
+                    combine_weights.size());
+  PADDLE_ENFORCE_EQ(scatter_index_shape.size(),
+                    2,
+                    "scatter_index should be a 2-D tensor, but got "
+                    "scatter_index_shape.size() == %d",
+                    scatter_index.size());
 
   // Step 1: infer sharding
   std::string x_axes = "eh", combine_weights_axes = "sk",
@@ -119,13 +127,25 @@ SpmdInfo MoECombineBwdInferSpmd(const DistMetaTensor& x,
   EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(scatter_index);
   EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(grad_y);
 
-  PADDLE_ENFORCE_EQ(x_shape.size(), 2, "x should be a 2-D tensor");
+  PADDLE_ENFORCE_EQ(x_shape.size(),
+                    2,
+                    "x should be a 2-D tensor, but got x_shape.size() == %d",
+                    x_shape.size());
   PADDLE_ENFORCE_EQ(combine_weights_shape.size(),
                     2,
-                    "combine_weights should be a 2-D tensor");
+                    "combine_weights should be a 2-D tensor, but got "
+                    "combine_weights_shape.size() == %d",
+                    combine_weights_shape.size());
+  PADDLE_ENFORCE_EQ(scatter_index_shape.size(),
+                    2,
+                    "scatter_index should be a 2-D tensor, but got "
+                    "scatter_index_shape.size() == %d",
+                    scatter_index_shape.size());
   PADDLE_ENFORCE_EQ(
-      scatter_index_shape.size(), 2, "scatter_index should be a 2-D tensor");
-  PADDLE_ENFORCE_EQ(grad_y_shape.size(), 2, "grad_y should be a 2-D tensor");
+      grad_y_shape.size(),
+      2,
+      "grad_y should be a 2-D tensor, but got grad_y_shape.size() == %d",
+      grad_y_shape.size());
 
   // step 1 : infer sharding
   std::string x_axes = "eh", combine_weights_axes = "sk",

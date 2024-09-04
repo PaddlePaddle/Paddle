@@ -103,11 +103,11 @@ TEST(MoECombineSPMDRule, test_moe_combine_spmd) {
   // backward: x, combine_weights, scatter_index, grad_y -> grad_x,
   // grad_combine_weights
 
-  int s = 1024, h = 512, e = 8, k = 2;
+  int s = 1024, h = 512, k = 2;
   const std::vector<std::vector<int64_t>>& forward_input_shapes = {
-      {s * e, h}, {s, k}, {s, k}};
+      {s * k, h}, {s, k}, {s, k}};
   const std::vector<std::vector<int64_t>>& backward_input_shapes = {
-      {s * e, h}, {s, k}, {s, k}, {s, h}};
+      {s * k, h}, {s, k}, {s, k}, {s, h}};
 
   // replicated case, forward
   std::vector<std::vector<int64_t>> input_dims_mappings = {
