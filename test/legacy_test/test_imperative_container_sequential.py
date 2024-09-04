@@ -72,6 +72,19 @@ class TestImperativeContainerSequential(unittest.TestCase):
             model1.insert(0, Linear(10, 10))
             res1 = model1(data)
 
+            # test insert type error(non nn.Layer type)
+            model2 = paddle.nn.Sequential()
+            self.assertRaises(AssertionError, model2.insert, 0, 1)
+            # test insert index error(1)
+            model2 = paddle.nn.Sequential()
+            self.assertRaises(IndexError, model2.insert, 1, Linear(10, 10))
+            # test insert at negtive index -1
+            model2 = paddle.nn.Sequential()
+            model2.insert(0, Linear(10, 10))
+            self.assertEqual(len(model2), 1)
+
+            # res1 = model1(data)
+
             # test extend
             model1.extend([Linear(2, 3), Linear(3, 4)])
             res1 = model1(data)
