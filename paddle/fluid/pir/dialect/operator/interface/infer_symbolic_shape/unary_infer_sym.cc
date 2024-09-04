@@ -3738,32 +3738,27 @@ bool WeightQuantizeOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
 
-  PADDLE_ENFORCE_EQ(x_shape.size(),
-                    2UL,
-                    platform::errors::InvalidArgument(
-                        "The x tensor of quant op must be 2D, but got[%d]",
-                        x_dims.size()));
   PADDLE_ENFORCE_EQ(
-      x_shape[0] % 64,
-      0,
+      x_shape.size(),
+      2UL,
       platform::errors::InvalidArgument(
-          "The first dimension of input must be divisible by 64."));
-  PADDLE_ENFORCE_EQ(
-      x_shape[1] % 16,
-      0,
-      platform::errors::InvalidArgument(
-          "The second dimension of input must be divisible by 16."));
+          "The x tensor of quant op must be 2D, but got[%d]",
+          x_dims.size()));
 
   int group_size = op->attribute<pir::Int32Attribute>("group_size").data();
   std::string algo = op->attribute<pir::StrAttribute>("algo").AsString();
 
   std::vector<symbol::DimExpr> out_shape = {x_shape[1], x_shape[0]};
-  infer_context->SetShapeOrDataForValue(op->result(0),
-                                         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
 
   std::vector<symbol::DimExpr> scale_shape = {x_shape[1]};
-  infer_context->SetShapeOrDataForValue(op->result(1),
-                                         symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(scale_shape)});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(scale_shape)});
 
   return true;
 }
