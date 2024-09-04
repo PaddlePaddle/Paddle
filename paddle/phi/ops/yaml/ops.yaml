@@ -5139,7 +5139,7 @@
     func : weight_quantize
     data_type : x
     backend : x
-  # interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : weighted_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
