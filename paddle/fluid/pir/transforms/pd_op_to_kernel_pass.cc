@@ -1122,8 +1122,7 @@ phi::KernelKey GetKernelKey(
     const std::string& kernel_fn_str,
     const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
     OpYamlInfoParser* op_info_parser = nullptr) {
-  if (op->isa<FeedOp>() || op->isa<FetchOp>() || op->isa<ArrayLengthOp>() ||
-      op->isa<CreateArrayOp>()) {
+  if (op->isa<FeedOp>() || op->isa<FetchOp>() || op->isa<ArrayLengthOp>()) {
     // NOTE, for now feed op don't need a kernel, so the data type from Op
     // Result the next op use base program datatype
     VLOG(6) << "FeedOp doesn't need a kernel. Backend: CPU, DataLayout: ANY";
@@ -1140,8 +1139,8 @@ phi::KernelKey GetKernelKey(
                   .dtype();
     } else {
       PADDLE_THROW(
-          "FeedOp, FetchOp, ArrayLengthOp, CreateArrayOp can only output a "
-          "densetensor or dense tensor array.");
+          "FeedOp, FetchOp, ArrayLengthOp can only output a densetensor or "
+          "dense tensor array.");
     }
     return {phi::Backend::CPU, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
   }
@@ -1179,6 +1178,17 @@ phi::KernelKey GetKernelKey(
         op->attributes().at("dtype").dyn_cast<DataTypeAttribute>().data();
 
     return {backend, phi::DataLayout::ANY, dtype};
+  }
+
+  if (op->isa<CreateArrayOp>()) {
+    VLOG(6) << "CreateArrayOp doesn't need a kernel";
+    auto backend = paddle::experimental::ParseBackend(place);
+    auto dtype = op->result(0)
+                     .type()
+                     .dyn_cast<paddle::dialect::DenseTensorArrayType>()
+                     .dtype();
+
+    return {backend, phi::DataLayout::ANY, TransToPhiDataType(dtype)};
   }
 
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;

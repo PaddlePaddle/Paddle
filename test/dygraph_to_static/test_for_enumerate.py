@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_ast_only,
     test_legacy_and_pir,
     test_legacy_and_pt_and_pir,
 )
@@ -579,23 +578,6 @@ class TestForZip(Dy2StTestBase):
             ),
             model_path,
         )
-
-
-def tensor_array_dtype():
-    l = []
-    for i in range(paddle.to_tensor(3)):
-        l.append(i)
-    return l[0]
-
-
-class TestTensorArrayDtype(Dy2StTestBase):
-    @test_ast_only
-    @test_legacy_and_pt_and_pir
-    def test_tensor_array_dtype(self):
-        fn = tensor_array_dtype
-        static_fn = paddle.jit.to_static(fn)
-        st_out = static_fn()
-        self.assertEqual(st_out.dtype, paddle.int64)
 
 
 if __name__ == '__main__':
