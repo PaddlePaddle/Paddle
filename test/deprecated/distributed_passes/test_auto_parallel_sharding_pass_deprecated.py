@@ -16,13 +16,13 @@ import random
 import unittest
 
 import numpy as np
-from auto_parallel_pass_test_base import AutoParallelPassTestBase
+from auto_parallel_pass_test_base_deprecated import AutoParallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
 
 
-class TestAMPPass(AutoParallelPassTestBase):
+class TestShardingPass(AutoParallelPassTestBase):
     def init(self):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
@@ -36,17 +36,18 @@ class TestAMPPass(AutoParallelPassTestBase):
 
     def apply_passes(self):
         dist_strategy = fleet.DistributedStrategy()
-        dist_strategy.amp = True
-        dist_strategy.amp_configs = {
-            "custom_white_list": [
-                'softmax',
-                'layer_norm',
-                'gelu',
-            ],
-            "custom_black_list": ['c_softmax_with_cross_entropy'],
-            "init_loss_scaling": 32768,
-            "use_dynamic_loss_scaling": True,
+        dist_strategy.semi_auto = True
+        dist_strategy.sharding = True
+        dist_strategy.sharding_configs = {
+            "sharding_degree": 2,
+            "stage": 2,
         }
+        fleet.init(is_collective=True, strategy=dist_strategy)
+
+    def apply_no_passes(self):
+        dist_strategy = fleet.DistributedStrategy()
+        dist_strategy.pipeline = False
+        dist_strategy.recompute = False
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
 
@@ -57,7 +58,7 @@ class TestAMPPass(AutoParallelPassTestBase):
 
     def get_model(self, place, batch_size, sequence_len, vocab_size):
         return self.get_gpt_model(
-            "mp", place, batch_size, sequence_len, vocab_size
+            'dp', place, batch_size, sequence_len, vocab_size
         )
 
 
