@@ -671,6 +671,7 @@
   kernel :
     func : box_coder
   optional : prior_box_var
+  interfaces: paddle::dialect::InferSymbolicShapeInterface
 
 - op : broadcast_tensors
   args: (Tensor[] input)
@@ -4935,6 +4936,7 @@
   kernel :
     func : unfold
   backward : unfold_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : uniform
   args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
