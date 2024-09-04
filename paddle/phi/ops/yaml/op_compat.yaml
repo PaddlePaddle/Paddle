@@ -1425,10 +1425,10 @@
 - op : fused_adam_(fused_adam)
   inputs :
     {params : Params, grads : Grads, learning_rate : LearningRate, moments1 : Moments1,
-     moments2 : Moments2, beta1_pows : Beta1Pows, beta2_pows : Beta2Pows, master_params : MasterParams,
+     moments2 : Moments2, moments2 : Moments2Max, beta1_pows : Beta1Pows, beta2_pows : Beta2Pows, master_params : MasterParams,
      skip_update : SkipUpdate}
   outputs :
-    {params_out : ParamsOut, moments1_out : Moments1Out, moments2_out : Moments2Out,
+    {params_out : ParamsOut, moments1_out : Moments1Out, moments2_out : Moments2Out, moments2_max_out : Moments2MaxOut,
      beta1_pows_out : Beta1PowsOut, beta2_pows_out : Beta2PowsOut, master_params_out : MasterParamsOut}
 
 - op : fused_attention
@@ -2500,9 +2500,9 @@
 
 - op : merged_adam_
   inputs :
-    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam}
+    {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, moment2: Moment2Max, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam}
   outputs :
-    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
+    {param_out: ParamOut, moment1_out: Moment1Out, moment2_out: Moment2Out, moment2_out: Moment2MaxOut, beta1_pow_out: Beta1PowOut, beta2_pow_out: Beta2PowOut, master_param_out: MasterParamOut}
   scalar :
     beta1 :
       data_type : float

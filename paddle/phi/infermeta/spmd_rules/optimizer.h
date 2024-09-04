@@ -47,6 +47,7 @@ SpmdInfo AdamwInferSpmdDynamic(const DistMetaTensor& param,
                                const DistMetaTensor& learning_rate,
                                const DistMetaTensor& moment1,
                                const DistMetaTensor& moment2,
+                               const DistMetaTensor& moment2_max,
                                const DistMetaTensor& beta1_pow,
                                const DistMetaTensor& beta2_pow,
                                const DistMetaTensor& master_param,
@@ -60,7 +61,8 @@ SpmdInfo AdamwInferSpmdDynamic(const DistMetaTensor& param,
                                bool lazy_mode,
                                int64_t min_row_size_to_use_multithread,
                                bool multi_precision,
-                               bool use_global_beta_pow);
+                               bool use_global_beta_pow,
+                               bool amsgrad);
 
 SpmdInfo SgdInferSpmd(const DistMetaTensor& param,
                       const DistMetaTensor& learning_rate,

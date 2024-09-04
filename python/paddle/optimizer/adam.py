@@ -117,6 +117,7 @@ class Adam(Optimizer):
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
         use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
+        amsgrad (bool, optional): Whether to use the AMSGrad of this algorithm. Default is false.
         name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -263,6 +264,7 @@ class Adam(Optimizer):
             self._master_weight_dict = self._create_multi_tensor_dict()
             self._master_weight_dict['FP32_LODTensor'] = None
 
+        # whether to use AMSGrad
         self._amsgrad = amsgrad
 
     def _add_moments_pows(self, p):
@@ -373,7 +375,7 @@ class Adam(Optimizer):
                 self._get_auxiliary_var('found_inf') if in_pir_mode() else None
             )
 
-            _ = _C_ops.adam_(
+            _, _, _, _, _, _, _ = _C_ops.adam_(
                 param_and_grad[0],
                 param_and_grad[1],
                 lr,
@@ -425,6 +427,7 @@ class Adam(Optimizer):
                 "lazy_mode": self._lazy_mode,
                 "min_row_size_to_use_multithread": 1000,
                 "multi_precision": find_master,
+                "amsgrad": self._amsgrad,
             }
 
             if isinstance(self._beta1, Variable):
@@ -778,7 +781,7 @@ class Adam(Optimizer):
                             found_inf, (core.eager.Tensor, pir.Value)
                         ):
                             self._set_auxiliary_var('found_inf', False)
-                        _, _, _, _, _, _ = _C_ops.merged_adam_(
+                        _, _, _, _, _, _, _ = _C_ops.merged_adam_(
                             self._param_dict[key][param_group_idx],
                             grad_dict[key],
                             lr_dict[key],
@@ -802,7 +805,7 @@ class Adam(Optimizer):
                         if master_weight is not None
                         else None
                     )
-                    _, _, _, _, _, _ = _C_ops.merged_adam_(
+                    _, _, _, _, _, _, _ = _C_ops.merged_adam_(
                         self._param_dict[key][param_group_idx],
                         grad_dict[key],
                         lr_dict[key],
@@ -854,6 +857,7 @@ class Adam(Optimizer):
                         "epsilon": self._epsilon,
                         "beta1": _beta1,
                         "beta2": _beta2,
+                        "amsgrad": self._amsgrad,
                     }
                     if find_master:
                         inputs["MasterParam"] = self._master_weight_dict[key][

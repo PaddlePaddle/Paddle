@@ -309,9 +309,12 @@ struct AdamWTuple {
                             const T*,
                             const T*,
                             const T*,
+                            const T*,
                             T*,
                             T*,
-                            T*);
+                            T*,
+                            T*,
+                            bool);
 };
 
 typedef struct matmul_attr_s {

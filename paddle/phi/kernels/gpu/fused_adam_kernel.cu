@@ -268,6 +268,7 @@ void FusedAdamKernel(
     const DenseTensor& learning_rate,
     const std::vector<const DenseTensor*>& moments1,
     const std::vector<const DenseTensor*>& moments2,
+    const std::vector<const DenseTensor*>& moments2_max,
     const std::vector<const DenseTensor*>& beta1_pows,
     const std::vector<const DenseTensor*>& beta2_pows,
     const paddle::optional<std::vector<const DenseTensor*>>& master_params,
@@ -280,9 +281,11 @@ void FusedAdamKernel(
     bool use_adamw,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad,
     std::vector<DenseTensor*> params_out,
     std::vector<DenseTensor*> moments1_out,
     std::vector<DenseTensor*> moments2_out,
+    std::vector<DenseTensor*> moments2_max_out,
     std::vector<DenseTensor*> beta1_pows_out,
     std::vector<DenseTensor*> beta2_pows_out,
     std::vector<DenseTensor*> master_params_out) {
@@ -316,6 +319,7 @@ void FusedAdamKernel(
   CopyTensorIfDifferent(dev_ctx, params, params_out);
   CopyTensorIfDifferent(dev_ctx, moments1, moments1_out);
   CopyTensorIfDifferent(dev_ctx, moments2, moments2_out);
+  CopyTensorIfDifferent(dev_ctx, moments2_max, moments2_max_out);
   CopyTensorIfDifferent(dev_ctx, beta1_pows, beta1_pows_out, true);
   CopyTensorIfDifferent(dev_ctx, beta2_pows, beta2_pows_out, true);
   if (master_params) {
@@ -351,6 +355,7 @@ void FusedAdamKernel(
   input_vector.push_back(params_out);
   input_vector.push_back(moments1_out);
   input_vector.push_back(moments2_out);
+  input_vector.push_back(moments2_max_out);
   if (multi_precision) {
     input_vector.push_back(master_params_out);
   }
@@ -438,6 +443,8 @@ void FusedAdamKernel(
   int vec_size = GetVecSizeFromTensors<T>(params_out);
   vec_size = GetVecSizeFromTensors<MPDType>(moments1_out, vec_size);
   vec_size = GetVecSizeFromTensors<MPDType>(moments2_out, vec_size);
+  // TODO(megemini):
+  vec_size = GetVecSizeFromTensors<MPDType>(moments2_max_out, vec_size);
   if (master_params) {
     vec_size = GetVecSizeFromTensors<MPDType>(master_params_out, vec_size);
   }

@@ -25,6 +25,7 @@ KernelSignature FusedAdamOpArgumentMapping(
                                                 "LearningRate",
                                                 "Moments1",
                                                 "Moments2",
+                                                "Moments2Max",
                                                 "Beta1Pows",
                                                 "Beta2Pows",
                                                 "MasterParams",
@@ -32,6 +33,7 @@ KernelSignature FusedAdamOpArgumentMapping(
   paddle::small_vector<const char*> out_names = {"ParamsOut",
                                                  "Moments1Out",
                                                  "Moments2Out",
+                                                 "Moments2MaxOut",
                                                  "Beta1PowsOut",
                                                  "Beta2PowsOut",
                                                  "MasterParamsOut"};
@@ -42,7 +44,8 @@ KernelSignature FusedAdamOpArgumentMapping(
                                                   "weight_decay",
                                                   "use_adamw",
                                                   "multi_precision",
-                                                  "use_global_beta_pow"};
+                                                  "use_global_beta_pow",
+                                                  "amsgrad"};
 
   return KernelSignature("fused_adam",
                          std::move(in_names),

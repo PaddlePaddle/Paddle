@@ -24,6 +24,7 @@ KernelSignature AdamOpArgumentMapping(const ArgumentMappingContext& ctx) {
                                                 "LearningRate",
                                                 "Moment1",
                                                 "Moment2",
+                                                "Moment2Max",
                                                 "Beta1Pow",
                                                 "Beta2Pow",
                                                 "MasterParam",
@@ -31,6 +32,7 @@ KernelSignature AdamOpArgumentMapping(const ArgumentMappingContext& ctx) {
   paddle::small_vector<const char*> out_names = {"ParamOut",
                                                  "Moment1Out",
                                                  "Moment2Out",
+                                                 "Moment2MaxOut",
                                                  "Beta1PowOut",
                                                  "Beta2PowOut",
                                                  "MasterParamOut"};
@@ -46,6 +48,7 @@ KernelSignature AdamOpArgumentMapping(const ArgumentMappingContext& ctx) {
   attr_names.emplace_back("min_row_size_to_use_multithread");
   attr_names.emplace_back("multi_precision");
   attr_names.emplace_back("use_global_beta_pow");
+  attr_names.emplace_back("amsgrad");
 
   if (ctx.IsSelectedRowsInput("Grad")) {
     return KernelSignature("adam_dense_param_sparse_grad",

@@ -43,13 +43,16 @@ __global__ void AdamWKernelREG(MT beta1,
                                MT* moment1_out,
                                const MT* moment2,
                                MT* moment2_out,
+                               const MT* moment2_max,
+                               MT* moment2_max_out,
                                const MT* lr_,
                                const TG* grad,
                                const T* param,
                                T* param_out,
                                const MT* master_param,
                                MT* master_param_out,
-                               int64_t ndim) {
+                               int64_t ndim,
+                               bool amsgrad) {
   MT lr = *lr_ * lr_ratio;
   MT beta1_pow = beta1_pow_;
   MT beta2_pow = beta2_pow_;
@@ -61,13 +64,23 @@ __global__ void AdamWKernelREG(MT beta1,
     MT g = static_cast<MT>(grad[id]);
     MT mom1 = static_cast<MT>(moment1[id]);
     MT mom2 = static_cast<MT>(moment2[id]);
+    MT mom2_max = static_cast<MT>(moment2_max[id]);
 
     p *= (static_cast<MT>(1.0) - lr * coeff);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
-    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    MT mom2_max_;
+    if (amsgrad) {
+      mom2_max_ = std::max(mom2, mom2_max);
+      moment2_max_out[id] = mom2_max_;
+    } else {
+      mom2_max_ = mom2;
+    }
+
+    MT denom =
+        (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
 
     p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
@@ -92,13 +105,16 @@ __global__ void AdamWKernelMEM(MT beta1,
                                MT* moment1_out,
                                const MT* moment2,
                                MT* moment2_out,
+                               const MT* moment2_max,
+                               MT* moment2_max_out,
                                const MT* lr_,
                                const TG* grad,
                                const T* param,
                                T* param_out,
                                const MT* master_param,
                                MT* master_param_out,
-                               int64_t ndim) {
+                               int64_t ndim,
+                               bool amsgrad) {
   MT lr = *lr_ * lr_ratio;
   MT beta1_pow = *beta1_pow_;
   MT beta2_pow = *beta2_pow_;
@@ -110,13 +126,23 @@ __global__ void AdamWKernelMEM(MT beta1,
     MT g = static_cast<MT>(grad[id]);
     MT mom1 = static_cast<MT>(moment1[id]);
     MT mom2 = static_cast<MT>(moment2[id]);
+    MT mom2_max = static_cast<MT>(moment2_max[id]);
 
     p *= (static_cast<MT>(1.0) - lr * coeff);
 
     mom1 = beta1 * mom1 + (static_cast<MT>(1.0) - beta1) * g;
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
 
-    MT denom = (sqrt(mom2) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
+    MT mom2_max_;
+    if (amsgrad) {
+      mom2_max_ = std::max(mom2, mom2_max);
+      moment2_max_out[id] = mom2_max_;
+    } else {
+      mom2_max_ = mom2;
+    }
+
+    MT denom =
+        (sqrt(mom2_max_) / sqrt(static_cast<MT>(1.0) - beta2_pow)) + epsilon;
 
     p += (mom1 / denom) * (-(lr / (static_cast<MT>(1.0) - beta1_pow)));
 
@@ -147,6 +173,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       const DenseTensor& learning_rate,
                       const DenseTensor& moment1,
                       const DenseTensor& moment2,
+                      const DenseTensor& moment2_max,
                       const DenseTensor& beta1_pow,
                       const DenseTensor& beta2_pow,
                       const paddle::optional<DenseTensor>& master_param,
@@ -161,9 +188,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       int64_t min_row_size_to_use_multithread,
                       bool multi_precision,
                       bool use_global_beta_pow,
+                      bool amsgrad,
                       DenseTensor* param_out,
                       DenseTensor* moment1_out,
                       DenseTensor* moment2_out,
+                      DenseTensor* moment2_max_out,
                       DenseTensor* beta1_pow_out,
                       DenseTensor* beta2_pow_out,
                       DenseTensor* master_param_outs) {
@@ -196,6 +225,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
+    phi::Copy(dev_ctx, moment2_max, dev_ctx.GetPlace(), false, moment2_max_out);
     if (!use_global_beta_pow) {
       phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
       phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
@@ -254,13 +284,16 @@ void AdamwDenseKernel(const Context& dev_ctx,
               dev_ctx.template Alloc<MPDType>(moment1_out),
               moment2.data<MPDType>(),
               dev_ctx.template Alloc<MPDType>(moment2_out),
+              moment2_max.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment2_max_out),
               learning_rate.data<MPDType>(),
               grad.data<float>(),
               param.data<T>(),
               dev_ctx.template Alloc<T>(param_out),
               master_in_data,
               master_out_data,
-              param.numel());
+              param.numel(),
+              amsgrad);
     } else {
       AdamWKernelREG<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
@@ -274,13 +307,16 @@ void AdamwDenseKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<MPDType>(moment1_out),
           moment2.data<MPDType>(),
           dev_ctx.template Alloc<MPDType>(moment2_out),
+          moment2_max.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment2_max_out),
           learning_rate.data<MPDType>(),
           grad.data<T>(),
           param.data<T>(),
           dev_ctx.template Alloc<T>(param_out),
           master_in_data,
           master_out_data,
-          param.numel());
+          param.numel(),
+          amsgrad);
     }
     if (!use_global_beta_pow) {
       // Cpu update
@@ -304,13 +340,16 @@ void AdamwDenseKernel(const Context& dev_ctx,
               dev_ctx.template Alloc<MPDType>(moment1_out),
               moment2.data<MPDType>(),
               dev_ctx.template Alloc<MPDType>(moment2_out),
+              moment2_max.data<MPDType>(),
+              dev_ctx.template Alloc<MPDType>(moment2_max_out),
               learning_rate.data<MPDType>(),
               grad.data<float>(),
               param.data<T>(),
               dev_ctx.template Alloc<T>(param_out),
               master_in_data,
               master_out_data,
-              param.numel());
+              param.numel(),
+              amsgrad);
     } else {
       AdamWKernelMEM<T, T, MPDType><<<blocks, threads, 0, dev_ctx.stream()>>>(
           beta1_,
@@ -324,13 +363,16 @@ void AdamwDenseKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<MPDType>(moment1_out),
           moment2.data<MPDType>(),
           dev_ctx.template Alloc<MPDType>(moment2_out),
+          moment2_max.data<MPDType>(),
+          dev_ctx.template Alloc<MPDType>(moment2_max_out),
           learning_rate.data<MPDType>(),
           grad.data<T>(),
           param.data<T>(),
           dev_ctx.template Alloc<T>(param_out),
           master_in_data,
           master_out_data,
-          param.numel());
+          param.numel(),
+          amsgrad);
     }
     if (!use_global_beta_pow) {
       // Update with gpu

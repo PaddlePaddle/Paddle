@@ -333,6 +333,7 @@ void AdamwInferMeta(const MetaTensor& param,
                     const MetaTensor& learning_rate,
                     const MetaTensor& moment1,
                     const MetaTensor& moment2,
+                    const MetaTensor& moment2_max,
                     const MetaTensor& beta1_pow,
                     const MetaTensor& beta2_pow,
                     const MetaTensor& master_param,
@@ -347,9 +348,11 @@ void AdamwInferMeta(const MetaTensor& param,
                     int64_t min_row_size_to_use_multithread,
                     bool multi_precision,
                     bool use_global_beta_pow,
+                    bool amsgrad,
                     MetaTensor* param_out,
                     MetaTensor* moment1_out,
                     MetaTensor* moment2_out,
+                    MetaTensor* moment2_max_out,
                     MetaTensor* beta1_pow_out,
                     MetaTensor* beta2_pow_out,
                     MetaTensor* master_param_outs) {
@@ -358,7 +361,7 @@ void AdamwInferMeta(const MetaTensor& param,
                 learning_rate,
                 moment1,
                 moment2,
-                moment2,  // TODO(megemini)
+                moment2_max,
                 beta1_pow,
                 beta2_pow,
                 master_param,
@@ -370,11 +373,11 @@ void AdamwInferMeta(const MetaTensor& param,
                 min_row_size_to_use_multithread,
                 multi_precision,
                 use_global_beta_pow,
-                false,  // TODO(megemini)
+                amsgrad,
                 param_out,
                 moment1_out,
                 moment2_out,
-                moment2_out,  // TODO(megemini)
+                moment2_max_out,
                 beta1_pow_out,
                 beta2_pow_out,
                 master_param_outs);
@@ -3862,6 +3865,7 @@ void MergedAdamInferMeta(
     const std::vector<const MetaTensor*>& learning_rate,
     const std::vector<const MetaTensor*>& moment1,
     const std::vector<const MetaTensor*>& moment2,
+    const std::vector<const MetaTensor*>& moment2_max,
     const std::vector<const MetaTensor*>& beta1_pow,
     const std::vector<const MetaTensor*>& beta2_pow,
     const paddle::optional<std::vector<const MetaTensor*>>& master_param,
@@ -3870,9 +3874,11 @@ void MergedAdamInferMeta(
     const Scalar& epsilon,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad,
     std::vector<MetaTensor*> param_out,
     std::vector<MetaTensor*> moment1_out,
     std::vector<MetaTensor*> moment2_out,
+    std::vector<MetaTensor*> moment2_max_out,
     std::vector<MetaTensor*> beta1_pow_out,
     std::vector<MetaTensor*> beta2_pow_out,
     std::vector<MetaTensor*> master_param_out) {}
@@ -5790,6 +5796,7 @@ void FusedAdamInferMeta(
     const MetaTensor& learning_rate,
     const std::vector<const MetaTensor*>& moments1,
     const std::vector<const MetaTensor*>& moments2,
+    const std::vector<const MetaTensor*>& moments2_max,
     const std::vector<const MetaTensor*>& beta1_pows,
     const std::vector<const MetaTensor*>& beta2_pows,
     const paddle::optional<std::vector<const MetaTensor*>>& master_params,
@@ -5802,9 +5809,11 @@ void FusedAdamInferMeta(
     bool use_adamw,
     bool multi_precision,
     bool use_global_beta_pow,
+    bool amsgrad,
     std::vector<MetaTensor*> params_out,
     std::vector<MetaTensor*> moments1_out,
     std::vector<MetaTensor*> moments2_out,
+    std::vector<MetaTensor*> moments2_max_out,
     std::vector<MetaTensor*> beta1_pows_out,
     std::vector<MetaTensor*> beta2_pows_out,
     std::vector<MetaTensor*> master_params_out) {
@@ -5816,6 +5825,8 @@ void FusedAdamInferMeta(
     moments1_out[i]->set_dtype(moments1[i]->dtype());
     moments2_out[i]->set_dims(moments2[i]->dims());
     moments2_out[i]->set_dtype(moments2[i]->dtype());
+    moments2_max_out[i]->set_dims(moments2_max[i]->dims());
+    moments2_max_out[i]->set_dtype(moments2_max[i]->dtype());
     beta1_pows_out[i]->set_dims(beta1_pows[i]->dims());
     beta1_pows_out[i]->set_dtype(beta1_pows[i]->dtype());
     beta2_pows_out[i]->set_dims(beta2_pows[i]->dims());

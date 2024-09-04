@@ -35,6 +35,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       const DenseTensor& learning_rate,
                       const DenseTensor& moment1,
                       const DenseTensor& moment2,
+                      const DenseTensor& moment2_max,
                       const DenseTensor& beta1_pow,
                       const DenseTensor& beta2_pow,
                       const paddle::optional<DenseTensor>& master_param,
@@ -49,9 +50,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
                       int64_t min_row_size_to_use_multithread,
                       bool multi_precision,
                       bool use_global_beta_pow,
+                      bool amsgrad,
                       DenseTensor* param_out,
                       DenseTensor* moment1_out,
                       DenseTensor* moment2_out,
+                      DenseTensor* moment2_max_out,
                       DenseTensor* beta1_pow_out,
                       DenseTensor* beta2_pow_out,
                       DenseTensor* master_param_outs) {
@@ -75,7 +78,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
                                 learning_rate,
                                 moment1,
                                 moment2,
-                                moment2,  // TODO(megemini)
+                                moment2_max,
                                 beta1_pow,
                                 beta2_pow,
                                 master_param,
@@ -87,11 +90,11 @@ void AdamwDenseKernel(const Context& dev_ctx,
                                 min_row_size_to_use_multithread,
                                 multi_precision,
                                 use_global_beta_pow,
-                                false,  // TODO(megemini)
+                                amsgrad,
                                 param_out,
                                 moment1_out,
                                 moment2_out,
-                                moment2_out,  // TODO(megemini)
+                                moment2_max_out,
                                 beta1_pow_out,
                                 beta2_pow_out,
                                 master_param_outs);
@@ -133,6 +136,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
   T* param_out_ptr = dev_ctx.template Alloc<T>(param_out);
   T* mom1_out_ptr = dev_ctx.template Alloc<T>(moment1_out);
   T* mom2_out_ptr = dev_ctx.template Alloc<T>(moment2_out);
+  T* mom2_max_out_ptr = dev_ctx.template Alloc<T>(moment2_max_out);
   T old_lr = learning_rate.data<T>()[0];
   T learning_rate_ =
       learning_rate.data<T>()[0] * (sqrt(1 - beta2_p) / (1 - beta1_p));
@@ -143,6 +147,7 @@ void AdamwDenseKernel(const Context& dev_ctx,
   const T* param_ptr = param.data<T>();
   const T* mom1_ptr = moment1.data<T>();
   const T* mom2_ptr = moment2.data<T>();
+  const T* mom2_max_ptr = moment2_max.data<T>();
   const T* grad_ptr = grad.data<T>();
 
   auto adamw =
@@ -167,10 +172,13 @@ void AdamwDenseKernel(const Context& dev_ctx,
           grad_ptr + offset,
           mom1_ptr + offset,
           mom2_ptr + offset,
+          mom2_max_ptr + offset,
           param_ptr + offset,
           mom1_out_ptr + offset,
           mom2_out_ptr + offset,
-          param_out_ptr + offset);
+          mom2_max_out_ptr + offset,
+          param_out_ptr + offset,
+          amsgrad);
   }
 
   if (numel % chunk_size != 0) {
@@ -187,10 +195,13 @@ void AdamwDenseKernel(const Context& dev_ctx,
           grad_ptr + offset,
           mom1_ptr + offset,
           mom2_ptr + offset,
+          mom2_max_ptr + offset,
           param_ptr + offset,
           mom1_out_ptr + offset,
           mom2_out_ptr + offset,
-          param_out_ptr + offset);
+          mom2_max_out_ptr + offset,
+          param_out_ptr + offset,
+          amsgrad);
   }
 }
 
