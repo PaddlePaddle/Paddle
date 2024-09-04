@@ -678,7 +678,6 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
-
   std::vector<symbol::DimExpr> offsets;
   std::vector<symbol::DimExpr> shape;
   std::vector<symbol::DimExpr> out_dims;
@@ -695,7 +694,6 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
                   : offsets_shape_or_data.shape();
   }
 
-
   if (op->HasAttribute("shape")) {
     std::vector<int64_t> shape =
         paddle::dialect::details::GetVectorAttr<int64_t>(op, "shape");
@@ -707,38 +705,36 @@ bool CropOpInferSymbolicShape(pir::Operation *op,
                                              : shape_or_data.shape();
   }
 
-   PADDLE_ENFORCE_EQ(
-        shape.size(),
-        x_shape.size(),
-        phi::errors::InvalidArgument(
-            "The number of elements (%d) of attribute 'shape' for "
-            "CropTensor must be equal to the number of "
-            "dimensions (%d) of the input.",
-            shape.size(),
-            x_shape.size()));
-    PADDLE_ENFORCE_EQ(
-        offsets.size(),
-        x_shape.size(),
-        phi::errors::InvalidArgument(
-            "The number of elements (%d) of attribute 'offsets' for "
-            "CropTensor must be equal to the number of "
-            "dimensions (%d) of the input.",
-            offsets.size(),
-            x_shape.size()));
+  PADDLE_ENFORCE_EQ(shape.size(),
+                    x_shape.size(),
+                    phi::errors::InvalidArgument(
+                        "The number of elements (%d) of attribute 'shape' for "
+                        "CropTensor must be equal to the number of "
+                        "dimensions (%d) of the input.",
+                        shape.size(),
+                        x_shape.size()));
+  PADDLE_ENFORCE_EQ(
+      offsets.size(),
+      x_shape.size(),
+      phi::errors::InvalidArgument(
+          "The number of elements (%d) of attribute 'offsets' for "
+          "CropTensor must be equal to the number of "
+          "dimensions (%d) of the input.",
+          offsets.size(),
+          x_shape.size()));
 
   for (size_t i = 0; i < shape.size(); ++i) {
     if (shape[i].isa<int64_t>()) {
-      if (shape[i].Get<int64_t>() == -1){
+      if (shape[i].Get<int64_t>() == -1) {
         out_dims.push_back(symbol::DimExpr(x_shape[i] - offsets[i]));
-      }
-      else{
+      } else {
         out_dims.push_back(symbol::DimExpr(shape[i]));
       }
-    }else {
+    } else {
       out_dims.push_back(shape[i]);
     }
   }
-  
+
   infer_context->SetShapeOrDataForValue(
       op->result(0),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
