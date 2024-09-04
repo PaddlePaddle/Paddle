@@ -2602,7 +2602,9 @@ bool PyramidHashOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(drop_pos)});
-  infer_context->SetShapeOrDataForValue(op->result(2), x_shape);
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
 
   return true;
 }
