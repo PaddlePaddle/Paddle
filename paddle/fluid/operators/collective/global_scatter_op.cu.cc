@@ -81,7 +81,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     int nranks = 0;
 
     auto& dev_ctx = ctx.cuda_device_context();
-    auto dev_ctx2 = *static_cast<phi::GPUContext*>(
+    auto& dev_ctx2 = *static_cast<phi::GPUContext*>(
         phi::DeviceContextPool::Instance().Get(dev_ctx.GetPlace()));
 
     comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
