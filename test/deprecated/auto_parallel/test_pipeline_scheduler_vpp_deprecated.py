@@ -23,7 +23,7 @@ class TestVPPPass(unittest.TestCase):
     def test_pp2(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(
-            file_dir, "pipeline_scheduler_vpp_unittest.py"
+            file_dir, "pipeline_scheduler_vpp_unittest_deprecated.py"
         )
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
