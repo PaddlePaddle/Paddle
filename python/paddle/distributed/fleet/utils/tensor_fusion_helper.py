@@ -407,7 +407,7 @@ class FusedCommBuffer:
         self._fuse_param = fuse_param
         self._release_grads = release_grads
         self._use_reduce_avg = use_reduce_avg
-        self._free_grads_in_comm = free_grads_in_comm
+        self._free_grads_in_comm = True  # free_grads_in_comm
 
         if self._free_grads_in_comm:
             assert (
@@ -517,7 +517,7 @@ class FusedCommBuffer:
                 self._sharding_param_grad_view[param.name]._clear_grad_buffer()
 
     def _reset_grad_storage(self, slice_grad_buffer):
-        self.grad_storage._clear_dataptr()
+        self._clear_grad_storage()
         for param in self._params:
             self._sharding_param_grad_view[param.name]._reset_grad_buffer(
                 slice_grad_buffer
@@ -560,12 +560,21 @@ class FusedCommBuffer:
         tmp_var.add_(grad_var)
         tmp_var.get_tensor()._set_dims(param.shape)
 
+        #        if self.use_main_grad:
+        #            param.main_grad._clear()
+        #            param.main_grad = tmp_var
+        #            param.main_grad.name = "main_grad@" + param.name
+        #        else:
+        #            param._copy_gradient_from(tmp_var)
+        #
         if self.use_main_grad:
             param.main_grad._clear()
-            param.main_grad = tmp_var
-            param.main_grad.name = "main_grad@" + param.name
+            if not self._free_grads_in_comm:
+                param.main_grad = tmp_var
+                param.main_grad.name = "main_grad@" + param.name
         else:
-            param._copy_gradient_from(tmp_var)
+            if not self._free_grads_in_comm:
+                param._copy_gradient_from(tmp_var)
 
         # record address for the following `acc_steps - 1` steps.
         self._grads_to_addr[param.name] = get_grad_address(
