@@ -99,11 +99,11 @@ class PassTest(unittest.TestCase):
                     ):
                         executor = paddle.static.Executor(place)
                         executor.run(startup_program)
-                with paddle.static.program_guard(main_program):
-                    out = paddle._pir_ops.fetch(
-                        main_program.list_vars()[-1], "fetch0", 0
-                    )
-                    out.persistable = True
+                    with paddle.static.program_guard(main_program):
+                        out = paddle._pir_ops.fetch(
+                            main_program.list_vars()[-1], "fetch0", 0
+                        )
+                        out.persistable = True
                 baseline_fetch = self.run_program(
                     executor, startup_program, main_program
                 )
