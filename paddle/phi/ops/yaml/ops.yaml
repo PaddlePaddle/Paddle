@@ -4935,6 +4935,7 @@
   kernel :
     func : unfold
   backward : unfold_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : uniform
   args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
