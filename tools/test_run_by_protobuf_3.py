@@ -20,7 +20,6 @@ PROTOBUF3_NEEDED_TESTING_LIST = [
     'test_fleet_base2',
     'test_fleet_base3',
     'test_communicator_geo_deprecated',
-    'test_communicator_async',
     'test_dist_fleet_a_sync_optimizer_async',
     'test_dist_fleet_a_sync_optimizer_auto',
     'test_dist_fleet_a_sync_optimizer_sync',

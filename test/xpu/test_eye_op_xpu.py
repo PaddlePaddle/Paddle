@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -42,8 +43,12 @@ class XPUTestEyeOp(XPUOpTestWrapper):
                 'num_rows': self.n,
                 'num_columns': self.m,
             }
-            result = np.eye(self.n, self.m, dtype=self.dtype)
-            self.outputs = {'Out': result}
+            if self.dtype == np.uint16:
+                result = np.eye(self.n, self.m, dtype=np.float32)
+                self.outputs = {'Out': convert_float_to_uint16(result)}
+            else:
+                result = np.eye(self.n, self.m, dtype=self.dtype)
+                self.outputs = {'Out': result}
 
         def init_shape(self):
             self.n = 100
@@ -62,6 +67,21 @@ class XPUTestEyeOp(XPUOpTestWrapper):
         def init_shape(self):
             self.n = 100
             self.m = 1000
+
+    class TestXPUEyeOp3(TestXPUEyeOp):
+        def init_shape(self):
+            self.n = 99
+            self.m = 101
+
+    class TestXPUEyeOp4(TestXPUEyeOp):
+        def init_shape(self):
+            self.n = 2
+            self.m = 2
+
+    class TestXPUEyeOp5(TestXPUEyeOp):
+        def init_shape(self):
+            self.n = 67
+            self.m = 67
 
 
 support_types = get_xpu_op_support_types('eye')

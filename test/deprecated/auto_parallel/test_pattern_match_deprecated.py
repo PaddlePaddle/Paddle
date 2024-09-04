@@ -13,8 +13,10 @@
 # limitations under the License.
 
 
+import sys
 import unittest
 
+sys.path.append("../..")
 import auto_parallel_gpt_model as modeling
 import numpy as np
 from auto_parallel_gpt_model import (
@@ -93,15 +95,15 @@ def get_gpt_model(
     return train_program, start_program, loss, gen_data
 
 
-class TestRuleBasedTuner(unittest.TestCase):
+class TestPatternMatch(unittest.TestCase):
     def test_gpt(self):
         modeling.init_global()
         train_program = static.Program()
         start_program = static.Program()
+        place = paddle.set_device("gpu")
         batch_size = 8
         sequence_len = 512
         vocab_size = 1000
-        place = None
         train_program, start_program, loss, gen_data = get_gpt_model(
             train_program,
             start_program,
@@ -110,29 +112,19 @@ class TestRuleBasedTuner(unittest.TestCase):
             sequence_len,
             vocab_size,
         )
-        from paddle.distributed.auto_parallel.static.cluster import Cluster
         from paddle.distributed.auto_parallel.static.dist_context import (
             DistributedContext,
         )
         from paddle.distributed.auto_parallel.static.tuner.rule_based_tuner import (
+            GraphUtil,
             RuleBasedTuner,
         )
 
-        clip = paddle.nn.ClipGradByGlobalNorm(0.2)
-        opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
-
-        cluster = Cluster()
-        cluster.gen_default_config_cluster(node_count=1, device_count=8)
-        dist_context = DistributedContext(
-            serial_main_prog=train_program,
-            serial_startup_prog=start_program,
-            serial_optimizer=opt,
-            serial_loss=loss,
-            cluster=cluster,
-        )
-        dist_context.initialize()
+        dist_context = DistributedContext()
         tuner = RuleBasedTuner(dist_context)
-        tuner.tune()
+        graph = GraphUtil.convert_to_graph(train_program.global_block())
+        results = GraphUtil.match_all_patterns(graph)
+        print(results)
 
 
 if __name__ == "__main__":
