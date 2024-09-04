@@ -1107,9 +1107,9 @@ struct ScaleOpTranscriber : public OpTranscriber {
                                   const OpAttributeInfo& info) override {
     if (info.name == "bias") {
       (*attribute_map)[info.name] =
-          paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(0));
+          paddle::dialect::ScalarAttribute::get(ctx, phi::Scalar(0.0));
     } else if (info.name == "bias_after_scale") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, true);
     }
   }
 };
@@ -1120,7 +1120,7 @@ struct DropoutOpTranscriber : public OpTranscriber {
                                   const OpAttributeInfo& info) override {
     if (info.name == "mode") {
       (*attribute_map)[info.name] =
-          pir::StrAttribute::get(ctx, "downscale_in_infer");
+          pir::StrAttribute::get(ctx, "upscale_in_train");
     }
   }
 };
