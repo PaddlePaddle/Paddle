@@ -407,7 +407,7 @@ class FusedCommBuffer:
         self._fuse_param = fuse_param
         self._release_grads = release_grads
         self._use_reduce_avg = use_reduce_avg
-        self._free_grads_in_comm = True  # free_grads_in_comm
+        self._free_grads_in_comm = free_grads_in_comm
 
         if self._free_grads_in_comm:
             assert (
