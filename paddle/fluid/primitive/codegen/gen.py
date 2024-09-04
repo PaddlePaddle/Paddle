@@ -93,6 +93,7 @@ BINARY_PRIM_VJP_OPS = [
 
 OTHER_PRIM_VJP_OPS = [
     'assign_grad',
+    'atan2_grad',
     'cumsum_grad',
     'sum_grad',
     'cast_grad',
@@ -102,6 +103,7 @@ OTHER_PRIM_VJP_OPS = [
     'transpose_grad',
     'concat_grad',
     'expand_grad',
+    'expm1_grad',
     'gather_grad',
     'gather_nd_grad',
     'pad_grad',

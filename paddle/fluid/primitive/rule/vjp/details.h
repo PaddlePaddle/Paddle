@@ -2544,6 +2544,32 @@ void where_grad(const Tensor& condition,
   }
 }
 
+template <typename T>
+void expm1_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    Tensor x_grad_tmp = out_grad * out + out_grad;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void atan2_grad(const Tensor& x,
+                const Tensor& y,
+                const Tensor& out_grad,
+                Tensor* x_grad,
+                Tensor* y_grad) {
+  Tensor tmp = x * x + y * y;
+  if (x_grad) {
+    Tensor x_grad_tmp = (out_grad * y) / tmp;
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+
+  if (y_grad) {
+    Tensor y_grad_tmp = (-out_grad * x) / tmp;
+    set_output<T>(y_grad_tmp, y_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

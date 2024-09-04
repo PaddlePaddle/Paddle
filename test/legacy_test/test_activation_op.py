@@ -250,7 +250,9 @@ class Test_Exp_Op_Int(unittest.TestCase):
 class TestExpm1(TestActivation):
     def setUp(self):
         self.op_type = "expm1"
+        self.prim_op_type = "prim"
         self.python_api = paddle.expm1
+        self.public_python_api = paddle.expm1
         self.init_dtype()
         self.init_shape()
 
@@ -269,7 +271,11 @@ class TestExpm1(TestActivation):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
+            check_prim_pir=True,
         )
 
     def test_check_output(self):
@@ -5543,7 +5549,7 @@ create_test_act_fp16_class(TestActivation)
 create_test_act_fp16_class(
     TestExpFp32_Prim, check_prim=True, enable_cinn=True, check_prim_pir=True
 )
-create_test_act_fp16_class(TestExpm1)
+create_test_act_fp16_class(TestExpm1, check_prim_pir=True)
 create_test_act_fp16_class(
     TestSigmoid,
     check_prim=True,
@@ -5739,7 +5745,7 @@ create_test_act_bf16_class(TestActivation)
 create_test_act_bf16_class(
     TestExpFp32_Prim, check_prim=True, check_prim_pir=True
 )
-create_test_act_bf16_class(TestExpm1)
+create_test_act_bf16_class(TestExpm1, check_prim_pir=True)
 create_test_act_bf16_class(
     TestSigmoid, check_prim=True, check_pir=True, check_prim_pir=True
 )
