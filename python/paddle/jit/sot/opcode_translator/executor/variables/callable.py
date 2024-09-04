@@ -668,19 +668,6 @@ class BuiltinVariable(FunctionVariable):
                     self.graph.pycode_gen._origin_code
                 )
 
-                for var in itertools.chain(args, kwargs.values()):
-                    if isinstance(var, SymbolicVariable):
-                        if var.tracker.is_traceable():
-                            tracker_expr = (
-                                var.tracker.trace_value_from_frame().inlined_expr
-                            )
-                            symbolic_inputs[tracker_expr] = None
-                        else:
-                            for traceable_var in var.get_traceable_inputs():
-                                tracker_expr = (
-                                    traceable_var.tracker.trace_value_from_frame().inlined_expr
-                                )
-                                symbolic_inputs[tracker_expr] = None
                 args, kwargs = map_if(
                     (args, kwargs),
                     pred=lambda x: isinstance(x, SymbolicVariable),
