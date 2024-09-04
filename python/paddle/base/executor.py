@@ -1201,14 +1201,13 @@ class _ExecutorCache:
 
         if cached_data.plan is None:
             value_map = pir.IrMapping()
-            clone_program = program.clone(value_map)
-
             _, is_startup_program = has_fetch_operations_and_is_startup_program(
                 program.global_block(),
                 fetch_list,
                 fetch_var_name,
                 "pd_op.fetch",
             )
+            program = program.clone(value_map)
             if is_startup_program:
                 update_fetch_list = fetch_list
             else:
@@ -1217,12 +1216,12 @@ class _ExecutorCache:
                 )
 
             _add_pir_fetch_ops(
-                clone_program,
+                program,
                 fetch_list=update_fetch_list,
                 fetch_var_name=fetch_var_name,
             )
             default_job = core.Job("default")
-            type_to_program = {"default": clone_program}
+            type_to_program = {"default": program}
             plan = core.Plan([default_job], type_to_program)
         else:
             type_to_program = {}
@@ -1230,8 +1229,8 @@ class _ExecutorCache:
             for job_type in cached_data.plan.job_types():
                 ir_program = cached_data.plan.ir_program(job_type)
                 value_map = pir.IrMapping()
-                clone_program = ir_program.clone(value_map)
-                type_to_program[job_type] = clone_program
+                program = ir_program.clone(value_map)
+                type_to_program[job_type] = program
                 value_map_list.append(value_map)
 
             plan = core.Plan(cached_data.plan.job_list, type_to_program)
