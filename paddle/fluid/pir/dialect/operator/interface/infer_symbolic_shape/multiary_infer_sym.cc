@@ -2591,8 +2591,9 @@ bool PyramidHashOpInferSymbolicShape(
   }
 
   // Set the output shapes
-  std::vector<symbol::DimExpr> out_shape = {-1, symbol::DimExpr(num_emb)};
-  std::vector<symbol::DimExpr> drop_pos = infer_context->GetNextSymName();
+  std::vector<symbol::DimExpr> out_shape = {infer_context->GetNextSymName(),
+                                            symbol::DimExpr(num_emb)};
+  std::vector<symbol::DimExpr> drop_pos = {infer_context->GetNextSymName(), 1};
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
@@ -2601,7 +2602,7 @@ bool PyramidHashOpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(drop_pos)});
-  infer_context->SetShapeOrDataForValue(op->result(2), x_shape_or_data);
+  infer_context->SetShapeOrDataForValue(op->result(2), x_shape);
 
   return true;
 }
