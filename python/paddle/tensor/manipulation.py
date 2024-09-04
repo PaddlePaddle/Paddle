@@ -4565,8 +4565,6 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         y (Tensor): The input tensor that gives the shape to expand to.
         name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
-
-
     Returns:
         N-D Tensor, A Tensor with the same shape as ``y``. The data type is the same as ``x``.
 
