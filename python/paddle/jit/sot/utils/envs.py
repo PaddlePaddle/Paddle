@@ -35,6 +35,10 @@ ENV_SOT_EXPORT = StringEnvironmentVariable("SOT_EXPORT", "")
 ENV_SOT_ALLOW_DYNAMIC_SHAPE = BooleanEnvironmentVariable(
     "SOT_ALLOW_DYNAMIC_SHAPE", False
 )
+ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
+ENV_ENABLE_SOT_STEP_PROFILER = BooleanEnvironmentVariable(
+    "ENABLE_SOT_STEP_PROFILER", False
+)
 
 
 @contextmanager
@@ -70,4 +74,10 @@ def with_export_guard(value: str):
 @contextmanager
 def with_allow_dynamic_shape_guard(value: bool):
     with EnvironmentVariableGuard(ENV_SOT_ALLOW_DYNAMIC_SHAPE, value):
+        yield
+
+
+@contextmanager
+def sot_step_profiler_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_ENABLE_SOT_STEP_PROFILER, value):
         yield

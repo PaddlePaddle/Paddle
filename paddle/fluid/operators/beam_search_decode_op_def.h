@@ -138,7 +138,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
   auto cpu_place = std::unique_ptr<phi::CPUPlace>(new phi::CPUPlace());
   phi::CPUContext cpu_ctx(*cpu_place);
 
-  framework::LoD lod;
+  phi::LoD lod;
   lod.push_back(source_level_lod);
   lod.push_back(sentence_level_lod);
 

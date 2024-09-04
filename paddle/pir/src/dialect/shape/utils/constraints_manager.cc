@@ -218,6 +218,33 @@ bool ConstraintsManager::IsBroadcastable(const DimExpr& lhs,
   return false;
 }
 
+void ConstraintsManager::AddInputRangeCstr(
+    const DimExpr& dim_expr, const ConstraintsManager::Range& range) {
+  PADDLE_ENFORCE_EQ(dim_expr.isa<std::string>(),
+                    true,
+                    common::errors::InvalidArgument(
+                        "Bounded input DimExpr should be a string type."));
+
+  PADDLE_ENFORCE_EQ(input_ranges_.find(dim_expr),
+                    input_ranges_.end(),
+                    common::errors::InvalidArgument(
+                        "Bounded input DimExpr range can only be added once."));
+  input_ranges_[dim_expr] = range;
+}
+
+bool ConstraintsManager::IsBoundedInput(const DimExpr& dim_expr) const {
+  return input_ranges_.count(dim_expr);
+}
+
+const ConstraintsManager::Range& ConstraintsManager::GetRangeOfBoundedInput(
+    const DimExpr& dim_expr) const {
+  PADDLE_ENFORCE_EQ(IsBoundedInput(dim_expr),
+                    true,
+                    common::errors::InvalidArgument(
+                        "DimExpr is not a bounded input dim expr."));
+  return input_ranges_.at(dim_expr);
+}
+
 void ConstraintsManager::SetEqualCallbackFunc(
     EqualCallbackFunc equal_callback_func) {
   equal_callback_func_ = equal_callback_func;
@@ -254,6 +281,33 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
     }
   });
   broadcastables_ = substituted_broadcastables;
+
+  InputRangeConstraints substituted_input_ranges;
+  InputRangeConstraintsVisitor([&](auto it) {
+    const DimExpr& substituted_dim_expr =
+        SubstituteDimExpr(it->first, substitution_pattern);
+    if (substituted_dim_expr != it->first) {
+      PADDLE_ENFORCE_EQ(substituted_dim_expr.isa<std::string>() ||
+                            substituted_dim_expr.isa<std::int64_t>(),
+                        true,
+                        common::errors::InvalidArgument(
+                            "Bounded input DimExpr can only be subsituted with "
+                            "a string or an integer."));
+      if (substituted_dim_expr.isa<std::int64_t>()) {
+        std::int64_t substituted_value =
+            substituted_dim_expr.Get<std::int64_t>();
+        const bool in_range = substituted_value >= it->second.min &&
+                              substituted_value <= it->second.max;
+        PADDLE_ENFORCE_EQ(in_range,
+                          true,
+                          common::errors::InvalidArgument(
+                              "Bounded input DimExpr range is inconsistent "
+                              "with other constraints."));
+      }
+      substituted_input_ranges[substituted_dim_expr] = it->second;
+    }
+  });
+  input_ranges_ = substituted_input_ranges;
 }
 
 void ConstraintsManager::VisitEqualClusters(
@@ -300,6 +354,21 @@ void ConstraintsManager::BroadcastableConstraintsVisitor(
   }
 }
 
+void ConstraintsManager::InputRangeConstraintsVisitor(
+    const std::function<void(InputRangeConstraints::iterator)>& DoEach) {
+  for (auto it = input_ranges_.begin(); it != input_ranges_.end(); it++) {
+    DoEach(it);
+  }
+}
+
+void ConstraintsManager::InputRangeConstraintsVisitor(
+    const std::function<void(InputRangeConstraints::const_iterator)>& DoEach)
+    const {
+  for (auto it = input_ranges_.begin(); it != input_ranges_.end(); it++) {
+    DoEach(it);
+  }
+}
+
 std::ostream& operator<<(std::ostream& stream,
                          const ConstraintsManager& constraints_manager) {
   stream << "ConstraintsManager:" << std::endl;
@@ -319,6 +388,11 @@ std::ostream& operator<<(std::ostream& stream,
   stream << "GreatThanOne Constraints:" << std::endl;
   constraints_manager.GTOneConstraintsVisitor(
       [&](const auto& it) { stream << "  " << *it << std::endl; });
+  stream << "Input Range Constraints:" << std::endl;
+  constraints_manager.InputRangeConstraintsVisitor([&](const auto& it) {
+    stream << "  InputRange[" << it->first << ", min: " << it->second.min
+           << ", max: " << it->second.max << "]" << std::endl;
+  });
   return stream;
 }
 

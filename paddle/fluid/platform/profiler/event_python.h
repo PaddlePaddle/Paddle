@@ -19,8 +19,8 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/platform/profiler/event_node.h"
-#include "paddle/fluid/platform/profiler/extra_info.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/platform/profiler/extra_info.h"
 
 namespace paddle {
 namespace platform {

@@ -23,7 +23,9 @@ import numpy as np
 
 import paddle
 from paddle.base.framework import use_pir_api
-from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.base.wrapped_decorator import (
+    wrap_decorator,
+)
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
@@ -2506,3 +2508,10 @@ def update_grad_var_to_var(program, strategy, grad_var_to_var):
         scale_loss_grad_var_name = first_backward_op.desc.output("Out")[0]
         if scale_loss_grad_var_name not in grad_var_to_var.keys():
             grad_var_to_var[scale_loss_grad_var_name] = scale_loss_var_name
+
+
+def set_all_ops_op_role(main_program, op_role):
+    all_ops = main_program.global_block().ops
+    for op in all_ops:
+        if op.op_role is None:
+            op.op_role = op_role
