@@ -111,4 +111,19 @@ def warmup_shape_infer(program, min_shape_feed, max_shape_feed):
                 executor.run(
                     program, feed=max_shape_feed, fetch_list=[output_var]
                 )
+
+            exe_program, _, _ = (
+                executor._executor_cache.get_pir_program_and_executor(
+                    program,
+                    feed=max_shape_feed,
+                    etch_list=[output_var],
+                    feed_var_name='feed',
+                    fetch_var_name='fetch',
+                    place=paddle.framework._current_expected_place_(),
+                    scope=paddle.static.global_scope(),
+                    plan=None,
+                )
+            )
+
     paddle.framework.set_flags({"FLAGS_enable_collect_shape": False})
+    return exe_program

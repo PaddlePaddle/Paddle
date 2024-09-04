@@ -45,7 +45,7 @@ class TestConverterDummy(unittest.TestCase):
                         fetch_list=[output_var],
                     )
 
-        warmup_shape_infer(
+        program = warmup_shape_infer(
             program,
             min_shape_feed={"input": input_data},
             max_shape_feed={"input": input_data_max_shape},
