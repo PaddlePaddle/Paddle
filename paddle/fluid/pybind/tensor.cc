@@ -215,8 +215,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
           // TensorToPyArray() according to the dtype and copy
           // parameters.
           "__array__",
-          [](phi::DenseTensor &self, py::object dtype, py::object copy) {
-            return TensorToPyArray(self);
+          [](phi::DenseTensor &self, py::object dtype, py::object copy) { //NOLINT
+            return TensorToPyArray(self,copy);
           },
           py::arg("dtype") = py::none(),
           py::arg("copy") = py::none())

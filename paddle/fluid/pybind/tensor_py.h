@@ -955,8 +955,7 @@ inline phi::DenseTensor *PySliceTensor(const phi::DenseTensor &self,
   }
 }
 
-inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
-                                 bool need_deep_copy = false) {
+inline py::array TensorToPyArray(const phi::DenseTensor &tensor,py::object copy=py::none()) {
   if (!tensor.IsInitialized()) {
     return py::array();
   }
@@ -984,9 +983,8 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
       framework::TransToProtoVarType(tensor.dtype()));
-
   if (!is_gpu_tensor && !is_xpu_tensor && !is_custom_device_tensor) {
-    if (!need_deep_copy) {
+    if (!copy.is_none()&& !copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()),
                        py_dims,

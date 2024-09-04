@@ -778,7 +778,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
                 weight1 = np.array(
-                    scope.find_var(w1_param_attrs.name).get_tensor()
+                    scope.find_var(w1_param_attrs.name).get_tensor(), copy=True
                 )
                 weight2 = np.array(
                     scope.find_var(w2_param_attrs.name).get_tensor()
