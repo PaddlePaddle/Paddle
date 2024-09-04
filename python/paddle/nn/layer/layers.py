@@ -34,6 +34,7 @@ from paddle.base.dygraph import no_grad
 from paddle.base.dygraph.base import (
     _convert_into_variable,
     in_declarative_mode,  # noqa: F401
+    in_sot_simulation_mode,
     in_to_static_mode,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
@@ -1525,7 +1526,7 @@ class Layer:
             and (not self._forward_post_hooks)
             and (not self._built)
             and in_dygraph_mode()
-            and (not in_profiler_mode())
+            and (not in_profiler_mode() or in_sot_simulation_mode())
         ):
             self._build_once(*inputs, **kwargs)
             return self.forward(*inputs, **kwargs)
