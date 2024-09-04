@@ -2685,6 +2685,15 @@ void put_along_axis_grad(const Tensor& x,
   }
 }
 
+template <typename T>
+void atan_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    const Tensor one = full_scalar<T>(1.0, x.dtype());
+    Tensor x_grad_tmp = out_grad / (one + x * x);
+    set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
 }  // namespace details
 }  // namespace primitive
 }  // namespace paddle

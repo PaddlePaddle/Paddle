@@ -935,7 +935,9 @@ class TestTanhInplaceAPI(TestTanhAPI):
 class TestAtan(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "atan"
+        self.prim_op_type = "prim"
         self.python_api = paddle.atan
+        self.public_python_api = paddle.atan
         self.init_dtype()
         self.init_shape()
 
@@ -960,9 +962,21 @@ class TestAtan(TestActivation, TestParameter):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'], 'Out', check_pir=True, check_pir_onednn=self.check_pir_onednn
-        )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+                check_pir_onednn=self.check_pir_onednn,
+                check_prim_pir=True,
+            )
 
     @test_with_pir_api
     def test_out_name(self):
@@ -5604,7 +5618,7 @@ create_test_act_fp16_class(TestAcos, check_pir=True)
 create_test_act_fp16_class(TestSin, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestSinh, check_pir=True)
 create_test_act_fp16_class(TestAsin, check_pir=True)
-create_test_act_fp16_class(TestAtan, check_pir=True)
+create_test_act_fp16_class(TestAtan, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestAcosh, check_pir=True)
 create_test_act_fp16_class(TestAsinh, check_pir=True)
 create_test_act_fp16_class(TestAtanh, check_pir=True)
@@ -5779,7 +5793,7 @@ create_test_act_bf16_class(TestAcos, check_pir=True)
 create_test_act_bf16_class(TestSin, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestSinh, check_pir=True)
 create_test_act_bf16_class(TestAsin, check_pir=True)
-create_test_act_bf16_class(TestAtan, check_pir=True)
+create_test_act_bf16_class(TestAtan, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestAcosh, check_pir=True)
 create_test_act_bf16_class(TestAsinh, check_pir=True)
 create_test_act_bf16_class(TestAtanh, check_pir=True)
