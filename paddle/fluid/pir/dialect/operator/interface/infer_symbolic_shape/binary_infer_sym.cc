@@ -1273,16 +1273,18 @@ bool StftOpInferSymbolicShape(pir::Operation *op,
 
   infer_context->AddEqualCstr(window_shape[0], symbol::DimExpr{n_fft});
 
-  if (x_shape[x_rank - 1].isa<int64_t>()) {
-    int seq_length = x_shape[x_rank - 1].Get<std::int64_t>();
-    int n_frames = 1 + (seq_length - n_fft) / hop_length;
+  const symbol::DimExpr seq_length = x_shape[x_rank - 1];
+  const symbol::DimExpr n_frames =
+      1 + (seq_length - symbol::DimExpr{n_fft}) / symbol::DimExpr{hop_length};
+
+  if (seq_length.isa<int64_t>()) {
     PADDLE_ENFORCE_LE(n_fft,
-                      seq_length,
+                      seq_length.Get<std::int64_t>(),
                       common::errors::InvalidArgument(
                           "Attribute(frame_length) should be less equal than "
                           "sequence length, but got (%s) > (%s).",
                           n_fft,
-                          seq_length));
+                          seq_length.Get<std::int64_t>()));
   }
 
   std::vector<symbol::DimExpr> output_shape;
@@ -1292,7 +1294,7 @@ bool StftOpInferSymbolicShape(pir::Operation *op,
   } else {
     output_shape.push_back(symbol::DimExpr{n_fft});
   }
-  output_shape.push_back(symbol::DimExpr{n_frames});
+  output_shape.push_back(n_frames);
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
