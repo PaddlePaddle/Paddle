@@ -120,7 +120,7 @@ void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
 }
 #endif
 
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+#if defined(PADDLE_WITH_PSCORE)
 void PSGPUWrapper::InitAfsApi(const std::string& fs_name,
                               const std::string& fs_user,
                               const std::string& pass_wd,

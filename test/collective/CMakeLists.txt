@@ -339,17 +339,6 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
-    test_collective_split_col_linear
-    MODULES
-    test_collective_split_col_linear
-    ENVS
-    "NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_collective_split_col_linear
-                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
-endif()
-if((WITH_GPU OR WITH_ROCM) AND (LINUX))
-  py_test_modules(
     test_collective_split_embedding_none_divisible MODULES
     test_collective_split_embedding_none_divisible ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")

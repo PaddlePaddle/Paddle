@@ -369,7 +369,11 @@ class OpConverter {
             input, in_dtype, Vec2TRT_Dims(input_shape, input, true));
 #endif
       } else {
-        engine->DeclareInput(input, in_dtype, Vec2TRT_Dims(var_shape, input));
+        auto input_dims = Vec2TRT_Dims(var_shape, input);
+        if (input_dims.d[0] == -1) {
+          input_dims.d[0] = engine->get_max_batch_size();
+        }
+        engine->DeclareInput(input, in_dtype, input_dims);
       }
       VLOG(1) << "set trt engine input dtype " << static_cast<int>(in_dtype);
     }
@@ -447,11 +451,7 @@ class OpConverter {
       subscripts.insert(subscripts.begin() + axis_value, dims.nbDims);
     }
     nvinfer1::ITensor* input_shape{nullptr};
-    if (engine_->with_dynamic_shape()) {
-      input_shape = Shape(input);
-    } else {
-      input_shape = Add1DConstantLayer(dims);
-    }
+    input_shape = Shape(input);
     auto* new_dim =
         TRT_ENGINE_ADD_LAYER(engine_,
                              Gather,
@@ -476,11 +476,7 @@ class OpConverter {
     subscripts.resize(p - subscripts.begin());
 
     nvinfer1::ITensor* input_shape{nullptr};
-    if (engine_->with_dynamic_shape()) {
-      input_shape = Shape(input);
-    } else {
-      input_shape = Add1DConstantLayer(dims);
-    }
+    input_shape = Shape(input);
 
     auto* new_dim =
         TRT_ENGINE_ADD_LAYER(
@@ -505,19 +501,20 @@ class OpConverter {
   }
 
   nvinfer1::ITensor* Shape(nvinfer1::ITensor* input) {
-    return TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+    auto* shape_tensor =
+        TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+#if IS_TRT_VERSION_GE(10000)
+    return Cast(shape_tensor, nvinfer1::DataType::kINT32);
+#else
+    return shape_tensor;
+#endif
   }
 
   nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
                              nvinfer1::ITensor* newShape,
                              const std::string& name = "") {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    if (engine_->with_dynamic_shape()) {
-      shuffle->setInput(1, *newShape);
-    } else {
-      auto shape = newShape->getDimensions();
-      shuffle->setReshapeDimensions(shape);
-    }
+    shuffle->setInput(1, *newShape);
     if (!name.empty()) {
       shuffle->setName(name.c_str());
     }

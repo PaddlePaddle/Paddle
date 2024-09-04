@@ -62,15 +62,22 @@ class TestTraceListArg(TestCaseBase):
 
     @with_allow_dynamic_shape_guard(True)
     def test_bar_dynamic_shape(self):
+        # TODO(zrr1999): mv to dynamic shape test
         a = [paddle.to_tensor(1), paddle.to_tensor(2), paddle.to_tensor(3)]
         b = [paddle.to_tensor([2, 3]), paddle.to_tensor(4), paddle.to_tensor(5)]
         with test_instruction_translator_cache_context() as cache:
             self.assert_results(bar, a, 1, 1)
             self.assertEqual(cache.translate_count, 1)
-            self.assert_results(bar, a, 2, 0)  # Cache hit, but break graph
+            self.assert_results(bar, a, 2, 0)  # Cache miss
             self.assertEqual(cache.translate_count, 2)
+            self.assert_results(bar, b, 2, 0)  # Cache miss
+            self.assertEqual(cache.translate_count, 3)
+            self.assert_results(bar, b, 2, 0)  # Cache hit
+            self.assertEqual(cache.translate_count, 3)
             self.assert_results(bar, b, 1, 1)  # Cache hit
-            self.assertEqual(cache.translate_count, 2)
+            self.assertEqual(cache.translate_count, 3)
+            self.assert_results(bar, b, 0, 2)  # Cache miss
+            self.assertEqual(cache.translate_count, 4)
 
 
 if __name__ == "__main__":
