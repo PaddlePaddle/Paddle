@@ -8410,3 +8410,33 @@ def process_type_promotion(program):
                         idx += 1
             idx += 1
     return program
+
+
+# complete the op_role of the new added ops
+@signature_safe_contextmanager
+def auto_complete_op_role(program, op_role, insert_point=None):
+    if paddle.framework.in_pir_mode():
+        initial_num_ops = program.num_ops()
+        origin_insert_point = insert_point
+
+    try:
+        yield
+    finally:
+        if paddle.framework.in_pir_mode():
+            if insert_point is None:
+                paddle.pir.set_insertion_point_to_block_end(
+                    program.global_block()
+                )
+                insert_point = paddle.pir.get_current_insertion_point()
+            current_num_ops = program.num_ops()
+            if op_role is not None and current_num_ops > initial_num_ops:
+                for _ in range(current_num_ops - initial_num_ops):
+                    new_added_op = insert_point.prev()
+                    if new_added_op.op_role is not None:
+                        continue
+
+                    new_added_op.op_role = op_role
+                    paddle.pir.set_insertion_point(new_added_op)
+                    insert_point = paddle.pir.get_current_insertion_point()
+            if origin_insert_point:
+                paddle.pir.set_insertion_point(origin_insert_point)

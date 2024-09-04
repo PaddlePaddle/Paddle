@@ -1091,7 +1091,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
         tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
         phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
         const phi::DeviceContext *dev_ctx = nullptr;
-        dev_ctx = pool.Get(place_);
+        dev_ctx = pool.Get(phi::CPUPlace());
         pir::Type type_ = pir::GetDataTypeFromValue(value);
         phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
         dev_ctx->Alloc(tensor_temp, type_data);
