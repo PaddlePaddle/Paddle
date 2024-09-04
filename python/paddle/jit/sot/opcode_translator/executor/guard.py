@@ -16,12 +16,13 @@ from __future__ import annotations
 
 import types
 import weakref
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 import paddle
 
 from ...profiler import EventGuard
-from ...utils import current_tmp_name_records, log, log_do
+from ...utils import current_symbol_registry, log, log_do
 
 Guard = Callable[[types.FrameType], bool]
 
@@ -44,13 +45,36 @@ class StringifiedExpression:
     Used to store string based expressions for generating Guard.
     """
 
-    def __init__(self, str_expr, sub_exprs, free_vars):
-        expr = str_expr.format(*[arg.expr for arg in sub_exprs])
-        self.expr = current_tmp_name_records().add_tmp_var(expr)
-        self.inlined_expr = str_expr.format(
-            *[arg.inlined_expr for arg in sub_exprs]
+    def __init__(
+        self,
+        expr_template: str,
+        sub_exprs: list[StringifiedExpression],
+        free_vars: dict[str, Any],
+    ):
+        self.expr_template = expr_template
+        expr = self.expr_template.format(
+            *[sub_expr.symbol for sub_expr in sub_exprs]
         )
+        self.registered_expr = expr
+        self.symbol = current_symbol_registry().request_symbol(expr)
+        self.sub_exprs = sub_exprs
         self.free_vars = free_vars
+
+    @cached_property
+    def inlined_expr(self):
+        return self.expr_template.format(
+            *[sub_expr.inlined_expr for sub_expr in self.sub_exprs]
+        )
+
+    def gen_expr(self):
+        def gen_expr_fn():
+            return self.expr_template.format(
+                *[sub_expr.gen_expr() for sub_expr in self.sub_exprs]
+            )
+
+        return current_symbol_registry().gen_expr(
+            self.registered_expr, gen_expr_fn
+        )
 
     def __hash__(self):
         if self.free_vars:
@@ -77,43 +101,26 @@ def make_guard(stringified_guards: list[StringifiedExpression]) -> Guard:
         if not num_guards:
             guard = lambda frame: True
             guard.expr = "lambda frame: True"
+            guard.original_guard = guard
             return guard
 
-        def analyse_expressions(stringified_exprs, tmp_names):
-            func_string = "def built_guard_fn(frame):\n"
-            lambda_string = "lambda frame: "
-            free_vars = {}
+        free_vars = {}
+        for expr in stringified_guards:
+            free_vars = union_free_vars(free_vars, expr.free_vars)
 
-            for k, v in tmp_names.items():
-                func_string += f"    {v} = {k}\n"
-
-            func_result = ""
-            for str_expr in stringified_exprs:
-                func_result += str_expr.expr + " and "
-                lambda_string += str_expr.inlined_expr + " and "
-                free_vars = union_free_vars(free_vars, str_expr.free_vars)
-
-            func_string += f"    return {func_result[:-5]}"
-
-            return func_string, free_vars, lambda_string[:-5]
-
-        (
-            func_string,
-            free_vars,
-            lambda_string,
-        ) = analyse_expressions(
-            stringified_guards, current_tmp_name_records().tmp_names_record
+        inlined_guard_expr = "lambda frame: " + " and ".join(
+            [expr.inlined_expr for expr in stringified_guards]
+        )
+        guard_expr: str = "lambda frame: " + " and ".join(
+            [expr.gen_expr() for expr in stringified_guards]
         )
 
-        exec(
-            func_string,
-            free_vars,
-        )
+        guard = eval(guard_expr, free_vars)
 
-        guard = free_vars['built_guard_fn']
-        log(3, f"[Guard]: {lambda_string}\n")
-        guard.lambda_expr = lambda_string
-        guard.expr = func_string
+        log(3, f"[Guard]: {inlined_guard_expr}\n")
+        guard.inlined_expr = inlined_guard_expr
+        guard.expr = guard_expr
+
         assert callable(guard), "guard must be callable."
 
         return guard
@@ -136,7 +143,7 @@ def check_guard(
         def guard_log():
             frame_value_tracer = self.tracker.trace_value_from_frame()
             print(
-                f"[Guard]: guard_fn for {self}, tracker={self.tracker.__class__.__name__}, value={frame_value_tracer.expr}"
+                f"[Guard]: guard_fn for {self}, tracker={self.tracker.__class__.__name__}, value={frame_value_tracer.registered_expr}"
             )
 
         log_do(4, guard_log)

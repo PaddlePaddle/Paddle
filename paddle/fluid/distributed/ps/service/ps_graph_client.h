@@ -82,7 +82,7 @@ class PsGraphClient : public PsLocalClient {
   void *_partition_key_service = nullptr;
   int _rank_id = 0;
   int _rank_num = 0;
-  std::vector<std::shared_ptr<framework::ThreadPool>> _thread_pools;
+  std::vector<std::shared_ptr<phi::ThreadPool>> _thread_pools;
   std::vector<std::vector<uint64_t>> _local_shard_keys;
   std::vector<std::vector<paddle::framework::BinaryArchive>> _shard_ars;
 };

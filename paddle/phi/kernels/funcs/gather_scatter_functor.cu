@@ -1170,15 +1170,10 @@ __global__ void ScatterMinMaxValueGradGPUKernel(tensor_t* grad_data,
                                i * outer_dim_size_self * self_select_dim_size;
   int64_t replace_index_grad = k + j * outer_dim_size_grad +
                                i * outer_dim_size_grad * grad_select_dim_size;
-  if (tid == 0) {
-    for (int i = 0; i < numel_self; i++) {
-      if (include_self &&
-          x_data[replace_index_self] == out_data[replace_index_self])
-        shared_mem[i] = 1;
-      else
-        shared_mem[i] = 0;  // number of elements
-    }
-  }
+
+  if (include_self &&
+      x_data[replace_index_self] == out_data[replace_index_self])
+    phi::CudaAtomicAdd(shared_mem + replace_index_self, 1);
   __syncthreads();
   grad_data[replace_index_grad] = 0;
   if (value_data[replace_index_grad] == out_data[replace_index_self])
@@ -1254,6 +1249,7 @@ void gpu_scatter_mul_min_max_value_grad_kernel(phi::DenseTensor self,
     DenseTensor shared_mem_tensor;
     shared_mem_tensor.Resize({self_size});
     ctx.Alloc<int>(&shared_mem_tensor);
+    phi::funcs::set_constant(ctx, &shared_mem_tensor, 0);
 
     int* shared_mem = shared_mem_tensor.data<int>();
     ScatterMinMaxValueGradGPUKernel<tensor_t, index_t>
