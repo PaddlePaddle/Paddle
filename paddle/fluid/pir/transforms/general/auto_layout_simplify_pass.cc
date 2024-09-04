@@ -32,7 +32,6 @@
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/pass/pass.h"
-#include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pass/utils.h"
 
@@ -93,7 +92,8 @@ class RedundantTransposePattern
 };
 class AutoLayoutSimplifyPass : public pir::PatternRewritePass {
  public:
-  AutoLayoutSimplifyPass() : pir::PatternRewritePass("auto_layout_pass", 2) {}
+  AutoLayoutSimplifyPass()
+      : pir::PatternRewritePass("auto_layout_simplify_pass", 1) {}
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<RedundantTransposePattern>(context);

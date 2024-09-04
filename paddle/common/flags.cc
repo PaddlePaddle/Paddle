@@ -1368,6 +1368,10 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "EinsumOp backward will be speedup at the expense of more gpu memory.");
 
+PHI_DEFINE_EXPORTED_bool(enable_auto_layout_pass,
+                         false,
+                         "Whether enable auto_layout_pass.");
+
 /**
  * JitLayer related FLAG
  * Name: FLAGS_jit_engine_type

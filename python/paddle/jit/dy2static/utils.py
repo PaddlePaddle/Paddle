@@ -678,6 +678,12 @@ def is_api_in_module_helper(obj, module_prefix):
     return m is not None and m.__name__.startswith(module_prefix)
 
 
+def auto_layout_is_enabled():
+    return paddle.get_flags(["FLAGS_enable_auto_layout_pass"])[
+        "FLAGS_enable_auto_layout_pass"
+    ]
+
+
 def is_builtin(func, name=None):
     """predict whether a function is a builtin function with name={name}.
     if name == None, then any builtin function will return True

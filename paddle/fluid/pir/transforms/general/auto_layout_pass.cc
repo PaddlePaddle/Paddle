@@ -32,7 +32,6 @@
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/pass/pass.h"
-#include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 #include "paddle/pir/include/pass/utils.h"
 
@@ -40,7 +39,7 @@ namespace {
 
 class AutoLayoutPass : public pir::Pass {
  public:
-  AutoLayoutPass() : pir::Pass("auto_layout_pass", 2) {}
+  AutoLayoutPass() : pir::Pass("auto_layout_pass", 1) {}
   void Run(pir::Operation* op) override {
     for (size_t i = 0; i < op->num_regions(); ++i) {
       auto& region = op->region(i);
@@ -130,7 +129,9 @@ class AutoLayoutPass : public pir::Pass {
       auto op_name = op->name();
 
       // Skip special ops.
-      if (op_name == "builtin.parameter" || op_name == "pd_op.feed") continue;
+      if (op_name == "builtin.parameter" || op_name == "pd_op.feed" ||
+          op_name == "builtin.shadow_output")
+        continue;
       if (op->operands().size() == 0) continue;
       // NHWC ops branch, Only support conv2d now, it will add white list later.
       if (op_name == "pd_op.conv2d") {
