@@ -84,6 +84,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         if code not in self.cache:
             log(2, f"[Cache]: Firstly call {code}\n")
             new_custom_code, guard_fn = self.translate(frame, **kwargs)
+            assert guard_fn is not None
             self.cache[code] = [(new_custom_code, guard_fn)]
             return new_custom_code
         guarded_fns = self.cache[code]
@@ -101,7 +102,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
             guarded_fns (GuardedFunctions): The list of guarded functions associated with the code object.
 
         Returns:
-            CustomCode | None: The custom code object if a matching guard function is found, otherwise None.
+            CustomCode: The custom code object if a matching guard function is found, otherwise None.
         """
 
         if len(guarded_fns) >= self.MAX_CACHE_SIZE:
@@ -142,7 +143,8 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
         log(2, "[Cache]: all guards missed\n")
         new_custom_code, guard_fn = self.translate(frame, **kwargs)
-        guarded_fns.append((new_custom_code, guard_fn))
+        if guard_fn is not None:
+            guarded_fns.append((new_custom_code, guard_fn))
         return new_custom_code
 
     def before_translate_hook(self, frame: types.FrameType):
@@ -151,7 +153,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
 
     def translate(
         self, frame: types.FrameType, **kwargs
-    ) -> tuple[CustomCode, Guard]:
+    ) -> tuple[CustomCode, Guard | None]:
         """
         Translates the given frame's code object and returns the cache getter function and a guarded function for the translated code object.
 
@@ -202,7 +204,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
 def start_translate(
     frame: types.FrameType,
     **kwargs,
-) -> GuardedFunction:
+) -> tuple[CustomCode, Guard | None]:
     """
     Starts the translation process for the given frame and returns the translated code object and its guard function, or None if translation fails.
 
@@ -210,14 +212,18 @@ def start_translate(
         frame: The frame to be translated.
 
     Returns:
-        GuardedFunction | None: The translated code object and its guard function, or None if translation fails.
+        tuple[CustomCode, Guard | None]: The translated code object and its guard function, or None if translation fails.
     """
     simulator = OpcodeExecutor(frame, **kwargs)
     try:
         simulator.check_code_simulatable()
         new_custom_code, guard_fn = simulator.transform()
+        if not simulator._graph.need_cache:
+            return (
+                CustomCode(None, True),
+                None,
+            )
         return new_custom_code, guard_fn
-    # TODO(zrr1999): InnerError maybe place before (FallbackError, BreakGraphError)
     # TODO(0x45f): handle BreakGraphError to trigger fallback
     except BreakGraphError as e:
         raise RuntimeError(
