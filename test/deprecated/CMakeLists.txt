@@ -159,6 +159,7 @@ if(WITH_TESTING)
 
   if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
+    add_subdirectory(distributed_passes)
   endif()
 
 endif()

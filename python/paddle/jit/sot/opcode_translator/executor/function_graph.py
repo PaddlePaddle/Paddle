@@ -761,13 +761,18 @@ class FunctionGraph:
         self, inputs: OrderedSet[TensorVariable | SymbolicVariable]
     ):
         for input_var in inputs:
+            # For SymbolicVariable, we use paddle.full([], value, "int64")
+            # to convert it to a Tensor
             if isinstance(input_var, SymbolicVariable):
                 self.pycode_gen.gen_load_object(
-                    paddle.to_tensor, "___paddle_to_tensor"
+                    paddle.full,
+                    "___paddle_full",
                 )
+                self.pycode_gen.gen_build_list(0)
             input_var.tracker.gen_instructions(self.pycode_gen)
             if isinstance(input_var, SymbolicVariable):
-                self.pycode_gen.gen_call_function(1)
+                self.pycode_gen.gen_load_const("int64")
+                self.pycode_gen.gen_call_function(3)
 
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]

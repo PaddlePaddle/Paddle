@@ -106,6 +106,7 @@ OTHER_PRIM_VJP_OPS = [
     'gather_nd_grad',
     'pad_grad',
     'prod_grad',
+    'put_along_axis_grad',
     'max_grad',
     'masked_select_grad',
     'scale_grad',
