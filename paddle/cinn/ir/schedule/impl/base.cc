@@ -44,17 +44,17 @@ void DyScheduleImpl::MergeExprs() {
   if (exprs.size() <= 1U) return;
 
   PADDLE_ENFORCE_NOT_NULL(exprs[0].As<ir::Block>(),
-                          ::common::error::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Expr[0] of module_expr should be a Block!\n"));
   PADDLE_ENFORCE_EQ(exprs[0].As<ir::Block>()->stmts.size(),
                     1U,
-                    ::common::error::InvalidArgument(
+                    ::common::errors::InvalidArgument(
                         "Expr[0] of module_expr should have only one stmt!\n"));
   PADDLE_ENFORCE_NOT_NULL(
       exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>(),
-      ::common::error
-      : InvalidArgument("Expr[0] of module_expr should be Block with only one "
-                        "stmt which is a ScheduleBlockRealize!\n"));
+      ::common::errors::InvalidArgument(
+          "Expr[0] of module_expr should be Block with only one "
+          "stmt which is a ScheduleBlockRealize!\n"));
 
   PADDLE_ENFORCE_NOT_NULL(
       exprs[0]
