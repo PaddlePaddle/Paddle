@@ -35,7 +35,7 @@ void CConcatKernel(const Context& dev_ctx_in,
                    bool use_model_parallel UNUSED,
                    DenseTensor* out) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto dev_ctx = *static_cast<GPUContext*>(
+  auto& dev_ctx = *static_cast<GPUContext*>(
       phi::DeviceContextPool::Instance().Get(dev_ctx_in.GetPlace()));
   auto x = &x_in;
   PADDLE_ENFORCE_GE(rank,
