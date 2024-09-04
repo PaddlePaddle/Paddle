@@ -1202,9 +1202,20 @@ class _ExecutorCache:
         if cached_data.plan is None:
             value_map = pir.IrMapping()
             clone_program = program.clone(value_map)
-            update_fetch_list = self._update_pir_fetch_list(
-                fetch_list, [value_map]
+
+            _, is_startup_program = has_fetch_operations_and_is_startup_program(
+                program.global_block(),
+                fetch_list,
+                fetch_var_name,
+                "pd_op.fetch",
             )
+            if is_startup_program:
+                update_fetch_list = fetch_list
+            else:
+                update_fetch_list = self._update_pir_fetch_list(
+                    fetch_list, [value_map]
+                )
+
             _add_pir_fetch_ops(
                 clone_program,
                 fetch_list=update_fetch_list,
