@@ -1520,6 +1520,29 @@ bool LogsumexpOpInferSymbolicShape(
   return details::ReduceInferDim(op, infer_context, axis, keepdim, reduce_all);
 }
 
+bool Log_softmaxOpInferSymbolicShape(pir::Operation *op,
+                                   pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+
+  int axis = op->attribute<pir::Int32Attribute>("axis").data();
+  size_t rank = x_shape.size();
+
+  if (rank > 0) {
+    infer_context->AddRangeCstr(symbol::DimExpr(axis), -rank, rank - 1, 
+        common::errors::InvalidArgument("Attr(axis) value should be in range [-R, R-1], R is the rank of Input(X)."));
+  } else if (rank == 0) {
+    infer_context->AddRangeCstr(symbol::DimExpr(axis), -1, 0,
+        common::errors::InvalidArgument("Attr(axis) value should be in range [-1, 0] when input is 0D Tensor"));
+  }
+
+  infer_context->SetShapeOrDataForValue(op->result(0), 
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+
+  return true;
+}
+
 bool LuOpInferSymbolicShape(pir::Operation *op,
                             pir::InferSymbolicShapeContext *infer_context) {
   const auto &x_shape_or_data =
