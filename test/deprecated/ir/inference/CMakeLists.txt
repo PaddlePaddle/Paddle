@@ -26,13 +26,13 @@ if(WIN32)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
        "test_trt_inference_fp16_io_deprecated")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_inference_fp16_io_deprecated")
-  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_conv2d_deprecated")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_convert_conv2d_deprecated")
+       "test_trt_convert_depthwise_conv2d_transpose_deprecated")
   list(REMOVE_ITEM TEST_TRT_IR_PASSES
        "test_trt_convert_depthwise_conv2d_transpose_deprecated")
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES
-       "test_trt_convert_depthwise_conv2d_transpose_deprecated")
+       "test_trt_convert_conv2d_deprecated")
+  list(REMOVE_ITEM TEST_TRT_IR_PASSES "test_trt_convert_conv2d_deprecated")
 endif()
 
 if(NOT WITH_MKLDNN
