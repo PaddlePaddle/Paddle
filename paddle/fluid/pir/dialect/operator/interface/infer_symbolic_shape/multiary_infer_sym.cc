@@ -1060,6 +1060,79 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool DetectionMapOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const auto &detect_res_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const auto &label_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &pos_count_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3));
+  const auto &true_pos_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4));
+  const auto &false_pos_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(5));
+
+  const auto &detect_res_shape = detect_res_shape_or_data.shape();
+  const auto &label_shape = label_shape_or_data.shape();
+
+  PADDLE_ENFORCE_EQ(detect_res_shape.size(),
+                    2UL,
+                    common::errors::InvalidArgument(
+                        "Input(DetectRes) ndim must be 2, the shape is [N, 6],"
+                        "but received the ndim is %d",
+                        detect_res_shape.size()));
+  infer_context->AddEqualCstr(detect_res_shape[1], symbol::DimExpr(6));
+  PADDLE_ENFORCE_EQ(label_shape.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The ndim of Input(Label) must be 2, but received %d",
+                        label_shape.size()));
+
+  if (!pos_count_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
+    PADDLE_ENFORCE_EQ(
+        !true_pos_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>(),
+        true,
+        common::errors::InvalidArgument(
+            "Input(TruePos) of DetectionMAPOp should not be null when "
+            "Input(PosCount) is not null."));
+    PADDLE_ENFORCE_EQ(
+        !false_pos_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>(),
+        true,
+        common::errors::InvalidArgument(
+            "Input(FalsePos) of DetectionMAPOp should not be null when "
+            "Input(PosCount) is not null."));
+  }
+
+  std::vector<symbol::DimExpr> output_pos_count = {
+      infer_context->GetNextSymName(), symbol::DimExpr(1)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_pos_count)});
+
+  std::vector<symbol::DimExpr> output_true_pos = {
+      infer_context->GetNextSymName(), symbol::DimExpr(2)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_true_pos)});
+
+  std::vector<symbol::DimExpr> output_false_pos = {
+      infer_context->GetNextSymName(), symbol::DimExpr(2)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(2),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(output_false_pos)});
+
+  std::vector<symbol::DimExpr> m_ap_shape = {symbol::DimExpr(1)};
+  infer_context->SetShapeOrDataForValue(
+      op->result(3),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(m_ap_shape)});
+
+  return true;
+}
 // bool CudnnLstmOpInferSymbolicShape(pir::Operation *op,
 //                                    pir::InferSymbolicShapeContext
 //                                    *infer_context) {
@@ -1129,13 +1202,6 @@ bool DeformableConvOpInferSymbolicShape(
 
   return true;
 }
-
-// bool DetectionMapOpInferSymbolicShape(pir::Operation *op,
-//                                       pir::InferSymbolicShapeContext
-//                                       *infer_context) {
-//   // pass
-//   return true;
-// }
 
 bool FakeQuantizeRangeAbsMaxOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -3060,11 +3126,60 @@ bool WarprnntOpInferSymbolicShape(
 //   return true;
 // }
 
-// bool WeightedSampleNeighborsOpInferSymbolicShape(
-//     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-//   // pass
-//   return true;
-// }
+bool WeightedSampleNeighborsOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  auto GSNShapeCheck = [](const ExprVec &input_shape,
+                          std::string tensor_name,
+                          pir::InferSymbolicShapeContext *infer_context) {
+    if (input_shape.size() == 2) {
+      infer_context->AddEqualCstr(input_shape[1], symbol::DimExpr(1));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          input_shape.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              input_shape.size()));
+    }
+  };
+
+  const auto &row_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
+  const auto &col_ptr_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape();
+  const auto &edge_weight_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape();
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
+  const auto &eids_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(4)).shape();
+  bool return_eids = op->attribute<pir::BoolAttribute>("return_eids").data();
+
+  GSNShapeCheck(row_shape, "row", infer_context);
+  GSNShapeCheck(col_ptr_shape, "col_ptr", infer_context);
+  GSNShapeCheck(edge_weight_shape, "edge_weight", infer_context);
+  GSNShapeCheck(x_shape, "input_nodes", infer_context);
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {infer_context->GetNextSymName()})});
+  infer_context->SetShapeOrDataForValue(
+      op->result(1),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+          {infer_context->GetNextSymName()})});
+  if (return_eids) {
+    GSNShapeCheck(eids_shape, "eids", infer_context);
+    infer_context->SetShapeOrDataForValue(
+        op->result(2),
+        symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(
+            {infer_context->GetNextSymName()})});
+  } else {
+    infer_context->SetSymbolForValueByStaticShape(op->result(2));
+  }
+  return true;
+}
 
 bool WhereOpInferSymbolicShape(pir::Operation *op,
                                pir::InferSymbolicShapeContext *infer_context) {

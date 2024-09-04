@@ -1639,6 +1639,13 @@
     dropout1_out: Dropout1Out
     dropout2_out: Dropout2Out
 
+- op : fused_gate_attention
+  backward: fused_gate_attention_grad
+  inputs:
+    {query : Query, key : Key, query_weight : QueryWeight, key_weight : KeyWeight, value_weight : ValueWeight, qkv_weight : QKVWeight, nonbatched_bias : NonbatchedBias, src_mask : SrcMask, gate_weight : GateWeight, gate_bias : GateBias, out_linear_weight : OutLinearWeight, out_linear_bias : OutLinearBias}
+  outputs:
+    {query_transpose_out : QueryTransposeOut, key_transpose_out : KeyTransposeOut, value_transpose_out : ValueTransposeOut, qkv_transpose_out : QKVTransposeOut, softmax_out : SoftmaxOut, softmax_lse : SoftmaxLse, fmha_out : FMHAOut, gate_out : GateOut, out : Out}
+
 - op : fused_gemm_epilogue
   inputs:
     {x : X, y : Y, bias : Bias}
